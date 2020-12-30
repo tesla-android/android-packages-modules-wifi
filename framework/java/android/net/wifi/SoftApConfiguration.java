@@ -257,10 +257,15 @@ public final class SoftApConfiguration implements Parcelable {
 
     /**
      * Level of MAC randomization for the AP BSSID.
-     * @hide
      */
     @MacRandomizationSetting
     private int mMacRandomizationSetting;
+
+
+    /**
+     * Whether opportunistic shutdown of an instance in bridged AP is enabled or not.
+     */
+    private boolean mBridgedModeOpportunisticShutdownEnabled;
 
 
     /**
@@ -299,7 +304,7 @@ public final class SoftApConfiguration implements Parcelable {
             @SecurityType int securityType, int maxNumberOfClients, boolean shutdownTimeoutEnabled,
             long shutdownTimeoutMillis, boolean clientControlByUser,
             @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
-            int macRandomizationSetting) {
+            int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled) {
         mSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -318,6 +323,7 @@ public final class SoftApConfiguration implements Parcelable {
         mBlockedClientList = new ArrayList<>(blockedList);
         mAllowedClientList = new ArrayList<>(allowedList);
         mMacRandomizationSetting = macRandomizationSetting;
+        mBridgedModeOpportunisticShutdownEnabled = bridgedModeOpportunisticShutdownEnabled;
     }
 
     @Override
@@ -341,7 +347,9 @@ public final class SoftApConfiguration implements Parcelable {
                 && mClientControlByUser == other.mClientControlByUser
                 && Objects.equals(mBlockedClientList, other.mBlockedClientList)
                 && Objects.equals(mAllowedClientList, other.mAllowedClientList)
-                && mMacRandomizationSetting == other.mMacRandomizationSetting;
+                && mMacRandomizationSetting == other.mMacRandomizationSetting
+                && mBridgedModeOpportunisticShutdownEnabled
+                == other.mBridgedModeOpportunisticShutdownEnabled;
     }
 
     @Override
@@ -349,7 +357,8 @@ public final class SoftApConfiguration implements Parcelable {
         return Objects.hash(mSsid, mBssid, mPassphrase, mHiddenSsid,
                 mChannels.toString(), mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
-                mAllowedClientList, mMacRandomizationSetting);
+                mAllowedClientList, mMacRandomizationSetting,
+                mBridgedModeOpportunisticShutdownEnabled);
     }
 
     @Override
@@ -369,6 +378,8 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n BlockedClientList = ").append(mBlockedClientList);
         sbuf.append(" \n AllowedClientList= ").append(mAllowedClientList);
         sbuf.append(" \n MacRandomizationSetting = ").append(mMacRandomizationSetting);
+        sbuf.append(" \n BridgedModeInstanceOpportunisticEnabled = ")
+                .append(mBridgedModeOpportunisticShutdownEnabled);
         return sbuf.toString();
     }
 
@@ -387,6 +398,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeTypedList(mBlockedClientList);
         dest.writeTypedList(mAllowedClientList);
         dest.writeInt(mMacRandomizationSetting);
+        dest.writeBoolean(mBridgedModeOpportunisticShutdownEnabled);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -440,7 +452,7 @@ public final class SoftApConfiguration implements Parcelable {
                     in.readString(), in.readBoolean(), readSparseIntArray(in), in.readInt(),
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
                     in.createTypedArrayList(MacAddress.CREATOR),
-                    in.createTypedArrayList(MacAddress.CREATOR), in.readInt());
+                    in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean());
         }
 
         @Override
@@ -660,6 +672,20 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns whether opportunistic shutdown of an instance in bridged AP is enabled or not.
+     *
+     * See also {@link Builder#setBridgedModeOpportunisticShutdownEnabled(boolean}}
+     * @hide
+     */
+    @SystemApi
+    public boolean isBridgedModeOpportunisticShutdownEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mBridgedModeOpportunisticShutdownEnabled;
+    }
+
+    /**
      * Returns a {@link WifiConfiguration} representation of this {@link SoftApConfiguration}.
      * Note that SoftApConfiguration may contain configuration which is cannot be represented
      * by the legacy WifiConfiguration, in such cases a null will be returned.
@@ -736,6 +762,7 @@ public final class SoftApConfiguration implements Parcelable {
         private List<MacAddress> mBlockedClientList;
         private List<MacAddress> mAllowedClientList;
         private int mMacRandomizationSetting;
+        private boolean mBridgedModeOpportunisticShutdownEnabled;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -755,6 +782,7 @@ public final class SoftApConfiguration implements Parcelable {
             mBlockedClientList = new ArrayList<>();
             mAllowedClientList = new ArrayList<>();
             mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
+            mBridgedModeOpportunisticShutdownEnabled = true;
         }
 
         /**
@@ -776,6 +804,8 @@ public final class SoftApConfiguration implements Parcelable {
             mBlockedClientList = new ArrayList<>(other.mBlockedClientList);
             mAllowedClientList = new ArrayList<>(other.mAllowedClientList);
             mMacRandomizationSetting = other.mMacRandomizationSetting;
+            mBridgedModeOpportunisticShutdownEnabled =
+                    other.mBridgedModeOpportunisticShutdownEnabled;
         }
 
         /**
@@ -793,7 +823,8 @@ public final class SoftApConfiguration implements Parcelable {
             return new SoftApConfiguration(mSsid, mBssid, mPassphrase,
                     mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
-                    mBlockedClientList, mAllowedClientList, mMacRandomizationSetting);
+                    mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
+                    mBridgedModeOpportunisticShutdownEnabled);
         }
 
         /**
@@ -1273,6 +1304,46 @@ public final class SoftApConfiguration implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             mMacRandomizationSetting = macRandomizationSetting;
+            return this;
+        }
+
+
+        /**
+         * Specifies whether or not opportunistic shut down of an AP instance in bridged mode
+         * is enabled.
+         *
+         * <p>
+         * If enabled, the framework will shutdown one of the AP instances if it is idle for
+         * the timeout duration - meaning there are no devices connected to it.
+         * If both AP instances are idle for the timeout duration then the framework will
+         * shut down the AP instance operating on the higher frequency. For instance,
+         * if the AP instances operate at 2.4GHz and 5GHz and are both idle for the
+         * timeout duration then the 5GHz AP instance will be shut down.
+         * <p>
+         *
+         * Note: the opportunistic timeout only applies to one AP instance of the bridge AP.
+         * If one of the AP instances has already been disabled for any reason, including due to
+         * an opportunistic timeout or hardware issues or coexistence issues,
+         * then the opportunistic timeout is no longer active.
+         *
+         * <p>
+         * The shutdown timer specified by {@link #setShutdownTimeoutMillis(long)} controls the
+         * overall shutdown of the bridged AP and is still in use independently of the opportunistic
+         * timer controlled by this AP.
+         *
+         * <p>
+         * <li>If not set, defaults to true</li>
+         *
+         * @param enable true to enable, false to disable.
+         * @return Builder for chaining.
+         *
+         */
+        @NonNull
+        public Builder setBridgedModeOpportunisticShutdownEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mBridgedModeOpportunisticShutdownEnabled = enable;
             return this;
         }
     }

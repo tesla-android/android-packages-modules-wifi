@@ -90,6 +90,10 @@ public class SoftApConfigurationTest {
             assertThat(original.getMacRandomizationSetting())
                     .isEqualTo(SoftApConfiguration.RANDOMIZATION_PERSISTENT);
         }
+        if (SdkLevel.isAtLeastS()) {
+            assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
+                    .isEqualTo(true);
+        }
 
         SoftApConfiguration unparceled = parcelUnparcel(original);
         assertThat(unparceled).isNotSameInstanceAs(original);
@@ -145,6 +149,9 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastS()) {
             originalBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
         }
+        if (SdkLevel.isAtLeastS()) {
+            originalBuilder.setBridgedModeOpportunisticShutdownEnabled(false);
+        }
         SoftApConfiguration original = originalBuilder.build();
         assertThat(original.getPassphrase()).isEqualTo("secretsecret");
         assertThat(original.getSecurityType()).isEqualTo(
@@ -161,6 +168,11 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastS()) {
             assertThat(original.getMacRandomizationSetting())
                     .isEqualTo(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+
+        if (SdkLevel.isAtLeastS()) {
+            assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
+                    .isEqualTo(false);
         }
 
         SoftApConfiguration unparceled = parcelUnparcel(original);

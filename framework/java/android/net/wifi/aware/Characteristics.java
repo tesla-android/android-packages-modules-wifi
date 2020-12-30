@@ -89,7 +89,8 @@ public final class Characteristics implements Parcelable {
     }
 
     /**
-     * Check if instant communication mode is supported by device.
+     * Check if instant communication mode is supported by device. The instant communication mode is
+     * defined as per Wi-Fi Alliance (WFA) Wi-Fi Aware specifications version 3.1 Section 12.3.
      * @return True if supported, false otherwise.
      */
     public boolean isInstantCommunicationModeSupported() {

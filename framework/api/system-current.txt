@@ -273,6 +273,7 @@ package android.net.wifi {
     method public int getMaxNumberOfClients();
     method public long getShutdownTimeoutMillis();
     method public boolean isAutoShutdownEnabled();
+    method public boolean isBridgedModeOpportunisticShutdownEnabled();
     method public boolean isClientControlByUserEnabled();
     method @Nullable public android.net.wifi.WifiConfiguration toWifiConfiguration();
     field public static final int BAND_2GHZ = 1; // 0x1
@@ -293,6 +294,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBand(int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBands(@NonNull int[]);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBlockedClientList(@NonNull java.util.List<android.net.MacAddress>);
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBridgedModeOpportunisticShutdownEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBssid(@Nullable android.net.MacAddress);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setChannel(int, int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setChannels(@NonNull android.util.SparseIntArray);
@@ -367,6 +369,7 @@ package android.net.wifi {
     field @Deprecated public int creatorUid;
     field @Deprecated public boolean fromWifiNetworkSpecifier;
     field @Deprecated public boolean fromWifiNetworkSuggestion;
+    field @Deprecated public int lastConnectUid;
     field @Deprecated public String lastUpdateName;
     field @Deprecated public int lastUpdateUid;
     field @Deprecated public int macRandomizationSetting;
@@ -671,6 +674,7 @@ package android.net.wifi {
   }
 
   public final class WifiNetworkSuggestion implements android.os.Parcelable {
+    method public int getCarrierId();
     method @NonNull public android.net.wifi.WifiConfiguration getWifiConfiguration();
     method public boolean isOemPaid();
     method public boolean isOemPrivate();

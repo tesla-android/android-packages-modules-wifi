@@ -1184,7 +1184,7 @@ public class WifiConfiguration implements Parcelable {
      * @hide
      * Uid of last app issuing a connection related command
      */
-    @UnsupportedAppUsage
+    @SystemApi
     public int lastConnectUid;
 
     /**

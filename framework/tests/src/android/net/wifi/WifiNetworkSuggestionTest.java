@@ -28,6 +28,7 @@ import android.net.MacAddress;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.PasspointTestUtils;
 import android.os.Parcel;
+import android.telephony.SubscriptionManager;
 
 import androidx.test.filters.SmallTest;
 
@@ -51,6 +52,7 @@ public class WifiNetworkSuggestionTest {
     private static final String TEST_DOMAIN_SUFFIX_MATCH = "domainSuffixMatch";
     private static final int DEFAULT_PRIORITY_GROUP = 0;
     private static final int TEST_PRIORITY_GROUP = 1;
+    private static final int TEST_CARRIER_ID = 1998;
 
     /**
      * Validate correctness of WifiNetworkSuggestion object created by
@@ -1520,5 +1522,34 @@ public class WifiNetworkSuggestionTest {
                 .setIsMetered(true)
                 .build();
         assertTrue(suggestion.isCarrierMerged());
+    }
+
+    /**
+     * Ensure {@link WifiNetworkSuggestion.Builder#setSubscriptionId(int)} throws an exception when
+     * Subscription ID is invalid.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetInvalidSubscriptionId() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSubscriptionId(SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .build();
+    }
+
+    /**
+     * Test set and get carrier Id
+     */
+    @Test
+    public void testSetCarrierId() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setCarrierId(TEST_CARRIER_ID)
+                .build();
+
+        assertEquals(TEST_CARRIER_ID, suggestion.getCarrierId());
     }
 }

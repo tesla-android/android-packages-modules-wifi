@@ -97,6 +97,8 @@ java_library {
     visibility: [
         "//frameworks/opt/net/wifi/service",
         "//frameworks/opt/net/wifi/tests/wifitests",
+        "//packages/modules/Wifi/service",
+        "//packages/modules/Wifi/service/tests/wifitests",
     ],
 }
 
@@ -119,6 +121,7 @@ java_sdk_library {
     // Restrict access to implementation library.
     impl_library_visibility: [
         "//frameworks/opt/net/wifi/service:__subpackages__",
+        "//packages/modules/Wifi/service:__subpackages__",
     ] + test_access_hidden_api_whitelist,
 
     apex_available: [
