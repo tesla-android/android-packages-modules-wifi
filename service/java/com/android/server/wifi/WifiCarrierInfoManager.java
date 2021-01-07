@@ -28,16 +28,20 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Handler;
 import android.os.PersistableBundle;
+import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
 import android.telephony.SubscriptionInfo;
@@ -376,6 +380,25 @@ public class WifiCarrierInfoManager {
      */
     public void enableVerboseLogging(int verbose) {
         mVerboseLogEnabled = verbose > 0;
+    }
+
+    void onUnlockedUserSwitching(int currentUserId) {
+        // Retrieve list of broadcast receivers for this broadcast & send them directed
+        // broadcasts to wake them up (if they're in background).
+        final List<PackageInfo> provisioningPackageInfos =
+                mContext.getPackageManager().getPackagesHoldingPermissions(
+                        new String[] {android.Manifest.permission.NETWORK_CARRIER_PROVISIONING},
+                        PackageManager.MATCH_UNINSTALLED_PACKAGES);
+
+        vlogd("switched to current unlocked user. notify apps with"
+                + " NETWORK_CARRIER_PROVISIONING permission for user - " + currentUserId);
+
+        for (PackageInfo packageInfo : provisioningPackageInfos) {
+            Intent intentToSend = new Intent(WifiManager.ACTION_REFRESH_USER_PROVISIONING);
+            intentToSend.setPackage(packageInfo.packageName);
+            mContext.sendBroadcastAsUser(intentToSend, UserHandle.CURRENT,
+                    android.Manifest.permission.NETWORK_CARRIER_PROVISIONING);
+        }
     }
 
     /**
@@ -1606,11 +1629,11 @@ public class WifiCarrierInfoManager {
     private PendingIntent getPrivateBroadcast(@NonNull String action,
             @NonNull Pair<String, String> extra1, @NonNull Pair<String, Integer> extra2) {
         Intent intent = new Intent(action)
-                .setPackage(mWifiInjector.getWifiStackPackageName())
+                .setPackage(mContext.getServiceWifiPackageName())
                 .putExtra(extra1.first, extra1.second)
                 .putExtra(extra2.first, extra2.second);
         return mFrameworkFacade.getBroadcast(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
     /**

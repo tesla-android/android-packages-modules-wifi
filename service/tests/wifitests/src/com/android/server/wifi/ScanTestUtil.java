@@ -353,8 +353,8 @@ public class ScanTestUtil {
         assertNotNull(prefix + "actual ScanData was null", actual);
         assertEquals(prefix + "id", expected.getId(), actual.getId());
         assertEquals(prefix + "flags", expected.getFlags(), actual.getFlags());
-        assertEquals(prefix + "band", expected.getBandScanned(),
-                actual.getBandScanned());
+        assertEquals(prefix + "band", expected.getBandsScannedInternal(),
+                actual.getBandsScannedInternal());
         assertScanResultsEquals(prefix, expected.getResults(), actual.getResults());
     }
 

@@ -902,7 +902,7 @@ public class WifiBlocklistMonitor {
                 "NETWORK_SELECTION_DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC",
                 mContext.getResources().getInteger(R.integer
                         .config_wifiDisableReasonAuthenticationFailureCarrierSpecificThreshold),
-                duration == -1 ? Integer.MAX_VALUE : duration);
+                duration);
         mDisableReasonInfo.put(
                 NetworkSelectionStatus.DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC,
                 disableReasonInfo);
@@ -997,7 +997,8 @@ public class WifiBlocklistMonitor {
         NetworkSelectionStatus networkStatus = config.getNetworkSelectionStatus();
         if (reason == NetworkSelectionStatus.DISABLED_NONE) {
             setNetworkSelectionEnabled(config);
-        } else if (getNetworkSelectionDisableTimeoutMillis(reason) < Integer.MAX_VALUE) {
+        } else if (getNetworkSelectionDisableTimeoutMillis(reason)
+                != DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT) {
             setNetworkSelectionTemporarilyDisabled(config, reason);
         } else {
             setNetworkSelectionPermanentlyDisabled(config, reason);

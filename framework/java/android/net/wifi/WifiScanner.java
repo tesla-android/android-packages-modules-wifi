@@ -42,6 +42,7 @@ import android.util.SparseArray;
 
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -183,17 +184,17 @@ public class WifiScanner {
 
     /**
      * Test if scan is a full scan. i.e. scanning all available bands.
-     * For backward compatibility, since some apps don't include 6GHz in their requests yet,
-     * lacking 6GHz band does not cause the result to be false.
+     * For backward compatibility, since some apps don't include 6GHz or 60Ghz in their requests
+     * yet, lacking 6GHz or 60Ghz band does not cause the result to be false.
      *
-     * @param bandScanned bands that are fully scanned
+     * @param bandsScanned bands that are fully scanned
      * @param excludeDfs when true, DFS band is excluded from the check
      * @return true if all bands are scanned, false otherwise
      *
      * @hide
      */
-    public static boolean isFullBandScan(@WifiBand int bandScanned, boolean excludeDfs) {
-        return (bandScanned | WIFI_BAND_6_GHZ | WIFI_BAND_60_GHZ
+    public static boolean isFullBandScan(@WifiBand int bandsScanned, boolean excludeDfs) {
+        return (bandsScanned | WIFI_BAND_6_GHZ | WIFI_BAND_60_GHZ
                 | (excludeDfs ? WIFI_BAND_5_GHZ_DFS_ONLY : 0))
                 == WIFI_BAND_ALL;
     }
@@ -494,7 +495,7 @@ public class WifiScanner {
     }
 
     /**
-     * all the information garnered from a single scan
+     * All the information garnered from a single scan
      */
     public static class ScanData implements Parcelable {
         /** scan identifier */
@@ -516,7 +517,7 @@ public class WifiScanner {
          * any of the bands.
          * {@hide}
          */
-        private int mBandScanned;
+        private int mBandsScanned;
         /** all scan results discovered in this scan, sorted by timestamp in ascending order */
         private final List<ScanResult> mResults;
 
@@ -531,18 +532,18 @@ public class WifiScanner {
         }
 
         /** {@hide} */
-        public ScanData(int id, int flags, int bucketsScanned, int bandScanned,
+        public ScanData(int id, int flags, int bucketsScanned, int bandsScanned,
                         ScanResult[] results) {
-            this(id, flags, bucketsScanned, bandScanned, new ArrayList<>(Arrays.asList(results)));
+            this(id, flags, bucketsScanned, bandsScanned, new ArrayList<>(Arrays.asList(results)));
         }
 
         /** {@hide} */
-        public ScanData(int id, int flags, int bucketsScanned, int bandScanned,
+        public ScanData(int id, int flags, int bucketsScanned, int bandsScanned,
                         List<ScanResult> results) {
             mId = id;
             mFlags = flags;
             mBucketsScanned = bucketsScanned;
-            mBandScanned = bandScanned;
+            mBandsScanned = bandsScanned;
             mResults = results;
         }
 
@@ -550,7 +551,7 @@ public class WifiScanner {
             mId = s.mId;
             mFlags = s.mFlags;
             mBucketsScanned = s.mBucketsScanned;
-            mBandScanned = s.mBandScanned;
+            mBandsScanned = s.mBandsScanned;
             mResults = new ArrayList<>();
             for (ScanResult scanResult : s.mResults) {
                 mResults.add(new ScanResult(scanResult));
@@ -570,9 +571,28 @@ public class WifiScanner {
             return mBucketsScanned;
         }
 
-        /** {@hide} */
-        public int getBandScanned() {
-            return mBandScanned;
+        /**
+         * Retrieve the bands scanned for this ScanData instance.
+         *
+         * @return Bistmask of {@link #WIFI_BAND_24_GHZ}, {@link #WIFI_BAND_5_GHZ},
+         * {@link #WIFI_BAND_5_GHZ_DFS_ONLY}, {@link #WIFI_BAND_6_GHZ} & {@link #WIFI_BAND_60_GHZ}
+         * values. Will be {@link #WIFI_BAND_UNSPECIFIED} if the list of channels do not fully cover
+         * any of the bands.
+         */
+        public @WifiBand int getBandsScanned() {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            return getBandsScannedInternal();
+        }
+
+        /**
+         * Same as {@link #getBandsScanned()}. For use in the wifi stack without version check.
+         *
+         * {@hide}
+         */
+        public @WifiBand int getBandsScannedInternal() {
+            return mBandsScanned;
         }
 
         public ScanResult[] getResults() {
@@ -588,15 +608,15 @@ public class WifiScanner {
 
         /** {@hide} */
         public void addResults(@NonNull ScanData s) {
-            mBandScanned |= s.mBandScanned;
+            mBandsScanned |= s.mBandsScanned;
             mFlags |= s.mFlags;
             addResults(s.getResults());
         }
 
         /** {@hide} */
         public boolean isFullBandScanResults() {
-            return (mBandScanned & WifiScanner.WIFI_BAND_24_GHZ) != 0
-                && (mBandScanned & WifiScanner.WIFI_BAND_5_GHZ) != 0;
+            return (mBandsScanned & WifiScanner.WIFI_BAND_24_GHZ) != 0
+                && (mBandsScanned & WifiScanner.WIFI_BAND_5_GHZ) != 0;
         }
 
         /** Implement the Parcelable interface {@hide} */
@@ -609,7 +629,7 @@ public class WifiScanner {
             dest.writeInt(mId);
             dest.writeInt(mFlags);
             dest.writeInt(mBucketsScanned);
-            dest.writeInt(mBandScanned);
+            dest.writeInt(mBandsScanned);
             dest.writeParcelableList(mResults, 0);
         }
 
@@ -620,10 +640,10 @@ public class WifiScanner {
                         int id = in.readInt();
                         int flags = in.readInt();
                         int bucketsScanned = in.readInt();
-                        int bandScanned = in.readInt();
+                        int bandsScanned = in.readInt();
                         List<ScanResult> results = new ArrayList<>();
                         in.readParcelableList(results, ScanResult.class.getClassLoader());
-                        return new ScanData(id, flags, bucketsScanned, bandScanned, results);
+                        return new ScanData(id, flags, bucketsScanned, bandsScanned, results);
                     }
 
                     public ScanData[] newArray(int size) {

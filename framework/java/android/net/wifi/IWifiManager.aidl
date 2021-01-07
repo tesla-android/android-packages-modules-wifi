@@ -125,7 +125,7 @@ interface IWifiManager
 
     boolean isWifiStandardSupported(int standard);
 
-    DhcpInfo getDhcpInfo();
+    DhcpInfo getDhcpInfo(String packageName);
 
     void setScanAlwaysAvailable(boolean isAvailable, String packageName);
 

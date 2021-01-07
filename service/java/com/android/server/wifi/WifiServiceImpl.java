@@ -436,10 +436,13 @@ public class WifiServiceImpl extends BaseWifiService {
     private void resetCarrierNetworks(@ClientModeImpl.ResetSimReason int resetReason) {
         mWifiThreadRunner.post(() -> {
             Log.d(TAG, "resetting carrier networks since SIM was changed");
-            if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
-                // whenever a SIM is inserted clear all SIM related notifications
+            if (resetReason == RESET_SIM_REASON_SIM_INSERTED
+                    || resetReason == RESET_SIM_REASON_DEFAULT_DATA_SIM_CHANGED) {
+                // clear all SIM related notifications since some action was taken to address
+                // "missing" SIM issue
                 mSimRequiredNotifier.dismissSimRequiredNotification();
-            } else {
+            }
+            if (resetReason != RESET_SIM_REASON_SIM_INSERTED) {
                 mWifiConfigManager.resetSimNetworks();
                 mWifiNetworkSuggestionsManager.resetSimNetworkSuggestions();
                 mPasspointManager.resetSimPasspointNetwork();
@@ -1393,8 +1396,6 @@ public class WifiServiceImpl extends BaseWifiService {
                     callback.onStateChanged(state, failureReason);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onStateChanged: remote exception -- " + e);
-                    // TODO(b/138863863) remove does nothing, getCallbacks() returns a copy
-                    iterator.remove();
                 }
             }
         }
@@ -1409,6 +1410,10 @@ public class WifiServiceImpl extends BaseWifiService {
                 Map<String, List<WifiClient>> clients, boolean isBridged) {
             synchronized (mLock) {
                 mIsBridgedMode = isBridged;
+                if (infos.size() == 0 && isBridged) {
+                    Log.d(TAG, "ShutDown bridged mode, clear isBridged cache in Service");
+                    mIsBridgedMode = false;
+                }
                 mTetheredSoftApConnectedClientsMap = clients;
                 mTetheredSoftApInfoMap = infos;
             }
@@ -1418,7 +1423,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 ISoftApCallback callback = iterator.next();
                 try {
                     callback.onConnectedClientsOrInfoChanged(mTetheredSoftApInfoMap,
-                            mTetheredSoftApConnectedClientsMap, mIsBridgedMode, false);
+                            mTetheredSoftApConnectedClientsMap, isBridged, false);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onConnectedClientsOrInfoChanged: remote exception -- " + e);
                 }
@@ -2931,11 +2936,11 @@ public class WifiServiceImpl extends BaseWifiService {
 
     /**
      * Provides backward compatibility for apps using
-     * {@link WifiManager#getConnectionInfo()} when a secondary STA is created as a result of
-     * a request from their app (peer to peer WifiNetworkSpecifier request or oem paid/private
-     * suggestion).
+     * {@link WifiManager#getConnectionInfo()}, {@link WifiManager#getDhcpInfo()} when a
+     * secondary STA is created as a result of a request from their app (peer to peer
+     * WifiNetworkSpecifier request or oem paid/private suggestion).
      */
-    private ClientModeManager getClientModeManagerForConnectionInfo(
+    private ClientModeManager getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
             int callingUid, @NonNull String callingPackageName) {
         List<ConcreteClientModeManager> secondaryCmms =
                 mActiveModeWarden.getClientModeManagersInRoles(
@@ -2967,7 +2972,8 @@ public class WifiServiceImpl extends BaseWifiService {
         long ident = Binder.clearCallingIdentity();
         try {
             WifiInfo result = mWifiThreadRunner.call(
-                    () -> getClientModeManagerForConnectionInfo(uid, callingPackage)
+                    () -> getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
+                            uid, callingPackage)
                             .syncRequestConnectionInfo(), new WifiInfo());
             boolean hideDefaultMacAddress = true;
             boolean hideBssidSsidNetworkIdAndFqdn = true;
@@ -3268,14 +3274,16 @@ public class WifiServiceImpl extends BaseWifiService {
      * @deprecated
      */
     @Override
-    @Deprecated
-    public DhcpInfo getDhcpInfo() {
+    public DhcpInfo getDhcpInfo(@NonNull String packageName) {
         enforceAccessPermission();
+        int callingUid = Binder.getCallingUid();
         if (mVerboseLoggingEnabled) {
-            mLog.info("getDhcpInfo uid=%").c(Binder.getCallingUid()).flush();
+            mLog.info("getDhcpInfo uid=%").c(callingUid).flush();
         }
-        DhcpResultsParcelable dhcpResults =
-                mActiveModeWarden.getPrimaryClientModeManager().syncGetDhcpResultsParcelable();
+        DhcpResultsParcelable dhcpResults = mWifiThreadRunner.call(
+                () -> getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
+                        callingUid, packageName)
+                        .syncGetDhcpResultsParcelable(), new DhcpResultsParcelable());
 
         DhcpInfo info = new DhcpInfo();
 
@@ -3784,7 +3792,7 @@ public class WifiServiceImpl extends BaseWifiService {
             intentToSend.setComponent(new ComponentName(
                     resolveInfo.activityInfo.applicationInfo.packageName,
                     resolveInfo.activityInfo.name));
-            mContext.sendBroadcastAsUser(intentToSend, UserHandle.ALL,
+            mContext.sendBroadcastAsUser(intentToSend, UserHandle.CURRENT,
                     android.Manifest.permission.NETWORK_CARRIER_PROVISIONING);
         }
     }

@@ -234,7 +234,7 @@ public class WifiInjector {
         mWifiChannelUtilizationScan = new WifiChannelUtilization(mClock, mContext);
         mSettingsMigrationDataHolder = new SettingsMigrationDataHolder(mContext);
         mConnectionFailureNotificationBuilder = new ConnectionFailureNotificationBuilder(
-                mContext, getWifiStackPackageName(), mFrameworkFacade);
+                mContext, mFrameworkFacade);
         mBatteryStats = context.getSystemService(BatteryStatsManager.class);
         mWifiPermissionsWrapper = new WifiPermissionsWrapper(mContext);
         mNetworkScoreManager = mContext.getSystemService(NetworkScoreManager.class);
@@ -396,7 +396,7 @@ public class WifiInjector {
         mOpenNetworkNotifier = new OpenNetworkNotifier(mContext,
                 wifiLooper, mFrameworkFacade, mClock, mWifiMetrics,
                 mWifiConfigManager, mWifiConfigStore, mConnectHelper,
-                new ConnectToNetworkNotificationBuilder(mContext, this, mFrameworkFacade));
+                new ConnectToNetworkNotificationBuilder(mContext, mFrameworkFacade));
         mWifiConnectivityManager = new WifiConnectivityManager(
                 mContext, mScoringParams, mWifiConfigManager,
                 mWifiNetworkSuggestionsManager, mWifiNetworkSelector,
@@ -451,7 +451,7 @@ public class WifiInjector {
                 mContext, this, wifiHandler, mBackupManagerProxy,
                 mWifiConfigStore, mWifiConfigManager, mActiveModeWarden, mWifiMetrics);
         WakeupNotificationFactory wakeupNotificationFactory =
-                new WakeupNotificationFactory(mContext, this, mFrameworkFacade);
+                new WakeupNotificationFactory(mContext, mFrameworkFacade);
         WakeupOnboarding wakeupOnboarding = new WakeupOnboarding(mContext, mWifiConfigManager,
                 wifiHandler, mFrameworkFacade, wakeupNotificationFactory);
         mWakeupController = new WakeupController(mContext, wifiHandler,
@@ -867,10 +867,6 @@ public class WifiInjector {
 
     public HostapdHal getHostapdHal() {
         return mHostapdHal;
-    }
-
-    public String getWifiStackPackageName() {
-        return mContext.getPackageName();
     }
 
     public WifiThreadRunner getWifiThreadRunner() {

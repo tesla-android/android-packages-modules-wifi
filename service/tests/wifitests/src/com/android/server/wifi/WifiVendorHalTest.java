@@ -62,6 +62,7 @@ import android.hardware.wifi.V1_0.StaLinkLayerIfaceStats;
 import android.hardware.wifi.V1_0.StaLinkLayerRadioStats;
 import android.hardware.wifi.V1_0.StaLinkLayerStats;
 import android.hardware.wifi.V1_0.StaRoamingCapabilities;
+import android.hardware.wifi.V1_0.StaRoamingConfig;
 import android.hardware.wifi.V1_0.StaRoamingState;
 import android.hardware.wifi.V1_0.StaScanData;
 import android.hardware.wifi.V1_0.StaScanDataFlagMask;
@@ -2094,6 +2095,33 @@ public class WifiVendorHalTest extends WifiBaseTest {
     }
 
     /**
+     * Tests configureRoaming zero padding success
+     */
+    @Test
+    public void testConfigureRoamingZeroPaddingSuccess() throws Exception {
+        assertTrue(mWifiVendorHal.startVendorHalSta());
+        WifiNative.RoamingConfig roamingConfig = new WifiNative.RoamingConfig();
+        roamingConfig.allowlistSsids = new ArrayList();
+        roamingConfig.allowlistSsids.add("\"xyzzy\"");
+        when(mIWifiStaIface.configureRoaming(any())).thenReturn(mWifiStatusSuccess);
+        assertTrue(mWifiVendorHal.configureRoaming(TEST_IFACE_NAME, roamingConfig));
+        ArgumentCaptor<StaRoamingConfig> staRoamingConfigCaptor = ArgumentCaptor.forClass(
+                StaRoamingConfig.class);
+        verify(mIWifiStaIface).configureRoaming(staRoamingConfigCaptor.capture());
+        byte[] allowlistSsidsPadded = new byte[32];
+        allowlistSsidsPadded[0] = (byte) 0x78;
+        allowlistSsidsPadded[1] = (byte) 0x79;
+        allowlistSsidsPadded[2] = (byte) 0x7a;
+        allowlistSsidsPadded[3] = (byte) 0x7a;
+        allowlistSsidsPadded[4] = (byte) 0x79;
+        assertArrayEquals(staRoamingConfigCaptor.getValue().ssidWhitelist.get(0),
+                allowlistSsidsPadded);
+        allowlistSsidsPadded[5] = (byte) 0x79;
+        assertFalse(Arrays.equals(staRoamingConfigCaptor.getValue().ssidWhitelist.get(0),
+                allowlistSsidsPadded));
+    }
+
+    /**
      * Tests configureRoaming success with null lists
      */
     @Test
@@ -2642,6 +2670,17 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertEquals(TEST_IFACE_NAME, ifaceName);
         assertTrue(mWifiVendorHal.removeApIface(ifaceName));
         verify(mHalDeviceManager).removeIface(eq(mIWifiApIface));
+    }
+
+    /**
+     * Test removeIfaceInstanceFromBridgedApIface
+     */
+    @Test
+    public void testRemoveIfaceInstanceFromBridgedApIface() throws RemoteException {
+        mWifiVendorHal = new WifiVendorHalSpyV1_5(mContext, mHalDeviceManager, mHandler);
+        when(mIWifiChipV15.removeIfaceInstanceFromBridgedApIface(any(), any()))
+                .thenReturn(mWifiStatusSuccess);
+        assertTrue(mWifiVendorHal.removeIfaceInstanceFromBridgedApIface(any(), any()));
     }
 
     /**

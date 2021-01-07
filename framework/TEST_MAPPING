@@ -1,22 +1,12 @@
 {
-  "presubmit-large": [
+  "presubmit": [
     {
-      "name": "CtsWifiTestCases",
-      "options": [
-        {
-          "exclude-annotation": "android.net.wifi.cts.VirtualDeviceNotSupported"
-        }
-      ]
-    }
-  ],
-  "mainline-presubmit": [
+      "name": "FrameworksWifiApiTests"
+    },
     {
-      "name": "CtsWifiTestCases[com.google.android.wifi.apex]",
-      "options": [
-        {
-          "exclude-annotation": "android.net.wifi.cts.VirtualDeviceNotSupported"
-        }
-      ]
+      // run service unit tests for API changes (since API changes can break service, but not the
+      // other way around)
+      "name": "FrameworksWifiTests"
     }
   ]
 }

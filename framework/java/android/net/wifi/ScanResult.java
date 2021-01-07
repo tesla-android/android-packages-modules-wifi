@@ -526,12 +526,16 @@ public final class ScanResult implements Parcelable {
     /**
      * Indicates venue name (such as 'San Francisco Airport') published by access point; only
      * available on Passpoint network and if published by access point.
+     * @deprecated - This information is not provided
      */
+    @Deprecated
     public CharSequence venueName;
 
     /**
      * Indicates Passpoint operator name published by access point.
+     * @deprecated - Use {@link WifiInfo#getPasspointProviderFriendlyName()}
      */
+    @Deprecated
     public CharSequence operatorFriendlyName;
 
     /**

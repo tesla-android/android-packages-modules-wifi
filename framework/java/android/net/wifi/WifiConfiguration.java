@@ -1769,6 +1769,11 @@ public class WifiConfiguration implements Parcelable {
          */
         public static final class DisableReasonInfo {
             /**
+             * A special constant which indicates the network should be permanently disabled.
+             * @hide
+             */
+            public static final int PERMANENT_DISABLE_TIMEOUT = -1;
+            /**
              * String representation for the disable reason.
              * Note that these strings are persisted in
              * {@link
@@ -1784,8 +1789,8 @@ public class WifiConfiguration implements Parcelable {
             /**
              * Network Selection disable timeout for the error. After the timeout milliseconds,
              * enable the network again.
-             * If this is set to Integer.MAX_VALUE, the network will be permanently disabled until
-             * the next time the user manually connects to it.
+             * If this is set to PERMANENT_DISABLE_TIMEOUT, the network will be permanently disabled
+             * until the next time the user manually connects to it.
              */
             public final int mDisableTimeoutMillis;
 
@@ -1822,7 +1827,7 @@ public class WifiConfiguration implements Parcelable {
                             // compatibility.
                             "NETWORK_SELECTION_ENABLE",
                             -1,
-                            Integer.MAX_VALUE));
+                            0));
 
             reasons.append(DISABLED_ASSOCIATION_REJECTION,
                     new DisableReasonInfo(
@@ -1854,31 +1859,31 @@ public class WifiConfiguration implements Parcelable {
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_AUTHENTICATION_NO_CREDENTIALS",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_NO_INTERNET_PERMANENT,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_NO_INTERNET_PERMANENT",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_BY_WIFI_MANAGER,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_BY_WIFI_MANAGER",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_BY_WRONG_PASSWORD,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_BY_WRONG_PASSWORD",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_AUTHENTICATION_NO_SUBSCRIPTION,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_AUTHENTICATION_NO_SUBSCRIPTION",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_AUTHENTICATION_FAILURE_GENERIC,
                     new DisableReasonInfo(
@@ -1890,7 +1895,7 @@ public class WifiConfiguration implements Parcelable {
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC",
                             1,
-                            Integer.MAX_VALUE));
+                            DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             return reasons;
         }

@@ -345,15 +345,15 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
     /**
      * Return one of the WIFI_BAND_# values that was scanned for in this scan.
      */
-    private static int getBandScanned(ChannelCollection channelCollection) {
-        int bandScanned = WifiScanner.WIFI_BAND_UNSPECIFIED;
+    private static int getBandsScannedInternal(ChannelCollection channelCollection) {
+        int bandsScanned = WifiScanner.WIFI_BAND_UNSPECIFIED;
 
         for (@WifiBandIndex int i = 0; i < WifiScanner.WIFI_BAND_COUNT; i++) {
             if (channelCollection.containsBand(1 << i)) {
-                bandScanned |= 1 << i;
+                bandsScanned |= 1 << i;
             }
         }
-        return bandScanned;
+        return bandsScanned;
     }
 
     private void pollLatestScanData() {
@@ -392,7 +392,7 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
                 }
                 Collections.sort(singleScanResults, SCAN_RESULT_SORT_COMPARATOR);
                 mLatestSingleScanResult = new WifiScanner.ScanData(0, 0, 0,
-                        getBandScanned(mLastScanSettings.singleScanFreqs),
+                        getBandsScannedInternal(mLastScanSettings.singleScanFreqs),
                         singleScanResults.toArray(new ScanResult[singleScanResults.size()]));
                 mLastScanSettings.singleScanEventHandler
                         .onScanStatus(WifiNative.WIFI_SCAN_RESULTS_AVAILABLE);

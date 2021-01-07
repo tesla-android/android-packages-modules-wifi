@@ -176,7 +176,7 @@ public class ScanScheduleUtil {
                     filteredScanDatas.add(new ScanData(scanData.getId(),
                                     scanData.getFlags(),
                                     0,
-                                    scanData.getBandScanned(),
+                                    scanData.getBandsScannedInternal(),
                                     filteredResults.toArray(
                                             new ScanResult[filteredResults.size()])));
                 }

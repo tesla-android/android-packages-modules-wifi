@@ -93,7 +93,7 @@ public class SoftApNotifier {
         Intent intent = new Intent(ACTION_HOTSPOT_PREFERENCES)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return mFrameworkFacade.getActivity(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
 

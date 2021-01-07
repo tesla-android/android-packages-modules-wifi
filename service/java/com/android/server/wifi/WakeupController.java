@@ -75,7 +75,7 @@ public class WakeupController {
         public void onResults(WifiScanner.ScanData[] results) {
             // We treat any full band scans (with DFS or not) as "full".
             if (results.length == 1
-                    && WifiScanner.isFullBandScan(results[0].getBandScanned(), true)) {
+                    && WifiScanner.isFullBandScan(results[0].getBandsScannedInternal(), true)) {
                 handleScanResults(filterDfsScanResults(Arrays.asList(results[0].getResults())));
             }
         }

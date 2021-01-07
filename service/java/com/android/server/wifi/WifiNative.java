@@ -955,6 +955,25 @@ public class WifiNative {
     }
 
     /**
+     * Helper function to remove specific instance in bridged AP iface.
+     *
+     * @param ifaceName Name of the iface.
+     * @param apIfaceInstance The identity of the ap instance.
+     * @return true if the operation succeeded, false if there is an error in Hal.
+     */
+    public boolean removeIfaceInstanceFromBridgedApIface(@NonNull String ifaceName,
+            @NonNull String apIfaceInstance) {
+        synchronized (mLock) {
+            if (mWifiVendorHal.isVendorHalSupported()) {
+                return mWifiVendorHal.removeIfaceInstanceFromBridgedApIface(ifaceName,
+                        apIfaceInstance);
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
      * Initialize the native modules.
      *
      * @return true on success, false otherwise.

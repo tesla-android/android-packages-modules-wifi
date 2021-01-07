@@ -37,6 +37,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.DhcpInfo;
+import android.net.LinkProperties;
 import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -870,6 +871,20 @@ public class WifiManager {
     @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING)
     public static final String ACTION_NETWORK_SETTINGS_RESET =
             "android.net.wifi.action.NETWORK_SETTINGS_RESET";
+
+    /**
+     * Broadcast intent action indicating that the wifi network profiles provisioned
+     * may need refresh.
+     *
+     * Note: This intent is sent as a directed broadcast to each manifest registered receiver;
+     * And restricted to those apps which have the NETWORK_CARRIER_PROVISIONING permission.
+     * Intent will not be received by dynamically registered receivers.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING)
+    public static final String ACTION_REFRESH_USER_PROVISIONING =
+            "android.net.wifi.action.REFRESH_USER_PROVISIONING";
 
     /**
      * Broadcast intent action indicating that a connection to the supplicant has
@@ -2893,10 +2908,18 @@ public class WifiManager {
      * connectivityManager.registerNetworkCallback(request, networkCallback); // For listen
      * }</pre>
      * <p>
-     * <b>Compatibility Note:</b>
+     * <b>Compatibility Notes:</b>
      * <li>Apps can continue using this API, however newer features
      * such as ability to mask out location sensitive data in WifiInfo will not be supported
      * via this API. </li>
+     * <li>On devices supporting concurrent connections (indicated via
+     * {@link #isMultiStaConcurrencySupported()}), this API will return the details
+     * of the internet providing connection (if any) to all apps, except for the apps that triggered
+     * the creation of the concurrent connection. For such apps, this API will return the details of
+     * the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * trigger a concurrent connection on supported devices and hence this API will provide
+     * details of their peer to peer connection (not the internet providing connection). This
+     * is to maintain backwards compatibility with behavior on single STA devices.</li>
      * </p>
      */
     @Deprecated
@@ -3031,11 +3054,29 @@ public class WifiManager {
     /**
      * Return the DHCP-assigned addresses from the last successful DHCP request,
      * if any.
+     *
      * @return the DHCP information
+     *
+     * @deprecated Use the methods on {@link android.net.LinkProperties} which can be obtained
+     * either via {@link NetworkCallback#onLinkPropertiesChanged(Network, LinkProperties)} or
+     * {@link ConnectivityManager#getLinkProperties(Network)}.
+     *
+     * <p>
+     * <b>Compatibility Notes:</b>
+     * <li>On devices supporting concurrent connections (indicated via
+     * {@link #isMultiStaConcurrencySupported()}), this API will return the details
+     * of the internet providing connection (if any) to all apps, except for the apps that triggered
+     * the creation of the concurrent connection. For such apps, this API will return the details of
+     * the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * trigger a concurrent connection on supported devices and hence this API will provide
+     * details of their peer to peer connection (not the internet providing connection). This
+     * is to maintain backwards compatibility with behavior on single STA devices.</li>
+     * </p>
      */
+    @Deprecated
     public DhcpInfo getDhcpInfo() {
         try {
-            return mService.getDhcpInfo();
+            return mService.getDhcpInfo(mContext.getOpPackageName());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3572,7 +3613,7 @@ public class WifiManager {
      * unexpectedly, but they will receive a notification if they have properly registered.
      * <p>
      * Applications should also be aware that this network will be shared with other applications.
-     * Applications are responsible for protecting their data on this network (e.g., TLS).
+     * Applications are responsible for protecting their data on this network (e.g. TLS).
      * <p>
      * Applications need to have the following permissions to start LocalOnlyHotspot: {@link
      * android.Manifest.permission#CHANGE_WIFI_STATE} and {@link

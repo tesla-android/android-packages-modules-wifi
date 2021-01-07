@@ -19,13 +19,11 @@ package com.android.server.wifi;
 import android.annotation.NonNull;
 import android.app.AlertDialog;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
 import android.net.wifi.WifiConfiguration;
-import android.os.Handler;
 import android.view.WindowManager;
 
 import com.android.wifi.resources.R;
@@ -43,17 +41,12 @@ public class ConnectionFailureNotificationBuilder {
     public static final String RANDOMIZATION_SETTINGS_NETWORK_SSID =
             "com.android.server.wifi.RANDOMIZATION_SETTINGS_NETWORK_SSID";
 
-    private WifiContext mContext;
-    private String mPackageName;
-    private FrameworkFacade mFrameworkFacade;
-    private WifiConnectivityManager mWifiConnectivityManager;
-    private NotificationManager mNotificationManager;
-    private Handler mHandler;
+    private final WifiContext mContext;
+    private final FrameworkFacade mFrameworkFacade;
 
-    public ConnectionFailureNotificationBuilder(WifiContext context, String packageName,
+    public ConnectionFailureNotificationBuilder(WifiContext context,
             FrameworkFacade framework) {
         mContext = context;
-        mPackageName = packageName;
         mFrameworkFacade = framework;
     }
 
@@ -72,11 +65,12 @@ public class ConnectionFailureNotificationBuilder {
                 R.string.wifi_cannot_connect_with_randomized_mac_message);
 
         Intent showDetailIntent = new Intent(ACTION_SHOW_SET_RANDOMIZATION_DETAILS)
-                .setPackage(mPackageName);
+                .setPackage(mContext.getServiceWifiPackageName());
         showDetailIntent.putExtra(RANDOMIZATION_SETTINGS_NETWORK_ID, config.networkId);
         showDetailIntent.putExtra(RANDOMIZATION_SETTINGS_NETWORK_SSID, ssidAndSecurityType);
         PendingIntent pendingShowDetailIntent = mFrameworkFacade.getBroadcast(
-                mContext, 0, showDetailIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                mContext, 0, showDetailIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         return mFrameworkFacade.makeNotificationBuilder(
                 mContext, WifiService.NOTIFICATION_NETWORK_ALERTS)

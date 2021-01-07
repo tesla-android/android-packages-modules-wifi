@@ -859,6 +859,17 @@ public class WifiNativeTest extends WifiBaseTest {
     }
 
     /**
+     * Verifies that removeIfaceInstanceFromBridgedApIface() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testRemoveIfaceInstanceFromBridgedApIface() throws Exception {
+        mWifiNative.removeIfaceInstanceFromBridgedApIface(
+                "br_" + WIFI_IFACE_NAME, WIFI_IFACE_NAME);
+        verify(mWifiVendorHal).removeIfaceInstanceFromBridgedApIface(
+                "br_" + WIFI_IFACE_NAME, WIFI_IFACE_NAME);
+    }
+
+    /**
      * Verifies that setMacAddress() calls underlying WifiVendorHal.
      */
     @Test

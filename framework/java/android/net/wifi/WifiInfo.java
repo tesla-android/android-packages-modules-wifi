@@ -21,6 +21,10 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
+import android.net.LinkProperties;
+import android.net.Network;
 import android.net.NetworkInfo.DetailedState;
 import android.net.TransportInfo;
 import android.os.Build;
@@ -956,6 +960,12 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mIpAddress = address;
     }
 
+    /**
+     * @deprecated Use the methods on {@link android.net.LinkProperties} which can be obtained
+     * either via {@link NetworkCallback#onLinkPropertiesChanged(Network, LinkProperties)} or
+     * {@link ConnectivityManager#getLinkProperties(Network)}.
+     */
+    @Deprecated
     public int getIpAddress() {
         int result = 0;
         if (mIpAddress instanceof Inet4Address) {

@@ -254,8 +254,13 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    @Deprecated
     public DhcpInfo getDhcpInfo() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DhcpInfo getDhcpInfo(String packageName) {
         throw new UnsupportedOperationException();
     }
 

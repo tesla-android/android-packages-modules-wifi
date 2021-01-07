@@ -2771,6 +2771,8 @@ public class WifiConfigManager {
 
         if (mUserManager.isUserUnlockingOrUnlocked(UserHandle.of(mCurrentUserId))) {
             handleUserUnlockOrSwitch(mCurrentUserId);
+            // only handle the switching of unlocked users in {@link WifiCarrierInfoManager}.
+            mWifiCarrierInfoManager.onUnlockedUserSwitching(mCurrentUserId);
         } else {
             // Cannot read data from new user's CE store file before they log-in.
             mPendingUnlockStoreRead = true;

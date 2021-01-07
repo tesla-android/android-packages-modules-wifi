@@ -186,6 +186,7 @@ public class WifiConnectivityManager {
     private boolean mPnoScanStarted = false;
     private boolean mPeriodicScanTimerSet = false;
     private boolean mDelayedPartialScanTimerSet = false;
+    private boolean mWatchdogScanTimerSet = false;
 
     // Used for Initial Scan metrics
     private boolean mFailedInitialPartialScan = false;
@@ -676,7 +677,7 @@ public class WifiConnectivityManager {
             boolean isFullBandScanResults = false;
             if (results != null && results.length > 0) {
                 isFullBandScanResults =
-                        WifiScanner.isFullBandScan(results[0].getBandScanned(), true);
+                        WifiScanner.isFullBandScan(results[0].getBandsScannedInternal(), true);
             }
             // Full band scan results only.
             if (mWaitForFullBandScanResults) {
@@ -1942,6 +1943,15 @@ public class WifiConnectivityManager {
                                     R.integer.config_wifiPnoWatchdogIntervalMs),
                             WATCHDOG_TIMER_TAG,
                             mWatchdogListener, mEventHandler);
+        mWatchdogScanTimerSet = true;
+    }
+
+    // Cancel the watchdog scan timer.
+    private void cancelWatchdogScan() {
+        if (mWatchdogScanTimerSet) {
+            mAlarmManager.cancel(mWatchdogListener);
+            mWatchdogScanTimerSet = false;
+        }
     }
 
     // Schedules a delayed partial scan, which will scan the frequencies in mCachedWifiCandidates.
@@ -2401,6 +2411,7 @@ public class WifiConnectivityManager {
         if (!mRunning) return;
         mRunning = false;
         stopConnectivityScan();
+        cancelWatchdogScan();
         resetLastPeriodicSingleScanTimeStamp();
         mOpenNetworkNotifier.clearPendingNotification(true /* resetRepeatDelay */);
         mWaitForFullBandScanResults = false;

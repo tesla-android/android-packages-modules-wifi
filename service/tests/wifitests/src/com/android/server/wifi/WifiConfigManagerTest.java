@@ -251,10 +251,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         when(mMacAddressUtil.calculatePersistentMac(any(), any())).thenReturn(TEST_RANDOMIZED_MAC);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
 
-        mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
+        WifiContext wifiContext = mock(WifiContext.class);
+        when(wifiContext.getPackageManager()).thenReturn(mPackageManager);
+        when(mPackageManager.getPackagesHoldingPermissions(any(String[].class), anyInt()))
+                .thenReturn(Collections.emptyList());
+        mWifiCarrierInfoManager = spy(new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
-                mock(WifiContext.class), mock(WifiConfigStore.class), mock(Handler.class),
-                mWifiMetrics);
+                wifiContext, mock(WifiConfigStore.class), mock(Handler.class),
+                mWifiMetrics));
         mLruConnectionTracker = new LruConnectionTracker(100, mContext);
         createWifiConfigManager();
         mWifiConfigManager.addOnNetworkUpdateListener(mWcmListener);
@@ -3289,6 +3293,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // user2 is unlocked and switched to foreground.
         when(mUserManager.isUserUnlockingOrUnlocked(UserHandle.of(user2))).thenReturn(true);
         mWifiConfigManager.handleUserSwitch(user2);
+
+        verify(mWifiCarrierInfoManager).onUnlockedUserSwitching(eq(user2));
         // Ensure that the read was invoked.
         mContextConfigStoreMockOrder.verify(mWifiConfigStore)
                 .switchUserStoresAndRead(any(List.class));

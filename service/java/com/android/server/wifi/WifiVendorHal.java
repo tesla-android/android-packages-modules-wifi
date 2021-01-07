@@ -610,6 +610,27 @@ public class WifiVendorHal {
         }
     }
 
+    /**
+     * Helper function to remove specific instance in bridged AP iface.
+     *
+     * @param ifaceName Name of the iface.
+     * @param apIfaceInstance The identity of the ap instance.
+     * @return true if the operation succeeded, false if there is an error in Hal.
+     */
+    public boolean removeIfaceInstanceFromBridgedApIface(@NonNull String ifaceName,
+            @NonNull String apIfaceInstance) {
+        try {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 == null) return boolResult(false);
+            return ok(iWifiChipV15.removeIfaceInstanceFromBridgedApIface(
+                    ifaceName, apIfaceInstance));
+        } catch (RemoteException e) {
+            handleRemoteException(e);
+            return false;
+        }
+    }
+
+
     private boolean retrieveWifiChip(IWifiIface iface) {
         synchronized (sLock) {
             boolean registrationNeeded = mIWifiChip == null;
@@ -2518,7 +2539,15 @@ public class WifiVendorHal {
                     for (String ssidStr : config.allowlistSsids) {
                         byte[] ssid = NativeUtil.byteArrayFromArrayList(
                                 NativeUtil.decodeSsid(ssidStr));
-                        roamingConfig.ssidWhitelist.add(ssid);
+                        // HIDL code is throwing InvalidArgumentException when ssidWhitelist has
+                        // SSIDs with less than 32 byte length this is due to HAL definition of
+                        // SSID declared it as 32-byte fixed length array. Thus pad additional
+                        // bytes with 0's to pass SSIDs as byte arrays of 32 length
+                        byte[] ssid_32 = new byte[32];
+                        for (int i = 0; i < ssid.length; i++) {
+                            ssid_32[i] = ssid[i];
+                        }
+                        roamingConfig.ssidWhitelist.add(ssid_32);
                     }
                 }
 

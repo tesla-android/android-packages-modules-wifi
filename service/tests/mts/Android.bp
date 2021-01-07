@@ -44,6 +44,9 @@ android_test {
     // need access to system_current and test_current, so needs to be platform_apis: true
     platform_apis: true,
 
-    test_suites: [ "mts" ],
+    test_suites: [
+        "general-tests",
+        "mts",
+    ],
     test_config: "AndroidTest.xml",
 }

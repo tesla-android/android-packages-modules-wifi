@@ -105,6 +105,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.net.DhcpInfo;
+import android.net.DhcpResultsParcelable;
 import android.net.MacAddress;
 import android.net.NetworkStack;
 import android.net.Uri;
@@ -4893,7 +4895,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mWifiConfigManager).resetSimNetworks();
         verify(mWifiConfigManager).stopTemporarilyDisablingAllNonCarrierMergedWifi();
-        verify(mSimRequiredNotifier, never()).dismissSimRequiredNotification();
+        verify(mSimRequiredNotifier).dismissSimRequiredNotification();
         verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
         verify(mWifiConfigManager).removeEphemeralCarrierNetworks();
         verify(mWifiNetworkSuggestionsManager).resetSimNetworkSuggestions();
@@ -6991,5 +6993,56 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiNetworkSuggestionsManager).removeSuggestionUserApprovalStatusListener(
                 eq(NETWORK_CALLBACK_ID), eq(TEST_PACKAGE_NAME), anyInt());
+    }
+
+    @Test
+    public void testGetDhcpInfo() throws Exception {
+        DhcpResultsParcelable dhcpResultsParcelable = new DhcpResultsParcelable();
+        dhcpResultsParcelable.leaseDuration = 100;
+        when(mClientModeManager.syncGetDhcpResultsParcelable()).thenReturn(dhcpResultsParcelable);
+
+        mLooper.startAutoDispatch();
+        DhcpInfo dhcpInfo = mWifiServiceImpl.getDhcpInfo(TEST_PACKAGE);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        assertEquals(dhcpResultsParcelable.leaseDuration, dhcpInfo.leaseDuration);
+    }
+
+    @Test
+    public void testGetDhcpInfoFromSecondaryCmmFromAppRequestingSecondaryCmm() throws Exception {
+        DhcpResultsParcelable dhcpResultsParcelable = new DhcpResultsParcelable();
+        dhcpResultsParcelable.leaseDuration = 100;
+        ConcreteClientModeManager secondaryCmm = mock(ConcreteClientModeManager.class);
+        when(secondaryCmm.getRequestorWs())
+                .thenReturn(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE));
+        when(secondaryCmm.syncGetDhcpResultsParcelable()).thenReturn(dhcpResultsParcelable);
+        when(mActiveModeWarden.getClientModeManagersInRoles(
+                ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
+                .thenReturn(Arrays.asList(secondaryCmm));
+
+        mLooper.startAutoDispatch();
+        DhcpInfo dhcpInfo = mWifiServiceImpl.getDhcpInfo(TEST_PACKAGE);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        assertEquals(dhcpResultsParcelable.leaseDuration, dhcpInfo.leaseDuration);
+    }
+
+    @Test
+    public void testGetDhcpInfoFromPrimaryCmmFromAppNotRequestingSecondaryCmm() throws Exception {
+        DhcpResultsParcelable dhcpResultsParcelable = new DhcpResultsParcelable();
+        dhcpResultsParcelable.leaseDuration = 100;
+        when(mClientModeManager.syncGetDhcpResultsParcelable()).thenReturn(dhcpResultsParcelable);
+        ConcreteClientModeManager secondaryCmm = mock(ConcreteClientModeManager.class);
+        when(secondaryCmm.getRequestorWs())
+                .thenReturn(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME_OTHER));
+        when(mActiveModeWarden.getClientModeManagersInRoles(
+                ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
+                .thenReturn(Arrays.asList(secondaryCmm));
+
+        mLooper.startAutoDispatch();
+        DhcpInfo dhcpInfo = mWifiServiceImpl.getDhcpInfo(TEST_PACKAGE);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        assertEquals(dhcpResultsParcelable.leaseDuration, dhcpInfo.leaseDuration);
     }
 }

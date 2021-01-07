@@ -23,6 +23,7 @@ import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
+import android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DisableReasonInfo;
 import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
@@ -1085,7 +1086,7 @@ public class WifiBlocklistMonitorTest {
                     retrievedDisableTime);
             assertEquals(WifiConfiguration.Status.ENABLED, config.status);
         } else if (mWifiBlocklistMonitor.getNetworkSelectionDisableTimeoutMillis(reason)
-                < Integer.MAX_VALUE) {
+                != DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT) {
             // For temporarily disabled networks, we need to ensure that the current status remains
             // until the threshold is crossed.
             assertEquals(temporaryDisableReasonCounter, retrievedDisableReasonCounter);

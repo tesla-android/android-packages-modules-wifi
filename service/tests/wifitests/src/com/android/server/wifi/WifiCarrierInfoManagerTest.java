@@ -36,15 +36,19 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Handler;
 import android.os.PersistableBundle;
+import android.os.UserHandle;
 import android.os.test.TestLooper;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
@@ -1852,5 +1856,29 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .putExtra(WifiCarrierInfoManager.EXTRA_CARRIER_ID, carrierId);
         assertNotNull(mBroadcastReceiverCaptor.getValue());
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
+    }
+
+    @Test
+    public void testSendRefreshUserProvisioningOnUnlockedUserSwitching() {
+        PackageManager mockPackageManager = mock(PackageManager.class);
+        when(mContext.getPackageManager()).thenReturn(mockPackageManager);
+        PackageInfo pi = new PackageInfo();
+        pi.packageName = "com.example.app";
+        List<PackageInfo> pis = new ArrayList<>() {{
+                add(pi);
+            }};
+        when(mockPackageManager.getPackagesHoldingPermissions(
+                eq(new String[] {android.Manifest.permission.NETWORK_CARRIER_PROVISIONING}),
+                anyInt())).thenReturn(pis);
+
+        mWifiCarrierInfoManager.onUnlockedUserSwitching(1);
+
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendBroadcastAsUser(
+                intentCaptor.capture(),
+                eq(UserHandle.CURRENT),
+                eq(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING));
+        Intent intent = intentCaptor.getValue();
+        assertEquals(intent.getAction(), WifiManager.ACTION_REFRESH_USER_PROVISIONING);
     }
 }

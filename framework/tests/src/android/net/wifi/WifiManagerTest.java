@@ -2460,9 +2460,9 @@ public class WifiManagerTest {
     public void testGetDhcpInfo() throws Exception {
         DhcpInfo dhcpInfo = new DhcpInfo();
 
-        when(mWifiService.getDhcpInfo()).thenReturn(dhcpInfo);
+        when(mWifiService.getDhcpInfo(TEST_PACKAGE_NAME)).thenReturn(dhcpInfo);
         assertEquals(dhcpInfo, mWifiManager.getDhcpInfo());
-        verify(mWifiService).getDhcpInfo();
+        verify(mWifiService).getDhcpInfo(TEST_PACKAGE_NAME);
     }
 
     /**

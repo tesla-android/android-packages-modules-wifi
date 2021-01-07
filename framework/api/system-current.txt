@@ -544,6 +544,7 @@ package android.net.wifi {
     field public static final String ACTION_LINK_CONFIGURATION_CHANGED = "android.net.wifi.LINK_CONFIGURATION_CHANGED";
     field @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING) public static final String ACTION_NETWORK_SETTINGS_RESET = "android.net.wifi.action.NETWORK_SETTINGS_RESET";
     field public static final String ACTION_PASSPOINT_LAUNCH_OSU_VIEW = "android.net.wifi.action.PASSPOINT_LAUNCH_OSU_VIEW";
+    field @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING) public static final String ACTION_REFRESH_USER_PROVISIONING = "android.net.wifi.action.REFRESH_USER_PROVISIONING";
     field public static final String ACTION_REQUEST_DISABLE = "android.net.wifi.action.REQUEST_DISABLE";
     field public static final String ACTION_REQUEST_ENABLE = "android.net.wifi.action.REQUEST_ENABLE";
     field public static final int CHANGE_REASON_ADDED = 0; // 0x0
@@ -777,6 +778,7 @@ package android.net.wifi {
   public static class WifiScanner.ScanData implements android.os.Parcelable {
     ctor public WifiScanner.ScanData(int, int, android.net.wifi.ScanResult[]);
     ctor public WifiScanner.ScanData(android.net.wifi.WifiScanner.ScanData);
+    method public int getBandsScanned();
     method public int getFlags();
     method public int getId();
     method public android.net.wifi.ScanResult[] getResults();

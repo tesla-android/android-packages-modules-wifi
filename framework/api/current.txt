@@ -46,9 +46,9 @@ package android.net.wifi {
     field public int channelWidth;
     field public int frequency;
     field public int level;
-    field public CharSequence operatorFriendlyName;
+    field @Deprecated public CharSequence operatorFriendlyName;
     field public long timestamp;
-    field public CharSequence venueName;
+    field @Deprecated public CharSequence venueName;
   }
 
   public static class ScanResult.InformationElement {
@@ -276,7 +276,7 @@ package android.net.wifi {
     method public static android.net.NetworkInfo.DetailedState getDetailedStateOf(android.net.wifi.SupplicantState);
     method public int getFrequency();
     method public boolean getHiddenSSID();
-    method public int getIpAddress();
+    method @Deprecated public int getIpAddress();
     method public int getLinkSpeed();
     method public String getMacAddress();
     method public int getMaxSupportedRxLinkSpeedMbps();
@@ -323,7 +323,7 @@ package android.net.wifi {
     method @Deprecated public boolean enableNetwork(int, boolean);
     method @Deprecated @RequiresPermission(allOf={android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_WIFI_STATE}) public java.util.List<android.net.wifi.WifiConfiguration> getConfiguredNetworks();
     method @Deprecated public android.net.wifi.WifiInfo getConnectionInfo();
-    method public android.net.DhcpInfo getDhcpInfo();
+    method @Deprecated public android.net.DhcpInfo getDhcpInfo();
     method public int getMaxNumberOfNetworkSuggestionsPerApp();
     method @IntRange(from=0) public int getMaxSignalLevel();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public int getNetworkSuggestionUserApprovalStatus();
