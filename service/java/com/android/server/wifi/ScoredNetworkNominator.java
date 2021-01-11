@@ -159,7 +159,7 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 continue;
             }
             final WifiConfiguration configuredNetwork =
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
             boolean untrustedScanResult = configuredNetwork == null || !configuredNetwork.trusted;
 
             if (!untrustedNetworkAllowed && untrustedScanResult) {

@@ -2208,11 +2208,8 @@ public class WifiConfigManager {
      * @param scanDetail ScanDetail instance  to use for looking up the network.
      * @return WifiConfiguration object representing the network corresponding to the scanDetail,
      * null if none exists.
-     *
-     * TODO (b/142035508): This should only return saved networks (and rename to
-     * getSavedNetworkForScanDetail()).
      */
-    public WifiConfiguration getConfiguredNetworkForScanDetail(ScanDetail scanDetail) {
+    public WifiConfiguration getSavedNetworkForScanDetail(ScanDetail scanDetail) {
         ScanResult scanResult = scanDetail.getScanResult();
         if (scanResult == null) {
             Log.e(TAG, "No scan result found in scan detail");
@@ -2238,11 +2235,9 @@ public class WifiConfigManager {
      * {@link #mScanDetailCaches} for the retrieved network.
      *
      * @param scanDetail input a scanDetail from the scan result
-     * TODO (b/142035508): This should only return saved networks (and rename to
-     * updateScanDetailCacheFromScanDetail()).
      */
-    public void updateScanDetailCacheFromScanDetail(ScanDetail scanDetail) {
-        WifiConfiguration network = getConfiguredNetworkForScanDetail(scanDetail);
+    public void updateScanDetailCacheFromScanDetailForSavedNetwork(ScanDetail scanDetail) {
+        WifiConfiguration network = getSavedNetworkForScanDetail(scanDetail);
         if (network == null) {
             return;
         }
@@ -2256,11 +2251,9 @@ public class WifiConfigManager {
      * @param scanDetail input a scanDetail from the scan result
      * @return WifiConfiguration object representing the network corresponding to the scanDetail,
      * null if none exists.
-     * TODO (b/142035508): This should only return saved networks (and rename to
-     * getSavedNetworkForScanDetailAndCache()).
      */
-    public WifiConfiguration getConfiguredNetworkForScanDetailAndCache(ScanDetail scanDetail) {
-        WifiConfiguration network = getConfiguredNetworkForScanDetail(scanDetail);
+    public WifiConfiguration getSavedNetworkForScanDetailAndCache(ScanDetail scanDetail) {
+        WifiConfiguration network = getSavedNetworkForScanDetail(scanDetail);
         if (network == null) {
             return null;
         }

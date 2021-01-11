@@ -3234,6 +3234,26 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verifies that the WifiBlocklistMonitor is notified, but the WifiLastResortWatchdog is
+     * not notified of association rejections of type DENIED_INSUFFICIENT_BANDWIDTH.
+     * @throws Exception
+     */
+    @Test
+    public void testAssociationRejectionWithReasonDeniedInsufficientBandwidth()
+            throws Exception {
+        initializeAndAddNetworkAndVerifySuccess();
+        mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, sBSSID);
+        mCmi.sendMessage(WifiMonitor.ASSOCIATION_REJECTION_EVENT,
+                new AssocRejectEventInfo(sSSID, sBSSID, ISupplicantStaIfaceCallback
+                        .StatusCode.DENIED_INSUFFICIENT_BANDWIDTH, false));
+        mLooper.dispatchAll();
+        verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
+                anyString(), anyString(), anyInt());
+        verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(sBSSID), eq(sSSID),
+                eq(WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA), anyInt());
+    }
+
+    /**
      * Verifies that WifiLastResortWatchdog and WifiBlocklistMonitor is notified of
      * general association rejection failures.
      * @throws Exception

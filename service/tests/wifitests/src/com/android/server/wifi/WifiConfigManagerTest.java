@@ -1765,7 +1765,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     /**
      * Verifies the matching of networks with different encryption types with the
      * corresponding scan detail using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)}.
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)}.
      * The test also verifies that the provided scan detail was cached,
      */
     @Test
@@ -1790,7 +1790,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Verifies that scan details with wrong SSID/authentication types are not matched using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)}
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)}
      * to the added networks.
      */
     @Test
@@ -1840,19 +1840,19 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
 
         // Try to lookup a saved network using the modified scan details. All of these should fail.
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 openNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 wepNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 pskNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 eapNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 saeNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 oweNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 eapSuiteBNetworkScanDetail));
 
         // All the cache's should be empty as well.
@@ -1902,7 +1902,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail scanDetail = createScanDetailForNetwork(testNetwork);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
 
         // Now retrieve the scan detail cache and ensure that the new scan detail is in cache.
         ScanDetailCache retrievedScanDetailCache =
@@ -1935,7 +1935,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                     createScanDetailForNetwork(
                             openNetwork, String.format("%s%02x", testBssidPrefix, scanDetailNum));
             assertNotNull(
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail));
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail));
 
             // The size of scan detail cache should keep growing until it hits
             // |SCAN_CACHE_ENTRIES_MAX_SIZE|.
@@ -1948,7 +1948,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail scanDetail =
                 createScanDetailForNetwork(
                         openNetwork, String.format("%s%02x", testBssidPrefix, scanDetailNum));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail));
 
         // Retrieve the scan detail cache and ensure that the size was trimmed down to
         // |SCAN_CACHE_ENTRIES_TRIM_SIZE + 1|. The "+1" is to account for the new entry that
@@ -2629,11 +2629,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail3));
 
         List<WifiConfiguration> retrievedNetworks =
@@ -2712,11 +2712,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail3));
 
         List<WifiConfiguration> retrievedNetworks =
@@ -2748,9 +2748,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1, "af:89:56:34:56:67");
         ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2, "af:89:56:34:56:68");
 
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
 
         List<WifiConfiguration> retrievedNetworks =
@@ -2782,7 +2782,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                     createScanDetailForNetwork(
                             network1, test_bssid_base + Integer.toString(scan_result_num));
             assertNotNull(
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                             networkScanDetail));
         }
 
@@ -2791,7 +2791,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail networkScanDetail2 =
                 createScanDetailForNetwork(
                         network2, test_bssid_base + Integer.toString(scan_result_num++));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
 
         List<WifiConfiguration> retrievedNetworks =
@@ -2819,9 +2819,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
 
         List<WifiConfiguration> retrievedNetworks =
@@ -2843,9 +2843,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 network2.networkId, "ad:de:fe:45:23:34"));
 
         // Add some fake scan results again to re-evaluate the linking of networks.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 createScanDetailForNetwork(network1, "af:89:56:34:45:67")));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 createScanDetailForNetwork(network1, "af:89:56:34:45:68")));
 
         retrievedNetworks = mWifiConfigManager.getConfiguredNetworks();
@@ -4889,7 +4889,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration visibleNetwork = retrievedNetworks.get(0);
         ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
                 TEST_RSSI, TEST_FREQUENCY_1);
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         WifiConfiguration otherNetwork = WifiConfigurationTestUtil.createOpenNetwork();
 
         // verify both networks are disabled at the start
@@ -4931,14 +4931,15 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Verify the 2 passpoint network have the same FQDN, but different SSID.
         assertEquals(passpointNetwork_1.FQDN, passpointNetwork_2.FQDN);
         assertNotEquals(passpointNetwork_1.SSID, passpointNetwork_2.SSID);
-        verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork_1);
+        NetworkUpdateResult result =
+                verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork_1);
 
         // Make sure the passpointNetwork_1 is seen in a scan.
         WifiConfiguration visibleNetwork = mWifiConfigManager.getConfiguredNetworksWithPasswords()
                 .get(0);
         ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
                 TEST_RSSI, TEST_FREQUENCY_1);
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailForNetwork(result.getNetworkId(), scanDetail);
 
         // verify all networks are disabled at the start
         when(mClock.getWallClockMillis()).thenReturn(0L);
@@ -4974,7 +4975,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration visibleNetwork = retrievedNetworks.get(0);
         ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
                 TEST_RSSI, TEST_FREQUENCY_1);
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
 
         WifiConfiguration otherNetwork = WifiConfigurationTestUtil.createOpenNetwork();
 
@@ -5581,7 +5582,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * Adds the provided network and then creates a scan detail corresponding to the network. The
      * method then creates a ScanDetail corresponding to the network and ensures that the network
      * is properly matched using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)} and also
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)} and also
      * verifies that the provided scan detail was cached,
      */
     private void verifyAddSingleNetworkAndMatchScanDetailToNetworkAndCache(
@@ -5594,7 +5595,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanResult scanResult = scanDetail.getScanResult();
 
         WifiConfiguration retrievedNetwork =
-                mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
         // Retrieve the network with password data for comparison.
         retrievedNetwork =
                 mWifiConfigManager.getConfiguredNetworkWithPassword(retrievedNetwork.networkId);
@@ -5715,7 +5716,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 TEST_RSSI, TEST_FREQUENCY_1);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS + 2000);
         assertEquals(mWifiConfigManager.findScanRssi(result.getNetworkId(), 5000), TEST_RSSI);
     }
@@ -5734,7 +5735,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 TEST_RSSI, TEST_FREQUENCY_1);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS + 15000);
         assertEquals(mWifiConfigManager.findScanRssi(result.getNetworkId(), 5000),
                 WifiInfo.INVALID_RSSI);

@@ -69,6 +69,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -89,6 +90,7 @@ import android.net.wifi.WifiManager.NetworkRequestUserSelectionCallback;
 import android.net.wifi.WifiManager.OnWifiUsabilityStatsListener;
 import android.net.wifi.WifiManager.ScanResultsCallback;
 import android.net.wifi.WifiManager.SoftApCallback;
+import android.net.wifi.WifiManager.SubsystemRestartTrackingCallback;
 import android.net.wifi.WifiManager.SuggestionConnectionStatusListener;
 import android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener;
 import android.net.wifi.WifiManager.TrafficStateCallback;
@@ -173,6 +175,8 @@ public class WifiManagerTest {
     private WifiNetworkSuggestion mWifiNetworkSuggestion;
     private ScanResultsCallback mScanResultsCallback;
     private CoexCallback mCoexCallback;
+    private SubsystemRestartTrackingCallback mRestartCallback;
+    private int mRestartCallbackMethodRun = 0; // 1: restarting, 2: restarted
     private WifiActivityEnergyInfo mWifiActivityEnergyInfo;
 
     private HashMap<String, SoftApInfo> mTestSoftApInfoMap = new HashMap<>();
@@ -269,6 +273,19 @@ public class WifiManagerTest {
         mCoexCallback = new CoexCallback() {
             @Override
             public void onCoexUnsafeChannelsChanged() {
+                mRunnable.run();
+            }
+        };
+        mRestartCallback = new SubsystemRestartTrackingCallback() {
+            @Override
+            public void onSubsystemRestarting() {
+                mRestartCallbackMethodRun = 1;
+                mRunnable.run();
+            }
+
+            @Override
+            public void onSubsystemRestarted() {
+                mRestartCallbackMethodRun = 2;
                 mRunnable.run();
             }
         };
@@ -409,6 +426,40 @@ public class WifiManagerTest {
         mWifiManager.unregisterCoexCallback(null);
     }
 
+    /**
+     * Verify that call is passed to binder.
+     */
+    @Test
+    public void testRestartWifiSubsystem() throws Exception {
+        String reason = "some reason";
+        mWifiManager.restartWifiSubsystem(reason);
+        verify(mWifiService).restartWifiSubsystem(reason);
+    }
+
+    /**
+     * Verify that can register a subsystem restart tracking callback and that calls are passed
+     * through when registered and blocked once unregistered.
+     */
+    @Test
+    public void testRegisterSubsystemRestartTrackingCallback() throws Exception {
+        mRestartCallbackMethodRun = 0; // none
+        ArgumentCaptor<ISubsystemRestartCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISubsystemRestartCallback.Stub.class);
+        mWifiManager.registerSubsystemRestartTrackingCallback(new SynchronousExecutor(),
+                mRestartCallback);
+        verify(mWifiService).registerSubsystemRestartCallback(callbackCaptor.capture());
+        mWifiManager.unregisterWifiSubsystemRestartTrackingCallback(mRestartCallback);
+        verify(mWifiService).unregisterSubsystemRestartCallback(callbackCaptor.capture());
+        callbackCaptor.getValue().onSubsystemRestarting();
+        verify(mRunnable, never()).run();
+        mWifiManager.registerSubsystemRestartTrackingCallback(new SynchronousExecutor(),
+                mRestartCallback);
+        callbackCaptor.getValue().onSubsystemRestarting();
+        assertEquals(mRestartCallbackMethodRun, 1); // restarting
+        callbackCaptor.getValue().onSubsystemRestarted();
+        verify(mRunnable, times(2)).run();
+        assertEquals(mRestartCallbackMethodRun, 2); // restarted
+    }
 
     /**
      * Check the call to startSoftAp calls WifiService to startSoftAp with the provided
@@ -2985,6 +3036,15 @@ public class WifiManagerTest {
                 callbackCaptor.capture(), anyInt(), anyString(), nullable(String.class));
         callbackCaptor.getValue().onUserApprovalStatusChange();
         verify(mExecutor).execute(any(Runnable.class));
+    }
+
+    @Test
+    public void testSetEmergencyScanRequestInProgress() throws Exception {
+        mWifiManager.setEmergencyScanRequestInProgress(true);
+        verify(mWifiService).setEmergencyScanRequestInProgress(true);
+
+        mWifiManager.setEmergencyScanRequestInProgress(false);
+        verify(mWifiService).setEmergencyScanRequestInProgress(false);
     }
 
 }

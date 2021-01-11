@@ -222,13 +222,13 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
             }
             for (ScanDetail scanDetail : scanDetails) {
                 WifiConfiguration config =
-                        mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                        mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
                 mWifiConfigManager.setNetworkCandidateScanResult(
                         config.networkId, scanDetail.getScanResult(), 100);
             }
             ScanDetail scanDetailToReturn = scanDetails.get(mNetworkIndexToReturn);
             WifiConfiguration configToReturn  =
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                             scanDetailToReturn);
             assertNotNull("Saved network must not be null", configToReturn);
             onConnectableListener.onConnectable(scanDetailToReturn, configToReturn);
@@ -429,7 +429,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         assertEquals("Expect null configuration", null, candidate);
         assertTrue(mWifiNetworkSelector.getConnectableScanDetails().isEmpty());
 
-        verify(mWifiConfigManager, atLeast(2)).updateScanDetailCacheFromScanDetail(any());
+        verify(mWifiConfigManager, atLeast(2))
+                .updateScanDetailCacheFromScanDetailForSavedNetwork(any());
     }
 
     /**
@@ -728,7 +729,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         // missing from the scan results.
         assertEquals("Expect null configuration", null, candidate);
         assertTrue(mWifiNetworkSelector.getConnectableScanDetails().isEmpty());
-        verify(mWifiConfigManager, atLeast(1)).updateScanDetailCacheFromScanDetail(any());
+        verify(mWifiConfigManager, atLeast(1))
+                .updateScanDetailCacheFromScanDetailForSavedNetwork(any());
     }
 
     /**

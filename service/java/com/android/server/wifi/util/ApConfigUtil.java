@@ -46,6 +46,7 @@ import java.util.Random;
 public class ApConfigUtil {
     private static final String TAG = "ApConfigUtil";
 
+    public static final int INVALID_VALUE_FOR_BAND_OR_CHANNEL = -1;
     public static final int DEFAULT_AP_BAND = SoftApConfiguration.BAND_2GHZ;
     public static final int DEFAULT_AP_CHANNEL = 6;
     public static final int HIGHEST_2G_AP_CHANNEL = 14;

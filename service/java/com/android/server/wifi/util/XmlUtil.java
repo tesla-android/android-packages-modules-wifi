@@ -35,6 +35,7 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SparseIntArray;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -1542,6 +1543,9 @@ public class XmlUtil {
          * List of XML tags corresponding to SoftApConfiguration object elements.
          */
         public static final String XML_TAG_CLIENT_MACADDRESS = "ClientMacAddress";
+        public static final String XML_TAG_BAND_CHANNEL = "BandChannel";
+        private static final String XML_TAG_BAND = "Band";
+        private static final String XML_TAG_CHANNEL = "Channel";
 
         /**
          * Parses the client list from the provided XML stream to a ArrayList object.
@@ -1585,6 +1589,65 @@ public class XmlUtil {
                 throws XmlPullParserException, IOException {
             for (MacAddress mac: clientList) {
                 XmlUtil.writeNextValue(out, XML_TAG_CLIENT_MACADDRESS, mac.toString());
+            }
+        }
+
+
+        /**
+         * Parses the band and channel from the provided XML stream to a SparseIntArray object.
+         *
+         * @param in            XmlPullParser instance pointing to the XML stream.
+         * @param outerTagDepth depth of the outer tag in the XML document.
+         * @return SparseIntArray object if parsing is successful, null otherwise.
+         */
+        public static SparseIntArray parseChannelsFromXml(XmlPullParser in,
+                int outerTagDepth) throws XmlPullParserException, IOException,
+                IllegalArgumentException {
+            SparseIntArray channels = new SparseIntArray();
+            while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+                int band = ApConfigUtil.INVALID_VALUE_FOR_BAND_OR_CHANNEL;
+                int channel = ApConfigUtil.INVALID_VALUE_FOR_BAND_OR_CHANNEL;
+                switch (in.getName()) {
+                    case XML_TAG_BAND_CHANNEL:
+                        while (!XmlUtil.isNextSectionEnd(in, outerTagDepth + 1)) {
+                            String[] valueName = new String[1];
+                            Object value = XmlUtil.readCurrentValue(in, valueName);
+                            if (valueName[0] == null) {
+                                throw new XmlPullParserException("Missing value name");
+                            }
+                            switch (valueName[0]) {
+                                case XML_TAG_BAND:
+                                    band = (int) value;
+                                    break;
+                                case XML_TAG_CHANNEL:
+                                    channel = (int) value;
+                                    break;
+                                default:
+                                    Log.e(TAG, "Unknown value name found: " + valueName[0]);
+                                    break;
+                            }
+                        }
+                        channels.put(band, channel);
+                        break;
+                }
+            }
+            return channels;
+        }
+
+        /**
+         * Write the SoftApConfiguration channels data elements
+         * from the provided SparseIntArray to the XML stream.
+         *
+         * @param out       XmlSerializer instance pointing to the XML stream.
+         * @param channels  SparseIntArray, which includes bands and channels, to be serialized.
+         */
+        public static void writeChannelsToXml(XmlSerializer out, SparseIntArray channels)
+                throws XmlPullParserException, IOException {
+            for (int i = 0; i < channels.size(); i++) {
+                XmlUtil.writeNextSectionStart(out, XML_TAG_BAND_CHANNEL);
+                XmlUtil.writeNextValue(out, XML_TAG_BAND, channels.keyAt(i));
+                XmlUtil.writeNextValue(out, XML_TAG_CHANNEL, channels.valueAt(i));
+                XmlUtil.writeNextSectionEnd(out, XML_TAG_BAND_CHANNEL);
             }
         }
     }

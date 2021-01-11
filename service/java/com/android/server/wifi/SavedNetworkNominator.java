@@ -102,7 +102,7 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
             // One ScanResult can be associated with more than one network, hence we calculate all
             // the scores and use the highest one as the ScanResult's score.
             WifiConfiguration network =
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
 
             if (network == null) {
                 continue;

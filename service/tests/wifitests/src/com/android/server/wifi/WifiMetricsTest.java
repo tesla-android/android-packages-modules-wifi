@@ -577,7 +577,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         when(mWns.isSignalTooWeak(eq(scanResult))).thenReturn(isWeakRssi);
         scanResult.capabilities = isOpen ? "" : "PSK";
         if (isSaved) {
-            when(mWcm.getConfiguredNetworkForScanDetail(eq(mockScanDetail)))
+            when(mWcm.getSavedNetworkForScanDetail(eq(mockScanDetail)))
                     .thenReturn(mock(WifiConfiguration.class));
         }
         if (isProvider) {

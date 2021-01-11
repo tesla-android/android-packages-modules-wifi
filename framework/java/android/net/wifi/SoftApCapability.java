@@ -86,6 +86,16 @@ public final class SoftApCapability implements Parcelable {
      */
     public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 1 << 3;
 
+    /**
+     * Support for 802.11ax SAP.
+     * flag when {@link R.bool.config_wifiSoftapIeee80211axSupported} is true
+     *
+     * <p>
+     * Check feature support before invoking
+     * {@link SoftApConfiguration.Builder#setIeee80211axEnabled)}
+     */
+    public static final long SOFTAP_FEATURE_IEEE80211_AX = 1 << 4;
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @LongDef(flag = true, prefix = { "SOFTAP_FEATURE_" }, value = {
@@ -93,6 +103,7 @@ public final class SoftApCapability implements Parcelable {
             SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT,
             SOFTAP_FEATURE_WPA3_SAE,
             SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION,
+            SOFTAP_FEATURE_IEEE80211_AX,
     })
     public @interface HotspotFeatures {}
 

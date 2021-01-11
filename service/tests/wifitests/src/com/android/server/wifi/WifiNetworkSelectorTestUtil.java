@@ -385,19 +385,19 @@ public class WifiNetworkSelectorTestUtil {
         if (scanDetails.size() <= configs.length) {
             for (int i = 0; i < scanDetails.size(); i++) {
                 ScanDetail scanDetail = scanDetails.get(i);
-                when(wifiConfigManager.getConfiguredNetworkForScanDetailAndCache(eq(scanDetail)))
+                when(wifiConfigManager.getSavedNetworkForScanDetailAndCache(eq(scanDetail)))
                         .thenReturn(configs[i]);
             }
         } else {
             for (int i = 0; i < configs.length; i++) {
                 ScanDetail scanDetail = scanDetails.get(i);
-                when(wifiConfigManager.getConfiguredNetworkForScanDetailAndCache(eq(scanDetail)))
+                when(wifiConfigManager.getSavedNetworkForScanDetailAndCache(eq(scanDetail)))
                         .thenReturn(configs[i]);
             }
 
             // associated the remaining scan details with a NULL config.
             for (int i = configs.length; i < scanDetails.size(); i++) {
-                when(wifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+                when(wifiConfigManager.getSavedNetworkForScanDetailAndCache(
                         eq(scanDetails.get(i)))).thenReturn(null);
             }
         }
@@ -464,7 +464,7 @@ public class WifiNetworkSelectorTestUtil {
         config.networkId = networkId;
         config.meteredHint = meteredHint;
 
-        when(wifiConfigManager.getConfiguredNetworkForScanDetailAndCache(eq(scanDetail)))
+        when(wifiConfigManager.getSavedNetworkForScanDetailAndCache(eq(scanDetail)))
                 .thenReturn(new WifiConfiguration(config));
         when(wifiConfigManager.getConfiguredNetwork(eq(networkId)))
                 .then(new AnswerWithArguments() {

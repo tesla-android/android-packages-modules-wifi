@@ -1441,6 +1441,7 @@ public class HostapdHalTest extends WifiBaseTest {
         assertEquals(IFACE_NAME, mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.ifaceName);
         assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211N);
         assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211AC);
+        assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.hwModeParams.enable80211AX);
         // 2.4G band, ACS case.
         assertTrue(mIfaceParamsCaptorV13.getValue().channelParamsList.get(0).enableAcs);
         assertEquals(mIfaceParamsCaptorV13.getValue().channelParamsList.get(0).V1_2.bandMask,
@@ -1522,6 +1523,111 @@ public class HostapdHalTest extends WifiBaseTest {
                 mNetworkParamsV13Captor.getValue().V1_2.encryptionType);
         assertEquals(NETWORK_PSK, mNetworkParamsV13Captor.getValue().V1_2.passphrase);
         assertEquals("", mNetworkParamsV13Captor.getValue().V1_2.V1_0.pskPassphrase);
+    }
+
+    /**
+     * Verifies the successful addition of access point with metered SAE indication on the 80211ax
+     * supported device.
+     */
+    @Test
+    public void testAddAccessPointSuccess_WithMeteredSAEOn11AXSupportedDevice()
+            throws Exception {
+        boolean isMetered = true;
+        mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
+        mResources.setBoolean(R.bool.config_wifiSoftapIeee80211axSupported, true);
+        when(mServiceManagerMock.getTransport(anyString(), anyString()))
+                .thenReturn(IServiceManager.Transport.HWBINDER);
+        mIHostapdMockV11 = mock(android.hardware.wifi.hostapd.V1_1.IHostapd.class);
+        mIHostapdMockV12 = mock(android.hardware.wifi.hostapd.V1_2.IHostapd.class);
+        mIHostapdMockV13 = mock(android.hardware.wifi.hostapd.V1_3.IHostapd.class);
+        mHostapdHal = new HostapdHalSpy();
+
+        executeAndValidateInitializationSequenceOnLastHIDL(false);
+
+        Builder configurationBuilder = new SoftApConfiguration.Builder();
+        configurationBuilder.setSsid(NETWORK_SSID);
+        configurationBuilder.setHiddenSsid(false);
+        configurationBuilder.setPassphrase(NETWORK_PSK,
+                SoftApConfiguration.SECURITY_TYPE_WPA3_SAE);
+        configurationBuilder.setBand(mBand256G);
+
+        when(mIHostapdMockV13.addAccessPoint_1_3(
+                mIfaceParamsCaptorV13.capture(), mNetworkParamsV13Captor.capture()))
+                .thenReturn(mStatusSuccess12);
+
+
+        assertTrue(mHostapdHal.addAccessPoint(IFACE_NAME,
+                configurationBuilder.build(), isMetered,
+                () -> mSoftApListener.onFailure()));
+        verify(mIHostapdMockV13).addAccessPoint_1_3(any(), any());
+
+        assertEquals(IFACE_NAME, mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.ifaceName);
+        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211N);
+        assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211AC);
+        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.hwModeParams.enable80211AX);
+        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.channelParams.enableAcs);
+
+        assertEquals(NativeUtil.stringToByteArrayList(NETWORK_SSID),
+                mNetworkParamsV13Captor.getValue().V1_2.V1_0.ssid);
+        assertFalse(mNetworkParamsV13Captor.getValue().V1_2.V1_0.isHidden);
+        assertEquals(android.hardware.wifi.hostapd.V1_2.IHostapd.EncryptionType.WPA3_SAE,
+                mNetworkParamsV13Captor.getValue().V1_2.encryptionType);
+        assertEquals(NETWORK_PSK, mNetworkParamsV13Captor.getValue().V1_2.passphrase);
+        assertEquals("", mNetworkParamsV13Captor.getValue().V1_2.V1_0.pskPassphrase);
+        assertTrue(mNetworkParamsV13Captor.getValue().isMetered);
+    }
+
+    /**
+     * Verifies the successful addition of access point with metered SAE indication on the 80211ax
+     * supported device but 80211ax is disabled in configuration.
+     */
+    @Test
+    public void testAddAccessPointSuccess_WithMeteredSAEOn11AXSupportedDeviceBut11AXDisabled()
+            throws Exception {
+        boolean isMetered = true;
+        mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
+        mResources.setBoolean(R.bool.config_wifiSoftapIeee80211axSupported, true);
+        when(mServiceManagerMock.getTransport(anyString(), anyString()))
+                .thenReturn(IServiceManager.Transport.HWBINDER);
+        mIHostapdMockV11 = mock(android.hardware.wifi.hostapd.V1_1.IHostapd.class);
+        mIHostapdMockV12 = mock(android.hardware.wifi.hostapd.V1_2.IHostapd.class);
+        mIHostapdMockV13 = mock(android.hardware.wifi.hostapd.V1_3.IHostapd.class);
+        mHostapdHal = new HostapdHalSpy();
+
+        executeAndValidateInitializationSequenceOnLastHIDL(false);
+
+        Builder configurationBuilder = new SoftApConfiguration.Builder();
+        configurationBuilder.setSsid(NETWORK_SSID);
+        configurationBuilder.setHiddenSsid(false);
+        configurationBuilder.setPassphrase(NETWORK_PSK,
+                SoftApConfiguration.SECURITY_TYPE_WPA3_SAE);
+        configurationBuilder.setBand(mBand256G);
+        configurationBuilder.setIeee80211axEnabled(false);
+
+        when(mIHostapdMockV13.addAccessPoint_1_3(
+                mIfaceParamsCaptorV13.capture(), mNetworkParamsV13Captor.capture()))
+                .thenReturn(mStatusSuccess12);
+
+
+        assertTrue(mHostapdHal.addAccessPoint(IFACE_NAME,
+                configurationBuilder.build(), isMetered,
+                () -> mSoftApListener.onFailure()));
+        verify(mIHostapdMockV13).addAccessPoint_1_3(any(), any());
+
+        assertEquals(IFACE_NAME, mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.ifaceName);
+        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211N);
+        assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211AC);
+        assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.hwModeParams.enable80211AX);
+        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.channelParams.enableAcs);
+
+        assertEquals(NativeUtil.stringToByteArrayList(NETWORK_SSID),
+                mNetworkParamsV13Captor.getValue().V1_2.V1_0.ssid);
+        assertFalse(mNetworkParamsV13Captor.getValue().V1_2.V1_0.isHidden);
+        assertEquals(android.hardware.wifi.hostapd.V1_2.IHostapd.EncryptionType.WPA3_SAE,
+                mNetworkParamsV13Captor.getValue().V1_2.encryptionType);
+        assertEquals(NETWORK_PSK, mNetworkParamsV13Captor.getValue().V1_2.passphrase);
+        assertEquals("", mNetworkParamsV13Captor.getValue().V1_2.V1_0.pskPassphrase);
+        assertTrue(mNetworkParamsV13Captor.getValue().isMetered);
     }
 }
 

@@ -848,6 +848,20 @@ public class WifiScoreCardTest extends WifiBaseTest {
                 WifiBlocklistMonitor.REASON_ASSOCIATION_TIMEOUT);
     }
 
+    private void makeAssocRejectionExample() {
+        mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
+        millisecondsPass(1000);
+        mWifiScoreCard.noteConnectionFailure(mWifiInfo, -53, mWifiInfo.getSSID(),
+                WifiBlocklistMonitor.REASON_ASSOCIATION_REJECTION);
+    }
+
+    private void makeApUnableToHandleNewStaExample() {
+        mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
+        millisecondsPass(1000);
+        mWifiScoreCard.noteConnectionFailure(mWifiInfo, -53, mWifiInfo.getSSID(),
+                WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA);
+    }
+
     /**
      * Check network stats after association timeout.
      */
@@ -866,6 +880,27 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
         assertEquals(1, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
     }
+
+    /**
+     * Check network stats after association rejection.
+     */
+    @Test
+    public void testNetworkAssocRejection() throws Exception {
+        makeAssocRejectionExample();
+        makeApUnableToHandleNewStaExample();
+
+        PerNetwork perNetwork = mWifiScoreCard.fetchByNetwork(mWifiInfo.getSSID());
+        NetworkConnectionStats dailyStats = perNetwork.getRecentStats();
+
+        assertEquals(2, dailyStats.getCount(CNT_CONNECTION_ATTEMPT));
+        assertEquals(2, dailyStats.getCount(CNT_CONNECTION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONNECTION_DURATION_SEC));
+        assertEquals(1, dailyStats.getCount(CNT_ASSOCIATION_REJECTION));
+        assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
+        assertEquals(0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
+        assertEquals(2, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+    }
+
 
     /**
      * Check network stats after auth timeout/disconnection and a normal connection

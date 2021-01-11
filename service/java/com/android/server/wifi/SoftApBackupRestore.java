@@ -23,7 +23,9 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiMigration;
 import android.util.BackupUtils;
 import android.util.Log;
+import android.util.SparseIntArray;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.SettingsMigrationDataHolder;
 
@@ -50,7 +52,8 @@ public class SoftApBackupRestore {
     /**
      * Current backup data version.
      */
-    private static final int CURRENT_SAP_BACKUP_DATA_VERSION = 7;
+    private static final int CURRENT_SAP_BACKUP_DATA_VERSION = 8;
+    private static final int LAST_SAP_BACKUP_DATA_VERSION_IN_R = 7;
 
     private static final int ETHER_ADDR_LEN = 6; // Byte array size of MacAddress
 
@@ -78,8 +81,11 @@ public class SoftApBackupRestore {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             DataOutputStream out = new DataOutputStream(baos);
-
-            out.writeInt(CURRENT_SAP_BACKUP_DATA_VERSION);
+            if (SdkLevel.isAtLeastS()) {
+                out.writeInt(CURRENT_SAP_BACKUP_DATA_VERSION);
+            } else {
+                out.writeInt(LAST_SAP_BACKUP_DATA_VERSION_IN_R);
+            }
             BackupUtils.writeString(out, config.getSsid());
             out.writeInt(config.getBand());
             out.writeInt(config.getChannel());
@@ -92,6 +98,19 @@ public class SoftApBackupRestore {
             writeMacAddressList(out, config.getBlockedClientList());
             writeMacAddressList(out, config.getAllowedClientList());
             out.writeBoolean(config.isAutoShutdownEnabled());
+            if (SdkLevel.isAtLeastS()) {
+                out.writeBoolean(config.isBridgedModeOpportunisticShutdownEnabled());
+                out.writeInt(config.getMacRandomizationSetting());
+                SparseIntArray channels = config.getChannels();
+                int numOfChannels = channels.size();
+                out.writeInt(numOfChannels);
+                for (int i = 0; i < numOfChannels; i++) {
+                    out.writeInt(channels.keyAt(i));
+                    out.writeInt(channels.valueAt(i));
+                }
+                out.writeBoolean(config.isIeee80211axEnabled());
+            }
+
         } catch (IOException io) {
             Log.e(TAG, "Invalid configuration received, IOException " + io);
             return new byte[0];
@@ -173,6 +192,17 @@ public class SoftApBackupRestore {
                 } else {
                     configBuilder.setAutoShutdownEnabled(migrationData.isSoftApTimeoutEnabled());
                 }
+            }
+            if (version >= 8 && SdkLevel.isAtLeastS()) {
+                configBuilder.setBridgedModeOpportunisticShutdownEnabled(in.readBoolean());
+                configBuilder.setMacRandomizationSetting(in.readInt());
+                int numOfChannels = in.readInt();
+                SparseIntArray channels = new SparseIntArray(numOfChannels);
+                for (int i = 0; i < numOfChannels; i++) {
+                    channels.put(in.readInt(), in.readInt());
+                }
+                configBuilder.setChannels(channels);
+                configBuilder.setIeee80211axEnabled(in.readBoolean());
             }
         } catch (IOException io) {
             Log.e(TAG, "Invalid backup data received, IOException: " + io);

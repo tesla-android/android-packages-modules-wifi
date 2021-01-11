@@ -297,7 +297,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
         WifiConfiguration ephemeralNetworkConfig = WifiNetworkSelectorTestUtil
                 .setupEphemeralNetwork(mWifiConfigManager, 1, scanDetails.get(1), meteredHints[1]);
         // No saved networks.
-        when(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(any(ScanDetail.class)))
+        when(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(any(ScanDetail.class)))
                 .thenReturn(null);
         // But when we create one, this is should be it.
         when(mWifiConfigManager.addOrUpdateNetwork(any(), eq(TEST_UID), eq(TEST_PACKAGE_NAME)))
@@ -331,7 +331,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
                 scanDetails, scores, meteredHints);
 
         // No saved networks.
-        when(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(any(ScanDetail.class)))
+        when(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(any(ScanDetail.class)))
                 .thenReturn(null);
 
         WifiNetworkSelectorTestUtil.setupEphemeralNetwork(

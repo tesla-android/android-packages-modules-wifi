@@ -258,6 +258,7 @@ package android.net.wifi {
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.SoftApCapability> CREATOR;
     field public static final long SOFTAP_FEATURE_ACS_OFFLOAD = 1L; // 0x1L
     field public static final long SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT = 2L; // 0x2L
+    field public static final long SOFTAP_FEATURE_IEEE80211_AX = 16L; // 0x10L
     field public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 8L; // 0x8L
     field public static final long SOFTAP_FEATURE_WPA3_SAE = 4L; // 0x4L
   }
@@ -275,6 +276,7 @@ package android.net.wifi {
     method public boolean isAutoShutdownEnabled();
     method public boolean isBridgedModeOpportunisticShutdownEnabled();
     method public boolean isClientControlByUserEnabled();
+    method public boolean isIeee80211axEnabled();
     method @Nullable public android.net.wifi.WifiConfiguration toWifiConfiguration();
     field public static final int BAND_2GHZ = 1; // 0x1
     field public static final int BAND_5GHZ = 2; // 0x2
@@ -300,6 +302,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setChannels(@NonNull android.util.SparseIntArray);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setClientControlByUserEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setHiddenSsid(boolean);
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setIeee80211axEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setMacRandomizationSetting(int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setMaxNumberOfClients(@IntRange(from=0) int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setPassphrase(@Nullable String, int);

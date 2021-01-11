@@ -2789,7 +2789,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             logd("mDhcpResultsParcelable: " + mDhcpResultsParcelable);
                         }
                         setWifiP2pInfoOnGroupFormation(mDhcpResultsParcelable.serverAddress);
-                        sendP2pConnectionChangedBroadcast();
                         try {
                             final String ifname = mGroup.getInterface();
                             if (mDhcpResultsParcelable != null) {
@@ -2800,6 +2799,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         } catch (Exception e) {
                             loge("Failed to add iface to local network " + e);
                         }
+                        sendP2pConnectionChangedBroadcast();
                         break;
                     case IPC_PROVISIONING_SUCCESS:
                         break;

@@ -961,7 +961,7 @@ public class WifiMetrics {
      * Log event, tracking the start time, end time and result of a wireless connection attempt.
      */
     class ConnectionEvent {
-        WifiMetricsProto.ConnectionEvent mConnectionEvent;
+        final WifiMetricsProto.ConnectionEvent mConnectionEvent;
         //<TODO> Move these constants into a wifi.proto Enum, and create a new Failure Type field
         //covering more than just l2 failures. see b/27652362
         /**
@@ -995,7 +995,6 @@ public class WifiMetrics {
         public static final int FAILURE_ASSOCIATION_TIMED_OUT = 11;
 
         RouterFingerPrint mRouterFingerPrint;
-        private long mRealStartTime;
         private String mConfigSsid;
         private String mConfigBssid;
         private int mWifiState;
@@ -1006,7 +1005,6 @@ public class WifiMetrics {
 
         private ConnectionEvent() {
             mConnectionEvent = new WifiMetricsProto.ConnectionEvent();
-            mRealStartTime = 0;
             mRouterFingerPrint = new RouterFingerPrint();
             mConnectionEvent.routerFingerprint = mRouterFingerPrint.mRouterFingerPrintProto;
             mConfigSsid = "<NULL>";
@@ -1595,7 +1593,7 @@ public class WifiMetrics {
             ConnectionEvent currentConnectionEvent = mCurrentConnectionEventPerIface.get(ifaceName);
             if (currentConnectionEvent != null) {
                 overlapWithLastConnectionMs = (int) (mClock.getElapsedSinceBootMillis()
-                        - currentConnectionEvent.mRealStartTime);
+                        - currentConnectionEvent.mConnectionEvent.startTimeSinceBootMillis);
                 // Is this new Connection Event the same as the current one
                 if (currentConnectionEvent.mConfigSsid != null
                         && currentConnectionEvent.mConfigBssid != null
@@ -1626,13 +1624,14 @@ public class WifiMetrics {
             currentConnectionEvent.mConnectionEvent.interfaceName = ifaceName;
             currentConnectionEvent.mConnectionEvent.startTimeMillis =
                     mClock.getWallClockMillis();
+            currentConnectionEvent.mConnectionEvent.startTimeSinceBootMillis =
+                    mClock.getElapsedSinceBootMillis();
             currentConnectionEvent.mConfigBssid = targetBSSID;
             currentConnectionEvent.mConnectionEvent.roamType = roamType;
             currentConnectionEvent.mConnectionEvent.networkSelectorExperimentId =
                     mNetworkSelectorExperimentId;
             currentConnectionEvent.updateFromWifiConfiguration(config);
             currentConnectionEvent.mConfigBssid = "any";
-            currentConnectionEvent.mRealStartTime = mClock.getElapsedSinceBootMillis();
             currentConnectionEvent.mWifiState = mWifiState;
             currentConnectionEvent.mScreenOn = mScreenOn;
             mConnectionEventList.add(currentConnectionEvent);
@@ -1808,7 +1807,7 @@ public class WifiMetrics {
                 int band = KnownBandsChannelHelper.getBand(frequency);
                 int durationTakenToConnectMillis =
                         (int) (mClock.getElapsedSinceBootMillis()
-                                - currentConnectionEvent.mRealStartTime);
+                                - currentConnectionEvent.mConnectionEvent.startTimeSinceBootMillis);
 
                 if (connectionSucceeded) {
                     mCurrentSession = new SessionData(currentConnectionEvent.mConfigSsid,
@@ -3239,7 +3238,7 @@ public class WifiMetrics {
                 bssids++;
                 boolean isOpen = matchInfo.networkType == WifiConfiguration.SECURITY_TYPE_OPEN;
                 WifiConfiguration config =
-                        mWifiConfigManager.getConfiguredNetworkForScanDetail(scanDetail);
+                        mWifiConfigManager.getSavedNetworkForScanDetail(scanDetail);
                 boolean isSaved = (config != null) && !config.isEphemeral()
                         && !config.isPasspoint();
                 if (isOpen) {

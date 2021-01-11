@@ -62,7 +62,8 @@ public class ConfigurationMap {
             mPerIDForCurrentUser.put(config.networkId, config);
             // TODO (b/142035508): Add a more generic fix. This cache should only hold saved
             // networks.
-            if (!config.fromWifiNetworkSpecifier) {
+            if (!config.fromWifiNetworkSpecifier && !config.fromWifiNetworkSuggestion
+                    && !config.isPasspoint()) {
                 mScanResultMatchInfoMapForCurrentUser.put(
                         ScanResultMatchInfo.fromWifiConfiguration(config), config);
             }

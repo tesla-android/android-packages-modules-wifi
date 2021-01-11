@@ -148,10 +148,10 @@ public class SoftApConfigurationTest {
                 .setAllowedClientList(testAllowedClientList);
         if (SdkLevel.isAtLeastS()) {
             originalBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
-        }
-        if (SdkLevel.isAtLeastS()) {
             originalBuilder.setBridgedModeOpportunisticShutdownEnabled(false);
+            originalBuilder.setIeee80211axEnabled(false);
         }
+
         SoftApConfiguration original = originalBuilder.build();
         assertThat(original.getPassphrase()).isEqualTo("secretsecret");
         assertThat(original.getSecurityType()).isEqualTo(
@@ -168,10 +168,9 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastS()) {
             assertThat(original.getMacRandomizationSetting())
                     .isEqualTo(SoftApConfiguration.RANDOMIZATION_NONE);
-        }
-
-        if (SdkLevel.isAtLeastS()) {
             assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
+                    .isEqualTo(false);
+            assertThat(original.isIeee80211axEnabled())
                     .isEqualTo(false);
         }
 

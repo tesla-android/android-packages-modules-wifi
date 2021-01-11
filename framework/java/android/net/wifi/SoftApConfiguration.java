@@ -267,6 +267,11 @@ public final class SoftApConfiguration implements Parcelable {
      */
     private boolean mBridgedModeOpportunisticShutdownEnabled;
 
+    /**
+     * Whether 802.11ax AP is enabled or not.
+     */
+    private boolean mIeee80211axEnabled;
+
 
     /**
      * THe definition of security type OPEN.
@@ -304,7 +309,8 @@ public final class SoftApConfiguration implements Parcelable {
             @SecurityType int securityType, int maxNumberOfClients, boolean shutdownTimeoutEnabled,
             long shutdownTimeoutMillis, boolean clientControlByUser,
             @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
-            int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled) {
+            int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
+            boolean ieee80211axEnabled) {
         mSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -324,6 +330,7 @@ public final class SoftApConfiguration implements Parcelable {
         mAllowedClientList = new ArrayList<>(allowedList);
         mMacRandomizationSetting = macRandomizationSetting;
         mBridgedModeOpportunisticShutdownEnabled = bridgedModeOpportunisticShutdownEnabled;
+        mIeee80211axEnabled = ieee80211axEnabled;
     }
 
     @Override
@@ -349,7 +356,8 @@ public final class SoftApConfiguration implements Parcelable {
                 && Objects.equals(mAllowedClientList, other.mAllowedClientList)
                 && mMacRandomizationSetting == other.mMacRandomizationSetting
                 && mBridgedModeOpportunisticShutdownEnabled
-                == other.mBridgedModeOpportunisticShutdownEnabled;
+                == other.mBridgedModeOpportunisticShutdownEnabled
+                && mIeee80211axEnabled == other.mIeee80211axEnabled;
     }
 
     @Override
@@ -358,7 +366,7 @@ public final class SoftApConfiguration implements Parcelable {
                 mChannels.toString(), mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
                 mAllowedClientList, mMacRandomizationSetting,
-                mBridgedModeOpportunisticShutdownEnabled);
+                mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled);
     }
 
     @Override
@@ -380,6 +388,7 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n MacRandomizationSetting = ").append(mMacRandomizationSetting);
         sbuf.append(" \n BridgedModeInstanceOpportunisticEnabled = ")
                 .append(mBridgedModeOpportunisticShutdownEnabled);
+        sbuf.append(" \n Ieee80211axEnabled = ").append(mIeee80211axEnabled);
         return sbuf.toString();
     }
 
@@ -399,6 +408,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeTypedList(mAllowedClientList);
         dest.writeInt(mMacRandomizationSetting);
         dest.writeBoolean(mBridgedModeOpportunisticShutdownEnabled);
+        dest.writeBoolean(mIeee80211axEnabled);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -452,7 +462,8 @@ public final class SoftApConfiguration implements Parcelable {
                     in.readString(), in.readBoolean(), readSparseIntArray(in), in.readInt(),
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
                     in.createTypedArrayList(MacAddress.CREATOR),
-                    in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean());
+                    in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
+                    in.readBoolean());
         }
 
         @Override
@@ -686,6 +697,21 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns whether or not 802.11ax is enabled on the SoftAP.
+     * This is an indication that if the device support 802.11ax AP then to enable or disable
+     * that feature. If the device does not support 802.11ax AP then this flag is ignored.
+     * See also {@link Builder#setIeee80211axEnabled(boolean}}
+     * @hide
+     */
+    @SystemApi
+    public boolean isIeee80211axEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mIeee80211axEnabled;
+    }
+
+    /**
      * Returns a {@link WifiConfiguration} representation of this {@link SoftApConfiguration}.
      * Note that SoftApConfiguration may contain configuration which is cannot be represented
      * by the legacy WifiConfiguration, in such cases a null will be returned.
@@ -763,6 +789,7 @@ public final class SoftApConfiguration implements Parcelable {
         private List<MacAddress> mAllowedClientList;
         private int mMacRandomizationSetting;
         private boolean mBridgedModeOpportunisticShutdownEnabled;
+        private boolean mIeee80211axEnabled;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -783,6 +810,7 @@ public final class SoftApConfiguration implements Parcelable {
             mAllowedClientList = new ArrayList<>();
             mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
             mBridgedModeOpportunisticShutdownEnabled = true;
+            mIeee80211axEnabled = true;
         }
 
         /**
@@ -806,6 +834,7 @@ public final class SoftApConfiguration implements Parcelable {
             mMacRandomizationSetting = other.mMacRandomizationSetting;
             mBridgedModeOpportunisticShutdownEnabled =
                     other.mBridgedModeOpportunisticShutdownEnabled;
+            mIeee80211axEnabled = other.mIeee80211axEnabled;
         }
 
         /**
@@ -824,7 +853,7 @@ public final class SoftApConfiguration implements Parcelable {
                     mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
                     mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
-                    mBridgedModeOpportunisticShutdownEnabled);
+                    mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled);
         }
 
         /**
@@ -1344,6 +1373,33 @@ public final class SoftApConfiguration implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             mBridgedModeOpportunisticShutdownEnabled = enable;
+            return this;
+        }
+
+        /**
+         * Specifies whether or not to enable 802.11ax on the Soft AP.
+         *
+         * <p>
+         * Note: Only relevant when the device supports 802.11ax on the Soft AP.
+         * If enabled on devices that do not support 802.11ax then ignored.
+         * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_IEEE80211_AX} to determine
+         * whether or not 802.11ax is supported on the Soft AP.
+         * <p>
+         * <li>If not set, defaults to true - which will be ignored on devices
+         * which do not support 802.11ax</li>
+         *
+         * @param enable true to enable, false to disable.
+         * @return Builder for chaining.
+         *
+         */
+        @NonNull
+        public Builder setIeee80211axEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mIeee80211axEnabled = enable;
             return this;
         }
     }

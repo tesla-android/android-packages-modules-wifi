@@ -4242,18 +4242,21 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
                     int level2FailureReason =
                             WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN;
-                    if (statusCode == StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA) {
+                    if (statusCode == StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA
+                            || statusCode == StatusCode.ASSOC_REJECTED_TEMPORARILY
+                            || statusCode == StatusCode.DENIED_INSUFFICIENT_BANDWIDTH) {
                         level2FailureReason = WifiMetricsProto.ConnectionEvent
                                 .ASSOCIATION_REJECTION_AP_UNABLE_TO_HANDLE_NEW_STA;
                     }
-                    // If rejection occurred while Metrics is tracking a ConnnectionEvent, end it.
+                    // If rejection occurred while Metrics is tracking a ConnectionEvent, end it.
                     reportConnectionAttemptEnd(
                             timedOut
                                     ? WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_TIMED_OUT
                                     : WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION,
                             WifiMetricsProto.ConnectionEvent.HLF_NONE,
                             level2FailureReason);
-                    if (statusCode != StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA) {
+                    if (level2FailureReason != WifiMetricsProto.ConnectionEvent
+                            .ASSOCIATION_REJECTION_AP_UNABLE_TO_HANDLE_NEW_STA) {
                         mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                                 getConnectingSsidInternal(), bssid,
                                 WifiLastResortWatchdog.FAILURE_CODE_ASSOCIATION);

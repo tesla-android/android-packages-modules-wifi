@@ -540,7 +540,7 @@ public class WifiNetworkSelector {
             }
 
             // Skip saved networks
-            if (mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail) != null) {
+            if (mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail) != null) {
                 continue;
             }
 
@@ -1027,7 +1027,7 @@ public class WifiNetworkSelector {
 
     private void updateScanDetailCache(List<ScanDetail> scanDetails) {
         for (ScanDetail scanDetail : scanDetails) {
-            mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+            mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         }
     }
 

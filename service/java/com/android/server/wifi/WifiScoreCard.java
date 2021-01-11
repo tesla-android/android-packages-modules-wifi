@@ -907,7 +907,6 @@ public class WifiScoreCard {
                             mRecentStats.incrementCount(CNT_CONSECUTIVE_CONNECTION_FAILURE);
                         }
                         switch (failureReason) {
-                            case WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA:
                             case WifiBlocklistMonitor.REASON_ASSOCIATION_REJECTION:
                                 mRecentStats.incrementCount(CNT_ASSOCIATION_REJECTION);
                                 break;
@@ -921,6 +920,7 @@ public class WifiScoreCard {
                             case WifiBlocklistMonitor.REASON_NONLOCAL_DISCONNECT_CONNECTING:
                                 mRecentStats.incrementCount(CNT_DISCONNECTION_NONLOCAL_CONNECTING);
                                 break;
+                            case WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA:
                             case WifiBlocklistMonitor.REASON_WRONG_PASSWORD:
                             case WifiBlocklistMonitor.REASON_DHCP_FAILURE:
                             default:
