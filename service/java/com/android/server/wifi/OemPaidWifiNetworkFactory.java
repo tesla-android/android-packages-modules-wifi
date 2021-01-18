@@ -46,7 +46,7 @@ public class OemPaidWifiNetworkFactory extends NetworkFactory {
     }
 
     @Override
-    protected void needNetworkFor(NetworkRequest networkRequest, int score) {
+    protected void needNetworkFor(NetworkRequest networkRequest) {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID)) {
             if (++mConnectionReqCount == 1) {
                 mWifiConnectivityManager.setOemPaidConnectionAllowed(

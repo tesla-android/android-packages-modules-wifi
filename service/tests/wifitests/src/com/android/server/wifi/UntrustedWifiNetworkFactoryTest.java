@@ -79,14 +79,14 @@ public class UntrustedWifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequest() {
         assertFalse(mUntrustedWifiNetworkFactory.hasConnectionRequests());
-        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // First network request should turn on auto-join.
         verify(mWifiConnectivityManager).setUntrustedConnectionAllowed(true);
         assertTrue(mUntrustedWifiNetworkFactory.hasConnectionRequests());
 
         // Subsequent ones should do nothing.
-        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verifyNoMoreInteractions(mWifiConnectivityManager);
     }
 
@@ -100,7 +100,7 @@ public class UntrustedWifiNetworkFactoryTest extends WifiBaseTest {
         assertFalse(mUntrustedWifiNetworkFactory.hasConnectionRequests());
 
         // Now request & then release the network request
-        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mUntrustedWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         assertTrue(mUntrustedWifiNetworkFactory.hasConnectionRequests());
         verify(mWifiConnectivityManager).setUntrustedConnectionAllowed(true);
 

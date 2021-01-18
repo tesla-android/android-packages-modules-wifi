@@ -85,7 +85,7 @@ public class WifiRttManagerTest {
         List<RangingResult> results = new ArrayList<>();
         results.add(
                 new RangingResult(RangingResult.STATUS_SUCCESS, MacAddress.BROADCAST_ADDRESS, 15, 5,
-                        10, 8, 5, null, null, null, 666));
+                        10, 8, 5, null, null, null, 666, true));
         RangingResultCallback callbackMock = mock(RangingResultCallback.class);
         ArgumentCaptor<IRttCallback> callbackCaptor = ArgumentCaptor.forClass(IRttCallback.class);
 
@@ -134,10 +134,13 @@ public class WifiRttManagerTest {
         // Note: not validating parcel code of ScanResult (assumed to work)
         ScanResult scanResult1 = new ScanResult();
         scanResult1.BSSID = "00:01:02:03:04:05";
+        scanResult1.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
         ScanResult scanResult2 = new ScanResult();
         scanResult2.BSSID = "06:07:08:09:0A:0B";
+        scanResult2.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
         ScanResult scanResult3 = new ScanResult();
         scanResult3.BSSID = "AA:BB:CC:DD:EE:FF";
+        scanResult3.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
         List<ScanResult> scanResults2and3 = new ArrayList<>(2);
         scanResults2and3.add(scanResult2);
         scanResults2and3.add(scanResult3);
@@ -169,9 +172,45 @@ public class WifiRttManagerTest {
      * Validate the rtt burst size is set correctly when in range.
      */
     @Test
+    public void test802llmcCapableAccessPointFailsForNon11mcBuilderMethods() {
+        ScanResult scanResult1 = new ScanResult();
+        scanResult1.BSSID = "AA:BB:CC:DD:EE:FF";
+        scanResult1.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
+
+        // create request for one AP
+        try {
+            RangingRequest.Builder builder = new RangingRequest.Builder();
+            builder.addNon80211mcCapableAccessPoint(scanResult1);
+            fail("Single Access Point was 11mc capable.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+
+        ScanResult scanResult2 = new ScanResult();
+        scanResult2.BSSID = "11:BB:CC:DD:EE:FF";
+        scanResult2.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
+        List<ScanResult> scanResults = new ArrayList<>();
+        scanResults.add(scanResult1);
+        scanResults.add(scanResult2);
+
+        // create request for a list of 2 APs.
+        try {
+            RangingRequest.Builder builder = new RangingRequest.Builder();
+            builder.addNon80211mcCapableAccessPoints(scanResults);
+            fail("One Access Point in the List was 11mc capable.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
+    /**
+     * Validate the rtt burst size is set correctly when in range.
+     */
+    @Test
     public void testRangingRequestSetBurstSize() {
         ScanResult scanResult = new ScanResult();
         scanResult.BSSID = "AA:BB:CC:DD:EE:FF";
+        scanResult.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
 
         // create request
         RangingRequest.Builder builder = new RangingRequest.Builder();
@@ -226,6 +265,7 @@ public class WifiRttManagerTest {
     public void testRangingRequestAtLimit() {
         ScanResult scanResult = new ScanResult();
         scanResult.BSSID = "AA:BB:CC:DD:EE:FF";
+        scanResult.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
         List<ScanResult> scanResultList = new ArrayList<>();
         for (int i = 0; i < RangingRequest.getMaxPeers() - 3; ++i) {
             scanResultList.add(scanResult);
@@ -314,7 +354,8 @@ public class WifiRttManagerTest {
 
         // RangingResults constructed with a MAC address
         RangingResult result = new RangingResult(status, mac, distanceCm, distanceStdDevCm, rssi,
-                numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr, null, timestamp);
+                numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr, null, timestamp,
+                true);
 
         Parcel parcelW = Parcel.obtain();
         result.writeToParcel(parcelW, 0);
@@ -363,9 +404,11 @@ public class WifiRttManagerTest {
         byte[] lcr = { };
 
         RangingResult rr1 = new RangingResult(status, mac, distanceCm, distanceStdDevCm, rssi,
-                numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr, null, timestamp);
+                numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr, null, timestamp,
+                true);
         RangingResult rr2 = new RangingResult(status, mac, distanceCm, distanceStdDevCm, rssi,
-                numAttemptedMeasurements, numSuccessfulMeasurements, null, null, null, timestamp);
+                numAttemptedMeasurements, numSuccessfulMeasurements, null, null, null, timestamp,
+                true);
 
         assertEquals(rr1, rr2);
     }

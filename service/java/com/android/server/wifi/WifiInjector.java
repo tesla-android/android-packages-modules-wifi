@@ -709,7 +709,8 @@ public class WifiInjector {
                 mContext, mWifiHandlerThread.getLooper(), mClock,
                 mWifiNative, listener, mWifiMetrics, mWakeupController,
                 this, mSelfRecovery, mWifiGlobals, mDefaultClientModeManager,
-                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
+                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled,
+                mCountryCode);
     }
 
     public ScanOnlyModeImpl makeScanOnlyModeImpl(@NonNull String ifaceName) {

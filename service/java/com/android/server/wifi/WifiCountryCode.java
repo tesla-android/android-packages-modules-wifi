@@ -249,7 +249,7 @@ public class WifiCountryCode {
         // We do not check if the country code equals the current one.
         // There are two reasons:
         // 1. Wpa supplicant may silently modify the country code.
-        // 2. If Wifi restarted therefoere wpa_supplicant also restarted,
+        // 2. If Wifi restarted therefore wpa_supplicant also restarted,
         // the country code counld be reset to '00' by wpa_supplicant.
         if (country != null) {
             setCountryCodeNative(country);
@@ -274,14 +274,21 @@ public class WifiCountryCode {
     }
 
     private boolean setCountryCodeNative(String country) {
-        mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
-        if (mActiveModeWarden.getPrimaryClientModeManager().setCountryCode(country)) {
-            Log.d(TAG, "Succeeded to set country code to: " + country);
-            mDriverCountryCode = country;
-            for (ChangeListener listener : mListeners) {
-                listener.onDriverCountryCodeChanged(country);
+        List<ClientModeManager> cmms = mActiveModeWarden.getClientModeManagers();
+
+        // Set the country code using one of the active client mode managers. Since
+        // country code is a chip level global setting, it can be set as long
+        // as there is at least one active interface to communicate to Wifi chip
+        for (ClientModeManager cm : cmms) {
+            if (cm.setCountryCode(country)) {
+                mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
+                mDriverCountryCode = country;
+                Log.d(TAG, "Succeeded to set country code to: " + country);
+                for (ChangeListener listener : mListeners) {
+                    listener.onDriverCountryCodeChanged(country);
+                }
+                return true;
             }
-            return true;
         }
         Log.d(TAG, "Failed to set country code to: " + country);
         return false;

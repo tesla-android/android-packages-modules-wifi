@@ -69,6 +69,7 @@ import android.hardware.wifi.supplicant.V1_3.ISupplicantStaIfaceCallback.BssTmDa
 import android.hardware.wifi.supplicant.V1_3.WifiTechnology;
 import android.hardware.wifi.supplicant.V1_4.ConnectionCapabilities;
 import android.hardware.wifi.supplicant.V1_4.DppCurve;
+import android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.AssociationRejectionData;
 import android.hardware.wifi.supplicant.V1_4.LegacyMode;
 import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
@@ -1228,8 +1229,19 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 NativeUtil.macAddressToByteArray(BSSID), statusCode, false);
         verify(mWifiMonitor).broadcastAuthenticationFailureEvent(eq(WLAN0_IFACE_NAME),
                 eq(WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD), eq(-1));
+        ArgumentCaptor<AssocRejectEventInfo> assocRejectEventInfoCaptor =
+                ArgumentCaptor.forClass(AssocRejectEventInfo.class);
         verify(mWifiMonitor).broadcastAssociationRejectionEvent(
-                eq(WLAN0_IFACE_NAME), eq(statusCode), eq(false), eq(SUPPLICANT_SSID), eq(BSSID));
+                eq(WLAN0_IFACE_NAME), assocRejectEventInfoCaptor.capture());
+        AssocRejectEventInfo assocRejectEventInfo =
+                (AssocRejectEventInfo) assocRejectEventInfoCaptor.getValue();
+        assertNotNull(assocRejectEventInfo);
+        assertEquals(SUPPLICANT_SSID, assocRejectEventInfo.ssid);
+        assertEquals(BSSID, assocRejectEventInfo.bssid);
+        assertEquals(statusCode, assocRejectEventInfo.statusCode);
+        assertFalse(assocRejectEventInfo.timedOut);
+        assertNull(assocRejectEventInfo.oceRssiBasedAssocRejectInfo);
+        assertNull(assocRejectEventInfo.mboAssocDisallowedInfo);
     }
 
     /**
@@ -1253,8 +1265,19 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 NativeUtil.macAddressToByteArray(BSSID), statusCode, false);
         verify(mWifiMonitor).broadcastAuthenticationFailureEvent(eq(WLAN0_IFACE_NAME),
                 eq(WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD), eq(-1));
+        ArgumentCaptor<AssocRejectEventInfo> assocRejectEventInfoCaptor =
+                ArgumentCaptor.forClass(AssocRejectEventInfo.class);
         verify(mWifiMonitor).broadcastAssociationRejectionEvent(
-                eq(WLAN0_IFACE_NAME), eq(statusCode), eq(false), eq(SUPPLICANT_SSID), eq(BSSID));
+                eq(WLAN0_IFACE_NAME), assocRejectEventInfoCaptor.capture());
+        AssocRejectEventInfo assocRejectEventInfo =
+                (AssocRejectEventInfo) assocRejectEventInfoCaptor.getValue();
+        assertNotNull(assocRejectEventInfo);
+        assertEquals(SUPPLICANT_SSID, assocRejectEventInfo.ssid);
+        assertEquals(BSSID, assocRejectEventInfo.bssid);
+        assertEquals(statusCode, assocRejectEventInfo.statusCode);
+        assertFalse(assocRejectEventInfo.timedOut);
+        assertNull(assocRejectEventInfo.oceRssiBasedAssocRejectInfo);
+        assertNull(assocRejectEventInfo.mboAssocDisallowedInfo);
     }
 
     /**
@@ -1335,8 +1358,19 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         int statusCode = 7;
         mISupplicantStaIfaceCallback.onAssociationRejected(
                 NativeUtil.macAddressToByteArray(BSSID), statusCode, false);
+        ArgumentCaptor<AssocRejectEventInfo> assocRejectEventInfoCaptor =
+                ArgumentCaptor.forClass(AssocRejectEventInfo.class);
         verify(mWifiMonitor).broadcastAssociationRejectionEvent(
-                eq(WLAN0_IFACE_NAME), eq(statusCode), eq(false), eq(SUPPLICANT_SSID), eq(BSSID));
+                eq(WLAN0_IFACE_NAME), assocRejectEventInfoCaptor.capture());
+        AssocRejectEventInfo assocRejectEventInfo =
+                (AssocRejectEventInfo) assocRejectEventInfoCaptor.getValue();
+        assertNotNull(assocRejectEventInfo);
+        assertEquals(SUPPLICANT_SSID, assocRejectEventInfo.ssid);
+        assertEquals(BSSID, assocRejectEventInfo.bssid);
+        assertEquals(statusCode, assocRejectEventInfo.statusCode);
+        assertFalse(assocRejectEventInfo.timedOut);
+        assertNull(assocRejectEventInfo.oceRssiBasedAssocRejectInfo);
+        assertNull(assocRejectEventInfo.mboAssocDisallowedInfo);
     }
 
     /**
@@ -2077,7 +2111,11 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
 
         executeAndValidateInitializationSequenceV1_3();
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
-
+        mISupplicantStaIfaceCallbackV13.onStateChanged(
+                ISupplicantStaIfaceCallback.State.ASSOCIATING,
+                NativeUtil.macAddressToByteArray(BSSID),
+                SUPPLICANT_NETWORK_ID,
+                NativeUtil.decodeSsid(SUPPLICANT_SSID));
         int statusCode = 7;
         mISupplicantStaIfaceCallbackV13.onAssociationRejected(
                 NativeUtil.macAddressToByteArray(BSSID), statusCode, false);
@@ -3243,6 +3281,42 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         // Disable it.
         assertTrue(mDut.disableCurrentNetwork(WLAN0_IFACE_NAME));
         verify(mSupplicantStaNetworkMock).disable();
+    }
+
+    /**
+     * Tests the handling of association rejection notification V1_4.
+     */
+    @Test
+    public void testAssociationRejectionCallback_1_4() throws Exception {
+        setupMocksForHalV1_4();
+        executeAndValidateInitializationSequenceV1_4();
+        assertNotNull(mISupplicantStaIfaceCallbackV14);
+        AssociationRejectionData assocRejectData = new AssociationRejectionData();
+        assocRejectData.ssid = NativeUtil.decodeSsid(SUPPLICANT_SSID);
+        assocRejectData.bssid = NativeUtil.macAddressToByteArray(BSSID);
+        assocRejectData.statusCode = 5;
+        assocRejectData.isOceRssiBasedAssocRejectAttrPresent = true;
+        assocRejectData.oceRssiBasedAssocRejectData.retryDelayS = 10;
+        assocRejectData.oceRssiBasedAssocRejectData.deltaRssi = 20;
+        mISupplicantStaIfaceCallbackV14.onAssociationRejected_1_4(assocRejectData);
+
+        ArgumentCaptor<AssocRejectEventInfo> assocRejectEventInfoCaptor =
+                ArgumentCaptor.forClass(AssocRejectEventInfo.class);
+        verify(mWifiMonitor).broadcastAssociationRejectionEvent(
+                eq(WLAN0_IFACE_NAME), assocRejectEventInfoCaptor.capture());
+        AssocRejectEventInfo assocRejectEventInfo =
+                (AssocRejectEventInfo) assocRejectEventInfoCaptor.getValue();
+        assertNotNull(assocRejectEventInfo);
+        assertEquals(SUPPLICANT_SSID, assocRejectEventInfo.ssid);
+        assertEquals(BSSID, assocRejectEventInfo.bssid);
+        assertEquals(assocRejectData.statusCode, assocRejectEventInfo.statusCode);
+        assertFalse(assocRejectEventInfo.timedOut);
+        assertNotNull(assocRejectEventInfo.oceRssiBasedAssocRejectInfo);
+        assertEquals(assocRejectData.oceRssiBasedAssocRejectData.retryDelayS,
+                assocRejectEventInfo.oceRssiBasedAssocRejectInfo.mRetryDelayS);
+        assertEquals(assocRejectData.oceRssiBasedAssocRejectData.deltaRssi,
+                assocRejectEventInfo.oceRssiBasedAssocRejectInfo.mDeltaRssi);
+        assertNull(assocRejectEventInfo.mboAssocDisallowedInfo);
     }
 
 }

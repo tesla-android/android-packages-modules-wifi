@@ -290,45 +290,54 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
         }
     }
 
+    private void handleAssocRejectEvent(AssocRejectEventInfo assocRejectInfo) {
+        boolean isWrongPwd = false;
+        WifiConfiguration curConfiguration =
+                mStaIfaceHal.getCurrentNetworkLocalConfig(mIfaceName);
+        if (curConfiguration != null) {
+            if (!assocRejectInfo.timedOut) {
+                Log.d(TAG, "flush PMK cache due to association rejection for config id "
+                        + curConfiguration.networkId + ".");
+                mStaIfaceHal.removePmkCacheEntry(curConfiguration.networkId);
+            }
+            // Special handling for WPA3-Personal networks. If the password is
+            // incorrect, the AP will send association rejection, with status code 1
+            // (unspecified failure). In SAE networks, the password authentication
+            // is not related to the 4-way handshake. In this case, we will send an
+            // authentication failure event up.
+            if (assocRejectInfo.statusCode == StatusCode.UNSPECIFIED_FAILURE
+                    && WifiConfigurationUtil.isConfigForSaeNetwork(curConfiguration)) {
+                mStaIfaceHal.logCallback("SAE incorrect password");
+                isWrongPwd = true;
+            } else if (assocRejectInfo.statusCode == StatusCode.CHALLENGE_FAIL
+                    && WifiConfigurationUtil.isConfigForWepNetwork(curConfiguration)) {
+                mStaIfaceHal.logCallback("WEP incorrect password");
+                isWrongPwd = true;
+            }
+        }
+
+        if (isWrongPwd) {
+            mWifiMonitor.broadcastAuthenticationFailureEvent(
+                    mIfaceName, WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1);
+        }
+        mWifiMonitor.broadcastAssociationRejectionEvent(mIfaceName, assocRejectInfo);
+        mStateBeforeDisconnect = State.INACTIVE;
+    }
+
+    public void onAssociationRejected(android.hardware.wifi.supplicant.V1_4
+            .ISupplicantStaIfaceCallback.AssociationRejectionData assocRejectData) {
+        AssocRejectEventInfo assocRejectInfo = new AssocRejectEventInfo(assocRejectData);
+        handleAssocRejectEvent(assocRejectInfo);
+    }
+
     @Override
     public void onAssociationRejected(byte[/* 6 */] bssid, int statusCode, boolean timedOut) {
         synchronized (mLock) {
-            mStaIfaceHal.logCallback("onAssociationRejected");
-            boolean isWrongPwd = false;
-            WifiConfiguration curConfiguration =
-                    mStaIfaceHal.getCurrentNetworkLocalConfig(mIfaceName);
-            if (curConfiguration != null) {
-                if (!timedOut) {
-                    Log.d(TAG, "flush PMK cache due to association rejection for config id "
-                            + curConfiguration.networkId + ".");
-                    mStaIfaceHal.removePmkCacheEntry(curConfiguration.networkId);
-                }
-                // Special handling for WPA3-Personal networks. If the password is
-                // incorrect, the AP will send association rejection, with status code 1
-                // (unspecified failure). In SAE networks, the password authentication
-                // is not related to the 4-way handshake. In this case, we will send an
-                // authentication failure event up.
-                if (statusCode == StatusCode.UNSPECIFIED_FAILURE
-                        && WifiConfigurationUtil.isConfigForSaeNetwork(curConfiguration)) {
-                    mStaIfaceHal.logCallback("SAE incorrect password");
-                    isWrongPwd = true;
-                } else if (statusCode == StatusCode.CHALLENGE_FAIL
-                        && WifiConfigurationUtil.isConfigForWepNetwork(curConfiguration)) {
-                    mStaIfaceHal.logCallback("WEP incorrect password");
-                    isWrongPwd = true;
-                }
-            }
-
-            if (isWrongPwd) {
-                mWifiMonitor.broadcastAuthenticationFailureEvent(
-                        mIfaceName, WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1);
-            }
-            mWifiMonitor
-                    .broadcastAssociationRejectionEvent(
-                            mIfaceName, statusCode, timedOut,
-                            mCurrentSsid,
-                            NativeUtil.macAddressFromByteArray(bssid));
-            mStateBeforeDisconnect = State.INACTIVE;
+            AssocRejectEventInfo assocRejectInfo = new AssocRejectEventInfo(
+                    mCurrentSsid,
+                    NativeUtil.macAddressFromByteArray(bssid),
+                    statusCode, timedOut);
+            handleAssocRejectEvent(assocRejectInfo);
         }
     }
 

@@ -46,7 +46,7 @@ public class OemPrivateWifiNetworkFactory extends NetworkFactory {
     }
 
     @Override
-    protected void needNetworkFor(NetworkRequest networkRequest, int score) {
+    protected void needNetworkFor(NetworkRequest networkRequest) {
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE)) {
             if (++mConnectionReqCount == 1) {
                 mWifiConnectivityManager.setOemPrivateConnectionAllowed(

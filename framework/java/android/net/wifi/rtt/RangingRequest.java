@@ -233,9 +233,9 @@ public final class RangingRequest implements Parcelable {
          * which to measure range. The total number of peers added to a request cannot exceed the
          * limit specified by {@link #getMaxPeers()}.
          * <p>
-         * Ranging may not be supported if the Access Point does not support IEEE 802.11mc. Use
-         * {@link ScanResult#is80211mcResponder()} to verify the Access Point's capabilities. If
-         * not supported the result status will be
+         * Ranging will only be supported if the Access Point supports IEEE 802.11mc, also known as
+         * two-sided RTT. Use {@link ScanResult#is80211mcResponder()} to verify the Access Point's
+         * capabilities. If not supported the result status will be
          * {@link RangingResult#STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC}.
          *
          * @param apInfo Information of an Access Point (AP) obtained in a Scan Result.
@@ -254,9 +254,9 @@ public final class RangingRequest implements Parcelable {
          * which to measure range. The total number of peers added to a request cannot exceed the
          * limit specified by {@link #getMaxPeers()}.
          * <p>
-         * Ranging may not be supported if the Access Point does not support IEEE 802.11mc. Use
-         * {@link ScanResult#is80211mcResponder()} to verify the Access Point's capabilities. If
-         * not supported the result status will be
+         * Ranging will only be supported if the Access Point supports IEEE 802.11mc, also known as
+         * two-sided RTT. Use {@link ScanResult#is80211mcResponder()} to verify the Access Point's
+         * capabilities. If not supported, the result status will be
          * {@link RangingResult#STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC}.
          *
          * @param apInfos Information of an Access Points (APs) obtained in a Scan Result.
@@ -268,6 +268,86 @@ public final class RangingRequest implements Parcelable {
                 throw new IllegalArgumentException("Null list of ScanResults!");
             }
             for (ScanResult scanResult : apInfos) {
+                addAccessPoint(scanResult);
+            }
+            return this;
+        }
+
+        /**
+         * Add the non-802.11mc capable device specified by the {@link ScanResult} to the list of
+         * devices with which to measure range. The total number of peers added to a request cannot
+         * exceed the limit specified by {@link #getMaxPeers()}.
+         * <p>
+         * Accurate ranging cannot be supported if the Access Point does not support IEEE 802.11mc,
+         * and instead an alternate protocol called one-sided RTT will be used with lower
+         * accuracy. Use {@link ScanResult#is80211mcResponder()} to verify the Access Point)s) are
+         * not 802.11mc capable.
+         * <p>
+         * One-sided RTT does not subtract the RTT turnaround time at the Access Point, which can
+         * add hundreds of meters to the estimate. With experimentation it is possible to use this
+         * information to make a statistical estimate of the range by taking multiple measurements
+         * to several Access Points and normalizing the result. For some applications this can be
+         * used to improve range estimates based on Receive Signal Strength Indication (RSSI), but
+         * will not be as accurate as IEEE 802.11mc (two-sided RTT).
+         * <p>
+         * Note: one-sided RTT should only be used if you are very familiar with statistical
+         * estimation techniques.
+         *
+         * @param apInfo Information of an Access Point (AP) obtained in a Scan Result.
+         * @return The builder to facilitate chaining
+         *         {@code builder.setXXX(..).setXXX(..)}.
+         */
+        @NonNull
+        public Builder addNon80211mcCapableAccessPoint(@NonNull ScanResult apInfo) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (apInfo == null) {
+                throw new IllegalArgumentException("Null ScanResult!");
+            }
+            if (apInfo.is80211mcResponder()) {
+                throw new IllegalArgumentException("AP supports the 802.11mc protocol.");
+            }
+            return addResponder(ResponderConfig.fromScanResult(apInfo));
+        }
+
+        /**
+         * Add the non-802.11mc capable devices specified by the {@link ScanResult} to the list of
+         * devices with which to measure range. The total number of peers added to a request cannot
+         * exceed the limit specified by {@link #getMaxPeers()}.
+         * <p>
+         * Accurate ranging cannot be supported if the Access Point does not support IEEE 802.11mc,
+         * and instead an alternate protocol called one-sided RTT will be used with lower
+         * accuracy. Use {@link ScanResult#is80211mcResponder()} to verify the Access Point)s) are
+         * not 802.11mc capable.
+         * <p>
+         * One-sided RTT does not subtract the RTT turnaround time at the Access Point, which can
+         * add hundreds of meters to the estimate. With experimentation it is possible to use this
+         * information to make a statistical estimate of the range by taking multiple measurements
+         * to several Access Points and normalizing the result. For some applications this can be
+         * used to improve range estimates based on Receive Signal Strength Indication (RSSI), but
+         * will not be as accurate as IEEE 802.11mc (two-sided RTT).
+         * <p>
+         * Note: one-sided RTT should only be used if you are very familiar with statistical
+         * estimation techniques.
+         *
+         * @param apInfos Information of an Access Points (APs) obtained in a Scan Result.
+         * @return The builder to facilitate chaining
+         *         {@code builder.setXXX(..).setXXX(..)}.
+         */
+        @NonNull
+        public Builder addNon80211mcCapableAccessPoints(@NonNull List<ScanResult> apInfos) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (apInfos == null) {
+                throw new IllegalArgumentException("Null list of ScanResults!");
+            }
+            for (ScanResult scanResult : apInfos) {
+                if (scanResult.is80211mcResponder()) {
+                    throw new IllegalArgumentException(
+                            "At least one AP supports the 802.11mc protocol.");
+                }
                 addAccessPoint(scanResult);
             }
             return this;

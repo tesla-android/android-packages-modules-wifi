@@ -25,6 +25,8 @@ import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.charset.StandardCharsets;
@@ -1436,34 +1438,71 @@ public class WifiEnterpriseConfig implements Parcelable {
     }
 
     /**
-     * Method determines whether the Enterprise configuration is insecure. An insecure
-     * configuration is one where EAP method requires a CA certification, i.e. PEAP, TLS, or
-     * TTLS, and any of the following conditions are met:
-     * - Both certificate and CA path are not configured.
-     * - Both alternative subject match and domain suffix match are not set.
-     *
-     * Note: this method does not exhaustively check security of the configuration - i.e. a return
-     * value of {@code false} is not a guarantee that the configuration is secure.
+     * Determines whether an Enterprise configuration's EAP method requires a Root CA certification
+     * to validate the authentication server i.e. PEAP, TLS, or TTLS.
+     * @return True if configuration requires a CA certification, false otherwise.
+     */
+    public boolean doesEapMethodUseServerCert() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return isTlsBasedEapMethod();
+    }
+
+    /**
+     * A helper method to check if the EAP method of enterprise config is one of the target types.
+     * @return true if EAP method of enterprise config is one the target types, false otherwise.
      * @hide
      */
-    public boolean isInsecure() {
-        if (mEapMethod != Eap.PEAP && mEapMethod != Eap.TLS && mEapMethod != Eap.TTLS) {
-            return false;
+    public boolean isTlsBasedEapMethod() {
+        return mEapMethod == Eap.PEAP || mEapMethod == Eap.TLS || mEapMethod == Eap.TTLS;
+    }
+    /**
+     * Determines whether an Enterprise configuration enables server certificate validation.
+     * <p>
+     * The caller can determine, along with {@link #doesEapMethodUseServerCert()}, if an
+     * Enterprise configuration enables server certificate validation, which is a mandatory
+     * requirement for networks that use TLS based EAP methods. A configuration that does not
+     * enable server certificate validation will be ignored and will not be considered for
+     * network selection. A network suggestion with such a configuration will cause an
+     * IllegalArgumentException to be thrown when suggested.
+     * Server validation is achieved by the following:
+     * - Either certificate or CA path is configured.
+     * - Either alternative subject match or domain suffix match is set.
+     * @return True for server certificate validation is enabled, false otherwise.
+     * @throws IllegalStateException on configuration which doesn't use server certificate.
+     * @see #doesEapMethodUseServerCert()
+     */
+    public boolean isServerCertValidationEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
         }
+        if (!doesEapMethodUseServerCert()) {
+            throw new IllegalStateException("Configuration doesn't use server certificates for "
+                    + "authentication");
+        }
+        return isMandatoryParameterSetForServerCertValidation();
+    }
+
+    /**
+     * Helper method to check if mandatory parameter for server cert validation is set.
+     * @hide
+     */
+    public boolean isMandatoryParameterSetForServerCertValidation() {
         if (TextUtils.isEmpty(getAltSubjectMatch())
                 && TextUtils.isEmpty(getDomainSuffixMatch())) {
-            // Both subject and domain match are not set, it's insecure.
-            return true;
+            // Both subject and domain match are not set, validation is not enabled.
+            return false;
         }
         if (mIsAppInstalledCaCert) {
-            // CA certificate is installed by App, it's secure.
-            return false;
+            // CA certificate is installed by App, validation is enabled.
+            return true;
         }
         if (getCaCertificateAliases() != null) {
-            // CA certificate alias from keyStore is set, it's secure.
-            return false;
+            // CA certificate alias from keyStore is set, validation is enabled.
+            return true;
         }
-        return TextUtils.isEmpty(getCaPath());
+        return !TextUtils.isEmpty(getCaPath());
     }
 
     /**

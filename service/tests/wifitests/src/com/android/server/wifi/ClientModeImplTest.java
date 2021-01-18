@@ -64,6 +64,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.wifi.supplicant.V1_0.ISupplicantStaIfaceCallback;
+import android.net.CaptivePortalData;
 import android.net.ConnectivityManager;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
@@ -158,6 +159,7 @@ import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -213,6 +215,8 @@ public class ClientModeImplTest extends WifiBaseTest {
     private static final int DEFINED_ERROR_CODE = 32764;
     private static final String TEST_TERMS_AND_CONDITIONS_URL =
             "https://policies.google.com/terms?hl=en-US";
+    private static final String VENUE_URL =
+            "https://www.android.com/android-11/";
 
     private long mBinderToken;
     private MockitoSession mSession;
@@ -840,6 +844,12 @@ public class ClientModeImplTest extends WifiBaseTest {
                 getGoogleGuestScanDetail(TEST_RSSI, sBSSID, sFreq));
         when(mScanDetailCache.getScanResult(sBSSID)).thenReturn(
                 getGoogleGuestScanDetail(TEST_RSSI, sBSSID, sFreq).getScanResult());
+        ScanResult scanResult = new ScanResult(WifiSsid.createFromAsciiEncoded(sFilsSsid),
+                sFilsSsid, sBSSID, 1245, 0, "", -78, 2412, 1025, 22, 33, 20, 0, 0, true);
+        ScanResult.InformationElement ie = createIE(ScanResult.InformationElement.EID_SSID,
+                sFilsSsid.getBytes(StandardCharsets.UTF_8));
+        scanResult.informationElements = new ScanResult.InformationElement[]{ie};
+        when(mScanRequestProxy.getScanResult(eq(sBSSID))).thenReturn(scanResult);
 
         mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
                 new StateChangeResult(0, sWifiSsid, sBSSID, SupplicantState.ASSOCIATED));
@@ -886,6 +896,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(sFreq, wifiInfo.getFrequency());
         assertTrue(sWifiSsid.equals(wifiInfo.getWifiSsid()));
         assertNull(wifiInfo.getPasspointProviderFriendlyName());
+        assertEquals(Arrays.asList(scanResult.informationElements),
+                wifiInfo.getInformationElements());
         expectRegisterNetworkAgent((na) -> {
         }, (nc) -> {
                 if (SdkLevel.isAtLeastS()) {
@@ -5589,6 +5601,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void testVenueAndTCUrlsUpdateForPasspointNetworks() throws Exception {
         setupPasspointConnection();
+        when(mPasspointManager.getVenueUrl(any(ScanResult.class))).thenReturn(new URL(VENUE_URL));
         DhcpResultsParcelable dhcpResults = new DhcpResultsParcelable();
         dhcpResults.baseConfiguration = new StaticIpConfiguration();
         dhcpResults.baseConfiguration.gateway = InetAddresses.parseNumericAddress("1.2.3.4");
@@ -5597,12 +5610,19 @@ public class ClientModeImplTest extends WifiBaseTest {
         dhcpResults.baseConfiguration.dnsServers.add(InetAddresses.parseNumericAddress("8.8.8.8"));
         dhcpResults.leaseDuration = 3600;
         injectDhcpSuccess(dhcpResults);
-
+        mCmi.mNetworkAgent = null;
         mLooper.dispatchAll();
-        mIpClientCallback.onLinkPropertiesChange(new LinkProperties());
+        LinkProperties linkProperties = mock(LinkProperties.class);
+        mIpClientCallback.onLinkPropertiesChange(linkProperties);
         mLooper.dispatchAll();
         verify(mPasspointManager).clearTermsAndConditionsUrl();
         verify(mPasspointManager, times(2)).getVenueUrl(any(ScanResult.class));
+        final ArgumentCaptor<CaptivePortalData> captivePortalDataCaptor =
+                ArgumentCaptor.forClass(CaptivePortalData.class);
+        verify(linkProperties).setCaptivePortalData(captivePortalDataCaptor.capture());
+        assertEquals(WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME,
+                captivePortalDataCaptor.getValue().getVenueFriendlyName());
+        assertEquals(VENUE_URL, captivePortalDataCaptor.getValue().getVenueInfoUrl().toString());
         verify(mPasspointManager, times(2)).getTermsAndConditionsUrl();
     }
 

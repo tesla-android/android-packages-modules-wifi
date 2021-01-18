@@ -86,14 +86,14 @@ public class OemPrivateWifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequest() {
         assertFalse(mOemPrivateWifiNetworkFactory.hasConnectionRequests());
-        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // First network request should turn on auto-join.
         verify(mWifiConnectivityManager).setOemPrivateConnectionAllowed(true, TEST_WORKSOURCE);
         assertTrue(mOemPrivateWifiNetworkFactory.hasConnectionRequests());
 
         // Subsequent ones should do nothing.
-        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verifyNoMoreInteractions(mWifiConnectivityManager);
     }
 
@@ -107,7 +107,7 @@ public class OemPrivateWifiNetworkFactoryTest extends WifiBaseTest {
         assertFalse(mOemPrivateWifiNetworkFactory.hasConnectionRequests());
 
         // Now request & then release the network request
-        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPrivateWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         assertTrue(mOemPrivateWifiNetworkFactory.hasConnectionRequests());
         verify(mWifiConnectivityManager).setOemPrivateConnectionAllowed(true, TEST_WORKSOURCE);
 

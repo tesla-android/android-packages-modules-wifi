@@ -50,6 +50,11 @@ public class ScanOnlyModeImpl implements ClientModeDefaults {
     }
 
     @Override
+    public boolean setCountryCode(String countryCode) {
+        return mWifiNative.setChipCountryCode(countryCode);
+    }
+
+    @Override
     public String toString() {
         return "ScanOnlyModeImpl{"
                 + "id=" + mId

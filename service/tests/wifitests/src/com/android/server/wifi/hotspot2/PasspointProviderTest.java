@@ -1724,6 +1724,14 @@ public class PasspointProviderTest extends WifiBaseTest {
         // Confirm there is a match
         assertEquals(PasspointMatch.HomeProvider,
                 mProvider.match(anqpElementMap, mRoamingConsortium, scanResult));
+
+        // Now clear the block
+        mProvider.clearProviderBlock();
+        scanResult.BSSID = TEST_BSSID_STRING;
+
+        // Confirm this is a match under normal circumstances
+        assertEquals(PasspointMatch.HomeProvider,
+                mProvider.match(anqpElementMap, mRoamingConsortium, scanResult));
     }
 
     /**

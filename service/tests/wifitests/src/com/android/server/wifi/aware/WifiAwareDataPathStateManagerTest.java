@@ -173,8 +173,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         mDut.startLate();
         mMockLooper.dispatchAll();
 
-        when(mMockNetworkInterface.configureAgentProperties(any(), any(), anyInt(), any(),
-                any())).thenReturn(true);
+        when(mMockNetworkInterface.configureAgentProperties(any(), any(), any())).thenReturn(true);
         when(mMockNetworkInterface.isAddressUsable(any())).thenReturn(true);
 
         when(mMockPowerManager.isDeviceIdleMode()).thenReturn(false);
@@ -1599,8 +1598,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             int numConfigureAgentPropertiesFail = 0;
             if (numAddrValidationRetries > 0) {
                 when(mMockNetworkInterface.isAddressUsable(any())).thenReturn(false);
-                when(mMockNetworkInterface.configureAgentProperties(any(), any(), anyInt(),
-                        any(), any())).thenReturn(false);
+                when(mMockNetworkInterface.configureAgentProperties(any(), any(), any()))
+                        .thenReturn(false);
                 // First retry will be ConfigureAgentProperties failure.
                 numConfigureAgentPropertiesFail = 1;
             }
@@ -1610,15 +1609,14 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             mMockLooper.dispatchAll();
             inOrder.verify(mMockNetdWrapper).setInterfaceUp(anyString());
             inOrder.verify(mMockNetdWrapper).enableIpv6(anyString());
-            inOrder.verify(mMockNetworkInterface).configureAgentProperties(any(), any(), anyInt(),
-                    any(), any());
+            inOrder.verify(mMockNetworkInterface).configureAgentProperties(any(), any(), any());
             if (numAddrValidationRetries <= 0) {
                 inOrder.verify(mMockNetworkInterface).isAddressUsable(any());
             }
             for (int i = 0; i < numAddrValidationRetries; ++i) {
                 if (i == numConfigureAgentPropertiesFail) {
-                    when(mMockNetworkInterface.configureAgentProperties(any(), any(), anyInt(),
-                            any(), any())).thenReturn(true);
+                    when(mMockNetworkInterface.configureAgentProperties(any(), any(), any()))
+                            .thenReturn(true);
                 }
                 if (i == numAddrValidationRetries - 1) {
                     when(mMockNetworkInterface.isAddressUsable(any())).thenReturn(true);
@@ -1629,8 +1627,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 mMockLooper.moveTimeForward(
                         WifiAwareDataPathStateManager.ADDRESS_VALIDATION_RETRY_INTERVAL_MS + 1);
                 mMockLooper.dispatchAll();
-                inOrder.verify(mMockNetworkInterface).configureAgentProperties(any(), any(),
-                        anyInt(), any(), any());
+                inOrder.verify(mMockNetworkInterface).configureAgentProperties(any(), any(), any());
                 if (i < numConfigureAgentPropertiesFail) {
                     continue;
                 }

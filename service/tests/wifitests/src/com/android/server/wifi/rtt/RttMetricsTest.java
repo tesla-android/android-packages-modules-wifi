@@ -610,7 +610,7 @@ public class RttMetricsTest extends WifiBaseTest {
         for (ResponderConfig peer : request.mRttPeers) {
 
             RangingResult rttResult = new RangingResult(status, peer.macAddress,
-                    (int) (distance * 1000), 0, 0, 8, 8, null, null, null, 0);
+                    (int) (distance * 1000), 0, 0, 8, 8, null, null, null, 0, true);
             distance += incrDistanceM;
             rangingResults.add(rttResult);
         }

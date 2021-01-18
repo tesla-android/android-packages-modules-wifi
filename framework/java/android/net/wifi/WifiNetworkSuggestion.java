@@ -319,14 +319,16 @@ public final class WifiNetworkSuggestion implements Parcelable {
          *
          * @param enterpriseConfig Instance of {@link WifiEnterpriseConfig}.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
-         * @throws IllegalArgumentException if configuration CA certificate or
-         *                                  AltSubjectMatch/DomainSuffixMatch is not set.
+         * @throws IllegalArgumentException If configuration uses server certificate but validation
+         *                                  is not enabled. See {@link WifiEnterpriseConfig#isServerCertValidationEnabled()}
          */
         public @NonNull Builder setWpa2EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isInsecure()) {
-                throw new IllegalArgumentException("Enterprise configuration is insecure");
+            if (enterpriseConfig.isTlsBasedEapMethod()
+                    && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
+                throw new IllegalArgumentException("Enterprise configuration mandates server "
+                        + "certificate but validation is not enabled.");
             }
             mWpa2EnterpriseConfig = new WifiEnterpriseConfig(enterpriseConfig);
             return this;
@@ -346,15 +348,17 @@ public final class WifiNetworkSuggestion implements Parcelable {
          *
          * @param enterpriseConfig Instance of {@link WifiEnterpriseConfig}.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
-         * @throws IllegalArgumentException if configuration CA certificate or
-         *                                  AltSubjectMatch/DomainSuffixMatch is not set.
+         * @throws IllegalArgumentException If configuration uses server certificate but validation
+         *                                  is not enabled. See {@link WifiEnterpriseConfig#isServerCertValidationEnabled()}
          */
         @Deprecated
         public @NonNull Builder setWpa3EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isInsecure()) {
-                throw new IllegalArgumentException("Enterprise configuration is insecure");
+            if (enterpriseConfig.isTlsBasedEapMethod()
+                    && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
+                throw new IllegalArgumentException("Enterprise configuration mandates server "
+                        + "certificate but validation is not enabled.");
             }
             mWpa3EnterpriseConfig = new WifiEnterpriseConfig(enterpriseConfig);
             return this;
@@ -368,14 +372,16 @@ public final class WifiNetworkSuggestion implements Parcelable {
          *
          * @param enterpriseConfig Instance of {@link WifiEnterpriseConfig}.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
-         * @throws IllegalArgumentException if configuration CA certificate or
-         *                                  AltSubjectMatch/DomainSuffixMatch is not set.
+         * @throws IllegalArgumentException If configuration uses server certificate but validation
+         *                                  is not enabled. See {@link WifiEnterpriseConfig#isServerCertValidationEnabled()}
          */
         public @NonNull Builder setWpa3EnterpriseStandardModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isInsecure()) {
-                throw new IllegalArgumentException("Enterprise configuration is insecure");
+            if (enterpriseConfig.isTlsBasedEapMethod()
+                    && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
+                throw new IllegalArgumentException("Enterprise configuration mandates server "
+                        + "certificate but validation is not enabled.");
             }
             mWpa3EnterpriseConfig = new WifiEnterpriseConfig(enterpriseConfig);
             mWpa3EnterpriseType = WPA3_ENTERPRISE_STANDARD;

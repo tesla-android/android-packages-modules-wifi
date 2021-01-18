@@ -1743,13 +1743,42 @@ public class WifiVendorHal {
     }
 
     /**
+     * Set country code for this Wifi chip
+     *
+     * @param countryCode - two-letter country code (as ISO 3166)
+     * @return true for success
+     */
+    public boolean setChipCountryCode(String countryCode) {
+        if (countryCode == null) return boolResult(false);
+        if (countryCode.length() != 2) return boolResult(false);
+        byte[] code;
+        try {
+            code = NativeUtil.stringToByteArray(countryCode);
+        } catch (IllegalArgumentException e) {
+            return boolResult(false);
+        }
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) return boolResult(false);
+                WifiStatus status = iWifiChipV15.setCountryCode(code);
+                if (!ok(status)) return false;
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
+    /**
      * Set country code for this AP iface.
      *
      * @param ifaceName Name of the interface.
      * @param countryCode - two-letter country code (as ISO 3166)
      * @return true for success
      */
-    public boolean setCountryCodeHal(@NonNull String ifaceName, String countryCode) {
+    public boolean setApCountryCode(@NonNull String ifaceName, String countryCode) {
         if (countryCode == null) return boolResult(false);
         if (countryCode.length() != 2) return boolResult(false);
         byte[] code;

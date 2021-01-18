@@ -130,6 +130,8 @@ public class WifiAwareSession implements AutoCloseable {
      * Other results of the publish session operations will also be routed to callbacks
      * on the {@code callback} object. The resulting publish session can be modified using
      * {@link PublishDiscoverySession#updatePublish(PublishConfig)}.
+     * <p> The total count of currently available Wi-Fi Aware publish sessions is limited and is
+     * available via the {@link AwareResources#getAvailablePublishSessionsCount()} method.
      * <p>
      *      An application must use the {@link DiscoverySession#close()} to
      *      terminate the publish discovery session once it isn't needed. This will free
@@ -176,6 +178,8 @@ public class WifiAwareSession implements AutoCloseable {
      * Other results of the subscribe session operations will also be routed to callbacks
      * on the {@code callback} object. The resulting subscribe session can be modified using
      * {@link SubscribeDiscoverySession#updateSubscribe(SubscribeConfig)}.
+     * <p> The total count of currently available Wi-Fi Aware subscribe sessions is limited and is
+     * available via the {@link AwareResources#getAvailableSubscribeSessionsCount()} method.
      * <p>
      *      An application must use the {@link DiscoverySession#close()} to
      *      terminate the subscribe discovery session once it isn't needed. This will free

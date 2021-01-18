@@ -1045,12 +1045,14 @@ public class WifiNetworkSuggestionsManager {
                 return false;
             }
             if (wns.passpointConfiguration == null) {
-                if (!WifiConfigurationUtil.validate(wns.wifiConfiguration,
+                WifiConfiguration config = wns.wifiConfiguration;
+                if (!WifiConfigurationUtil.validate(config,
                         WifiConfigurationUtil.VALIDATE_FOR_ADD)) {
                     return false;
                 }
-                if (wns.wifiConfiguration.isEnterprise()
-                        && wns.wifiConfiguration.enterpriseConfig.isInsecure()) {
+                if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
+                        && !config.enterpriseConfig
+                        .isMandatoryParameterSetForServerCertValidation()) {
                     Log.e(TAG, "Insecure enterprise suggestion is invalid.");
                     return false;
                 }

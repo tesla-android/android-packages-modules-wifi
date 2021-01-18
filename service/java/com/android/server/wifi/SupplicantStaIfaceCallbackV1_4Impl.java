@@ -17,6 +17,7 @@ package com.android.server.wifi;
 
 
 import android.annotation.NonNull;
+import android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.AssociationRejectionData;
 import android.net.wifi.WifiManager;
 
 import com.android.server.wifi.hotspot2.WnmData;
@@ -103,6 +104,14 @@ abstract class SupplicantStaIfaceCallbackV1_4Impl extends
     public void onDisconnected(byte[/* 6 */] bssid, boolean locallyGenerated,
             int reasonCode) {
         mCallbackV13.onDisconnected(bssid, locallyGenerated, reasonCode);
+    }
+
+    @Override
+    public void onAssociationRejected_1_4(AssociationRejectionData assocRejectData) {
+        synchronized (mLock) {
+            mStaIfaceHal.logCallback("onAssociationRejected_1_4");
+            mCallbackV10.onAssociationRejected(assocRejectData);
+        }
     }
 
     @Override

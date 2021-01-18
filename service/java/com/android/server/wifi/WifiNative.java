@@ -2131,13 +2131,13 @@ public class WifiNative {
     }
 
     /**
-     * Set country code.
+     * Set country code for STA interface
      *
-     * @param ifaceName Name of the interface.
+     * @param ifaceName Name of the STA interface.
      * @param countryCode 2 byte ASCII string. For ex: US, CA.
      * @return true if request is sent successfully, false otherwise.
      */
-    public boolean setCountryCode(@NonNull String ifaceName, String countryCode) {
+    public boolean setStaCountryCode(@NonNull String ifaceName, String countryCode) {
         return mSupplicantStaIfaceHal.setCountryCode(ifaceName, countryCode);
     }
 
@@ -3236,12 +3236,21 @@ public class WifiNative {
 
     /**
      * Set country code for this AP iface.
-     * @param ifaceName Name of the interface.
+     * @param ifaceName Name of the AP interface.
      * @param countryCode - two-letter country code (as ISO 3166)
      * @return true for success
      */
-    public boolean setCountryCodeHal(@NonNull String ifaceName, String countryCode) {
-        return mWifiVendorHal.setCountryCodeHal(ifaceName, countryCode);
+    public boolean setApCountryCode(@NonNull String ifaceName, String countryCode) {
+        return mWifiVendorHal.setApCountryCode(ifaceName, countryCode);
+    }
+
+    /**
+     * Set country code for this chip
+     * @param countryCode - two-letter country code (as ISO 3166)
+     * @return true for success
+     */
+    public boolean setChipCountryCode(String countryCode) {
+        return mWifiVendorHal.setChipCountryCode(countryCode);
     }
 
     //---------------------------------------------------------------------------------

@@ -30,6 +30,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.database.ContentObserver;
 import android.net.TrafficStats;
 import android.net.Uri;
@@ -266,7 +267,10 @@ public class FrameworkFacade {
      * @return an instance of AlertDialog.Builder
      */
     public AlertDialog.Builder makeAlertDialogBuilder(Context context) {
-        return new AlertDialog.Builder(context);
+        boolean isDarkTheme = (context.getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        return new AlertDialog.Builder(context, isDarkTheme
+                ? android.R.style.Theme_DeviceDefault_Dialog_Alert : 0);
     }
 
     /**

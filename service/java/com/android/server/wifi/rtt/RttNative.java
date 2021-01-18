@@ -40,6 +40,7 @@ import android.os.Handler;
 import android.os.RemoteException;
 import android.util.Log;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager;
 import com.android.server.wifi.util.NativeUtil;
 
@@ -388,13 +389,12 @@ public class RttNative {
         // Skipping any configurations which have an error (printing out a message).
         // The caller will only get results for valid configurations.
         for (ResponderConfig responder: request.mRttPeers) {
-            if (!isCalledFromPrivilegedContext) {
+            if (!SdkLevel.isAtLeastS() && !isCalledFromPrivilegedContext) {
                 if (!responder.supports80211mc) {
                     Log.e(TAG, "Invalid responder: does not support 802.11mc");
                     continue;
                 }
             }
-
             RttConfig config = new RttConfig();
 
             System.arraycopy(responder.macAddress.toByteArray(), 0, config.addr, 0,
@@ -477,7 +477,7 @@ public class RttNative {
         // Skipping any configurations which have an error (printing out a message).
         // The caller will only get results for valid configurations.
         for (ResponderConfig responder: request.mRttPeers) {
-            if (!isCalledFromPrivilegedContext) {
+            if (!SdkLevel.isAtLeastS() && !isCalledFromPrivilegedContext) {
                 if (!responder.supports80211mc) {
                     Log.e(TAG, "Invalid responder: does not support 802.11mc");
                     continue;
@@ -779,7 +779,8 @@ public class RttNative {
                     rttResult.distanceInMm, rttResult.distanceSdInMm,
                     rttResult.rssi / -2, rttResult.numberPerBurstPeer,
                     rttResult.successNumber, lci, lcr, responderLocation,
-                    rttResult.timeStampInUs / CONVERSION_US_TO_MS));
+                    rttResult.timeStampInUs / CONVERSION_US_TO_MS,
+                    rttResult.type == RttType.TWO_SIDED));
         }
         return rangingResults;
     }
@@ -815,7 +816,8 @@ public class RttNative {
                     rttResult.distanceInMm, rttResult.distanceSdInMm,
                     rttResult.rssi / -2, rttResult.numberPerBurstPeer,
                     rttResult.successNumber, lci, lcr, responderLocation,
-                    rttResult.timeStampInUs / CONVERSION_US_TO_MS));
+                    rttResult.timeStampInUs / CONVERSION_US_TO_MS,
+                    rttResult.type == RttType.TWO_SIDED));
         }
         return rangingResults;
     }

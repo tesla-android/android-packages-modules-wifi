@@ -1354,6 +1354,7 @@ public class PasspointManager {
     public void clearAnqpRequestsAndFlushCache() {
         mAnqpRequestManager.clear();
         mAnqpCache.flush();
+        mProviders.values().stream().forEach(p -> p.clearProviderBlock());
     }
 
     private PKIXParameters mInjectedPKIXParameters;

@@ -368,7 +368,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
     private final OemPaidWifiNetworkFactory mOemPaidWifiNetworkFactory;
     @Nullable private final OemPrivateWifiNetworkFactory mOemPrivateWifiNetworkFactory;
-    private WifiNetworkAgent mNetworkAgent;
+    @VisibleForTesting
+    WifiNetworkAgent mNetworkAgent;
 
     private byte[] mRssiRanges;
 
@@ -2267,6 +2268,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return ni;
     }
 
+    private List<ScanResult.InformationElement> findMatchingInfoElements(@Nullable String bssid) {
+        if (bssid == null) return null;
+        ScanResult matchingScanResult = mScanRequestProxy.getScanResult(bssid);
+        if (matchingScanResult == null || matchingScanResult.informationElements == null) {
+            return null;
+        }
+        return Arrays.asList(matchingScanResult.informationElements);
+    }
+
     private SupplicantState handleSupplicantStateChange(StateChangeResult stateChangeResult) {
         SupplicantState state = stateChangeResult.state;
         mWifiScoreCard.noteSupplicantStateChanging(mWifiInfo, state);
@@ -2283,12 +2293,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (state == SupplicantState.ASSOCIATED) {
                 updateWifiInfoAfterAssociation();
             }
+            mWifiInfo.setInformationElements(findMatchingInfoElements(stateChangeResult.bssid));
         } else {
             // Reset parameters according to WifiInfo.reset()
             mWifiInfo.setNetworkId(WifiConfiguration.INVALID_NETWORK_ID);
             mWifiInfo.setBSSID(null);
             mWifiInfo.setSSID(null);
             mWifiInfo.setWifiStandard(ScanResult.WIFI_STANDARD_UNKNOWN);
+            mWifiInfo.setInformationElements(null);
         }
         updateLayer2Information();
         // SSID might have been updated, so call updateCapabilities
@@ -4085,14 +4097,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             // The cached scan result of connected network would be null at the
                             // first connection, try to check full scan result list again to look up
                             // matched scan result associated to the current SSID and BSSID.
-                            List<ScanResult> scanResults = mScanRequestProxy.getScanResults();
-                            for (ScanResult result : scanResults) {
-                                if (result.SSID.equals(WifiInfo.removeDoubleQuotes(config.SSID))
-                                        && result.BSSID.equals(mLastBssid)) {
-                                    scanResult = result;
-                                    break;
-                                }
-                            }
+                            scanResult = mScanRequestProxy.getScanResult(mLastBssid);
                         }
                         if (scanResult != null) {
                             mPasspointManager.requestVenueUrlAnqpElement(scanResult);
@@ -5989,7 +5994,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     @Override
     public boolean setCountryCode(String countryCode) {
-        return mWifiNative.setCountryCode(mInterfaceName, countryCode);
+        return mWifiNative.setStaCountryCode(mInterfaceName, countryCode);
     }
 
     @Override
@@ -6020,9 +6025,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
 
         // Update the friendly name to populate the notification
-        CaptivePortalData.Builder captivePortalDataBuilder = new CaptivePortalData.Builder();
-        // TODO: Add when new API is available
-        //    .setVenueFriendlyName(currentNetwork.providerFriendlyName);
+        CaptivePortalData.Builder captivePortalDataBuilder = new CaptivePortalData.Builder()
+                .setVenueFriendlyName(currentNetwork.providerFriendlyName);
 
         // Update the Venue URL if available
         if (venueUrl != null) {

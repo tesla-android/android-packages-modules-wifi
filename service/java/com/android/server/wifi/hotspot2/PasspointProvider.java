@@ -1106,6 +1106,15 @@ public class PasspointProvider {
     }
 
     /**
+     * Clear a block from a Passpoint provider. Used when Wi-Fi state is cleared, for example,
+     * when turning Wi-Fi off.
+     */
+    public void clearProviderBlock() {
+        mReauthDelay = 0;
+        mBlockedBssids.clear();
+    }
+
+    /**
      * Checks if this provider is blocked or if there are any BSSes blocked
      *
      * @param scanResult Latest scan result

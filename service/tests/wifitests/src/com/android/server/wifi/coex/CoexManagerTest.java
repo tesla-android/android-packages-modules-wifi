@@ -104,7 +104,7 @@ public class CoexManagerTest extends WifiBaseTest {
         PhysicalChannelConfig config = Mockito.mock(PhysicalChannelConfig.class);
         when(config.getNetworkType()).thenReturn(rat);
         when(config.getChannelNumber()).thenReturn(arfcn);
-        when(config.getCellBandwidthDownlink()).thenReturn(dlBandwidthKhz);
+        when(config.getCellBandwidthDownlinkKhz()).thenReturn(dlBandwidthKhz);
         /* when(config.getCellBandwidthUplink()).thenReturn(ulBandwidthKhz); */
         return config;
     }

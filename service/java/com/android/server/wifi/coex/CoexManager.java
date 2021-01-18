@@ -299,7 +299,7 @@ public class CoexManager {
                 if (params != null) {
                     // Add all of the CoexUnsafeChannels calculated with the given parameters.
                     final int centerFreqKhz = getCarrierFreqKhzForPhysicalChannelConfig(config);
-                    final int cellBandwidthDownlinkKhz = config.getCellBandwidthDownlink();
+                    final int cellBandwidthDownlinkKhz = config.getCellBandwidthDownlinkKhz();
                     /*
                     TODO(b/153651001): Uncomment this once cell uplink info is available in
                                        PhysicalChannelConfig.

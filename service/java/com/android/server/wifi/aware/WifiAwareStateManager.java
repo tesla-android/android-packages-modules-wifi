@@ -47,7 +47,6 @@ import android.os.SystemClock;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.text.TextUtils;
-import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -346,11 +345,11 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 AwareResources resources = getAvailableAwareResources();
                 if (resources != null) {
                     try {
-                        j.put("numOfAvailableNdps", resources.getNumOfAvailableDataPaths());
+                        j.put("numOfAvailableNdps", resources.getAvailableDataPathsCount());
                         j.put("numOfAvailablePublishSessions",
-                                resources.getNumOfAvailablePublishSessions());
+                                resources.getAvailablePublishSessionsCount());
                         j.put("numOfAvailableSubscribeSessions",
-                                resources.getNumOfAvailableSubscribeSessions());
+                                resources.getAvailableSubscribeSessionsCount());
                     } catch (JSONException e) {
                         Log.e(TAG, "onCommand: get_aware_resources e=" + e);
                     }
@@ -1131,7 +1130,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
     /**
      * Response from firmware to
-     * {@link #respondToDataPathRequest(boolean, int, String, byte[], String, boolean)}
+     * {@link #respondToDataPathRequest(boolean, int, String, byte[], String, byte[], boolean)}
      */
     public void onRespondToDataPathSetupRequestResponse(short transactionId, boolean success,
             int reasonOnFailure) {
@@ -1356,8 +1355,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 HAL_SEND_MESSAGE_TIMEOUT_TAG, MESSAGE_TYPE_SEND_MESSAGE_TIMEOUT);
 
         private static final long AWARE_WAIT_FOR_DP_CONFIRM_TIMEOUT = 20_000;
-        private final Map<WifiAwareNetworkSpecifier, WakeupMessage>
-                mDataPathConfirmTimeoutMessages = new ArrayMap<>();
+        private final SparseArray<WakeupMessage>
+                mDataPathConfirmTimeoutMessages = new SparseArray<>();
 
         WifiAwareStateMachine(String name, Looper looper) {
             super(name, looper);
@@ -1390,16 +1389,15 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                         processSendMessageTimeout();
                         return HANDLED;
                     case MESSAGE_TYPE_DATA_PATH_TIMEOUT: {
-                        WifiAwareNetworkSpecifier networkSpecifier =
-                                (WifiAwareNetworkSpecifier) msg.obj;
+                        int ndpId = msg.arg1;
 
                         if (mDbg) {
-                            Log.v(TAG, "MESSAGE_TYPE_DATA_PATH_TIMEOUT: networkSpecifier="
-                                    + networkSpecifier);
+                            Log.v(TAG, "MESSAGE_TYPE_DATA_PATH_TIMEOUT: ndpId="
+                                    + ndpId);
                         }
 
-                        mDataPathMgr.handleDataPathTimeout(networkSpecifier);
-                        mDataPathConfirmTimeoutMessages.remove(networkSpecifier);
+                        mDataPathMgr.handleDataPathTimeout(ndpId);
+                        mDataPathConfirmTimeoutMessages.remove(ndpId);
                         return HANDLED;
                     }
                     default:
@@ -1640,15 +1638,16 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     break;
                 }
                 case NOTIFICATION_TYPE_ON_DATA_PATH_REQUEST: {
-                    WifiAwareNetworkSpecifier networkSpecifier = mDataPathMgr.onDataPathRequest(
+                    int ndpId = (int) msg.obj;
+                    boolean success = mDataPathMgr.onDataPathRequest(
                             msg.arg2, msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MAC_ADDRESS),
-                            (int) msg.obj, msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE));
+                            ndpId, msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE));
 
-                    if (networkSpecifier != null) {
+                    if (success) {
                         WakeupMessage timeout = new WakeupMessage(mContext, getHandler(),
                                 HAL_DATA_PATH_CONFIRM_TIMEOUT_TAG, MESSAGE_TYPE_DATA_PATH_TIMEOUT,
-                                0, 0, networkSpecifier);
-                        mDataPathConfirmTimeoutMessages.put(networkSpecifier, timeout);
+                                ndpId);
+                        mDataPathConfirmTimeoutMessages.put(ndpId, timeout);
                         timeout.schedule(
                                 SystemClock.elapsedRealtime() + AWARE_WAIT_FOR_DP_CONFIRM_TIMEOUT);
                     }
@@ -1656,17 +1655,18 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     break;
                 }
                 case NOTIFICATION_TYPE_ON_DATA_PATH_CONFIRM: {
-                    WifiAwareNetworkSpecifier networkSpecifier = mDataPathMgr.onDataPathConfirm(
-                            msg.arg2, msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MAC_ADDRESS),
+                    int ndpId = msg.arg2;
+                    boolean success = mDataPathMgr.onDataPathConfirm(
+                            ndpId, msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MAC_ADDRESS),
                             msg.getData().getBoolean(MESSAGE_BUNDLE_KEY_SUCCESS_FLAG),
                             msg.getData().getInt(MESSAGE_BUNDLE_KEY_STATUS_CODE),
                             msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE_DATA),
                             (List<NanDataPathChannelInfo>) msg.obj);
 
-                    if (networkSpecifier != null) {
-                        WakeupMessage timeout = mDataPathConfirmTimeoutMessages.remove(
-                                networkSpecifier);
+                    if (success) {
+                        WakeupMessage timeout = mDataPathConfirmTimeoutMessages.get(ndpId);
                         if (timeout != null) {
+                            mDataPathConfirmTimeoutMessages.remove(ndpId);
                             timeout.cancel();
                         }
                     }
@@ -1905,15 +1905,6 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     waitForResponse = initiateDataPathSetupLocal(mCurrentTransactionId,
                             networkSpecifier, peerId, channelRequestType, channel, peer,
                             interfaceName, pmk, passphrase, isOutOfBand, appInfo);
-
-                    if (waitForResponse) {
-                        WakeupMessage timeout = new WakeupMessage(mContext, getHandler(),
-                                HAL_DATA_PATH_CONFIRM_TIMEOUT_TAG, MESSAGE_TYPE_DATA_PATH_TIMEOUT,
-                                0, 0, networkSpecifier);
-                        mDataPathConfirmTimeoutMessages.put(networkSpecifier, timeout);
-                        timeout.schedule(
-                                SystemClock.elapsedRealtime() + AWARE_WAIT_FOR_DP_CONFIRM_TIMEOUT);
-                    }
                     break;
                 }
                 case COMMAND_TYPE_RESPOND_TO_DATA_PATH_SETUP_REQUEST: {
@@ -2059,7 +2050,18 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                             msg.getData().getInt(MESSAGE_BUNDLE_KEY_STATUS_CODE));
                     break;
                 case RESPONSE_TYPE_ON_INITIATE_DATA_PATH_SUCCESS:
-                    onInitiateDataPathResponseSuccessLocal(mCurrentCommand, (int) msg.obj);
+                    int ndpId = (int) msg.obj;
+                    boolean success = onInitiateDataPathResponseSuccessLocal(mCurrentCommand,
+                            ndpId);
+                    if (success) {
+                        WakeupMessage timeout = new WakeupMessage(mContext, getHandler(),
+                                HAL_DATA_PATH_CONFIRM_TIMEOUT_TAG, MESSAGE_TYPE_DATA_PATH_TIMEOUT,
+                                ndpId);
+                        mDataPathConfirmTimeoutMessages.put(ndpId, timeout);
+                        timeout.schedule(
+                                SystemClock.elapsedRealtime() + AWARE_WAIT_FOR_DP_CONFIRM_TIMEOUT);
+                    }
+
                     break;
                 case RESPONSE_TYPE_ON_INITIATE_DATA_PATH_FAIL:
                     onInitiateDataPathResponseFailLocal(mCurrentCommand, (int) msg.obj);
@@ -3115,13 +3117,14 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
     }
 
-    private void onInitiateDataPathResponseSuccessLocal(Message command, int ndpId) {
+    private boolean onInitiateDataPathResponseSuccessLocal(Message command, int ndpId) {
         if (VDBG) {
             Log.v(TAG, "onInitiateDataPathResponseSuccessLocal: command=" + command + ", ndpId="
                     + ndpId);
         }
 
-        mDataPathMgr.onDataPathInitiateSuccess((WifiAwareNetworkSpecifier) command.obj, ndpId);
+        return mDataPathMgr
+                .onDataPathInitiateSuccess((WifiAwareNetworkSpecifier) command.obj, ndpId);
     }
 
     private void onInitiateDataPathResponseFailLocal(Message command, int reason) {

@@ -3004,5 +3004,21 @@ public class PasspointManagerTest extends WifiBaseTest {
         mManager.clearTermsAndConditionsUrl();
         assertTrue(mManager.getTermsAndConditionsUrl() == null);
     }
+
+    /**
+     * Verify that Passpoint manager clears states and flushes caches as expected.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testClearAnqpRequestsAndFlushCache() throws Exception {
+        PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
+                TEST_PACKAGE, false, TEST_REALM);
+
+        mManager.clearAnqpRequestsAndFlushCache();
+        verify(mAnqpRequestManager).clear();
+        verify(mAnqpCache).flush();
+        verify(provider).clearProviderBlock();
+    }
 }
 

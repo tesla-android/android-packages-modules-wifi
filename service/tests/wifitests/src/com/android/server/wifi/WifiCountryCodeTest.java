@@ -33,6 +33,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -51,6 +53,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ClientModeManager mClientModeManager;
     private WifiCountryCode mWifiCountryCode;
+    private List<ClientModeManager> mClientModeManagers;
 
     /**
      * Setup test.
@@ -59,7 +62,8 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
+        mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
 
         when(mClientModeManager.setCountryCode(anyString())).thenReturn(true);
         when(mContext.getSystemService(Context.TELEPHONY_SERVICE))

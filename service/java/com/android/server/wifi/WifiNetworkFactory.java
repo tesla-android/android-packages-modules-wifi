@@ -603,7 +603,7 @@ public class WifiNetworkFactory extends NetworkFactory {
      * All the validation of the incoming request is done in this method.
      */
     @Override
-    public boolean acceptRequest(NetworkRequest networkRequest, int score) {
+    public boolean acceptRequest(NetworkRequest networkRequest) {
         NetworkSpecifier ns = networkRequest.getNetworkSpecifier();
         if (ns == null) {
             // Generic wifi request. Always accept.
@@ -657,11 +657,11 @@ public class WifiNetworkFactory extends NetworkFactory {
     /**
      * Handle new network connection requests.
      *
-     * The assumption here is that {@link #acceptRequest(NetworkRequest, int)} has already sanitized
+     * The assumption here is that {@link #acceptRequest(NetworkRequest)} has already sanitized
      * the incoming request.
      */
     @Override
-    protected void needNetworkFor(NetworkRequest networkRequest, int score) {
+    protected void needNetworkFor(NetworkRequest networkRequest) {
         NetworkSpecifier ns = networkRequest.getNetworkSpecifier();
         if (ns == null) {
             // Generic wifi request. Turn on auto-join if necessary.

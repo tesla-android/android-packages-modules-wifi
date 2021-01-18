@@ -447,7 +447,7 @@ public class SoftApManager implements ActiveModeManager {
             return SUCCESS;
         }
 
-        if (!mWifiNative.setCountryCodeHal(
+        if (!mWifiNative.setApCountryCode(
                 mApInterfaceName, mCountryCode.toUpperCase(Locale.ROOT))) {
             if (band == SoftApConfiguration.BAND_5GHZ) {
                 // Return an error if failed to set country code when AP is configured for
@@ -698,6 +698,30 @@ public class SoftApManager implements ActiveModeManager {
                                     false, WifiManager.SAP_START_FAILURE_GENERAL);
                             mModeListener.onStartFailure(SoftApManager.this);
                             break;
+                        }
+                        if (isBridgedMode()) {
+                            boolean isFallbackToSingleAp = false;
+                            int newSingleApBand = SoftApConfiguration.BAND_2GHZ;
+                            for (int targetBand : config.getBands()) {
+                                int availableBand = ApConfigUtil.removeUnsupportedBands(
+                                        mCurrentSoftApCapability, targetBand);
+                                if (targetBand != availableBand) {
+                                    isFallbackToSingleAp = true;
+                                }
+                                if (availableBand != 0) {
+                                    newSingleApBand |= availableBand;
+                                }
+                            }
+                            if (isFallbackToSingleAp) {
+                                Log.i(getTag(), "Fallback to single AP mode with band "
+                                        + newSingleApBand);
+                                SoftApConfiguration singleBandConfig =
+                                        new SoftApConfiguration.Builder(config)
+                                        .setBand(newSingleApBand)
+                                        .build();
+                                mApConfig = new SoftApModeConfiguration(mApConfig.getTargetMode(),
+                                        singleBandConfig, mCurrentSoftApCapability);
+                            }
                         }
                         mApInterfaceName = mWifiNative.setupInterfaceForSoftApMode(
                                 mWifiNativeInterfaceCallback, mRequestorWs,

@@ -86,14 +86,14 @@ public class OemPaidWifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequest() {
         assertFalse(mOemPaidWifiNetworkFactory.hasConnectionRequests());
-        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // First network request should turn on auto-join.
         verify(mWifiConnectivityManager).setOemPaidConnectionAllowed(true, TEST_WORKSOURCE);
         assertTrue(mOemPaidWifiNetworkFactory.hasConnectionRequests());
 
         // Subsequent ones should do nothing.
-        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verifyNoMoreInteractions(mWifiConnectivityManager);
     }
 
@@ -107,7 +107,7 @@ public class OemPaidWifiNetworkFactoryTest extends WifiBaseTest {
         assertFalse(mOemPaidWifiNetworkFactory.hasConnectionRequests());
 
         // Now request & then release the network request
-        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mOemPaidWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         assertTrue(mOemPaidWifiNetworkFactory.hasConnectionRequests());
         verify(mWifiConnectivityManager).setOemPaidConnectionAllowed(true, TEST_WORKSOURCE);
 

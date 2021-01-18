@@ -260,6 +260,11 @@ public class WifiAwareManager {
     /**
      * Returns the characteristics of the Wi-Fi Aware interface: a set of parameters which specify
      * limitations on configurations, e.g. the maximum service name length.
+     * <p>
+     * May return {@code null} if the Wi-Fi Aware service is not initialized. Use
+     * {@link #attach(AttachCallback, Handler)} or
+     * {@link #attach(AttachCallback, IdentityChangedListener, Handler)} to initialize the Wi-Fi
+     * Aware service.
      *
      * @return An object specifying configuration limitations of Aware.
      */
@@ -273,7 +278,12 @@ public class WifiAwareManager {
 
     /**
      * Return the available resources of the Wi-Fi aware service: a set of parameters which specify
-     * limitations on service usage, e.g the number of data-paths which could be created..
+     * limitations on service usage, e.g the number of data-paths which could be created.
+     * <p>
+     * May return {@code null} if the Wi-Fi Aware service is not initialized. Use
+     * {@link #attach(AttachCallback, Handler)} or
+     * {@link #attach(AttachCallback, IdentityChangedListener, Handler)} to initialize the Wi-Fi
+     * Aware service.
      *
      * @return An object specifying the currently available resource of the Wi-Fi Aware service.
      */

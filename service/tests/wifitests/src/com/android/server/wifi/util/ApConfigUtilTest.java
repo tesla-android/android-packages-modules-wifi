@@ -598,4 +598,24 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 newConfig_nonRevalentChanged));
 
     }
+
+    @Test
+    public void testIsAvailableChannelsOnTargetBands() throws Exception {
+        SoftApCapability testSoftApCapability = new SoftApCapability(0);
+        testSoftApCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_2GHZ, new int[] {1, 2});
+        testSoftApCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_5GHZ, new int[] {36, 149});
+
+        int testBand_2_5 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ;
+        int testBand_2_6 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_6GHZ;
+        int testBand_2_60 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_60GHZ;
+
+        assertEquals(testBand_2_5, ApConfigUtil.removeUnsupportedBands(
+                testSoftApCapability, testBand_2_5));
+        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnsupportedBands(
+                testSoftApCapability, testBand_2_6));
+        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnsupportedBands(
+                testSoftApCapability, testBand_2_60));
+    }
 }

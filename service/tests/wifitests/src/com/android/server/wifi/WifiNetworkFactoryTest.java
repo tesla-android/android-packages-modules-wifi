@@ -267,14 +267,14 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequestWithNoSpecifier() {
         assertFalse(mWifiNetworkFactory.hasConnectionRequests());
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // First network request should turn on auto-join.
         verify(mWifiConnectivityManager).setTrustedConnectionAllowed(true);
         assertTrue(mWifiNetworkFactory.hasConnectionRequests());
 
         // Subsequent ones should do nothing.
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verifyNoMoreInteractions(mWifiConnectivityManager);
     }
 
@@ -287,7 +287,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         assertFalse(mWifiNetworkFactory.hasConnectionRequests());
 
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         assertTrue(mWifiNetworkFactory.hasConnectionRequests());
         verify(mWifiConnectivityManager).setTrustedConnectionAllowed(true);
 
@@ -301,7 +301,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
      */
     @Test
     public void testHandleAcceptNetworkRequestWithNoSpecifier() {
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -317,7 +317,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
 
-        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -334,7 +334,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.addCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -350,7 +350,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
 
-        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -366,7 +366,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
 
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -382,7 +382,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
 
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -398,12 +398,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Handle request 1.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Make request 2 which will be accepted because a fg app request can
         // override a fg service request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -419,12 +419,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Handle request 1.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Make request 2 which will be accepted because a fg service request can
         // override an existing fg service request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -440,12 +440,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Handle request 1.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Make request 2 which will be accepted because a fg app request can
         // override an existing fg app request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -462,12 +462,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Handle request 1.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Make request 2 which will be rejected because a fg service request cannot
         // override a fg app request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -495,7 +495,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Make request 2 which will be accepted because a fg app request can
         // override an existing fg app request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -521,7 +521,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Make request 2 which will be rejected because a fg service request cannot
         // override a fg app request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest, 0));
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -532,7 +532,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequestWithSpecifier() {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Verify UI start.
         validateUiStartParams(true);
@@ -554,7 +554,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.addCapability(
                 NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
     }
@@ -565,7 +565,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkRequestWithSpecifierForHiddenNetwork() {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, true);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Verify UI start.
         validateUiStartParams(true);
@@ -590,7 +590,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     public void testHandleNetworkRequestWithSpecifierAfterPreviousHiddenNetworkRequest() {
         // Hidden request 1.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, true);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         // Verify scan settings.
         verify(mWifiScanner, times(1)).startScan(mScanSettingsArgumentCaptor.capture(), any(),
                 any(), mWorkSourceArgumentCaptor.capture());
@@ -603,7 +603,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Regular request 2.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         // Verify scan settings.
         verify(mWifiScanner, times(2)).startScan(mScanSettingsArgumentCaptor.capture(), any(),
                 any(), mWorkSourceArgumentCaptor.capture());
@@ -618,12 +618,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNetworkReleaseWithSpecifier() {
         // Make a generic request first to ensure that we re-enable auto-join after release.
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
 
         // Make the network request with specifier.
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verify(mWifiScanner).startScan(any(), any(), any(), any());
 
         // Release the network request.
@@ -641,7 +641,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testPeriodicScanNetworkRequestWithSpecifier() {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         verifyPeriodicScans(0,
                 PERIODIC_SCAN_INTERVAL_MS,     // 10s
@@ -657,7 +657,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testPeriodicScanCancelOnReleaseNetworkRequestWithSpecifier() {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         verifyPeriodicScans(0,
                 PERIODIC_SCAN_INTERVAL_MS,     // 10s
@@ -675,7 +675,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testPeriodicScanCancelOnUserSelectNetwork() throws Exception {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
@@ -703,7 +703,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleCallbackRegistrationAndUnregistration() throws Exception {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
@@ -723,7 +723,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleCallbackRegistrationWithNoActiveRequest() throws Exception {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
@@ -758,7 +758,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -800,7 +800,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -842,7 +842,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(false);
 
@@ -885,7 +885,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -928,7 +928,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(false);
 
@@ -972,7 +972,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -1018,7 +1018,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -1057,7 +1057,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -1107,7 +1107,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         assertNotNull(networkRequestUserSelectionCallback);
 
         // Now send another network request.
-        mWifiNetworkFactory.needNetworkFor(new NetworkRequest(mNetworkRequest), 0);
+        mWifiNetworkFactory.needNetworkFor(new NetworkRequest(mNetworkRequest));
 
         // Now trigger user selection to some network.
         WifiConfiguration selectedNetwork = WifiConfigurationTestUtil.createOpenNetwork();
@@ -1176,7 +1176,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
         // request network, trigger scan and get matched set.
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
@@ -1280,7 +1280,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verify(mNetworkRequestMatchCallback).onUserSelectionCallbackRegistration(
@@ -1329,7 +1329,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verify(mNetworkRequestMatchCallback).onUserSelectionCallbackRegistration(
@@ -1391,7 +1391,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verify(mNetworkRequestMatchCallback).onUserSelectionCallbackRegistration(
@@ -1453,7 +1453,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verify(mNetworkRequestMatchCallback).onUserSelectionCallbackRegistration(
@@ -1935,7 +1935,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mLooper.dispatchAll();
 
         // Verify that we aborted the old request.
@@ -1974,7 +1974,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Test
     public void testHandleNewNetworkRequestWithSpecifierWhenScanning() throws Exception {
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Register callback.
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
@@ -1984,7 +1984,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mLooper.dispatchAll();
 
         verify(mNetworkRequestMatchCallback).onAbort();
@@ -2018,7 +2018,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Ensure we don't request a new ClientModeManager.
         verify(mActiveModeWarden, never()).requestLocalOnlyClientModeManager(
@@ -2057,7 +2057,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Ensure we don't request a new ClientModeManager.
         verify(mActiveModeWarden, times(1)).requestLocalOnlyClientModeManager(
@@ -2102,7 +2102,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
         attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Ensure we don't request a new ClientModeManager.
         verify(mActiveModeWarden, times(1)).requestLocalOnlyClientModeManager(
@@ -2313,12 +2313,12 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // wifi off
         when(mActiveModeWarden.hasPrimaryClientModeManager()).thenReturn(false);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verify(mWifiScanner, never()).startScan(any(), any(), any(), any());
 
         // wifi on
         when(mActiveModeWarden.hasPrimaryClientModeManager()).thenReturn(true);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         verify(mWifiScanner).startScan(any(), any(), any(), any());
     }
 
@@ -2367,7 +2367,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // wifi off
         when(mActiveModeWarden.hasPrimaryClientModeManager()).thenReturn(false);
         // Add the request, should do nothing.
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mLooper.dispatchAll();
         verify(mWifiScanner, never()).startScan(any(), any(), any(), any());
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
@@ -2402,7 +2402,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch,
                 WifiConfigurationTestUtil.createPskNetwork(), TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verifyPeriodicScans(0, PERIODIC_SCAN_INTERVAL_MS);
@@ -2443,7 +2443,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, WifiConfigurationTestUtil.createPskNetwork(),
                 TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verifyPeriodicScans(0, PERIODIC_SCAN_INTERVAL_MS);
@@ -2483,7 +2483,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, WifiConfigurationTestUtil.createPskNetwork(),
                 TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verifyPeriodicScans(0, PERIODIC_SCAN_INTERVAL_MS);
@@ -2527,7 +2527,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, WifiConfigurationTestUtil.createPskNetwork(),
                 TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verifyPeriodicScans(0, PERIODIC_SCAN_INTERVAL_MS);
@@ -2570,7 +2570,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, WifiConfigurationTestUtil.createPskNetwork(),
                 TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         verifyPeriodicScans(0, PERIODIC_SCAN_INTERVAL_MS);
@@ -2637,7 +2637,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, WifiConfigurationTestUtil.createPskNetwork(),
                 TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
         mWifiNetworkFactory.addCallback(mAppBinder, mNetworkRequestMatchCallback,
                 TEST_CALLBACK_IDENTIFIER);
         // Ensure we triggered a connect without issuing any scans.
@@ -2704,7 +2704,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch,
                 WifiConfigurationTestUtil.createPskNetwork(), TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Verify we did not trigger the UI for the second request.
         verify(mContext, times(1)).startActivityAsUser(any(), any());
@@ -2748,7 +2748,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch,
                 WifiConfigurationTestUtil.createPskNetwork(), TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Verify we did not trigger the UI for the second request.
         verify(mContext, never()).startActivityAsUser(any(), any());
@@ -2790,7 +2790,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch,
                 WifiConfigurationTestUtil.createPskNetwork(), TEST_UID_1, TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Verify we did not trigger the UI for the second request.
         verify(mContext, never()).startActivityAsUser(any(), any());
@@ -2827,7 +2827,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(mNetworkRequest, 0);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         validateUiStartParams(true);
 
@@ -2919,7 +2919,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         attachWifiNetworkSpecifierAndAppInfo(
                 ssidPatternMatch, bssidPatternMatch, wifiConfiguration, TEST_UID_1,
                 TEST_PACKAGE_NAME_1);
-        mWifiNetworkFactory.needNetworkFor(new NetworkRequest(mNetworkRequest), 0);
+        mWifiNetworkFactory.needNetworkFor(new NetworkRequest(mNetworkRequest));
 
         validateUiStartParams(true);
 

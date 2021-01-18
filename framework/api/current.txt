@@ -51,11 +51,14 @@ package android.net.wifi {
     field @Deprecated public CharSequence venueName;
   }
 
-  public static class ScanResult.InformationElement {
+  public static class ScanResult.InformationElement implements android.os.Parcelable {
     ctor public ScanResult.InformationElement(@NonNull android.net.wifi.ScanResult.InformationElement);
+    method public int describeContents();
     method @NonNull public java.nio.ByteBuffer getBytes();
     method public int getId();
     method public int getIdExt();
+    method public void writeToParcel(android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.ScanResult.InformationElement> CREATOR;
   }
 
   public final class SoftApConfiguration implements android.os.Parcelable {
@@ -206,6 +209,7 @@ package android.net.wifi {
     ctor public WifiEnterpriseConfig();
     ctor public WifiEnterpriseConfig(android.net.wifi.WifiEnterpriseConfig);
     method public int describeContents();
+    method public boolean doesEapMethodUseServerCert();
     method public String getAltSubjectMatch();
     method public String getAnonymousIdentity();
     method @Nullable public java.security.cert.X509Certificate getCaCertificate();
@@ -222,6 +226,7 @@ package android.net.wifi {
     method public String getRealm();
     method @Deprecated public String getSubjectMatch();
     method public boolean isAuthenticationSimBased();
+    method public boolean isServerCertValidationEnabled();
     method public void setAltSubjectMatch(String);
     method public void setAnonymousIdentity(String);
     method public void setCaCertificate(@Nullable java.security.cert.X509Certificate);
@@ -276,6 +281,7 @@ package android.net.wifi {
     method public static android.net.NetworkInfo.DetailedState getDetailedStateOf(android.net.wifi.SupplicantState);
     method public int getFrequency();
     method public boolean getHiddenSSID();
+    method @Nullable public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @Deprecated public int getIpAddress();
     method public int getLinkSpeed();
     method public String getMacAddress();
@@ -287,9 +293,11 @@ package android.net.wifi {
     method public int getRssi();
     method @IntRange(from=0xffffffff) public int getRxLinkSpeedMbps();
     method public String getSSID();
+    method public int getSubscriptionId();
     method public android.net.wifi.SupplicantState getSupplicantState();
     method @IntRange(from=0xffffffff) public int getTxLinkSpeedMbps();
     method public int getWifiStandard();
+    method @NonNull public android.net.wifi.WifiInfo makeCopy(boolean);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final String FREQUENCY_UNITS = "MHz";
     field public static final String LINK_SPEED_UNITS = "Mbps";
@@ -592,9 +600,9 @@ package android.net.wifi.aware {
 
   public final class AwareResources implements android.os.Parcelable {
     method public int describeContents();
-    method public int getNumOfAvailableDataPaths();
-    method public int getNumOfAvailablePublishSessions();
-    method public int getNumOfAvailableSubscribeSessions();
+    method @IntRange(from=0) public int getAvailableDataPathsCount();
+    method @IntRange(from=0) public int getAvailablePublishSessionsCount();
+    method @IntRange(from=0) public int getAvailableSubscribeSessionsCount();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.AwareResources> CREATOR;
   }
@@ -718,6 +726,7 @@ package android.net.wifi.aware {
     method @Nullable public java.net.Inet6Address getPeerIpv6Addr();
     method public int getPort();
     method public int getTransportProtocol();
+    method @NonNull public android.net.wifi.aware.WifiAwareNetworkInfo makeCopy(boolean);
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareNetworkInfo> CREATOR;
   }
@@ -1184,6 +1193,8 @@ package android.net.wifi.rtt {
     ctor public RangingRequest.Builder();
     method public android.net.wifi.rtt.RangingRequest.Builder addAccessPoint(@NonNull android.net.wifi.ScanResult);
     method public android.net.wifi.rtt.RangingRequest.Builder addAccessPoints(@NonNull java.util.List<android.net.wifi.ScanResult>);
+    method @NonNull public android.net.wifi.rtt.RangingRequest.Builder addNon80211mcCapableAccessPoint(@NonNull android.net.wifi.ScanResult);
+    method @NonNull public android.net.wifi.rtt.RangingRequest.Builder addNon80211mcCapableAccessPoints(@NonNull java.util.List<android.net.wifi.ScanResult>);
     method public android.net.wifi.rtt.RangingRequest.Builder addWifiAwarePeer(@NonNull android.net.MacAddress);
     method public android.net.wifi.rtt.RangingRequest.Builder addWifiAwarePeer(@NonNull android.net.wifi.aware.PeerHandle);
     method public android.net.wifi.rtt.RangingRequest build();
@@ -1202,6 +1213,7 @@ package android.net.wifi.rtt {
     method public int getRssi();
     method public int getStatus();
     method @Nullable public android.net.wifi.rtt.ResponderLocation getUnverifiedResponderLocation();
+    method public boolean is80211mcMeasurement();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.rtt.RangingResult> CREATOR;
     field public static final int STATUS_FAIL = 1; // 0x1

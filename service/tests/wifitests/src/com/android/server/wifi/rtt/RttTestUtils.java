@@ -69,7 +69,7 @@ public class RttTestUtils {
         MacAddress mac1 = MacAddress.fromString("08:09:08:07:06:05");
 
         builder.addAccessPoint(scan1);
-        builder.addAccessPoint(scan2);
+        builder.addNon80211mcCapableAccessPoint(scan2);
         builder.addWifiAwarePeer(mac1);
         // Changing default RTT burst size to a valid, but maximum, value
         builder.setRttBurstSize(RangingRequest.getMaxRttBurstSize());
@@ -105,8 +105,8 @@ public class RttTestUtils {
         ScanResult scan2 = new ScanResult();
         scan2.BSSID = "0A:0B:0C:0D:0E:" + String.format("%02d", lastMacByte);
 
-        builder.addAccessPoint(scan1);
-        builder.addAccessPoint(scan2);
+        builder.addNon80211mcCapableAccessPoint(scan1);
+        builder.addNon80211mcCapableAccessPoint(scan2);
 
         return builder.build();
     }
@@ -127,15 +127,15 @@ public class RttTestUtils {
         List<RangingResult> results = new ArrayList<>();
 
         if (request != null) {
-            for (ResponderConfig peer: request.mRttPeers) {
+            for (ResponderConfig peer : request.mRttPeers) {
                 RangingResult rangingResult;
                 halResults.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                         peer.macAddress, rangeCmBase, rangeStdDevCmBase, rssiBase,
-                        8, 5, null, null, null, rangeTimestampBase));
+                        8, 5, null, null, null, rangeTimestampBase, true));
                 if (peer.peerHandle == null) {
                     rangingResult = new RangingResult(RangingResult.STATUS_SUCCESS,
                             peer.macAddress, rangeCmBase++, rangeStdDevCmBase++, rssiBase++,
-                            8, 5, null, null, null, rangeTimestampBase++);
+                            8, 5, null, null, null, rangeTimestampBase++, true);
                 } else {
                     rangingResult = new RangingResult(RangingResult.STATUS_SUCCESS,
                             peer.peerHandle, rangeCmBase++, rangeStdDevCmBase++, rssiBase++,
@@ -148,15 +148,15 @@ public class RttTestUtils {
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("10:01:02:03:04:05"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 8, 4, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("1A:0B:0C:0D:0E:0F"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 9, 3, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("08:09:08:07:06:05"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 10, 2, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             halResults.addAll(results);
         }
 

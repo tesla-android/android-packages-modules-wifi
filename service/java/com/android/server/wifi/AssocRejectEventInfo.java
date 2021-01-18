@@ -17,6 +17,9 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
+import android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.AssociationRejectionData;
+
+import com.android.server.wifi.util.NativeUtil;
 
 import java.util.Objects;
 
@@ -28,6 +31,8 @@ public class AssocRejectEventInfo {
     @NonNull public final String bssid;
     public final int statusCode;
     public final boolean timedOut;
+    public final MboOceController.OceRssiBasedAssocRejectAttr oceRssiBasedAssocRejectInfo;
+    public final MboOceController.MboAssocDisallowedAttr mboAssocDisallowedInfo;
 
     public AssocRejectEventInfo(@NonNull String ssid, @NonNull String bssid, int statusCode,
             boolean timedOut) {
@@ -35,6 +40,31 @@ public class AssocRejectEventInfo {
         this.bssid = Objects.requireNonNull(bssid);
         this.statusCode = statusCode;
         this.timedOut = timedOut;
+        this.oceRssiBasedAssocRejectInfo = null;
+        this.mboAssocDisallowedInfo = null;
+    }
+
+    public AssocRejectEventInfo(AssociationRejectionData assocRejectData) {
+        String ssid = NativeUtil.encodeSsid(assocRejectData.ssid);
+        String bssid = NativeUtil.macAddressFromByteArray(assocRejectData.bssid);
+        this.ssid = Objects.requireNonNull(ssid);
+        this.bssid = Objects.requireNonNull(bssid);
+        this.statusCode = assocRejectData.statusCode;
+        this.timedOut = assocRejectData.timedOut;
+        if (assocRejectData.isMboAssocDisallowedReasonCodePresent) {
+            this.mboAssocDisallowedInfo = new MboOceController.MboAssocDisallowedAttr(
+                    assocRejectData.mboAssocDisallowedReason);
+        } else {
+            this.mboAssocDisallowedInfo = null;
+        }
+        if (assocRejectData.isOceRssiBasedAssocRejectAttrPresent) {
+            this.oceRssiBasedAssocRejectInfo =
+                    new MboOceController.OceRssiBasedAssocRejectAttr(
+                            assocRejectData.oceRssiBasedAssocRejectData.deltaRssi,
+                            assocRejectData.oceRssiBasedAssocRejectData.retryDelayS);
+        } else {
+            this.oceRssiBasedAssocRejectInfo = null;
+        }
     }
 
     @Override
@@ -44,6 +74,9 @@ public class AssocRejectEventInfo {
         sb.append(" bssid: ").append(bssid);
         sb.append(" statusCode: ").append(statusCode);
         sb.append(" timedOut: ").append(timedOut);
+        sb.append(" oceRssiBasedAssocRejectInfo: ").append(oceRssiBasedAssocRejectInfo);
+        sb.append(" mboAssocDisallowedInfo: ").append(mboAssocDisallowedInfo);
+
         return sb.toString();
     }
 }

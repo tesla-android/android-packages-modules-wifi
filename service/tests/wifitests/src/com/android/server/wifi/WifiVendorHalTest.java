@@ -1565,7 +1565,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
      * Test that the country code is set in AP mode (when it should be).
      */
     @Test
-    public void testSetCountryCodeHal() throws Exception {
+    public void testSetApCountryCode() throws Exception {
         byte[] expected = new byte[]{(byte) 'C', (byte) 'A'};
 
         when(mIWifiApIface.setCountryCode(any()))
@@ -1573,12 +1573,12 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         assertTrue(mWifiVendorHal.startVendorHalAp());
 
-        assertFalse(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, null));
-        assertFalse(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, ""));
-        assertFalse(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, "A"));
+        assertFalse(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, null));
+        assertFalse(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, ""));
+        assertFalse(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, "A"));
         // Only one expected to succeed
-        assertTrue(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, "CA"));
-        assertFalse(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, "ZZZ"));
+        assertTrue(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, "CA"));
+        assertFalse(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, "ZZZ"));
 
         verify(mIWifiApIface).setCountryCode(eq(expected));
     }
@@ -1593,7 +1593,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         when(mIWifiApIface.setCountryCode(any()))
                 .thenThrow(new RemoteException("oops"));
         assertTrue(mWifiVendorHal.startVendorHalAp());
-        assertFalse(mWifiVendorHal.setCountryCodeHal(TEST_IFACE_NAME, "CA"));
+        assertFalse(mWifiVendorHal.setApCountryCode(TEST_IFACE_NAME, "CA"));
         assertTrue(mWifiVendorHal.isHalStarted());
         verify(mWifiLog).err("% RemoteException in HIDL call %");
     }
@@ -3274,4 +3274,25 @@ public class WifiVendorHalTest extends WifiBaseTest {
             assertScanDataEqual(expected.get(i), actual.get(i));
         }
     }
+
+    /**
+     * Test setCountryCode gets called when the hal version is V1_5.
+     */
+    @Test
+    public void testSetCountryCodeWithHalV1_5() throws Exception {
+        byte[] expected = new byte[]{(byte) 'U', (byte) 'S'};
+        mWifiVendorHal = new WifiVendorHalSpyV1_5(mContext, mHalDeviceManager, mHandler);
+        when(mIWifiChipV15.setCountryCode(any())).thenReturn(mWifiStatusSuccess);
+
+        // Invalid cases
+        assertFalse(mWifiVendorHal.setChipCountryCode(null));
+        assertFalse(mWifiVendorHal.setChipCountryCode(""));
+        assertFalse(mWifiVendorHal.setChipCountryCode("A"));
+        verify(mIWifiChipV15, never()).setCountryCode(any());
+
+        //valid country code
+        assertTrue(mWifiVendorHal.setChipCountryCode("US"));
+        verify(mIWifiChipV15).setCountryCode(eq(expected));
+    }
+
 }

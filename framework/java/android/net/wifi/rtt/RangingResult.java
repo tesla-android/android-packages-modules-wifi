@@ -25,6 +25,8 @@ import android.net.wifi.aware.PeerHandle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
@@ -72,24 +74,50 @@ public final class RangingResult implements Parcelable {
      */
     public static final int STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC = 2;
 
-    private final int mStatus;
-    private final MacAddress mMac;
-    private final PeerHandle mPeerHandle;
-    private final int mDistanceMm;
-    private final int mDistanceStdDevMm;
-    private final int mRssi;
-    private final int mNumAttemptedMeasurements;
-    private final int mNumSuccessfulMeasurements;
-    private final byte[] mLci;
-    private final byte[] mLcr;
-    private final ResponderLocation mResponderLocation;
-    private final long mTimestamp;
+    /** @hide */
+    public final int mStatus;
+
+    /** @hide */
+    public final MacAddress mMac;
+
+    /** @hide */
+    public final PeerHandle mPeerHandle;
+
+    /** @hide */
+    public final int mDistanceMm;
+
+    /** @hide */
+    public final int mDistanceStdDevMm;
+
+    /** @hide */
+    public final int mRssi;
+
+    /** @hide */
+    public final int mNumAttemptedMeasurements;
+
+    /** @hide */
+    public final int mNumSuccessfulMeasurements;
+
+    /** @hide */
+    public final byte[] mLci;
+
+    /** @hide */
+    public final byte[] mLcr;
+
+    /** @hide */
+    public final ResponderLocation mResponderLocation;
+
+    /** @hide */
+    public final long mTimestamp;
+
+    /** @hide */
+    public final boolean mIs80211mcMeasurement;
 
     /** @hide */
     public RangingResult(@RangeResultStatus int status, @NonNull MacAddress mac, int distanceMm,
             int distanceStdDevMm, int rssi, int numAttemptedMeasurements,
             int numSuccessfulMeasurements, byte[] lci, byte[] lcr,
-            ResponderLocation responderLocation, long timestamp) {
+            ResponderLocation responderLocation, long timestamp, boolean is80211McMeasurement) {
         mStatus = status;
         mMac = mac;
         mPeerHandle = null;
@@ -102,6 +130,7 @@ public final class RangingResult implements Parcelable {
         mLcr = lcr == null ? EMPTY_BYTE_ARRAY : lcr;
         mResponderLocation = responderLocation;
         mTimestamp = timestamp;
+        mIs80211mcMeasurement = is80211McMeasurement;
     }
 
     /** @hide */
@@ -121,6 +150,7 @@ public final class RangingResult implements Parcelable {
         mLcr = lcr == null ? EMPTY_BYTE_ARRAY : lcr;
         mResponderLocation = responderLocation;
         mTimestamp = timestamp;
+        mIs80211mcMeasurement = true;
     }
 
     /**
@@ -207,11 +237,13 @@ public final class RangingResult implements Parcelable {
     /**
      * @return The number of attempted measurements used in the RTT exchange resulting in this set
      * of results. The number of successful measurements is returned by
-     * {@link #getNumSuccessfulMeasurements()} which at most, if there are no errors, will be 1 less
-     * that the number of attempted measurements.
+     * {@link #getNumSuccessfulMeasurements()} which at most, if there are no errors, will be 1
+     * less than the number of attempted measurements.
      * <p>
      * Only valid if {@link #getStatus()} returns {@link #STATUS_SUCCESS}, otherwise will throw an
-     * exception.
+     * exception. If the value is 0, it should be interpreted as no information available, which may
+     * occur for one-sided RTT measurements. Instead {@link RangingRequest#getRttBurstSize()}
+     * should be used instead.
      */
     public int getNumAttemptedMeasurements() {
         if (mStatus != STATUS_SUCCESS) {
@@ -321,6 +353,26 @@ public final class RangingResult implements Parcelable {
         return mTimestamp;
     }
 
+    /**
+     * @return The result is true if the IEEE 802.11mc protocol was used (also known as
+     * two-sided RTT). If the result is false, a one-side RTT result is provided which does not
+     * subtract the turnaround time at the responder.
+     * <p>
+     * Only valid if {@link #getStatus()} returns {@link #STATUS_SUCCESS}, otherwise will throw an
+     * exception.
+     */
+    public boolean is80211mcMeasurement() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        if (mStatus != STATUS_SUCCESS) {
+            throw new IllegalStateException(
+                    "is80211mcMeasurementResult(): invoked on an invalid result: getStatus()="
+                            + mStatus);
+        }
+        return mIs80211mcMeasurement;
+    }
+
     @Override
     public int describeContents() {
         return 0;
@@ -350,6 +402,7 @@ public final class RangingResult implements Parcelable {
         dest.writeByteArray(mLcr);
         dest.writeParcelable(mResponderLocation, flags);
         dest.writeLong(mTimestamp);
+        dest.writeBoolean(mIs80211mcMeasurement);
     }
 
     public static final @android.annotation.NonNull Creator<RangingResult> CREATOR = new Creator<RangingResult>() {
@@ -381,6 +434,7 @@ public final class RangingResult implements Parcelable {
             ResponderLocation responderLocation =
                     in.readParcelable(this.getClass().getClassLoader());
             long timestamp = in.readLong();
+            boolean isllmcMeasurement = in.readBoolean();
             if (peerHandlePresent) {
                 return new RangingResult(status, peerHandle, distanceMm, distanceStdDevMm, rssi,
                         numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr,
@@ -388,7 +442,7 @@ public final class RangingResult implements Parcelable {
             } else {
                 return new RangingResult(status, mac, distanceMm, distanceStdDevMm, rssi,
                         numAttemptedMeasurements, numSuccessfulMeasurements, lci, lcr,
-                        responderLocation, timestamp);
+                        responderLocation, timestamp, isllmcMeasurement);
             }
         }
     };
@@ -404,7 +458,8 @@ public final class RangingResult implements Parcelable {
                 mNumAttemptedMeasurements).append(", numSuccessfulMeasurements=").append(
                 mNumSuccessfulMeasurements).append(", lci=").append(mLci).append(", lcr=").append(
                 mLcr).append(", responderLocation=").append(mResponderLocation)
-                .append(", timestamp=").append(mTimestamp).append("]").toString();
+                .append(", timestamp=").append(mTimestamp).append(", is80211mcMeasurement=")
+                .append(mIs80211mcMeasurement).append("]").toString();
     }
 
     @Override
@@ -426,6 +481,7 @@ public final class RangingResult implements Parcelable {
                 && mNumSuccessfulMeasurements == lhs.mNumSuccessfulMeasurements
                 && Arrays.equals(mLci, lhs.mLci) && Arrays.equals(mLcr, lhs.mLcr)
                 && mTimestamp == lhs.mTimestamp
+                && mIs80211mcMeasurement == lhs.mIs80211mcMeasurement
                 && Objects.equals(mResponderLocation, lhs.mResponderLocation);
     }
 
@@ -433,6 +489,6 @@ public final class RangingResult implements Parcelable {
     public int hashCode() {
         return Objects.hash(mStatus, mMac, mPeerHandle, mDistanceMm, mDistanceStdDevMm, mRssi,
                 mNumAttemptedMeasurements, mNumSuccessfulMeasurements, mLci, mLcr,
-                mResponderLocation, mTimestamp);
+                mResponderLocation, mTimestamp, mIs80211mcMeasurement);
     }
 }

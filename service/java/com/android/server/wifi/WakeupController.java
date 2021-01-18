@@ -337,10 +337,11 @@ public class WakeupController {
 
         Set<ScanResultMatchInfo> goodNetworks = new HashSet<>(savedNetworks.size());
         for (WifiConfiguration config : savedNetworks) {
-            if (isWideAreaNetwork(config)
-                    || config.hasNoInternetAccess()
+            if (config.hasNoInternetAccess()
                     || config.noInternetAccessExpected
-                    || !config.getNetworkSelectionStatus().hasEverConnected()) {
+                    || !config.getNetworkSelectionStatus().hasEverConnected()
+                    || !config.allowAutojoin
+                    || config.getNetworkSelectionStatus().isNetworkPermanentlyDisabled()) {
                 continue;
             }
             goodNetworks.add(ScanResultMatchInfo.fromWifiConfiguration(config));
@@ -354,11 +355,6 @@ public class WakeupController {
                     ScanResultMatchInfo.fromWifiConfiguration(suggestion.wifiConfiguration));
         }
         return goodNetworks;
-    }
-
-    //TODO(b/69271702) implement WAN filtering
-    private static boolean isWideAreaNetwork(WifiConfiguration config) {
-        return false;
     }
 
     /**

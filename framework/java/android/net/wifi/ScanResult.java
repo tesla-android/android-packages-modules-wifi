@@ -26,6 +26,8 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -789,7 +791,7 @@ public final class ScanResult implements Parcelable {
     /**
      * information elements from beacon.
      */
-    public static class InformationElement {
+    public static class InformationElement implements Parcelable {
         /** @hide */
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public static final int EID_SSID = 0;
@@ -884,6 +886,57 @@ public final class ScanResult implements Parcelable {
         @NonNull
         public ByteBuffer getBytes() {
             return ByteBuffer.wrap(bytes).asReadOnlyBuffer();
+        }
+
+        /** Implement the Parcelable interface {@hide} */
+        public int describeContents() {
+            return 0;
+        }
+
+        /** Implement the Parcelable interface {@hide} */
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeInt(id);
+            dest.writeInt(idExt);
+            dest.writeByteArray(bytes);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @NonNull Creator<InformationElement> CREATOR =
+                new Creator<InformationElement>() {
+                    public InformationElement createFromParcel(Parcel in) {
+                        InformationElement informationElement = new InformationElement();
+                        informationElement.id = in.readInt();
+                        informationElement.idExt = in.readInt();
+                        informationElement.bytes = in.createByteArray();
+                        return informationElement;
+                    }
+
+                    public InformationElement[] newArray(int size) {
+                        return new InformationElement[size];
+                    }
+                };
+
+        @Override
+        public boolean equals(Object that) {
+            if (this == that) return true;
+
+            // Potential API behavior change, so don't change behavior on older devices.
+            if (!SdkLevel.isAtLeastS()) return false;
+
+            if (!(that instanceof InformationElement)) return false;
+
+            InformationElement thatIE = (InformationElement) that;
+            return id == thatIE.id
+                    && idExt == thatIE.idExt
+                    && Arrays.equals(bytes, thatIE.bytes);
+        }
+
+        @Override
+        public int hashCode() {
+            // Potential API behavior change, so don't change behavior on older devices.
+            if (!SdkLevel.isAtLeastS()) return System.identityHashCode(this);
+
+            return Objects.hash(id, idExt, Arrays.hashCode(bytes));
         }
     }
 
@@ -1094,18 +1147,7 @@ public final class ScanResult implements Parcelable {
         dest.writeString((venueName != null) ? venueName.toString() : "");
         dest.writeString((operatorFriendlyName != null) ? operatorFriendlyName.toString() : "");
         dest.writeLong(this.flags);
-
-        if (informationElements != null) {
-            dest.writeInt(informationElements.length);
-            for (int i = 0; i < informationElements.length; i++) {
-                dest.writeInt(informationElements[i].id);
-                dest.writeInt(informationElements[i].idExt);
-                dest.writeInt(informationElements[i].bytes.length);
-                dest.writeByteArray(informationElements[i].bytes);
-            }
-        } else {
-            dest.writeInt(0);
-        }
+        dest.writeTypedArray(informationElements, flags);
 
         if (anqpLines != null) {
             dest.writeInt(anqpLines.size());
@@ -1174,20 +1216,9 @@ public final class ScanResult implements Parcelable {
                 sr.venueName = in.readString();
                 sr.operatorFriendlyName = in.readString();
                 sr.flags = in.readLong();
-                int n = in.readInt();
-                if (n != 0) {
-                    sr.informationElements = new InformationElement[n];
-                    for (int i = 0; i < n; i++) {
-                        sr.informationElements[i] = new InformationElement();
-                        sr.informationElements[i].id = in.readInt();
-                        sr.informationElements[i].idExt = in.readInt();
-                        int len = in.readInt();
-                        sr.informationElements[i].bytes = new byte[len];
-                        in.readByteArray(sr.informationElements[i].bytes);
-                    }
-                }
+                sr.informationElements = in.createTypedArray(InformationElement.CREATOR);
 
-                n = in.readInt();
+                int n = in.readInt();
                 if (n != 0) {
                     sr.anqpLines = new ArrayList<String>();
                     for (int i = 0; i < n; i++) {

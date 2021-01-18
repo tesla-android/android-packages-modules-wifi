@@ -36,7 +36,7 @@
     <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Холбогдох"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Битгий холбогд"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Холболтыг баталгаажуулах уу?"</string>
-    <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Хэрэв та холбогдвол <xliff:g id="CARRIERNAME">%s</xliff:g>-н Wi‑Fi сүлжээ нь таны СИМ-тэй холбоотой цор ганц дугаарт хандаж эсвэл түүнийг хуваалцаж болзошгүй. Энэ нь таны төхөөрөмжийн байршлыг тандахыг зөвшөөрч болзошгүй."</string>
+    <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Хэрэв та холбогдвол <xliff:g id="CARRIERNAME">%s</xliff:g>-н Wi‑Fi сүлжээ нь таны SIM-тэй холбоотой цор ганц дугаарт хандаж эсвэл түүнийг хуваалцаж болзошгүй. Энэ нь таны төхөөрөмжийн байршлыг тандахыг зөвшөөрч болзошгүй."</string>
     <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_confirmation" msgid="2168947026413431603">"Холбогдох"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_confirmation" msgid="5156881939985876066">"Битгий холбогд"</string>
     <string name="wifi_wakeup_onboarding_title" msgid="3868826648004934540">"Wi‑Fi автоматаар асна"</string>
@@ -80,5 +80,5 @@
     <string name="wifi_softap_auto_shutdown_timeout_expired_title" msgid="4896534374569504484">"Сүлжээний цэгийг унтраасан"</string>
     <string name="wifi_softap_auto_shutdown_timeout_expired_summary" msgid="7975476698140267728">"Ямар ч төхөөрөмж холбогдоогүй байна. Өөрчлөхийн тулд товшино уу."</string>
     <string name="wifi_sim_required_title" msgid="2262227800991155459">"Wifi-г салгалаа"</string>
-    <string name="wifi_sim_required_message" msgid="284812212346125745">"<xliff:g id="SSID">%1$s</xliff:g>-д холбогдохын тулд <xliff:g id="CARRIER_NAME">%2$s</xliff:g> СИМ-г хийнэ үү"</string>
+    <string name="wifi_sim_required_message" msgid="284812212346125745">"<xliff:g id="SSID">%1$s</xliff:g>-д холбогдохын тулд <xliff:g id="CARRIER_NAME">%2$s</xliff:g> SIM-г хийнэ үү"</string>
 </resources>

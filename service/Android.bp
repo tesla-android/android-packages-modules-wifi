@@ -144,7 +144,8 @@ genrule {
     name: "statslog-wifi-java-gen",
     tools: ["stats-log-api-gen"],
     cmd: "$(location stats-log-api-gen) --java $(out) --module wifi " +
-         " --javaPackage com.android.server.wifi.proto --javaClass WifiStatsLog",
+         " --javaPackage com.android.server.wifi.proto --javaClass WifiStatsLog" +
+         " --minApiLevel 30",
     out: ["com/android/server/wifi/proto/WifiStatsLog.java"],
 }
 

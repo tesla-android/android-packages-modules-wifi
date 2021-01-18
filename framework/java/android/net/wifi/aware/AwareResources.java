@@ -16,6 +16,7 @@
 
 package android.net.wifi.aware;
 
+import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.os.Handler;
 import android.os.Parcel;
@@ -56,7 +57,8 @@ public final class AwareResources implements Parcelable {
      * </p>
      * @return A Non-negative integer, number of data-paths that could be created.
      */
-    public int getNumOfAvailableDataPaths() {
+    @IntRange(from = 0)
+    public int getAvailableDataPathsCount() {
         return mNumOfAvailableNdps;
     }
 
@@ -70,7 +72,8 @@ public final class AwareResources implements Parcelable {
      * </p>
      * @return A Non-negative integer, number of publish sessions that could be created.
      */
-    public int getNumOfAvailablePublishSessions() {
+    @IntRange(from = 0)
+    public int getAvailablePublishSessionsCount() {
         return mNumOfAvailablePublishSessions;
     }
 
@@ -84,7 +87,8 @@ public final class AwareResources implements Parcelable {
      * </p>
      * @return A Non-negative integer, number of subscribe sessions that could be created.
      */
-    public int getNumOfAvailableSubscribeSessions() {
+    @IntRange(from = 0)
+    public int getAvailableSubscribeSessionsCount() {
         return mNumOfAvailableSubscribeSessions;
     }
 

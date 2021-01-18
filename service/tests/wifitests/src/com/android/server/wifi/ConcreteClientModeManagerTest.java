@@ -113,6 +113,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock ScanOnlyModeImpl mScanOnlyModeImpl;
     @Mock DefaultClientModeManager mDefaultClientModeManager;
+    @Mock WifiCountryCode mWifiCountryCode;
+
     private RegistrationManager.RegistrationCallback mImsMmTelManagerRegistrationCallback = null;
     private @RegistrationManager.ImsRegistrationState int mCurrentImsRegistrationState =
             RegistrationManager.REGISTRATION_STATE_NOT_REGISTERED;
@@ -246,7 +248,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     private ConcreteClientModeManager createClientModeManager(ActiveModeManager.ClientRole role) {
         return new ConcreteClientModeManager(mContext, mLooper.getLooper(), mClock, mWifiNative,
                 mListener, mWifiMetrics, mWakeupController, mWifiInjector, mSelfRecovery,
-                mWifiGlobals, mDefaultClientModeManager, 0, TEST_WORKSOURCE, role, false);
+                mWifiGlobals, mDefaultClientModeManager, 0, TEST_WORKSOURCE, role, false,
+                mWifiCountryCode);
     }
 
     private void startClientInScanOnlyModeAndVerifyEnabled() throws Exception {

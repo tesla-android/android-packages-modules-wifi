@@ -851,9 +851,9 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrderM.verify(mAwareMetricsMock).recordDiscoverySession(eq(uid), any());
         inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, true);
-        assertEquals(1, mDut.getAvailableAwareResources().getNumOfAvailablePublishSessions());
-        assertEquals(2, mDut.getAvailableAwareResources().getNumOfAvailableSubscribeSessions());
-        assertEquals(0, mDut.getAvailableAwareResources().getNumOfAvailableDataPaths());
+        assertEquals(1, mDut.getAvailableAwareResources().getAvailablePublishSessionsCount());
+        assertEquals(2, mDut.getAvailableAwareResources().getAvailableSubscribeSessionsCount());
+        assertEquals(0, mDut.getAvailableAwareResources().getAvailableDataPathsCount());
 
         // (3) publish termination (from firmware - not app!)
         mDut.onSessionTerminatedNotification(publishId, reasonTerminate, true);
@@ -1204,9 +1204,9 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrderM.verify(mAwareMetricsMock).recordDiscoverySession(eq(uid), any());
         inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, false);
-        assertEquals(2, mDut.getAvailableAwareResources().getNumOfAvailablePublishSessions());
-        assertEquals(1, mDut.getAvailableAwareResources().getNumOfAvailableSubscribeSessions());
-        assertEquals(0, mDut.getAvailableAwareResources().getNumOfAvailableDataPaths());
+        assertEquals(2, mDut.getAvailableAwareResources().getAvailablePublishSessionsCount());
+        assertEquals(1, mDut.getAvailableAwareResources().getAvailableSubscribeSessionsCount());
+        assertEquals(0, mDut.getAvailableAwareResources().getAvailableDataPathsCount());
 
         // (3) subscribe termination (from firmware - not app!)
         mDut.onSessionTerminatedNotification(subscribeId, reasonTerminate, false);

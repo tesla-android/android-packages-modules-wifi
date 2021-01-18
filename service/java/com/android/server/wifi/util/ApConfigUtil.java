@@ -396,6 +396,49 @@ public class ApConfigUtil {
         return -1;
     }
 
+
+    /**
+     * Remove all unsupported bands from the input band and return the resulting
+     * (remaining) support bands. Unsupported bands are those which don't have channels available.
+     *
+     * @param capability SoftApCapability which inidcates supported channel list.
+     * @param band The target band which plan to enable
+     *
+     * @return the available band which removed the unsupported band.
+     *         0 when all of the band is not supported.
+     */
+    public static @BandType int removeUnsupportedBands(SoftApCapability capability,
+            @NonNull int band) {
+        int availableBand = band;
+        if (SdkLevel.isAtLeastS()) {
+            if ((band & SoftApConfiguration.BAND_2GHZ) != 0) {
+                if (capability.getSupportedChannelList(SoftApConfiguration.BAND_2GHZ).length
+                        == 0) {
+                    availableBand &= ~SoftApConfiguration.BAND_2GHZ;
+                }
+            }
+            if ((band & SoftApConfiguration.BAND_5GHZ) != 0) {
+                if (capability.getSupportedChannelList(SoftApConfiguration.BAND_5GHZ).length
+                        == 0) {
+                    availableBand &= ~SoftApConfiguration.BAND_5GHZ;
+                }
+            }
+            if ((band & SoftApConfiguration.BAND_6GHZ) != 0) {
+                if (capability.getSupportedChannelList(SoftApConfiguration.BAND_6GHZ).length
+                        == 0) {
+                    availableBand &= ~SoftApConfiguration.BAND_6GHZ;
+                }
+            }
+            if ((band & SoftApConfiguration.BAND_60GHZ) != 0) {
+                if (capability.getSupportedChannelList(SoftApConfiguration.BAND_60GHZ).length
+                         == 0) {
+                    availableBand &= ~SoftApConfiguration.BAND_60GHZ;
+                }
+            }
+        }
+        return availableBand;
+    }
+
     /**
      * Update AP band and channel based on the provided country code and band.
      * This will also set

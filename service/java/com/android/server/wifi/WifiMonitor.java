@@ -467,15 +467,12 @@ public class WifiMonitor {
      * Broadcast the association rejection event to all the handlers registered for this event.
      *
      * @param iface Name of iface on which this occurred.
-     * @param status Status code for association rejection.
-     * @param timedOut Indicates if the association timed out.
-     * @param ssid SSID of the access point.
-     * @param bssid BSSID of the access point from which we received the reject.
+     * @param assocRejectInfo Instance of AssocRejectEventInfo containing the association
+     *                        rejection info.
      */
-    public void broadcastAssociationRejectionEvent(String iface, int status, boolean timedOut,
-            String ssid, String bssid) {
-        sendMessage(iface, ASSOCIATION_REJECTION_EVENT,
-                new AssocRejectEventInfo(ssid, bssid, status, timedOut));
+    public void broadcastAssociationRejectionEvent(String iface,
+            AssocRejectEventInfo assocRejectInfo) {
+        sendMessage(iface, ASSOCIATION_REJECTION_EVENT, assocRejectInfo);
     }
 
     /**
