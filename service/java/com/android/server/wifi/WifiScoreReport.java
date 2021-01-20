@@ -109,6 +109,7 @@ public class WifiScoreReport {
                             + " score=" + score);
                     return;
                 }
+                // TODO: Check the Sdk level and score is used for metric collection only in S.
                 long millis = mClock.getWallClockMillis();
                 if (score < ConnectedScore.WIFI_TRANSITION_SCORE) {
                     if (mScore >= ConnectedScore.WIFI_TRANSITION_SCORE) {
@@ -185,6 +186,57 @@ public class WifiScoreReport {
 
                 // TODO(b/153075963): This should not be plumbed through WifiMetrics
                 mWifiMetrics.updateWifiUsabilityStatsEntries(mWifiInfo, stats);
+            });
+        }
+
+        @Override
+        public void notifyStatusUpdate(int sessionId, boolean isUsable) {
+            mWifiThreadRunner.post(() -> {
+                if (mWifiConnectedNetworkScorerHolder == null
+                        || sessionId == INVALID_SESSION_ID
+                        || sessionId != getCurrentSessionId()) {
+                    Log.w(TAG, "Ignoring stale/invalid external status"
+                            + " sessionId=" + sessionId
+                            + " currentSessionId=" + getCurrentSessionId()
+                            + " isUsable=" + isUsable);
+                    return;
+                }
+                // TODO's:  1) Tear down network switch operation based on score value in
+                //  notifyScoreUpdate; 2) Pass isUsable (after converting it to an integer) to
+                //  ConnectivityService for setting default network.
+            });
+        }
+
+        @Override
+        public void requestNudOperation(int sessionId, boolean nudTrigger) {
+            mWifiThreadRunner.post(() -> {
+                if (mWifiConnectedNetworkScorerHolder == null
+                        || sessionId == INVALID_SESSION_ID
+                        || sessionId != getCurrentSessionId()) {
+                    Log.w(TAG, "Ignoring stale/invalid external input for NUD triggering"
+                            + " sessionId=" + sessionId
+                            + " currentSessionId=" + getCurrentSessionId()
+                            + " nudTrigger=" + nudTrigger);
+                    return;
+                }
+                // TODO: 1) Tear down NUD triggering based on score value in
+                //  notifyScoreUpdate; 2) Recommend NUD to be triggered in
+                //  shouldCheckIpLayer().
+            });
+        }
+
+        @Override
+        public void blocklistCurrentBssid(int sessionId) {
+            mWifiThreadRunner.post(() -> {
+                if (mWifiConnectedNetworkScorerHolder == null
+                        || sessionId == INVALID_SESSION_ID
+                        || sessionId != getCurrentSessionId()) {
+                    Log.w(TAG, "Ignoring stale/invalid external input for blocklisting"
+                            + " sessionId=" + sessionId
+                            + " currentSessionId=" + getCurrentSessionId());
+                    return;
+                }
+                // TODO: Blocklist current BSSID.
             });
         }
     }
