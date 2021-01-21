@@ -262,7 +262,7 @@ public class ScanRequestProxy {
         }
         mWifiScanner.setScanningEnabled(enable);
         sendScanAvailableBroadcast(mContext, enable);
-        clearScanResults();
+        if (!enable) clearScanResults();
         Log.i(TAG, "Scanning is " + (enable ? "enabled" : "disabled"));
     }
 

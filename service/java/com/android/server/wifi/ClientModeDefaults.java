@@ -210,4 +210,7 @@ public interface ClientModeDefaults extends ClientMode {
     default boolean requestIcon(String bssid, String fileName) {
         return false;
     }
+
+    @Override
+    default void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) { }
 }

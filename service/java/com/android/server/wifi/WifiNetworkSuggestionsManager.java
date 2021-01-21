@@ -352,6 +352,14 @@ public class WifiNetworkSuggestionsManager {
             config.getNetworkSelectionStatus().setConnectChoiceRssi(connectChoiceRssi);
             if (carrierInfoManager != null) {
                 config.subscriptionId = carrierInfoManager.getBestMatchSubscriptionId(config);
+                // shouldDisableMacRandomization checks if the SSID matches with a SSID configured
+                // in CarrierConfigManger for the provided subscriptionId.
+                if (carrierInfoManager.shouldDisableMacRandomization(config.SSID,
+                        config.carrierId, config.subscriptionId)) {
+                    Log.i(TAG, "Disabling MAC randomization on " + config.SSID
+                            + " due to CarrierConfig override");
+                    config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
+                }
             }
             return config;
         }

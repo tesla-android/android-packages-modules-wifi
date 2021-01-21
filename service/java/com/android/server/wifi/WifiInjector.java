@@ -405,7 +405,7 @@ public class WifiInjector {
                 mClock, mConnectivityLocalLog, mWifiScoreCard, mWifiBlocklistMonitor,
                 mWifiChannelUtilizationScan, mPasspointManager, mDeviceConfigFacade,
                 mActiveModeWarden);
-        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden);
+        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
@@ -474,7 +474,7 @@ public class WifiInjector {
         mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade);
 
         mMakeBeforeBreakManager = new MakeBeforeBreakManager(mActiveModeWarden, mFrameworkFacade,
-                mContext, mCmiMonitor);
+                mContext, mCmiMonitor, mBroadcastQueue);
     }
 
     /**
@@ -523,6 +523,7 @@ public class WifiInjector {
         mWifiConnectivityManager.enableVerboseLogging(verboseBool);
         mWifiNetworkSelector.enableVerboseLogging(verboseBool);
         mMakeBeforeBreakManager.setVerboseLoggingEnabled(verboseBool);
+        mBroadcastQueue.setVerboseLoggingEnabled(verboseBool);
     }
 
     public UserManager getUserManager() {
@@ -691,7 +692,7 @@ public class WifiInjector {
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
                         ifaceName),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
-                mCmiMonitor, verboseLoggingEnabled);
+                mCmiMonitor, mBroadcastQueue, verboseLoggingEnabled);
     }
 
     /**
@@ -709,8 +710,8 @@ public class WifiInjector {
                 mContext, mWifiHandlerThread.getLooper(), mClock,
                 mWifiNative, listener, mWifiMetrics, mWakeupController,
                 this, mSelfRecovery, mWifiGlobals, mDefaultClientModeManager,
-                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled,
-                mCountryCode);
+                mClock.getElapsedSinceBootMillis(), requestorWs, role, mBroadcastQueue,
+                verboseLoggingEnabled, mCountryCode);
     }
 
     public ScanOnlyModeImpl makeScanOnlyModeImpl(@NonNull String ifaceName) {
@@ -949,7 +950,7 @@ public class WifiInjector {
     /**
      * Useful for mocking {@link WorkSourceHelper} instance in {@link HalDeviceManager} unit tests.
      */
-    public WorkSourceHelper makeWsHelper(WorkSource ws) {
+    public WorkSourceHelper makeWsHelper(@NonNull WorkSource ws) {
         return new WorkSourceHelper(ws, mWifiPermissionsUtil,
                 mContext.getSystemService(ActivityManager.class), mContext.getPackageManager());
     }

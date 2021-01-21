@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.AdditionalAnswers.answerVoid;
+import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
@@ -245,6 +246,26 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiScoreReport.calculateAndReportScore();
         verify(mNetworkAgent).sendNetworkScore(anyInt());
         verify(mWifiMetrics).incrementWifiScoreCount(eq(TEST_IFACE_NAME), anyInt());
+    }
+
+    @Test
+    public void calculateAndReportScoreWhileLingering_sendLingeringScore() throws Exception {
+        mWifiScoreReport.setShouldReduceNetworkScore(true);
+        // upon lingering, immediately send LINGERING_SCORE
+        verify(mNetworkAgent).sendNetworkScore(WifiScoreReport.LINGERING_SCORE);
+
+        mWifiInfo.setRssi(-77);
+        mWifiScoreReport.calculateAndReportScore();
+        // score not sent again while lingering
+        verify(mNetworkAgent).sendNetworkScore(anyInt());
+
+        // disable lingering
+        mWifiScoreReport.setShouldReduceNetworkScore(false);
+        // report score again
+        mWifiInfo.setRssi(-60);
+        mWifiScoreReport.calculateAndReportScore();
+        // Some non-lingering score is sent
+        verify(mNetworkAgent).sendNetworkScore(not(eq(WifiScoreReport.LINGERING_SCORE)));
     }
 
     /**

@@ -7127,4 +7127,25 @@ public class WifiServiceImplTest extends WifiBaseTest {
             fail();
         } catch (SecurityException e) { }
     }
+
+    @Test
+    public void testRemoveAppState() throws Exception {
+        mWifiServiceImpl.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+
+        verify(mScanRequestProxy).clearScanRequestTimestampsForApp(TEST_PACKAGE_NAME, TEST_UID);
+        verify(mWifiNetworkSuggestionsManager).removeApp(TEST_PACKAGE_NAME);
+        verify(mWifiNetworkFactory).removeUserApprovedAccessPointsForApp(TEST_PACKAGE_NAME);
+        verify(mPasspointManager).removePasspointProviderWithPackage(TEST_PACKAGE_NAME);
+    }
+
+    @Test
+    public void testRemoveAppStateWithoutPermissionThrowsException() throws Exception {
+        doThrow(new SecurityException()).when(mContext).enforceCallingOrSelfPermission(
+                eq(Manifest.permission.NETWORK_SETTINGS), any());
+        try {
+            mWifiServiceImpl.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
+            fail();
+        } catch (SecurityException e) { }
+    }
 }

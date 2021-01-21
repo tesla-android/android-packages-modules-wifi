@@ -50,6 +50,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
     @Mock private ConcreteClientModeManager mUnrelatedCmm;
     @Mock private WorkSource mSettingsWorkSource;
     @Mock private ClientModeImplMonitor mCmiMonitor;
+    @Mock private ClientModeManagerBroadcastQueue mBroadcastQueue;
     @Captor private ArgumentCaptor<ModeChangeCallback> mModeChangeCallbackCaptor;
     @Captor private ArgumentCaptor<ClientModeImplListener> mCmiListenerCaptor;
 
@@ -68,7 +69,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
                 .thenReturn(Arrays.asList(mNewPrimaryCmm));
 
         mMbbManager = new MakeBeforeBreakManager(mActiveModeWarden, mFrameworkFacade, mContext,
-                mCmiMonitor);
+                mCmiMonitor, mBroadcastQueue);
 
         verify(mActiveModeWarden).registerModeChangeCallback(mModeChangeCallbackCaptor.capture());
         verify(mCmiMonitor).registerListener(mCmiListenerCaptor.capture());
@@ -83,9 +84,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mNewPrimaryCmm);
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mNewPrimaryCmm);
 
-        verify(mActiveModeWarden, atLeastOnce()).isMakeBeforeBreakEnabled();
-
-        verifyNoMoreInteractions(mActiveModeWarden, mFrameworkFacade, mContext, mNewPrimaryCmm);
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test
@@ -93,10 +92,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         when(mNewPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_LONG_LIVED);
         mCmiListenerCaptor.getValue().onL3Validated(mNewPrimaryCmm);
 
-        verify(mActiveModeWarden).isMakeBeforeBreakEnabled();
-        verify(mNewPrimaryCmm).getRole();
-
-        verifyNoMoreInteractions(mActiveModeWarden, mNewPrimaryCmm);
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test
@@ -111,23 +107,25 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
     public void makeBeforeBreakSuccess() {
         mCmiListenerCaptor.getValue().onL3Validated(mNewPrimaryCmm);
 
-        verify(mNewPrimaryCmm).getRole();
         verify(mOldPrimaryCmm).setRole(ROLE_CLIENT_SECONDARY_TRANSIENT,
                 ActiveModeWarden.INTERNAL_REQUESTOR_WS);
+        verify(mBroadcastQueue).fakeDisconnectionBroadcasts();
 
         when(mOldPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
         when(mActiveModeWarden.getClientModeManagersInRoles(ROLE_CLIENT_SECONDARY_TRANSIENT))
                 .thenReturn(Arrays.asList(mNewPrimaryCmm, mOldPrimaryCmm));
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
-        verify(mOldPrimaryCmm, atLeastOnce()).getRole();
-        verify(mNewPrimaryCmm, atLeastOnce()).getRole();
         verify(mNewPrimaryCmm).setRole(ROLE_CLIENT_PRIMARY, mSettingsWorkSource);
+        verify(mOldPrimaryCmm).setShouldReduceNetworkScore(true);
     }
 
     @Test
     public void makeBeforeBreakEnded_mMakeBeforeBreakInfoCleared() {
         makeBeforeBreakSuccess();
+        // only called once
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm).setRole(any(), any());
 
         when(mActiveModeWarden.getPrimaryClientModeManagerNullable()).thenReturn(mNewPrimaryCmm);
         when(mNewPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
@@ -136,14 +134,15 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
                 .thenReturn(Arrays.asList(mOldPrimaryCmm));
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
-        verifyNoMoreInteractions(mOldPrimaryCmm, mNewPrimaryCmm);
+        // still only called once
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm).setRole(any(), any());
     }
 
     @Test
     public void modeChanged_anotherCmm_noOp() {
         mCmiListenerCaptor.getValue().onL3Validated(mNewPrimaryCmm);
 
-        verify(mNewPrimaryCmm).getRole();
         verify(mOldPrimaryCmm).setRole(ROLE_CLIENT_SECONDARY_TRANSIENT,
                 ActiveModeWarden.INTERNAL_REQUESTOR_WS);
 
@@ -152,7 +151,9 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
                 .thenReturn(Arrays.asList(mNewPrimaryCmm, mOldPrimaryCmm));
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mUnrelatedCmm);
 
-        verifyNoMoreInteractions(mUnrelatedCmm, mOldPrimaryCmm, mNewPrimaryCmm);
+        verify(mUnrelatedCmm, never()).setRole(any(), any());
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test
@@ -162,17 +163,14 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
                 .thenReturn(Arrays.asList(mNewPrimaryCmm, mOldPrimaryCmm));
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
-        verify(mActiveModeWarden).isMakeBeforeBreakEnabled();
-        verify(mActiveModeWarden).getPrimaryClientModeManagerNullable();
-
-        verifyNoMoreInteractions(mActiveModeWarden, mNewPrimaryCmm, mOldPrimaryCmm);
+        verify(mOldPrimaryCmm, never()).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test
     public void modeChanged_oldPrimaryDidntBecomeSecondaryTransient_abortMbb() {
         mCmiListenerCaptor.getValue().onL3Validated(mNewPrimaryCmm);
 
-        verify(mNewPrimaryCmm).getRole();
         verify(mOldPrimaryCmm).setRole(ROLE_CLIENT_SECONDARY_TRANSIENT,
                 ActiveModeWarden.INTERNAL_REQUESTOR_WS);
 
@@ -183,8 +181,8 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
         // no-op, abort MBB
-        verify(mOldPrimaryCmm).getRole();
-        verifyNoMoreInteractions(mOldPrimaryCmm, mNewPrimaryCmm);
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
 
         // became SECONDARY_TRANSIENT
         when(mOldPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
@@ -193,14 +191,14 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
         // but since aborted, still no-op
-        verifyNoMoreInteractions(mOldPrimaryCmm, mNewPrimaryCmm);
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test
     public void modeChanged_newPrimaryNoLongerSecondaryTransient_abortMbb() {
         mCmiListenerCaptor.getValue().onL3Validated(mNewPrimaryCmm);
 
-        verify(mNewPrimaryCmm).getRole();
         verify(mOldPrimaryCmm).setRole(ROLE_CLIENT_SECONDARY_TRANSIENT,
                 ActiveModeWarden.INTERNAL_REQUESTOR_WS);
 
@@ -212,9 +210,8 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
         // no-op, abort MBB
-        verify(mOldPrimaryCmm, atLeastOnce()).getRole();
-        verify(mNewPrimaryCmm, atLeastOnce()).getRole();
-        verifyNoMoreInteractions(mOldPrimaryCmm, mNewPrimaryCmm);
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
 
         // both became SECONDARY_TRANSIENT
         when(mOldPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
@@ -224,7 +221,8 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mOldPrimaryCmm);
 
         // but since aborted, still no-op
-        verifyNoMoreInteractions(mOldPrimaryCmm, mNewPrimaryCmm);
+        verify(mOldPrimaryCmm).setRole(any(), any());
+        verify(mNewPrimaryCmm, never()).setRole(any(), any());
     }
 
     @Test

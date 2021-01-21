@@ -63,6 +63,7 @@ import android.telephony.ims.RegistrationManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
+import com.android.server.wifi.ClientModeManagerBroadcastQueue.QueuedBroadcast;
 import com.android.wifi.resources.R;
 
 import org.junit.After;
@@ -114,6 +115,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     @Mock ScanOnlyModeImpl mScanOnlyModeImpl;
     @Mock DefaultClientModeManager mDefaultClientModeManager;
     @Mock WifiCountryCode mWifiCountryCode;
+    @Mock ClientModeManagerBroadcastQueue mBroadcastQueue;
 
     private RegistrationManager.RegistrationCallback mImsMmTelManagerRegistrationCallback = null;
     private @RegistrationManager.ImsRegistrationState int mCurrentImsRegistrationState =
@@ -236,6 +238,11 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         }).when(mClock).getElapsedSinceBootMillis();
         when(mWifiNative.replaceStaIfaceRequestorWs(TEST_INTERFACE_NAME, TEST_WORKSOURCE))
                 .thenReturn(true);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ClientModeManager manager, QueuedBroadcast broadcast) {
+                broadcast.send();
+            }
+        }).when(mBroadcastQueue).queueOrSendBroadcast(any(), any());
 
         mLooper = new TestLooper();
     }
@@ -248,8 +255,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     private ConcreteClientModeManager createClientModeManager(ActiveModeManager.ClientRole role) {
         return new ConcreteClientModeManager(mContext, mLooper.getLooper(), mClock, mWifiNative,
                 mListener, mWifiMetrics, mWakeupController, mWifiInjector, mSelfRecovery,
-                mWifiGlobals, mDefaultClientModeManager, 0, TEST_WORKSOURCE, role, false,
-                mWifiCountryCode);
+                mWifiGlobals, mDefaultClientModeManager, 0, TEST_WORKSOURCE, role,
+                mBroadcastQueue, false, mWifiCountryCode);
     }
 
     private void startClientInScanOnlyModeAndVerifyEnabled() throws Exception {
@@ -480,13 +487,16 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     @Test
     public void clientModeStopBeforeStartCleansUpState() throws Exception {
         mClientModeManager = createClientModeManager(ROLE_CLIENT_PRIMARY);
-        // Invoke stop before the inernal start is processed by the state machine.
+        // Invoke stop before the internal start is processed by the state machine.
         mClientModeManager.stop();
         mLooper.dispatchAll();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         // Don't initiate wifi native setup.
         verifyNoMoreInteractions(mListener, mWifiNative);
+        assertNull(mClientModeManager.getRole());
     }
 
     /**
@@ -499,7 +509,15 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         setUpSystemServiceForContext();
         mClientModeManager.stop();
         mLooper.dispatchAll();
+        // role has not been reset yet
+        assertNotNull(mClientModeManager.getRole());
+
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
+
+        // then role will be reset
+        assertNull(mClientModeManager.getRole());
 
         verify(mImsMmTelManager, never()).registerImsRegistrationCallback(any(), any());
         verify(mImsMmTelManager, never()).unregisterImsRegistrationCallback(any());
@@ -507,27 +525,6 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
 
         // on an explicit stop, we should not trigger the callback
-        verifyNoMoreInteractions(mListener);
-    }
-
-    /**
-     * Calling stop when ClientMode is not started should not send scan state updates
-     */
-    @Test
-    public void clientModeStopWhenNotStartedDoesNotUpdateScanStateUpdates() throws Exception {
-        startClientInConnectModeAndVerifyEnabled();
-        reset(mContext);
-        setUpSystemServiceForContext();
-        mClientModeManager.stop();
-        mLooper.dispatchAll();
-        verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
-
-        reset(mContext, mListener);
-        setUpSystemServiceForContext();
-        // now call stop again
-        mClientModeManager.stop();
-        mLooper.dispatchAll();
-        verify(mContext, never()).sendStickyBroadcastAsUser(any(), any());
         verifyNoMoreInteractions(mListener);
     }
 
@@ -544,6 +541,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mSelfRecovery).trigger(SelfRecovery.REASON_STA_IFACE_DOWN);
         verifyConnectModeNotificationsForFailure();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
     }
 
@@ -576,6 +575,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
         verify(mClientModeImpl).handleIfaceDestroyed();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
     }
 
@@ -594,6 +595,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         // now trigger interface destroyed and make sure callback doesn't get called
         mInterfaceCallbackCaptor.getValue().onDestroyed(TEST_INTERFACE_NAME);
         mLooper.dispatchAll();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         verifyNoMoreInteractions(mListener);
@@ -619,6 +622,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
 
         mClientModeManager.stop();
         mLooper.dispatchAll();
+
+        assertNull(mClientModeManager.getRole());
 
         InOrder inOrder = inOrder(mWakeupController, mWifiNative, mListener);
 
@@ -656,6 +661,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         setUpSystemServiceForContext();
         mClientModeManager.stop();
         mLooper.dispatchAll();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
@@ -682,6 +689,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         setUpSystemServiceForContext();
         mClientModeManager.stop();
         mLooper.dispatchAll();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         verify(mImsMmTelManager).registerImsRegistrationCallback(
@@ -732,6 +741,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any(RegistrationManager.RegistrationCallback.class));
         assertNull(mImsMmTelManagerRegistrationCallback);
         assertNull(mImsNetworkCallback);
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
         verify(mWifiMetrics).noteWifiOff(eq(true), eq(false), anyInt());
 
@@ -764,6 +775,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any(Executor.class),
                 any(RegistrationManager.RegistrationCallback.class));
         verify(mImsMmTelManager, never()).unregisterImsRegistrationCallback(any());
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener, never()).onStopped(any());
         verify(mWifiMetrics, never()).noteWifiOff(anyBoolean(), anyBoolean(), anyInt());
 
@@ -789,6 +802,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any(RegistrationManager.RegistrationCallback.class));
         assertNull(mImsMmTelManagerRegistrationCallback);
         assertNull(mImsNetworkCallback);
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
         verify(mWifiMetrics).noteWifiOff(eq(true), eq(false), anyInt());
 
@@ -820,6 +835,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any(Executor.class),
                 any(RegistrationManager.RegistrationCallback.class));
         verify(mImsMmTelManager, never()).unregisterImsRegistrationCallback(any());
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener, never()).onStopped(any());
         verify(mWifiMetrics, never()).noteWifiOff(anyBoolean(), anyBoolean(), anyInt());
 
@@ -832,6 +849,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verify(mImsMmTelManager).unregisterImsRegistrationCallback(
                 any(RegistrationManager.RegistrationCallback.class));
         assertNull(mImsMmTelManagerRegistrationCallback);
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
         verify(mWifiMetrics).noteWifiOff(eq(true), eq(false), anyInt());
 
@@ -861,6 +880,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any(Executor.class),
                 any(RegistrationManager.RegistrationCallback.class));
         verify(mImsMmTelManager, never()).unregisterImsRegistrationCallback(any());
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener, never()).onStopped(any());
 
         // 1/2 deferring time passed, should be still waiting for the callback.
@@ -876,6 +897,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verify(mImsMmTelManager).unregisterImsRegistrationCallback(
                 any(RegistrationManager.RegistrationCallback.class));
         assertNull(mImsMmTelManagerRegistrationCallback);
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
         verify(mWifiMetrics).noteWifiOff(eq(true), eq(true), anyInt());
 
@@ -923,6 +946,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verify(mImsMmTelManager).unregisterImsRegistrationCallback(
                 any(RegistrationManager.RegistrationCallback.class));
         assertNull(mImsMmTelManagerRegistrationCallback);
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
         verify(mWifiMetrics).noteWifiOff(eq(true), eq(true), anyInt());
 
@@ -1281,6 +1306,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         setUpSystemServiceForContext();
         mClientModeManager.stop();
         mLooper.dispatchAll();
+        when(mClientModeImpl.hasQuit()).thenReturn(true);
+        mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
@@ -1370,15 +1397,22 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     }
 
     @Test
-    public void propagateVerboseLoggingFlagToClientModeImpl() throws Exception {
+    public void propagateSettingsToClientModeImpl() throws Exception {
         startClientInConnectModeAndVerifyEnabled();
         verify(mWifiInjector).makeClientModeImpl(any(), any(), eq(false));
+        verify(mClientModeImpl).setShouldReduceNetworkScore(false);
 
         mClientModeManager.enableVerboseLogging(true);
         verify(mClientModeImpl).enableVerboseLogging(true);
 
         mClientModeManager.enableVerboseLogging(false);
         verify(mClientModeImpl).enableVerboseLogging(false);
+
+        mClientModeManager.setShouldReduceNetworkScore(true);
+        verify(mClientModeImpl).setShouldReduceNetworkScore(true);
+
+        mClientModeManager.setShouldReduceNetworkScore(false);
+        verify(mClientModeImpl, times(2)).setShouldReduceNetworkScore(false);
     }
 
     @Test
@@ -1411,5 +1445,31 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 any());
         // but wifi state was updated (should be updated no matter the role)
         assertEquals(WifiManager.WIFI_STATE_DISABLING, mClientModeManager.syncGetWifiState());
+    }
+
+    @Test
+    public void changeRoleResetsSettings() throws Exception {
+        startClientInConnectModeAndVerifyEnabled();
+
+        verify(mClientModeImpl).setShouldReduceNetworkScore(false);
+
+        mClientModeManager.setRole(ROLE_CLIENT_SECONDARY_TRANSIENT, TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+
+        // reset upon role change
+        verify(mClientModeImpl, times(2)).setShouldReduceNetworkScore(false);
+    }
+
+    @Test
+    public void sameRoleDoesntResetsSettings() throws Exception {
+        startClientInConnectModeAndVerifyEnabled();
+
+        verify(mClientModeImpl).setShouldReduceNetworkScore(false);
+
+        mClientModeManager.setRole(ROLE_CLIENT_PRIMARY, TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+
+        // no role change, no reset
+        verify(mClientModeImpl).setShouldReduceNetworkScore(false);
     }
 }

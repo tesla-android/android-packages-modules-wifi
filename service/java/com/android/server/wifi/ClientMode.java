@@ -269,4 +269,10 @@ public interface ClientMode {
      * @return true if request is sent successfully, false otherwise
      */
     boolean requestIcon(String  bssid, String fileName);
+
+    /**
+     * If set to true, the NetworkAgent score for connections established on this ClientModeManager
+     * will be artificially reduced so that ConnectivityService will prefer any other connection.
+     */
+    void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore);
 }

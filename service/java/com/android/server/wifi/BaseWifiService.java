@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import android.annotation.NonNull;
 import android.net.DhcpInfo;
 import android.net.Network;
 import android.net.wifi.CoexUnsafeChannel;
@@ -743,6 +744,11 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void setEmergencyScanRequestInProgress(boolean inProgress) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
         throw new UnsupportedOperationException();
     }
 }

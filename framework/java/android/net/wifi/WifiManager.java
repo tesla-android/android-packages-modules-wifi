@@ -1966,6 +1966,32 @@ public class WifiManager {
     }
 
     /**
+     * Privileged API to revoke all app state from wifi stack (equivalent to operations that the
+     * wifi stack performs to clear state for an app that was uninstalled.
+     * This removes:
+     * <li> All saved networks or passpoint profiles added by the app </li>
+     * <li> All previously approved peer to peer connection to access points initiated by the app
+     * using {@link WifiNetworkSpecifier}</li>
+     * <li> All network suggestions and approvals provided using {@link WifiNetworkSuggestion}</li>
+     * <p>
+     * @param targetAppUid UID of the app.
+     * @param targetAppPackageName Package name of the app.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            mService.removeAppState(targetAppUid, targetAppPackageName);
+        } catch (RemoteException e) {
+            throw e.rethrowAsRuntimeException();
+        }
+    }
+
+    /**
      * Provide a list of network suggestions to the device. See {@link WifiNetworkSuggestion}
      * for a detailed explanation of the parameters.
      * When the device decides to connect to one of the provided network suggestions, platform sends

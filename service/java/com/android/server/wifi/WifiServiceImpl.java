@@ -3460,6 +3460,23 @@ public class WifiServiceImpl extends BaseWifiService {
                 Binder.getCallingUid()));
     }
 
+    private void removeAppStateInternal(int uid, @NonNull String pkgName) {
+        ApplicationInfo ai = new ApplicationInfo();
+        ai.packageName = pkgName;
+        ai.uid = uid;
+        mWifiConfigManager.removeNetworksForApp(ai);
+        mScanRequestProxy.clearScanRequestTimestampsForApp(pkgName, uid);
+
+        // Remove all suggestions from the package.
+        mWifiNetworkSuggestionsManager.removeApp(pkgName);
+        mWifiInjector.getWifiNetworkFactory().removeUserApprovedAccessPointsForApp(
+                pkgName);
+
+        // Remove all Passpoint profiles from package.
+        mWifiInjector.getPasspointManager().removePasspointProviderWithPackage(
+                pkgName);
+    }
+
     private void registerForBroadcasts() {
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED);
@@ -3492,20 +3509,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 Log.d(TAG, "Remove settings for package:" + pkgName);
                 // Call the method in the main Wifi thread.
                 mWifiThreadRunner.post(() -> {
-                    ApplicationInfo ai = new ApplicationInfo();
-                    ai.packageName = pkgName;
-                    ai.uid = uid;
-                    mWifiConfigManager.removeNetworksForApp(ai);
-                    mScanRequestProxy.clearScanRequestTimestampsForApp(pkgName, uid);
-
-                    // Remove all suggestions from the package.
-                    mWifiNetworkSuggestionsManager.removeApp(pkgName);
-                    mWifiInjector.getWifiNetworkFactory().removeUserApprovedAccessPointsForApp(
-                            pkgName);
-
-                    // Remove all Passpoint profiles from package.
-                    mWifiInjector.getPasspointManager().removePasspointProviderWithPackage(
-                            pkgName);
+                    removeAppStateInternal(uid, pkgName);
                 });
             }
         }, intentFilter);
@@ -4905,5 +4909,18 @@ public class WifiServiceImpl extends BaseWifiService {
         int uid = Binder.getCallingUid();
         mLog.info("setEmergencyScanRequestInProgress uid=%").c(uid).flush();
         mActiveModeWarden.setEmergencyScanRequestInProgress(inProgress);
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#removeAppState(int, String)}.
+     */
+    @Override
+    public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
+        enforceNetworkSettingsPermission();
+        mLog.info("removeAppState uid=%").c(Binder.getCallingUid()).flush();
+
+        mWifiThreadRunner.post(() -> {
+            removeAppStateInternal(targetAppUid, targetAppPackageName);
+        });
     }
 }

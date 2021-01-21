@@ -93,7 +93,10 @@ public interface ActiveModeManager {
 
     /** Client roles that could initiate a wifi connection */
     interface ClientConnectivityRole extends ClientRole {}
-    /** ClientModeManager, secondary STA used for make before break, can switch to primary later. */
+    /**
+     * ClientModeManager, secondary STA used for make before break, can switch to primary later.
+     * Note: ClientModeManagers in this role will call {@link #stop()} upon disconnecting from Wifi.
+     */
     ClientConnectivityRole ROLE_CLIENT_SECONDARY_TRANSIENT = new ClientConnectivityRole() {
         @Override
         public String toString() {
@@ -127,6 +130,8 @@ public interface ActiveModeManager {
     /**
      * ClientModeManager, secondary STA used for duplication/bonding use cases, will not respond to
      * public WifiManager APIs.
+     *
+     * Note: ClientModeManagers in this role will call {@link #stop()} upon disconnecting from Wifi.
      */
     ClientInternetConnectivityRole ROLE_CLIENT_SECONDARY_LONG_LIVED =
             new ClientInternetConnectivityRole() {

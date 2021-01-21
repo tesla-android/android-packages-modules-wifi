@@ -21,6 +21,8 @@ import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TR
 
 import static org.mockito.Mockito.*;
 
+import android.content.Context;
+
 import androidx.test.filters.SmallTest;
 
 import com.android.server.wifi.ActiveModeWarden.ModeChangeCallback;
@@ -35,12 +37,15 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Arrays;
+
 /** Unit tests for {@link ClientModeManagerBroadcastQueue}. */
 @SmallTest
 public class ClientModeManagerBroadcastQueueTest extends WifiBaseTest {
 
     private ClientModeManagerBroadcastQueue mBroadcastQueue;
 
+    @Mock private Context mContext;
     @Mock private ActiveModeWarden mActiveModeWarden;
     @Mock private ConcreteClientModeManager mPrimaryManager;
     @Mock private ConcreteClientModeManager mSecondaryManager;
@@ -58,7 +63,7 @@ public class ClientModeManagerBroadcastQueueTest extends WifiBaseTest {
         when(mPrimaryManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         when(mSecondaryManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
 
-        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden);
+        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
 
         verify(mActiveModeWarden).registerModeChangeCallback(mModeChangeCallbackCaptor.capture());
         verify(mActiveModeWarden)
@@ -73,14 +78,22 @@ public class ClientModeManagerBroadcastQueueTest extends WifiBaseTest {
     }
 
     @Test
-    public void secondaryManagerSendBroadcast_queuedAndSentOnPrimaryChangeInOrderAndCleared() {
-        InOrder order = inOrder(mQueuedBroadcast1, mQueuedBroadcast2, mQueuedBroadcast3);
+    public void nonPrimaryManagerSendBroadcast_notSentImmediately() {
+        mBroadcastQueue.queueOrSendBroadcast(mSecondaryManager, mQueuedBroadcast1);
 
-        // send first broadcast - not sent
+        verify(mQueuedBroadcast1, never()).send();
+    }
+
+    @Test
+    public void secondaryManagerSendBroadcast_queuedAndSentOnPrimaryChangeInOrderAndCleared()
+            throws Exception {
+        InOrder order = inOrder(mQueuedBroadcast1, mQueuedBroadcast2, mQueuedBroadcast3, mContext);
+
+        // queue first broadcast - not sent
         mBroadcastQueue.queueOrSendBroadcast(mSecondaryManager, mQueuedBroadcast1);
         order.verify(mQueuedBroadcast1, never()).send();
 
-        // send second broadcast - neither first nor second sent
+        // queue second broadcast - neither first nor second sent
         mBroadcastQueue.queueOrSendBroadcast(mSecondaryManager, mQueuedBroadcast2);
         order.verify(mQueuedBroadcast1, never()).send();
         order.verify(mQueuedBroadcast2, never()).send();
@@ -88,11 +101,15 @@ public class ClientModeManagerBroadcastQueueTest extends WifiBaseTest {
         // primary changed - queued broadcasts sent in order
         when(mSecondaryManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         when(mPrimaryManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        when(mActiveModeWarden.getClientModeManagersInRoles(ROLE_CLIENT_SECONDARY_TRANSIENT))
+                .thenReturn(Arrays.asList(mPrimaryManager));
+        when(mPrimaryManager.isConnected()).thenReturn(true);
         mPrimaryChangedCaptor.getValue().onChange(mPrimaryManager, mSecondaryManager);
+        // queued broadcasts sent
         order.verify(mQueuedBroadcast1).send();
         order.verify(mQueuedBroadcast2).send();
 
-        // send third broadcast - triggered immediately, first and second not triggered again
+        // queue third broadcast - triggered immediately, first and second not triggered again
         mBroadcastQueue.queueOrSendBroadcast(mSecondaryManager, mQueuedBroadcast3);
         order.verify(mQueuedBroadcast1, never()).send();
         order.verify(mQueuedBroadcast2, never()).send();

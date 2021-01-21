@@ -25,6 +25,8 @@ import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_NOT_METERED;
 import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NONE;
 import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY;
 
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.ClientModeImpl.CMD_PRE_DHCP_ACTION;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -127,6 +129,7 @@ import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ClientMode.LinkProbeCallback;
+import com.android.server.wifi.ClientModeManagerBroadcastQueue.QueuedBroadcast;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.hotspot2.PasspointManager;
 import com.android.server.wifi.hotspot2.PasspointProvisioningTestUtil;
@@ -449,6 +452,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock LinkProbeCallback mLinkProbeCallback;
     @Mock ClientModeImplMonitor mCmiMonitor;
+    @Mock ClientModeManagerBroadcastQueue mBroadcastQueue;
 
     final ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mConfigUpdateListenerCaptor =
             ArgumentCaptor.forClass(WifiConfigManager.OnNetworkUpdateListener.class);
@@ -561,6 +565,18 @@ public class ClientModeImplTest extends WifiBaseTest {
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
         when(mThroughputPredictor.predictMaxTxThroughput(any())).thenReturn(90);
         when(mThroughputPredictor.predictMaxRxThroughput(any())).thenReturn(80);
+
+        doAnswer(new AnswerWithArguments() {
+            public void answer(boolean shouldReduceNetworkScore) {
+                mCmi.setShouldReduceNetworkScore(shouldReduceNetworkScore);
+            }
+        }).when(mClientModeManager).setShouldReduceNetworkScore(anyBoolean());
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ClientModeManager manager, QueuedBroadcast broadcast) {
+                broadcast.send();
+            }
+        }).when(mBroadcastQueue).queueOrSendBroadcast(any(), any());
     }
 
     private void registerAsyncChannel(Consumer<AsyncChannel> consumer, Messenger messenger,
@@ -617,7 +633,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 1, mBatteryStatsManager, mSupplicantStateTracker, mMboOceController,
                 mWifiCarrierInfoManager, mEapFailureNotifier, mSimRequiredNotifier,
                 mWifiScoreReport, mWifiP2pConnection, mWifiGlobals,
-                WIFI_IFACE_NAME, mClientModeManager, mCmiMonitor, false);
+                WIFI_IFACE_NAME, mClientModeManager, mCmiMonitor, mBroadcastQueue, false);
 
         mWifiCoreThread = getCmiHandlerThread(mCmi);
 
@@ -2040,6 +2056,60 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Set MAC address thrice - once at bootup, once for new connection, once for disconnect.
         verify(mWifiNative, times(3)).setStaMacAddress(eq(WIFI_IFACE_NAME), any());
         verify(mCountryCode, times(2)).setReadyForChange(true);
+        // ClientModeManager should only be stopped when in lingering mode
+        verify(mClientModeManager, never()).stop();
+    }
+
+    @Test
+    public void secondaryRoleCmmDisconnected_stopsClientModeManager() throws Exception {
+        // Owning ClientModeManager has role SECONDARY_TRANSIENT
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+
+        connect();
+
+        // ClientModeManager never stopped
+        verify(mClientModeManager, never()).stop();
+
+        // Disconnected from network
+        DisconnectEventInfo disconnectEventInfo =
+                new DisconnectEventInfo(mConnectedNetwork.SSID, sBSSID, 0, false);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, WifiSsid.createFromAsciiEncoded(mConnectedNetwork.SSID),
+                        sBSSID, SupplicantState.DISCONNECTED));
+        mLooper.dispatchAll();
+
+        assertEquals("DisconnectedState", getCurrentState().getName());
+
+        // Since in lingering mode, disconnect => stop ClientModeManager
+        verify(mClientModeManager).stop();
+    }
+
+    @Test
+    public void primaryCmmDisconnected_doesntStopsClientModeManager() throws Exception {
+        // Owning ClientModeManager is primary
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+
+        connect();
+
+        // ClientModeManager never stopped
+        verify(mClientModeManager, never()).stop();
+
+        // Disconnected from network
+        DisconnectEventInfo disconnectEventInfo =
+                new DisconnectEventInfo(mConnectedNetwork.SSID, sBSSID, 0, false);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, WifiSsid.createFromAsciiEncoded(mConnectedNetwork.SSID),
+                        sBSSID, SupplicantState.DISCONNECTED));
+        mLooper.dispatchAll();
+
+        assertEquals("DisconnectedState", getCurrentState().getName());
+
+        // Since primary => don't stop ClientModeManager
+        verify(mClientModeManager, never()).stop();
     }
 
     /**

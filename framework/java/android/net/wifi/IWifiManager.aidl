@@ -316,4 +316,6 @@ interface IWifiManager
     void removeSuggestionUserApprovalStatusListener(int listenerIdentifier, String packageName);
 
     void setEmergencyScanRequestInProgress(boolean inProgress);
+
+    void removeAppState(int targetAppUid, String targetApppackageName);
 }

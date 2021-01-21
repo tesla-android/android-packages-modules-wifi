@@ -17,8 +17,11 @@
 package com.android.server.wifi;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 
 import android.annotation.NonNull;
+import android.content.Context;
+import android.net.NetworkInfo;
 import android.util.ArrayMap;
 
 import androidx.annotation.Nullable;
@@ -34,8 +37,10 @@ import java.util.Map;
  */
 public class ClientModeManagerBroadcastQueue {
 
-    private static final String TAG = "BroadcastQueue";
+    private static final String TAG = "WifiBroadcastQueue";
 
+    private final ActiveModeWarden mActiveModeWarden;
+    private final Context mContext;
     /** List of buffered broadcasts, per-ClientModeManager. */
     private final Map<ClientModeManager, List<QueuedBroadcast>> mBufferedBroadcasts =
             new ArrayMap<>();
@@ -46,10 +51,20 @@ public class ClientModeManagerBroadcastQueue {
         void send();
     }
 
-    public ClientModeManagerBroadcastQueue(@NonNull ActiveModeWarden activeModeWarden) {
-        activeModeWarden.registerModeChangeCallback(new ModeChangeCallback());
-        activeModeWarden.registerPrimaryClientModeManagerChangedCallback(
+    private boolean mVerboseLoggingEnabled = false;
+
+    public ClientModeManagerBroadcastQueue(@NonNull ActiveModeWarden activeModeWarden,
+            @NonNull Context context) {
+        mActiveModeWarden = activeModeWarden;
+        mContext = context;
+
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
+        mActiveModeWarden.registerPrimaryClientModeManagerChangedCallback(
                 new PrimaryClientModeManagerChangedCallback());
+    }
+
+    public void setVerboseLoggingEnabled(boolean verboseLoggingEnabled) {
+        mVerboseLoggingEnabled = verboseLoggingEnabled;
     }
 
     /**
@@ -60,15 +75,17 @@ public class ClientModeManagerBroadcastQueue {
             @NonNull ClientModeManager manager,
             @NonNull QueuedBroadcast broadcast) {
         if (manager.getRole() == ROLE_CLIENT_PRIMARY) {
-            // primary, send existing queued broadcasts and send the new broadcast immediately
-            sendAllBroadcasts(manager);
+            // Primary, send existing queued broadcasts and send the new broadcast immediately.
+            // Assume that queue is empty for this manager (flushed when it originally became
+            // primary).
             broadcast.send();
-        } else {
+        } else if (manager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
             // buffer the broadcast until the ClientModeManager becomes primary.
             mBufferedBroadcasts
                     .computeIfAbsent(manager, k -> new ArrayList<>())
                     .add(broadcast);
         }
+        // for all other roles, they will never become primary, so discard their broadcasts
     }
 
     private void sendAllBroadcasts(ClientModeManager manager) {
@@ -91,12 +108,18 @@ public class ClientModeManagerBroadcastQueue {
         mBufferedBroadcasts.remove(manager);
     }
 
+    /**
+     * Send broadcasts to fake the disconnection of the previous network, since apps expect there
+     * to be only one connection at a time.
+     */
+    public void fakeDisconnectionBroadcasts() {
+        ClientModeImpl.sendNetworkChangeBroadcast(
+                mContext, NetworkInfo.DetailedState.DISCONNECTED, mVerboseLoggingEnabled);
+    }
+
     private class PrimaryClientModeManagerChangedCallback
             implements ActiveModeWarden.PrimaryClientModeManagerChangedCallback {
 
-        // TODO(b/174041877): Make Before Break: Need to send fake disconnection broadcasts for
-        //  previous primary ClientModeManager before sending out queued connection broadcasts for
-        //  new primary ClientModeManager
         @Override
         public void onChange(
                 @Nullable ConcreteClientModeManager prevPrimaryClientModeManager,

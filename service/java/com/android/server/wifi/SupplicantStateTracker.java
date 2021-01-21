@@ -83,6 +83,10 @@ public class SupplicantStateTracker extends StateMachine {
         mVerboseLoggingEnabled = verbose;
     }
 
+    private String getTag() {
+        return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
+    }
+
     public SupplicantStateTracker(
             @NonNull Context context,
             @NonNull WifiConfigManager wifiConfigManager,
@@ -152,7 +156,7 @@ public class SupplicantStateTracker extends StateMachine {
 
     private void handleNetworkConnectionFailure(int netId, int disableReason) {
         if (mVerboseLoggingEnabled) {
-            Log.d(TAG, "handleNetworkConnectionFailure netId=" + netId
+            Log.d(getTag(), "handleNetworkConnectionFailure netId=" + netId
                     + " reason " + disableReason);
         }
 
@@ -163,7 +167,9 @@ public class SupplicantStateTracker extends StateMachine {
     private void transitionOnSupplicantStateChange(StateChangeResult stateChangeResult) {
         SupplicantState supState = stateChangeResult.state;
 
-        if (mVerboseLoggingEnabled) Log.d(TAG, "Supplicant state: " + supState.toString() + "\n");
+        if (mVerboseLoggingEnabled) {
+            Log.d(getTag(), "Supplicant state: " + supState.toString() + "\n");
+        }
 
         switch (supState) {
             case DISCONNECTED:
@@ -196,7 +202,7 @@ public class SupplicantStateTracker extends StateMachine {
                 transitionTo(mUninitializedState);
                 break;
             default:
-                Log.e(TAG, "Unknown supplicant state " + supState);
+                Log.e(getTag(), "Unknown supplicant state " + supState);
                 break;
         }
     }
@@ -239,6 +245,21 @@ public class SupplicantStateTracker extends StateMachine {
             SupplicantState state, boolean failedAuth, int reasonCode) {
         int supplState = supplicantStateToBatteryStatsSupplicantState(state);
         mBatteryStatsManager.reportWifiSupplicantStateChanged(supplState, failedAuth);
+        String summary = "broadcast=SUPPLICANT_STATE_CHANGED_ACTION"
+                + " state=" + state
+                + " failedAuth=" + failedAuth
+                + " reasonCode=" + reasonCode;
+        if (mVerboseLoggingEnabled) Log.d(TAG, "Queuing " + summary);
+        mBroadcastQueue.queueOrSendBroadcast(
+                mClientModeManager,
+                () -> {
+                    if (mVerboseLoggingEnabled) Log.d(TAG, "Sending " + summary);
+                    sendSupplicantStateChangedBroadcast(mContext, state, failedAuth, reasonCode);
+                });
+    }
+
+    private static void sendSupplicantStateChangedBroadcast(
+            Context context, SupplicantState state, boolean failedAuth, int reasonCode) {
         Intent intent = new Intent(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
         intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
                 | Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -251,9 +272,7 @@ public class SupplicantStateTracker extends StateMachine {
                     WifiManager.EXTRA_SUPPLICANT_ERROR_REASON,
                     reasonCode);
         }
-        mBroadcastQueue.queueOrSendBroadcast(
-                mClientModeManager,
-                () -> mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL));
+        context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     /********************************************************
@@ -263,11 +282,11 @@ public class SupplicantStateTracker extends StateMachine {
     class DefaultState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
         @Override
         public boolean processMessage(Message message) {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + message.toString() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
             switch (message.what) {
                 case WifiMonitor.AUTHENTICATION_FAILURE_EVENT:
                     mAuthFailureInSupplicantBroadcast = true;
@@ -284,7 +303,7 @@ public class SupplicantStateTracker extends StateMachine {
                     break;
                 case WifiMonitor.ASSOCIATION_REJECTION_EVENT:
                 default:
-                    Log.e(TAG, "Ignoring " + message);
+                    Log.e(getTag(), "Ignoring " + message);
                     break;
             }
             return HANDLED;
@@ -302,28 +321,28 @@ public class SupplicantStateTracker extends StateMachine {
     class UninitializedState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 
     class InactiveState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 
     class DisconnectedState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 
     class ScanState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 
@@ -338,13 +357,13 @@ public class SupplicantStateTracker extends StateMachine {
 
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
             mLoopDetectIndex = 0;
             mLoopDetectCount = 0;
         }
         @Override
         public boolean processMessage(Message message) {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + message.toString() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
             switch (message.what) {
                 case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT:
                     StateChangeResult stateChangeResult = (StateChangeResult) message.obj;
@@ -354,8 +373,8 @@ public class SupplicantStateTracker extends StateMachine {
                             mLoopDetectCount++;
                         }
                         if (mLoopDetectCount > MAX_SUPPLICANT_LOOP_ITERATIONS) {
-                            Log.d(TAG, "Supplicant loop detected, disabling network " +
-                                    stateChangeResult.networkId);
+                            Log.d(getTag(), "Supplicant loop detected, disabling network "
+                                    + stateChangeResult.networkId);
                             handleNetworkConnectionFailure(stateChangeResult.networkId,
                                     WifiConfiguration.NetworkSelectionStatus
                                             .DISABLED_AUTHENTICATION_FAILURE);
@@ -378,11 +397,11 @@ public class SupplicantStateTracker extends StateMachine {
     class CompletedState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
         @Override
         public boolean processMessage(Message message) {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + message.toString() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
             switch (message.what) {
                 case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT:
                     StateChangeResult stateChangeResult = (StateChangeResult) message.obj;
@@ -409,7 +428,7 @@ public class SupplicantStateTracker extends StateMachine {
     class DormantState extends State {
         @Override
         public void enter() {
-            if (mVerboseLoggingEnabled) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 

@@ -30,6 +30,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -59,8 +60,17 @@ public class WifiScoreReport {
     private static final long MIN_TIME_TO_WAIT_BEFORE_BLOCKLIST_BSSID_MILLIS = 29000;
     private static final long INVALID_WALL_CLOCK_MILLIS = -1;
 
+    /**
+     * Set lingering score to be artificially lower than all other scores so that it will force
+     * ConnectivityService to prefer any other network over this one.
+     */
+    @VisibleForTesting
+    static final int LINGERING_SCORE = 1;
+
     // Cache of the last score
     private int mScore = ConnectedScore.WIFI_MAX_SCORE;
+
+    private boolean mShouldReduceNetworkScore = false;
 
     private final ScoringParams mScoringParams;
     private final Clock mClock;
@@ -180,6 +190,20 @@ public class WifiScoreReport {
     }
 
     /**
+     * If true, put the WifiScoreReport in lingering mode. A very low score is reported to
+     * NetworkAgent, and the real score is never reported.
+     */
+    public void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) {
+        Log.d(TAG, "setShouldReduceNetworkScore=" + shouldReduceNetworkScore
+                + " mNetworkAgent is null? " + (mNetworkAgent == null));
+        mShouldReduceNetworkScore = shouldReduceNetworkScore;
+        // immediately send score below disconnect threshold to start lingering
+        if (mShouldReduceNetworkScore && mNetworkAgent != null) {
+            mNetworkAgent.sendNetworkScore(LINGERING_SCORE);
+        }
+    }
+
+    /**
      * Report network score to connectivity service.
      */
     private void reportNetworkScoreToConnectivityServiceIfNecessary(int score) {
@@ -187,6 +211,11 @@ public class WifiScoreReport {
             return;
         }
         if (mWifiConnectedNetworkScorerHolder == null && score == mWifiInfo.getScore()) {
+            return;
+        }
+        // only send network score if not lingering. If lingering, would have already sent score at
+        // start of lingering.
+        if (mShouldReduceNetworkScore) {
             return;
         }
         if (mWifiConnectedNetworkScorerHolder != null
@@ -734,6 +763,11 @@ public class WifiScoreReport {
      * Set NetworkAgent
      */
     public void setNetworkAgent(NetworkAgent agent) {
+        // if mNetworkAgent was null when setShouldReduceNetworkScore() was called, the score wasn't
+        // sent. Send it now that the NetworkAgent has been set.
+        if (mNetworkAgent == null && agent != null && mShouldReduceNetworkScore) {
+            agent.sendNetworkScore(LINGERING_SCORE);
+        }
         mNetworkAgent = agent;
     }
 

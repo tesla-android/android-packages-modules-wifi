@@ -1831,6 +1831,45 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that the internally used WifiConfiguration created by
+     * ExtendedWifiNetworkSuggestion#createInternalWifiConfiguration forces MAC randomization off
+     * if MAC randomization should be disabled for that particular config.
+     */
+    @Test
+    public void testCarrierConfigSsidListToDisableMacRandomizationDisabled() {
+        PerAppInfo appInfo = new PerAppInfo(TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE);
+        appInfo.hasUserApproved = true;
+
+        // Create 2 WifiNetworkSuggestion and mock CarrierConfigManager to include the SSID
+        // of the first suggetion in the MAC randomization disabled list.
+        WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        WifiNetworkSuggestion networkSuggestion2 = new WifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+
+        when(mWifiCarrierInfoManager.shouldDisableMacRandomization(
+                eq(networkSuggestion.getWifiConfiguration().SSID), anyInt(),
+                anyInt())).thenReturn(true);
+        ExtendedWifiNetworkSuggestion extendedWifiNetworkSuggestion =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion, appInfo, true);
+        // Verify MAC randomization is disabled for the first suggestion network.
+        assertEquals(WifiConfiguration.RANDOMIZATION_NONE,
+                extendedWifiNetworkSuggestion.createInternalWifiConfiguration(
+                        mWifiCarrierInfoManager).macRandomizationSetting);
+
+        ExtendedWifiNetworkSuggestion extendedWifiNetworkSuggestion2 =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion2, appInfo, true);
+        // For simplicity, the networkSuggestion2 is created through the constructor and has
+        // macRandomizationSetting = RANDOMIZATION_AUTO. Suggestions created through the formal
+        // Builder API should have RANDOMIZATION_PERSISTENT as default.
+        assertEquals(WifiConfiguration.RANDOMIZATION_AUTO,
+                extendedWifiNetworkSuggestion2.createInternalWifiConfiguration(
+                        mWifiCarrierInfoManager).macRandomizationSetting);
+    }
+
+    /**
      * Verify handling of initial config store read.
      */
     @Test

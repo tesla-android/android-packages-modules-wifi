@@ -480,6 +480,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mContext.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                if (mDbg) Log.v(TAG, "onReceive: WIFI_STATE_CHANGED_ACTION: intent=" + intent);
                 boolean isEnabled = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
                         WifiManager.WIFI_STATE_UNKNOWN) == WifiManager.WIFI_STATE_ENABLED;
                 if (isEnabled) {
@@ -2642,7 +2643,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     }
 
     private void enableUsageLocal() {
-        if (VDBG) Log.v(TAG, "enableUsageLocal: mUsageEnabled=" + mUsageEnabled);
+        if (mDbg) Log.v(TAG, "enableUsageLocal: mUsageEnabled=" + mUsageEnabled);
 
         if (mUsageEnabled) {
             return;

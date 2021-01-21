@@ -42,8 +42,11 @@ public class WorkSourceHelper {
     private final ActivityManager mActivityManager;
     private final PackageManager mPackageManager;
 
-    public WorkSourceHelper(WorkSource workSource, WifiPermissionsUtil wifiPermissionsUtil,
-            ActivityManager activityManager, PackageManager packageManager) {
+    public WorkSourceHelper(
+            @NonNull WorkSource workSource,
+            @NonNull WifiPermissionsUtil wifiPermissionsUtil,
+            @NonNull ActivityManager activityManager,
+            @NonNull PackageManager packageManager) {
         mWorkSource = workSource;
         mWifiPermissionsUtil = wifiPermissionsUtil;
         mActivityManager = activityManager;

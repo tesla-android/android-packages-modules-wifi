@@ -117,12 +117,14 @@ public class ConcreteClientModeManager implements ClientModeManager {
     private final SelfRecovery mSelfRecovery;
     private final WifiGlobals mWifiGlobals;
     private final DefaultClientModeManager mDefaultClientModeManager;
+    private final ClientModeManagerBroadcastQueue mBroadcastQueue;
     private final long mId;
     private final Graveyard mGraveyard = new Graveyard();
     private final WifiCountryCode mCountryCode;
 
     private String mClientInterfaceName;
     private boolean mIfaceIsUp = false;
+    private boolean mShouldReduceNetworkScore = false;
     private final DeferStopHandler mDeferStopHandler;
     @Nullable
     private ClientRole mRole = null;
@@ -153,6 +155,8 @@ public class ConcreteClientModeManager implements ClientModeManager {
      */
     private final AtomicInteger mWifiState = new AtomicInteger(WIFI_STATE_DISABLED);
 
+    private boolean mIsStopped = true;
+
     ConcreteClientModeManager(
             Context context, @NonNull Looper looper, Clock clock,
             WifiNative wifiNative, Listener<ConcreteClientModeManager> listener,
@@ -161,6 +165,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             SelfRecovery selfRecovery, WifiGlobals wifiGlobals,
             DefaultClientModeManager defaultClientModeManager, long id,
             @NonNull WorkSource requestorWs, @NonNull ClientRole role,
+            @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
             boolean verboseLoggingEnabled,
             @NonNull WifiCountryCode countryCode) {
         mContext = context;
@@ -178,6 +183,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
         mId = id;
         mTargetRole = role;
         mTargetRequestorWs = requestorWs;
+        mBroadcastQueue = broadcastQueue;
         enableVerboseLogging(verboseLoggingEnabled);
         mCountryCode = countryCode;
         mStateMachine.sendMessage(ClientModeStateMachine.CMD_START, Pair.create(role, requestorWs));
@@ -489,6 +495,13 @@ public class ConcreteClientModeManager implements ClientModeManager {
             }
             pw.println();
         }
+
+        boolean hasAllClientModeImplsQuit() {
+            for (ClientModeImpl cmi : mClientModeImpls) {
+                if (!cmi.hasQuit()) return false;
+            }
+            return true;
+        }
     }
 
     /**
@@ -549,7 +562,15 @@ public class ConcreteClientModeManager implements ClientModeManager {
         intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         intent.putExtra(WifiManager.EXTRA_WIFI_STATE, newState);
         intent.putExtra(WifiManager.EXTRA_PREVIOUS_WIFI_STATE, currentState);
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        String summary = "broadcast=WIFI_STATE_CHANGED_ACTION"
+                + " EXTRA_WIFI_STATE=" + newState
+                + " EXTRA_PREVIOUS_WIFI_STATE=" + currentState;
+        if (mVerboseLoggingEnabled) Log.d(getTag(), "Queuing " + summary);
+        mBroadcastQueue.queueOrSendBroadcast(
+                this, () -> {
+                    if (mVerboseLoggingEnabled) Log.d(getTag(), "Sending " + summary);
+                    mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+                });
     }
 
     private void setWifiStateForApiCalls(int newState) {
@@ -677,6 +698,17 @@ public class ConcreteClientModeManager implements ClientModeManager {
             }
         }
 
+        /**
+         * Reset this ConcreteClientModeManager when its role changes, so that it can be reused for
+         * another purpose.
+         */
+        private void reset() {
+            // Therefore, the caller must ensure that the role change has been completed and these
+            // settings have already reset before setting them, otherwise the new setting would be
+            // lost.
+            setShouldReduceNetworkScore(false);
+        }
+
         private void setRoleInternalAndInvokeCallback(ClientRole newRole) {
             if (newRole == mRole) return;
             if (mRole == null) {
@@ -686,6 +718,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             } else {
                 Log.v(getTag(), "ClientModeManager role changed: " + newRole);
                 mRole = newRole;
+                reset();
                 mModeListener.onRoleChanged(ConcreteClientModeManager.this);
             }
         }
@@ -696,11 +729,6 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 Log.d(getTag(), "entering IdleState");
                 mClientInterfaceName = null;
                 mIfaceIsUp = false;
-            }
-
-            @Override
-            public void exit() {
-                mModeListener.onStopped(ConcreteClientModeManager.this);
             }
 
             @Override
@@ -751,6 +779,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             public void enter() {
                 Log.d(getTag(), "entering StartedState");
                 mIfaceIsUp = false;
+                mIsStopped = false;
                 onUpChanged(mWifiNative.isInterfaceUp(mClientInterfaceName));
             }
 
@@ -821,7 +850,9 @@ public class ConcreteClientModeManager implements ClientModeManager {
                     mIfaceIsUp = false;
                 }
 
-                mRole = null;
+                Log.i(getTag(), "StartedState#exit(), setting mRole = null");
+                mIsStopped = true;
+                cleanupOnQuitIfApplicable();
             }
         }
 
@@ -875,6 +906,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
                     mClientModeImpl = mWifiInjector.makeClientModeImpl(
                             mClientInterfaceName, ConcreteClientModeManager.this,
                             mVerboseLoggingEnabled);
+                    mClientModeImpl.setShouldReduceNetworkScore(mShouldReduceNetworkScore);
                 }
                 if (!(mConnectRoleToSetOnTransition instanceof ClientConnectivityRole)) {
                     Log.wtf(TAG, "Unexpected mConnectRoleToSetOnTransition: "
@@ -957,6 +989,28 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 }
                 mConnectRoleToSetOnTransition = null;
             }
+        }
+    }
+
+    /** Called by a ClientModeImpl owned by this CMM informing it has fully stopped. */
+    public void onClientModeImplQuit() {
+        cleanupOnQuitIfApplicable();
+    }
+
+    /**
+     * Only clean up this CMM once the CMM and all associated ClientModeImpls have been stopped.
+     * This is necessary because ClientModeImpl sends broadcasts during stop, and the role must
+     * remain primary for {@link ClientModeManagerBroadcastQueue} to send them out.
+     */
+    private void cleanupOnQuitIfApplicable() {
+        if (mIsStopped && mGraveyard.hasAllClientModeImplsQuit()) {
+            mRole = null;
+            // only call onStopped() after role has been reset to null since ActiveModeWarden
+            // expects the CMM to be fully stopped before onStopped().
+            mModeListener.onStopped(ConcreteClientModeManager.this);
+
+            // reset to false so that onStopped() won't be triggered again.
+            mIsStopped = false;
         }
     }
 
@@ -1229,6 +1283,12 @@ public class ConcreteClientModeManager implements ClientModeManager {
     @Override
     public boolean requestIcon(String bssid, String fileName) {
         return getClientMode().requestIcon(bssid, fileName);
+    }
+
+    @Override
+    public void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) {
+        mShouldReduceNetworkScore = shouldReduceNetworkScore;
+        getClientMode().setShouldReduceNetworkScore(shouldReduceNetworkScore);
     }
 
     @Override

@@ -369,9 +369,14 @@ public class WifiConnectivityManager {
                     mOemPaidConnectionRequestorWs != null
                             ? mOemPaidConnectionRequestorWs
                             : mOemPrivateConnectionRequestorWs;
-            if (mActiveModeWarden.canRequestMoreClientModeManagersInRole(
-                    oemPaidOrOemPrivateRequestorWs,
-                    ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
+            if (oemPaidOrOemPrivateRequestorWs == null) {
+                Log.e(TAG, "Both mOemPaidConnectionRequestorWs & mOemPrivateConnectionRequestorWs "
+                        + "are null!");
+            }
+            if (oemPaidOrOemPrivateRequestorWs != null
+                    && mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                            oemPaidOrOemPrivateRequestorWs,
+                            ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
                 // Add a placeholder CMM state to ensure network selection is performed for a
                 // potential second STA creation.
                 cmmStates.add(new WifiNetworkSelector.ClientModeManagerState());

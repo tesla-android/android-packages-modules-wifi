@@ -3047,4 +3047,9 @@ public class WifiManagerTest {
         verify(mWifiService).setEmergencyScanRequestInProgress(false);
     }
 
+    @Test
+    public void testRemoveAppState() throws Exception {
+        mWifiManager.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
+        verify(mWifiService).removeAppState(TEST_UID, TEST_PACKAGE_NAME);
+    }
 }

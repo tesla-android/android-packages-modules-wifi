@@ -43,6 +43,7 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
@@ -149,7 +150,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         mLooper = new TestLooper();
-        when(mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE))
+        when(mContext.getSystemService(CarrierConfigManager.class))
                 .thenReturn(mCarrierConfigManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getSystemService(Context.NOTIFICATION_SERVICE))
@@ -1880,5 +1881,67 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 eq(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING));
         Intent intent = intentCaptor.getValue();
         assertEquals(intent.getAction(), WifiManager.ACTION_REFRESH_USER_PROVISIONING);
+    }
+
+    /**
+     * Verify that shouldDisableMacRandomization returns true if the SSID in the input config
+     * matches with the SSID list in CarrierConfigManager.
+     */
+    @Test
+    public void testShouldDisableMacRandomization() {
+        // Create 2 WifiConfigurations and mock CarrierConfigManager to include the SSID
+        // of the first one in the MAC randomization disabled list.
+        WifiConfiguration config1 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration config2 = WifiConfigurationTestUtil.createOpenNetwork();
+        config1.carrierId = DATA_CARRIER_ID;
+        PersistableBundle bundle = new PersistableBundle();
+        PersistableBundle wifiBundle = new PersistableBundle();
+        // Add the first SSID and some garbage SSID to the exception list.
+        wifiBundle.putStringArray(
+                CarrierConfigManager.Wifi.KEY_SUGGESTION_SSID_LIST_WITH_MAC_RANDOMIZATION_DISABLED,
+                new String[]{
+                        WifiInfo.sanitizeSsid(config1.SSID),
+                        WifiInfo.sanitizeSsid(config2.SSID) + "_GARBAGE"});
+        bundle.putAll(wifiBundle);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
+
+        // Verify MAC randomization is disable for config1, but not disabled for config2
+        assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                config2.carrierId, config2.subscriptionId));
+        assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                config1.carrierId, config1.subscriptionId));
+
+        // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
+        verify(mCarrierConfigManager).getConfigForSubId(anyInt());
+    }
+
+    /**
+     * Verify that shouldDisableMacRandomization returns false if the carrierId is not set.
+     */
+    @Test
+    public void testOnlyDisableMacRandomizationOnCarrierNetworks() {
+        // Create 2 WifiConfiguration, but only set the carrierId for the first config.
+        WifiConfiguration config1 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration config2 = WifiConfigurationTestUtil.createOpenNetwork();
+        config1.carrierId = DATA_CARRIER_ID;
+        PersistableBundle bundle = new PersistableBundle();
+        PersistableBundle wifiBundle = new PersistableBundle();
+        // add both the first SSID and second SSID to the exception list.
+        wifiBundle.putStringArray(
+                CarrierConfigManager.Wifi.KEY_SUGGESTION_SSID_LIST_WITH_MAC_RANDOMIZATION_DISABLED,
+                new String[]{
+                        WifiInfo.sanitizeSsid(config1.SSID),
+                        WifiInfo.sanitizeSsid(config2.SSID)});
+        bundle.putAll(wifiBundle);
+        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
+
+        // Verify MAC randomization is disable for config1, but not disabled for config2
+        assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                config1.carrierId, config1.subscriptionId));
+        assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                config2.carrierId, config2.subscriptionId));
+
+        // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
+        verify(mCarrierConfigManager).getConfigForSubId(anyInt());
     }
 }

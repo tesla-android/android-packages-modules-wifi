@@ -36,6 +36,7 @@ import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
@@ -51,6 +52,7 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.view.WindowManager;
 
@@ -156,6 +158,12 @@ public class WifiCarrierInfoManager {
     private final SubscriptionManager mSubscriptionManager;
     private final NotificationManager mNotificationManager;
     private final WifiMetrics mWifiMetrics;
+    /**
+     * Cached Map of <subscription ID, CarrierConfig PersistableBundle> since retrieving the
+     * PersistableBundle from CarrierConfigManager is somewhat expensive as it has hundreds of
+     * fields. This cache is cleared when the CarrierConfig changes to ensure data freshness.
+     */
+    private final SparseArray<PersistableBundle> mCachedCarrierConfigPerSubId = new SparseArray<>();
 
     /**
      * Intent filter for processing notification actions.
@@ -351,7 +359,7 @@ public class WifiCarrierInfoManager {
         configStore.registerStoreData(wifiInjector.makeWifiCarrierInfoStoreManagerData(
                 new WifiCarrierInfoStoreManagerDataSource()));
 
-        updateImsiEncryptionInfo(context);
+        onCarrierConfigChanged(context);
 
         // Monitor for carrier config changes.
         IntentFilter filter = new IntentFilter();
@@ -361,7 +369,7 @@ public class WifiCarrierInfoManager {
             public void onReceive(Context context, Intent intent) {
                 if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED
                         .equals(intent.getAction())) {
-                    updateImsiEncryptionInfo(context);
+                    onCarrierConfigChanged(context);
                 }
             }
         }, filter);
@@ -370,7 +378,7 @@ public class WifiCarrierInfoManager {
                 new ContentObserver(handler) {
                     @Override
                     public void onChange(boolean selfChange) {
-                        updateImsiEncryptionInfo(context);
+                        onCarrierConfigChanged(context);
                     }
                 });
     }
@@ -401,16 +409,61 @@ public class WifiCarrierInfoManager {
         }
     }
 
+    private PersistableBundle getCarrierConfigForSubId(CarrierConfigManager carrierConfigManager,
+            int subId) {
+        if (mCachedCarrierConfigPerSubId.contains(subId)) {
+            return mCachedCarrierConfigPerSubId.get(subId);
+        }
+        if (carrierConfigManager == null) {
+            return null;
+        }
+        PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
+        if (carrierConfig == null) {
+            return null;
+        }
+        mCachedCarrierConfigPerSubId.put(subId, carrierConfig);
+        return carrierConfig;
+    }
+
     /**
-     * Updates the IMSI encryption information.
+     * Checks whether MAC randomization should be disabled for the provided WifiConfiguration,
+     * based on an exception list in the CarrierConfigManager per subId.
+     * @param ssid the SSID of a WifiConfiguration, surrounded by double quotes.
+     * @param carrierId the ID associated with the network operator for this network suggestion.
+     * @param subId the best match subscriptionId for this network suggestion.
      */
-    private void updateImsiEncryptionInfo(Context context) {
-        CarrierConfigManager carrierConfigManager =
-                (CarrierConfigManager) context.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+    public boolean shouldDisableMacRandomization(String ssid, int carrierId, int subId) {
+        if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+            // only carrier networks are allowed to disable MAC randomization through this path.
+            return false;
+        }
+        PersistableBundle carrierConfig = getCarrierConfigForSubId(
+                mContext.getSystemService(CarrierConfigManager.class), subId);
+        if (carrierConfig == null) {
+            return false;
+        }
+        String sanitizedSsid = WifiInfo.sanitizeSsid(ssid);
+        String[] macRandDisabledSsids = carrierConfig.getStringArray(CarrierConfigManager.Wifi
+                .KEY_SUGGESTION_SSID_LIST_WITH_MAC_RANDOMIZATION_DISABLED);
+        for (String curSsid : macRandDisabledSsids) {
+            if (sanitizedSsid.equals(curSsid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Updates the IMSI encryption information and clears cached CarrierConfig data.
+     */
+    private void onCarrierConfigChanged(Context context) {
+        CarrierConfigManager carrierConfigManager = context.getSystemService(
+                CarrierConfigManager.class);
         if (carrierConfigManager == null) {
             return;
         }
 
+        mCachedCarrierConfigPerSubId.clear();
         mImsiEncryptionRequired.clear();
         mImsiEncryptionInfoAvailable.clear();
         mEapMethodPrefixEnable.clear();
@@ -421,7 +474,7 @@ public class WifiCarrierInfoManager {
         }
         for (SubscriptionInfo subInfo : activeSubInfos) {
             int subId = subInfo.getSubscriptionId();
-            PersistableBundle bundle = carrierConfigManager.getConfigForSubId(subId);
+            PersistableBundle bundle = getCarrierConfigForSubId(carrierConfigManager, subId);
             if (bundle != null) {
                 if ((bundle.getInt(CarrierConfigManager.IMSI_KEY_AVAILABILITY_INT)
                                     & TelephonyManager.KEY_TYPE_WLAN) != 0) {

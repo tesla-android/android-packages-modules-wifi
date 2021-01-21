@@ -554,11 +554,23 @@ public class ScanRequestProxyTest extends WifiBaseTest {
         ScanTestUtil.assertScanResultEquals(mTestScanDatas1[0].getResults()[0],
                 mScanRequestProxy.getScanResult(mTestScanDatas1[0].getResults()[0].BSSID));
 
+        // Enable scanning again (a new iface was added/removed).
+        mScanRequestProxy.enableScanning(true, false);
+        mInOrder.verify(mWifiScanner).setScanningEnabled(true);
+        validateScanAvailableBroadcastSent(true);
+        // Validate the scan results in the cache (should not be cleared).
+        ScanTestUtil.assertScanResultsEqualsAnyOrder(
+                mTestScanDatas1[0].getResults(),
+                mScanRequestProxy.getScanResults().stream().toArray(ScanResult[]::new));
+        ScanTestUtil.assertScanResultEquals(mTestScanDatas1[0].getResults()[0],
+                mScanRequestProxy.getScanResult(mTestScanDatas1[0].getResults()[0].BSSID));
+
         // Disable scanning
         mScanRequestProxy.enableScanning(false, false);
         verify(mWifiScanner).setScanningEnabled(false);
         validateScanAvailableBroadcastSent(false);
 
+        // Validate the scan results in the cache (should be cleared).
         assertTrue(mScanRequestProxy.getScanResults().isEmpty());
         assertNull(mScanRequestProxy.getScanResult(mTestScanDatas1[0].getResults()[0].BSSID));
 
