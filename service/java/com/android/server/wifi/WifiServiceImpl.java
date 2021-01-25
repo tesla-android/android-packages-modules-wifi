@@ -3030,6 +3030,7 @@ public class WifiServiceImpl extends BaseWifiService {
             } catch (SecurityException ignored) {
             }
             WifiInfo result = wifiInfo.makeCopyInternal(!hideLocationSensitiveData);
+            // TODO (b/162602799): Do we need to expose the MAC address of the secondary STA?
             if (hideDefaultMacAddress) {
                 result.setMacAddress(WifiInfo.DEFAULT_MAC_ADDRESS);
             }

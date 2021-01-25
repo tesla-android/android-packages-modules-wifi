@@ -108,11 +108,13 @@ public class WifiScoreCard {
     static final int SUFFICIENT_RECENT_PREV_STATS = 2;
 
     private static final int MAX_FREQUENCIES_PER_SSID = 10;
+    private static final int MAX_TRAFFIC_STATS_POLL_TIME_DELTA_MS = 6_000;
 
     private final Clock mClock;
     private final String mL2KeySeed;
     private MemoryStore mMemoryStore;
     private final DeviceConfigFacade mDeviceConfigFacade;
+    private final FrameworkFacade mFrameworkFacade;
 
     @VisibleForTesting
     static final int[] RSSI_BUCKETS = intsInRange(-100, -20);
@@ -229,17 +231,21 @@ public class WifiScoreCard {
     private int mDisconnectionReason;
 
     private long mFirmwareAlertTimeMs = TS_NONE;
+    private long mLastRxBytes;
+    private long mLastTxBytes;
 
     /**
      * @param clock is the time source
      * @param l2KeySeed is for making our L2Keys usable only on this device
      */
-    public WifiScoreCard(Clock clock, String l2KeySeed, DeviceConfigFacade deviceConfigFacade) {
+    public WifiScoreCard(Clock clock, String l2KeySeed, DeviceConfigFacade deviceConfigFacade,
+            FrameworkFacade frameworkFacade) {
         mClock = clock;
         mL2KeySeed = l2KeySeed;
         mPlaceholderPerBssid = new PerBssid("", MacAddress.fromString(DEFAULT_MAC_ADDRESS));
         mPlaceholderPerNetwork = new PerNetwork("");
         mDeviceConfigFacade = deviceConfigFacade;
+        mFrameworkFacade = frameworkFacade;
     }
 
     /**
@@ -868,6 +874,8 @@ public class WifiScoreCard {
         private LruList<Integer> mFrequencyList;
         // In memory keep frequency with timestamp last time available, the elapsed time since boot.
         private SparseLongArray mFreqTimestamp;
+        private int mTxLinkBandwidthKbps;
+        private int mRxLinkBandwidthKbps;
 
         PerNetwork(String ssid) {
             super(computeHashLong(ssid, MacAddress.fromString(DEFAULT_MAC_ADDRESS), mL2KeySeed));
@@ -1040,6 +1048,64 @@ public class WifiScoreCard {
         void addFrequency(int frequency) {
             mFrequencyList.add(frequency);
             mFreqTimestamp.put(frequency, mClock.getElapsedSinceBootMillis());
+        }
+
+        /**
+         * Update link bandwidth estimates based on TrafficStats byte counts and radio on time
+         */
+        void updateLinkBandwidth(WifiLinkLayerStats oldStats,
+                WifiLinkLayerStats newStats, ExtendedWifiInfo wifiInfo) {
+            long txBytes = mFrameworkFacade.getTotalTxBytes() - mFrameworkFacade.getMobileTxBytes();
+            long rxBytes = mFrameworkFacade.getTotalRxBytes() - mFrameworkFacade.getMobileRxBytes();
+            updateLinkBandwidthInternal(oldStats, newStats, wifiInfo, txBytes, rxBytes);
+            mLastTxBytes = txBytes;
+            mLastRxBytes = rxBytes;
+        }
+
+        private void updateLinkBandwidthInternal(WifiLinkLayerStats oldStats,
+                WifiLinkLayerStats newStats,
+                ExtendedWifiInfo wifiInfo, long txBytes, long rxBytes) {
+            if (oldStats == null || newStats == null) {
+                return;
+            }
+            int elapsedTimeMs = (int) (newStats.timeStampInMs - oldStats.timeStampInMs);
+            if (elapsedTimeMs > MAX_TRAFFIC_STATS_POLL_TIME_DELTA_MS) {
+                return;
+            }
+            int onTimeMs = newStats.on_time - oldStats.on_time;
+            int l2TxKbps = wifiInfo.getTxLinkSpeedMbps() * 1024;
+            int l2RxKbps = wifiInfo.getRxLinkSpeedMbps() * 1024;
+            int txBytesDelta = (int) (txBytes - mLastTxBytes);
+            int rxBytesDelta = (int) (rxBytes - mLastRxBytes);
+            // TODO: filtering, per-tech/signal level grouping and memory store operation
+            mTxLinkBandwidthKbps = onTimeMs <= 0 ? 0 : (txBytesDelta * 8 / onTimeMs);
+            mRxLinkBandwidthKbps = onTimeMs <= 0 ? 0 : (rxBytesDelta * 8 / onTimeMs);
+
+            StringBuilder sb = new StringBuilder();
+            logd(sb.append("rssi=").append(wifiInfo.getRssi())
+                    .append("freq=").append(wifiInfo.getFrequency())
+                    .append("l2Tx=").append(l2TxKbps)
+                    .append("l2Rx=").append(l2RxKbps)
+                    .append("onTimeMs=").append(onTimeMs)
+                    .append("txBytes=").append(txBytesDelta)
+                    .append("rxBytes=").append(rxBytesDelta)
+                    .append("l3Tx=").append(mTxLinkBandwidthKbps)
+                    .append("l3Rx=").append(mRxLinkBandwidthKbps)
+                    .toString());
+        }
+
+        /**
+         * Get the latest TrafficStats based end-to-end Tx link bandwidth estimation in Kbps
+         */
+        int getTxLinkBandwidthKbps() {
+            return mTxLinkBandwidthKbps;
+        }
+
+        /**
+         * Get the latest TrafficStats based end-to-end Rx link bandwidth estimation in Kbps
+         */
+        int getRxLinkBandwidthKbps() {
+            return mRxLinkBandwidthKbps;
         }
 
         /**

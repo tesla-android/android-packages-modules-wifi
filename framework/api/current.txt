@@ -284,7 +284,7 @@ package android.net.wifi {
     method @Nullable public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @Deprecated public int getIpAddress();
     method public int getLinkSpeed();
-    method public String getMacAddress();
+    method @RequiresPermission(android.Manifest.permission.LOCAL_MAC_ADDRESS) public String getMacAddress();
     method public int getMaxSupportedRxLinkSpeedMbps();
     method public int getMaxSupportedTxLinkSpeedMbps();
     method public int getNetworkId();

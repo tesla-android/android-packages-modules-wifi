@@ -93,6 +93,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
     @Mock Clock mClock;
     @Mock WifiScoreCard.MemoryStore mMemoryStore;
     @Mock DeviceConfigFacade mDeviceConfigFacade;
+    @Mock FrameworkFacade mFrameworkFacade;
 
     final ArrayList<String> mKeys = new ArrayList<>();
     final ArrayList<WifiScoreCard.BlobListener> mBlobListeners = new ArrayList<>();
@@ -125,7 +126,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mWifiInfo.setBSSID(TEST_BSSID_1.toString());
         mWifiInfo.setNetworkId(TEST_NETWORK_CONFIG_ID);
         millisecondsPass(0);
-        mWifiScoreCard = new WifiScoreCard(mClock, "some seed", mDeviceConfigFacade);
+        mWifiScoreCard = new WifiScoreCard(mClock, "some seed", mDeviceConfigFacade,
+                mFrameworkFacade);
         mWifiScoreCard.mPersistentHistograms = true; // TODO - remove when ready
         when(mDeviceConfigFacade.getConnectionFailureHighThrPercent()).thenReturn(
                 DeviceConfigFacade.DEFAULT_CONNECTION_FAILURE_HIGH_THR_PERCENT);
@@ -1502,5 +1504,36 @@ public class WifiScoreCardTest extends WifiBaseTest {
         // Check over aged channel will not return.
         assertEquals(1, perNetwork.getFrequencies(900L).size());
         assertEquals(2432, (int) perNetwork.getFrequencies(Long.MAX_VALUE).get(0));
+    }
+
+    @Test
+    public void testUpdateGetLinkBandwidth() {
+        WifiLinkLayerStats oldLlStats = new WifiLinkLayerStats();
+        WifiLinkLayerStats newLlStats = new WifiLinkLayerStats();
+        oldLlStats.timeStampInMs = 0;
+        newLlStats.on_time = 0;
+        when(mFrameworkFacade.getMobileRxBytes()).thenReturn(0L);
+        when(mFrameworkFacade.getMobileTxBytes()).thenReturn(0L);
+        when(mFrameworkFacade.getTotalRxBytes()).thenReturn(0L);
+        when(mFrameworkFacade.getTotalTxBytes()).thenReturn(0L);
+        mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
+        PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        perNetwork.updateLinkBandwidth(null, oldLlStats, mWifiInfo);
+        when(mFrameworkFacade.getTotalRxBytes()).thenReturn(2000L);
+        when(mFrameworkFacade.getTotalTxBytes()).thenReturn(4000L);
+        newLlStats.timeStampInMs = 7000;
+        newLlStats.on_time = 100;
+        perNetwork.updateLinkBandwidth(oldLlStats, newLlStats, mWifiInfo);
+
+        assertEquals(0, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(0, perNetwork.getRxLinkBandwidthKbps());
+
+        when(mFrameworkFacade.getTotalRxBytes()).thenReturn(4000L);
+        when(mFrameworkFacade.getTotalTxBytes()).thenReturn(8000L);
+        oldLlStats.timeStampInMs = 7000;
+        newLlStats.timeStampInMs = 10000;
+        perNetwork.updateLinkBandwidth(oldLlStats, newLlStats, mWifiInfo);
+        assertEquals(4000 * 8 / 100, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(2000 * 8 / 100, perNetwork.getRxLinkBandwidthKbps());
     }
 }

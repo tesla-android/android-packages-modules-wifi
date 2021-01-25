@@ -18,9 +18,11 @@ package android.net.wifi;
 
 import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
 
+import android.Manifest;
 import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.RequiresPermission;
 import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.ConnectivityManager;
@@ -747,6 +749,18 @@ public class WifiInfo implements TransportInfo, Parcelable {
         this.mMacAddress = macAddress;
     }
 
+    /**
+     * Returns the MAC address used for this connection.
+     * <p>
+     * Note:
+     * <li> This field is only populated when retrieved via {@link WifiManager#getConnectionInfo()}.
+     * WifiInfo retrieved via {@link NetworkCapabilities#getTransportInfo()} will always return
+     * {@code "02:00:00:00:00:00"}.
+     * </li>
+     * </p>
+     * @return MAC address of the connection.
+     */
+    @RequiresPermission(Manifest.permission.LOCAL_MAC_ADDRESS)
     public String getMacAddress() {
         return mMacAddress;
     }

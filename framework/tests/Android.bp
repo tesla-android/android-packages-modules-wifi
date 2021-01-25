@@ -50,7 +50,7 @@ android_test {
 
     test_suites: [
         "general-tests",
-        "mts",
+        "mts-wifi",
     ],
 
     // static libs used by both framework-wifi & FrameworksWifiApiTests. Need to rename test usage
