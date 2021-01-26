@@ -2152,6 +2152,9 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 SelfRecovery.REASON_STRINGS[SelfRecovery.REASON_WIFINATIVE_FAILURE], true);
         mLooper.dispatchAll();
 
+        mLooper.moveTimeForward(TEST_WIFI_RECOVERY_DELAY_MS + 10);
+        mLooper.dispatchAll();
+
         assertInDisabledState();
         verifyNoMoreInteractions(mClientModeManager, mSoftApManager);
     }
