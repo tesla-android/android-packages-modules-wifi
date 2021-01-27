@@ -643,7 +643,10 @@ package android.net.wifi {
   }
 
   public static interface WifiManager.ScoreUpdateObserver {
+    method public default void blocklistCurrentBssid(int);
     method public void notifyScoreUpdate(int, int);
+    method public default void notifyStatusUpdate(int, boolean);
+    method public default void requestNudOperation(int, boolean);
     method public void triggerUpdateOfWifiUsabilityStats(int);
   }
 
