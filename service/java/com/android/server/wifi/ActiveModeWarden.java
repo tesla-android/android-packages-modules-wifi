@@ -1001,10 +1001,7 @@ public class ActiveModeWarden {
             @NonNull ConcreteClientModeManager modeManager, @NonNull WorkSource requestorWs) {
         ActiveModeManager.ClientRole role = getRoleForPrimaryOrScanOnlyClientModeManager();
         if (role == null) return false;
-        // change role if needed.
-        if (modeManager.getRole() != role) {
-            modeManager.setRole(role, requestorWs);
-        }
+        modeManager.setRole(role, requestorWs);
         return true;
     }
 
