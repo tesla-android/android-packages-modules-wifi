@@ -106,6 +106,31 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
     }
 
     @Test
+    public void cleanupReportsFailureIfScanInProgress() {
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+
+        // setup ongoing scan
+        WifiNative.ScanSettings settings = new NativeScanSettingsBuilder()
+                .withBasePeriod(10000) // ms
+                .withMaxApPerScan(10)
+                .addBucketWithBand(10000 /* ms */, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN,
+                        WifiScanner.WIFI_BAND_5_GHZ)
+                .build();
+        WifiNative.ScanEventHandler eventHandler = mock(WifiNative.ScanEventHandler.class);
+        mScanner.startSingleScan(settings, eventHandler);
+        mLooper.dispatchAll();
+
+        // no scan failure message
+        verify(eventHandler, never()).onScanStatus(WifiNative.WIFI_SCAN_FAILED);
+
+        // tear down the iface
+        mScanner.cleanup();
+
+        // verify received scan failure callback
+        verify(eventHandler).onScanStatus(WifiNative.WIFI_SCAN_FAILED);
+    }
+
+    @Test
     public void externalScanResultsDoNotCauseSpuriousTimerCancellationOrCrash() {
         mWifiMonitor.sendMessage(IFACE_NAME, WifiMonitor.SCAN_RESULTS_EVENT);
         mLooper.dispatchAll();
