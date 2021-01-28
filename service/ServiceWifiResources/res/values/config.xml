@@ -327,6 +327,24 @@
     <!-- Indicates that wifi watchdog is enabled on this device -->
     <bool translatable="false" name="config_wifi_watchdog_enabled">true</bool>
 
+    <!-- list of package names for which WifiManager.startScan() will not be throttled when the app
+    is in foreground. -->
+    <string-array translatable="false" name="config_wifiForegroundScanThrottleExceptionList">
+        <!-- Below is a sample configuration for this list:
+        <item>com.company1.example.test.name1</item>
+        <item>com.company2.example.test.name2</item>
+        -->
+    </string-array>
+
+    <!-- list of package names for which WifiManager.startScan() will not be throttled when the app
+    is in background. -->
+    <string-array translatable="false" name="config_wifiBackgroundScanThrottleExceptionList">
+        <!-- Below is a sample configuration for this list:
+        <item>com.company1.example.test.name1</item>
+        <item>com.company2.example.test.name2</item>
+        -->
+    </string-array>
+
     <!--
     Controls the mapping between RSSI and RSSI levels.
 
