@@ -1054,6 +1054,18 @@ public class ActiveModeWarden {
             manager.dump(fd, pw, args);
         }
         mGraveyard.dump(fd, pw, args);
+        boolean isStaStaConcurrencySupported = isStaStaConcurrencySupported();
+        pw.println("STA + STA Concurrency Supported: " + isStaStaConcurrencySupported);
+        if (isStaStaConcurrencySupported) {
+            pw.println("   MBB use-case enabled: " + isMakeBeforeBreakEnabled());
+            pw.println("   Local only use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled));
+            pw.println("   Restricted use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled));
+        }
+        pw.println("STA + AP Concurrency Supported: " + isStaApConcurrencySupported());
     }
 
     @VisibleForTesting
