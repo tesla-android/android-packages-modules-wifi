@@ -115,6 +115,8 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
     @Override
     public void cleanup() {
         synchronized (mSettingsLock) {
+            cancelScanTimeout();
+            reportScanFailure();
             stopHwPnoScan();
             mLastScanSettings = null; // finally clear any active scan
             mLastPnoScanSettings = null; // finally clear any active scan
@@ -211,11 +213,7 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
                         TIMEOUT_ALARM_TAG, mScanTimeoutListener, mEventHandler);
             } else {
                 // indicate scan failure async
-                mEventHandler.post(new Runnable() {
-                        @Override public void run() {
-                            reportScanFailure();
-                        }
-                    });
+                mEventHandler.post(() -> reportScanFailure());
             }
 
             return true;
