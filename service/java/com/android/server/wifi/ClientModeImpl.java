@@ -2090,12 +2090,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /*
-     * Fetch RSSI, linkspeed, and frequency on current connection
+     * Fetch link layer stats, RSSI, linkspeed, and frequency on current connection
+     * and update Network capabilities
      */
-    private void fetchRssiLinkSpeedAndFrequencyNative() {
+    private WifiLinkLayerStats updateLinkLayerStatsRssiSpeedFrequencyCapabilities() {
+        WifiLinkLayerStats stats = getWifiLinkLayerStats();
         WifiNl80211Manager.SignalPollResult pollResult = mWifiNative.signalPoll(mInterfaceName);
         if (pollResult == null) {
-            return;
+            return stats;
         }
 
         int newRssi = pollResult.currentRssiDbm;
@@ -2104,11 +2106,28 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         int newRxLinkSpeed = pollResult.rxBitrateMbps;
 
         if (mVerboseLoggingEnabled) {
-            logd("fetchRssiLinkSpeedAndFrequencyNative rssi=" + newRssi
+            logd("updateLinkLayerStatsRssiSpeedFrequencyCapabilities rssi=" + newRssi
                     + " TxLinkspeed=" + newTxLinkSpeed + " freq=" + newFrequency
                     + " RxLinkSpeed=" + newRxLinkSpeed);
         }
 
+        /*
+         * set Tx link speed only if it is valid
+         */
+        if (newTxLinkSpeed > 0) {
+            mWifiInfo.setLinkSpeed(newTxLinkSpeed);
+            mWifiInfo.setTxLinkSpeedMbps(newTxLinkSpeed);
+        }
+        /*
+         * set Rx link speed only if it is valid
+         */
+        if (newRxLinkSpeed > 0) {
+            mWifiInfo.setRxLinkSpeedMbps(newRxLinkSpeed);
+        }
+        if (newFrequency > 0) {
+            mWifiInfo.setFrequency(newFrequency);
+        }
+        // updateLinkBandwidth() requires the latest frequency information
         if (newRssi > WifiInfo.INVALID_RSSI && newRssi < WifiInfo.MAX_RSSI) {
             /*
              * Positive RSSI is possible when devices are close(~0m apart) to each other.
@@ -2132,6 +2151,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
              * level.
              */
             int newSignalLevel = RssiUtil.calculateSignalLevel(mContext, newRssi);
+            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo, newSignalLevel);
             if (newSignalLevel != mLastSignalLevel) {
                 // TODO (b/162602799): Do we need to change the update frequency?
                 updateCapabilities();
@@ -2142,27 +2163,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setRssi(WifiInfo.INVALID_RSSI);
             updateCapabilities();
         }
-        /*
-         * set Tx link speed only if it is valid
-         */
-        if (newTxLinkSpeed > 0) {
-            mWifiInfo.setLinkSpeed(newTxLinkSpeed);
-            mWifiInfo.setTxLinkSpeedMbps(newTxLinkSpeed);
-        }
-        /*
-         * set Rx link speed only if it is valid
-         */
-        if (newRxLinkSpeed > 0) {
-            mWifiInfo.setRxLinkSpeedMbps(newRxLinkSpeed);
-        }
-        if (newFrequency > 0) {
-            mWifiInfo.setFrequency(newFrequency);
-        }
         mWifiConfigManager.updateScanDetailCacheFromWifiInfo(mWifiInfo);
         /*
          * Increment various performance metrics
          */
         mWifiMetrics.handlePollResult(mWifiInfo);
+        return stats;
     }
 
     // Polling has completed, hence we won't have a score anymore
@@ -2884,9 +2890,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // Reset IP failure tracking
             c.getNetworkSelectionStatus().clearDisableReasonCounter(
                     WifiConfiguration.NetworkSelectionStatus.DISABLED_DHCP_FAILURE);
-
-            // Tell the framework whether the newly connected network is trusted or untrusted.
-            updateCapabilities(c);
         }
         mWifiScoreCard.noteIpConfiguration(mWifiInfo);
     }
@@ -3806,6 +3809,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         int rssiDbm = mWifiInfo.getRssi();
         int txTputKbps = INVALID_THROUGHPUT;
         int rxTputKbps = INVALID_THROUGHPUT;
+        // TODO: switch to TrafficStats poll based link bandwidth estimation value
         // If RSSI is available, check if throughput is available
         if (rssiDbm != WifiInfo.INVALID_RSSI && mWifiDataStall != null) {
             txTputKbps = mWifiDataStall.getTxThroughputKbps();
@@ -4798,7 +4802,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         // First poll
                         mLastSignalLevel = -1;
                         mLinkProbeManager.resetOnScreenTurnedOn();
-                        fetchRssiLinkSpeedAndFrequencyNative();
+                        updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                     }
@@ -4927,16 +4931,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
          * Fetches link stats, updates Wifi Data Stall, Score Card and Score Report.
          */
         private WifiLinkLayerStats updateLinkLayerStatsRssiDataStallScoreReport() {
-            WifiLinkLayerStats stats = getWifiLinkLayerStats();
             // Get Info and continue polling
-            fetchRssiLinkSpeedAndFrequencyNative();
+            WifiLinkLayerStats stats = updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
             mWifiMetrics.updateWifiUsabilityStatsEntries(mWifiInfo, stats);
             // checkDataStallAndThroughputSufficiency() should be called before
             // mWifiScoreReport.calculateAndReportScore() which needs the latest throughput
             int statusDataStall = mWifiDataStall.checkDataStallAndThroughputSufficiency(
                     mLastLinkLayerStats, stats, mWifiInfo);
-            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
             if (mDataStallTriggerTimeMs == -1
                     && statusDataStall != WifiIsUnusableEvent.TYPE_UNKNOWN) {
                 mDataStallTriggerTimeMs = mClock.getElapsedSinceBootMillis();
