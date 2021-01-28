@@ -139,6 +139,7 @@ public class WifiAwareDataPathStateManager {
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
                 .setNetworkSpecifier(new MatchAllNetworkSpecifier())
                 .setLinkUpstreamBandwidthKbps(NETWORK_FACTORY_BANDWIDTH_AVAIL)
                 .setLinkDownstreamBandwidthKbps(NETWORK_FACTORY_BANDWIDTH_AVAIL)
