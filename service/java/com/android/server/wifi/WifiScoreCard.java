@@ -35,6 +35,7 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.MacAddress;
+import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiManager;
 import android.util.ArrayMap;
@@ -231,8 +232,6 @@ public class WifiScoreCard {
     private int mDisconnectionReason;
 
     private long mFirmwareAlertTimeMs = TS_NONE;
-    private long mLastRxBytes;
-    private long mLastTxBytes;
 
     /**
      * @param clock is the time source
@@ -691,6 +690,10 @@ public class WifiScoreCard {
         public final MacAddress bssid;
         public final int[] blocklistStreakCount =
                 new int[WifiBlocklistMonitor.NUMBER_REASON_CODES];
+        public long[][][] bandwidthStatsValue =
+                new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
+        public int[][][] bandwidthStatsCount =
+                new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
         // The wall clock time in milliseconds for the last successful l2 connection.
         public long lastConnectionTimestampMs;
         public boolean changed;
@@ -701,6 +704,7 @@ public class WifiScoreCard {
         private int mNetworkConfigId = Integer.MIN_VALUE;
         private final Map<Pair<Event, Integer>, PerSignal>
                 mSignalForEventAndFrequency = new ArrayMap<>();
+
         PerBssid(String ssid, MacAddress bssid) {
             super(computeHashLong(ssid, bssid, mL2KeySeed));
             this.ssid = ssid;
@@ -857,8 +861,26 @@ public class WifiScoreCard {
         }
     }
 
+    // TODO: b/178641307 move the following parameters to config.xml
+    // Array dimension : int [NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
+    static final int[][][] LINK_BANDWIDTH_INIT_KBPS =
+            {{{500, 2500, 10000, 10000, 10000}, {500, 2500, 10000, 30000, 30000}},
+            {{1500, 7500, 10000, 10000, 10000}, {1500, 7500, 30000, 30000, 30000}}};
+    // To be used in link bandwidth estimation, each TrafficStats poll sample needs to be above
+    // the following values. Defined per signal level.
+    // int [NUM_SIGNAL_LEVEL]
+    static final int[] LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE = {200, 500, 750, 1000, 1000};
+    // To be used in the long term avg, each count needs to be above the following value
+    static final int LINK_BANDWIDTH_STATS_COUNT_THR = 10;
+    // radio on time below the following value is ignored.
+    static final int RADIO_ON_TIME_MIN_MS = 10;
+    static final int NUM_SIGNAL_LEVEL = 5;
+    static final int LINK_TX = 0;
+    static final int LINK_RX = 1;
+    private static final int NUM_LINK_BAND = 2;
+    private static final int NUM_LINK_DIRECTION = 2;
     /**
-     * A class collecting the connection stats of one network or SSID.
+     * A class collecting the connection and link bandwidth stats of one network or SSID.
      */
     final class PerNetwork extends MemoryStoreAccessBase {
         public int id;
@@ -874,8 +896,18 @@ public class WifiScoreCard {
         private LruList<Integer> mFrequencyList;
         // In memory keep frequency with timestamp last time available, the elapsed time since boot.
         private SparseLongArray mFreqTimestamp;
-        private int mTxLinkBandwidthKbps;
-        private int mRxLinkBandwidthKbps;
+        private long mLastRxBytes;
+        private long mLastTxBytes;
+        private String mBssid = "";
+        private int mSignalLevel;
+        private int mBandIdx;
+        private int mTxKbps = -1;
+        private int mRxKbps = -1;
+        // TODO: memory store operation for the following fields and similar fields in perBssid
+        private long[][][] mBandwidthStatsValue =
+                new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
+        private int[][][] mBandwidthStatsCount =
+                new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
 
         PerNetwork(String ssid) {
             super(computeHashLong(ssid, MacAddress.fromString(DEFAULT_MAC_ADDRESS), mL2KeySeed));
@@ -950,6 +982,8 @@ public class WifiScoreCard {
                     handleDisconnectionAfterConnection();
                     mConnectionSessionStartTimeMs = TS_NONE;
                     mLastRssiPollTimeMs = TS_NONE;
+                    mTxKbps = -1;
+                    mRxKbps = -1;
                     changed = true;
                     break;
                 default:
@@ -1053,59 +1087,119 @@ public class WifiScoreCard {
         /**
          * Update link bandwidth estimates based on TrafficStats byte counts and radio on time
          */
-        void updateLinkBandwidth(WifiLinkLayerStats oldStats,
-                WifiLinkLayerStats newStats, ExtendedWifiInfo wifiInfo) {
+        void updateLinkBandwidth(WifiLinkLayerStats oldStats, WifiLinkLayerStats newStats,
+                ExtendedWifiInfo wifiInfo, int signalLevel) {
             long txBytes = mFrameworkFacade.getTotalTxBytes() - mFrameworkFacade.getMobileTxBytes();
             long rxBytes = mFrameworkFacade.getTotalRxBytes() - mFrameworkFacade.getMobileRxBytes();
+            updateWifiInfo(wifiInfo, signalLevel);
             updateLinkBandwidthInternal(oldStats, newStats, wifiInfo, txBytes, rxBytes);
             mLastTxBytes = txBytes;
             mLastRxBytes = rxBytes;
         }
 
+        void updateWifiInfo(ExtendedWifiInfo wifiInfo, int signalLevel) {
+            mSignalLevel = Math.max(0, Math.min(signalLevel, NUM_SIGNAL_LEVEL - 1));
+            mBandIdx = getBandIdx(wifiInfo);
+            mBssid = wifiInfo.getBSSID();
+        }
+
         private void updateLinkBandwidthInternal(WifiLinkLayerStats oldStats,
-                WifiLinkLayerStats newStats,
-                ExtendedWifiInfo wifiInfo, long txBytes, long rxBytes) {
+                WifiLinkLayerStats newStats, ExtendedWifiInfo wifiInfo,
+                long txBytes, long rxBytes) {
+            // oldStats is reset to null after screen off or disconnection
             if (oldStats == null || newStats == null) {
                 return;
             }
+
             int elapsedTimeMs = (int) (newStats.timeStampInMs - oldStats.timeStampInMs);
             if (elapsedTimeMs > MAX_TRAFFIC_STATS_POLL_TIME_DELTA_MS) {
                 return;
             }
-            int onTimeMs = newStats.on_time - oldStats.on_time;
-            int l2TxKbps = wifiInfo.getTxLinkSpeedMbps() * 1024;
-            int l2RxKbps = wifiInfo.getRxLinkSpeedMbps() * 1024;
-            int txBytesDelta = (int) (txBytes - mLastTxBytes);
-            int rxBytesDelta = (int) (rxBytes - mLastRxBytes);
-            // TODO: filtering, per-tech/signal level grouping and memory store operation
-            mTxLinkBandwidthKbps = onTimeMs <= 0 ? 0 : (txBytesDelta * 8 / onTimeMs);
-            mRxLinkBandwidthKbps = onTimeMs <= 0 ? 0 : (rxBytesDelta * 8 / onTimeMs);
 
-            StringBuilder sb = new StringBuilder();
-            logd(sb.append("rssi=").append(wifiInfo.getRssi())
-                    .append("freq=").append(wifiInfo.getFrequency())
-                    .append("l2Tx=").append(l2TxKbps)
-                    .append("l2Rx=").append(l2RxKbps)
-                    .append("onTimeMs=").append(onTimeMs)
-                    .append("txBytes=").append(txBytesDelta)
-                    .append("rxBytes=").append(rxBytesDelta)
-                    .append("l3Tx=").append(mTxLinkBandwidthKbps)
-                    .append("l3Rx=").append(mRxLinkBandwidthKbps)
-                    .toString());
+            int onTimeMs = newStats.on_time - oldStats.on_time;
+            if (onTimeMs <= RADIO_ON_TIME_MIN_MS) {
+                return;
+            }
+            onTimeMs = Math.min(elapsedTimeMs, onTimeMs);
+            // TODO: short term smoothing filter
+            int txBytesDelta = (int) (txBytes - mLastTxBytes);
+            updateBandwidthSample(txBytesDelta, LINK_TX, onTimeMs);
+            mTxKbps = calculateLinkBandwidth(LINK_TX);
+            int rxBytesDelta = (int) (rxBytes - mLastRxBytes);
+            updateBandwidthSample(rxBytesDelta, LINK_RX, onTimeMs);
+            mRxKbps = calculateLinkBandwidth(LINK_RX);
+
+            if (mVerboseLoggingEnabled) {
+                StringBuilder sb = new StringBuilder();
+                logd(sb.append(" rssi=").append(wifiInfo.getRssi())
+                        .append(" freq=").append(wifiInfo.getFrequency())
+                        .append(" bssid=").append(mBssid)
+                        .append(" l2TxMbps=").append(wifiInfo.getTxLinkSpeedMbps())
+                        .append(" l2RxMbps=").append(wifiInfo.getRxLinkSpeedMbps())
+                        .append(" onTimeMs=").append(onTimeMs)
+                        .append(" txKB=").append(txBytesDelta / 1024)
+                        .append(" rxKB=").append(rxBytesDelta / 1024)
+                        .append(" l3TxMbps=").append(mTxKbps / 1000)
+                        .append(" l3RxMbps=").append(mRxKbps / 1000)
+                        .toString());
+            }
+        }
+
+        private int getBandIdx(ExtendedWifiInfo wifiInfo) {
+            return ScanResult.is24GHz(wifiInfo.getFrequency()) ? 0 : 1;
+        }
+
+        private void updateBandwidthSample(int bytesDelta, int link, int onTimeMs) {
+            if (bytesDelta < LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE[mSignalLevel] * 1024) {
+                return;
+            }
+            int linkBandwidthKbps = bytesDelta * 8 / onTimeMs;
+            logd(link == LINK_TX ? "txKbps=" : "rxKbps=" + linkBandwidthKbps);
+            // Update SSID level stats
+            mBandwidthStatsValue[mBandIdx][link][mSignalLevel] += linkBandwidthKbps;
+            mBandwidthStatsCount[mBandIdx][link][mSignalLevel]++;
+            // Update BSSID level stats
+            PerBssid perBssid = lookupBssid(ssid, mBssid);
+            if (perBssid != mPlaceholderPerBssid) {
+                perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] += linkBandwidthKbps;
+                perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel]++;
+            }
+        }
+
+        private int calculateLinkBandwidth(int link) {
+            // Check if current BSSID/signal level has enough count
+            PerBssid perBssid = lookupBssid(ssid, mBssid);
+            int count = perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel];
+            long value = perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel];
+            if (count >= LINK_BANDWIDTH_STATS_COUNT_THR) {
+                return (int) (value / count);
+            }
+
+            // Check if current SSID/band/signal level has enough count
+            count = mBandwidthStatsCount[mBandIdx][link][mSignalLevel];
+            value = mBandwidthStatsValue[mBandIdx][link][mSignalLevel];
+            if (count >= LINK_BANDWIDTH_STATS_COUNT_THR) {
+                return (int) (value / count);
+            }
+
+            // Fall back to a cold-start value
+            return LINK_BANDWIDTH_INIT_KBPS[mBandIdx][link][mSignalLevel];
         }
 
         /**
          * Get the latest TrafficStats based end-to-end Tx link bandwidth estimation in Kbps
          */
-        int getTxLinkBandwidthKbps() {
-            return mTxLinkBandwidthKbps;
+        int getTxLinkBandwidthKbps(ExtendedWifiInfo wifiInfo, int signalLevel) {
+            updateWifiInfo(wifiInfo, signalLevel);
+            return calculateLinkBandwidth(LINK_TX);
         }
 
         /**
          * Get the latest TrafficStats based end-to-end Rx link bandwidth estimation in Kbps
          */
-        int getRxLinkBandwidthKbps() {
-            return mRxLinkBandwidthKbps;
+        int getRxLinkBandwidthKbps(ExtendedWifiInfo wifiInfo, int signalLevel) {
+            updateWifiInfo(wifiInfo, signalLevel);
+            return calculateLinkBandwidth(LINK_RX);
         }
 
         /**
@@ -1548,6 +1642,7 @@ public class WifiScoreCard {
             return sb.toString();
         }
     }
+
     /**
      * A base class dealing with common operations of MemoryStore.
      */
