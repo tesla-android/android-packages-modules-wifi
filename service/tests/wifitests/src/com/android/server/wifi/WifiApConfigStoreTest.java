@@ -85,6 +85,8 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     private final int mBand25G = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ;
     private final int mBand256G = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
             | SoftApConfiguration.BAND_6GHZ;
+    private final int mBand25660G = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
+            | SoftApConfiguration.BAND_6GHZ | SoftApConfiguration.BAND_60GHZ;
 
     @Mock private Context mContext;
     @Mock private WifiInjector mWifiInjector;
@@ -119,6 +121,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         mResources.setString(R.string.wifi_localhotspot_configure_ssid_default,
                              TEST_DEFAULT_HOTSPOT_SSID);
         mResources.setBoolean(R.bool.config_wifiSoftapPassphraseAsciiEncodableCheck, true);
+        setupAllBandsSupported();
         /* Default to device that does not require ap band conversion */
         when(mActiveModeWarden.isStaApConcurrencySupported())
                 .thenReturn(false);
@@ -130,6 +133,17 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         mRandom = new Random();
         when(mWifiInjector.getMacAddressUtil()).thenReturn(mMacAddressUtil);
         when(mMacAddressUtil.calculatePersistentMac(any(), any())).thenReturn(TEST_RANDOMIZED_MAC);
+    }
+
+    private void setupAllBandsSupported() {
+        mResources.setBoolean(R.bool.config_wifi24ghzSupport, true);
+        mResources.setBoolean(R.bool.config_wifiSoftap24ghzSupported, true);
+        mResources.setBoolean(R.bool.config_wifi5ghzSupport, true);
+        mResources.setBoolean(R.bool.config_wifiSoftap5ghzSupported, true);
+        mResources.setBoolean(R.bool.config_wifi6ghzSupport, true);
+        mResources.setBoolean(R.bool.config_wifiSoftap6ghzSupported, true);
+        mResources.setBoolean(R.bool.config_wifi60ghzSupport, true);
+        mResources.setBoolean(R.bool.config_wifiSoftap60ghzSupported, true);
     }
 
     /**
@@ -947,5 +961,45 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         SoftApConfiguration config = new SoftApConfiguration.Builder(store.getApConfiguration())
                 .setBssid(TEST_SAP_BSSID_MAC).build();
         assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+    }
+
+    @Test
+    public void testUnSupportedBandConfigurd() throws Exception {
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = new SoftApConfiguration.Builder(store.getApConfiguration())
+                .setBand(mBand25660G).build();
+        // Default is all bands supported.
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        mResources.setBoolean(R.bool.config_wifi24ghzSupport, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifiSoftap24ghzSupported, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifi5ghzSupport, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifiSoftap5ghzSupported, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifi6ghzSupport, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifiSoftap6ghzSupported, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifi60ghzSupport, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+
+        setupAllBandsSupported();
+        mResources.setBoolean(R.bool.config_wifiSoftap60ghzSupported, false);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
     }
 }

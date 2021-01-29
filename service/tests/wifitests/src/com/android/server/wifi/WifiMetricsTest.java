@@ -161,7 +161,6 @@ public class WifiMetricsTest extends WifiBaseTest {
     WifiMetricsProto.WifiLog mDecodedProto;
     TestLooper mTestLooper;
     Random mRandom = new Random();
-    private static final int TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER = 2;
     private static final int TEST_NETWORK_ID = 42;
     public static final String TEST_IFACE_NAME = "wlan0";
     public static final String TEST_IFACE_NAME2 = "wlan1";
@@ -213,6 +212,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.setWifiDataStall(mWifiDataStall);
         mWifiMetrics.setWifiHealthMonitor(mWifiHealthMonitor);
         mWifiMetrics.setWifiScoreCard(mWifiScoreCard);
+        when(mOnWifiUsabilityStatsListener.asBinder()).thenReturn(mAppBinder);
         when(mWifiScoreCard.lookupNetwork(anyString())).thenReturn(mPerNetwork);
         when(mPerNetwork.getRecentStats()).thenReturn(mNetworkConnectionStats);
         verify(mContext, atLeastOnce()).registerReceiver(
@@ -391,13 +391,13 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final int NUM_LEGACY_PERSONAL_NETWORK_SCAN_RESULTS = 4;
     private static final int NUM_ENHANCED_OPEN_NETWORK_SCAN_RESULTS = 1;
     private static final int NUM_WPA3_PERSONAL_NETWORK_SCAN_RESULTS = 2;
-    private static final int NUM_WPA3_ENTERPRISE_NETWORK_SCAN_RESULTS = 1;
+    private static final int NUM_WPA3_ENTERPRISE_NETWORK_SCAN_RESULTS = 3;
     private static final int NUM_WAPI_PERSONAL_NETWORK_SCAN_RESULTS = 1;
     private static final int NUM_WAPI_ENTERPRISE_NETWORK_SCAN_RESULTS = 2;
     private static final int NUM_HIDDEN_NETWORK_SCAN_RESULTS = 1;
     private static final int NUM_HOTSPOT2_R1_NETWORK_SCAN_RESULTS = 1;
     private static final int NUM_HOTSPOT2_R2_NETWORK_SCAN_RESULTS = 2;
-    private static final int NUM_HOTSPOT2_R3_NETWORK_SCAN_RESULTS = 1;
+    private static final int NUM_HOTSPOT2_R3_NETWORK_SCAN_RESULTS = 2;
     private static final int NUM_LEGACY_ENTERPRISE_NETWORK_SCAN_RESULTS =
             NUM_HOTSPOT2_R1_NETWORK_SCAN_RESULTS + NUM_HOTSPOT2_R2_NETWORK_SCAN_RESULTS
             + NUM_HOTSPOT2_R3_NETWORK_SCAN_RESULTS;
@@ -621,22 +621,31 @@ public class WifiMetricsTest extends WifiBaseTest {
                 FEATURE_MBO | FEATURE_MBO_CELL_DATA_AWARE));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WPA2-OWE-CCMP]",
                 FEATURE_MBO | FEATURE_MBO_CELL_DATA_AWARE | FEATURE_OCE));
-        mockScanDetails.add(buildMockScanDetail(false, null, "[WPA2-EAP-SUITE-B-192]",
+        mockScanDetails.add(buildMockScanDetail(false, null, "[RSN-SUITE_B_192][MFPR]",
                 FEATURE_11AX | FEATURE_6G));
+        // WPA3 Enterprise transition network
+        mockScanDetails.add(buildMockScanDetail(false, null,
+                "[WPA-EAP/SHA1+EAP/SHA256-CCMP][MFPC]", 0));
+        // WPA3 Enterprise only network
+        mockScanDetails.add(buildMockScanDetail(false, null,
+                "[WPA-EAP/SHA256-CCMP][MFPR][MFPC]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-PSK-SMS4-SMS4]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-CERT-SMS4-SMS4]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-CERT-SMS4-SMS4]", 0));
         // Number of scans of R2 networks must be equal to NUM_HOTSPOT2_R2_NETWORK_SCAN_RESULTS
         mockScanDetails.add(buildMockScanDetail(false, NetworkDetail.HSRelease.R2,
-                "[WPA-EAP-CCMP+EAP-FILS-SHA256-CCMP]", FEATURE_MBO | FEATURE_OCE));
+                "[WPA-EAP/SHA1-CCMP+EAP-FILS-SHA256-CCMP]", FEATURE_MBO | FEATURE_OCE));
         mockScanDetails.add(buildMockScanDetail(false, NetworkDetail.HSRelease.R2,
-                "[WPA2-EAP+FT/EAP-CCMP+EAP-FILS-SHA256-CCMP]", 0));
+                "[WPA2-EAP/SHA1+FT/EAP-CCMP+EAP-FILS-SHA256-CCMP]", 0));
         // Number of scans of R1 networks must be equal to NUM_HOTSPOT2_R1_NETWORK_SCAN_RESULTS
         mockScanDetails.add(buildMockScanDetail(false, NetworkDetail.HSRelease.R1,
-                "[WPA-EAP-CCMP]", 0));
+                "[WPA-EAP/SHA1-CCMP]", 0));
         // Number of scans of R3 networks must be equal to NUM_HOTSPOT2_R3_NETWORK_SCAN_RESULTS
         mockScanDetails.add(buildMockScanDetail(false, NetworkDetail.HSRelease.R3,
-                "[WPA-EAP-CCMP]", 0));
+                "[WPA-EAP/SHA1-CCMP]", 0));
+        // WPA2 Enterprise network with MFPR and MFPC
+        mockScanDetails.add(buildMockScanDetail(false, NetworkDetail.HSRelease.R3,
+                "[WPA-EAP/SHA1-CCMP][MFPR][MFPC]", 0));
         return mockScanDetails;
     }
 
@@ -1628,7 +1637,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         when(networkDetail.getDtimInterval()).thenReturn(NETWORK_DETAIL_DTIM);
         ScanResult scanResult = mock(ScanResult.class);
         scanResult.level = SCAN_RESULT_LEVEL;
-        scanResult.capabilities = "EAP";
+        scanResult.capabilities = "EAP/SHA1";
         WifiConfiguration config = mock(WifiConfiguration.class);
         config.SSID = "\"" + SSID + "\"";
         config.dtimInterval = CONFIG_DTIM;
@@ -4100,8 +4109,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         // Register Client for verification.
         ArgumentCaptor<android.net.wifi.WifiUsabilityStatsEntry> usabilityStats =
                 ArgumentCaptor.forClass(android.net.wifi.WifiUsabilityStatsEntry.class);
-        mWifiMetrics.addOnWifiUsabilityListener(mAppBinder, mOnWifiUsabilityStatsListener,
-                TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER);
+        mWifiMetrics.addOnWifiUsabilityListener(mOnWifiUsabilityStatsListener);
         WifiInfo info = mock(WifiInfo.class);
         when(info.getRssi()).thenReturn(nextRandInt());
         when(info.getLinkSpeed()).thenReturn(nextRandInt());
@@ -4127,9 +4135,8 @@ public class WifiMetricsTest extends WifiBaseTest {
     @Test
     public void testRemoveClient() throws RemoteException {
         // Register Client for verification.
-        mWifiMetrics.addOnWifiUsabilityListener(mAppBinder, mOnWifiUsabilityStatsListener,
-                TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER);
-        mWifiMetrics.removeOnWifiUsabilityListener(TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER);
+        mWifiMetrics.addOnWifiUsabilityListener(mOnWifiUsabilityStatsListener);
+        mWifiMetrics.removeOnWifiUsabilityListener(mOnWifiUsabilityStatsListener);
         verify(mAppBinder).unlinkToDeath(any(), anyInt());
 
         WifiInfo info = mock(WifiInfo.class);
@@ -4147,8 +4154,7 @@ public class WifiMetricsTest extends WifiBaseTest {
      */
     @Test
     public void testAddsForBinderDeathOnAddClient() throws Exception {
-        mWifiMetrics.addOnWifiUsabilityListener(mAppBinder, mOnWifiUsabilityStatsListener,
-                TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER);
+        mWifiMetrics.addOnWifiUsabilityListener(mOnWifiUsabilityStatsListener);
         verify(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
     }
 
@@ -4159,8 +4165,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     public void testAddsListenerFailureOnLinkToDeath() throws Exception {
         doThrow(new RemoteException())
                 .when(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
-        mWifiMetrics.addOnWifiUsabilityListener(mAppBinder, mOnWifiUsabilityStatsListener,
-                TEST_WIFI_USABILITY_STATS_LISTENER_IDENTIFIER);
+        mWifiMetrics.addOnWifiUsabilityListener(mOnWifiUsabilityStatsListener);
         verify(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
 
         WifiInfo info = mock(WifiInfo.class);

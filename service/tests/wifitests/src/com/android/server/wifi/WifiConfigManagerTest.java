@@ -29,6 +29,7 @@ import android.content.pm.PackageManager;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
@@ -152,6 +153,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Mock private PerNetwork mPerNetwork;
     @Mock private WifiMetrics mWifiMetrics;
     @Mock private WifiConfigManager.OnNetworkUpdateListener mListener;
+    @Mock private ActiveModeWarden mActiveModeWarden;
+    @Mock private ClientModeManager mPrimaryClientModeManager;
+    @Mock private WifiGlobals mWifiGlobals;
     private LruConnectionTracker mLruConnectionTracker;
 
     private MockResources mResources;
@@ -264,9 +268,18 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         mWifiConfigManager.addOnNetworkUpdateListener(mWcmListener);
         // static mocking
         mSession = ExtendedMockito.mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
                 .mockStatic(WifiConfigStore.class, withSettings().lenient())
                 .strictness(Strictness.LENIENT)
                 .startMocking();
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
         when(WifiConfigStore.createUserFiles(anyInt(), anyBoolean())).thenReturn(mock(List.class));
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
     }
@@ -3773,7 +3786,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     private void verifySetUserConnectChoice(int preferredNetId, int notPreferredNetId) {
         assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(
-                notPreferredNetId, mock(ScanResult.class), 54));
+                notPreferredNetId, mock(ScanResult.class), 54, mock(SecurityParams.class)));
         assertTrue(mWifiConfigManager.updateNetworkAfterConnect(preferredNetId, true, TEST_RSSI));
         WifiConfiguration preferred = mWifiConfigManager.getConfiguredNetwork(preferredNetId);
         assertNull(preferred.getNetworkSelectionStatus().getConnectChoice());
@@ -4022,7 +4035,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Now set scan results of network2 to set the corresponding
         // {@link NetworkSelectionStatus#mSeenInLastQualifiedNetworkSelection} field.
         assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(network2.networkId,
-                createScanDetailForNetwork(network2).getScanResult(), 54));
+                createScanDetailForNetwork(network2).getScanResult(), 54,
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK)));
 
         // Retrieve the hidden network list & verify the order of the networks returned.
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks =
@@ -5773,7 +5788,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyUpdateNetworkAfterConnectHasEverConnectedTrue(network2.networkId);
         // Set network4 {@link NetworkSelectionStatus#mSeenInLastQualifiedNetworkSelection} to true.
         assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(network4.networkId,
-                createScanDetailForNetwork(network4).getScanResult(), 54));
+                createScanDetailForNetwork(network4).getScanResult(), 54,
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_OPEN)));
         List<WifiConfiguration> networkList = mWifiConfigManager.getConfiguredNetworks();
         // Expected order should be based on connection order and last qualified selection.
         Collections.sort(networkList, mWifiConfigManager.getScanListComparator());
@@ -6077,5 +6094,428 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration network = WifiConfigurationTestUtil.createPskNetwork();
         mWifiConfigManager.getPersistentMacAddress(network);
         verify(mMacAddressUtil).calculatePersistentMac(eq(network.getNetworkKey()), any());
+    }
+
+    private void verifyAddUpgradableNetwork(
+            WifiConfiguration baseConfig,
+            WifiConfiguration upgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int upgradableSecurityType = upgradableConfig.getDefaultSecurityParams().getSecurityType();
+
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration unmergedNetwork = retrievedNetworks.get(0);
+        assertTrue(unmergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(unmergedNetwork.isSecurityType(upgradableSecurityType));
+        assertTrue(unmergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+
+        result = addNetworkToWifiConfigManager(upgradableConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        // Two networks should be merged into one.
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(upgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForPskSae() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        upgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        upgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForOpenOwe() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    private void verifyAddDowngradableNetwork(
+            WifiConfiguration baseConfig,
+            WifiConfiguration downgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int downgradableSecurityType = downgradableConfig.getDefaultSecurityParams()
+                .getSecurityType();
+
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration unmergedNetwork = retrievedNetworks.get(0);
+        assertEquals(baseSecurityType,
+                unmergedNetwork.getDefaultSecurityParams().getSecurityType());
+        assertTrue(unmergedNetwork.isSecurityType(baseSecurityType));
+        assertFalse(unmergedNetwork.isSecurityType(downgradableSecurityType));
+        assertFalse(unmergedNetwork.getSecurityParams(baseSecurityType)
+                .isAddedByAutoUpgrade());
+
+        result = addNetworkToWifiConfigManager(downgradableConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        // Two networks should be merged into one.
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        // default type is changed to downgrading one.
+        assertEquals(downgradableSecurityType,
+                mergedNetwork.getDefaultSecurityParams().getSecurityType());
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(downgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(baseSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkSaePsk() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        downgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        downgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkOweOpen() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    private void verifyLoadFromStoreMergeUpgradableConfigurations(
+            WifiConfiguration baseConfig,
+            WifiConfiguration upgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int upgradableSecurityType = upgradableConfig.getDefaultSecurityParams().getSecurityType();
+
+        // Set up the store data.
+        List<WifiConfiguration> sharedNetworks = new ArrayList<WifiConfiguration>() {
+            {
+                add(baseConfig);
+                add(upgradableConfig);
+            }
+        };
+        setupStoreDataForRead(sharedNetworks, new ArrayList<>());
+
+        // read from store now
+        assertTrue(mWifiConfigManager.loadFromStore());
+
+        // assert that the expected identities are reset
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(upgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsPskSae() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        upgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsOpenOwe() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        upgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    private void verifyTransitionDisableIndicationForSecurityType(
+            WifiConfiguration testNetwork, int indication) {
+
+        int disabledType = testNetwork.getDefaultSecurityParams().getSecurityType();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configBefore.getSecurityParams(disabledType).isEnabled());
+    }
+
+    /**
+     * Verify Transition Disable Indication for the PSK/SAE configuration.
+     */
+    @Test
+    public void testSaeTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createPskNetwork(),
+                WifiMonitor.TDI_USE_WPA3_PERSONAL);
+    }
+
+    /**
+     * Verify Transition Disable Indication for WPA2/WPA3 Enterprise configuration.
+     */
+    @Test
+    public void testWpa2Wpa3EnterpriseValidationTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createEapNetwork(),
+                WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication for Open/OWE configuration.
+     */
+    @Test
+    public void testOpenOweEnterpriseValidationTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createOpenNetwork(),
+                WifiMonitor.TDI_USE_ENHANCED_OPEN);
+    }
+
+    /**
+     * Verify Transition Disable Indication for the AP validation enforcement.
+     */
+    @Test
+    public void testSaeApValidationTransitionDisableIndication() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configBefore.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+
+        int indication = WifiMonitor.TDI_USE_SAE_PK;
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configAfter.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+    }
+
+    private void verifyNonApplicableTransitionDisableIndicationForSecurityType(
+            WifiConfiguration testNetwork, int indication) {
+
+        int disabledType = testNetwork.getDefaultSecurityParams().getSecurityType();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testOpenTransitionDisableIndicationNotAffectPskSaeType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createPskNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_ENHANCED_OPEN
+                        | WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectWpa2Wpa3EnterpriseType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createEapNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_ENHANCED_OPEN
+                        | WifiMonitor.TDI_USE_WPA3_PERSONAL);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectOpenOweType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createOpenNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_WPA3_PERSONAL
+                        | WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectApValidation() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configBefore.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+
+        int indication = WifiMonitor.TDI_USE_ENHANCED_OPEN
+                | WifiMonitor.TDI_USE_WPA3_PERSONAL
+                | WifiMonitor.TDI_USE_WPA3_ENTERPRISE;
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configAfter.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
     }
 }

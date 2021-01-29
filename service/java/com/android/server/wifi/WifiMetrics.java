@@ -48,10 +48,10 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.ProvisioningCallback;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.os.WorkSource;
@@ -114,7 +114,6 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStatsEntry;
 import com.android.server.wifi.rtt.RttMetrics;
 import com.android.server.wifi.scanner.KnownBandsChannelHelper;
-import com.android.server.wifi.util.ExternalCallbackTracker;
 import com.android.server.wifi.util.InformationElementUtil;
 import com.android.server.wifi.util.IntCounter;
 import com.android.server.wifi.util.IntHistogram;
@@ -409,7 +408,7 @@ public class WifiMetrics {
     private final LinkedList<WifiUsabilityStats> mWifiUsabilityStatsListGood = new LinkedList<>();
     private int mWifiUsabilityStatsCounter = 0;
     private final Random mRand = new Random();
-    private final ExternalCallbackTracker<IOnWifiUsabilityStatsListener> mOnWifiUsabilityListeners;
+    private final RemoteCallbackList<IOnWifiUsabilityStatsListener> mOnWifiUsabilityListeners;
 
     private final SparseArray<DeviceMobilityStatePnoScanStats> mMobilityStatePnoStatsMap =
             new SparseArray<>();
@@ -993,6 +992,8 @@ public class WifiMetrics {
         public static final int FAILURE_DHCP = 10;
         // ASSOCIATION_TIMED_OUT
         public static final int FAILURE_ASSOCIATION_TIMED_OUT = 11;
+        // NETWORK_NOT_FOUND
+        public static final int FAILURE_NETWORK_NOT_FOUND = 12;
 
         RouterFingerPrint mRouterFingerPrint;
         private String mConfigSsid;
@@ -1083,6 +1084,9 @@ public class WifiMetrics {
                         break;
                     case FAILURE_ASSOCIATION_TIMED_OUT:
                         sb.append("ASSOCIATION_TIMED_OUT");
+                        break;
+                    case FAILURE_NETWORK_NOT_FOUND:
+                        sb.append("FAILURE_NETWORK_NOT_FOUND");
                         break;
                     default:
                         sb.append("UNKNOWN");
@@ -1430,8 +1434,7 @@ public class WifiMetrics {
         unknownStateStats.numTimesEnteredState++;
         mCurrentDeviceMobilityStateStartMs = mClock.getElapsedSinceBootMillis();
         mCurrentDeviceMobilityStatePnoScanStartMs = -1;
-        mOnWifiUsabilityListeners =
-                new ExternalCallbackTracker<IOnWifiUsabilityStatsListener>(mHandler);
+        mOnWifiUsabilityListeners = new RemoteCallbackList<>();
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
@@ -1987,7 +1990,9 @@ public class WifiMetrics {
                     || ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
                 currentConnectionEvent.mRouterFingerPrint.mRouterFingerPrintProto.authentication =
                         WifiMetricsProto.RouterFingerPrint.AUTH_PERSONAL;
-            } else if (ScanResultUtil.isScanResultForEapNetwork(scanResult)
+            } else if (ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
+                    || ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
+                    || ScanResultUtil.isScanResultForEapNetwork(scanResult)
                     || ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
                 currentConnectionEvent.mRouterFingerPrint.mRouterFingerPrintProto.authentication =
                         WifiMetricsProto.RouterFingerPrint.AUTH_ENTERPRISE;
@@ -2658,7 +2663,9 @@ public class WifiMetrics {
                 if (scanResult.is6GHz()) {
                     band6gNetworks++;
                 }
-                if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
+                if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)
+                        || ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
+                        || ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)) {
                     wpa3EnterpriseNetworks++;
                 } else if (ScanResultUtil.isScanResultForWapiPskNetwork(scanResult)) {
                     wapiPersonalNetworks++;
@@ -3236,7 +3243,8 @@ public class WifiMetrics {
 
                 ssids.add(matchInfo);
                 bssids++;
-                boolean isOpen = matchInfo.networkType == WifiConfiguration.SECURITY_TYPE_OPEN;
+                boolean isOpen = ScanResultUtil.isScanResultForOpenNetwork(scanResult)
+                        || ScanResultUtil.isScanResultForOweNetwork(scanResult);
                 WifiConfiguration config =
                         mWifiConfigManager.getSavedNetworkForScanDetail(scanDetail);
                 boolean isSaved = (config != null) && !config.isEphemeral()
@@ -4121,10 +4129,11 @@ public class WifiMetrics {
                         mWifiLogProto.numLegacyEnterpriseNetworks++;
                     }
                 } else {
-                    if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
-                        mWifiLogProto.numWpa3PersonalNetworks++;
-                    } else {
+                    if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) {
                         mWifiLogProto.numLegacyPersonalNetworks++;
+                    }
+                    else if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+                        mWifiLogProto.numWpa3PersonalNetworks++;
                     }
                 }
                 mWifiLogProto.numNetworksAddedByApps++;
@@ -5880,14 +5889,16 @@ public class WifiMetrics {
      */
     private void sendWifiUsabilityStats(int seqNum, boolean isSameBssidAndFreq,
             android.net.wifi.WifiUsabilityStatsEntry statsEntry) {
-        for (IOnWifiUsabilityStatsListener listener : mOnWifiUsabilityListeners.getCallbacks()) {
+        int itemCount = mOnWifiUsabilityListeners.beginBroadcast();
+        for (int i = 0; i < itemCount; i++) {
             try {
-                listener.onWifiUsabilityStats(seqNum, isSameBssidAndFreq, statsEntry);
+                mOnWifiUsabilityListeners.getBroadcastItem(i).onWifiUsabilityStats(seqNum,
+                        isSameBssidAndFreq, statsEntry);
             } catch (RemoteException e) {
-                Log.e(TAG, "Unable to invoke Wifi usability stats entry listener "
-                        + listener, e);
+                Log.e(TAG, "Unable to invoke Wifi usability stats entry listener ", e);
             }
         }
+        mOnWifiUsabilityListeners.finishBroadcast();
     }
 
     private android.net.wifi.WifiUsabilityStatsEntry createNewWifiUsabilityStatsEntryParcelable(
@@ -6134,26 +6145,25 @@ public class WifiMetrics {
     /**
      * Add a new listener for Wi-Fi usability stats handling.
      */
-    public void addOnWifiUsabilityListener(IBinder binder, IOnWifiUsabilityStatsListener listener,
-            int listenerIdentifier) {
-        if (!mOnWifiUsabilityListeners.add(binder, listener, listenerIdentifier)) {
+    public void addOnWifiUsabilityListener(IOnWifiUsabilityStatsListener listener) {
+        if (!mOnWifiUsabilityListeners.register(listener)) {
             Log.e(TAG, "Failed to add listener");
             return;
         }
         if (DBG) {
             Log.v(TAG, "Adding listener. Num listeners: "
-                    + mOnWifiUsabilityListeners.getNumCallbacks());
+                    + mOnWifiUsabilityListeners.getRegisteredCallbackCount());
         }
     }
 
     /**
      * Remove an existing listener for Wi-Fi usability stats handling.
      */
-    public void removeOnWifiUsabilityListener(int listenerIdentifier) {
-        mOnWifiUsabilityListeners.remove(listenerIdentifier);
+    public void removeOnWifiUsabilityListener(IOnWifiUsabilityStatsListener listener) {
+        mOnWifiUsabilityListeners.unregister(listener);
         if (DBG) {
             Log.v(TAG, "Removing listener. Num listeners: "
-                    + mOnWifiUsabilityListeners.getNumCallbacks());
+                    + mOnWifiUsabilityListeners.getRegisteredCallbackCount());
         }
     }
 

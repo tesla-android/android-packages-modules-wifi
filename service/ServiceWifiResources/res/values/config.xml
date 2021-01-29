@@ -21,6 +21,9 @@
      entries do not follow the convention, but all new entries should. -->
 
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <!-- boolean indicating whether the WiFi chipset has 24GHz band support -->
+    <bool translatable="false" name ="config_wifi24ghzSupport">true</bool>
+
     <!-- boolean indicating whether the WiFi chipset has 5GHz band support.
          Note: This config is replacing the config_wifi_dual_band_support
          since more bands may now be supported (such as 6GHz), the naming dual_band
@@ -241,8 +244,17 @@
     <!-- Wifi driver supports IEEE80211AX TWT (Target Wake Time) for softap -->
     <bool translatable="false" name="config_wifiSoftapHeTwtSupported">false</bool>
 
-    <!-- Wifi driver supports 6GHz band for softap -->
+    <!-- Wifi driver supports 2.4GHz band for softap when chip support 24GHz -->
+    <bool translatable="false" name="config_wifiSoftap24ghzSupported">true</bool>
+
+    <!-- Wifi driver supports 5GHz band for softap when chip support 5GHz -->
+    <bool translatable="false" name="config_wifiSoftap5ghzSupported">true</bool>
+
+    <!-- Wifi driver supports 6GHz band for softap when chip support 6GHz -->
     <bool translatable="false" name="config_wifiSoftap6ghzSupported">false</bool>
+
+    <!-- Wifi driver supports 60GHz band for softap when chip support 60GHz -->
+    <bool translatable="false" name="config_wifiSoftap60ghzSupported">false</bool>
 
     <!-- Indicates that local-only hotspot should be brought up at 6GHz if possible.
          This option is for automotive builds only (the one that have
@@ -315,6 +327,24 @@
     <!-- Indicates that wifi watchdog is enabled on this device -->
     <bool translatable="false" name="config_wifi_watchdog_enabled">true</bool>
 
+    <!-- list of package names for which WifiManager.startScan() will not be throttled when the app
+    is in foreground. -->
+    <string-array translatable="false" name="config_wifiForegroundScanThrottleExceptionList">
+        <!-- Below is a sample configuration for this list:
+        <item>com.company1.example.test.name1</item>
+        <item>com.company2.example.test.name2</item>
+        -->
+    </string-array>
+
+    <!-- list of package names for which WifiManager.startScan() will not be throttled when the app
+    is in background. -->
+    <string-array translatable="false" name="config_wifiBackgroundScanThrottleExceptionList">
+        <!-- Below is a sample configuration for this list:
+        <item>com.company1.example.test.name1</item>
+        <item>com.company2.example.test.name2</item>
+        -->
+    </string-array>
+
     <!--
     Controls the mapping between RSSI and RSSI levels.
 
@@ -380,6 +410,7 @@
     <integer translatable="false" name="config_wifiDisableReasonAssociationRejectionThreshold"> 5 </integer>
     <integer translatable="false" name="config_wifiDisableReasonAuthenticationFailureThreshold"> 5 </integer>
     <integer translatable="false" name="config_wifiDisableReasonDhcpFailureThreshold"> 2 </integer>
+    <integer translatable="false" name="config_wifiDisableReasonNetworkNotFoundThreshold"> 2 </integer>
 
     <!-- List of constants that indicate the number of consecutive failures per type needed to block a BSSID.
     A blocked BSSID will not be considered in network selection and firmware roaming.-->
@@ -488,6 +519,12 @@
 
     <!-- Enable WPA2 to WPA3 auto-upgrade offload to capable Driver/Firmware -->
     <bool translatable="false" name="config_wifiSaeUpgradeOffloadEnabled">false</bool>
+
+    <!-- Enable Open to OWE auto-upgrade -->
+    <bool translatable="false" name="config_wifiOweUpgradeEnabled">true</bool>
+
+    <!-- Enable WPA2 Enterprise to WPA3 Enterprise auto-upgrade -->
+    <bool translatable="false" name="config_wifiWpa3EnterpriseUpgradeEnabled">true</bool>
 
     <!-- Number of self recoveries to be attempted per hour. Any fatal errors beyond this will
          cause the wifi stack to turn wifi off and wait for user input.

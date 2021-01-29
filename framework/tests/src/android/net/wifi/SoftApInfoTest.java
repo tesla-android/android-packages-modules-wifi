@@ -37,6 +37,7 @@ public class SoftApInfoTest {
     private static final int TEST_BANDWIDTH = SoftApInfo.CHANNEL_WIDTH_20MHZ;
     private static final int TEST_WIFI_STANDARD = ScanResult.WIFI_STANDARD_LEGACY;
     private static final MacAddress TEST_AP_MAC = MacAddress.fromString("aa:bb:cc:dd:ee:ff");
+    private static final long TEST_SHUTDOWN_TIMEOUT_MILLS = 100_000;
     /**
      * Verifies copy constructor.
      */
@@ -109,12 +110,14 @@ public class SoftApInfoTest {
         info.setBssid(TEST_AP_MAC);
         info.setWifiStandard(TEST_WIFI_STANDARD);
         info.setApInstanceIdentifier(TEST_AP_INSTANCE);
+        info.setAutoShutdownTimeoutMills(TEST_SHUTDOWN_TIMEOUT_MILLS);
         assertEquals(info.getFrequency(), TEST_FREQUENCY);
         assertEquals(info.getBandwidth(), TEST_BANDWIDTH);
         if (SdkLevel.isAtLeastS()) {
             assertEquals(info.getBssid(), TEST_AP_MAC);
             assertEquals(info.getWifiStandard(), TEST_WIFI_STANDARD);
             assertEquals(info.getApInstanceIdentifier(), TEST_AP_INSTANCE);
+            assertEquals(info.getAutoShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLS);
         }
     }
 

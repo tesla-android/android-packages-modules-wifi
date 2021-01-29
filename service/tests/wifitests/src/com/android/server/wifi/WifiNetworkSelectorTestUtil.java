@@ -30,6 +30,7 @@ import android.net.RssiCurve;
 import android.net.ScoredNetwork;
 import android.net.WifiKey;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiSsid;
@@ -137,7 +138,7 @@ public class WifiNetworkSelectorTestUtil {
         assertNotNull(ssids);
         String[] caps = new String[ssids.length];
         for (int i = 0; i < ssids.length; i++) {
-            caps[i] = "[EAP][ESS]";
+            caps[i] = "[EAP/SHA1][ESS]";
         }
         List<ScanDetail> scanDetails = buildScanDetails(ssids, bssids, freqs, caps, levels, clock);
         WifiConfiguration[] savedConfigs = new WifiConfiguration[ssids.length];
@@ -187,7 +188,8 @@ public class WifiNetworkSelectorTestUtil {
     public static void verifySelectedScanResult(WifiConfigManager wifiConfigManager,
             ScanResult chosenScanResult, WifiConfiguration chosenCandidate) {
         verify(wifiConfigManager, atLeastOnce()).setNetworkCandidateScanResult(
-                eq(chosenCandidate.networkId), eq(chosenScanResult), anyInt());
+                eq(chosenCandidate.networkId), eq(chosenScanResult), anyInt(),
+                eq(chosenCandidate.getSecurityParamsList().get(0)));
     }
 
 
@@ -298,7 +300,7 @@ public class WifiNetworkSelectorTestUtil {
      * @param wifiConfigManager the mocked WifiConfigManager
      * @param configs input configuration need to be added to WifiConfigureStore
      */
-    private static void prepareConfigStore(final WifiConfigManager wifiConfigManager,
+    public static void prepareConfigStore(final WifiConfigManager wifiConfigManager,
                 final WifiConfiguration[] configs) {
         when(wifiConfigManager.getConfiguredNetwork(anyInt()))
                 .then(new AnswerWithArguments() {
@@ -340,6 +342,8 @@ public class WifiNetworkSelectorTestUtil {
                             configs[netId].getNetworkSelectionStatus()
                                     .setCandidateScore(Integer.MIN_VALUE);
                             configs[netId].getNetworkSelectionStatus()
+                                .setCandidateSecurityParams(null);
+                            configs[netId].getNetworkSelectionStatus()
                                     .setSeenInLastQualifiedNetworkSelection(false);
                             return true;
                         } else {
@@ -348,12 +352,15 @@ public class WifiNetworkSelectorTestUtil {
                     }
                 });
         when(wifiConfigManager.setNetworkCandidateScanResult(
-                anyInt(), any(ScanResult.class), anyInt()))
+                anyInt(), any(ScanResult.class), anyInt(), any()))
                 .then(new AnswerWithArguments() {
-                    public boolean answer(int netId, ScanResult scanResult, int score) {
+                    public boolean answer(int netId, ScanResult scanResult, int score,
+                            SecurityParams params) {
                         if (netId >= 0 && netId < configs.length) {
                             configs[netId].getNetworkSelectionStatus().setCandidate(scanResult);
                             configs[netId].getNetworkSelectionStatus().setCandidateScore(score);
+                            configs[netId].getNetworkSelectionStatus()
+                                    .setCandidateSecurityParams(params);
                             configs[netId].getNetworkSelectionStatus()
                                     .setSeenInLastQualifiedNetworkSelection(true);
                             return true;
@@ -473,11 +480,14 @@ public class WifiNetworkSelectorTestUtil {
                     }
                 });
         when(wifiConfigManager.setNetworkCandidateScanResult(
-                eq(networkId), any(ScanResult.class), anyInt()))
+                eq(networkId), any(ScanResult.class), anyInt(), any()))
                 .then(new AnswerWithArguments() {
-                    public boolean answer(int netId, ScanResult scanResult, int score) {
+                    public boolean answer(int netId, ScanResult scanResult, int score,
+                            SecurityParams params) {
                         config.getNetworkSelectionStatus().setCandidate(scanResult);
                         config.getNetworkSelectionStatus().setCandidateScore(score);
+                        config.getNetworkSelectionStatus()
+                                .setCandidateSecurityParams(params);
                         config.getNetworkSelectionStatus()
                                 .setSeenInLastQualifiedNetworkSelection(true);
                         return true;

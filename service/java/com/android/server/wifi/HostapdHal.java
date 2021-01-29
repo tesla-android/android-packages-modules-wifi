@@ -761,8 +761,7 @@ public class HostapdHal {
                 mContext.getResources().getBoolean(
                 R.bool.config_wifiSoftapIeee80211axSupported);
         ifaceParams12.hwModeParams.enable6GhzBand =
-                mContext.getResources().getBoolean(
-                R.bool.config_wifiSoftap6ghzSupported);
+                ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext);
         ifaceParams12.hwModeParams.enableHeSingleUserBeamformer =
                 mContext.getResources().getBoolean(
                 R.bool.config_wifiSoftapHeSuBeamformerSupported);

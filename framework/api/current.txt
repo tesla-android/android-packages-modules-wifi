@@ -340,6 +340,7 @@ package android.net.wifi {
     method public java.util.List<android.net.wifi.ScanResult> getScanResults();
     method public int getWifiState();
     method public boolean is5GHzBandSupported();
+    method public boolean is60GHzBandSupported();
     method public boolean is6GHzBandSupported();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isAutoWakeupEnabled();
     method public boolean isBridgedApConcurrencySupported();

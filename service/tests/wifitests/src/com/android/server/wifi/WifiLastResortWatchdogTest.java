@@ -68,8 +68,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
     private String[] mBssids = {"aa:bb:cc:dd:ee:ff", "00:11:22:33:44:55", "a0:b0:c0:d0:e0:f0",
             "01:23:45:67:89:ab"};
     private int[] mFrequencies = {2437, 5180, 5180, 2437};
-    private String[] mCaps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-            "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+    private String[] mCaps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+            "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
     private int[] mLevels = {-60, -86, -50, -62};
     private boolean[] mIsEphemeral = {false, false, false, false};
     private boolean[] mHasEverConnected = {false, false, false, false};
@@ -878,9 +878,10 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
                 "ff:ee:dd:cc:bb:aa", "66:77:88:99:aa:bb", "cc:dd:ee:ff:00:01", "02:03:04:05:06:07",
                 "08:09:aa:bb:cc:dd"};
         int[] frequencies = {2437, 5180, 5180, 2437, 2437, 5180, 5180, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-                "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-                "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60, -86, -50, -62, -60, -86, -50, -62};
         boolean[] isEphemeral = {false, false, false, false, false, false, false, false};
         boolean[] hasEverConnected = {false, false, false, false, false, false, false,
@@ -1489,8 +1490,9 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] bssids = {"aa:bb:cc:dd:ee:ff", "00:11:22:33:44:55", "a0:b0:c0:d0:e0:f0",
                 "01:23:45:67:89:ab", "00:01:02:03:04:05"};
         int[] frequencies = {2437, 5180, 5180, 2437, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-                "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60, -86, -50, -62, -60};
         boolean[] isEphemeral = {false, false, false, false, false};
         boolean[] hasEverConnected = {true, false, false, false, false};
@@ -1797,7 +1799,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -1842,7 +1844,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -1915,7 +1917,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -2019,7 +2021,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -2071,7 +2073,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -2134,7 +2136,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};
@@ -2284,7 +2286,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\"", "\"test1\"", "\"test1\""};
         String[] bssids =  {"aa:bb:cc:dd:ee:ff", "00:11:22:33:44:55", "a0:b0:c0:d0:e0:f0"};
         int[] frequencies = {2437, 5180, 5180};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60, -86, -50};
         boolean[] isEphemeral = {false, false, false};
         boolean[] hasEverConnected = {true, true, true};
@@ -2336,7 +2339,7 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         String[] ssids = {"\"test1\""};
         String[] bssids = {"04:03:02:01:00:0f"};
         int[] frequencies = {2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-60};
         boolean[] isEphemeral = {false};
         boolean[] hasEverConnected = {true};

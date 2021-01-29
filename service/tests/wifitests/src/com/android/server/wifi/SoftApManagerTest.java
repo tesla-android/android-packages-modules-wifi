@@ -244,11 +244,14 @@ public class SoftApManagerTest extends WifiBaseTest {
         mTestSoftApInfo.setBandwidth(TEST_AP_BANDWIDTH_IN_SOFTAPINFO);
         mTestSoftApInfo.setBssid(TEST_INTERFACE_MAC_ADDRESS);
         mTestSoftApInfo.setApInstanceIdentifier(TEST_INTERFACE_NAME);
+        mTestSoftApInfo.setAutoShutdownTimeoutMills(TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
         mTestSoftApInfoOnSecondInterface = new SoftApInfo();
         mTestSoftApInfoOnSecondInterface.setFrequency(TEST_AP_FREQUENCY_5G);
         mTestSoftApInfoOnSecondInterface.setBandwidth(TEST_AP_BANDWIDTH_IN_SOFTAPINFO);
         mTestSoftApInfoOnSecondInterface.setBssid(TEST_SECOND_INTERFACE_MAC_ADDRESS);
         mTestSoftApInfoOnSecondInterface.setApInstanceIdentifier(TEST_SECOND_INTERFACE_NAME);
+        mTestSoftApInfoOnSecondInterface.setAutoShutdownTimeoutMills(
+                TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
         // Default set up all features support.
         long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
                 | SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD
@@ -1402,6 +1405,16 @@ public class SoftApManagerTest extends WifiBaseTest {
                 configBuilder.build(), mTestSoftApCapability);
         startSoftApAndVerifyEnabled(apConfig);
 
+        reset(mCallback);
+        mockApInfoChangedEvent(mTestSoftApInfo);
+        mLooper.dispatchAll();
+
+        SoftApInfo expectedInfo = new SoftApInfo(mTestSoftApInfo);
+        expectedInfo.setAutoShutdownTimeoutMills(50000);
+        mTestSoftApInfoMap.put(TEST_INTERFACE_NAME, expectedInfo);
+        verify(mCallback).onConnectedClientsOrInfoChanged(
+                mTestSoftApInfoMap, mTestWifiClientsMap, false);
+
         // Verify timer is scheduled
         verify(mAlarmManager.getAlarmManager()).setExact(anyInt(), anyLong(),
                 eq(mSoftApManager.SOFT_AP_SEND_MESSAGE_TIMEOUT_TAG), any(), any());
@@ -1462,12 +1475,12 @@ public class SoftApManagerTest extends WifiBaseTest {
                 mTestSoftApCapability);
         startSoftApAndVerifyEnabled(apConfig);
         doNothing().when(mFakeSoftApNotifier)
-                .showSoftApShutDownTimeoutExpiredNotification();
+                .showSoftApShutdownTimeoutExpiredNotification();
         mAlarmManager.dispatch(mSoftApManager.SOFT_AP_SEND_MESSAGE_TIMEOUT_TAG);
         mLooper.dispatchAll();
 
         verify(mWifiNative).teardownInterface(TEST_INTERFACE_NAME);
-        verify(mFakeSoftApNotifier).showSoftApShutDownTimeoutExpiredNotification();
+        verify(mFakeSoftApNotifier).showSoftApShutdownTimeoutExpiredNotification();
     }
 
     @Test
@@ -1815,7 +1828,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mFakeSoftApNotifier).dismissSoftApShutDownTimeoutExpiredNotification();
+        verify(mFakeSoftApNotifier).dismissSoftApShutdownTimeoutExpiredNotification();
         order.verify(mWifiNative).setupInterfaceForSoftApMode(
                 mWifiNativeInterfaceCallbackCaptor.capture(), eq(TEST_WORKSOURCE),
                 eq(expectedConfig.getBand()), eq(expectedConfig.getBands().length > 1));

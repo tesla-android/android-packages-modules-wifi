@@ -678,4 +678,41 @@ public class WifiMonitorTest extends WifiBaseTest {
                 messageCaptor.getValue().what);
         assertTrue(wnmData.equals(messageCaptor.getValue().obj));
     }
+
+    /**
+     * Broadcast message when iface handler is null.
+     */
+    @Test
+    public void testBroadcastTransitionDisableEvent() {
+        final int indication = WifiMonitor.TDI_USE_WPA3_PERSONAL
+                | WifiMonitor.TDI_USE_SAE_PK;
+        mWifiMonitor.registerHandler(
+                WLAN_IFACE_NAME, WifiMonitor.TRANSITION_DISABLE_INDICATION, mHandlerSpy);
+        mWifiMonitor.broadcastTransitionDisableEvent(
+                WLAN_IFACE_NAME, NETWORK_ID, indication);
+        mLooper.dispatchAll();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mHandlerSpy).handleMessage(messageCaptor.capture());
+        assertEquals(WifiMonitor.TRANSITION_DISABLE_INDICATION, messageCaptor.getValue().what);
+        assertEquals(NETWORK_ID, messageCaptor.getValue().arg1);
+        assertEquals(indication, messageCaptor.getValue().arg2);
+    }
+
+    /**
+     * Broadcast Network not found event test.
+     */
+    @Test
+    public void testBroadcastNetworkNotFoundEvent() {
+        mWifiMonitor.registerHandler(
+                WLAN_IFACE_NAME, WifiMonitor.NETWORK_NOT_FOUND_EVENT, mHandlerSpy);
+        mWifiMonitor.broadcastNetworkNotFoundEvent(WLAN_IFACE_NAME, SSID);
+        mLooper.dispatchAll();
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mHandlerSpy).handleMessage(messageCaptor.capture());
+        assertEquals(WifiMonitor.NETWORK_NOT_FOUND_EVENT, messageCaptor.getValue().what);
+        String ssid = (String) messageCaptor.getValue().obj;
+        assertEquals(SSID, ssid);
+    }
 }

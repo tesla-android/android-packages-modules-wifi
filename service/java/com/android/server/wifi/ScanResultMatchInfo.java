@@ -16,11 +16,15 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 
 import com.android.server.wifi.util.ScanResultUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -32,47 +36,14 @@ public class ScanResultMatchInfo {
      */
     public String networkSsid;
     /**
-     * Security Type of the network.
+     * Security params list.
      */
-    public @WifiConfiguration.SecurityType int networkType;
-    /**
-     * Special flag for PSK-SAE in transition mode
-     */
-    public boolean pskSaeInTransitionMode;
-    /**
-     * Special flag for OWE in transition mode
-     */
-    public boolean oweInTransitionMode;
+    public List<SecurityParams> securityParamsList = new ArrayList<>();
 
     /**
      * True if created from a scan result
      */
     private boolean mFromScanResult = false;
-    /**
-     * Fetch network type from network configuration.
-     */
-    private static @WifiConfiguration.SecurityType int getNetworkType(WifiConfiguration config) {
-        if (WifiConfigurationUtil.isConfigForSaeNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_SAE;
-        } else if (WifiConfigurationUtil.isConfigForPskNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_PSK;
-        } else if (WifiConfigurationUtil.isConfigForWapiPskNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_WAPI_PSK;
-        } else if (WifiConfigurationUtil.isConfigForWapiCertNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_WAPI_CERT;
-        } else if (WifiConfigurationUtil.isConfigForEapNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_EAP;
-        } else if (WifiConfigurationUtil.isConfigForWpa3Enterprise192BitNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
-        } else if (WifiConfigurationUtil.isConfigForWepNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_WEP;
-        } else if (WifiConfigurationUtil.isConfigForOweNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_OWE;
-        } else if (WifiConfigurationUtil.isConfigForOpenNetwork(config)) {
-            return WifiConfiguration.SECURITY_TYPE_OPEN;
-        }
-        throw new IllegalArgumentException("Invalid WifiConfiguration: " + config);
-    }
 
     /**
      * Get the ScanResultMatchInfo for the given WifiConfiguration
@@ -80,35 +51,94 @@ public class ScanResultMatchInfo {
     public static ScanResultMatchInfo fromWifiConfiguration(WifiConfiguration config) {
         ScanResultMatchInfo info = new ScanResultMatchInfo();
         info.networkSsid = config.SSID;
-        info.networkType = getNetworkType(config);
+        info.securityParamsList = config.getSecurityParamsList();
         return info;
     }
 
-    /**
-     * Fetch network type from scan result.
-     */
-    private static @WifiConfiguration.SecurityType int getNetworkType(ScanResult scanResult) {
-        if (ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_SAE;
-        } else if (ScanResultUtil.isScanResultForWapiPskNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_WAPI_PSK;
-        } else if (ScanResultUtil.isScanResultForWapiCertNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_WAPI_CERT;
-        } else if (ScanResultUtil.isScanResultForPskNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_PSK;
-        } else if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
-        } else if (ScanResultUtil.isScanResultForEapNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_EAP;
-        } else if (ScanResultUtil.isScanResultForWepNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_WEP;
+    private static List<SecurityParams> generateSecurityParamsListFromScanResult(
+            ScanResult scanResult) {
+        List<SecurityParams> list = new ArrayList<>();
+
+        // Open network & its upgradable types
+        if (ScanResultUtil.isScanResultForOweTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
         } else if (ScanResultUtil.isScanResultForOweNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_OWE;
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
         } else if (ScanResultUtil.isScanResultForOpenNetwork(scanResult)) {
-            return WifiConfiguration.SECURITY_TYPE_OPEN;
-        } else {
-            throw new IllegalArgumentException("Invalid ScanResult: " + scanResult);
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            return list;
         }
+
+        // WEP network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWepNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WEP));
+            return list;
+        }
+
+        // WAPI PSK network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_PSK));
+            return list;
+        }
+
+        // WAPI CERT network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiCertNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_CERT));
+            return list;
+        }
+
+        // WPA2 personal network & its upgradable types
+        if (ScanResultUtil.isScanResultForPskNetwork(scanResult)
+                && ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            return list;
+        } else if (ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        }
+
+        // WPA3 Enterprise 192-bit mode
+        if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT));
+            return list;
+        }
+
+        // WPA2/WPA3 enterprise network & its upgradable types
+        if (ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForEapNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+            return list;
+        }
+        throw new IllegalArgumentException("Invalid ScanResult: " + scanResult);
     }
 
     /**
@@ -121,76 +151,121 @@ public class ScanResultMatchInfo {
         // However, according to our public documentation ths {@link WifiConfiguration#SSID} can
         // either have a hex string or quoted ASCII string SSID.
         info.networkSsid = ScanResultUtil.createQuotedSSID(scanResult.SSID);
-        info.networkType = getNetworkType(scanResult);
-        info.oweInTransitionMode = false;
-        info.pskSaeInTransitionMode = false;
+        info.securityParamsList = generateSecurityParamsListFromScanResult(scanResult);
         info.mFromScanResult = true;
-        if (info.networkType == WifiConfiguration.SECURITY_TYPE_SAE) {
-            // Note that scan result util will always choose the highest security protocol.
-            info.pskSaeInTransitionMode =
-                    ScanResultUtil.isScanResultForPskSaeTransitionNetwork(scanResult);
-        } else  if (info.networkType == WifiConfiguration.SECURITY_TYPE_OWE) {
-            // Note that scan result util will always choose OWE.
-            info.oweInTransitionMode =
-                    ScanResultUtil.isScanResultForOweTransitionNetwork(scanResult);
-        }
         return info;
+    }
+
+    /**
+     * The matching algorithm is that the type with a bigger index in the allowed
+     * params list has the higher priority. We try to match each type from the end of
+     * the allowed params list against the params in the scan result params list.
+     *
+     * There are three cases which will skip the match:
+     * 1. the security type is different.
+     * 2. the params is disabled, ex. disabled by Transition Disable Indication.
+     * 3. The params is added by the auto-upgrade mechanism, but the corresponding
+     *    feature is not enabled.
+     */
+    private static @Nullable SecurityParams findBestMatchingSecurityParams(
+            List<SecurityParams> allowedParamsList,
+            List<SecurityParams> scanResultParamsList) {
+        if (null == allowedParamsList) return null;
+        if (null == scanResultParamsList) return null;
+        for (int i = allowedParamsList.size() - 1; i >= 0; i--) {
+            SecurityParams allowedParams = allowedParamsList.get(i);
+
+            if (!WifiConfigurationUtil.isSecurityParamsValid(allowedParams)) continue;
+
+            for (SecurityParams scanResultParams: scanResultParamsList) {
+                if (!allowedParams.isSecurityType(scanResultParams.getSecurityType())) {
+                    continue;
+                }
+                return allowedParams;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the best-matching security type between ScanResult and WifiConifiguration.
+     */
+    public static @Nullable SecurityParams getBestMatchingSecurityParams(
+            WifiConfiguration config,
+            ScanResult scanResult) {
+        if (null == config || null == scanResult) return null;
+
+        return findBestMatchingSecurityParams(
+                config.getSecurityParamsList(),
+                generateSecurityParamsListFromScanResult(scanResult));
+    }
+
+    public @Nullable SecurityParams getDefaultSecurityParams() {
+        return securityParamsList.isEmpty() ? null : securityParamsList.get(0);
+    }
+
+    public @Nullable SecurityParams getFirstAvailableSecurityParams() {
+        return securityParamsList.stream()
+                .filter(WifiConfigurationUtil::isSecurityParamsValid)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
      * Checks for equality of network type.
      */
-    public boolean networkTypeEquals(@NonNull ScanResultMatchInfo other,
-            boolean saeAutoUpgradeEnabled) {
-        boolean networkTypeEquals;
-        // Detect <SSID, PSK+SAE> scan result and say it is equal to <SSID, PSK> configuration
-        if (other.pskSaeInTransitionMode && networkType == WifiConfiguration.SECURITY_TYPE_PSK
-                || (pskSaeInTransitionMode
-                && other.networkType == WifiConfiguration.SECURITY_TYPE_PSK)) {
-            networkTypeEquals = true;
-        } else if ((networkType == WifiConfiguration.SECURITY_TYPE_OPEN
-                && other.oweInTransitionMode) || (oweInTransitionMode
-                && other.networkType == WifiConfiguration.SECURITY_TYPE_OPEN)) {
-            // Special case we treat Enhanced Open and Open as equals. This is done to support the
-            // case where a saved network is Open but we found an OWE in transition network.
-            networkTypeEquals = true;
-        } else if ((saeAutoUpgradeEnabled)
-                && ((mFromScanResult && networkType == WifiConfiguration.SECURITY_TYPE_SAE
-                && other.networkType == WifiConfiguration.SECURITY_TYPE_PSK)
-                || (other.mFromScanResult
-                && other.networkType == WifiConfiguration.SECURITY_TYPE_SAE
-                && networkType == WifiConfiguration.SECURITY_TYPE_PSK))) {
-            // Allow upgrading WPA2 PSK connections to WPA3 SAE AP
-            networkTypeEquals = true;
-        } else {
-            networkTypeEquals = networkType == other.networkType;
+    public boolean networkTypeEquals(@NonNull ScanResultMatchInfo other) {
+        if (null == securityParamsList || null == other.securityParamsList) return false;
+
+        // If both are from the same sources, do normal comparison.
+        if (mFromScanResult == other.mFromScanResult) {
+            return securityParamsList.equals(other.securityParamsList);
         }
-        return networkTypeEquals;
+
+        final List<SecurityParams> allowedParamsList = mFromScanResult
+                ? other.securityParamsList : securityParamsList;
+        final List<SecurityParams> scanResultParamsList = mFromScanResult
+                ? securityParamsList : other.securityParamsList;
+
+        return null != findBestMatchingSecurityParams(
+                allowedParamsList,
+                scanResultParamsList);
     }
 
     @Override
     public boolean equals(Object otherObj) {
-        return matchForNetworkSelection(otherObj, false);
-    }
-
-    /**
-     * Match two ScanResultMatchInfo objects while considering configuration in overlays
-     *
-     * @param otherObj Other object to compare against
-     * @param saeAutoUpgradeEnabled A boolean that indicates if WPA3 auto upgrade feature is enabled
-     * @return true if objects are equal for network selection purposes, false otherwise
-     */
-    public boolean matchForNetworkSelection(Object otherObj, boolean saeAutoUpgradeEnabled) {
         if (this == otherObj) {
             return true;
         } else if (!(otherObj instanceof ScanResultMatchInfo)) {
             return false;
         }
         ScanResultMatchInfo other = (ScanResultMatchInfo) otherObj;
-        if (!Objects.equals(networkSsid, other.networkSsid)) {
-            return false;
+        if (mFromScanResult == other.mFromScanResult) {
+            return Objects.equals(networkSsid, other.networkSsid)
+                    && securityParamsList.equals(other.securityParamsList);
         }
-        return networkTypeEquals(other, saeAutoUpgradeEnabled);
+        return null != matchForNetworkSelection(other);
+    }
+
+    /**
+     * Match two ScanResultMatchInfo objects while considering configuration in overlays
+     *
+     * @param other Other object to compare against
+     * @return return best matching security params, null if no matching one.
+     */
+    public SecurityParams matchForNetworkSelection(ScanResultMatchInfo other) {
+        if (!Objects.equals(networkSsid, other.networkSsid)) return null;
+        if (null == securityParamsList) return null;
+        if (null == other.securityParamsList) return null;
+
+        final List<SecurityParams> allowedParamsList = mFromScanResult
+                ? other.securityParamsList : securityParamsList;
+        final List<SecurityParams> scanResultParamsList = mFromScanResult
+                ? securityParamsList : other.securityParamsList;
+
+        return findBestMatchingSecurityParams(
+                allowedParamsList,
+                scanResultParamsList);
     }
 
     @Override
@@ -200,9 +275,12 @@ public class ScanResultMatchInfo {
 
     @Override
     public String toString() {
-        return "ScanResultMatchInfo: SSID: " + networkSsid + ", type: " + networkType
-                + ", WPA3 in transition mode: " + pskSaeInTransitionMode
-                + ", OWE in transition mode: " + oweInTransitionMode + ", from scan result: "
-                + mFromScanResult;
+        StringBuffer sbuf = new StringBuffer();
+        sbuf.append("ScanResultMatchInfo: SSID: ").append(networkSsid);
+        sbuf.append(", from scan result: ").append(mFromScanResult);
+        sbuf.append(", SecurityParams List:");
+        securityParamsList.stream()
+                .forEach(params -> sbuf.append(params.toString()));
+        return sbuf.toString();
     }
 }

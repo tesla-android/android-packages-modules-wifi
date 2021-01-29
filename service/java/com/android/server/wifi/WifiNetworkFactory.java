@@ -40,6 +40,7 @@ import android.net.wifi.IActionListener;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.INetworkRequestUserSelectionCallback;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.SecurityType;
 import android.net.wifi.WifiNetworkSpecifier;
@@ -1258,7 +1259,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         ScanResultMatchInfo fromScanResult = ScanResultMatchInfo.fromScanResult(scanResult);
         ScanResultMatchInfo fromWifiConfiguration =
                 ScanResultMatchInfo.fromWifiConfiguration(wns.wifiConfiguration);
-        return fromScanResult.networkTypeEquals(fromWifiConfiguration, false);
+        return fromScanResult.networkTypeEquals(fromWifiConfiguration);
     }
 
     // Loops through the scan results and finds scan results matching the active network
@@ -1479,10 +1480,11 @@ public class WifiNetworkFactory extends NetworkFactory {
                 ScanResultMatchInfo.fromWifiConfiguration(network);
         for (ScanResult scanResult : mActiveMatchedScanResults.values()) {
             ScanResultMatchInfo fromScanResult = ScanResultMatchInfo.fromScanResult(scanResult);
-            if (fromScanResult.equals(fromWifiConfiguration)) {
+            SecurityParams params = fromScanResult.matchForNetworkSelection(fromWifiConfiguration);
+            if (null != params) {
                 AccessPoint approvedAccessPoint =
                         new AccessPoint(scanResult.SSID, MacAddress.fromString(scanResult.BSSID),
-                                fromScanResult.networkType);
+                                params.getSecurityType());
                 newUserApprovedAccessPoints.add(approvedAccessPoint);
             }
         }
@@ -1520,9 +1522,12 @@ public class WifiNetworkFactory extends NetworkFactory {
         if (!isActiveRequestForSingleAccessPoint()) return false;
         String ssid = mActiveSpecificNetworkRequestSpecifier.ssidPatternMatcher.getPath();
         MacAddress bssid = mActiveSpecificNetworkRequestSpecifier.bssidPatternMatcher.first;
-        int networkType =
+        SecurityParams params =
                 ScanResultMatchInfo.fromWifiConfiguration(
-                        mActiveSpecificNetworkRequestSpecifier.wifiConfiguration).networkType;
+                        mActiveSpecificNetworkRequestSpecifier.wifiConfiguration)
+                                .getFirstAvailableSecurityParams();
+        if (null == params) return false;
+        int networkType = params.getSecurityType();
         if (!isAccessPointApprovedForActiveRequest(ssid, bssid, networkType)
                 || mWifiConfigManager.isNetworkTemporarilyDisabledByUser(
                 ScanResultUtil.createQuotedSSID(ssid))) {

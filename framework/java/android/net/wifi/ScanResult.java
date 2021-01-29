@@ -261,6 +261,30 @@ public final class ScanResult implements Parcelable {
      */
     @SystemApi
     public static final int CIPHER_SMS4 = 5;
+    /**
+     * @hide
+     * Cipher suite: GCMP_128
+     */
+    @SystemApi
+    public static final int CIPHER_GCMP_128 = 6;
+    /**
+     * @hide
+     * Cipher suite: BIP_GMAC_128
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_GMAC_128 = 7;
+    /**
+     * @hide
+     * Cipher suite: BIP_GMAC_256
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_GMAC_256 = 8;
+    /**
+     * @hide
+     * Cipher suite: BIP_CMAC_256
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_CMAC_256 = 9;
 
     /**
      * The detected signal level in dBm, also known as the RSSI.

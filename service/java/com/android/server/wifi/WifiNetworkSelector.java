@@ -24,6 +24,7 @@ import android.annotation.Nullable;
 import android.content.Context;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -106,6 +107,7 @@ public class WifiNetworkSelector {
     private final ThroughputPredictor mThroughputPredictor;
     private final WifiChannelUtilization mWifiChannelUtilization;
     private final WifiGlobals mWifiGlobals;
+    private final ScanRequestProxy mScanRequestProxy;
 
     private final Map<String, WifiCandidates.CandidateScorer> mCandidateScorers = new ArrayMap<>();
     private boolean mIsEnhancedOpenSupportedInitialized = false;
@@ -816,9 +818,6 @@ public class WifiNetworkSelector {
         // Update the scan detail cache at the start, even if we skip network selection
         updateScanDetailCache(scanDetails);
 
-        // Update all configured networks before initiating network selection.
-        updateConfiguredNetworks();
-
         // Update the registered network nominators.
         for (NetworkNominator registeredNominator : mNominators) {
             registeredNominator.update(scanDetails);
@@ -848,9 +847,16 @@ public class WifiNetworkSelector {
                 // It may also get re-added by a nominator, in which case this fallback
                 // will be replaced.
                 MacAddress bssid = MacAddress.fromString(currentBssid);
+                SecurityParams params = currentNetwork.getNetworkSelectionStatus()
+                        .getCandidateSecurityParams();
+                if (null == params) {
+                    localLog("No known candidate security params for current network.");
+                    continue;
+                }
                 WifiCandidates.Key key = new WifiCandidates.Key(
                         ScanResultMatchInfo.fromWifiConfiguration(currentNetwork),
-                        bssid, currentNetwork.networkId);
+                        bssid, currentNetwork.networkId,
+                        params.getSecurityType());
                 ScanDetail scanDetail = findScanDetailForBssid(mFilteredNetworks, currentBssid);
                 int predictedTputMbps = (scanDetail == null) ? 0 : predictThroughput(scanDetail);
                 wifiCandidates.add(key, currentNetwork,
@@ -863,6 +869,10 @@ public class WifiNetworkSelector {
                         predictedTputMbps);
             }
         }
+
+        // Update all configured networks before initiating network selection.
+        updateConfiguredNetworks();
+
         for (NetworkNominator registeredNominator : mNominators) {
             localLog("About to run " + registeredNominator.getName() + " :");
             registeredNominator.nominateNetworks(
@@ -905,6 +915,54 @@ public class WifiNetworkSelector {
         return wifiCandidates.getCandidates();
     }
 
+    private void removeAutoUpgradeCandidateIfLegacyNetworkInRange(
+            Collection<WifiCandidates.Candidate> candidates,
+            @WifiConfiguration.SecurityType int upgradableSecurityType,
+            boolean isLegacyNetworkInRange) {
+        if (!isLegacyNetworkInRange) return;
+
+        WifiCandidates.Candidate candidate = candidates.iterator().next();
+        WifiConfiguration config = mWifiConfigManager
+                .getConfiguredNetwork(candidate.getNetworkConfigId());
+        if (null == config) return;
+
+        SecurityParams upgradableParams = config.getSecurityParams(upgradableSecurityType);
+        if (null == upgradableParams) return;
+        if (!upgradableParams.isAddedByAutoUpgrade()) return;
+        localLog("Legacy network exists, disallow auto-upgrade type: "
+                + upgradableSecurityType);
+        candidates.removeIf(c ->
+                c.getKey().matchInfo.securityParamsList.stream().anyMatch(
+                        p -> p.isSecurityType(upgradableSecurityType)));
+    }
+
+    private void removeCandidateIfNecessary(
+            Collection<WifiCandidates.Candidate> candidates) {
+        String ssid = candidates.iterator().next().getKey().matchInfo.networkSsid;
+        // If SAE auto-upgrade offload is not support, it results in
+        // romaing issue on roaming from SAE to PSK. As a result,
+        // The SAE candidate is only valid for SAE auto-upgrade mechanism
+        // when there is no legacy PSK network.
+        if (!mWifiGlobals.isWpa3SaeUpgradeOffloadEnabled()) {
+            removeAutoUpgradeCandidateIfLegacyNetworkInRange(
+                    candidates,
+                    WifiConfiguration.SECURITY_TYPE_SAE,
+                    mScanRequestProxy.isLegacyWpa2NetworkInRange(ssid));
+        }
+        // There is no OWE offload flag yet, always assume that OWE auto-upgrade
+        // is not supported.
+        removeAutoUpgradeCandidateIfLegacyNetworkInRange(
+                candidates,
+                WifiConfiguration.SECURITY_TYPE_OWE,
+                mScanRequestProxy.isLegacyOpenNetworkInRange(ssid));
+        // There is no WPA3 Enterprise offload flag yet, always assume that
+        // WPA3 Enterprise auto-upgrade offload is not supported.
+        removeAutoUpgradeCandidateIfLegacyNetworkInRange(
+                candidates,
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                mScanRequestProxy.isLegacyWpa2EnterpriseNetworkInRange(ssid));
+    }
+
     /**
      * Using the registered Scorers, choose the best network from the list of Candidate(s).
      * The ScanDetailCache is also updated here.
@@ -922,13 +980,18 @@ public class WifiNetworkSelector {
         // This is needed for the legacy user connect choice, at least
         Collection<Collection<WifiCandidates.Candidate>> groupedCandidates =
                 wifiCandidates.getGroupedCandidates();
+        groupedCandidates.stream().forEach(group -> removeCandidateIfNecessary(group));
         for (Collection<WifiCandidates.Candidate> group : groupedCandidates) {
             WifiCandidates.ScoredCandidate choice = activeScorer.scoreCandidates(group);
             if (choice == null) continue;
             ScanDetail scanDetail = getScanDetailForCandidateKey(choice.candidateKey);
             if (scanDetail == null) continue;
+            SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                    mWifiConfigManager.getConfiguredNetwork(choice.candidateKey.networkId),
+                    scanDetail.getScanResult());
+            if (params == null) continue;
             mWifiConfigManager.setNetworkCandidateScanResult(choice.candidateKey.networkId,
-                    scanDetail.getScanResult(), 0);
+                    scanDetail.getScanResult(), 0, params);
         }
 
         for (Collection<WifiCandidates.Candidate> group : groupedCandidates) {
@@ -1174,7 +1237,8 @@ public class WifiNetworkSelector {
             WifiInjector wifiInjector,
             ThroughputPredictor throughputPredictor,
             WifiChannelUtilization wifiChannelUtilization,
-            WifiGlobals wifiGlobals) {
+            WifiGlobals wifiGlobals,
+            ScanRequestProxy scanRequestProxy) {
         mContext = context;
         mWifiScoreCard = wifiScoreCard;
         mScoringParams = scoringParams;
@@ -1186,5 +1250,6 @@ public class WifiNetworkSelector {
         mThroughputPredictor = throughputPredictor;
         mWifiChannelUtilization = wifiChannelUtilization;
         mWifiGlobals = wifiGlobals;
+        mScanRequestProxy = scanRequestProxy;
     }
 }

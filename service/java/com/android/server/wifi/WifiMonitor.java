@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import android.annotation.IntDef;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiManager;
@@ -34,6 +35,8 @@ import com.android.server.wifi.hotspot2.AnqpEvent;
 import com.android.server.wifi.hotspot2.IconEvent;
 import com.android.server.wifi.hotspot2.WnmData;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -83,6 +86,7 @@ public class WifiMonitor {
     public static final int ANQP_DONE_EVENT                      = BASE + 44;
     public static final int ASSOCIATED_BSSID_EVENT               = BASE + 45;
     public static final int TARGET_BSSID_EVENT                   = BASE + 46;
+    public static final int NETWORK_NOT_FOUND_EVENT              = BASE + 47;
 
     /* Passpoint ANQP events */
     public static final int GAS_QUERY_START_EVENT                = BASE + 51;
@@ -97,6 +101,10 @@ public class WifiMonitor {
     /* MBO/OCE events */
     public static final int MBO_OCE_BSS_TM_HANDLING_DONE         = BASE + 71;
 
+    /* Transition Disable Indication */
+    public static final int TRANSITION_DISABLE_INDICATION        = BASE + 72;
+
+
     /* WPS config errrors */
     private static final int CONFIG_MULTIPLE_PBC_DETECTED = 12;
     private static final int CONFIG_AUTH_FAILURE = 18;
@@ -104,6 +112,21 @@ public class WifiMonitor {
     /* WPS error indications */
     private static final int REASON_TKIP_ONLY_PROHIBITED = 1;
     private static final int REASON_WEP_PROHIBITED = 2;
+
+    /* Transition disable indication */
+    public static final int TDI_USE_WPA3_PERSONAL = 1 << 0;
+    public static final int TDI_USE_SAE_PK = 1 << 1;
+    public static final int TDI_USE_WPA3_ENTERPRISE = 1 << 2;
+    public static final int TDI_USE_ENHANCED_OPEN = 1 << 3;
+
+    @IntDef(flag = true, prefix = { "TDI_" }, value = {
+            TDI_USE_WPA3_PERSONAL,
+            TDI_USE_SAE_PK,
+            TDI_USE_WPA3_ENTERPRISE,
+            TDI_USE_ENHANCED_OPEN,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @interface TransitionDisableIndication{}
 
     /**
      * Use this key to get the interface name of the message sent by WifiMonitor,
@@ -394,6 +417,19 @@ public class WifiMonitor {
     }
 
     /**
+     * Broadcast the transition disable event to all the handlers registered for this event.
+     *
+     * @param iface Name of iface on which this occurred.
+     * @param networkId ID of the network in wpa_supplicant.
+     * @param indicationBits bits of the disable indication.
+     */
+    public void broadcastTransitionDisableEvent(
+            String iface, int networkId,
+            @TransitionDisableIndication int indicationBits) {
+        sendMessage(iface, TRANSITION_DISABLE_INDICATION, networkId, indicationBits);
+    }
+
+    /**
      * Broadcast the Network Gsm Sim auth request event to all the handlers registered for this
      * event.
      *
@@ -546,5 +582,15 @@ public class WifiMonitor {
      */
     public void broadcastBssTmHandlingDoneEvent(String iface, BtmFrameData btmFrmData) {
         sendMessage(iface, MBO_OCE_BSS_TM_HANDLING_DONE, btmFrmData);
+    }
+
+    /**
+     * Broadcast network not found event
+     * to all the handlers registered for this event.
+     *
+     * @param iface Name of iface on which this occurred.
+     */
+    public void broadcastNetworkNotFoundEvent(String iface, String ssid) {
+        sendMessage(iface, NETWORK_NOT_FOUND_EVENT, ssid);
     }
 }

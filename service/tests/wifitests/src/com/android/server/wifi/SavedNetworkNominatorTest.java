@@ -16,12 +16,14 @@
 
 package com.android.server.wifi;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_NONE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_PSK;
 
 import static org.mockito.Mockito.*;
 
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.LocalLog;
 import android.util.Pair;
@@ -37,6 +39,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,6 +54,18 @@ public class SavedNetworkNominatorTest extends WifiBaseTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        mStaticMockSession = mockitoSession()
+                .mockStatic(WifiInjector.class)
+                .startMocking();
+        lenient().when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
+
         mLocalLog = new LocalLog(512);
         mSavedNetworkNominator = new SavedNetworkNominator(mWifiConfigManager,
                 mPasspointNetworkNominateHelper, mLocalLog, mWifiCarrierInfoManager,
@@ -70,6 +85,9 @@ public class SavedNetworkNominatorTest extends WifiBaseTest {
     @After
     public void cleanup() {
         validateMockitoUsage();
+        if (null != mStaticMockSession) {
+            mStaticMockSession.finishMocking();
+        }
     }
 
     private ArgumentCaptor<WifiConfiguration> mWifiConfigurationArgumentCaptor =
@@ -88,6 +106,11 @@ public class SavedNetworkNominatorTest extends WifiBaseTest {
     @Mock private PasspointNetworkNominateHelper mPasspointNetworkNominateHelper;
     @Mock private WifiPermissionsUtil mWifiPermissionsUtil;
     @Mock private WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
+    private @Mock WifiInjector mWifiInjector;
+    private @Mock ActiveModeWarden mActiveModeWarden;
+    private @Mock ClientModeManager mPrimaryClientModeManager;
+    private @Mock WifiGlobals mWifiGlobals;
+    private MockitoSession mStaticMockSession = null;
     private LocalLog mLocalLog;
 
     /**

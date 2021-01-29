@@ -144,9 +144,11 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of ClientMode.  Event handling for Client mode logic is done here,
@@ -166,6 +168,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private static final int IPCLIENT_STARTUP_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes!
     private static final int IPCLIENT_SHUTDOWN_TIMEOUT_MS = 60_000; // 60 seconds
     @VisibleForTesting public static final long CONNECTING_WATCHDOG_TIMEOUT_MS = 30_000; // 30 secs.
+    @VisibleForTesting
+    public static final short NETWORK_NOT_FOUND_EVENT_THRESHOLD = 3;
 
     private boolean mVerboseLoggingEnabled = false;
 
@@ -576,6 +580,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final ClientModeImplMonitor mCmiMonitor;
 
+    private final WifiNetworkSelector mWifiNetworkSelector;
+
     // Maximum duration to continue to log Wifi usability stats after a data stall is triggered.
     @VisibleForTesting
     public static final long DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS = 30 * 1000;
@@ -591,6 +597,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * current Wifi network (i.e. exiting {@link L2ConnectedState}.
      */
     private boolean mLingering = false;
+
+    /** NETWORK_NOT_FOUND_EVENT event counter */
+    private int mNetworkNotFoundEventCount = 0;
 
     /** Note that this constructor will also start() the StateMachine. */
     public ClientModeImpl(
@@ -645,6 +654,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull ConcreteClientModeManager clientModeManager,
             @NonNull ClientModeImplMonitor cmiMonitor,
             @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
+            @NonNull WifiNetworkSelector wifiNetworkSelector,
             boolean verboseLoggingEnabled) {
         super(TAG, looper);
         mWifiMetrics = wifiMetrics;
@@ -729,6 +739,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mOnNetworkUpdateListener = new OnNetworkUpdateListener();
         mWifiConfigManager.addOnNetworkUpdateListener(mOnNetworkUpdateListener);
 
+        mWifiNetworkSelector = wifiNetworkSelector;
+
         enableVerboseLogging(verboseLoggingEnabled);
 
         addState(mConnectableState); {
@@ -770,6 +782,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             WifiMonitor.SUP_REQUEST_IDENTITY,
             WifiMonitor.SUP_REQUEST_SIM_AUTH,
             WifiMonitor.MBO_OCE_BSS_TM_HANDLING_DONE,
+            WifiMonitor.TRANSITION_DISABLE_INDICATION,
+            WifiMonitor.NETWORK_NOT_FOUND_EVENT,
     };
 
     private void registerForWifiMonitorEvents()  {
@@ -1848,6 +1862,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     sb.append(" ").append(frameData.toString());
                 }
                 break;
+            case WifiMonitor.NETWORK_NOT_FOUND_EVENT:
+                sb.append(" ssid=" + msg.obj);
+                break;
             default:
                 sb.append(" ");
                 sb.append(Integer.toString(msg.arg1));
@@ -1974,6 +1991,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "GAS_QUERY_START_EVENT";
             case WifiMonitor.MBO_OCE_BSS_TM_HANDLING_DONE:
                 return "MBO_OCE_BSS_TM_HANDLING_DONE";
+            case WifiMonitor.TRANSITION_DISABLE_INDICATION:
+                return "TRANSITION_DISABLE_INDICATION";
             case WifiP2pServiceImpl.GROUP_CREATING_TIMED_OUT:
                 return "GROUP_CREATING_TIMED_OUT";
             case WifiP2pServiceImpl.P2P_CONNECTION_CHANGED:
@@ -1986,6 +2005,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "SET_MIRACAST_MODE";
             case WifiP2pServiceImpl.BLOCK_DISCOVERY:
                 return "BLOCK_DISCOVERY";
+            case WifiMonitor.NETWORK_NOT_FOUND_EVENT:
+                return "NETWORK_NOT_FOUND_EVENT";
             default:
                 return "what:" + what;
         }
@@ -2069,12 +2090,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /*
-     * Fetch RSSI, linkspeed, and frequency on current connection
+     * Fetch link layer stats, RSSI, linkspeed, and frequency on current connection
+     * and update Network capabilities
      */
-    private void fetchRssiLinkSpeedAndFrequencyNative() {
+    private WifiLinkLayerStats updateLinkLayerStatsRssiSpeedFrequencyCapabilities() {
+        WifiLinkLayerStats stats = getWifiLinkLayerStats();
         WifiNl80211Manager.SignalPollResult pollResult = mWifiNative.signalPoll(mInterfaceName);
         if (pollResult == null) {
-            return;
+            return stats;
         }
 
         int newRssi = pollResult.currentRssiDbm;
@@ -2083,11 +2106,28 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         int newRxLinkSpeed = pollResult.rxBitrateMbps;
 
         if (mVerboseLoggingEnabled) {
-            logd("fetchRssiLinkSpeedAndFrequencyNative rssi=" + newRssi
+            logd("updateLinkLayerStatsRssiSpeedFrequencyCapabilities rssi=" + newRssi
                     + " TxLinkspeed=" + newTxLinkSpeed + " freq=" + newFrequency
                     + " RxLinkSpeed=" + newRxLinkSpeed);
         }
 
+        /*
+         * set Tx link speed only if it is valid
+         */
+        if (newTxLinkSpeed > 0) {
+            mWifiInfo.setLinkSpeed(newTxLinkSpeed);
+            mWifiInfo.setTxLinkSpeedMbps(newTxLinkSpeed);
+        }
+        /*
+         * set Rx link speed only if it is valid
+         */
+        if (newRxLinkSpeed > 0) {
+            mWifiInfo.setRxLinkSpeedMbps(newRxLinkSpeed);
+        }
+        if (newFrequency > 0) {
+            mWifiInfo.setFrequency(newFrequency);
+        }
+        // updateLinkBandwidth() requires the latest frequency information
         if (newRssi > WifiInfo.INVALID_RSSI && newRssi < WifiInfo.MAX_RSSI) {
             /*
              * Positive RSSI is possible when devices are close(~0m apart) to each other.
@@ -2111,6 +2151,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
              * level.
              */
             int newSignalLevel = RssiUtil.calculateSignalLevel(mContext, newRssi);
+            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo, newSignalLevel);
             if (newSignalLevel != mLastSignalLevel) {
                 // TODO (b/162602799): Do we need to change the update frequency?
                 updateCapabilities();
@@ -2121,27 +2163,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setRssi(WifiInfo.INVALID_RSSI);
             updateCapabilities();
         }
-        /*
-         * set Tx link speed only if it is valid
-         */
-        if (newTxLinkSpeed > 0) {
-            mWifiInfo.setLinkSpeed(newTxLinkSpeed);
-            mWifiInfo.setTxLinkSpeedMbps(newTxLinkSpeed);
-        }
-        /*
-         * set Rx link speed only if it is valid
-         */
-        if (newRxLinkSpeed > 0) {
-            mWifiInfo.setRxLinkSpeedMbps(newRxLinkSpeed);
-        }
-        if (newFrequency > 0) {
-            mWifiInfo.setFrequency(newFrequency);
-        }
         mWifiConfigManager.updateScanDetailCacheFromWifiInfo(mWifiInfo);
         /*
          * Increment various performance metrics
          */
         mWifiMetrics.handlePollResult(mWifiInfo);
+        return stats;
     }
 
     // Polling has completed, hence we won't have a score anymore
@@ -2863,9 +2890,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // Reset IP failure tracking
             c.getNetworkSelectionStatus().clearDisableReasonCounter(
                     WifiConfiguration.NetworkSelectionStatus.DISABLED_DHCP_FAILURE);
-
-            // Tell the framework whether the newly connected network is trusted or untrusted.
-            updateCapabilities(c);
         }
         mWifiScoreCard.noteIpConfiguration(mWifiInfo);
     }
@@ -3039,24 +3063,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         + factoryMac.toString() + "'");
             }
         }
-    }
-
-    /**
-     * Helper method to check if WPA2 network upgrade feature is enabled in the framework
-     *
-     * @return boolean true if feature is enabled.
-     */
-    private boolean isWpa3SaeUpgradeEnabled() {
-        return mContext.getResources().getBoolean(R.bool.config_wifiSaeUpgradeEnabled);
-    }
-
-    /**
-     * Helper method to check if WPA2 network upgrade offload is enabled in the driver/fw
-     *
-     * @return boolean true if feature is enabled.
-     */
-    private boolean isWpa3SaeUpgradeOffloadEnabled() {
-        return mContext.getResources().getBoolean(R.bool.config_wifiSaeUpgradeOffloadEnabled);
     }
 
     /**
@@ -3440,6 +3446,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     Log.i(getTag(), "Connecting with " + currentMacAddress + " as the mac address");
 
                     mTargetWifiConfiguration = config;
+                    mNetworkNotFoundEventCount = 0;
                     /* Check for FILS configuration again after updating the config */
                     if (config.isFilsSha256Enabled() || config.isFilsSha384Enabled()) {
                         boolean isIpClientStarted = startIpClient(config, true);
@@ -3641,8 +3648,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 case WifiMonitor.SUP_REQUEST_SIM_AUTH:
                 case WifiMonitor.TARGET_BSSID_EVENT:
                 case WifiMonitor.ASSOCIATED_BSSID_EVENT:
+                case WifiMonitor.TRANSITION_DISABLE_INDICATION:
                 case CMD_UNWANTED_NETWORK:
                 case CMD_CONNECTING_WATCHDOG_TIMER:
+                case WifiMonitor.NETWORK_NOT_FOUND_EVENT:
                 case CMD_ROAM_WATCHDOG_TIMER: {
                     // no-op: all messages must be handled in the base state in case it was missed
                     // in one of the child states.
@@ -3800,6 +3809,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         int rssiDbm = mWifiInfo.getRssi();
         int txTputKbps = INVALID_THROUGHPUT;
         int rxTputKbps = INVALID_THROUGHPUT;
+        // TODO: switch to TrafficStats poll based link bandwidth estimation value
         // If RSSI is available, check if throughput is available
         if (rssiDbm != WifiInfo.INVALID_RSSI && mWifiDataStall != null) {
             txTputKbps = mWifiDataStall.getTxThroughputKbps();
@@ -4280,6 +4290,32 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         public boolean processMessage(Message message) {
             boolean handleStatus = HANDLED;
             switch (message.what) {
+                case WifiMonitor.NETWORK_NOT_FOUND_EVENT:
+                    mNetworkNotFoundEventCount++;
+                    String networkName = (String) message.obj;
+                    if (networkName != null && !networkName.equals(getConnectingSsidInternal())) {
+                        loge("Network not found event received, network: " + networkName
+                                + " which is not the target network: "
+                                + getConnectingSsidInternal());
+                        break;
+                    }
+                    Log.d(getTag(), "Network not found event received: network: " + networkName);
+                    if (mNetworkNotFoundEventCount >= NETWORK_NOT_FOUND_EVENT_THRESHOLD
+                            && mTargetWifiConfiguration != null
+                            && mTargetWifiConfiguration.SSID != null
+                            && mTargetWifiConfiguration.SSID.equals(networkName)) {
+                        mWifiConfigManager.updateNetworkSelectionStatus(
+                                mTargetWifiConfiguration.networkId,
+                                WifiConfiguration.NetworkSelectionStatus
+                                        .DISABLED_NETWORK_NOT_FOUND);
+                        stopIpClient();
+                        reportConnectionAttemptEnd(
+                                WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND,
+                                WifiMetricsProto.ConnectionEvent.HLF_NONE,
+                                WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN);
+                        transitionTo(mDisconnectedState);
+                    }
+                    break;
                 case WifiMonitor.ASSOCIATION_REJECTION_EVENT: {
                     AssocRejectEventInfo assocRejectEventInfo = (AssocRejectEventInfo) message.obj;
                     if (mVerboseLoggingEnabled) {
@@ -4518,6 +4554,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 WifiStatsLog.WIFI_DISCONNECT_REPORTED__FAILURE_CODE__CONNECTING_WATCHDOG_TIMER);
                         transitionTo(mDisconnectedState);
                     }
+                    break;
+                }
+                case WifiMonitor.TRANSITION_DISABLE_INDICATION: {
+                    log("Received TRANSITION_DISABLE_INDICATION: networkId=" + message.arg1
+                            + ", indication=" + message.arg2);
+                    mWifiConfigManager.updateNetworkTransitionDisable(message.arg1, message.arg2);
                     break;
                 }
                 default: {
@@ -4760,7 +4802,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         // First poll
                         mLastSignalLevel = -1;
                         mLinkProbeManager.resetOnScreenTurnedOn();
-                        fetchRssiLinkSpeedAndFrequencyNative();
+                        updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                     }
@@ -4889,16 +4931,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
          * Fetches link stats, updates Wifi Data Stall, Score Card and Score Report.
          */
         private WifiLinkLayerStats updateLinkLayerStatsRssiDataStallScoreReport() {
-            WifiLinkLayerStats stats = getWifiLinkLayerStats();
             // Get Info and continue polling
-            fetchRssiLinkSpeedAndFrequencyNative();
+            WifiLinkLayerStats stats = updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
             mWifiMetrics.updateWifiUsabilityStatsEntries(mWifiInfo, stats);
             // checkDataStallAndThroughputSufficiency() should be called before
             // mWifiScoreReport.calculateAndReportScore() which needs the latest throughput
             int statusDataStall = mWifiDataStall.checkDataStallAndThroughputSufficiency(
                     mLastLinkLayerStats, stats, mWifiInfo);
-            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
             if (mDataStallTriggerTimeMs == -1
                     && statusDataStall != WifiIsUnusableEvent.TYPE_UNKNOWN) {
                 mDataStallTriggerTimeMs = mClock.getElapsedSinceBootMillis();
@@ -5793,6 +5832,46 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
+    private void selectCandidateSecurityParamsIfNecessary(
+            WifiConfiguration config,
+            List<ScanResult> scanResults) {
+        if (null != config.getNetworkSelectionStatus().getCandidateSecurityParams()) return;
+
+        // This comes from wifi picker directly so there is no candidate security params.
+        // Run network selection against this SSID.
+        List<ScanDetail> scanDetailsList = scanResults.stream()
+                .filter(scanResult -> config.SSID.equals(
+                        ScanResultUtil.createQuotedSSID(scanResult.SSID)))
+                .map(ScanResultUtil::toScanDetail)
+                .collect(Collectors.toList());
+        List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
+        cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetailsList,
+                new HashSet<String>(),
+                cmmState,
+                true, true, true);
+        WifiConfiguration selectedConfig = mWifiNetworkSelector.selectNetwork(candidates);
+        if (null != selectedConfig && selectedConfig.networkId == config.networkId) {
+            config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                    selectedConfig.getNetworkSelectionStatus().getCandidateSecurityParams());
+            return;
+        }
+
+        // When a connecting request comes from network request or adding a network via
+        // API directly, there might be no scan result to know the proper security params.
+        // In this case, we use the first available security params to have a try first.
+        if (null == selectedConfig || selectedConfig.networkId != config.networkId) {
+            Log.i(getTag(), "Cannot select a candidate security params from scan results,"
+                    + "try to select the first available security params.");
+            config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                    config.getSecurityParamsList().stream()
+                            .filter(WifiConfigurationUtil::isSecurityParamsValid)
+                            .findFirst()
+                            .orElse(null));
+        }
+    }
+
     /**
      * Update the wifi configuration before sending connect to
      * supplicant/driver.
@@ -5801,43 +5880,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * @param bssid BSSID to assocaite with.
      */
     void updateWifiConfigOnStartConnection(WifiConfiguration config, String bssid) {
-        boolean canUpgradePskToSae = false;
-        boolean isFrameworkWpa3SaeUpgradePossible = false;
-        boolean isLegacyWpa2ApInScanResult = false;
-
         setTargetBssid(config, bssid);
-
-        if (isWpa3SaeUpgradeEnabled() && config.isSecurityType(
-                WifiConfiguration.SECURITY_TYPE_PSK)) {
-            isFrameworkWpa3SaeUpgradePossible = true;
-        }
-
-        if (isFrameworkWpa3SaeUpgradePossible && isWpa3SaeUpgradeOffloadEnabled()) {
-            // Driver offload of upgrading legacy WPA/WPA2 connection to WPA3
-            if (mVerboseLoggingEnabled) {
-                Log.d(getTag(), "Driver upgrade legacy WPA/WPA2 connection to WPA3");
-            }
-            config.allowedAuthAlgorithms.clear();
-            // Note: KeyMgmt.WPA2_PSK is already enabled, enable SAE as well
-            config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.SAE);
-            if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
-                config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
-            }
-            isFrameworkWpa3SaeUpgradePossible = false;
-        }
-        // Check if network selection selected a good WPA3 candidate AP for a WPA2
-        // saved network.
-        ScanResult scanResultCandidate = config.getNetworkSelectionStatus().getCandidate();
-        if (isFrameworkWpa3SaeUpgradePossible && scanResultCandidate != null) {
-            ScanResultMatchInfo scanResultMatchInfo = ScanResultMatchInfo
-                    .fromScanResult(scanResultCandidate);
-            if ((scanResultMatchInfo.networkType == WifiConfiguration.SECURITY_TYPE_SAE)) {
-                canUpgradePskToSae = true;
-            } else {
-                // No SAE candidate
-                isFrameworkWpa3SaeUpgradePossible = false;
-            }
-        }
 
         // Go through the matching scan results and update wifi config.
         ScanResultMatchInfo key1 = ScanResultMatchInfo.fromWifiConfiguration(config);
@@ -5846,27 +5889,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (!config.SSID.equals(ScanResultUtil.createQuotedSSID(scanResult.SSID))) {
                 continue;
             }
-            if (isFrameworkWpa3SaeUpgradePossible && !isLegacyWpa2ApInScanResult) {
-                if (ScanResultUtil.isScanResultForPskNetwork(scanResult)
-                        && !ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
-                    // Found a legacy WPA2 AP in range. Do not upgrade the connection to WPA3 to
-                    // allow seamless roaming within the ESS.
-                    if (mVerboseLoggingEnabled) {
-                        Log.d(getTag(), "Found legacy WPA2 AP, do not upgrade to WPA3");
-                    }
-                    isLegacyWpa2ApInScanResult = true;
-                    canUpgradePskToSae = false;
-                }
-                if (ScanResultUtil.isScanResultForSaeNetwork(scanResult)
-                        && scanResultCandidate == null) {
-                    // When the user manually selected a network from the Wi-Fi picker, evaluate
-                    // if to upgrade based on the scan results. The most typical use case during
-                    // the WPA3 transition mode is to have a WPA2/WPA3 AP in transition mode. In
-                    // this case, we would like to upgrade the connection.
-                    canUpgradePskToSae = true;
-                }
-            }
-
             ScanResultMatchInfo key2 = ScanResultMatchInfo.fromScanResult(scanResult);
             if (!key1.equals(key2)) {
                 continue;
@@ -5874,14 +5896,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             updateWifiConfigFromMatchingScanResult(config, scanResult);
         }
 
-        if (isFrameworkWpa3SaeUpgradePossible && canUpgradePskToSae
-                && !(config.isFilsSha256Enabled() || config.isFilsSha384Enabled())) {
-            // Upgrade legacy WPA/WPA2 connection to WPA3
-            if (mVerboseLoggingEnabled) {
-                Log.d(getTag(), "Upgrade legacy WPA/WPA2 connection to WPA3");
-            }
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
-        }
+        selectCandidateSecurityParamsIfNecessary(config, scanResults);
 
         if (mWifiGlobals.isConnectedMacRandomizationEnabled()) {
             if (config.macRandomizationSetting != WifiConfiguration.RANDOMIZATION_NONE) {

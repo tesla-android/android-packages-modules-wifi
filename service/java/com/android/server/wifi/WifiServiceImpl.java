@@ -1107,30 +1107,6 @@ public class WifiServiceImpl extends BaseWifiService {
         return true;
     }
 
-    private boolean validateSoftApBand(int apBand) {
-        if (!ApConfigUtil.isBandValid(apBand)) {
-            mLog.err("Invalid SoftAp band. ").flush();
-            return false;
-        }
-
-        if (ApConfigUtil.containsBand(apBand, SoftApConfiguration.BAND_5GHZ)
-                && !is5GhzBandSupportedInternal()) {
-            mLog.err("Can not start softAp with 5GHz band, not supported.").flush();
-            return false;
-        }
-
-        if (ApConfigUtil.containsBand(apBand, SoftApConfiguration.BAND_6GHZ)) {
-            if (!is6GhzBandSupportedInternal()
-                    || !mContext.getResources().getBoolean(
-                            R.bool.config_wifiSoftap6ghzSupported)) {
-                mLog.err("Can not start softAp with 6GHz band, not supported.").flush();
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     /**
      * see {@link android.net.wifi.WifiManager#startTetheredHotspot(SoftApConfiguration)}
      * @param softApConfig SSID, security and channel details as part of SoftApConfiguration
@@ -1182,8 +1158,7 @@ public class WifiServiceImpl extends BaseWifiService {
         SoftApConfiguration softApConfig = apConfig.getSoftApConfiguration();
         if (softApConfig != null
                 && (!WifiApConfigStore.validateApWifiConfiguration(
-                    softApConfig, privileged, mContext)
-                    || !validateSoftApBand(softApConfig.getBand()))) {
+                    softApConfig, privileged, mContext))) {
             Log.e(TAG, "Invalid SoftApConfiguration");
             return false;
         }
@@ -1327,14 +1302,17 @@ public class WifiServiceImpl extends BaseWifiService {
                 // It might be a failure or stuck during wificond init.
                 return newSoftApCapability;
             }
-            List<Integer> supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
+            List<Integer> supportedChannelList = null;
+            if (ApConfigUtil.isSoftAp24GhzSupported(mContext)) {
+                supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
                     SoftApConfiguration.BAND_2GHZ, mWifiNative, mContext.getResources(), false);
-            if (supportedChannelList != null) {
-                newSoftApCapability.setSupportedChannelList(
-                        SoftApConfiguration.BAND_2GHZ,
-                        supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+                if (supportedChannelList != null) {
+                    newSoftApCapability.setSupportedChannelList(
+                            SoftApConfiguration.BAND_2GHZ,
+                            supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+                }
             }
-            if (is5GhzBandSupportedInternal()) {
+            if (ApConfigUtil.isSoftAp5GhzSupported(mContext)) {
                 supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
                         SoftApConfiguration.BAND_5GHZ, mWifiNative, mContext.getResources(), false);
                 if (supportedChannelList != null) {
@@ -1343,7 +1321,7 @@ public class WifiServiceImpl extends BaseWifiService {
                             supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
                 }
             }
-            if (is6GhzBandSupportedInternal()) {
+            if (ApConfigUtil.isSoftAp6GhzSupported(mContext)) {
                 supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
                         SoftApConfiguration.BAND_6GHZ, mWifiNative, mContext.getResources(), false);
                 if (supportedChannelList != null) {
@@ -1352,7 +1330,7 @@ public class WifiServiceImpl extends BaseWifiService {
                             supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
                 }
             }
-            if (is60GHzBandSupportedInternal()) {
+            if (ApConfigUtil.isSoftAp60GhzSupported(mContext)) {
                 supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
                         SoftApConfiguration.BAND_60GHZ, mWifiNative, mContext.getResources(),
                         false);
@@ -1708,17 +1686,16 @@ public class WifiServiceImpl extends BaseWifiService {
 
         @GuardedBy("mLocalOnlyHotspotRequests")
         private void startForFirstRequestLocked(LocalOnlyHotspotRequestInfo request) {
-            int band = SoftApConfiguration.BAND_2GHZ;
+            int band = WifiApConfigStore.generateDefaultBand(mContext);
 
             // For auto only
             if (hasAutomotiveFeature(mContext)) {
                 if (mContext.getResources().getBoolean(R.bool.config_wifiLocalOnlyHotspot6ghz)
-                        && mContext.getResources().getBoolean(R.bool.config_wifiSoftap6ghzSupported)
-                        && is6GhzBandSupportedInternal()) {
+                        && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext)) {
                     band = SoftApConfiguration.BAND_6GHZ;
                 } else if (mContext.getResources().getBoolean(
                         R.bool.config_wifi_local_only_hotspot_5ghz)
-                        && is5GhzBandSupportedInternal()) {
+                        && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_5GHZ, mContext)) {
                     band = SoftApConfiguration.BAND_5GHZ;
                 }
             }
@@ -3282,10 +3259,10 @@ public class WifiServiceImpl extends BaseWifiService {
             mLog.info("is60GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
 
-        return is60GHzBandSupportedInternal();
+        return is60GhzBandSupportedInternal();
     }
 
-    private boolean is60GHzBandSupportedInternal() {
+    private boolean is60GhzBandSupportedInternal() {
         if (mContext.getResources().getBoolean(R.bool.config_wifi60ghzSupport)) {
             return true;
         }
@@ -4457,24 +4434,16 @@ public class WifiServiceImpl extends BaseWifiService {
 
     /**
      * see {@link android.net.wifi.WifiManager#addOnWifiUsabilityStatsListener(Executor,
-     * OnWifiUsabilityStatsListener)}
+     * WifiManager.OnWifiUsabilityStatsListener)}
      *
-     * @param binder IBinder instance to allow cleanup if the app dies
      * @param listener WifiUsabilityStatsEntry listener to add
-     * @param listenerIdentifier Unique ID of the adding listener. This ID will be used to
-     *        remove the listener. See {@link removeOnWifiUsabilityStatsListener(int)}
      *
      * @throws SecurityException if the caller does not have permission to add a listener
      * @throws RemoteException if remote exception happens
      * @throws IllegalArgumentException if the arguments are null or invalid
      */
     @Override
-    public void addOnWifiUsabilityStatsListener(IBinder binder,
-            IOnWifiUsabilityStatsListener listener, int listenerIdentifier) {
-        // verify arguments
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
+    public void addOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("Listener must not be null");
         }
@@ -4486,19 +4455,19 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiMetrics.addOnWifiUsabilityListener(binder, listener, listenerIdentifier));
+                mWifiMetrics.addOnWifiUsabilityListener(listener));
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#removeOnWifiUsabilityStatsListener(
-     * OnWifiUsabilityStatsListener)}
+     * see {@link android.net.wifi.WifiManager#removeOnWifiUsabilityStatsListener
+     * (WifiManager.OnWifiUsabilityStatsListener)}
      *
-     * @param listenerIdentifier Unique ID of the listener to be removed.
+     * @param listener listener to be removed.
      *
      * @throws SecurityException if the caller does not have permission to add a listener
      */
     @Override
-    public void removeOnWifiUsabilityStatsListener(int listenerIdentifier) {
+    public void removeOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener listener) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
         if (mVerboseLoggingEnabled) {
@@ -4507,7 +4476,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiMetrics.removeOnWifiUsabilityListener(listenerIdentifier));
+                mWifiMetrics.removeOnWifiUsabilityListener(listener));
     }
 
     /**

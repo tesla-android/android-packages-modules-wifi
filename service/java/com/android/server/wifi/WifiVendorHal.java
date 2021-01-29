@@ -2840,6 +2840,31 @@ public class WifiVendorHal {
         }
     }
 
+    /**
+     * Notify scan mode state to driver to save power in scan-only mode.
+     *
+     * @param ifaceName Name of the interface.
+     * @param enable whether is in scan-only mode
+     * @return true for success
+     */
+    public boolean setScanMode(@NonNull String ifaceName, boolean enable) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiStaIface iface =
+                        getWifiStaIfaceForV1_5Mockable(ifaceName);
+                if (iface != null) {
+                    WifiStatus status = iface.setScanMode(enable);
+                    if (!ok(status)) return false;
+                    return true;
+                }
+                return false;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
     // This creates a blob of IE elements from the array received.
     // TODO: This ugly conversion can be removed if we put IE elements in ScanResult.
     private static byte[] hidlIeArrayToFrameworkIeBlob(ArrayList<WifiInformationElement> ies) {

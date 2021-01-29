@@ -3869,4 +3869,15 @@ public class WifiNative {
             iface.phyCapabilities = capabilities;
         }
     }
+
+    /**
+     * Notify scan mode state to driver to save power in scan-only mode.
+     *
+     * @param ifaceName Name of the interface.
+     * @param enable whether is in scan-only mode
+     * @return true for success
+     */
+    public boolean setScanMode(String ifaceName, boolean enable) {
+        return mWifiVendorHal.setScanMode(ifaceName, enable);
+    }
 }

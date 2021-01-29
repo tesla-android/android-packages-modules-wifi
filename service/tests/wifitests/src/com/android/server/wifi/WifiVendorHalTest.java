@@ -3295,4 +3295,15 @@ public class WifiVendorHalTest extends WifiBaseTest {
         verify(mIWifiChipV15).setCountryCode(eq(expected));
     }
 
+    @Test
+    public void testSetScanMode() throws Exception {
+        mWifiVendorHal = new WifiVendorHalSpyV1_5(mContext, mHalDeviceManager, mHandler);
+        when(mIWifiStaIfaceV15.setScanMode(anyBoolean())).thenReturn(mWifiStatusSuccess);
+
+        assertTrue(mWifiVendorHal.setScanMode(TEST_IFACE_NAME, true));
+        verify(mIWifiStaIfaceV15).setScanMode(true);
+
+        assertTrue(mWifiVendorHal.setScanMode(TEST_IFACE_NAME, false));
+        verify(mIWifiStaIfaceV15).setScanMode(false);
+    }
 }

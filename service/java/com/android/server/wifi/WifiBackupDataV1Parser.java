@@ -483,15 +483,19 @@ class WifiBackupDataV1Parser implements WifiBackupDataParser {
             WifiConfiguration configuration)
             throws XmlPullParserException, IOException {
 
+        List<SecurityParams> paramsList = new ArrayList<>();
         while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
             switch (in.getName()) {
                 case WifiConfigurationXmlUtil.XML_TAG_SECURITY_PARAMS:
                     SecurityParams params = parseSecurityParamsFromXml(in, outerTagDepth + 1);
                     if (params != null) {
-                        configuration.addSecurityParams(params);
+                        paramsList.add(params);
                     }
                     break;
             }
+        }
+        if (!paramsList.isEmpty()) {
+            configuration.setSecurityParams(paramsList);
         }
     }
 

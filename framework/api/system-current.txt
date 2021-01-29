@@ -221,7 +221,11 @@ package android.net.wifi {
   }
 
   public final class ScanResult implements android.os.Parcelable {
+    field public static final int CIPHER_BIP_CMAC_256 = 9; // 0x9
+    field public static final int CIPHER_BIP_GMAC_128 = 7; // 0x7
+    field public static final int CIPHER_BIP_GMAC_256 = 8; // 0x8
     field public static final int CIPHER_CCMP = 3; // 0x3
+    field public static final int CIPHER_GCMP_128 = 6; // 0x6
     field public static final int CIPHER_GCMP_256 = 4; // 0x4
     field public static final int CIPHER_NONE = 0; // 0x0
     field public static final int CIPHER_NO_GROUP_ADDRESSED = 1; // 0x1
@@ -312,6 +316,7 @@ package android.net.wifi {
 
   public final class SoftApInfo implements android.os.Parcelable {
     method public int describeContents();
+    method public long getAutoShutdownTimeoutMillis();
     method public int getBandwidth();
     method @Nullable public android.net.MacAddress getBssid();
     method public int getFrequency();
@@ -411,6 +416,7 @@ package android.net.wifi {
     field @Deprecated public static final int DISABLED_BY_WIFI_MANAGER = 7; // 0x7
     field @Deprecated public static final int DISABLED_BY_WRONG_PASSWORD = 8; // 0x8
     field @Deprecated public static final int DISABLED_DHCP_FAILURE = 3; // 0x3
+    field @Deprecated public static final int DISABLED_NETWORK_NOT_FOUND = 11; // 0xb
     field @Deprecated public static final int DISABLED_NONE = 0; // 0x0
     field @Deprecated public static final int DISABLED_NO_INTERNET_PERMANENT = 6; // 0x6
     field @Deprecated public static final int DISABLED_NO_INTERNET_TEMPORARY = 4; // 0x4
@@ -493,7 +499,6 @@ package android.net.wifi {
     method @Deprecated @Nullable @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public android.net.wifi.WifiConfiguration getWifiApConfiguration();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public int getWifiApState();
     method @NonNull @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.List<android.net.wifi.WifiConfiguration> getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(@NonNull java.util.List<android.net.wifi.ScanResult>);
-    method public boolean is60GHzBandSupported();
     method public boolean isApMacRandomizationSupported();
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public boolean isCarrierNetworkOffloadEnabled(int, boolean);
     method public boolean isConnectedMacRandomizationSupported();
@@ -638,7 +643,10 @@ package android.net.wifi {
   }
 
   public static interface WifiManager.ScoreUpdateObserver {
+    method public default void blocklistCurrentBssid(int);
     method public void notifyScoreUpdate(int, int);
+    method public default void notifyStatusUpdate(int, boolean);
+    method public default void requestNudOperation(int, boolean);
     method public void triggerUpdateOfWifiUsabilityStats(int);
   }
 

@@ -273,6 +273,10 @@ public class SupplicantP2pIfaceHal {
     }
 
     private ISupplicantIface getIfaceV1_0(@NonNull String ifaceName) {
+        if (null == mISupplicant) {
+            Log.e(TAG, "Can't call getIface: ISupplicant is null");
+            return null;
+        }
         /** List all supplicant Ifaces */
         final ArrayList<ISupplicant.IfaceInfo> supplicantIfaces = new ArrayList();
         try {

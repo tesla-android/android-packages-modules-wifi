@@ -930,15 +930,26 @@ public class InformationElementUtil {
         private static final int RSN_CIPHER_CCMP = 0x04ac0f00;
         private static final int RSN_CIPHER_NO_GROUP_ADDRESSED = 0x07ac0f00;
         private static final int RSN_CIPHER_GCMP_256 = 0x09ac0f00;
+        private static final int RSN_CIPHER_GCMP_128 = 0x08ac0f00;
+        private static final int RSN_CIPHER_BIP_GMAC_128 = 0x0bac0f00;
+        private static final int RSN_CIPHER_BIP_GMAC_256 = 0x0cac0f00;
+        private static final int RSN_CIPHER_BIP_CMAC_256 = 0x0dac0f00;
+
+        // RSN capability bit definition
+        private static final int RSN_CAP_MANAGEMENT_FRAME_PROTECTION_REQUIRED = 1 << 6;
+        private static final int RSN_CAP_MANAGEMENT_FRAME_PROTECTION_CAPABLE = 1 << 7;
 
         public List<Integer> protocol;
         public List<List<Integer>> keyManagement;
         public List<List<Integer>> pairwiseCipher;
         public List<Integer> groupCipher;
+        public List<Integer> groupManagementCipher;
         public boolean isESS;
         public boolean isIBSS;
         public boolean isPrivacy;
         public boolean isWPS;
+        public boolean isManagementFrameProtectionRequired;
+        public boolean isManagementFrameProtectionCapable;
 
         public Capabilities() {
         }
@@ -1038,6 +1049,28 @@ public class InformationElementUtil {
                     rsnKeyManagement.add(ScanResult.KEY_MGMT_EAP);
                 }
                 keyManagement.add(rsnKeyManagement);
+
+                // RSN capabilities (optional),
+                // see section 9.4.2.25 - RSNE - In IEEE Std 802.11-2016
+                if (buf.remaining() < 2) return;
+                int rsnCaps = buf.getShort();
+
+                if (buf.remaining() < 2) return;
+                // PMKID, it's not used, drop it if exists (optional).
+                int rsnPmkIdCount = buf.getShort();
+                for (int i = 0; i < rsnPmkIdCount; i++) {
+                    // Each PMKID element length in the PMKID List is 16 bytes
+                    byte[] tmp = new byte[16];
+                    buf.get(tmp);
+                }
+
+                // Group management cipher suite (optional).
+                if (buf.remaining() < 4) return;
+                groupManagementCipher.add(parseRsnCipher(buf.getInt()));
+                isManagementFrameProtectionRequired = !groupManagementCipher.isEmpty()
+                        && 0 != (RSN_CAP_MANAGEMENT_FRAME_PROTECTION_REQUIRED & rsnCaps);
+                isManagementFrameProtectionCapable = !groupManagementCipher.isEmpty()
+                        && 0 != (RSN_CAP_MANAGEMENT_FRAME_PROTECTION_CAPABLE & rsnCaps);
             } catch (BufferUnderflowException e) {
                 Log.e("IE_Capabilities", "Couldn't parse RSNE, buffer underflow");
             }
@@ -1070,6 +1103,14 @@ public class InformationElementUtil {
                     return ScanResult.CIPHER_GCMP_256;
                 case RSN_CIPHER_NO_GROUP_ADDRESSED:
                     return ScanResult.CIPHER_NO_GROUP_ADDRESSED;
+                case RSN_CIPHER_GCMP_128:
+                    return ScanResult.CIPHER_GCMP_128;
+                case RSN_CIPHER_BIP_GMAC_128:
+                    return ScanResult.CIPHER_BIP_GMAC_128;
+                case RSN_CIPHER_BIP_GMAC_256:
+                    return ScanResult.CIPHER_BIP_GMAC_256;
+                case RSN_CIPHER_BIP_CMAC_256:
+                    return ScanResult.CIPHER_BIP_CMAC_256;
                 default:
                     Log.w("IE_Capabilities", "Unknown RSN cipher suite: "
                             + Integer.toHexString(cipher));
@@ -1191,6 +1232,7 @@ public class InformationElementUtil {
             keyManagement = new ArrayList<>();
             groupCipher = new ArrayList<>();
             pairwiseCipher = new ArrayList<>();
+            groupManagementCipher = new ArrayList<>();
 
             if (ies == null) {
                 return;
@@ -1295,13 +1337,13 @@ public class InformationElementUtil {
                 case ScanResult.KEY_MGMT_PSK:
                     return "PSK";
                 case ScanResult.KEY_MGMT_EAP:
-                    return "EAP";
+                    return "EAP/SHA1";
                 case ScanResult.KEY_MGMT_FT_EAP:
                     return "FT/EAP";
                 case ScanResult.KEY_MGMT_FT_PSK:
                     return "FT/PSK";
                 case ScanResult.KEY_MGMT_EAP_SHA256:
-                    return "EAP-SHA256";
+                    return "EAP/SHA256";
                 case ScanResult.KEY_MGMT_PSK_SHA256:
                     return "PSK-SHA256";
                 case ScanResult.KEY_MGMT_OWE:
@@ -1375,6 +1417,14 @@ public class InformationElementUtil {
             }
             if (isWPS) {
                 capabilities.append("[WPS]");
+            }
+            if (!groupManagementCipher.isEmpty()) {
+                if (isManagementFrameProtectionRequired) {
+                    capabilities.append("[MFPR]");
+                }
+                if (isManagementFrameProtectionCapable) {
+                    capabilities.append("[MFPC]");
+                }
             }
 
             return capabilities.toString();

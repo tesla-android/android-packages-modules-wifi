@@ -24,6 +24,7 @@ import static android.app.AppOpsManager.MODE_IGNORED;
 import static android.app.AppOpsManager.OPSTR_CHANGE_WIFI_STATE;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.when;
 import static com.android.server.wifi.WifiNetworkSuggestionsManager.NOTIFICATION_USER_ALLOWED_APP_INTENT_ACTION;
 import static com.android.server.wifi.WifiNetworkSuggestionsManager.NOTIFICATION_USER_DISALLOWED_APP_INTENT_ACTION;
@@ -86,6 +87,7 @@ import com.android.server.wifi.util.LruConnectionTracker;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -162,6 +164,10 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     private @Mock Notification.Builder mNotificationBuilder;
     private @Mock Notification mNotification;
     private @Mock LruConnectionTracker mLruConnectionTracker;
+    private @Mock ActiveModeWarden mActiveModeWarden;
+    private @Mock ClientModeManager mPrimaryClientModeManager;
+    private @Mock WifiGlobals mWifiGlobals;
+    private MockitoSession mStaticMockSession = null;
     private TestLooper mLooper;
     private final ArgumentCaptor<AppOpsManager.OnOpChangedListener> mAppOpChangedListenerCaptor =
             ArgumentCaptor.forClass(AppOpsManager.OnOpChangedListener.class);
@@ -184,6 +190,10 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        mStaticMockSession = mockitoSession()
+                .mockStatic(WifiInjector.class)
+                .startMocking();
+        lenient().when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
         mLooper = new TestLooper();
 
         mInorder = inOrder(mContext, mWifiPermissionsUtil);
@@ -193,6 +203,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mWifiInjector.getFrameworkFacade()).thenReturn(mFrameworkFacade);
         when(mWifiInjector.getPasspointManager()).thenReturn(mPasspointManager);
         when(mWifiInjector.getWifiScoreCard()).thenReturn(mWifiScoreCard);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
         when(mAlertDialogBuilder.setTitle(any())).thenReturn(mAlertDialogBuilder);
         when(mAlertDialogBuilder.setMessage(any())).thenReturn(mAlertDialogBuilder);
         when(mAlertDialogBuilder.setPositiveButton(any(), any())).thenReturn(mAlertDialogBuilder);
@@ -231,6 +243,11 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mActivityManager.getPackageImportance(any())).thenReturn(
                 IMPORTANCE_FOREGROUND_SERVICE);
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
 
         // setup resource strings for notification.
         when(mResources.getString(eq(R.string.wifi_suggestion_title), anyString()))
@@ -289,6 +306,13 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         verify(mWifiConfigManager).addOnNetworkUpdateListener(mNetworkListenerCaptor.capture());
 
         mWifiNetworkSuggestionsManager.enableVerboseLogging(1);
+    }
+
+    @After
+    public void cleanUp() throws Exception {
+        if (null != mStaticMockSession) {
+            mStaticMockSession.finishMocking();
+        }
     }
 
     /**
@@ -899,6 +923,81 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     public void testGetNetworkSuggestionsForScanDetailSuccessWithOneMatch() {
         WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        List<WifiNetworkSuggestion> networkSuggestionList1 =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion);
+                }};
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList1, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+        mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(true, TEST_PACKAGE_1);
+
+        ScanDetail scanDetail = createScanDetailForNetwork(networkSuggestion.wifiConfiguration);
+
+        Set<ExtendedWifiNetworkSuggestion> matchingExtNetworkSuggestions =
+                mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail);
+        Set<WifiNetworkSuggestion> expectedMatchingNetworkSuggestions =
+                new HashSet<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion);
+                }};
+        assertSuggestionsEquals(expectedMatchingNetworkSuggestions, matchingExtNetworkSuggestions);
+    }
+
+    /**
+     * Verify a successful lookup of a single network suggestion matching the provided scan detail.
+     *
+     * The wifi configuration in the network suggestion is a type which could have upgradable types.
+     */
+    @Test
+    public void testGetNetworkSuggestionsForScanDetailSuccessWithOneMatchForUpgradableConfig() {
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"test\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        upgradableConfig.preSharedKey = "\"PassW0rd\"";
+
+        WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
+                upgradableConfig, null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        List<WifiNetworkSuggestion> networkSuggestionList1 =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion);
+                }};
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList1, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+        mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(true, TEST_PACKAGE_1);
+
+        ScanDetail scanDetail = createScanDetailForNetwork(networkSuggestion.wifiConfiguration);
+
+        Set<ExtendedWifiNetworkSuggestion> matchingExtNetworkSuggestions =
+                mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail);
+        Set<WifiNetworkSuggestion> expectedMatchingNetworkSuggestions =
+                new HashSet<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion);
+                }};
+        assertSuggestionsEquals(expectedMatchingNetworkSuggestions, matchingExtNetworkSuggestions);
+    }
+
+
+    /**
+     * Verify a successful lookup of a single network suggestion matching the provided scan detail.
+     *
+     * The wifi configuration in the network suggestion is a leagcy object, says no security params
+     * list, and only raw fields are set.
+     */
+    @Test
+    public void testGetNetworkSuggestionsForScanDetailSuccessWithOneMatchForLegacyConfig() {
+        WifiConfiguration legacyConfig = new WifiConfiguration();
+        legacyConfig.SSID = "\"test\"";
+        legacyConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
+        legacyConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+        legacyConfig.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
+        legacyConfig.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
+        legacyConfig.preSharedKey = "\"PassW0rd\"";
+
+        WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
+                legacyConfig, null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList1 =
                 new ArrayList<WifiNetworkSuggestion>() {{

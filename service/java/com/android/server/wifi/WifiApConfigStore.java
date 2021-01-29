@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
+import android.net.wifi.SoftApConfiguration.BandType;
 import android.os.Handler;
 import android.os.Process;
 import android.text.TextUtils;
@@ -222,50 +223,34 @@ public class WifiApConfigStore {
                 && config.getChannel() != 0) {
             // The device might not support customize channel or forced channel might not
             // work in some countries. Need to reset it.
-            // Add 2.4G by default
-            configBuilder.setBand(config.getBand() | SoftApConfiguration.BAND_2GHZ);
+            configBuilder.setBand(ApConfigUtil.append24GToBandIf24GSupported(
+                    config.getBand(), mContext));
             Log.i(TAG, "Reset SAP channel configuration");
         }
 
-        if (!ApConfigUtil.isBridgedModeSupported(mContext)) {
-            if (SdkLevel.isAtLeastS() && config.getBands().length > 1) {
-                configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
-                Log.i(TAG, "Device doesn't support bridged AP, force 2.4G when bridged configured");
-            }
-        }
-
         if (SdkLevel.isAtLeastS() && config.getBands().length > 1) {
-            for (int currentBand : config.getBands()) {
-                if (!ApConfigUtil.isBandSupported(currentBand, mContext)) {
-                    configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
-                    Log.i(TAG, "An unsupported band setting for the bridged mode, force to 2.4G");
+            if (!ApConfigUtil.isBridgedModeSupported(mContext)
+                    || !isBandsSupported(config.getBands(), mContext)) {
+                int newSingleApBand = 0;
+                for (int targetBand : config.getBands()) {
+                    int availableBand = ApConfigUtil.removeUnsupportedBands(
+                            mContext, targetBand);
+                    newSingleApBand |= availableBand;
                 }
+                newSingleApBand = ApConfigUtil.append24GToBandIf24GSupported(
+                        newSingleApBand, mContext);
+                configBuilder.setBand(newSingleApBand);
+                Log.i(TAG, "An unsupported band setting for the bridged mode, force to "
+                        + newSingleApBand);
             }
         } else {
-            int newBand = config.getBand();
-            if (!mContext.getResources().getBoolean(R.bool.config_wifi6ghzSupport)
-                    && (newBand & SoftApConfiguration.BAND_6GHZ) != 0) {
-                newBand &= ~SoftApConfiguration.BAND_6GHZ;
-                Log.i(TAG, "Device doesn't support 6g, remove 6G band from band setting");
-            }
-
-            if (!mContext.getResources().getBoolean(R.bool.config_wifi5ghzSupport)
-                    && (newBand & SoftApConfiguration.BAND_5GHZ) != 0) {
-                newBand &= ~SoftApConfiguration.BAND_5GHZ;
-                Log.i(TAG, "Device doesn't support 5g, remove 5G band from band setting");
-            }
-
-            if (!mContext.getResources().getBoolean(R.bool.config_wifi60ghzSupport)
-                    && (newBand & SoftApConfiguration.BAND_60GHZ) != 0) {
-                newBand &= ~SoftApConfiguration.BAND_60GHZ;
-                Log.i(TAG, "Device doesn't support 60g, remove 60G band from band setting");
-            }
-
+            // Single band case, check and remove unsupported band.
+            int newBand = ApConfigUtil.removeUnsupportedBands(mContext, config.getBand());
             if (newBand != config.getBand()) {
-                // Always added 2.4G by default when reset the band.
+                newBand = ApConfigUtil.append24GToBandIf24GSupported(newBand, mContext);
                 Log.i(TAG, "Reset band from " + config.getBand() + " to "
-                        + (newBand | SoftApConfiguration.BAND_2GHZ));
-                configBuilder.setBand(newBand | SoftApConfiguration.BAND_2GHZ);
+                        + newBand);
+                configBuilder.setBand(newBand);
             }
         }
 
@@ -294,16 +279,22 @@ public class WifiApConfigStore {
     }
 
     private SoftApConfiguration sanitizePersistentApConfig(SoftApConfiguration config) {
+        if (SdkLevel.isAtLeastS() && config.getBands().length > 1) {
+            return config;
+        }
         SoftApConfiguration.Builder convertedConfigBuilder = null;
-
+        int band = config.getBand();
         // some countries are unable to support 5GHz only operation, always allow for 2GHz when
         // config doesn't force channel
-        if (config.getChannel() == 0 && (config.getBand() & SoftApConfiguration.BAND_2GHZ) == 0) {
-            Log.w(TAG, "Supplied ap config band without 2.4G, add allowing for 2.4GHz");
-            if (convertedConfigBuilder == null) {
-                convertedConfigBuilder = new SoftApConfiguration.Builder(config);
+        if (config.getChannel() == 0 && (band & SoftApConfiguration.BAND_2GHZ) == 0) {
+            if (ApConfigUtil.isBandSupported(config.getBand(), mContext)) {
+                Log.w(TAG, "Supplied ap config band without 2.4G, add allowing for 2.4GHz");
+                if (convertedConfigBuilder == null) {
+                    convertedConfigBuilder = new SoftApConfiguration.Builder(config);
+                }
+                convertedConfigBuilder.setBand(
+                        ApConfigUtil.append24GToBandIf24GSupported(band, mContext));
             }
-            convertedConfigBuilder.setBand(config.getBand() | SoftApConfiguration.BAND_2GHZ);
         }
         return convertedConfigBuilder == null ? config : convertedConfigBuilder.build();
     }
@@ -324,7 +315,7 @@ public class WifiApConfigStore {
      */
     private SoftApConfiguration getDefaultApConfiguration() {
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder();
-        configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
+        configBuilder.setBand(generateDefaultBand(mContext));
         configBuilder.setSsid(mContext.getResources().getString(
                 R.string.wifi_tether_configure_ssid_default) + "_" + getRandomIntForDefaultSsid());
         if (ApConfigUtil.isWpa3SaeSupported(mContext)) {
@@ -548,6 +539,16 @@ public class WifiApConfigStore {
             return false;
         }
 
+        if (SdkLevel.isAtLeastS()) {
+            if (!isBandsSupported(apConfig.getBands(), context)) {
+                return false;
+            }
+        } else {
+            if (!ApConfigUtil.isBandSupported(apConfig.getBand(), context)) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -563,5 +564,32 @@ public class WifiApConfigStore {
             sb.append(allowed.charAt(random.nextInt(allowed.length())));
         }
         return sb.toString();
+    }
+
+    /**
+     * Generate default band base on supported band configuration.
+     *
+     * @param context The caller context used to get value from resource file.
+     * @return A band which will be used for a default band in default configuration.
+     */
+    public static @BandType int generateDefaultBand(Context context) {
+        int[] supportedBand = {SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ,
+                SoftApConfiguration.BAND_6GHZ, SoftApConfiguration.BAND_60GHZ};
+        for (int band : supportedBand) {
+            if (ApConfigUtil.isBandSupported(band, context)) {
+                return band;
+            }
+        }
+        Log.e(TAG, "Invalid overlay configuration! No any band supported on SoftAp");
+        return SoftApConfiguration.BAND_2GHZ;
+    }
+
+    private static boolean isBandsSupported(@NonNull int[] apBands, Context context) {
+        for (int band : apBands) {
+            if (!ApConfigUtil.isBandSupported(band, context)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

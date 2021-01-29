@@ -609,14 +609,32 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by {@link #addOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void addOnWifiUsabilityStatsListener(
             IBinder binder, IOnWifiUsabilityStatsListener listener, int listenerIdentifier) {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by {@link #removeOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void removeOnWifiUsabilityStatsListener(int listenerIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void addOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener listener) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener listener) {
         throw new UnsupportedOperationException();
     }
 

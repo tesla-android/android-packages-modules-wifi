@@ -16,25 +16,29 @@
 
 package com.android.server.wifi;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import android.content.pm.UserInfo;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,17 +55,23 @@ public class ConfigurationMapTest extends WifiBaseTest {
     private static final int SYSTEM_MANAGE_PROFILE_USER_ID = 12;
     private static final List<WifiConfiguration> CONFIGS = Arrays.asList(
             WifiConfigurationTestUtil.generateWifiConfig(
-                    0, 1000000, "\"red\"", true, true, null, null),
+                    0, 1000000, "\"red\"", true, true, null, null,
+                    WifiConfigurationTestUtil.SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
-                    1, 1000001, "\"green\"", true, false, "example.com", "Green"),
+                    1, 1000001, "\"green\"", true, false, "example.com", "Green",
+                    WifiConfigurationTestUtil.SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
-                    2, 1200000, "\"blue\"", false, true, null, null),
+                    2, 1200000, "\"blue\"", false, true, null, null,
+                    WifiConfigurationTestUtil.SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
-                    3, 1100000, "\"cyan\"", true, true, null, null),
+                    3, 1100000, "\"cyan\"", true, true, null, null,
+                    WifiConfigurationTestUtil.SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
-                    4, 1100001, "\"yellow\"", true, true, "example.org", "Yellow"),
+                    4, 1100001, "\"yellow\"", true, true, "example.org", "Yellow",
+                    WifiConfigurationTestUtil.SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
-                    5, 1100002, "\"magenta\"", false, false, null, null));
+                    5, 1100002, "\"magenta\"", false, false, null, null,
+                    WifiConfigurationTestUtil.SECURITY_NONE));
 
     private static final SparseArray<List<UserInfo>> USER_PROFILES = new SparseArray<>();
     static {
@@ -73,6 +83,11 @@ public class ConfigurationMapTest extends WifiBaseTest {
     }
 
     @Mock UserManager mUserManager;
+    @Mock WifiInjector mWifiInjector;
+    @Mock ActiveModeWarden mActiveModeWarden;
+    @Mock ClientModeManager mPrimaryClientModeManager;
+    @Mock WifiGlobals mWifiGlobals;
+    private MockitoSession mStaticMockSession = null;
 
     private int mCurrentUserId = UserHandle.USER_SYSTEM;
     private ConfigurationMap mConfigs;
@@ -83,6 +98,17 @@ public class ConfigurationMapTest extends WifiBaseTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        mStaticMockSession = mockitoSession()
+                .mockStatic(WifiInjector.class)
+                .startMocking();
+        lenient().when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
 
         // by default, return false
         when(mUserManager.isSameProfileGroup(any(), any())).thenReturn(false);
@@ -94,6 +120,13 @@ public class ConfigurationMapTest extends WifiBaseTest {
                 UserHandle.SYSTEM))
                 .thenReturn(true);
         mConfigs = new ConfigurationMap(mUserManager);
+    }
+
+    @After
+    public void cleanUp() throws Exception {
+        if (null != mStaticMockSession) {
+            mStaticMockSession.finishMocking();
+        }
     }
 
     private void switchUser(int newUserId) {

@@ -23,8 +23,10 @@ import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.StaticIpConfiguration;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.os.PatternMatcher;
@@ -124,10 +126,17 @@ public class WifiConfigurationUtil {
 
     /**
      * Helper method to check if the provided |config| corresponds to a EAP network or not.
-     * TODO: b/175928875, add a method for Wpa3Enterprise.
      */
     public static boolean isConfigForEapNetwork(WifiConfiguration config) {
         return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP);
+    }
+
+    /**
+     * Helper method to check if the provided |config| corresponds to
+     * a WPA3 Enterprise network or not.
+     */
+    public static boolean isConfigForWpa3EnterpriseNetwork(WifiConfiguration config) {
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
     }
 
     /**
@@ -150,6 +159,7 @@ public class WifiConfigurationUtil {
      */
     public static boolean isConfigForOpenNetwork(WifiConfiguration config) {
         return (!(isConfigForWepNetwork(config) || isConfigForPskNetwork(config)
+                || isConfigForWapiPskNetwork(config) || isConfigForWapiCertNetwork(config)
                 || isConfigForEapNetwork(config) || isConfigForSaeNetwork(config)
                 || isConfigForWpa3Enterprise192BitNetwork(config)));
     }
@@ -262,6 +272,10 @@ public class WifiConfigurationUtil {
             }
             if (!TextUtils.equals(newEnterpriseConfig.getAltSubjectMatch(),
                     existingEnterpriseConfig.getAltSubjectMatch())) {
+                return true;
+            }
+            if (!TextUtils.equals(newEnterpriseConfig.getWapiCertSuite(),
+                    existingEnterpriseConfig.getWapiCertSuite())) {
                 return true;
             }
             if (newEnterpriseConfig.getOcsp() != existingEnterpriseConfig.getOcsp()) {
@@ -862,6 +876,95 @@ public class WifiConfigurationUtil {
         return pnoNetwork;
     }
 
+    private static void addOpenUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) return;
+
+        Log.d(TAG, "Add upgradable OWE configuration.");
+        SecurityParams oweParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_OWE);
+        oweParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(oweParams);
+    }
+
+    private static void addPskUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) return;
+
+        Log.d(TAG, "Add upgradable SAE configuration.");
+        SecurityParams saeParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_SAE);
+        saeParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(saeParams);
+    }
+
+    private static void addEapUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE)) return;
+
+        Log.d(TAG, "Add upgradable Enterprise configuration.");
+        SecurityParams wpa3EnterpriseParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        wpa3EnterpriseParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(wpa3EnterpriseParams);
+    }
+
+    /**
+     * Add upgradable securit type to the given wifi configuration.
+     *
+     * @param config the wifi configuration to be checked.
+     */
+    public static void addUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        addOpenUpgradableSecurityTypeIfNecessary(config);
+        addPskUpgradableSecurityTypeIfNecessary(config);
+        addEapUpgradableSecurityTypeIfNecessary(config);
+    }
+
+    /**
+     * For a upgradable type which is added by the auto-upgrade mechenism, it is only
+     * matched when corresponding auto-upgrade features are enabled.
+     */
+    private static boolean shouldOmitAutoUpgradeParams(SecurityParams params) {
+        if (!params.isAddedByAutoUpgrade()) return false;
+
+        WifiGlobals wifiGlobals = WifiInjector.getInstance().getWifiGlobals();
+
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+            return !wifiGlobals.isWpa3SaeUpgradeEnabled();
+        }
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) {
+            return !wifiGlobals.isOweUpgradeEnabled();
+        }
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE)) {
+            return !wifiGlobals.isWpa3EnterpriseUpgradeEnabled();
+        }
+        return false;
+    }
+
+    private static boolean isSecurityParamsSupported(SecurityParams params) {
+        final long wifiFeatures = WifiInjector.getInstance()
+                .getActiveModeWarden().getPrimaryClientModeManager()
+                .getSupportedFeatures();
+        switch (params.getSecurityType()) {
+            case WifiConfiguration.SECURITY_TYPE_SAE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_WPA3_SAE);
+            case WifiConfiguration.SECURITY_TYPE_OWE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_OWE);
+        }
+        return true;
+    }
+
+    /**
+     * Check the security params is valid or not.
+     * @param params the requesting security params.
+     * @return true if it's valid; otherwise false.
+     */
+    public static boolean isSecurityParamsValid(SecurityParams params) {
+        if (!params.isEnabled()) return false;
+        if (!isSecurityParamsSupported(params)) return false;
+        if (shouldOmitAutoUpgradeParams(params)) return false;
+        return true;
+    }
 
     /**
      * General WifiConfiguration list sorting algorithm:

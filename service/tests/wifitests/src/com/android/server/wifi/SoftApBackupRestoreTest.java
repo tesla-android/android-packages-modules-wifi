@@ -243,7 +243,7 @@ public class SoftApBackupRestoreTest extends WifiBaseTest {
      * Verifies that the serialization/de-serialization for wpa3-sae-transition softap config.
      */
     @Test
-    public void testSoftApConfigBackupAndRestoreWithMaxShutDownClientList() throws Exception {
+    public void testSoftApConfigBackupAndRestoreWithMaxShutdownClientList() throws Exception {
         mTestBlockedList.add(MacAddress.fromString(TEST_BLOCKED_CLIENT));
         mTestAllowedList.add(MacAddress.fromString(TEST_ALLOWED_CLIENT));
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder();

@@ -235,4 +235,10 @@ abstract class SupplicantStaIfaceCallbackV1_4Impl extends
                             NativeUtil.macAddressToLong(bssid), url));
         }
     }
+
+    @Override
+    public void onNetworkNotFound(ArrayList<Byte> ssid) {
+        mStaIfaceHal.logCallback("onNetworkNotFoundNotification");
+        mWifiMonitor.broadcastNetworkNotFoundEvent(mIfaceName, NativeUtil.encodeSsid(ssid));
+    }
 }

@@ -892,6 +892,13 @@ public class WifiBlocklistMonitor {
                         mContext.getResources().getInteger(R.integer
                                 .config_wifiDisableReasonDhcpFailureThreshold),
                         5 * 60 * 1000));
+
+        mDisableReasonInfo.put(NetworkSelectionStatus.DISABLED_NETWORK_NOT_FOUND,
+                new DisableReasonInfo(
+                        "NETWORK_SELECTION_DISABLED_NETWORK_NOT_FOUND",
+                        mContext.getResources().getInteger(R.integer
+                                .config_wifiDisableReasonNetworkNotFoundThreshold),
+                        5 * 60 * 1000));
     }
 
     /** Update DisableReasonInfo with carrier configurations defined in an overlay. **/

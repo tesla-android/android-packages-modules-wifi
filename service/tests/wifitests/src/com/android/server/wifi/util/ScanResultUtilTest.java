@@ -98,35 +98,82 @@ public class ScanResultUtilTest extends WifiBaseTest {
         scanResult.capabilities = "";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.NONE));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_OPEN,
+                config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WEP";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.NONE));
-        assertTrue(config.allowedAuthAlgorithms.get(WifiConfiguration.AuthAlgorithm.OPEN));
-        assertTrue(config.allowedAuthAlgorithms.get(WifiConfiguration.AuthAlgorithm.SHARED));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WEP,
+                config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "PSK";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_PSK,
+                config.getDefaultSecurityParams().getSecurityType());
 
-        scanResult.capabilities = "EAP";
+        // WPA2 Enterprise network with none MFP capability.
+        scanResult.capabilities = "[EAP/SHA1]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // WPA2 Enterprise network with MFPC.
+        scanResult.capabilities = "[EAP/SHA1][MFPC]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // WPA2 Enterprise network with MFPR.
+        scanResult.capabilities = "[EAP/SHA1][MFPR]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // WPA3 Enterprise transition network
+        scanResult.capabilities = "[EAP/SHA1+EAP/SHA256][MFPC]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // WPA3 Enterprise only network
+        scanResult.capabilities = "[EAP/SHA256][MFPC][MFPR]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // Neither a valid WPA3 Enterprise transition network nor WPA3 Enterprise only network
+        // Fallback to WPA2 Enterprise
+        scanResult.capabilities = "[EAP/SHA1+EAP/SHA256][MFPC][MFPR]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
+                config.getDefaultSecurityParams().getSecurityType());
+
+        // WPA3 Enterprise only network
+        scanResult.capabilities = "[SUITE_B_192][MFPR]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WAPI-PSK";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WAPI_PSK));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
+                config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WAPI-CERT";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
-        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WAPI_CERT));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
+                config.getDefaultSecurityParams().getSecurityType());
     }
 
     /**
@@ -211,8 +258,8 @@ public class ScanResultUtilTest extends WifiBaseTest {
     @Test
     public void testFilsSha256AkmSupportedNetwork() {
         final String ssid = "FILS-AP";
-        String caps = "[WPA2-EAP+EAP-SHA256+EAP-FILS-SHA256-CCMP]"
-                + "[RSN-EAP+EAP-SHA256+EAP-FILS-SHA256-CCMP][ESS]";
+        String caps = "[WPA2-EAP/SHA1+EAP/SHA256+EAP-FILS-SHA256-CCMP]"
+                + "[RSN-EAP/SHA1+EAP/SHA256+EAP-FILS-SHA256-CCMP][ESS]";
 
         ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
@@ -231,8 +278,8 @@ public class ScanResultUtilTest extends WifiBaseTest {
     @Test
     public void testFilsSha384AkmSupportedNetwork() {
         final String ssid = "FILS-AP";
-        String caps = "[WPA2-EAP+EAP-SHA384+EAP-FILS-SHA384-CCMP]"
-                + "[RSN-EAP+EAP-SHA384+EAP-FILS-SHA384-CCMP][ESS]";
+        String caps = "[WPA2-EAP/SHA1+EAP-SHA384+EAP-FILS-SHA384-CCMP]"
+                + "[RSN-EAP/SHA1+EAP-SHA384+EAP-FILS-SHA384-CCMP][ESS]";
 
         ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,

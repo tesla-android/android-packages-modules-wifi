@@ -975,6 +975,7 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         public String password;
         public X509Certificate[] caCerts;
         public WifiEnterpriseConfig enterpriseConfig;
+        public String wapiCertSuite;
 
         EnterpriseConfig(int eapMethod) {
             enterpriseConfig = new WifiEnterpriseConfig();
@@ -999,6 +1000,12 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         public EnterpriseConfig setCaCerts(X509Certificate[] certs) {
             enterpriseConfig.setCaCertificates(certs);
             caCerts = certs;
+            return this;
+        }
+
+        public EnterpriseConfig setWapiCertSuite(String certSuite) {
+            enterpriseConfig.setWapiCertSuite(certSuite);
+            wapiCertSuite = certSuite;
             return this;
         }
     }
@@ -1079,5 +1086,33 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
 
         assertTrue(WifiConfigurationUtil.hasEnterpriseConfigChanged(eapConfig1.enterpriseConfig,
                 eapConfig2.enterpriseConfig));
+    }
+
+    /**
+     * Verify that new WifiEnterpriseConfig is detected.
+     */
+    @Test
+    public void testEnterpriseConfigWapiCertChanged() {
+        EnterpriseConfig eapConfig1 = new EnterpriseConfig(WifiEnterpriseConfig.Eap.WAPI_CERT)
+                .setWapiCertSuite("WapiCertSuite1");
+        EnterpriseConfig eapConfig2 = new EnterpriseConfig(WifiEnterpriseConfig.Eap.WAPI_CERT)
+                .setWapiCertSuite("WapiCertSuite2");
+
+        assertTrue(WifiConfigurationUtil.hasEnterpriseConfigChanged(
+                eapConfig1.enterpriseConfig, eapConfig2.enterpriseConfig));
+    }
+
+    /**
+     * Verify that a WAPI config is not considered an OPEN config.
+     */
+    @Test
+    public void testWapiConfigNotOpenConfig() {
+        WifiConfiguration wapiPskConfig = new WifiConfiguration();
+        wapiPskConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_CERT);
+        assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(wapiPskConfig));
+
+        WifiConfiguration wapiCertConfig = new WifiConfiguration();
+        wapiCertConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_CERT);
+        assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(wapiCertConfig));
     }
 }

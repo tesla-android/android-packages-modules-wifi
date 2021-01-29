@@ -24,6 +24,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.net.wifi.SecurityParams;
+import android.net.wifi.WifiConfiguration;
 import android.util.Xml;
 
 import androidx.test.filters.SmallTest;
@@ -126,15 +128,21 @@ public class WakeupConfigStoreDataTest extends WifiBaseTest {
     public void deserializeSerializedData() throws Exception {
         ScanResultMatchInfo network1 = new ScanResultMatchInfo();
         network1.networkSsid = "ssid 1";
-        network1.networkType = 0;
+        network1.securityParamsList.add(
+                SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
 
         ScanResultMatchInfo network2 = new ScanResultMatchInfo();
         network2.networkSsid = ",.23;4@, .#,%(,";
-        network2.networkType = 1;
+        network2.securityParamsList.add(
+                SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WEP));
 
         ScanResultMatchInfo network3 = new ScanResultMatchInfo();
         network3.networkSsid = "";
-        network3.networkType = 2;
+        network3.securityParamsList.add(
+                SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
 
         Set<ScanResultMatchInfo> networks = Sets.newArraySet(network1, network2, network3);
         boolean isActive = true;

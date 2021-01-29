@@ -157,6 +157,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     private @Mock WifiNative.SupplicantDeathEventHandler mSupplicantHalDeathHandler;
     private @Mock Clock mClock;
     private @Mock WifiMetrics mWifiMetrics;
+    private @Mock WifiGlobals mWifiGlobals;
 
     SupplicantStatus mStatusSuccess;
     SupplicantStatus mStatusFailure;
@@ -193,7 +194,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     private class SupplicantStaIfaceHalSpy extends SupplicantStaIfaceHal {
         SupplicantStaIfaceHalSpy() {
             super(mContext, mWifiMonitor, mFrameworkFacade,
-                    mHandler, mClock, mWifiMetrics);
+                    mHandler, mClock, mWifiMetrics, mWifiGlobals);
         }
 
         @Override
@@ -3317,6 +3318,21 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         assertEquals(assocRejectData.oceRssiBasedAssocRejectData.deltaRssi,
                 assocRejectEventInfo.oceRssiBasedAssocRejectInfo.mDeltaRssi);
         assertNull(assocRejectEventInfo.mboAssocDisallowedInfo);
+    }
+
+    /**
+     * Tests the handling of network not found notification.
+     */
+    @Test
+    public void testNetworkNotFoundCallback() throws Exception {
+        setupMocksForHalV1_4();
+        executeAndValidateInitializationSequenceV1_4();
+        assertNotNull(mISupplicantStaIfaceCallbackV14);
+        mISupplicantStaIfaceCallbackV14.onNetworkNotFound(NativeUtil.decodeSsid(SUPPLICANT_SSID));
+
+        verify(mWifiMonitor).broadcastNetworkNotFoundEvent(
+                eq(WLAN0_IFACE_NAME), eq(SUPPLICANT_SSID));
+
     }
 
 }

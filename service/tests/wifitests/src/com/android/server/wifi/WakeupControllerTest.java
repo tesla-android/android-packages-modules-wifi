@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,11 +28,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import android.content.Context;
 import android.database.ContentObserver;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
 import android.os.Handler;
@@ -42,6 +46,7 @@ import androidx.test.filters.SmallTest;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -49,6 +54,8 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
+import org.mockito.quality.Strictness;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.ByteArrayOutputStream;
@@ -85,24 +92,39 @@ public class WakeupControllerTest extends WifiBaseTest {
     @Mock private ActiveModeWarden mActiveModeWarden;
     @Mock private WifiNative mWifiNative;
     @Mock private Clock mClock;
+    @Mock private ClientModeManager mPrimaryClientModeManager;
+    @Mock private WifiGlobals mWifiGlobals;
 
     private TestLooper mLooper;
     private WakeupController mWakeupController;
     private WakeupConfigStoreData mWakeupConfigStoreData;
     private WifiScanner.ScanData[] mTestScanDatas;
     private ScanResult mTestScanResult;
+    private MockitoSession mSession;
 
     /** Initialize objects before each test run. */
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        // static mocking
+        mSession = mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
+                .strictness(Strictness.LENIENT)
+                .startMocking();
 
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
         when(mWifiInjector.getWifiScanner()).thenReturn(mWifiScanner);
         when(mWifiInjector.getWifiSettingsStore()).thenReturn(mWifiSettingsStore);
         when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
         when(mWifiInjector.getWifiNative()).thenReturn(mWifiNative);
         when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY))
                 .thenReturn(new int[]{DFS_CHANNEL_FREQ});
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
 
         when(mWifiSettingsStore.handleWifiToggled(anyBoolean())).thenReturn(true);
         // Saved network needed to start wake.
@@ -123,6 +145,16 @@ public class WakeupControllerTest extends WifiBaseTest {
         int scanBand = WifiScanner.WIFI_BAND_ALL & ~WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY;
         mTestScanDatas[0] = new WifiScanner.ScanData(0 /* id */, 0 /* flags */,
                 0 /* bucketsScanned */, scanBand /* bandScanned */, scanResults);
+    }
+
+    /**
+     * Called after each test
+     */
+    @After
+    public void cleanup() {
+        if (mSession != null) {
+            mSession.finishMocking();
+        }
     }
 
     /** Initializes the wakeupcontroller in the given {@code enabled} state. */

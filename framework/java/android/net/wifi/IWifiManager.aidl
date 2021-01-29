@@ -222,9 +222,9 @@ interface IWifiManager
 
     void unregisterSoftApCallback(int callbackIdentifier);
 
-    void addOnWifiUsabilityStatsListener(in IBinder binder, in IOnWifiUsabilityStatsListener listener, int listenerIdentifier);
+    void addOnWifiUsabilityStatsListener(in IOnWifiUsabilityStatsListener listener);
 
-    void removeOnWifiUsabilityStatsListener(int listenerIdentifier);
+    void removeOnWifiUsabilityStatsListener(in IOnWifiUsabilityStatsListener listener);
 
     void registerTrafficStateCallback(in IBinder binder, in ITrafficStateCallback callback, int callbackIdentifier);
 

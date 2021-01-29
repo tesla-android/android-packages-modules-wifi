@@ -16,12 +16,17 @@
 
 package com.android.server.wifi;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiManager;
 import android.util.ArraySet;
 
 import androidx.test.filters.SmallTest;
@@ -30,8 +35,13 @@ import com.android.server.wifi.util.ScanResultUtil;
 
 import com.google.android.collect.Sets;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
+import org.mockito.quality.Strictness;
 
 import java.util.Collections;
 import java.util.Set;
@@ -53,7 +63,13 @@ public class WakeupEvaluatorTest extends WifiBaseTest {
     private static final int THRESHOLD_5 = -90;
     private final ScoringParams mScoringParams = new ScoringParams();
 
+    @Mock private WifiInjector mWifiInjector;
+    @Mock private ActiveModeWarden mActiveModeWarden;
+    @Mock private ClientModeManager mPrimaryClientModeManager;
+    @Mock private WifiGlobals mWifiGlobals;
+
     private WakeupEvaluator mWakeupEvaluator;
+    private MockitoSession mSession;
 
     private ScanResult makeScanResult(String ssid, int frequency, int level) {
         ScanResult scanResult = new ScanResult();
@@ -78,10 +94,36 @@ public class WakeupEvaluatorTest extends WifiBaseTest {
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+        // static mocking
+        mSession = mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
+                .strictness(Strictness.LENIENT)
+                .startMocking();
+
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
+
         String params = "rssi2=-120:" + THRESHOLD_24 + ":-2:-1" + ","
                       + "rssi5=-120:" + THRESHOLD_5 + ":-2:-1";
         assertTrue(params, mScoringParams.update(params));
         mWakeupEvaluator = new WakeupEvaluator(mScoringParams);
+    }
+
+    /**
+     * Called after each test
+     */
+    @After
+    public void cleanup() {
+        if (mSession != null) {
+            mSession.finishMocking();
+        }
     }
 
     /**

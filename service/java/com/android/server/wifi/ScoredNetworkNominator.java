@@ -24,6 +24,7 @@ import android.database.ContentObserver;
 import android.net.NetworkKey;
 import android.net.NetworkScoreManager;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.os.Handler;
 import android.provider.Settings;
@@ -264,7 +265,10 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 mScanDetailCandidate = null;
                 mBestCandidateType = EXTERNAL_SCORED_UNTRUSTED_NETWORK;
                 mEphemeralConfig = config;
-                mWifiConfigManager.setNetworkCandidateScanResult(config.networkId, scanResult, 0);
+                SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                        config, scanResult);
+                mWifiConfigManager.setNetworkCandidateScanResult(
+                        config.networkId, scanResult, 0, params);
                 debugLog(WifiNetworkSelector.toScanId(scanResult)
                         + " becomes the new untrusted candidate.");
             }
@@ -285,7 +289,10 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 mScanResultCandidate = scanResult;
                 mScanDetailCandidate = null;
                 mBestCandidateType = EXTERNAL_SCORED_SAVED_NETWORK;
-                mWifiConfigManager.setNetworkCandidateScanResult(config.networkId, scanResult, 0);
+                SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                        config, scanResult);
+                mWifiConfigManager.setNetworkCandidateScanResult(
+                        config.networkId, scanResult, 0, params);
                 debugLog(WifiNetworkSelector.toScanId(scanResult)
                         + " becomes the new externally scored saved network candidate.");
             }
@@ -338,8 +345,11 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                         // A message here might help with the diagnosis.
                         Log.e(TAG, "mScanDetailCandidate is null!");
                     }
+                    SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                            mWifiConfigManager.getConfiguredNetwork(candidateNetworkId),
+                            mScanResultCandidate);
                     mWifiConfigManager.setNetworkCandidateScanResult(candidateNetworkId,
-                            mScanResultCandidate, 0);
+                            mScanResultCandidate, 0, params);
                     mLocalLog.log(String.format("new ephemeral candidate %s network ID:%d, "
                                                 + "meteredHint=%b",
                                         WifiNetworkSelector.toScanId(mScanResultCandidate),

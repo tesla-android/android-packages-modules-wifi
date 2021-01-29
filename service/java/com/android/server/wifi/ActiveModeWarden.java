@@ -1001,10 +1001,7 @@ public class ActiveModeWarden {
             @NonNull ConcreteClientModeManager modeManager, @NonNull WorkSource requestorWs) {
         ActiveModeManager.ClientRole role = getRoleForPrimaryOrScanOnlyClientModeManager();
         if (role == null) return false;
-        // change role if needed.
-        if (modeManager.getRole() != role) {
-            modeManager.setRole(role, requestorWs);
-        }
+        modeManager.setRole(role, requestorWs);
         return true;
     }
 
@@ -1057,6 +1054,18 @@ public class ActiveModeWarden {
             manager.dump(fd, pw, args);
         }
         mGraveyard.dump(fd, pw, args);
+        boolean isStaStaConcurrencySupported = isStaStaConcurrencySupported();
+        pw.println("STA + STA Concurrency Supported: " + isStaStaConcurrencySupported);
+        if (isStaStaConcurrencySupported) {
+            pw.println("   MBB use-case enabled: " + isMakeBeforeBreakEnabled());
+            pw.println("   Local only use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled));
+            pw.println("   Restricted use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled));
+        }
+        pw.println("STA + AP Concurrency Supported: " + isStaApConcurrencySupported());
     }
 
     @VisibleForTesting
@@ -1683,14 +1692,13 @@ public class ActiveModeWarden {
                         break;
                     case CMD_RECOVERY_RESTART_WIFI:
                         log("Recovery triggered, already in disabled state");
-                        // intentional fallthrough
+                        sendMessageDelayed(CMD_RECOVERY_RESTART_WIFI_CONTINUE,
+                                Collections.emptyList(), readWifiRecoveryDelay());
+                        break;
                     case CMD_DEFERRED_RECOVERY_RESTART_WIFI:
                         // wait mRecoveryDelayMillis for letting driver clean reset.
                         sendMessageDelayed(CMD_RECOVERY_RESTART_WIFI_CONTINUE,
-                                // msg.obj == null if recovery is triggered in disabled state
-                                // (i.e intentional fallthrough from above case statement).
-                                msg.obj == null ? Collections.emptyList() : msg.obj,
-                                readWifiRecoveryDelay());
+                                msg.obj, readWifiRecoveryDelay());
                         break;
                     case CMD_RECOVERY_RESTART_WIFI_CONTINUE:
                         log("Recovery in progress, start wifi");

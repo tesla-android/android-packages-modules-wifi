@@ -22,6 +22,7 @@ import static android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE;
 import static android.content.Intent.ACTION_SCREEN_OFF;
 import static android.content.Intent.ACTION_SCREEN_ON;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.server.wifi.WifiNetworkFactory.PERIODIC_SCAN_INTERVAL_MS;
 import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
 
@@ -84,6 +85,7 @@ import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
 
@@ -144,6 +146,9 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ConnectHelper mConnectHelper;
     @Mock PowerManager mPowerManager;
+    private @Mock ClientModeManager mPrimaryClientModeManager;
+    private @Mock WifiGlobals mWifiGlobals;
+    private MockitoSession mStaticMockSession = null;
     NetworkCapabilities mNetworkCapabilities;
     TestLooper mLooper;
     NetworkRequest mNetworkRequest;
@@ -178,6 +183,10 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        mStaticMockSession = mockitoSession()
+                .mockStatic(WifiInjector.class)
+                .startMocking();
+        lenient().when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
 
         mLooper = new TestLooper();
         mNetworkCapabilities = new NetworkCapabilities();
@@ -201,11 +210,16 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_2))
                 .thenReturn(IMPORTANCE_FOREGROUND_SERVICE);
         when(mWifiInjector.getWifiScanner()).thenReturn(mWifiScanner);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt(), anyString()))
                 .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID_1));
         when(mWifiScanner.getSingleScanResults()).thenReturn(Collections.emptyList());
 
         when(mActiveModeWarden.hasPrimaryClientModeManager()).thenReturn(true);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
         doAnswer(new MockAnswerUtil.AnswerWithArguments() {
             public void answer(
                     ActiveModeWarden.ExternalClientModeManagerRequestListener requestListener,
@@ -214,6 +228,9 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
             }
         }).when(mActiveModeWarden).requestLocalOnlyClientModeManager(any(), any(), any(), any());
         when(mClientModeManager.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_PRIMARY);
+
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
 
         mWifiNetworkFactory = new WifiNetworkFactory(mLooper.getLooper(), mContext,
                 mNetworkCapabilities, mActivityManager, mAlarmManager, mAppOpsManager,
@@ -259,6 +276,9 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @After
     public void cleanup() {
         validateMockitoUsage();
+        if (null != mStaticMockSession) {
+            mStaticMockSession.finishMocking();
+        }
     }
 
     /**

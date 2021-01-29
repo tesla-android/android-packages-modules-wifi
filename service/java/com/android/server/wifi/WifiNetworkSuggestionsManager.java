@@ -914,6 +914,11 @@ public class WifiNetworkSuggestionsManager {
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED;
         }
 
+        networkSuggestions.forEach(wns -> {
+            wns.wifiConfiguration.convertLegacyFieldsToSecurityParamsIfNeeded();
+            WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(wns.wifiConfiguration);
+        });
+
         int carrierId = mWifiCarrierInfoManager
                 .getCarrierIdForPackageWithCarrierPrivileges(packageName);
         final String activeScorerPackage = mNetworkScoreManager.getActiveScorerPackage();
@@ -1751,7 +1756,11 @@ public class WifiNetworkSuggestionsManager {
         for (ScanResult scanResult : scanResults) {
             ScanResultMatchInfo scanResultMatchInfo =
                     ScanResultMatchInfo.fromScanResult(scanResult);
-            if (scanResultMatchInfo.networkType == WifiConfiguration.SECURITY_TYPE_OPEN) {
+            if (scanResultMatchInfo.securityParamsList.size() == 0) continue;
+            // Only filter legacy Open network.
+            if (scanResultMatchInfo.securityParamsList.size() == 1
+                    && scanResultMatchInfo.getDefaultSecurityParams().getSecurityType()
+                            == WifiConfiguration.SECURITY_TYPE_OPEN) {
                 continue;
             }
             Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions =

@@ -276,6 +276,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         // Ensure that no public broadcasts were sent.
         verifyNoMoreInteractions(mContext);
         verify(mListener).onStarted(mClientModeManager);
+        verify(mWifiNative).setScanMode(TEST_INTERFACE_NAME, true);
     }
 
     private void startClientInConnectModeAndVerifyEnabled() throws Exception {
@@ -382,6 +383,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 .thenReturn(true);
         mClientModeManager.setRole(ActiveModeManager.ROLE_CLIENT_PRIMARY, TEST_WORKSOURCE);
         mLooper.dispatchAll();
+
+        verify(mWifiNative).setScanMode(TEST_INTERFACE_NAME, false);
 
         verify(mWifiInjector)
                 .makeClientModeImpl(eq(TEST_INTERFACE_NAME), eq(mClientModeManager), anyBoolean());

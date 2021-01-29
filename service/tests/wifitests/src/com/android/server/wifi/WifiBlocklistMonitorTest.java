@@ -166,6 +166,10 @@ public class WifiBlocklistMonitorTest {
                 R.integer.config_wifiDisableReasonDhcpFailureThreshold,
                 NetworkSelectionStatus.DISABLE_REASON_INFOS
                         .get(NetworkSelectionStatus.DISABLED_DHCP_FAILURE).mDisableThreshold);
+        mResources.setInteger(
+                R.integer.config_wifiDisableReasonNetworkNotFoundThreshold,
+                NetworkSelectionStatus.DISABLE_REASON_INFOS
+                        .get(NetworkSelectionStatus.DISABLED_NETWORK_NOT_FOUND).mDisableThreshold);
 
         when(mContext.getResources()).thenReturn(mResources);
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,

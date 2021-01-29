@@ -127,6 +127,7 @@ public class SupplicantStaIfaceHal {
     private DppEventCallback mDppCallback = null;
     private final Clock mClock;
     private final WifiMetrics mWifiMetrics;
+    private final WifiGlobals mWifiGlobals;
 
     private final IServiceNotification mServiceNotificationCallback =
             new IServiceNotification.Stub() {
@@ -184,13 +185,15 @@ public class SupplicantStaIfaceHal {
 
     public SupplicantStaIfaceHal(Context context, WifiMonitor monitor,
                                  FrameworkFacade frameworkFacade, Handler handler,
-                                 Clock clock, WifiMetrics wifiMetrics) {
+                                 Clock clock, WifiMetrics wifiMetrics,
+                                 WifiGlobals wifiGlobals) {
         mContext = context;
         mWifiMonitor = monitor;
         mFrameworkFacade = frameworkFacade;
         mEventHandler = handler;
         mClock = clock;
         mWifiMetrics = wifiMetrics;
+        mWifiGlobals = wifiGlobals;
 
         mServiceManagerDeathRecipient = new ServiceManagerDeathRecipient();
         mSupplicantDeathRecipient = new SupplicantDeathRecipient();
@@ -1370,7 +1373,7 @@ public class SupplicantStaIfaceHal {
         synchronized (mLock) {
             SupplicantStaNetworkHal network =
                     new SupplicantStaNetworkHal(iSupplicantStaNetwork, ifaceName, mContext,
-                            mWifiMonitor);
+                            mWifiMonitor, mWifiGlobals, getAdvancedKeyMgmtCapabilities(ifaceName));
             if (network != null) {
                 network.enableVerboseLogging(mVerboseLoggingEnabled);
             }

@@ -97,7 +97,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {};
         int[] securities = {};
@@ -137,7 +137,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -174,7 +174,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3"};
         int[] freqs = {2470};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_EAP};
@@ -219,7 +219,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-56, -45};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\""};
         int[] securities = {SECURITY_PSK, SECURITY_PSK};
@@ -262,7 +262,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-56, -45};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\""};
         int[] securities = {SECURITY_PSK, SECURITY_PSK};
@@ -306,8 +306,8 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4", "6c:f3:7f:ae:8c:f5",
                 "6c:f3:7f:ae:8c:f6"};
         int[] freqs = {2470, 2437, 2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-                "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-56, -45, -44, -43};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\"",
                 "\"" + scanSsids[2] + "\"", "\"" + scanSsids[3] + "\""};
@@ -353,7 +353,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-23, -45};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\"",
                 "\"" + scanSsids[1] + "\""};
@@ -405,8 +405,8 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4", "6c:fc:de:34:12",
                 "6c:fd:a1:11:11:98"};
         int[] freqs = {2470, 2437, 2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]",
-                "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]",
+                "[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-23, -45, -56, -65};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\"",
                 "\"" + scanSsids[2] + "\"", "\"" + scanSsids[3] + "\""};
@@ -452,7 +452,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -500,7 +500,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -561,7 +561,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -611,7 +611,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -671,7 +671,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -735,7 +735,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -786,7 +786,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\"", "\"" + scanSsids[1] + "\""};
         int[] securities = {SECURITY_PSK, SECURITY_PSK};
@@ -825,7 +825,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3"};
         int[] freqs = {2470};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_EAP};
@@ -869,7 +869,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3"};
         int[] freqs = {2470};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_EAP};
@@ -922,7 +922,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -964,7 +964,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1009,7 +1009,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1052,7 +1052,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1097,7 +1097,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1140,7 +1140,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1188,7 +1188,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1236,7 +1236,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1284,7 +1284,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1333,7 +1333,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};
@@ -1380,7 +1380,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         String[] scanSsids = {"test1", "test2"};
         String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
         int[] freqs = {2470, 2437};
-        String[] caps = {"[WPA2-EAP-CCMP][ESS]", "[WPA2-EAP-CCMP][ESS]"};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
         int[] levels = {-67, -76};
         String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
         int[] securities = {SECURITY_PSK};

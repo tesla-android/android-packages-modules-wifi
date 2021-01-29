@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import android.annotation.Nullable;
+import android.net.wifi.SecurityParams;
 import android.util.ArraySet;
 import android.util.Log;
 
@@ -45,6 +46,12 @@ public class WakeupConfigStoreData implements StoreData {
     private static final String XML_TAG_NETWORK_SECTION = "Network";
     private static final String XML_TAG_SSID = "SSID";
     private static final String XML_TAG_SECURITY = "Security";
+    private static final String XML_TAG_SECURITY_PARAMS_LIST = "SecurityParamsList";
+    private static final String XML_TAG_SECURITY_PARAMS = "SecurityParams";
+    private static final String XML_TAG_SECURITY_TYPE = "SecurityType";
+    private static final String XML_TAG_SAE_IS_H2E_ONLY_MODE = "SaeIsH2eOnlyMode";
+    private static final String XML_TAG_SAE_IS_PK_ONLY_MODE = "SaeIsPkOnlyMode";
+    private static final String XML_TAG_IS_ADDED_BY_AUTO_UPGRADE = "IsAddedByAutoUpgrade";
 
     private final DataSource<Boolean> mIsActiveDataSource;
     private final DataSource<Boolean> mIsOnboardedDataSource;
@@ -125,6 +132,29 @@ public class WakeupConfigStoreData implements StoreData {
         XmlUtil.writeNextSectionEnd(out, XML_TAG_FEATURE_STATE_SECTION);
     }
 
+    private void writeSecurityParamsList(
+            XmlSerializer out, ScanResultMatchInfo scanResultMatchInfo)
+            throws XmlPullParserException, IOException {
+        XmlUtil.writeNextSectionStart(out, XML_TAG_SECURITY_PARAMS_LIST);
+        for (SecurityParams params: scanResultMatchInfo.securityParamsList) {
+            XmlUtil.writeNextSectionStart(out, XML_TAG_SECURITY_PARAMS);
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_SECURITY_TYPE,
+                    params.getSecurityType());
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_SAE_IS_H2E_ONLY_MODE,
+                    params.isSaeH2eOnlyMode());
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_SAE_IS_PK_ONLY_MODE,
+                    params.isSaePkOnlyMode());
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_IS_ADDED_BY_AUTO_UPGRADE,
+                    params.isAddedByAutoUpgrade());
+            XmlUtil.writeNextSectionEnd(out, XML_TAG_SECURITY_PARAMS);
+        }
+        XmlUtil.writeNextSectionEnd(out, XML_TAG_SECURITY_PARAMS_LIST);
+    }
+
     /**
      * Writes a {@link ScanResultMatchInfo} to an XML output stream.
      *
@@ -138,7 +168,7 @@ public class WakeupConfigStoreData implements StoreData {
         XmlUtil.writeNextSectionStart(out, XML_TAG_NETWORK_SECTION);
 
         XmlUtil.writeNextValue(out, XML_TAG_SSID, scanResultMatchInfo.networkSsid);
-        XmlUtil.writeNextValue(out, XML_TAG_SECURITY, scanResultMatchInfo.networkType);
+        writeSecurityParamsList(out, scanResultMatchInfo);
 
         XmlUtil.writeNextSectionEnd(out, XML_TAG_NETWORK_SECTION);
     }
@@ -215,6 +245,59 @@ public class WakeupConfigStoreData implements StoreData {
         mNotificationsDataSource.setData(notificationsShown);
     }
 
+    private SecurityParams parseSecurityParams(XmlPullParser in, int outerTagDepth)
+            throws IOException, XmlPullParserException {
+        SecurityParams params = null;
+        while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+            String[] valueName = new String[1];
+            Object value = XmlUtil.readCurrentValue(in, valueName);
+            String tagName = valueName[0];
+            if (tagName == null) {
+                throw new XmlPullParserException("Missing value name");
+            }
+            switch (tagName) {
+                case XML_TAG_SECURITY_TYPE:
+                    params = SecurityParams.createSecurityParamsBySecurityType((int) value);
+                    break;
+                case XML_TAG_SAE_IS_H2E_ONLY_MODE:
+                    if (null == params) {
+                        throw new XmlPullParserException("Missing security type.");
+                    }
+                    params.enableSaeH2eOnlyMode((boolean) value);
+                    break;
+                case XML_TAG_SAE_IS_PK_ONLY_MODE:
+                    if (null == params) {
+                        throw new XmlPullParserException("Missing security type.");
+                    }
+                    params.enableSaePkOnlyMode((boolean) value);
+                    break;
+                case XML_TAG_IS_ADDED_BY_AUTO_UPGRADE:
+                    if (null == params) {
+                        throw new XmlPullParserException("Missing security type.");
+                    }
+                    params.setIsAddedByAutoUpgrade((boolean) value);
+                    break;
+            }
+        }
+        return params;
+    }
+
+    private void parseSecurityParamsList(
+            XmlPullParser in, int outerTagDepth, ScanResultMatchInfo scanResultMatchInfo)
+            throws IOException, XmlPullParserException {
+        while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+            switch (in.getName()) {
+                case XML_TAG_SECURITY_PARAMS:
+                    SecurityParams params = parseSecurityParams(in, outerTagDepth + 1);
+                    if (null != params) {
+                        scanResultMatchInfo.securityParamsList.add(params);
+                    }
+                    break;
+            }
+        }
+
+    }
+
     /**
      * Parses a {@link ScanResultMatchInfo} from an XML input stream.
      *
@@ -228,6 +311,19 @@ public class WakeupConfigStoreData implements StoreData {
             throws IOException, XmlPullParserException {
         ScanResultMatchInfo scanResultMatchInfo = new ScanResultMatchInfo();
         while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+            if (in.getAttributeValue(null, "name") == null) {
+                String tagName = in.getName();
+                if (tagName == null) {
+                    throw new XmlPullParserException("Unexpected null tag found");
+                }
+                switch (tagName) {
+                    case XML_TAG_SECURITY_PARAMS_LIST:
+                        parseSecurityParamsList(in, outerTagDepth + 1, scanResultMatchInfo);
+                        break;
+                }
+                continue;
+            }
+
             String[] valueName = new String[1];
             Object value = XmlUtil.readCurrentValue(in, valueName);
             if (valueName[0] == null) {
@@ -238,7 +334,9 @@ public class WakeupConfigStoreData implements StoreData {
                     scanResultMatchInfo.networkSsid = (String) value;
                     break;
                 case XML_TAG_SECURITY:
-                    scanResultMatchInfo.networkType = (int) value;
+                    // Migrate data from R to S.
+                    scanResultMatchInfo.securityParamsList.add(
+                            SecurityParams.createSecurityParamsBySecurityType((int) value));
                     break;
                 default:
                     Log.w(TAG, "Ignoring unknown tag under " + TAG + ": " + valueName[0]);

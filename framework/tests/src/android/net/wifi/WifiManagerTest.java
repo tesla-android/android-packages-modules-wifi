@@ -2150,11 +2150,18 @@ public class WifiManagerTest {
      * Verify the call to addOnWifiUsabilityStatsListener goes to WifiServiceImpl.
      */
     @Test
-    public void addOnWifiUsabilityStatsListeneroesToWifiServiceImpl() throws Exception {
+    public void addOnWifiUsabilityStatsListenerGoesToWifiServiceImpl() throws Exception {
         mExecutor = new SynchronousExecutor();
+        ArgumentCaptor<IOnWifiUsabilityStatsListener.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(IOnWifiUsabilityStatsListener.Stub.class);
         mWifiManager.addOnWifiUsabilityStatsListener(mExecutor, mOnWifiUsabilityStatsListener);
-        verify(mWifiService).addOnWifiUsabilityStatsListener(any(IBinder.class),
-                any(IOnWifiUsabilityStatsListener.Stub.class), anyInt());
+        verify(mWifiService).addOnWifiUsabilityStatsListener(callbackCaptor.capture());
+        callbackCaptor.getValue().onWifiUsabilityStats(1, true,
+                new WifiUsabilityStatsEntry(System.currentTimeMillis(), -50, 100, 10, 0, 5, 5, 100,
+                        100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 100, 10, 100, 0,
+                        10, 10, true));
+        verify(mOnWifiUsabilityStatsListener).onWifiUsabilityStats(anyInt(), anyBoolean(),
+                any(WifiUsabilityStatsEntry.class));
     }
 
     /**
@@ -2162,15 +2169,14 @@ public class WifiManagerTest {
      */
     @Test
     public void removeOnWifiUsabilityListenerGoesToWifiServiceImpl() throws Exception {
-        ArgumentCaptor<Integer> listenerIdentifier = ArgumentCaptor.forClass(Integer.class);
         mExecutor = new SynchronousExecutor();
+        ArgumentCaptor<IOnWifiUsabilityStatsListener.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(IOnWifiUsabilityStatsListener.Stub.class);
         mWifiManager.addOnWifiUsabilityStatsListener(mExecutor, mOnWifiUsabilityStatsListener);
-        verify(mWifiService).addOnWifiUsabilityStatsListener(any(IBinder.class),
-                any(IOnWifiUsabilityStatsListener.Stub.class), listenerIdentifier.capture());
+        verify(mWifiService).addOnWifiUsabilityStatsListener(callbackCaptor.capture());
 
         mWifiManager.removeOnWifiUsabilityStatsListener(mOnWifiUsabilityStatsListener);
-        verify(mWifiService).removeOnWifiUsabilityStatsListener(
-                eq((int) listenerIdentifier.getValue()));
+        verify(mWifiService).removeOnWifiUsabilityStatsListener(callbackCaptor.getValue());
     }
 
     /**
@@ -2491,6 +2497,18 @@ public class WifiManagerTest {
         when(mWifiService.is6GHzBandSupported()).thenReturn(true);
         assertTrue(mWifiManager.is6GHzBandSupported());
         verify(mWifiService).is6GHzBandSupported();
+    }
+
+    /**
+     * Test behavior of {@link WifiManager#is60GHzBandSupported()}
+     */
+    @Test
+    public void testIs60GHzBandSupported() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        when(mWifiService.is60GHzBandSupported()).thenReturn(true);
+        assertTrue(mWifiManager.is60GHzBandSupported());
+        verify(mWifiService).is60GHzBandSupported();
     }
 
     /**

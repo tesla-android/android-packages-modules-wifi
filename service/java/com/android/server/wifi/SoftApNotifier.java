@@ -54,20 +54,20 @@ public class SoftApNotifier {
     /**
      * Show notification to notify user softap disable because auto shutdown timeout expired.
      */
-    public void showSoftApShutDownTimeoutExpiredNotification() {
+    public void showSoftApShutdownTimeoutExpiredNotification() {
         mNotificationManager.notify(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
-                buildSoftApShutDownTimeoutExpiredNotification());
+                buildSoftApShutdownTimeoutExpiredNotification());
     }
 
     /**
      * Dismiss notification which used to notify user softap disable because auto shutdown
      * timeout expired.
      */
-    public void dismissSoftApShutDownTimeoutExpiredNotification() {
+    public void dismissSoftApShutdownTimeoutExpiredNotification() {
         mNotificationManager.cancel(null, NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
     }
 
-    private Notification buildSoftApShutDownTimeoutExpiredNotification() {
+    private Notification buildSoftApShutdownTimeoutExpiredNotification() {
         String title = mContext.getResources().getString(
                 R.string.wifi_softap_auto_shutdown_timeout_expired_title);
         String contentSummary = mContext.getResources().getString(

@@ -20,6 +20,7 @@
         <policy type="product|system|vendor">
 
           <!-- Params from config.xml that can be overlayed -->
+          <item type="bool" name="config_wifi24ghzSupport" />
           <item type="bool" name="config_wifi5ghzSupport" />
           <item type="bool" name="config_wifi6ghzSupport" />
           <item type="bool" name="config_wifi60ghzSupport" />
@@ -84,7 +85,10 @@
           <item type="bool" name="config_wifiSoftapMacAddressCustomizationSupported" />
           <item type="bool" name="config_wifi_softap_ieee80211ac_supported" />
           <item type="bool" name="config_wifiSoftapIeee80211axSupported" />
+          <item type="bool" name="config_wifiSoftap24ghzSupported" />
+          <item type="bool" name="config_wifiSoftap5ghzSupported" />
           <item type="bool" name="config_wifiSoftap6ghzSupported" />
+          <item type="bool" name="config_wifiSoftap60ghzSupported" />
           <item type="bool" name="config_wifiSoftapHeSuBeamformerSupported" />
           <item type="bool" name="config_wifiSoftapHeSuBeamformeeSupported" />
           <item type="bool" name="config_wifiSoftapHeMuBeamformerSupported" />
@@ -107,6 +111,8 @@
           <item type="string" name="wifi_localhotspot_configure_ssid_default" />
           <item type="bool" name="config_wifi_diagnostics_bugreport_enabled" />
           <item type="bool" name="config_wifi_watchdog_enabled" />
+          <item type="array" name="config_wifiForegroundScanThrottleExceptionList" />
+          <item type="array" name="config_wifiBackgroundScanThrottleExceptionList" />
           <item type="array" name="config_wifiRssiLevelThresholds" />
           <item type="array" name="config_wifiDisconnectedScanIntervalScheduleSec" />
           <item type="array" name="config_wifiConnectedScanIntervalScheduleSec" />
@@ -117,6 +123,7 @@
           <item type="integer" name="config_wifiDisableReasonAssociationRejectionThreshold" />
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureThreshold" />
           <item type="integer" name="config_wifiDisableReasonDhcpFailureThreshold" />
+          <item type="integer" name="config_wifiDisableReasonNetworkNotFoundThreshold" />
           <item type="integer" name="config_wifiBssidBlocklistMonitorApUnableToHandleNewStaThreshold" />
           <item type="integer" name="config_wifiBssidBlocklistMonitorNetworkValidationFailureThreshold" />
           <item type="integer" name="config_wifiBssidBlocklistMonitorWrongPasswordThreshold" />
@@ -154,6 +161,8 @@
           <item type="integer" name="config_wifiChannelUtilizationOverride6g" />
           <item type="bool" name="config_wifiSaeUpgradeEnabled" />
           <item type="bool" name="config_wifiSaeUpgradeOffloadEnabled" />
+          <item type="bool" name="config_wifiOweUpgradeEnabled" />
+          <item type="bool" name="config_wifiWpa3EnterpriseUpgradeEnabled" />
           <item type="integer" name="config_wifiMaxNativeFailureSelfRecoveryPerHour" />
           <item type="bool" name="config_wifiIgnoreOpenSavedNetworkWhenSecureSuggestionAvailable" />
           <item type="bool" name="config_wifiSoftapAcsIncludeDfs" />

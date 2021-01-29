@@ -270,7 +270,8 @@ public class WifiInjector {
         mHalDeviceManager = new HalDeviceManager(mClock, this, wifiHandler);
         mWifiVendorHal = new WifiVendorHal(mContext, mHalDeviceManager, wifiHandler);
         mSupplicantStaIfaceHal = new SupplicantStaIfaceHal(
-                mContext, mWifiMonitor, mFrameworkFacade, wifiHandler, mClock, mWifiMetrics);
+                mContext, mWifiMonitor, mFrameworkFacade, wifiHandler, mClock, mWifiMetrics,
+                mWifiGlobals);
         mHostapdHal = new HostapdHal(mContext, wifiHandler);
         mWifiCondManager = (WifiNl80211Manager) mContext.getSystemService(
                 Context.WIFI_NL80211_SERVICE);
@@ -339,9 +340,15 @@ public class WifiInjector {
 
         mWifiMetrics.setScoringParams(mScoringParams);
         mThroughputPredictor = new ThroughputPredictor(mContext);
+        mScanRequestProxy = new ScanRequestProxy(mContext,
+                mContext.getSystemService(AppOpsManager.class),
+                mContext.getSystemService(ActivityManager.class),
+                this, mWifiConfigManager,
+                mWifiPermissionsUtil, mWifiMetrics, mClock, wifiHandler, mSettingsConfigStore);
         mWifiNetworkSelector = new WifiNetworkSelector(mContext, mWifiScoreCard, mScoringParams,
                 mWifiConfigManager, mClock, mConnectivityLocalLog, mWifiMetrics, this,
-                mThroughputPredictor, mWifiChannelUtilizationScan, mWifiGlobals);
+                mThroughputPredictor, mWifiChannelUtilizationScan, mWifiGlobals,
+                mScanRequestProxy);
         CompatibilityScorer compatibilityScorer = new CompatibilityScorer(mScoringParams);
         mWifiNetworkSelector.registerCandidateScorer(compatibilityScorer);
         ScoreCardBasedScorer scoreCardBasedScorer = new ScoreCardBasedScorer(mScoringParams);
@@ -372,11 +379,6 @@ public class WifiInjector {
                 mWifiNetworkScoreCache, mWifiPermissionsUtil);
 
         mWifiMetrics.setPasspointManager(mPasspointManager);
-        mScanRequestProxy = new ScanRequestProxy(mContext,
-                (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE),
-                (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE),
-                this, mWifiConfigManager,
-                mWifiPermissionsUtil, mWifiMetrics, mClock, wifiHandler, mSettingsConfigStore);
         WifiChannelUtilization wifiChannelUtilizationConnected =
                 new WifiChannelUtilization(mClock, mContext);
         mWifiDataStall = new WifiDataStall(mFrameworkFacade, mWifiMetrics, mContext,
@@ -693,7 +695,7 @@ public class WifiInjector {
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
                         ifaceName),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
-                mCmiMonitor, mBroadcastQueue, verboseLoggingEnabled);
+                mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, verboseLoggingEnabled);
     }
 
     /**

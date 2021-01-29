@@ -39,7 +39,9 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
+import com.android.wifi.resources.R;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -342,6 +344,9 @@ public class ScanRequestProxy {
      */
     private boolean shouldScanRequestBeThrottledForForegroundApp(
             int callingUid, String packageName) {
+        if (isPackageNameInExceptionList(packageName, true)) {
+            return false;
+        }
         LinkedList<Long> scanRequestTimestamps =
                 getOrCreateScanRequestTimestampsForForegroundApp(callingUid, packageName);
         long currentTimeMillis = mClock.getElapsedSinceBootMillis();
@@ -355,10 +360,31 @@ public class ScanRequestProxy {
         return false;
     }
 
+    private boolean isPackageNameInExceptionList(String packageName, boolean isForeground) {
+        if (packageName == null) {
+            return false;
+        }
+        String[] exceptionList = mContext.getResources().getStringArray(isForeground
+                ? R.array.config_wifiForegroundScanThrottleExceptionList
+                : R.array.config_wifiBackgroundScanThrottleExceptionList);
+        if (exceptionList == null) {
+            return false;
+        }
+        for (String name : exceptionList) {
+            if (packageName.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Checks if the scan request from a background app needs to be throttled.
      */
-    private boolean shouldScanRequestBeThrottledForBackgroundApp() {
+    private boolean shouldScanRequestBeThrottledForBackgroundApp(String packageName) {
+        if (isPackageNameInExceptionList(packageName, false)) {
+            return false;
+        }
         long lastScanMs = mLastScanTimestampForBgApps;
         long elapsedRealtime = mClock.getElapsedSinceBootMillis();
         if (lastScanMs != 0
@@ -392,7 +418,7 @@ public class ScanRequestProxy {
         boolean isThrottled;
         if (packageImportance
                 > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE) {
-            isThrottled = shouldScanRequestBeThrottledForBackgroundApp();
+            isThrottled = shouldScanRequestBeThrottledForBackgroundApp(packageName);
             if (isThrottled) {
                 if (mVerboseLoggingEnabled) {
                     Log.v(TAG, "Background scan app request [" + callingUid + ", "
@@ -558,5 +584,29 @@ public class ScanRequestProxy {
      */
     public boolean isScanThrottleEnabled() {
         return mThrottleEnabled;
+    }
+
+    /** Indicate whether there are legacy WPA2 networks. */
+    public boolean isLegacyWpa2NetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForPskNetwork(r)
+                && !ScanResultUtil.isScanResultForSaeNetwork(r));
+    }
+
+    /** Indicate whether there are legacy OPEN networks. */
+    public boolean isLegacyOpenNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForOpenNetwork(r));
+    }
+
+    /** Indicate whether there are legacy WPA2 networks. */
+    public boolean isLegacyWpa2EnterpriseNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForEapNetwork(r)
+                && !ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(r)
+                && !ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(r));
     }
 }

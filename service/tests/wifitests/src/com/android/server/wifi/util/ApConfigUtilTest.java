@@ -611,11 +611,11 @@ public class ApConfigUtilTest extends WifiBaseTest {
         int testBand_2_6 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_6GHZ;
         int testBand_2_60 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_60GHZ;
 
-        assertEquals(testBand_2_5, ApConfigUtil.removeUnsupportedBands(
+        assertEquals(testBand_2_5, ApConfigUtil.removeUnavailableBands(
                 testSoftApCapability, testBand_2_5));
-        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnsupportedBands(
+        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnavailableBands(
                 testSoftApCapability, testBand_2_6));
-        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnsupportedBands(
+        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnavailableBands(
                 testSoftApCapability, testBand_2_60));
     }
 }

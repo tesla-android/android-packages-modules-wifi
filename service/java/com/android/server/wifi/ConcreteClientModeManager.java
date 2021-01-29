@@ -871,6 +871,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 setRoleInternalAndInvokeCallback(ROLE_CLIENT_SCAN_ONLY);
                 mCountryCode.setReadyForChange(true);
                 mWakeupController.start();
+                mWifiNative.setScanMode(mClientInterfaceName, true);
             }
 
             @Override
@@ -889,6 +890,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             public void exit() {
                 mScanOnlyModeImpl = null;
                 mWakeupController.stop();
+                mWifiNative.setScanMode(mClientInterfaceName, false);
             }
         }
 

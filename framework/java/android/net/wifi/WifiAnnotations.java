@@ -122,7 +122,11 @@ public final class WifiAnnotations {
         ScanResult.CIPHER_TKIP,
         ScanResult.CIPHER_CCMP,
         ScanResult.CIPHER_GCMP_256,
-        ScanResult.CIPHER_SMS4
+        ScanResult.CIPHER_SMS4,
+        ScanResult.CIPHER_GCMP_128,
+        ScanResult.CIPHER_BIP_GMAC_128,
+        ScanResult.CIPHER_BIP_GMAC_256,
+        ScanResult.CIPHER_BIP_CMAC_256,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface Cipher {}

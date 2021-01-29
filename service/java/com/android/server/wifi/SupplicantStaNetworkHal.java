@@ -20,9 +20,11 @@ import android.hardware.wifi.supplicant.V1_0.ISupplicantStaNetwork;
 import android.hardware.wifi.supplicant.V1_0.ISupplicantStaNetworkCallback;
 import android.hardware.wifi.supplicant.V1_0.SupplicantStatus;
 import android.hardware.wifi.supplicant.V1_0.SupplicantStatusCode;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiEnterpriseConfig.Ocsp;
+import android.net.wifi.WifiManager;
 import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
@@ -92,6 +94,7 @@ public class SupplicantStaNetworkHal {
     private final Context mContext;
     private final String mIfaceName;
     private final WifiMonitor mWifiMonitor;
+    private final WifiGlobals mWifiGlobals;
     private ISupplicantStaNetwork mISupplicantStaNetwork;
     private ISupplicantStaNetworkCallback mISupplicantStaNetworkCallback;
 
@@ -131,13 +134,17 @@ public class SupplicantStaNetworkHal {
     private String mEapDomainSuffixMatch;
     private @Ocsp int mOcsp;
     private String mWapiCertSuite;
+    private long mAdvanceKeyMgmtFeatures;
 
     SupplicantStaNetworkHal(ISupplicantStaNetwork iSupplicantStaNetwork, String ifaceName,
-            Context context, WifiMonitor monitor) {
+            Context context, WifiMonitor monitor, WifiGlobals wifiGlobals,
+            long advanceKeyMgmtFeature) {
         mISupplicantStaNetwork = iSupplicantStaNetwork;
         mContext = context;
         mIfaceName = ifaceName;
         mWifiMonitor = monitor;
+        mWifiGlobals = wifiGlobals;
+        mAdvanceKeyMgmtFeatures = advanceKeyMgmtFeature;
     }
 
     /**
@@ -213,16 +220,20 @@ public class SupplicantStaNetworkHal {
                 BitSet keyMgmtMask = supplicantToWifiConfigurationKeyMgmtMask(mKeyMgmtMask);
                 keyMgmtMask = removeFastTransitionFlags(keyMgmtMask);
                 keyMgmtMask = removeSha256KeyMgmtFlags(keyMgmtMask);
+                keyMgmtMask = removePskSaeUpgradableTypeFlags(keyMgmtMask);
                 config.setSecurityParams(keyMgmtMask);
                 config.enableFils(
                         keyMgmtMask.get(WifiConfiguration.KeyMgmt.FILS_SHA256),
                         keyMgmtMask.get(WifiConfiguration.KeyMgmt.FILS_SHA384));
             }
 
+            // supplicant only have one valid security type, it won't be a disbled params.
+            SecurityParams securityParams = config.getDefaultSecurityParams();
+
             /** PSK pass phrase */
             config.preSharedKey = null;
             if (getPskPassphrase() && !TextUtils.isEmpty(mPskPassphrase)) {
-                if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK)) {
+                if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK)) {
                     config.preSharedKey = mPskPassphrase;
                 } else {
                     config.preSharedKey = NativeUtil.addEnclosingQuotes(mPskPassphrase);
@@ -240,7 +251,7 @@ public class SupplicantStaNetworkHal {
             }
 
             /** WAPI Cert Suite */
-            if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_CERT)) {
+            if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_CERT)) {
                 if (config.enterpriseConfig == null) {
                     return false;
                 }
@@ -288,17 +299,29 @@ public class SupplicantStaNetworkHal {
                 return false;
             }
 
+            SecurityParams securityParams = config.getNetworkSelectionStatus()
+                    .getCandidateSecurityParams();
+            if (null == securityParams) {
+                Log.wtf(TAG, "No available security params.");
+                return false;
+            }
+            Log.d(TAG, "The target security params: " + securityParams);
+
             /** RequirePMF */
-            if (!setRequirePmf(config.requirePmf)) {
+            if (!setRequirePmf(securityParams.isRequirePmf())) {
                 Log.e(TAG, config.SSID + ": failed to set requirePMF: " + config.requirePmf);
                 return false;
             }
             /** Key Management Scheme */
-            if (config.allowedKeyManagement.cardinality() != 0) {
+            BitSet allowedKeyManagement = securityParams.getAllowedKeyManagement();
+            if (allowedKeyManagement.cardinality() != 0) {
                 // Add FT flags if supported.
-                BitSet keyMgmtMask = addFastTransitionFlags(config.allowedKeyManagement);
+                BitSet keyMgmtMask = addFastTransitionFlags(allowedKeyManagement);
                 // Add SHA256 key management flags.
                 keyMgmtMask = addSha256KeyMgmtFlags(keyMgmtMask);
+                // Add upgradable type key management flags for PSK/SAE.
+                keyMgmtMask = addPskSaeUpgradableTypeFlagsIfSupported(
+                        config, keyMgmtMask);
                 if (!setKeyMgmt(wifiConfigurationToSupplicantKeyMgmtMask(keyMgmtMask))) {
                     Log.e(TAG, "failed to set Key Management");
                     return false;
@@ -311,29 +334,33 @@ public class SupplicantStaNetworkHal {
                 }
             }
             /** Security Protocol */
-            if (config.allowedProtocols.cardinality() != 0
-                    && !setProto(wifiConfigurationToSupplicantProtoMask(config.allowedProtocols))) {
+            BitSet allowedProtocols = securityParams.getAllowedProtocols();
+            if (allowedProtocols.cardinality() != 0
+                    && !setProto(wifiConfigurationToSupplicantProtoMask(allowedProtocols))) {
                 Log.e(TAG, "failed to set Security Protocol");
                 return false;
             }
             /** Auth Algorithm */
-            if (config.allowedAuthAlgorithms.cardinality() != 0
+            BitSet allowedAuthAlgorithms = securityParams.getAllowedAuthAlgorithms();
+            if (allowedAuthAlgorithms.cardinality() != 0
                     && !setAuthAlg(wifiConfigurationToSupplicantAuthAlgMask(
-                    config.allowedAuthAlgorithms))) {
+                    allowedAuthAlgorithms))) {
                 Log.e(TAG, "failed to set AuthAlgorithm");
                 return false;
             }
             /** Group Cipher */
-            if (config.allowedGroupCiphers.cardinality() != 0
+            BitSet allowedGroupCiphers = securityParams.getAllowedGroupCiphers();
+            if (allowedGroupCiphers.cardinality() != 0
                     && (!setGroupCipher(wifiConfigurationToSupplicantGroupCipherMask(
-                    config.allowedGroupCiphers)))) {
+                    allowedGroupCiphers)))) {
                 Log.e(TAG, "failed to set Group Cipher");
                 return false;
             }
             /** Pairwise Cipher*/
-            if (config.allowedPairwiseCiphers.cardinality() != 0
+            BitSet allowedPairwiseCiphers = securityParams.getAllowedPairwiseCiphers();
+            if (allowedPairwiseCiphers.cardinality() != 0
                     && !setPairwiseCipher(wifiConfigurationToSupplicantPairwiseCipherMask(
-                    config.allowedPairwiseCiphers))) {
+                    allowedPairwiseCiphers))) {
                 Log.e(TAG, "failed to set PairwiseCipher");
                 return false;
             }
@@ -341,13 +368,13 @@ public class SupplicantStaNetworkHal {
             // For PSK, this can either be quoted ASCII passphrase or hex string for raw psk.
             // For SAE, password must be a quoted ASCII string
             if (config.preSharedKey != null) {
-                if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK)) {
+                if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK)) {
                     if (!setPskPassphrase(config.preSharedKey)) {
                         Log.e(TAG, "failed to set wapi psk passphrase");
                         return false;
                     }
                 } else if (config.preSharedKey.startsWith("\"")) {
-                    if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+                    if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
                         /* WPA3 case, field is SAE Password */
                         if (!setSaePassword(
                                 NativeUtil.removeEnclosingQuotes(config.preSharedKey))) {
@@ -362,7 +389,7 @@ public class SupplicantStaNetworkHal {
                         }
                     }
                 } else {
-                    if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+                    if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
                         return false;
                     }
                     if (!setPsk(NativeUtil.hexStringToByteArray(config.preSharedKey))) {
@@ -408,6 +435,15 @@ public class SupplicantStaNetworkHal {
                     && !setUpdateIdentifier(Integer.parseInt(config.updateIdentifier))) {
                 Log.e(TAG, "failed to set update identifier");
                 return false;
+            }
+            /** SAE configuration */
+            if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+                /** Hash-to-Element preference */
+                if (getV1_4StaNetwork() != null
+                        && !setSaeH2eOnlyMode(securityParams.isSaeH2eOnlyMode())) {
+                    Log.e(TAG, "failed to set H2E preference.");
+                    return false;
+                }
             }
             // Finish here if no EAP config to set
             if (config.enterpriseConfig != null
@@ -562,34 +598,45 @@ public class SupplicantStaNetworkHal {
      * @return true if succeeds, false otherwise.
      */
     private boolean saveSuiteBConfig(WifiConfiguration config) {
+        SecurityParams securityParams = config.getNetworkSelectionStatus()
+                .getCandidateSecurityParams();
+        if (null == securityParams) {
+            Log.wtf(TAG, "No available security params.");
+            return false;
+        }
+
         /** Group Cipher **/
-        if (config.allowedGroupCiphers.cardinality() != 0
+        BitSet allowedGroupCiphers = securityParams.getAllowedGroupCiphers();
+        if (allowedGroupCiphers.cardinality() != 0
                 && !setGroupCipher(wifiConfigurationToSupplicantGroupCipherMask(
-                config.allowedGroupCiphers))) {
+                allowedGroupCiphers))) {
             Log.e(TAG, "failed to set Group Cipher");
             return false;
         }
         /** Pairwise Cipher*/
-        if (config.allowedPairwiseCiphers.cardinality() != 0
+        BitSet allowedPairwiseCiphers = securityParams.getAllowedPairwiseCiphers();
+        if (allowedPairwiseCiphers.cardinality() != 0
                 && !setPairwiseCipher(wifiConfigurationToSupplicantPairwiseCipherMask(
-                config.allowedPairwiseCiphers))) {
+                allowedPairwiseCiphers))) {
             Log.e(TAG, "failed to set PairwiseCipher");
             return false;
         }
         /** GroupMgmt Cipher */
-        if (config.allowedGroupManagementCiphers.cardinality() != 0
+        BitSet allowedGroupManagementCiphers = securityParams.getAllowedGroupManagementCiphers();
+        if (allowedGroupManagementCiphers.cardinality() != 0
                 && !setGroupMgmtCipher(wifiConfigurationToSupplicantGroupMgmtCipherMask(
-                config.allowedGroupManagementCiphers))) {
+                allowedGroupManagementCiphers))) {
             Log.e(TAG, "failed to set GroupMgmtCipher");
             return false;
         }
 
-        if (config.allowedSuiteBCiphers.get(WifiConfiguration.SuiteBCipher.ECDHE_RSA)) {
+        BitSet allowedSuiteBCiphers = securityParams.getAllowedSuiteBCiphers();
+        if (allowedSuiteBCiphers.get(WifiConfiguration.SuiteBCipher.ECDHE_RSA)) {
             if (!enableTlsSuiteBEapPhase1Param(true)) {
                 Log.e(TAG, "failed to set TLSSuiteB");
                 return false;
             }
-        } else if (config.allowedSuiteBCiphers.get(WifiConfiguration.SuiteBCipher.ECDHE_ECDSA)) {
+        } else if (allowedSuiteBCiphers.get(WifiConfiguration.SuiteBCipher.ECDHE_ECDSA)) {
             if (!enableSuiteBEapOpenSslCiphers()) {
                 Log.e(TAG, "failed to set OpensslCipher");
                 return false;
@@ -899,12 +946,16 @@ public class SupplicantStaNetworkHal {
                     mask |= ISupplicantStaNetwork.GroupCipherMask.GTK_NOT_USED;
                     break;
                 case WifiConfiguration.GroupCipher.GCMP_256:
-                    if (null != getV1_2StaNetwork()) {
-                        mask |= android.hardware.wifi.supplicant.V1_2.ISupplicantStaNetwork
-                                .GroupCipherMask.GCMP_256;
-                    } else {
+                    if (null == getV1_2StaNetwork()) {
                         Log.d(TAG, "Ignore GCMP_256 cipher for the HAL older than 1.2.");
+                        break;
                     }
+                    if (0 == (mAdvanceKeyMgmtFeatures & WifiManager.WIFI_FEATURE_WPA3_SUITE_B)) {
+                        Log.d(TAG, "Ignore unsupporting GCMP_256 cipher.");
+                        break;
+                    }
+                    mask |= android.hardware.wifi.supplicant.V1_2.ISupplicantStaNetwork
+                            .GroupCipherMask.GCMP_256;
                     break;
                 case WifiConfiguration.GroupCipher.SMS4:
                     if (null != getV1_3StaNetwork()) {
@@ -972,12 +1023,16 @@ public class SupplicantStaNetworkHal {
                     mask |= ISupplicantStaNetwork.PairwiseCipherMask.CCMP;
                     break;
                 case WifiConfiguration.PairwiseCipher.GCMP_256:
-                    if (null != getV1_2StaNetwork()) {
-                        mask |= android.hardware.wifi.supplicant.V1_2.ISupplicantStaNetwork
-                                .PairwiseCipherMask.GCMP_256;
-                    } else {
+                    if (null == getV1_2StaNetwork()) {
                         Log.d(TAG, "Ignore GCMP_256 cipher for the HAL older than 1.2.");
+                        break;
                     }
+                    if (0 == (mAdvanceKeyMgmtFeatures & WifiManager.WIFI_FEATURE_WPA3_SUITE_B)) {
+                        Log.d(TAG, "Ignore unsupporting GCMP_256 cipher.");
+                        break;
+                    }
+                    mask |= android.hardware.wifi.supplicant.V1_2.ISupplicantStaNetwork
+                            .PairwiseCipherMask.GCMP_256;
                     break;
                 case WifiConfiguration.PairwiseCipher.SMS4:
                     if (null != getV1_3StaNetwork()) {
@@ -3495,6 +3550,30 @@ public class SupplicantStaNetworkHal {
         }
     }
 
+    /** See ISupplicantStaNetwork.hal for documentation */
+    private boolean setSaeH2eOnlyMode(boolean enable) {
+        synchronized (mLock) {
+            final String methodStr = "setSaeH2eOnlyMode";
+            if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
+
+            try {
+                android.hardware.wifi.supplicant.V1_4.ISupplicantStaNetwork
+                        iSupplicantStaNetworkV14 = getV1_4StaNetwork();
+                if (iSupplicantStaNetworkV14 != null) {
+                    android.hardware.wifi.supplicant.V1_4.SupplicantStatus status =
+                            iSupplicantStaNetworkV14.enableSaeH2eOnlyMode(enable);
+                    return checkStatusAndLogFailure(status, methodStr);
+                } else {
+                    Log.e(TAG, "Cannot get ISupplicantStaNetwork V1.4");
+                    return false;
+                }
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+                return false;
+            }
+        }
+    }
+
     /**
      * Retrieve the NFC token for this network.
      *
@@ -3666,6 +3745,40 @@ public class SupplicantStaNetworkHal {
             modifiedFlags.clear(WifiConfiguration.KeyMgmt.WPA_EAP_SHA256);
             return modifiedFlags;
         }
+    }
+
+    /**
+     * Adds both PSK and SAE AKM if auto-upgrade offload is supported.
+     */
+    private BitSet addPskSaeUpgradableTypeFlagsIfSupported(
+            WifiConfiguration config,
+            BitSet keyManagementFlags) {
+        synchronized (mLock) {
+            if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
+                    || !config.getSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK).isEnabled()
+                    || !mWifiGlobals.isWpa3SaeUpgradeOffloadEnabled()) {
+                return keyManagementFlags;
+            }
+
+            BitSet modifiedFlags = (BitSet) keyManagementFlags.clone();
+            modifiedFlags.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+            modifiedFlags.set(WifiConfiguration.KeyMgmt.SAE);
+            return modifiedFlags;
+        }
+    }
+
+    /**
+     * Removes SAE AKM when PSK and SAE AKM are both set, it only happens when
+     * auto-upgrade offload is supported.
+     */
+    private BitSet removePskSaeUpgradableTypeFlags(BitSet keyManagementFlags) {
+        if (!keyManagementFlags.get(WifiConfiguration.KeyMgmt.WPA_PSK)
+                || !keyManagementFlags.get(WifiConfiguration.KeyMgmt.SAE)) {
+            return keyManagementFlags;
+        }
+        BitSet modifiedFlags = (BitSet) keyManagementFlags.clone();
+        modifiedFlags.clear(WifiConfiguration.KeyMgmt.SAE);
+        return modifiedFlags;
     }
 
     /**

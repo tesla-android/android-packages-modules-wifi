@@ -17,6 +17,7 @@ package com.android.server.wifi;
 
 import android.annotation.NonNull;
 import android.hardware.wifi.supplicant.V1_4.ISupplicantStaNetworkCallback;
+import android.hardware.wifi.supplicant.V1_4.ISupplicantStaNetworkCallback.TransitionDisableIndication;
 
 class SupplicantStaNetworkCallbackV1_4Impl extends ISupplicantStaNetworkCallback.Stub {
     private final SupplicantStaNetworkHal mNetworkHal;
@@ -74,7 +75,25 @@ class SupplicantStaNetworkCallbackV1_4Impl extends ISupplicantStaNetworkCallback
 
     @Override
     public void onTransitionDisable(int indicationBits) {
-        // TODO: continue the following part after completing
-        //       WifiConfiguration changes.
+        synchronized (mLock) {
+            mNetworkHal.logCallback("onTransitionDisable");
+            int frameworkBits = 0;
+            if (0 != (indicationBits & TransitionDisableIndication.USE_WPA3_PERSONAL)) {
+                frameworkBits |= WifiMonitor.TDI_USE_WPA3_PERSONAL;
+            }
+            if (0 != (indicationBits & TransitionDisableIndication.USE_SAE_PK)) {
+                frameworkBits |= WifiMonitor.TDI_USE_SAE_PK;
+            }
+            if (0 != (indicationBits & TransitionDisableIndication.USE_WPA3_ENTERPRISE)) {
+                frameworkBits |= WifiMonitor.TDI_USE_WPA3_ENTERPRISE;
+            }
+            if (0 != (indicationBits & TransitionDisableIndication.USE_ENHANCED_OPEN)) {
+                frameworkBits |= WifiMonitor.TDI_USE_ENHANCED_OPEN;
+            }
+            if (0 == frameworkBits) return;
+
+            mWifiMonitor.broadcastTransitionDisableEvent(
+                    mIfaceName, mFrameworkNetworkId, frameworkBits);
+        }
     }
 }

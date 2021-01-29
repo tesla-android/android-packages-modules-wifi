@@ -71,10 +71,10 @@ public class SoftApNotifierTest extends WifiBaseTest {
      * @throws Exception
      */
     @Test
-    public void showSoftApShutDownTimeoutExpiredNotification() throws Exception {
+    public void showSoftApShutdownTimeoutExpiredNotification() throws Exception {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_STATUS))).thenReturn(mNotificationBuilder);
-        mSoftApNotifier.showSoftApShutDownTimeoutExpiredNotification();
+        mSoftApNotifier.showSoftApShutdownTimeoutExpiredNotification();
         verify(mNotificationManager).notify(
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
@@ -90,8 +90,8 @@ public class SoftApNotifierTest extends WifiBaseTest {
      * @throws Exception
      */
     @Test
-    public void dismissSoftApShutDownTimeoutExpiredNotification() throws Exception {
-        mSoftApNotifier.dismissSoftApShutDownTimeoutExpiredNotification();
+    public void dismissSoftApShutdownTimeoutExpiredNotification() throws Exception {
+        mSoftApNotifier.dismissSoftApShutdownTimeoutExpiredNotification();
         verify(mNotificationManager).cancel(any(),
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED));
     }
