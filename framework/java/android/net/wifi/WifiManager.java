@@ -6918,7 +6918,13 @@ public class WifiManager {
     @SystemApi
     public interface ScoreUpdateObserver {
         /**
-         * Called by applications to indicate network status.
+         * Called by applications to indicate network status. For applications targeting
+         * {@link android.os.Build.VERSION_CODES#S} or above: The score is not used to take action
+         * on network selection but for the purpose of Wifi metric collection only; Network
+         * selection is influenced by inputs from
+         * {@link ScoreUpdateObserver#notifyStatusUpdate(int, boolean)},
+         * {@link ScoreUpdateObserver#requestNudOperation(int, boolean)}, and
+         * {@link ScoreUpdateObserver#blocklistCurrentBssid(int)}.
          *
          * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
@@ -6936,6 +6942,39 @@ public class WifiManager {
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
          */
         void triggerUpdateOfWifiUsabilityStats(int sessionId);
+
+        /**
+         * Called by applications to indicate whether current Wi-Fi network is usable or not.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         * @param isUsable The boolean representing whether current Wi-Fi network is usable, and it
+         *                 may be sent to ConnectivityService and used for setting default network.
+         *                 Populated by connected network scorer in applications.
+         */
+        default void notifyStatusUpdate(int sessionId, boolean isUsable) {}
+
+        /**
+         * Called by applications to start a NUD (Neighbor Unreachability Detection) operation. The
+         * framework throttles NUD operations to no more frequently than every five seconds
+         * (see {@link WifiScoreReport#NUD_THROTTLE_MILLIS}). The framework keeps track of requests
+         * and executes them as soon as possible based on the throttling criteria.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         * @param nudTrigger The boolean indicating whether triggering NUD is recommended.
+         *                   Populated by connected network scorer in applications.
+         */
+        default void requestNudOperation(int sessionId, boolean nudTrigger) {}
+
+        /**
+         * Called by applications to blocklist currently connected BSSID. No blocklisting operation
+         * if called after disconnection.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         */
+        default void blocklistCurrentBssid(int sessionId) {}
     }
 
     /**
@@ -6963,6 +7002,42 @@ public class WifiManager {
         public void triggerUpdateOfWifiUsabilityStats(int sessionId) {
             try {
                 mScoreUpdateObserver.triggerUpdateOfWifiUsabilityStats(sessionId);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+
+        @Override
+        public void notifyStatusUpdate(int sessionId, boolean isUsable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.notifyStatusUpdate(sessionId, isUsable);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+
+        @Override
+        public void requestNudOperation(int sessionId, boolean nudTrigger) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.requestNudOperation(sessionId, nudTrigger);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+
+        @Override
+        public void blocklistCurrentBssid(int sessionId) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.blocklistCurrentBssid(sessionId);
             } catch (RemoteException e) {
                 throw e.rethrowFromSystemServer();
             }
