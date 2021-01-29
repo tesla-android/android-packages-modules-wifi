@@ -45,6 +45,7 @@ import static org.mockito.Mockito.anyObject;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
@@ -3130,6 +3131,18 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiMetrics, never())
                 .incrementNumBssidDifferentSelectionBetweenFrameworkAndFirmware();
         verifyConnectionEventTimeoutDoesNotOccur();
+
+        clearInvocations(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
+
+        // Now trigger a disconnect event from supplicant, this should be ignored since the
+        // connection tracking should have already ended.
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT,
+                new DisconnectEventInfo(sSSID, sBSSID, 0, false));
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
     }
 
     /**
@@ -3147,8 +3160,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, sBSSID);
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
                 WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
-        verify(mWifiDiagnostics, never()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
                 eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
@@ -3164,6 +3175,18 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiMetrics, never())
                 .incrementNumBssidDifferentSelectionBetweenFrameworkAndFirmware();
         verifyConnectionEventTimeoutDoesNotOccur();
+
+        clearInvocations(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
+
+        // Now trigger a disconnect event from supplicant, this should be ignored since the
+        // connection tracking should have already ended.
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT,
+                new DisconnectEventInfo(sSSID, sBSSID, 0, false));
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
     }
 
     /**
@@ -5553,5 +5576,32 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
                 eq(WifiConfiguration.NetworkSelectionStatus.DISABLED_NETWORK_NOT_FOUND));
+
+        verify(mWifiDiagnostics).reportConnectionEvent(
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+        verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
+                mClientModeManager,
+                WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND, sBSSID, sSSID);
+        verify(mWifiNetworkFactory).handleConnectionAttemptEnded(
+                eq(WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND),
+                any(WifiConfiguration.class));
+        verify(mWifiNetworkSuggestionsManager).handleConnectionAttemptEnded(
+                eq(WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND),
+                any(WifiConfiguration.class), eq(null));
+        verify(mWifiMetrics, never())
+                .incrementNumBssidDifferentSelectionBetweenFrameworkAndFirmware();
+        verifyConnectionEventTimeoutDoesNotOccur();
+
+        clearInvocations(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
+
+        // Now trigger a disconnect event from supplicant, this should be ignored since the
+        // connection tracking should have already ended.
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT,
+                new DisconnectEventInfo(sSSID, sBSSID, 0, false));
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
+                mWifiNetworkSuggestionsManager);
     }
 }
