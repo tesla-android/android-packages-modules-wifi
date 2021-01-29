@@ -123,7 +123,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
                 expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_GHZ),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_24_GHZ,
-                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), false);
+                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), false, false);
     }
 
     @Test
@@ -132,12 +132,13 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
                 .withBasePeriod(10000)
                 .withMaxApPerScan(10)
                 .addBucketWithChannels(20000, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN, 5650)
+                .withEnable6GhzRnr(true)
                 .build();
 
         doSuccessfulSingleScanTest(settings, createFreqSet(5650),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_UNSPECIFIED,
-                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false);
+                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false, true);
     }
 
     @Test
@@ -152,7 +153,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         doSuccessfulSingleScanTest(settings, createFreqSet(5650),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_UNSPECIFIED,
-                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false);
+                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false, false);
     }
 
     @Test
@@ -169,7 +170,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         doSuccessfulSingleScanTest(settings, expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_GHZ),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_24_GHZ,
-                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), true);
+                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), true, false);
     }
 
     /**
@@ -193,7 +194,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         doSuccessfulSingleScanTest(settings, createFreqSet(5650),
                 hiddenNetworkSSIDSet,
                 ScanResults.create(0, WifiScanner.WIFI_BAND_UNSPECIFIED,
-                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false);
+                        5650, 5650, 5650, 5650, 5650, 5650, 5650, 5650), false, false);
     }
 
     /**
@@ -222,7 +223,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         doSuccessfulSingleScanTest(settings, createFreqSet(5650),
                 hiddenNetworkSSIDSet,
                 ScanResults.create(0, WifiScanner.WIFI_BAND_UNSPECIFIED,
-                        5650, 5650, 5650, 5650, 5650, 5650, 5650), false);
+                        5650, 5650, 5650, 5650, 5650, 5650, 5650), false, false);
     }
 
     @Test
@@ -244,7 +245,8 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         WifiNative.ScanEventHandler eventHandler2 = mock(WifiNative.ScanEventHandler.class);
 
         // scan start succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
         assertFalse("second scan while first scan running should fail immediately",
@@ -265,7 +267,8 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scan fails
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(false);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(false);
 
         // start scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
@@ -293,7 +296,8 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scan succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         // start scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
@@ -325,7 +329,8 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scan succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         // start scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
@@ -380,7 +385,8 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scans succeed
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         // start first scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
@@ -389,7 +395,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
                 expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_GHZ),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_24_GHZ,
-                        2400, 2450, 2450), false);
+                        2400, 2450, 2450), false, false);
 
         // start second scan
         assertTrue(mScanner.startSingleScan(settings2, eventHandler));
@@ -398,7 +404,7 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
                 expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ,
-                        5150, 5175), false);
+                        5150, 5175), false, false);
 
         verifyNoMoreInteractions(eventHandler);
     }
@@ -457,12 +463,14 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scan succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         // start scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
 
-        order.verify(mWifiNative).scan(eq(IFACE_NAME), anyInt(), eq(expectedScan), any(List.class));
+        order.verify(mWifiNative).scan(eq(IFACE_NAME), anyInt(), eq(expectedScan), any(List.class),
+                anyBoolean());
 
         when(mWifiNative.getScanResults(eq(IFACE_NAME))).thenReturn(rawResults);
 
@@ -503,28 +511,31 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
 
     protected void doSuccessfulSingleScanTest(WifiNative.ScanSettings settings,
             Set<Integer> expectedScan, List<String> expectedHiddenNetSSIDs, ScanResults results,
-            boolean expectFullResults) {
+            boolean expectFullResults, boolean expectRnr) {
         WifiNative.ScanEventHandler eventHandler = mock(WifiNative.ScanEventHandler.class);
 
         InOrder order = inOrder(eventHandler, mWifiNative);
 
         // scan succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
 
         // start scan
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
 
         expectSuccessfulSingleScan(order, settings.scanType, eventHandler, expectedScan,
-                expectedHiddenNetSSIDs, results, expectFullResults);
+                expectedHiddenNetSSIDs, results, expectFullResults, expectRnr);
 
         verifyNoMoreInteractions(eventHandler);
     }
 
     protected void expectSuccessfulSingleScan(InOrder order,
             int scanType, WifiNative.ScanEventHandler eventHandler, Set<Integer> expectedScan,
-            List<String> expectedHiddenNetSSIDs, ScanResults results, boolean expectFullResults) {
+            List<String> expectedHiddenNetSSIDs, ScanResults results, boolean expectFullResults,
+            boolean expectRnr) {
         order.verify(mWifiNative).scan(
-                eq(IFACE_NAME), eq(scanType), eq(expectedScan), eq(expectedHiddenNetSSIDs));
+                eq(IFACE_NAME), eq(scanType), eq(expectedScan), eq(expectedHiddenNetSSIDs),
+                eq(expectRnr));
 
         when(mWifiNative.getScanResults(
                 eq(IFACE_NAME))).thenReturn(results.getScanDetailArrayList());
