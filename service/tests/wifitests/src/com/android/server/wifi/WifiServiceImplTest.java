@@ -1094,7 +1094,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test public void testRestartWifiSubsystemWithoutPermission() {
         assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext).enforceCallingOrSelfPermission(
-                eq(android.Manifest.permission.NETWORK_AIRPLANE_MODE), eq("WifiService"));
+                eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM), eq("WifiService"));
 
         try {
             mWifiServiceImpl.restartWifiSubsystem("doesn't matter");
@@ -1154,7 +1154,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test public void testRestartWifiSubsystemWithReason() {
         assumeTrue(SdkLevel.isAtLeastS());
-        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_AIRPLANE_MODE),
+        when(mContext.checkPermission(eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
         String reason = "Something is failing";
