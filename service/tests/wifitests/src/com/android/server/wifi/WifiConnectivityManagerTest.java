@@ -62,6 +62,7 @@ import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ActiveModeWarden.ExternalClientModeManagerRequestListener;
 import com.android.server.wifi.hotspot2.PasspointManager;
 import com.android.server.wifi.util.LruConnectionTracker;
@@ -2582,6 +2583,10 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                     WorkSource workSource) throws Exception {
                 assertEquals(settings.band, WifiScanner.WIFI_BAND_UNSPECIFIED);
                 assertEquals(settings.channels.length, channelList.size());
+                if (SdkLevel.isAtLeastS()) {
+                    assertEquals("Should never force enable RNR for partial scans",
+                            WifiScanner.WIFI_RNR_NOT_NEEDED, settings.getRnrSetting());
+                }
                 for (int chanIdx = 0; chanIdx < settings.channels.length; chanIdx++) {
                     assertTrue(channelList.contains(settings.channels[chanIdx].frequency));
                 }
@@ -2678,6 +2683,10 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                     WorkSource workSource) throws Exception {
                 assertEquals(settings.band, WifiScanner.WIFI_BAND_ALL);
                 assertNull(settings.channels);
+                if (SdkLevel.isAtLeastS()) {
+                    assertEquals("RNR should be enabled for full scans",
+                            WifiScanner.WIFI_RNR_ENABLED, settings.getRnrSetting());
+                }
             }}).when(mWifiScanner).startScan(anyObject(), anyObject(), anyObject(), anyObject());
 
         // Set screen to ON

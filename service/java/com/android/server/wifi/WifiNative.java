@@ -35,6 +35,7 @@ import android.net.wifi.nl80211.NativeScanResult;
 import android.net.wifi.nl80211.NativeWifiClient;
 import android.net.wifi.nl80211.RadioChainInfo;
 import android.net.wifi.nl80211.WifiNl80211Manager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.os.WorkSource;
@@ -1536,11 +1537,12 @@ public class WifiNative {
      * {@link WifiScanner#SCAN_TYPE_LOW_POWER} or {@link WifiScanner#SCAN_TYPE_HIGH_ACCURACY}.
      * @param freqs list of frequencies to scan for, if null scan all supported channels.
      * @param hiddenNetworkSSIDs List of hidden networks to be scanned for.
+     * @param enable6GhzRnr whether Reduced Neighbor Report should be enabled for 6Ghz scanning.
      * @return Returns true on success.
      */
     public boolean scan(
             @NonNull String ifaceName, @WifiAnnotations.ScanType int scanType, Set<Integer> freqs,
-            List<String> hiddenNetworkSSIDs) {
+            List<String> hiddenNetworkSSIDs, boolean enable6GhzRnr) {
         List<byte[]> hiddenNetworkSsidsArrays = new ArrayList<>();
         for (String hiddenNetworkSsid : hiddenNetworkSSIDs) {
             try {
@@ -1552,7 +1554,16 @@ public class WifiNative {
                 continue;
             }
         }
-        return mWifiCondManager.startScan(ifaceName, scanType, freqs, hiddenNetworkSsidsArrays);
+        // enable6GhzRnr is a new parameter first introduced in Android S.
+        if (SdkLevel.isAtLeastS()) {
+            Bundle extraScanningParams = new Bundle();
+            extraScanningParams.putBoolean(WifiNl80211Manager.SCANNING_PARAM_ENABLE_6GHZ_RNR,
+                    enable6GhzRnr);
+            return mWifiCondManager.startScan(ifaceName, scanType, freqs, hiddenNetworkSsidsArrays,
+                    extraScanningParams);
+        } else {
+            return mWifiCondManager.startScan(ifaceName, scanType, freqs, hiddenNetworkSsidsArrays);
+        }
     }
 
     /**
@@ -2897,6 +2908,7 @@ public class WifiNative {
         public int report_threshold_percent;
         public int report_threshold_num_scans;
         public int num_buckets;
+        public boolean enable6GhzRnr;
         /* Not used for bg scans. Only works for single scans. */
         public HiddenNetwork[] hiddenNetworks;
         public BucketSettings[] buckets;

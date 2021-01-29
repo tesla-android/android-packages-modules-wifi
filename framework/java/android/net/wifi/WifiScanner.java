@@ -173,6 +173,42 @@ public class WifiScanner {
     public static final String GET_AVAILABLE_CHANNELS_EXTRA = "Channels";
 
     /**
+     * This constant is used for {@link ScanSettings#setRnrSetting(int)}.
+     * <p>
+     * Scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced Neighbor Report (RNR) if the 6Ghz
+     * band is explicitly requested to be scanned. The 6Ghz band is explicitly requested if the
+     * ScanSetting.band parameter is set to one of:
+     * <li> {@link #WIFI_BAND_6_GHZ} </li>
+     * <li> {@link #WIFI_BAND_24_5_6_GHZ} </li>
+     * <li> {@link #WIFI_BAND_24_5_WITH_DFS_6_GHZ} </li>
+     * <li> {@link #WIFI_BAND_24_5_6_60_GHZ} </li>
+     * <li> {@link #WIFI_BAND_24_5_WITH_DFS_6_60_GHZ} </li>
+     * <li> {@link #WIFI_BAND_ALL} </li>
+     **/
+    public static final int WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED = 0;
+    /**
+     * This constant is used for {@link ScanSettings#setRnrSetting(int)}.
+     * <p>
+     * Request to scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced Neighbor Report (RNR).
+     **/
+    public static final int WIFI_RNR_ENABLED = 1;
+    /**
+     * This constant is used for {@link ScanSettings#setRnrSetting(int)}.
+     * <p>
+     * Do not request to scan 6Ghz APs co-located with 2.4/5Ghz APs using
+     * Reduced Neighbor Report (RNR)
+     **/
+    public static final int WIFI_RNR_NOT_NEEDED = 2;
+
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"RNR_"}, value = {
+            WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED,
+            WIFI_RNR_ENABLED,
+            WIFI_RNR_NOT_NEEDED})
+    public @interface RnrSetting {}
+
+    /**
      * Generic action callback invocation interface
      *  @hide
      */
@@ -315,6 +351,11 @@ public class WifiScanner {
 
         /** one of the WIFI_BAND values */
         public int band;
+        /**
+         * one of the {@code WIFI_RNR_*} values.
+         */
+        private int mRnrSetting = WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED;
+
         /** list of channels; used when band is set to WIFI_BAND_UNSPECIFIED */
         public ChannelSpec[] channels;
         /**
@@ -420,6 +461,32 @@ public class WifiScanner {
         @SystemApi
         public boolean hideFromAppOps;
 
+        /**
+         * Configure when to scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced
+         * Neighbor Report (RNR).
+         * @param rnrSetting one of the {@code WIFI_RNR_*} values
+         */
+        public void setRnrSetting(@RnrSetting int rnrSetting) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (rnrSetting < WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
+                    || rnrSetting > WIFI_RNR_NOT_NEEDED) {
+                throw new IllegalArgumentException("Invalid rnrSetting");
+            }
+            mRnrSetting = rnrSetting;
+        }
+
+        /**
+         * See {@link #setRnrSetting}
+         */
+        public @RnrSetting int getRnrSetting() {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            return mRnrSetting;
+        }
+
         /** Implement the Parcelable interface {@hide} */
         public int describeContents() {
             return 0;
@@ -438,6 +505,7 @@ public class WifiScanner {
             dest.writeInt(type);
             dest.writeInt(ignoreLocationSettings ? 1 : 0);
             dest.writeInt(hideFromAppOps ? 1 : 0);
+            dest.writeInt(getRnrSetting());
             if (channels != null) {
                 dest.writeInt(channels.length);
                 for (int i = 0; i < channels.length; i++) {
@@ -470,6 +538,7 @@ public class WifiScanner {
                         settings.type = in.readInt();
                         settings.ignoreLocationSettings = in.readInt() == 1;
                         settings.hideFromAppOps = in.readInt() == 1;
+                        settings.setRnrSetting(in.readInt());
                         int num_channels = in.readInt();
                         settings.channels = new ChannelSpec[num_channels];
                         for (int i = 0; i < num_channels; i++) {

@@ -311,6 +311,13 @@ public abstract class ChannelHelper {
     }
 
     /**
+     * Returns whether WIFI_BAND_6_GHZ is included in the input band.
+     */
+    public static boolean is6GhzBandIncluded(int band) {
+        return (band & WifiScanner.WIFI_BAND_6_GHZ) != 0;
+    }
+
+    /**
      * Converts a WifiScanner.WIFI_BAND_* constant to a meaningful String
      */
     public static String bandToString(int band) {

@@ -21,6 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.same;
@@ -40,11 +42,13 @@ import android.net.wifi.nl80211.NativeScanResult;
 import android.net.wifi.nl80211.RadioChainInfo;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.nl80211.WifiNl80211Manager.SendMgmtFrameCallback;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.WorkSource;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.NetdWrapper;
 
@@ -724,14 +728,37 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScan() throws Exception {
+        // This test will not run if the device has SDK level S or later
+        assumeFalse(SdkLevel.isAtLeastS());
         mWifiNative.scan(WIFI_IFACE_NAME, WifiScanner.SCAN_TYPE_HIGH_ACCURACY, SCAN_FREQ_SET,
-                SCAN_HIDDEN_NETWORK_SSID_SET);
+                SCAN_HIDDEN_NETWORK_SSID_SET, false);
         ArgumentCaptor<List<byte[]>> ssidSetCaptor = ArgumentCaptor.forClass(List.class);
         verify(mWificondControl).startScan(
                 eq(WIFI_IFACE_NAME), eq(WifiScanner.SCAN_TYPE_HIGH_ACCURACY),
                 eq(SCAN_FREQ_SET), ssidSetCaptor.capture());
         List<byte[]> ssidSet = ssidSetCaptor.getValue();
         assertArrayEquals(ssidSet.toArray(), SCAN_HIDDEN_NETWORK_BYTE_SSID_SET.toArray());
+    }
+
+    /**
+     * Verifies that scan() calls the new startScan API with a Bundle when the Sdk level
+     * is S or above.
+     */
+    @Test
+    public void testScanWithBundle() throws Exception {
+        // This test will only run if the device has SDK level S and later.
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiNative.scan(WIFI_IFACE_NAME, WifiScanner.SCAN_TYPE_HIGH_ACCURACY, SCAN_FREQ_SET,
+                SCAN_HIDDEN_NETWORK_SSID_SET, true);
+        ArgumentCaptor<List<byte[]>> ssidSetCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Bundle> bundleCaptor = ArgumentCaptor.forClass(Bundle.class);
+        verify(mWificondControl).startScan(
+                eq(WIFI_IFACE_NAME), eq(WifiScanner.SCAN_TYPE_HIGH_ACCURACY),
+                eq(SCAN_FREQ_SET), ssidSetCaptor.capture(), bundleCaptor.capture());
+        List<byte[]> ssidSet = ssidSetCaptor.getValue();
+        assertArrayEquals(ssidSet.toArray(), SCAN_HIDDEN_NETWORK_BYTE_SSID_SET.toArray());
+        Bundle bundle = bundleCaptor.getValue();
+        assertTrue(bundle.getBoolean(WifiNl80211Manager.SCANNING_PARAM_ENABLE_6GHZ_RNR));
     }
 
     /**
