@@ -740,6 +740,9 @@ package android.net.wifi {
     field public static final int WIFI_BAND_BOTH = 3; // 0x3
     field public static final int WIFI_BAND_BOTH_WITH_DFS = 7; // 0x7
     field public static final int WIFI_BAND_UNSPECIFIED = 0; // 0x0
+    field public static final int WIFI_RNR_ENABLED = 1; // 0x1
+    field public static final int WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED = 0; // 0x0
+    field public static final int WIFI_RNR_NOT_NEEDED = 2; // 0x2
   }
 
   public static interface WifiScanner.ActionListener {
@@ -800,6 +803,8 @@ package android.net.wifi {
 
   public static class WifiScanner.ScanSettings implements android.os.Parcelable {
     ctor public WifiScanner.ScanSettings();
+    method public int getRnrSetting();
+    method public void setRnrSetting(int);
     field public int band;
     field public android.net.wifi.WifiScanner.ChannelSpec[] channels;
     field @NonNull @RequiresPermission(android.Manifest.permission.NETWORK_STACK) public final java.util.List<android.net.wifi.WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks;

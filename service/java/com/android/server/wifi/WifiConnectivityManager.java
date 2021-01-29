@@ -50,6 +50,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.hotspot2.PasspointManager;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.wifi.resources.R;
@@ -1427,6 +1428,11 @@ public class WifiConnectivityManager {
 
     private int getScanBand(boolean isFullBandScan) {
         if (isFullBandScan) {
+            // TODO b/158335433: Add an config.xml overlay to configure whether we want to do 6Ghz
+            // scanning with RNR + PSC (default option), or just RNR. Continue to return
+            // WIFI_BAND_ALL if PSC channels need to be scanned for 6Ghz. If PSC channels do not
+            // need to be scanned, this method should return WIFI_BAND_BOTH_WITH_DFS so that the
+            // 6Ghz band is scanned only via RNR.
             return WifiScanner.WIFI_BAND_ALL;
         } else {
             // Use channel list instead.
@@ -1754,6 +1760,13 @@ public class WifiConnectivityManager {
         }
         settings.type = WifiScanner.SCAN_TYPE_HIGH_ACCURACY; // always do high accuracy scans.
         settings.band = getScanBand(isFullBandScan);
+        // Only enable RNR for full scans since we already have a known channel list for
+        // partial scan. We do not want to enable RNR for partial scan since it could end up
+        // wasting time scanning for 6Ghz APs that the device doesn't have credential to.
+        if (SdkLevel.isAtLeastS()) {
+            settings.setRnrSetting(isFullBandScan ? WifiScanner.WIFI_RNR_ENABLED
+                    : WifiScanner.WIFI_RNR_NOT_NEEDED);
+        }
         settings.reportEvents = WifiScanner.REPORT_EVENT_FULL_SCAN_RESULT
                             | WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN;
         settings.numBssidsPerScan = 0;
