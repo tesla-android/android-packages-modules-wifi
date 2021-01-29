@@ -7208,7 +7208,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 mWifiServiceImpl.getNetworkSuggestionUserApprovalStatus(TEST_PACKAGE_NAME));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
         verify(mWifiNetworkSuggestionsManager)
-                .getNetworkSuggestionUserApprovalStatus(anyInt(), eq(TEST_PACKAGE_NAME));
+                .getNetworkSuggestionUserApprovalStatus(
+                        Binder.getCallingUid(), TEST_PACKAGE_NAME);
     }
 
     /**

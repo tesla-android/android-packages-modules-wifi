@@ -4232,14 +4232,15 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public int getNetworkSuggestionUserApprovalStatus(String callingPackageName) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackageName);
+        int callingUid = Binder.getCallingUid();
+        mAppOps.checkPackage(callingUid, callingPackageName);
         enforceAccessPermission();
         if (mVerboseLoggingEnabled) {
             mLog.info("getNetworkSuggestionUserApprovalStatus uid=%")
-                    .c(Binder.getCallingUid()).flush();
+                    .c(callingUid).flush();
         }
         return mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager
-                        .getNetworkSuggestionUserApprovalStatus(Binder.getCallingUid(),
+                        .getNetworkSuggestionUserApprovalStatus(callingUid,
                                 callingPackageName),
                 WifiManager.STATUS_SUGGESTION_APPROVAL_UNKNOWN);
     }
