@@ -203,7 +203,7 @@ public class WifiAwareManager {
     }
 
     /**
-     * Return the current status of the Aware service: whether ot not the device is already attached
+     * Return the current status of the Aware service: whether or not the device is already attached
      * to an Aware cluster. To attach to an Aware cluster, please use
      * {@link #attach(AttachCallback, Handler)} or
      * {@link #attach(AttachCallback, IdentityChangedListener, Handler)}.

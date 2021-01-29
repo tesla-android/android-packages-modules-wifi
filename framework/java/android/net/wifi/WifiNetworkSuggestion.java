@@ -483,7 +483,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             if (subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("Subscription Id is invalid");
             }
             mSubscriptionId = subscriptionId;
             return this;
