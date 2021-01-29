@@ -24,7 +24,6 @@ import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_D
 import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_DISMISSED_INTENT_ACTION;
 
 import static org.junit.Assert.*;
-import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.app.AlertDialog;
@@ -64,7 +63,6 @@ import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
-import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiCarrierInfoManager.SimAuthRequestData;
 import com.android.server.wifi.WifiCarrierInfoManager.SimAuthResponseData;
 import com.android.wifi.resources.R;
@@ -1814,7 +1812,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
     @Test
     public void testSetAndGetCarrierNetworkOffload() {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiCarrierInfoManager.setCarrierNetworkOffloadEnabled(DATA_SUBID, true, false);
         verify(mWifiConfigManager).saveToStore(true);
         assertFalse(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
