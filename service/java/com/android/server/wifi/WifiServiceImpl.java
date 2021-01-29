@@ -747,8 +747,8 @@ public class WifiServiceImpl extends BaseWifiService {
                 "WifiService");
     }
 
-    private void enforceAirplaneModePermission() {
-        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.NETWORK_AIRPLANE_MODE,
+    private void enforceRestartWifiSubsystemPermission() {
+        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM,
                 "WifiService");
     }
 
@@ -916,7 +916,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        enforceAirplaneModePermission();
+        enforceRestartWifiSubsystemPermission();
         if (mVerboseLoggingEnabled) {
             mLog.info("restartWifiSubsystem uid=% reason=%").c(Binder.getCallingUid()).r(
                     reason).flush();

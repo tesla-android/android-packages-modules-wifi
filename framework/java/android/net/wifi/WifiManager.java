@@ -3294,7 +3294,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_AIRPLANE_MODE)
+    @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM)
     public void restartWifiSubsystem(@Nullable String reason) {
         try {
             mService.restartWifiSubsystem(reason);
