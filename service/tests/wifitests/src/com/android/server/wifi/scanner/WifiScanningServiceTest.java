@@ -745,6 +745,73 @@ public class WifiScanningServiceTest extends WifiBaseTest {
     }
 
     /**
+     * Verify WifiNative.ScanSettings#enable6GhzRnr is set appropriatly according to
+     * WifiScanner.ScanSettings#band and WifiScanner.ScanSettings#getRnrSetting().
+     */
+    @Test
+    public void testRnrIsDisabledIf6GhzBandIsNotScanned() throws Exception {
+        // Verify RNR is disabled by default since WIFI_BAND_BOTH doesn't include the 6Ghz band.
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH, 0,
+                0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        WifiNative.ScanSettings nativeSettings = computeSingleScanNativeSettings(requestSettings);
+        assertEquals(WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED,
+                requestSettings.getRnrSetting());
+        assertEquals(false, nativeSettings.enable6GhzRnr);
+        doSuccessfulSingleScan(requestSettings, nativeSettings,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
+    }
+
+    /**
+     * Verify that when WIFI_BAND_ALL is scanned, RNR is automatically enabled when
+     * getRnrSetting() returns WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED.
+     */
+    @Test
+    public void testRnrIsEnabledIf6GhzBandIsScanned() throws Exception {
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_ALL, 0,
+                0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        WifiNative.ScanSettings nativeSettings = computeSingleScanNativeSettings(requestSettings);
+        assertEquals(WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED,
+                requestSettings.getRnrSetting());
+        assertEquals(true, nativeSettings.enable6GhzRnr);
+        doSuccessfulSingleScan(requestSettings, nativeSettings,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_ALL, new int[0]));
+    }
+
+    /**
+     * Verify RNR is enabled even though only 2.4 and 5Ghz channels are being scanned because of
+     * getRnrSetting() returns WIFI_RNR_ENABLED.
+     */
+    @Test
+    public void testForceEnableRnr() throws Exception {
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH, 0,
+                0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        requestSettings.setRnrSetting(WifiScanner.WIFI_RNR_ENABLED);
+        WifiNative.ScanSettings nativeSettings = computeSingleScanNativeSettings(requestSettings);
+        assertEquals(WifiScanner.WIFI_RNR_ENABLED,
+                requestSettings.getRnrSetting());
+        assertEquals(true, nativeSettings.enable6GhzRnr);
+        doSuccessfulSingleScan(requestSettings, nativeSettings,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
+    }
+
+    /**
+     * Verify that when WIFI_BAND_ALL is scanned, RNR is disabled when
+     * getRnrSetting() returns WIFI_RNR_NOT_NEEDED.
+     */
+    @Test
+    public void testRnrIsExplicitlyDisabled() throws Exception {
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_ALL, 0,
+                0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        requestSettings.setRnrSetting(WifiScanner.WIFI_RNR_NOT_NEEDED);
+        WifiNative.ScanSettings nativeSettings = computeSingleScanNativeSettings(requestSettings);
+        assertEquals(WifiScanner.WIFI_RNR_NOT_NEEDED,
+                requestSettings.getRnrSetting());
+        assertEquals(false, nativeSettings.enable6GhzRnr);
+        doSuccessfulSingleScan(requestSettings, nativeSettings,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_ALL, new int[0]));
+    }
+
+    /**
      * Do a single scan with results that do not match the requested scan and verify that it is
      * still successful (and returns no results).
      */

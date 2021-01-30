@@ -2713,8 +2713,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             int blocklistReason = convertToWifiBlocklistMonitorFailureReason(
                     level2FailureCode, level2FailureReason);
             if (blocklistReason != -1) {
-                int networkId = (configuration == null) ? WifiConfiguration.INVALID_NETWORK_ID
-                        : configuration.networkId;
                 mWifiScoreCard.noteConnectionFailure(mWifiInfo, mLastScanRssi, ssid,
                         blocklistReason);
                 checkAbnormalConnectionFailureAndTakeBugReport(ssid);
@@ -4313,7 +4311,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND,
                                 WifiMetricsProto.ConnectionEvent.HLF_NONE,
                                 WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN);
-                        transitionTo(mDisconnectedState);
+                        transitionTo(mDisconnectedState); // End of connection attempt.
                     }
                     break;
                 case WifiMonitor.ASSOCIATION_REJECTION_EVENT: {
@@ -4383,7 +4381,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 getConnectingSsidInternal(), bssid,
                                 WifiLastResortWatchdog.FAILURE_CODE_ASSOCIATION);
                     }
-                    transitionTo(mDisconnectedState);
+                    transitionTo(mDisconnectedState); // End of connection attempt.
                     break;
                 }
                 case WifiMonitor.AUTHENTICATION_FAILURE_EVENT: {
@@ -4458,6 +4456,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 (mLastBssid == null) ? mTargetBssid : mLastBssid,
                                 WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION);
                     }
+                    transitionTo(mDisconnectedState); // End of connection attempt.
                     break;
                 }
                 case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT: {

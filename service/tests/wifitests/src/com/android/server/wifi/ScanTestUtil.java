@@ -26,6 +26,7 @@ import android.net.wifi.WifiScanner.ScanData;
 import android.net.wifi.WifiSsid;
 
 import com.android.net.module.util.MacAddressUtils;
+import com.android.server.wifi.scanner.ChannelHelper;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -129,6 +130,10 @@ public class ScanTestUtil {
             mSettings.report_threshold_percent = percent;
             return this;
         }
+        public NativeScanSettingsBuilder withEnable6GhzRnr(boolean enable) {
+            mSettings.enable6GhzRnr = enable;
+            return this;
+        }
 
         /**
          * Add the provided hidden network SSIDs to scan request.
@@ -200,7 +205,11 @@ public class ScanTestUtil {
                 .withMaxApPerScan(0)
                 .withMaxPercentToCache(0)
                 .withMaxScansToCache(0)
-                .withType(requestSettings.type);
+                .withType(requestSettings.type)
+                .withEnable6GhzRnr(requestSettings.getRnrSetting() == WifiScanner.WIFI_RNR_ENABLED
+                        || (requestSettings.getRnrSetting()
+                        == WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
+                        && ChannelHelper.is6GhzBandIncluded(requestSettings.band)));
         if (requestSettings.band == WifiScanner.WIFI_BAND_UNSPECIFIED) {
             builder.addBucketWithChannels(0, reportEvents, requestSettings.channels);
         } else {
@@ -392,6 +401,7 @@ public class ScanTestUtil {
         assertEquals("percent to cache", expected.report_threshold_percent,
                 actual.report_threshold_percent);
         assertEquals("base period", expected.base_period_ms, actual.base_period_ms);
+        assertEquals("enable 6Ghz RNR", expected.enable6GhzRnr, actual.enable6GhzRnr);
 
         assertEquals("number of buckets", expected.num_buckets, actual.num_buckets);
         assertNotNull("buckets was null", actual.buckets);
