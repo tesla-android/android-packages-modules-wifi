@@ -301,8 +301,6 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     private void setupResources() {
         doReturn(true).when(mResource).getBoolean(
                 R.bool.config_wifi_framework_enable_associated_network_selection);
-        mMinPacketRateActiveTraffic = setupIntegerResource(
-                R.integer.config_wifiFrameworkMinPacketPerSecondActiveTraffic, 16);
         mSufficientDurationAfterUserSelection = setupIntegerResource(
                 R.integer.config_wifiSufficientDurationAfterUserSelectionMilliseconds,
                 WAIT_JUST_A_MINUTE);
@@ -318,6 +316,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
                 ScanResult.BAND_24_GHZ_START_FREQ_MHZ);
         mThresholdQualifiedRssi5G = mScoringParams.getSufficientRssi(
                 ScanResult.BAND_5_GHZ_START_FREQ_MHZ);
+        mMinPacketRateActiveTraffic = mScoringParams.getActiveTrafficPacketsPerSecond();
     }
 
     private void setupWifiInfo() {
@@ -796,7 +795,12 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         when(mWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_TRANSITION_SCORE);
         when(mWifiInfo.is5GHz()).thenReturn(false);
         when(mWifiInfo.getFrequency()).thenReturn(2400);
-        when(mWifiInfo.getRssi()).thenReturn(levels[0]);
+        when(mWifiInfo.getRssi()).thenReturn(mThresholdMinimumRssi2G - 1);
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+        when(mWifiInfo.getSuccessfulRxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+
         when(mClock.getElapsedSinceBootMillis()).thenReturn(SystemClock.elapsedRealtime()
                 + WifiNetworkSelector.MINIMUM_NETWORK_SELECTION_INTERVAL_MS + 2000);
 
@@ -1052,21 +1056,52 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     }
 
     /**
-     * Wifi network selector performs network selection when current network has high
+     * Wifi network selector does not perform network selection when current network has high
      * quality but no active stream
      *
-     * Expected behavior: network selection is performed
+     * Expected behavior: network selection is skipped
      */
     @Test
-    public void testNoActiveStream() {
+    public void testHighRssiNoActiveStream() {
         // Rssi after connected.
         when(mWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi2G + 1);
-        when(mWifiInfo.getSuccessfulTxPacketsPerSecond()).thenReturn(0.0);
-        when(mWifiInfo.getSuccessfulRxPacketsPerSecond()).thenReturn(0.0);
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+        when(mWifiInfo.getSuccessfulRxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
 
         testStayOrTryToSwitch(
                 // Parameters for network1:
                 mThresholdQualifiedRssi2G + 1 /* rssi before connected */,
+                false /* not a 5G network */,
+                false /* not open network */,
+                false /* not a osu */,
+                // Parameters for network2:
+                mThresholdQualifiedRssi5G + 1 /* rssi */,
+                true /* a 5G network */,
+                false /* not open network */,
+                // Should try to switch.
+                false);
+    }
+
+    /**
+     * Wifi network selector performs network selection when current network has low
+     * quality and no active stream
+     *
+     * Expected behavior: network selection is performed
+     */
+    @Test
+    public void testLowRssiNoActiveStream() {
+        // Rssi after connected.
+        when(mWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi2G - 1);
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+        when(mWifiInfo.getSuccessfulRxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+
+        testStayOrTryToSwitch(
+                // Parameters for network1:
+                mThresholdQualifiedRssi2G - 1 /* rssi before connected */,
                 false /* not a 5G network */,
                 false /* not open network */,
                 false /* not a osu */,
@@ -1080,6 +1115,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
 
     /**
      * Wifi network selector skips network selection when current network is osu and has low RSSI
+     * and low traffic.
      *
      * Expected behavior: network selection is skipped
      */
@@ -1087,8 +1123,10 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     public void testOsuIsSufficient() {
         // Rssi after connected.
         when(mWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi5G - 1);
-        when(mWifiInfo.getSuccessfulTxPacketsPerSecond()).thenReturn(0.0);
-        when(mWifiInfo.getSuccessfulRxPacketsPerSecond()).thenReturn(0.0);
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
+        when(mWifiInfo.getSuccessfulRxPacketsPerSecond())
+                .thenReturn(mMinPacketRateActiveTraffic - 1.0);
 
         testStayOrTryToSwitch(
                 // Parameters for network1:
@@ -1215,13 +1253,14 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     }
 
     /**
-     * New network selection is performed if the currently connected network has bad rssi.
+     * New network selection is not performed if the currently connected network has bad rssi but
+     * active traffic.
      *
      * Expected behavior: Network Selector perform network selection after connected
      * to the first one.
      */
     @Test
-    public void testBadRssi() {
+    public void testBadRssiButHasActiveTraffic() {
         // Rssi after connected.
         when(mWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi2G - 1);
         when(mWifiInfo.getSuccessfulTxPacketsPerSecond())
@@ -1234,7 +1273,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
                 false /* not a 5G network */,
                 false /* not open network */,
                 // Should try to switch.
-                true);
+                false);
     }
 
     /**
@@ -1615,7 +1654,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
      */
     @Test
     public void testCandidateScorerMetrics_onlyOneScorer() {
-        testNoActiveStream();
+        testLowRssiNoActiveStream();
 
         verify(mWifiMetrics, never()).logNetworkSelectionDecision(
                 anyInt(), anyInt(), anyBoolean(), anyInt());
@@ -1664,11 +1703,11 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         mScoringParams.update("expid=" + compatibilityExpId);
         assertEquals(compatibilityExpId, mScoringParams.getExperimentIdentifier());
 
-        testNoActiveStream();
+        testLowRssiNoActiveStream();
 
         int nullScorerId = experimentIdFromIdentifier(NULL_SCORER.getIdentifier());
 
-        // Wanted 2 times since testNoActiveStream() calls
+        // Wanted 2 times since testLowRssiNoActiveStream() calls
         // WifiNetworkSelector.selectNetwork() twice
         verify(mWifiMetrics, times(2)).logNetworkSelectionDecision(nullScorerId,
                 compatibilityExpId, false, 2);
@@ -1694,12 +1733,12 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         mWifiNetworkSelector.registerNetworkNominator(
                 new PlaceholderNominator(1, PLACEHOLDER_NOMINATOR_ID_2));
 
-        testNoActiveStream();
+        testLowRssiNoActiveStream();
 
         int throughputExpId = experimentIdFromIdentifier(mThroughputScorer.getIdentifier());
         int compatibilityExpId = experimentIdFromIdentifier(mCompatibilityScorer.getIdentifier());
 
-        // Wanted 2 times since testNoActiveStream() calls
+        // Wanted 2 times since testLowRssiNoActiveStream() calls
         // WifiNetworkSelector.selectNetwork() twice
         if (WifiNetworkSelector.PRESET_CANDIDATE_SCORER_NAME.equals(
                 mThroughputScorer.getIdentifier())) {

@@ -291,13 +291,8 @@ public class WifiNetworkSelector {
             return false;
         }
 
-        if (!hasSufficientLinkQuality(wifiInfo)) {
-            localLog("Current network link quality is not sufficient");
-            return false;
-        }
-
-        if (!hasActiveStream(wifiInfo)) {
-            localLog("Current network has low ongoing traffic");
+        if (!hasSufficientLinkQuality(wifiInfo) && !hasActiveStream(wifiInfo)) {
+            localLog("Current network link quality is not sufficient and has low ongoing traffic");
             return false;
         }
 
