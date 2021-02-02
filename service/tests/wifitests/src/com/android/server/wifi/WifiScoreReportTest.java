@@ -272,6 +272,36 @@ public class WifiScoreReportTest extends WifiBaseTest {
         verify(mNetworkAgent).sendNetworkScore(not(eq(WifiScoreReport.LINGERING_SCORE)));
     }
 
+    @Test
+    public void testClientScoreWhileLingering_sendLingeringScore() throws Exception {
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID);
+        verify(mWifiConnectedNetworkScorer).onStart(TEST_SESSION_ID);
+
+        mWifiScoreReport.setShouldReduceNetworkScore(true);
+        // upon lingering, immediately send LINGERING_SCORE
+        verify(mNetworkAgent).sendNetworkScore(WifiScoreReport.LINGERING_SCORE);
+        // upon lingering, send session end to client.
+        verify(mWifiConnectedNetworkScorer).onStop(TEST_SESSION_ID);
+
+        mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(TEST_SESSION_ID, 49);
+        mLooper.dispatchAll();
+        // score not sent again while lingering
+        verify(mNetworkAgent).sendNetworkScore(anyInt());
+
+        // disable lingering
+        mWifiScoreReport.setShouldReduceNetworkScore(false);
+        // report score again
+        mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(TEST_SESSION_ID, 49);
+        mLooper.dispatchAll();
+        // External score is sent.
+        verify(mNetworkAgent).sendNetworkScore(49);
+    }
+
     /**
      * Test for no score report if rssi is invalid
      *

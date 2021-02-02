@@ -70,6 +70,10 @@ public class WifiScoreReport {
     // Cache of the last score
     private int mScore = ConnectedScore.WIFI_MAX_SCORE;
 
+    /**
+     * If true, indicates that the associated {@link ClientModeImpl} instance is lingering
+     * as a part of make before break STA + STA use-case.
+     */
     private boolean mShouldReduceNetworkScore = false;
 
     private final ScoringParams mScoringParams;
@@ -241,9 +245,14 @@ public class WifiScoreReport {
         Log.d(TAG, "setShouldReduceNetworkScore=" + shouldReduceNetworkScore
                 + " mNetworkAgent is null? " + (mNetworkAgent == null));
         mShouldReduceNetworkScore = shouldReduceNetworkScore;
-        // immediately send score below disconnect threshold to start lingering
-        if (mShouldReduceNetworkScore && mNetworkAgent != null) {
-            mNetworkAgent.sendNetworkScore(LINGERING_SCORE);
+        // immediately send score below disconnect threshold to start lingering and also
+        // inform the external scorer that ongoing session has ended (since the score is no longer
+        // under their control)
+        if (mShouldReduceNetworkScore) {
+            if (mNetworkAgent != null) mNetworkAgent.sendNetworkScore(LINGERING_SCORE);
+            if (mWifiConnectedNetworkScorerHolder != null) {
+                mWifiConnectedNetworkScorerHolder.stopSession();
+            }
         }
     }
 
@@ -740,7 +749,7 @@ public class WifiScoreReport {
         mWifiMetrics.setIsExternalWifiScorerOn(true);
         // If there is already a connection, start a new session
         final int netId = getCurrentNetId();
-        if (netId > 0) {
+        if (netId > 0 && !mShouldReduceNetworkScore) {
             startConnectedNetworkScorer(netId);
         }
         return true;
