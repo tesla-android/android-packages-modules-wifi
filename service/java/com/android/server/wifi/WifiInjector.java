@@ -695,7 +695,8 @@ public class WifiInjector {
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
                         ifaceName),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
-                mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, verboseLoggingEnabled);
+                mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
+                verboseLoggingEnabled);
     }
 
     /**

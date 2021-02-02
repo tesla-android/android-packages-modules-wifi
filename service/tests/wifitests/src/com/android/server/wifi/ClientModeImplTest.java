@@ -651,7 +651,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 mWifiCarrierInfoManager, mEapFailureNotifier, mSimRequiredNotifier,
                 mWifiScoreReport, mWifiP2pConnection, mWifiGlobals,
                 WIFI_IFACE_NAME, mClientModeManager, mCmiMonitor, mBroadcastQueue,
-                mWifiNetworkSelector, false);
+                mWifiNetworkSelector, mTelephonyManager, false);
 
         mWifiCoreThread = getCmiHandlerThread(mCmi);
 
@@ -934,6 +934,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(Arrays.asList(scanResult.informationElements),
                 wifiInfo.getInformationElements());
         expectRegisterNetworkAgent((na) -> {
+            if (!mConnectedNetwork.carrierMerged) {
+                assertNull(na.subscriberId);
+            }
         }, (nc) -> {
                 if (SdkLevel.isAtLeastS()) {
                     WifiInfo wifiInfoFromTi = (WifiInfo) nc.getTransportInfo();
@@ -5603,5 +5606,21 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         verifyNoMoreInteractions(mWifiDiagnostics, mWifiConfigManager, mWifiNetworkFactory,
                 mWifiNetworkSuggestionsManager);
+    }
+
+    /*
+     * Verify that the subscriberId will be filled in NetworkAgentConfig
+     * after connecting to a merged network.
+     */
+    @Test
+    public void triggerConnectToMergedNetwork() throws Exception {
+        String testSubscriberId = "TestSubscriberId";
+        when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
+        when(mDataTelephonyManager.getSubscriberId()).thenReturn(testSubscriberId);
+        mConnectedNetwork.carrierMerged = true;
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> {
+            assertEquals(testSubscriberId, agentConfig.subscriberId);
+        }, (cap) -> { });
     }
 }
