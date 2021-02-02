@@ -94,6 +94,7 @@ import static org.mockito.Mockito.when;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
+import android.app.NotificationManager;
 import android.app.test.MockAnswerUtil;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
@@ -365,6 +366,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock AdaptiveConnectivityEnabledSettingObserver mAdaptiveConnectivityEnabledSettingObserver;
     @Mock MakeBeforeBreakManager mMakeBeforeBreakManager;
+    @Mock NotificationManager mNotificationManager;
+    @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
+    @Mock OpenNetworkNotifier mOpenNetworkNotifier;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -483,6 +487,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mActiveModeWarden.getClientModeManagersInRoles(
                 ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
                 .thenReturn(Collections.emptyList());
+        when(mContext.getSystemService(NotificationManager.class)).thenReturn(mNotificationManager);
+        when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
+        when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
 
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
@@ -7358,5 +7365,22 @@ public class WifiServiceImplTest extends WifiBaseTest {
             mWifiServiceImpl.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
             fail();
         } catch (SecurityException e) { }
+    }
+
+    @Test
+    public void testNotificationResetWithLocaleChange() {
+        mWifiServiceImpl.checkAndStartWifi();
+        mLooper.dispatchAll();
+        verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
+                argThat((IntentFilter filter) ->
+                        filter.hasAction(Intent.ACTION_LOCALE_CHANGED)));
+
+        Intent intent = new Intent(Intent.ACTION_LOCALE_CHANGED);
+        mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
+        verify(mNotificationManager).createNotificationChannels(any());
+        verify(mWifiNetworkSuggestionsManager).resetNotification();
+        verify(mWifiCarrierInfoManager).resetNotification();
+        verify(mOpenNetworkNotifier).clearPendingNotification(false);
+        verify(mWakeupController).resetNotification();
     }
 }
