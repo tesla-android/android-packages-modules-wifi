@@ -66,6 +66,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.MockitoSession;
 import org.mockito.quality.Strictness;
+import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -156,6 +157,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Mock private ActiveModeWarden mActiveModeWarden;
     @Mock private ClientModeManager mPrimaryClientModeManager;
     @Mock private WifiGlobals mWifiGlobals;
+    @Mock private BuildProperties mBuildProperties;
     private LruConnectionTracker mLruConnectionTracker;
 
     private MockResources mResources;
@@ -282,6 +284,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
         when(WifiConfigStore.createUserFiles(anyInt(), anyBoolean())).thenReturn(mock(List.class));
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
+        when(mBuildProperties.isUserBuild()).thenReturn(false);
     }
 
     /**
@@ -5082,7 +5085,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                         mNetworkListSharedStoreData, mNetworkListUserStoreData,
                         mRandomizedMacStoreData,
                         mFrameworkFacade, mDeviceConfigFacade,
-                        mWifiScoreCard, mLruConnectionTracker);
+                        mWifiScoreCard, mLruConnectionTracker, mBuildProperties);
         mWifiConfigManager.enableVerboseLogging(true);
     }
 
@@ -6517,5 +6520,57 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
         assertFalse(configAfter.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
                 .isSaePkOnlyMode());
+    }
+
+    @Test
+    public void testLoadFromSharedAndUserStoreHandleFailureOnUserBuilds() throws Exception {
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+
+        List<WifiConfiguration> sharedConfigs =
+                Arrays.asList(WifiConfigurationTestUtil.createOpenNetwork());
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+
+        // Throw an exception when reading.
+        doThrow(new XmlPullParserException("")).when(mWifiConfigStore).read();
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        // Should have no existing saved networks.
+        assertTrue(mWifiConfigManager.getConfiguredNetworks().isEmpty());
+
+        // Verify that we can add a new network.
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        assertFalse(mWifiConfigManager.getConfiguredNetworks().isEmpty());
+    }
+
+    @Test
+    public void testLoadFromUserStoreHandleFailureOnUserBuilds() throws Exception {
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+        int user2 = TEST_DEFAULT_USER + 1;
+        setupUserProfiles(user2);
+
+        List<WifiConfiguration> sharedConfigs =
+                Arrays.asList(WifiConfigurationTestUtil.createOpenNetwork());
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+
+        // Throw an exception when reading.
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        // Should have 1 shared saved networks.
+        assertEquals(1, mWifiConfigManager.getConfiguredNetworks().size());
+
+        // Now trigger a user switch and throw an excepton when reading user store file.
+        doThrow(new XmlPullParserException("")).when(mWifiConfigStore).switchUserStoresAndRead(
+                any());
+        when(mUserManager.isUserUnlockingOrUnlocked(UserHandle.of(user2))).thenReturn(true);
+        mWifiConfigManager.handleUserSwitch(user2);
+        verify(mWifiConfigStore).switchUserStoresAndRead(any(List.class));
+
+        // Verify that we can add a new network.
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        assertEquals(2, mWifiConfigManager.getConfiguredNetworks().size());
     }
 }

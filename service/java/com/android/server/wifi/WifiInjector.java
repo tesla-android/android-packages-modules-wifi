@@ -332,7 +332,7 @@ public class WifiInjector {
                 new NetworkListSharedStoreData(mContext),
                 new NetworkListUserStoreData(mContext),
                 new RandomizedMacStoreData(), mFrameworkFacade, mDeviceConfigFacade,
-                mWifiScoreCard, mLruConnectionTracker);
+                mWifiScoreCard, mLruConnectionTracker, mBuildProperties);
         mSettingsConfigStore = new WifiSettingsConfigStore(context, wifiHandler,
                 mSettingsMigrationDataHolder, mWifiConfigManager, mWifiConfigStore);
         mSettingsStore = new WifiSettingsStore(mContext, mSettingsConfigStore);
