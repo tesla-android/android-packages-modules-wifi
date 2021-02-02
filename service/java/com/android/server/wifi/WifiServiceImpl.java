@@ -4931,4 +4931,16 @@ public class WifiServiceImpl extends BaseWifiService {
         nm.createNotificationChannels(channelsList);
         nm.cancelAll();
     }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#setWifiScoringEnabled(boolean)}.
+     */
+    @Override
+    public boolean setWifiScoringEnabled(boolean enabled) {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.NETWORK_SETTINGS, "WifiService");
+        // Post operation to handler thread
+        return mWifiThreadRunner.call(
+                () -> mSettingsStore.handleWifiScoringEnabled(enabled), false);
+    }
 }

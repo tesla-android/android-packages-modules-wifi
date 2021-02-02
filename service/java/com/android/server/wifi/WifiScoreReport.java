@@ -88,6 +88,7 @@ public class WifiScoreReport {
 
     private final ConnectedScore mAggressiveConnectedScore;
     private VelocityBasedConnectedScore mVelocityBasedConnectedScore;
+    private final WifiSettingsStore mWifiSettingsStore;
 
     @Nullable
     private NetworkAgent mNetworkAgent;
@@ -300,11 +301,11 @@ public class WifiScoreReport {
             }
         }
         // Stay a notch above the transition score if adaptive connectivity is disabled.
-        if (!mAdaptiveConnectivityEnabledSettingObserver.get()) {
+        if (!mAdaptiveConnectivityEnabledSettingObserver.get()
+                || !mWifiSettingsStore.isWifiScoringEnabled()) {
             score = ConnectedScore.WIFI_TRANSITION_SCORE + 1;
             if (mVerboseLoggingEnabled) {
-                Log.d(TAG,
-                        "Adaptive connectivity disabled - Stay a notch above the transition score");
+                Log.d(TAG, "Wifi scoring disabled - Stay a notch above the transition score");
             }
         }
         mNetworkAgent.sendNetworkScore(score);
@@ -407,7 +408,8 @@ public class WifiScoreReport {
             DeviceConfigFacade deviceConfigFacade, Context context,
             AdaptiveConnectivityEnabledSettingObserver adaptiveConnectivityEnabledSettingObserver,
             String interfaceName,
-            ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy) {
+            ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy,
+            WifiSettingsStore wifiSettingsStore) {
         mScoringParams = scoringParams;
         mClock = clock;
         mAdaptiveConnectivityEnabledSettingObserver = adaptiveConnectivityEnabledSettingObserver;
@@ -423,6 +425,7 @@ public class WifiScoreReport {
         mContext = context;
         mInterfaceName = interfaceName;
         mExternalScoreUpdateObserverProxy = externalScoreUpdateObserverProxy;
+        mWifiSettingsStore = wifiSettingsStore;
     }
 
     /**
@@ -586,9 +589,10 @@ public class WifiScoreReport {
      */
     public boolean shouldCheckIpLayer() {
         // Don't recommend if adaptive connectivity is disabled.
-        if (!mAdaptiveConnectivityEnabledSettingObserver.get()) {
+        if (!mAdaptiveConnectivityEnabledSettingObserver.get()
+                || !mWifiSettingsStore.isWifiScoringEnabled()) {
             if (mVerboseLoggingEnabled) {
-                Log.d(TAG, "Adaptive connectivity disabled - Don't check IP layer");
+                Log.d(TAG, "Wifi scoring disabled - Don't check IP layer");
             }
             return false;
         }

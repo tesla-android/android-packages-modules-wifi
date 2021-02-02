@@ -112,6 +112,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     @Mock ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     ArgumentCaptor<WifiManager.ScoreUpdateObserver> mExternalScoreUpdateObserverCbCaptor =
             ArgumentCaptor.forClass(WifiManager.ScoreUpdateObserver.class);
+    @Mock WifiSettingsStore mWifiSettingsStore;
     private TestLooper mLooper;
 
     public class WifiConnectedNetworkScorerImpl extends IWifiConnectedNetworkScorer.Stub {
@@ -218,7 +219,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiDataStall,
                 mDeviceConfigFacade, mContext,
                 mAdaptiveConnectivityEnabledSettingObserver, TEST_IFACE_NAME,
-                mExternalScoreUpdateObserverProxy);
+                mExternalScoreUpdateObserverProxy, mWifiSettingsStore);
         mWifiScoreReport.setNetworkAgent(mNetworkAgent);
         when(mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs()).thenReturn(
                 DeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS);
@@ -226,6 +227,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 DeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_HIGH_SCORE_MS);
         when(mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm()).thenReturn(
                 DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
+        when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(true);
     }
 
     /**
@@ -1148,6 +1150,20 @@ public class WifiScoreReportTest extends WifiBaseTest {
 
     /**
      * Verify NUD check is not recommended and the score of 51 is sent to connectivity service
+     * when Wifi scoring is disabled.
+     */
+    @Test
+    public void verifyNudCheckAndScoreIfScoringDisabledForAospScorer() throws Exception {
+        mWifiInfo.setFrequency(5220);
+        mWifiInfo.setRssi(-85);
+        when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(false);
+        mWifiScoreReport.calculateAndReportScore();
+        assertFalse(mWifiScoreReport.shouldCheckIpLayer());
+        verify(mNetworkAgent).sendNetworkScore(51);
+    }
+
+    /**
+     * Verify NUD check is not recommended and the score of 51 is sent to connectivity service
      * when adaptive connectivity is disabled for external Wi-Fi scorer.
      */
     @Test
@@ -1184,6 +1200,28 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(
                 scorerImpl.mSessionId, 47);
         mLooper.dispatchAll();
+        verify(mNetworkAgent).sendNetworkScore(51);
+    }
+
+    /**
+     * Verify NUD check is not recommended and the score of 51 is sent to connectivity service
+     * when Wifi scoring is disabled for external Wi-Fi scorer.
+     */
+    @Test
+    public void verifyNudCheckAndScoreIfScoringDisabledForExternalScorer() throws Exception {
+        WifiConnectedNetworkScorerImpl scorerImpl = new WifiConnectedNetworkScorerImpl();
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, scorerImpl);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID);
+        when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(false);
+
+        mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(
+                scorerImpl.mSessionId, 47);
+        mLooper.dispatchAll();
+        assertFalse(mWifiScoreReport.shouldCheckIpLayer());
         verify(mNetworkAgent).sendNetworkScore(51);
     }
 }

@@ -2926,6 +2926,16 @@ public class WifiManagerTest {
         verify(mWifiConnectedNetworkScorer).onStop(10);
     }
 
+    /**
+     * Verify the call to setWifiScoringEnabled goes to WifiServiceImpl.
+     */
+    @Test
+    public void setWifiScoringEnabledGoesToWifiServiceImpl() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiManager.setWifiScoringEnabled(true);
+        verify(mWifiService).setWifiScoringEnabled(true);
+    }
+
     @Test
     public void testScanThrottle() throws Exception {
         mWifiManager.setScanThrottleEnabled(true);
