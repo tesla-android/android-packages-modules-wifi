@@ -102,8 +102,8 @@ public class SoftApManagerTest extends WifiBaseTest {
     private static final String TEST_INTERFACE_NAME = "testif0";
     private static final String TEST_SECOND_INTERFACE_NAME = "testif1";
     private static final String OTHER_INTERFACE_NAME = "otherif";
-    private static final long TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS = 600_000;
-    private static final long TEST_DEFAULT_SHUTDOWN_IDLE_INSTANCE_IN_BRIDGED_MODE_TIMEOUT_MILLS =
+    private static final long TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLIS = 600_000;
+    private static final long TEST_DEFAULT_SHUTDOWN_IDLE_INSTANCE_IN_BRIDGED_MODE_TIMEOUT_MILLIS =
             300_000;
     private static final MacAddress TEST_INTERFACE_MAC_ADDRESS =
             MacAddress.fromString("22:12:11:11:11:11");
@@ -227,11 +227,11 @@ public class SoftApManagerTest extends WifiBaseTest {
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
 
         when(mResources.getInteger(R.integer.config_wifiFrameworkSoftApShutDownTimeoutMilliseconds))
-                .thenReturn((int) TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
+                .thenReturn((int) TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLIS);
         when(mResources.getInteger(R.integer
                 .config_wifiFrameworkSoftApShutDownIdleInstanceInBridgedModeTimeoutMillisecond))
                 .thenReturn(
-                (int) TEST_DEFAULT_SHUTDOWN_IDLE_INSTANCE_IN_BRIDGED_MODE_TIMEOUT_MILLS);
+                (int) TEST_DEFAULT_SHUTDOWN_IDLE_INSTANCE_IN_BRIDGED_MODE_TIMEOUT_MILLIS);
         when(mWifiNative.setApCountryCode(
                 TEST_INTERFACE_NAME, TEST_COUNTRY_CODE.toUpperCase(Locale.ROOT)))
                 .thenReturn(true);
@@ -244,14 +244,14 @@ public class SoftApManagerTest extends WifiBaseTest {
         mTestSoftApInfo.setBandwidth(TEST_AP_BANDWIDTH_IN_SOFTAPINFO);
         mTestSoftApInfo.setBssid(TEST_INTERFACE_MAC_ADDRESS);
         mTestSoftApInfo.setApInstanceIdentifier(TEST_INTERFACE_NAME);
-        mTestSoftApInfo.setAutoShutdownTimeoutMills(TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
+        mTestSoftApInfo.setAutoShutdownTimeoutMillis(TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLIS);
         mTestSoftApInfoOnSecondInterface = new SoftApInfo();
         mTestSoftApInfoOnSecondInterface.setFrequency(TEST_AP_FREQUENCY_5G);
         mTestSoftApInfoOnSecondInterface.setBandwidth(TEST_AP_BANDWIDTH_IN_SOFTAPINFO);
         mTestSoftApInfoOnSecondInterface.setBssid(TEST_SECOND_INTERFACE_MAC_ADDRESS);
         mTestSoftApInfoOnSecondInterface.setApInstanceIdentifier(TEST_SECOND_INTERFACE_NAME);
-        mTestSoftApInfoOnSecondInterface.setAutoShutdownTimeoutMills(
-                TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
+        mTestSoftApInfoOnSecondInterface.setAutoShutdownTimeoutMillis(
+                TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLIS);
         // Default set up all features support.
         long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
                 | SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD
@@ -1410,7 +1410,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         SoftApInfo expectedInfo = new SoftApInfo(mTestSoftApInfo);
-        expectedInfo.setAutoShutdownTimeoutMills(50000);
+        expectedInfo.setAutoShutdownTimeoutMillis(50000);
         mTestSoftApInfoMap.put(TEST_INTERFACE_NAME, expectedInfo);
         verify(mCallback).onConnectedClientsOrInfoChanged(
                 mTestSoftApInfoMap, mTestWifiClientsMap, false);
@@ -1857,7 +1857,7 @@ public class SoftApManagerTest extends WifiBaseTest {
                 softApConfig.getTargetMode());
         verify(mListener).onStarted(mSoftApManager);
         verify(mWifiMetrics).addSoftApUpChangedEvent(true, softApConfig.getTargetMode(),
-                TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLS);
+                TEST_DEFAULT_SHUTDOWN_TIMEOUT_MILLIS);
         verify(mWifiMetrics).updateSoftApConfiguration(config == null
                 ? randomizedBssidConfig : expectedConfig, softApConfig.getTargetMode());
         verify(mWifiMetrics).updateSoftApCapability(softApConfig.getCapability(),

@@ -131,9 +131,9 @@ public class SoftApManager implements ActiveModeManager {
 
     private String mStartTimestamp;
 
-    private long mDefaultShutdownTimeoutMills;
+    private long mDefaultShutdownTimeoutMillis;
 
-    private long mDefaultShutdownIdleInstanceInBridgedModeTimeoutMills;
+    private long mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis;
 
     private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
 
@@ -252,9 +252,9 @@ public class SoftApManager implements ActiveModeManager {
             mBridgedModeOpportunisticsShutdownTimeoutEnabled =
                     softApConfig.isBridgedModeOpportunisticShutdownEnabled();
         }
-        mDefaultShutdownTimeoutMills = mContext.getResources().getInteger(
+        mDefaultShutdownTimeoutMillis = mContext.getResources().getInteger(
                 R.integer.config_wifiFrameworkSoftApShutDownTimeoutMilliseconds);
-        mDefaultShutdownIdleInstanceInBridgedModeTimeoutMills = mContext.getResources().getInteger(
+        mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis = mContext.getResources().getInteger(
                 R.integer
                 .config_wifiFrameworkSoftApShutDownIdleInstanceInBridgedModeTimeoutMillisecond);
         mId = id;
@@ -287,9 +287,9 @@ public class SoftApManager implements ActiveModeManager {
                 && mApConfig.getSoftApConfiguration().getBands().length > 1);
     }
 
-    private long getShutdownTimeoutMills() {
+    private long getShutdownTimeoutMillis() {
         long timeout = mApConfig.getSoftApConfiguration().getShutdownTimeoutMillis();
-        return timeout > 0 ? timeout : mDefaultShutdownTimeoutMills;
+        return timeout > 0 ? timeout : mDefaultShutdownTimeoutMillis;
     }
 
     @Override
@@ -804,11 +804,11 @@ public class SoftApManager implements ActiveModeManager {
                         if (!mIsBridgedModeIdleInstanceTimerActive) {
                             mSoftApBridgedModeIdleInstanceTimeoutMessage.schedule(SystemClock
                                     .elapsedRealtime()
-                                    + mDefaultShutdownIdleInstanceInBridgedModeTimeoutMills);
+                                    + mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis);
                             mIsBridgedModeIdleInstanceTimerActive = true;
                             Log.d(getTag(), "Bridged mode instance opportunistic timeout message"
                                     + " scheduled, delay = "
-                                    + mDefaultShutdownIdleInstanceInBridgedModeTimeoutMills);
+                                    + mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis);
                         }
                     } else {
                         cancelBridgedModeIdleInstanceTimeoutMessage();
@@ -818,7 +818,7 @@ public class SoftApManager implements ActiveModeManager {
                     cancelTimeoutMessage();
                     return;
                 }
-                long timeout = getShutdownTimeoutMills();
+                long timeout = getShutdownTimeoutMillis();
                 mSoftApTimeoutMessage.schedule(SystemClock.elapsedRealtime()
                         + timeout);
                 Log.d(getTag(), "Timeout message scheduled, delay = "
@@ -1044,7 +1044,7 @@ public class SoftApManager implements ActiveModeManager {
                     sendMessage(CMD_INTERFACE_DOWN);
                 }
                 mWifiMetrics.addSoftApUpChangedEvent(isUp, mApConfig.getTargetMode(),
-                        mDefaultShutdownTimeoutMills);
+                        mDefaultShutdownTimeoutMillis);
                 if (isUp) {
                     mWifiMetrics.updateSoftApConfiguration(mApConfig.getSoftApConfiguration(),
                             mApConfig.getTargetMode());
@@ -1098,7 +1098,7 @@ public class SoftApManager implements ActiveModeManager {
                 // Need this here since we are exiting |Started| state and won't handle any
                 // future CMD_INTERFACE_STATUS_CHANGED events after this point
                 mWifiMetrics.addSoftApUpChangedEvent(false, mApConfig.getTargetMode(),
-                        mDefaultShutdownTimeoutMills);
+                        mDefaultShutdownTimeoutMillis);
                 updateApState(WifiManager.WIFI_AP_STATE_DISABLED,
                         WifiManager.WIFI_AP_STATE_DISABLING, 0);
 
@@ -1160,8 +1160,8 @@ public class SoftApManager implements ActiveModeManager {
                             break;
                         }
                         // Update shutdown timeout
-                        apInfo.setAutoShutdownTimeoutMills(mTimeoutEnabled
-                                ? getShutdownTimeoutMills() : 0);
+                        apInfo.setAutoShutdownTimeoutMillis(mTimeoutEnabled
+                                ? getShutdownTimeoutMillis() : 0);
                         updateSoftApInfo(apInfo, false);
                         break;
                     case CMD_INTERFACE_STATUS_CHANGED:
@@ -1296,8 +1296,8 @@ public class SoftApManager implements ActiveModeManager {
                                 scheduleTimeoutMessages();
                                 // Update SoftApInfo
                                 for (SoftApInfo info : mCurrentSoftApInfoMap.values()) {
-                                    info.setAutoShutdownTimeoutMills(mTimeoutEnabled
-                                            ? getShutdownTimeoutMills() : 0);
+                                    info.setAutoShutdownTimeoutMillis(mTimeoutEnabled
+                                            ? getShutdownTimeoutMillis() : 0);
                                     updateSoftApInfo(info, false);
                                 }
                             }
