@@ -1941,4 +1941,33 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
         verify(mCarrierConfigManager).getConfigForSubId(anyInt());
     }
+
+    @Test
+    public void testResetNotification() {
+        mWifiCarrierInfoManager.resetNotification();
+        verify(mNotificationManger).cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+    }
+
+    @Test
+    public void testClear() {
+        mWifiCarrierInfoManager.setHasUserApprovedImsiPrivacyExemptionForCarrier(
+                true, DATA_CARRIER_ID);
+        mWifiCarrierInfoManager.setCarrierNetworkOffloadEnabled(DATA_SUBID, true, false);
+        mWifiCarrierInfoManager.setCarrierNetworkOffloadEnabled(NON_DATA_SUBID, false, false);
+        // Verify values.
+        assertTrue(mWifiCarrierInfoManager
+                .hasUserApprovedImsiPrivacyExemptionForCarrier(DATA_CARRIER_ID));
+        assertFalse(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
+        assertFalse(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(NON_DATA_SUBID, false));
+        // Now clear everything.
+        mWifiCarrierInfoManager.clear();
+
+        // Verify restore to default value.
+        assertFalse(mWifiCarrierInfoManager
+                .hasUserApprovedImsiPrivacyExemptionForCarrier(DATA_CARRIER_ID));
+        assertTrue(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
+        assertTrue(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(NON_DATA_SUBID, false));
+
+        verify(mNotificationManger).cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+    }
 }

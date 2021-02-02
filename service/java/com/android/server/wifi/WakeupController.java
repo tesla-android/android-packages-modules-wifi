@@ -467,4 +467,8 @@ public class WakeupController {
             mIsActive = data;
         }
     }
+
+    public void resetNotification() {
+        mWakeupOnboarding.onStop();
+    }
 }
