@@ -505,7 +505,7 @@ public class WifiScanner {
             dest.writeInt(type);
             dest.writeInt(ignoreLocationSettings ? 1 : 0);
             dest.writeInt(hideFromAppOps ? 1 : 0);
-            dest.writeInt(getRnrSetting());
+            dest.writeInt(mRnrSetting);
             if (channels != null) {
                 dest.writeInt(channels.length);
                 for (int i = 0; i < channels.length; i++) {
@@ -538,7 +538,7 @@ public class WifiScanner {
                         settings.type = in.readInt();
                         settings.ignoreLocationSettings = in.readInt() == 1;
                         settings.hideFromAppOps = in.readInt() == 1;
-                        settings.setRnrSetting(in.readInt());
+                        settings.mRnrSetting = in.readInt();
                         int num_channels = in.readInt();
                         settings.channels = new ChannelSpec[num_channels];
                         for (int i = 0; i < num_channels; i++) {

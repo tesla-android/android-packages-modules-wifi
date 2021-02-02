@@ -55,6 +55,7 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ClientModeImpl;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.FrameworkFacade;
@@ -1162,6 +1163,9 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
         }
 
         private boolean mergeRnrSetting(boolean enable6GhzRnr, ScanSettings scanSettings) {
+            if (!SdkLevel.isAtLeastS()) {
+                return false;
+            }
             if (enable6GhzRnr) {
                 return true;
             }
@@ -2762,7 +2766,8 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
                 .append(" reportEvents:").append(scanSettings.reportEvents)
                 .append(" numBssidsPerScan:").append(scanSettings.numBssidsPerScan)
                 .append(" maxScansToCache:").append(scanSettings.maxScansToCache)
-                .append(" rnrSetting:").append(scanSettings.getRnrSetting())
+                .append(" rnrSetting:").append(
+                        SdkLevel.isAtLeastS() ? scanSettings.getRnrSetting() : "Not supported")
                 .append(" channels:[ ");
         if (scanSettings.channels != null) {
             for (int i = 0; i < scanSettings.channels.length; i++) {
