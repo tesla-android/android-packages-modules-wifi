@@ -206,6 +206,7 @@ public class WifiInjector {
             mAdaptiveConnectivityEnabledSettingObserver;
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final ClientModeImplMonitor mCmiMonitor = new ClientModeImplMonitor();
+    private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
 
     public WifiInjector(WifiContext context) {
         if (context == null) {
@@ -391,9 +392,12 @@ public class WifiInjector {
                 mWifiScoreCard, wifiHandler, mWifiNative, l2KeySeed, mDeviceConfigFacade);
         mWifiMetrics.setWifiHealthMonitor(mWifiHealthMonitor);
         mDefaultClientModeManager = new DefaultClientModeManager();
+        mExternalScoreUpdateObserverProxy =
+                new ExternalScoreUpdateObserverProxy(mWifiThreadRunner);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper,
                 mWifiNative, mDefaultClientModeManager, mBatteryStats, mWifiDiagnostics,
-                mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics);
+                mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics,
+                mExternalScoreUpdateObserverProxy);
         mWifiP2pConnection = new WifiP2pConnection(mContext, wifiLooper, mActiveModeWarden);
         mConnectHelper = new ConnectHelper(mActiveModeWarden, mWifiConfigManager);
         mOpenNetworkNotifier = new OpenNetworkNotifier(mContext,
@@ -693,7 +697,7 @@ public class WifiInjector {
                 new WifiScoreReport(mScoringParams, mClock, mWifiMetrics, wifiInfo,
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiDataStall,
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
-                        ifaceName),
+                        ifaceName, mExternalScoreUpdateObserverProxy),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
                 verboseLoggingEnabled);

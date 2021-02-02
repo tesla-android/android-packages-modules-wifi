@@ -39,6 +39,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
@@ -69,6 +70,7 @@ import android.net.wifi.WifiManager;
 import android.os.BatteryStatsManager;
 import android.os.IBinder;
 import android.os.Process;
+import android.os.RemoteException;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.telephony.TelephonyManager;
@@ -143,6 +145,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     @Mock WifiMetrics mWifiMetrics;
     @Mock ISubsystemRestartCallback mSubsystemRestartCallback;
     @Mock ConnectivityManager mConnectivityManager;
+    @Mock ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
 
     ActiveModeManager.Listener<ConcreteClientModeManager> mClientListener;
     ActiveModeManager.Listener<SoftApManager> mSoftApListener;
@@ -260,7 +263,8 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 mSettingsStore,
                 mFacade,
                 mWifiPermissionsUtil,
-                mWifiMetrics);
+                mWifiMetrics,
+                mExternalScoreUpdateObserverProxy);
         // SelfRecovery is created in WifiInjector after ActiveModeWarden, so getSelfRecovery()
         // returns null when constructing ActiveModeWarden.
         when(mWifiInjector.getSelfRecovery()).thenReturn(mSelfRecovery);
@@ -3156,6 +3160,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         IBinder iBinder = mock(IBinder.class);
         IWifiConnectedNetworkScorer iScorer = mock(IWifiConnectedNetworkScorer.class);
         mActiveModeWarden.setWifiConnectedNetworkScorer(iBinder, iScorer);
+        verify(iScorer).onSetScoreUpdateObserver(mExternalScoreUpdateObserverProxy);
         enterClientModeActiveState();
         assertInEnabledState();
         verify(mClientModeManager).setWifiConnectedNetworkScorer(iBinder, iScorer);
@@ -3173,6 +3178,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         IBinder iBinder = mock(IBinder.class);
         IWifiConnectedNetworkScorer iScorer = mock(IWifiConnectedNetworkScorer.class);
         mActiveModeWarden.setWifiConnectedNetworkScorer(iBinder, iScorer);
+        verify(iScorer).onSetScoreUpdateObserver(mExternalScoreUpdateObserverProxy);
         enterClientModeActiveState();
         assertInEnabledState();
         verify(mClientModeManager).setWifiConnectedNetworkScorer(iBinder, iScorer);
@@ -3180,6 +3186,19 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         enterScanOnlyModeActiveState(true);
 
         verify(mClientModeManager).clearWifiConnectedNetworkScorer();
+    }
+
+    @Test
+    public void handleWifiScorerSetScoreUpdateObserverFailure() throws Exception {
+        IBinder iBinder = mock(IBinder.class);
+        IWifiConnectedNetworkScorer iScorer = mock(IWifiConnectedNetworkScorer.class);
+        doThrow(new RemoteException()).when(iScorer).onSetScoreUpdateObserver(any());
+        mActiveModeWarden.setWifiConnectedNetworkScorer(iBinder, iScorer);
+        verify(iScorer).onSetScoreUpdateObserver(mExternalScoreUpdateObserverProxy);
+        enterClientModeActiveState();
+        assertInEnabledState();
+        // Ensure we did not propagate the scorer.
+        verify(mClientModeManager, never()).setWifiConnectedNetworkScorer(iBinder, iScorer);
     }
 
     /** Verify that the primary changed callback is triggered when entering client mode. */
