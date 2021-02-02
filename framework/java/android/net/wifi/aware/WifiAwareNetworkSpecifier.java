@@ -471,8 +471,8 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                     WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
 
             return new WifiAwareNetworkSpecifier(type, role, mDiscoverySession.mClientId,
-                    mDiscoverySession.mSessionId, mPeerHandle.peerId, null, mPmk,
-                    mPskPassphrase, mPort, mTransportProtocol);
+                    mDiscoverySession.mSessionId, mPeerHandle != null ? mPeerHandle.peerId : 0,
+                    null, mPmk, mPskPassphrase, mPort, mTransportProtocol);
         }
     }
 }
