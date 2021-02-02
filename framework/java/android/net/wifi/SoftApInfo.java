@@ -134,9 +134,9 @@ public final class SoftApInfo implements Parcelable {
     private @WifiAnnotations.WifiStandard int mWifiStandard = ScanResult.WIFI_STANDARD_UNKNOWN;
 
     /**
-     * The current shutdown timeout mills which applied on Soft AP.
+     * The current shutdown timeout millis which applied on Soft AP.
      */
-    private long mIdleShutdownTimeoutMills;
+    private long mIdleShutdownTimeoutMillis;
 
     /**
      * Get the frequency which AP resides on.
@@ -249,11 +249,11 @@ public final class SoftApInfo implements Parcelable {
 
 
     /**
-     * Set current shutdown timeout mills which applied on Soft AP.
+     * Set current shutdown timeout millis which applied on Soft AP.
      * @hide
      */
-    public void setAutoShutdownTimeoutMills(long idleShutdownTimeoutMills) {
-        mIdleShutdownTimeoutMills = idleShutdownTimeoutMills;
+    public void setAutoShutdownTimeoutMillis(long idleShutdownTimeoutMillis) {
+        mIdleShutdownTimeoutMillis = idleShutdownTimeoutMillis;
     }
 
     /**
@@ -270,7 +270,7 @@ public final class SoftApInfo implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        return mIdleShutdownTimeoutMills;
+        return mIdleShutdownTimeoutMillis;
     }
 
     /**
@@ -283,7 +283,7 @@ public final class SoftApInfo implements Parcelable {
             mBssid = source.mBssid;
             mWifiStandard = source.mWifiStandard;
             mApInstanceIdentifier = source.mApInstanceIdentifier;
-            mIdleShutdownTimeoutMills = source.mIdleShutdownTimeoutMills;
+            mIdleShutdownTimeoutMillis = source.mIdleShutdownTimeoutMillis;
         }
     }
 
@@ -307,7 +307,7 @@ public final class SoftApInfo implements Parcelable {
         dest.writeParcelable(mBssid, flags);
         dest.writeInt(mWifiStandard);
         dest.writeString(mApInstanceIdentifier);
-        dest.writeLong(mIdleShutdownTimeoutMills);
+        dest.writeLong(mIdleShutdownTimeoutMillis);
     }
 
     @NonNull
@@ -320,7 +320,7 @@ public final class SoftApInfo implements Parcelable {
             info.mBssid = in.readParcelable(MacAddress.class.getClassLoader());
             info.mWifiStandard = in.readInt();
             info.mApInstanceIdentifier = in.readString();
-            info.mIdleShutdownTimeoutMills = in.readLong();
+            info.mIdleShutdownTimeoutMillis = in.readLong();
             return info;
         }
 
@@ -339,7 +339,7 @@ public final class SoftApInfo implements Parcelable {
         if (mBssid != null) sbuf.append(",bssid=").append(mBssid.toString());
         sbuf.append(", wifiStandard= ").append(mWifiStandard);
         sbuf.append(", mApInstanceIdentifier= ").append(mApInstanceIdentifier);
-        sbuf.append(", mIdleShutdownTimeoutMills= ").append(mIdleShutdownTimeoutMills);
+        sbuf.append(", mIdleShutdownTimeoutMillis= ").append(mIdleShutdownTimeoutMillis);
         sbuf.append("}");
         return sbuf.toString();
     }
@@ -354,12 +354,12 @@ public final class SoftApInfo implements Parcelable {
                 && Objects.equals(mBssid, softApInfo.mBssid)
                 && mWifiStandard == softApInfo.mWifiStandard
                 && Objects.equals(mApInstanceIdentifier, softApInfo.mApInstanceIdentifier)
-                && mIdleShutdownTimeoutMills == softApInfo.mIdleShutdownTimeoutMills;
+                && mIdleShutdownTimeoutMillis == softApInfo.mIdleShutdownTimeoutMillis;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(mFrequency, mBandwidth, mBssid, mWifiStandard, mApInstanceIdentifier,
-                mIdleShutdownTimeoutMills);
+                mIdleShutdownTimeoutMillis);
     }
 }
