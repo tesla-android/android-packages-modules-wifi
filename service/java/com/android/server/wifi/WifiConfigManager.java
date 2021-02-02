@@ -259,6 +259,7 @@ public class WifiConfigManager {
     private final WifiScoreCard mWifiScoreCard;
     // Keep order of network connection.
     private final LruConnectionTracker mLruConnectionTracker;
+    private final BuildProperties mBuildProperties;
 
     /**
      * Local log used for debugging any WifiConfigManager issues.
@@ -364,7 +365,8 @@ public class WifiConfigManager {
             FrameworkFacade frameworkFacade,
             DeviceConfigFacade deviceConfigFacade,
             WifiScoreCard wifiScoreCard,
-            LruConnectionTracker lruConnectionTracker) {
+            LruConnectionTracker lruConnectionTracker,
+            BuildProperties buildProperties) {
         mContext = context;
         mClock = clock;
         mUserManager = userManager;
@@ -401,6 +403,7 @@ public class WifiConfigManager {
                 context.getSystemService(ActivityManager.class).isLowRamDevice() ? 128 : 256);
         mMacAddressUtil = macAddressUtil;
         mLruConnectionTracker = lruConnectionTracker;
+        mBuildProperties = buildProperties;
     }
 
     /**
@@ -3077,6 +3080,24 @@ public class WifiConfigManager {
     }
 
     /**
+     * Helper method to handle any config store errors on user builds vs other debuggable builds.
+     */
+    private boolean handleConfigStoreFailure(boolean onlyUserStore) {
+        // On eng/userdebug builds, return failure to leave the device in a debuggable state.
+        if (!mBuildProperties.isUserBuild()) return false;
+
+        // On user builds, ignore the failure and let the user create new networks.
+        Log.w(TAG, "Ignoring config store errors on user build");
+        if (!onlyUserStore) {
+            loadInternalData(Collections.emptyList(), Collections.emptyList(),
+                    Collections.emptyMap());
+        } else {
+            loadInternalDataFromUserStore(Collections.emptyList());
+        }
+        return true;
+    }
+
+    /**
      * Read the config store and load the in-memory lists from the store data retrieved and sends
      * out the networks changed broadcast.
      *
@@ -3106,10 +3127,10 @@ public class WifiConfigManager {
             mWifiConfigStore.read();
         } catch (IOException | IllegalStateException e) {
             Log.wtf(TAG, "Reading from new store failed. All saved networks are lost!", e);
-            return false;
+            return handleConfigStoreFailure(false);
         } catch (XmlPullParserException e) {
             Log.wtf(TAG, "XML deserialization of store failed. All saved networks are lost!", e);
-            return false;
+            return handleConfigStoreFailure(false);
         }
         loadInternalData(mNetworkListSharedStoreData.getConfigurations(),
                 mNetworkListUserStoreData.getConfigurations(),
@@ -3141,11 +3162,11 @@ public class WifiConfigManager {
             mWifiConfigStore.switchUserStoresAndRead(userStoreFiles);
         } catch (IOException | IllegalStateException e) {
             Log.wtf(TAG, "Reading from new store failed. All saved private networks are lost!", e);
-            return false;
+            return handleConfigStoreFailure(true);
         } catch (XmlPullParserException e) {
             Log.wtf(TAG, "XML deserialization of store failed. All saved private networks are "
                     + "lost!", e);
-            return false;
+            return handleConfigStoreFailure(true);
         }
         loadInternalDataFromUserStore(mNetworkListUserStoreData.getConfigurations());
         return true;
