@@ -48,8 +48,8 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Process;
+import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.telephony.SubscriptionManager;
@@ -63,7 +63,6 @@ import android.view.WindowManager;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.modules.utils.build.SdkLevel;
-import com.android.server.wifi.util.ExternalCallbackTracker;
 import com.android.server.wifi.util.LruConnectionTracker;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
@@ -403,10 +402,10 @@ public class WifiNetworkSuggestionsManager {
     private final Map<String, Set<ExtendedWifiNetworkSuggestion>>
             mPasspointInfo = new HashMap<>();
 
-    private final HashMap<String, ExternalCallbackTracker<ISuggestionConnectionStatusListener>>
+    private final HashMap<String, RemoteCallbackList<ISuggestionConnectionStatusListener>>
             mSuggestionStatusListenerPerApp = new HashMap<>();
 
-    private final HashMap<String, ExternalCallbackTracker<ISuggestionUserApprovalStatusListener>>
+    private final HashMap<String, RemoteCallbackList<ISuggestionUserApprovalStatusListener>>
             mSuggestionUserApprovalStatusListenerPerApp = new HashMap<>();
 
     /**
@@ -1303,9 +1302,9 @@ public class WifiNetworkSuggestionsManager {
         removeInternal(Collections.emptyList(), packageName, perAppInfo);
         // Remove the package fully from the internal database.
         mActiveNetworkSuggestionsPerApp.remove(packageName);
-        ExternalCallbackTracker<ISuggestionConnectionStatusListener> listenerTracker =
+        RemoteCallbackList<ISuggestionConnectionStatusListener> listenerTracker =
                 mSuggestionStatusListenerPerApp.remove(packageName);
-        if (listenerTracker != null) listenerTracker.clear();
+        if (listenerTracker != null) listenerTracker.kill();
         saveToStore();
         Log.i(TAG, "Removed " + packageName);
     }
@@ -2067,9 +2066,9 @@ public class WifiNetworkSuggestionsManager {
      */
     private void sendConnectionFailureIfAllowed(String packageName, @Nullable String featureId,
             int uid, @NonNull WifiNetworkSuggestion matchingSuggestion, int connectionEvent) {
-        ExternalCallbackTracker<ISuggestionConnectionStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionConnectionStatusListener> listenersTracker =
                 mSuggestionStatusListenerPerApp.get(packageName);
-        if (listenersTracker == null || listenersTracker.getNumCallbacks() == 0) {
+        if (listenersTracker == null || listenersTracker.getRegisteredCallbackCount() == 0) {
             return;
         }
         try {
@@ -2082,14 +2081,16 @@ public class WifiNetworkSuggestionsManager {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Sending connection failure event to " + packageName);
         }
-        for (ISuggestionConnectionStatusListener listener : listenersTracker.getCallbacks()) {
+        int itemCount = listenersTracker.beginBroadcast();
+        for (int i = 0; i < itemCount; i++) {
             try {
-                listener.onConnectionStatus(matchingSuggestion,
+                listenersTracker.getBroadcastItem(i).onConnectionStatus(matchingSuggestion,
                         internalConnectionEventToSuggestionFailureCode(connectionEvent));
             } catch (RemoteException e) {
                 Log.e(TAG, "sendNetworkCallback: remote exception -- " + e);
             }
         }
+        listenersTracker.finishBroadcast();
     }
 
     private @WifiManager.SuggestionConnectionStatusCode
@@ -2110,97 +2111,90 @@ public class WifiNetworkSuggestionsManager {
 
     /**
      * Register a SuggestionUserApprovalStatusListener on user approval status changes.
-     * @param binder IBinder instance to allow cleanup if the app dies.
      * @param listener ISuggestionUserApprovalStatusListener instance to add.
-     * @param listenerIdentifier identifier of the listener, should be hash code of listener.
      * @param uid uid of the app.
      * @return true if succeed otherwise false.
      */
-    public boolean addSuggestionUserApprovalStatusListener(@NonNull IBinder binder,
-            @NonNull ISuggestionUserApprovalStatusListener listener,
-            int listenerIdentifier, String packageName, int uid) {
+    public boolean addSuggestionUserApprovalStatusListener(
+            @NonNull ISuggestionUserApprovalStatusListener listener, String packageName, int uid) {
         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return false;
         }
-        ExternalCallbackTracker<ISuggestionUserApprovalStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
         if (listenersTracker == null) {
-            listenersTracker =
-                    new ExternalCallbackTracker<>(mHandler);
+            listenersTracker = new RemoteCallbackList<>();
         }
-        listenersTracker.add(binder, listener, listenerIdentifier);
+        listenersTracker.register(listener);
         mSuggestionUserApprovalStatusListenerPerApp.put(packageName, listenersTracker);
         return true;
     }
 
     /**
      * Unregister a listener on on user approval status changes.
-     * @param listenerIdentifier identifier of the listener, should be hash code of listener.
+     * @param listener ISuggestionUserApprovalStatusListener instance to remove.
      * @param uid uid of the app.
      */
-    public void removeSuggestionUserApprovalStatusListener(int listenerIdentifier,
-            String packageName, int uid) {
+    public void removeSuggestionUserApprovalStatusListener(
+            @NonNull ISuggestionUserApprovalStatusListener listener, String packageName, int uid) {
         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return;
         }
-        ExternalCallbackTracker<ISuggestionUserApprovalStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
-        if (listenersTracker == null || listenersTracker.remove(listenerIdentifier) == null) {
-            Log.w(TAG, "removeSuggestionUserApprovalStatusListener: Listener["
-                    + listenerIdentifier + "] from " + packageName + " already removed.");
+        if (listenersTracker == null || !listenersTracker.unregister(listener)) {
+            Log.w(TAG, "removeSuggestionUserApprovalStatusListener: Listener from " + packageName
+                    + " already removed.");
             return;
         }
-        if (listenersTracker != null && listenersTracker.getNumCallbacks() == 0) {
+        if (listenersTracker != null && listenersTracker.getRegisteredCallbackCount() == 0) {
             mSuggestionUserApprovalStatusListenerPerApp.remove(packageName);
         }
     }
 
     /**
      * Register a SuggestionConnectionStatusListener on network connection failure.
-     * @param binder IBinder instance to allow cleanup if the app dies.
      * @param listener ISuggestionNetworkCallback instance to add.
-     * @param listenerIdentifier identifier of the listener, should be hash code of listener.
      * @param uid uid of the app.
      * @return true if succeed otherwise false.
      */
-    public boolean registerSuggestionConnectionStatusListener(@NonNull IBinder binder,
+    public boolean registerSuggestionConnectionStatusListener(
             @NonNull ISuggestionConnectionStatusListener listener,
-            int listenerIdentifier, String packageName, int uid) {
+            String packageName, int uid) {
         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return false;
         }
-        ExternalCallbackTracker<ISuggestionConnectionStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionConnectionStatusListener> listenersTracker =
                 mSuggestionStatusListenerPerApp.get(packageName);
         if (listenersTracker == null) {
-            listenersTracker =
-                    new ExternalCallbackTracker<>(mHandler);
+            listenersTracker = new RemoteCallbackList<>();
         }
-        listenersTracker.add(binder, listener, listenerIdentifier);
+        listenersTracker.register(listener);
         mSuggestionStatusListenerPerApp.put(packageName, listenersTracker);
         return true;
     }
 
     /**
      * Unregister a listener on network connection failure.
-     * @param listenerIdentifier identifier of the listener, should be hash code of listener.
+     * @param listener ISuggestionNetworkCallback instance to remove.
      * @param uid uid of the app.
      */
-    public void unregisterSuggestionConnectionStatusListener(int listenerIdentifier,
-            String packageName, int uid) {
+    public void unregisterSuggestionConnectionStatusListener(
+            @NonNull ISuggestionConnectionStatusListener listener, String packageName, int uid) {
         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return;
         }
-        ExternalCallbackTracker<ISuggestionConnectionStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionConnectionStatusListener> listenersTracker =
                 mSuggestionStatusListenerPerApp.get(packageName);
-        if (listenersTracker == null || listenersTracker.remove(listenerIdentifier) == null) {
-            Log.w(TAG, "unregisterSuggestionConnectionStatusListener: Listener["
-                    + listenerIdentifier + "] from " + packageName + " already unregister.");
+        if (listenersTracker == null || !listenersTracker.unregister(listener)) {
+            Log.w(TAG, "unregisterSuggestionConnectionStatusListener: Listener from " + packageName
+                    + " already unregister.");
         }
-        if (listenersTracker != null && listenersTracker.getNumCallbacks() == 0) {
+        if (listenersTracker != null && listenersTracker.getRegisteredCallbackCount() == 0) {
             mSuggestionStatusListenerPerApp.remove(packageName);
         }
     }
@@ -2548,21 +2542,23 @@ public class WifiNetworkSuggestionsManager {
     }
 
     private void onSuggestionUserApprovalStatusChanged(String packageName) {
-        ExternalCallbackTracker<ISuggestionUserApprovalStatusListener> listenersTracker =
+        RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
-        if (listenersTracker == null || listenersTracker.getNumCallbacks() == 0) {
+        if (listenersTracker == null || listenersTracker.getRegisteredCallbackCount() == 0) {
             return;
         }
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Sending user approval status change event to " + packageName);
         }
-        for (ISuggestionUserApprovalStatusListener listener : listenersTracker.getCallbacks()) {
+        int itemCount = listenersTracker.beginBroadcast();
+        for (int i = 0; i < itemCount; i++) {
             try {
-                listener.onUserApprovalStatusChange();
+                listenersTracker.getBroadcastItem(i).onUserApprovalStatusChange();
             } catch (RemoteException e) {
                 Log.e(TAG, "sendUserApprovalStatusChange: remote exception -- " + e);
             }
         }
+        listenersTracker.finishBroadcast();
     }
 
     /**
