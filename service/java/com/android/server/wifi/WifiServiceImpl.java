@@ -4678,12 +4678,9 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#addSuggestionConnectionStatusListener(Executor,
      * SuggestionConnectionStatusListener)}
      */
-    public void registerSuggestionConnectionStatusListener(IBinder binder,
-            @NonNull ISuggestionConnectionStatusListener listener,
-            int listenerIdentifier, String packageName, @Nullable String featureId) {
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
+    public void registerSuggestionConnectionStatusListener(
+            @NonNull ISuggestionConnectionStatusListener listener, String packageName,
+            @Nullable String featureId) {
         if (listener == null) {
             throw new IllegalArgumentException("listener must not be null");
         }
@@ -4695,8 +4692,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiThreadRunner.post(() ->
                 mWifiNetworkSuggestionsManager
-                        .registerSuggestionConnectionStatusListener(binder, listener,
-                                listenerIdentifier, packageName, uid));
+                        .registerSuggestionConnectionStatusListener(listener, packageName, uid));
     }
 
     /**
@@ -4704,7 +4700,7 @@ public class WifiServiceImpl extends BaseWifiService {
      * SuggestionConnectionStatusListener)}
      */
     public void unregisterSuggestionConnectionStatusListener(
-            int listenerIdentifier, String packageName) {
+            @NonNull ISuggestionConnectionStatusListener listener, String packageName) {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
         if (mVerboseLoggingEnabled) {
@@ -4713,8 +4709,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiThreadRunner.post(() ->
                 mWifiNetworkSuggestionsManager
-                        .unregisterSuggestionConnectionStatusListener(listenerIdentifier,
-                                packageName, uid));
+                        .unregisterSuggestionConnectionStatusListener(listener, packageName, uid));
     }
 
     @Override
@@ -4851,12 +4846,8 @@ public class WifiServiceImpl extends BaseWifiService {
      * WifiManager.SuggestionUserApprovalStatusListener)}
      */
     @Override
-    public boolean addSuggestionUserApprovalStatusListener(IBinder binder,
-            ISuggestionUserApprovalStatusListener listener, int listenerIdentifier,
-            String packageName, String featureId) {
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
+    public boolean addSuggestionUserApprovalStatusListener(
+            ISuggestionUserApprovalStatusListener listener, String packageName) {
         if (listener == null) {
             throw new IllegalArgumentException("listener must not be null");
         }
@@ -4866,8 +4857,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mLog.info("addSuggestionUserApprovalStatusListener uid=%").c(uid).flush();
         }
         return mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager
-                .addSuggestionUserApprovalStatusListener(
-                        binder, listener, listenerIdentifier, packageName, uid), false);
+                .addSuggestionUserApprovalStatusListener(listener, packageName, uid), false);
     }
 
     /**
@@ -4875,8 +4865,8 @@ public class WifiServiceImpl extends BaseWifiService {
      * WifiManager.SuggestionUserApprovalStatusListener)}
      */
     @Override
-    public void removeSuggestionUserApprovalStatusListener(int listenerIdentifier,
-            String packageName) {
+    public void removeSuggestionUserApprovalStatusListener(
+            ISuggestionUserApprovalStatusListener listener, String packageName) {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
         if (mVerboseLoggingEnabled) {
@@ -4885,8 +4875,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiThreadRunner.post(() ->
                 mWifiNetworkSuggestionsManager
-                        .removeSuggestionUserApprovalStatusListener(listenerIdentifier,
-                                packageName, uid));
+                        .removeSuggestionUserApprovalStatusListener(listener, packageName, uid));
     }
 
     /**
