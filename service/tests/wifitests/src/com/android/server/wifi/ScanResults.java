@@ -135,9 +135,8 @@ public class ScanResults {
             ScanDetail detail = new ScanDetail(nd, WifiSsid.createFromAsciiEncoded(ssid),
                     bssid, "", rssi, freq,
                     // needed so that scan results aren't rejected because they are older than scan
-                    // start. Divide by 1000 needed to avoid overflow when converting to nanoseconds
-                    // in WificondScannerImpl.
-                    Long.MAX_VALUE / 1_000,
+                    // start.
+                    Long.MAX_VALUE,
                     ie, anqpLines, generateIERawDatafromScanResultIE(ie));
             results[i] = detail;
         }
