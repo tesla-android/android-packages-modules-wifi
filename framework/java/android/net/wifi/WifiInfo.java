@@ -1278,6 +1278,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @return List of information elements {@link ScanResult.InformationElement} or null.
      */
     @Nullable
+    @SuppressWarnings("NullableCollection")
     public List<ScanResult.InformationElement> getInformationElements() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
