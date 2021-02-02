@@ -7460,4 +7460,28 @@ public class WifiManager {
         }
     }
 
+    /**
+     * Enable or disable Wi-Fi scoring.  Wi-Fi network status is evaluated by Wi-Fi scoring
+     * {@link WifiScoreReport}. This API enables/disables Wi-Fi scoring to take action on network
+     * selection.
+     *
+     * @param enabled {@code true} to enable, {@code false} to disable.
+     * @return true The status of Wifi scoring is set successfully.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public boolean setWifiScoringEnabled(boolean enabled) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "setWifiScoringEnabled: " + enabled);
+        }
+        try {
+            return mService.setWifiScoringEnabled(enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

@@ -318,4 +318,6 @@ interface IWifiManager
     void setEmergencyScanRequestInProgress(boolean inProgress);
 
     void removeAppState(int targetAppUid, String targetApppackageName);
+
+    boolean setWifiScoringEnabled(boolean enabled);
 }

@@ -817,4 +817,9 @@ public class BaseWifiService extends IWifiManager.Stub {
     public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public boolean setWifiScoringEnabled(boolean enabled) {
+        throw new UnsupportedOperationException();
+    }
 }

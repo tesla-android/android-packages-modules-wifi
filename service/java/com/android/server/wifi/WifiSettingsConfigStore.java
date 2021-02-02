@@ -82,6 +82,12 @@ public class WifiSettingsConfigStore {
     public static final Key<String> WIFI_P2P_DEVICE_NAME =
             new Key<>("wifi_p2p_device_name", null);
 
+    /**
+     * Whether Wifi scoring is enabled or not.
+     */
+    public static final Key<Boolean> WIFI_SCORING_ENABLED =
+            new Key<>("wifi_scoring_enabled", true);
+
     /******** Wifi shared pref keys ***************/
 
     private final Context mContext;

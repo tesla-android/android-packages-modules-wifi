@@ -7376,4 +7376,32 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mOpenNetworkNotifier).clearPendingNotification(false);
         verify(mWakeupController).resetNotification();
     }
+
+    /**
+     * Verify that a call to setWifiScoringEnabled throws a SecurityException if the caller does
+     * not have NETWORK_SETTINGS permission.
+     */
+    @Test
+    public void testSetWifiScoringEnabledThrowsSecurityExceptionOnMissingPermissions() {
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(
+                eq(android.Manifest.permission.NETWORK_SETTINGS),
+                eq("WifiService"));
+        try {
+            mWifiServiceImpl.setWifiScoringEnabled(true);
+            fail("expected SecurityException");
+        } catch (SecurityException expected) {
+        }
+    }
+
+    /**
+     * Verify that setWifiScoringEnabled sets the boolean to {@link WifiSettingsStore}.
+     */
+    @Test
+    public void testSetWifiScoringEnabledGoesToSettingsStore() {
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.setWifiScoringEnabled(true);
+        mLooper.stopAutoDispatch();
+        verify(mSettingsStore).handleWifiScoringEnabled(true);
+    }
 }
