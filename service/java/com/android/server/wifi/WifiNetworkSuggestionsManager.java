@@ -1346,6 +1346,7 @@ public class WifiNetworkSuggestionsManager {
         }
         mSuggestionStatusListenerPerApp.clear();
         mSuggestionUserApprovalStatusListenerPerApp.clear();
+        resetNotification();
         saveToStore();
         Log.i(TAG, "Cleared all internal state");
     }
@@ -2587,5 +2588,10 @@ public class WifiNetworkSuggestionsManager {
         pw.println("WifiNetworkSuggestionsManager - Networks End ----");
         pw.println("WifiNetworkSuggestionsManager - Network Suggestions matching connection: "
                 + mActiveNetworkSuggestionsMatchingConnection);
+    }
+
+    public void resetNotification() {
+        mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mUserApprovalUiActive = false;
     }
 }

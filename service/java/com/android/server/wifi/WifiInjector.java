@@ -966,4 +966,8 @@ public class WifiInjector {
     public MakeBeforeBreakManager getMakeBeforeBreakManager() {
         return mMakeBeforeBreakManager;
     }
+
+    public OpenNetworkNotifier getOpenNetworkNotifier() {
+        return mOpenNetworkNotifier;
+    }
 }

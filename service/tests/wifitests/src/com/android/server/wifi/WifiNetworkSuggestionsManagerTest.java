@@ -2588,6 +2588,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         // Verify that we stopped watching these apps for app-ops changes.
         verify(mAppOpsManager, times(2)).stopWatchingMode(any());
+
+        verify(mNotificationManger).cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
     }
 
     /**
@@ -4872,5 +4874,11 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         config.FQDN = fqdn;
         config.setPasspointUniqueId(uniqueId);
         return config;
+    }
+
+    @Test
+    public void testResetNotification() {
+        mWifiNetworkSuggestionsManager.resetNotification();
+        verify(mNotificationManger).cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
     }
 }
