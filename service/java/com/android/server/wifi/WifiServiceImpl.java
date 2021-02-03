@@ -269,6 +269,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final WifiDataStall mWifiDataStall;
     private final WifiNative mWifiNative;
     private final SimRequiredNotifier mSimRequiredNotifier;
+    private final MakeBeforeBreakManager mMakeBeforeBreakManager;
 
     /**
      * The wrapper of SoftApCallback is used in WifiService internally.
@@ -348,6 +349,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiGlobals = wifiInjector.getWifiGlobals();
         mSimRequiredNotifier = wifiInjector.getSimRequiredNotifier();
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
+        mMakeBeforeBreakManager = mWifiInjector.getMakeBeforeBreakManager();
         mCountryCode.registerListener(new CountryCodeListenerProxy());
     }
 
@@ -2731,10 +2733,12 @@ public class WifiServiceImpl extends BaseWifiService {
             }
         };
         mWifiThreadRunner.post(() ->
-                mConnectHelper.connectToNetwork(
-                        new NetworkUpdateResult(netId),
-                        new ActionListenerWrapper(connectListener),
-                        callingUid)
+                mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
+                        mConnectHelper.connectToNetwork(
+                                new NetworkUpdateResult(netId),
+                                new ActionListenerWrapper(connectListener),
+                                callingUid)
+                )
         );
         // now wait for response.
         try {
@@ -3593,7 +3597,7 @@ public class WifiServiceImpl extends BaseWifiService {
             pw.println("SettingsStore:");
             mSettingsStore.dump(fd, pw, args);
             mActiveModeWarden.dump(fd, pw, args);
-            mWifiInjector.getMakeBeforeBreakManager().dump(fd, pw, args);
+            mMakeBeforeBreakManager.dump(fd, pw, args);
             pw.println();
             mWifiTrafficPoller.dump(fd, pw, args);
             pw.println();
@@ -4580,7 +4584,8 @@ public class WifiServiceImpl extends BaseWifiService {
                 }
                 result = new NetworkUpdateResult(netId);
             }
-            mConnectHelper.connectToNetwork(result, wrapper, uid);
+            mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
+                    mConnectHelper.connectToNetwork(result, wrapper, uid));
         });
     }
 
@@ -4601,7 +4606,9 @@ public class WifiServiceImpl extends BaseWifiService {
                     mWifiConfigManager.updateBeforeSaveNetwork(config, uid);
             if (result.isSuccess()) {
                 broadcastWifiCredentialChanged(WifiManager.WIFI_CREDENTIAL_SAVED, config);
-                mActiveModeWarden.getPrimaryClientModeManager().saveNetwork(result, wrapper, uid);
+                mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
+                        mActiveModeWarden.getPrimaryClientModeManager()
+                                .saveNetwork(result, wrapper, uid));
                 if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)) {
                     mWifiMetrics.logUserActionEvent(
                             UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK, config.networkId);

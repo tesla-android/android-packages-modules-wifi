@@ -26,6 +26,7 @@ import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,6 +41,7 @@ public class MakeBeforeBreakManager {
     private final ClientModeImplMonitor mCmiMonitor;
     private final ClientModeManagerBroadcastQueue mBroadcastQueue;
 
+    private final List<Runnable> mOnAllSecondaryTransientCmmsStoppedListeners = new ArrayList<>();
     private boolean mVerboseLoggingEnabled = false;
 
     private static class MakeBeforeBreakInfo {
@@ -129,6 +131,7 @@ public class MakeBeforeBreakManager {
                 }
             }
             recoverPrimary();
+            triggerOnStoppedListenersIfNoMoreSecondaryTransientCmms();
         }
 
         @Override
@@ -143,6 +146,7 @@ public class MakeBeforeBreakManager {
                     (ConcreteClientModeManager) activeModeManager;
             recoverPrimary();
             maybeContinueMakeBeforeBreak(clientModeManager);
+            triggerOnStoppedListenersIfNoMoreSecondaryTransientCmms();
         }
     }
 
@@ -204,6 +208,9 @@ public class MakeBeforeBreakManager {
         Log.i(TAG, "Starting MBB switch primary from " + currentPrimary + " to " + newPrimary
                 + " by setting current primary's role to ROLE_CLIENT_SECONDARY_TRANSIENT");
 
+        // Since role change is not atomic, we must first make the previous primary CMM into a
+        // secondary transient CMM. Thus, after this call to setRole() completes, there is no
+        // primary CMM and 2 secondary transient CMMs.
         currentPrimary.setRole(
                 ROLE_CLIENT_SECONDARY_TRANSIENT, ActiveModeWarden.INTERNAL_REQUESTOR_WS);
         // immediately send fake disconnection broadcasts upon changing primary CMM's role to
@@ -263,5 +270,56 @@ public class MakeBeforeBreakManager {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of MakeBeforeBreakManager");
         pw.println("mMakeBeforeBreakInfo=" + mMakeBeforeBreakInfo);
+    }
+
+    /**
+     * Stop all ClientModeManagers with role
+     * {@link ActiveModeManager#ROLE_CLIENT_SECONDARY_TRANSIENT}.
+     *
+     * This is useful when an explicit connection was requested by an external caller
+     * (e.g. Settings, legacy app calling {@link android.net.wifi.WifiManager#enableNetwork}).
+     * We should abort any ongoing Make Before Break attempt to avoid interrupting the explicit
+     * connection.
+     *
+     * @param onStoppedListener triggered when all secondary transient CMMs have been stopped.
+     */
+    public void stopAllSecondaryTransientClientModeManagers(Runnable onStoppedListener) {
+        // no secondary transient CMM exists, trigger the callback immediately and return
+        if (mActiveModeWarden.getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT) == null) {
+            if (mVerboseLoggingEnabled) {
+                Log.d(TAG, "No secondary transient CMM active, trigger callback immediately");
+            }
+            onStoppedListener.run();
+            return;
+        }
+
+        // there exists at least 1 secondary transient CMM, but no primary
+        // TODO(b/177692017): Since switching roles is not atomic, there is a short period of time
+        //  during the Make Before Break transition when there are 2 SECONDARY_TRANSIENT CMMs and 0
+        //  primary CMMs. If this method is called at that time, it will destroy all CMMs, resulting
+        //  in no primary, and causing any subsequent connections to fail. Hopefully this does
+        //  not occur frequently.
+        if (mActiveModeWarden.getPrimaryClientModeManagerNullable() == null) {
+            Log.wtf(TAG, "Called stopAllSecondaryTransientClientModeManagers with no primary CMM!");
+        }
+
+        mOnAllSecondaryTransientCmmsStoppedListeners.add(onStoppedListener);
+        mActiveModeWarden.stopAllClientModeManagersInRole(ROLE_CLIENT_SECONDARY_TRANSIENT);
+    }
+
+    private void triggerOnStoppedListenersIfNoMoreSecondaryTransientCmms() {
+        // not all secondary transient CMMs stopped, keep waiting
+        if (mActiveModeWarden.getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT) != null) {
+            return;
+        }
+
+        if (mVerboseLoggingEnabled) {
+            Log.i(TAG, "All secondary transient CMMs stopped, triggering queued callbacks");
+        }
+
+        for (Runnable onStoppedListener : mOnAllSecondaryTransientCmmsStoppedListeners) {
+            onStoppedListener.run();
+        }
+        mOnAllSecondaryTransientCmmsStoppedListeners.clear();
     }
 }

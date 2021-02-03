@@ -28,12 +28,14 @@ import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.NotificationManager;
+import android.app.test.MockAnswerUtil;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -89,6 +91,7 @@ public class OpenNetworkNotifierTest extends WifiBaseTest {
     @Mock private ConnectToNetworkNotificationBuilder mNotificationBuilder;
     @Mock private UserManager mUserManager;
     @Mock private ConnectHelper mConnectHelper;
+    @Mock private MakeBeforeBreakManager mMakeBeforeBreakManager;
     private OpenNetworkNotifier mNotificationController;
     private TestLooper mLooper;
     private BroadcastReceiver mBroadcastReceiver;
@@ -120,7 +123,8 @@ public class OpenNetworkNotifierTest extends WifiBaseTest {
         mLooper = new TestLooper();
         mNotificationController = new OpenNetworkNotifier(
                 mContext, mLooper.getLooper(), mFrameworkFacade, mClock, mWifiMetrics,
-                mWifiConfigManager, mWifiConfigStore, mConnectHelper, mNotificationBuilder);
+                mWifiConfigManager, mWifiConfigStore, mConnectHelper, mNotificationBuilder,
+                mMakeBeforeBreakManager);
         ArgumentCaptor<BroadcastReceiver> broadcastReceiverCaptor =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
         verify(mContext).registerReceiver(broadcastReceiverCaptor.capture(), any(), any(), any());
@@ -133,6 +137,11 @@ public class OpenNetworkNotifierTest extends WifiBaseTest {
         mNotificationController.handleScreenStateChanged(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt()))
                 .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID));
+        doAnswer(new MockAnswerUtil.AnswerWithArguments() {
+            public void answer(Runnable onStoppedListener) throws Throwable {
+                onStoppedListener.run();
+            }
+        }).when(mMakeBeforeBreakManager).stopAllSecondaryTransientClientModeManagers(any());
     }
 
     /**

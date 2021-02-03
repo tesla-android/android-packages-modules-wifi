@@ -146,14 +146,14 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
     @Override
     public void onNetworkAdded(int id) {
         synchronized (mLock) {
-            mStaIfaceHal.logCallback("onNetworkAdded");
+            mStaIfaceHal.logCallback("onNetworkAdded id=" + id);
         }
     }
 
     @Override
     public void onNetworkRemoved(int id) {
         synchronized (mLock) {
-            mStaIfaceHal.logCallback("onNetworkRemoved");
+            mStaIfaceHal.logCallback("onNetworkRemoved id=" + id);
             // Reset state since network has been removed.
             mStateBeforeDisconnect = State.INACTIVE;
         }

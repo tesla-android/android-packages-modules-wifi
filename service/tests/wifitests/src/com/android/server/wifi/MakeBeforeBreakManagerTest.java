@@ -51,6 +51,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
     @Mock private WorkSource mSettingsWorkSource;
     @Mock private ClientModeImplMonitor mCmiMonitor;
     @Mock private ClientModeManagerBroadcastQueue mBroadcastQueue;
+    @Mock private Runnable mOnStoppedListener;
     @Captor private ArgumentCaptor<ModeChangeCallback> mModeChangeCallbackCaptor;
     @Captor private ArgumentCaptor<ClientModeImplListener> mCmiListenerCaptor;
 
@@ -235,5 +236,32 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
 
         verify(mNewPrimaryCmm).setRole(ROLE_CLIENT_PRIMARY, mSettingsWorkSource);
         verify(mOldPrimaryCmm).stop();
+    }
+
+    @Test
+    public void stopAllSecondaryTransientCmms_noSecondaryTransientCmm_triggerImmediately() {
+        when(mActiveModeWarden.getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT))
+                .thenReturn(null);
+
+        mMbbManager.stopAllSecondaryTransientClientModeManagers(mOnStoppedListener);
+
+        verify(mOnStoppedListener).run();
+    }
+
+    @Test
+    public void stopAllSecondaryTransientCmms_hasSecondaryTransientCmm_triggerAfterStopped() {
+        when(mActiveModeWarden.getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT))
+                .thenReturn(mNewPrimaryCmm);
+
+        mMbbManager.stopAllSecondaryTransientClientModeManagers(mOnStoppedListener);
+
+        verify(mOnStoppedListener, never()).run();
+
+        when(mActiveModeWarden.getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT))
+                .thenReturn(null);
+
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mNewPrimaryCmm);
+
+        verify(mOnStoppedListener).run();
     }
 }

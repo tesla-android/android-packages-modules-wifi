@@ -823,8 +823,9 @@ public class ActiveModeWarden {
         return true;
     }
 
+    /** Get any client mode manager in the given role, or null if none was found. */
     @Nullable
-    private ConcreteClientModeManager getClientModeManagerInRole(ClientRole role) {
+    public ConcreteClientModeManager getClientModeManagerInRole(ClientRole role) {
         for (ConcreteClientModeManager manager : mClientModeManagers) {
             if (manager.getRole() == role) return manager;
         }

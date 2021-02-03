@@ -2650,7 +2650,8 @@ public class SupplicantStaIfaceHal {
         synchronized (mLock) {
             ISupplicantStaIface iface = getStaIface(ifaceName);
             if (iface == null) {
-                Log.e(TAG, "Can't call " + methodStr + ", ISupplicantStaIface is null");
+                Log.e(TAG, "Can't call " + methodStr + ", ISupplicantStaIface is null for iface="
+                        + ifaceName);
                 return null;
             }
             return iface;
