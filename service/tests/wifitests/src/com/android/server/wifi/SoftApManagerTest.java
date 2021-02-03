@@ -1959,6 +1959,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
     @Test
     public void testConfigurationChangedApplySinceDoesNotNeedToRestart() throws Exception {
+        long testShutdownTimeout = 50000;
         Builder configBuilder = new SoftApConfiguration.Builder();
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
         configBuilder.setSsid(TEST_SSID);
@@ -1975,12 +1976,23 @@ public class SoftApManagerTest extends WifiBaseTest {
         verify(mWifiMetrics).updateSoftApConfiguration(configBuilder.build(),
                 WifiManager.IFACE_IP_MODE_TETHERED);
 
+        reset(mCallback);
+        mockApInfoChangedEvent(mTestSoftApInfo);
         mLooper.dispatchAll();
+        verify(mCallback).onConnectedClientsOrInfoChanged(mTestSoftApInfoMap,
+                  mTestWifiClientsMap, false);
 
+        reset(mCallback);
         // Trigger Configuration Change
-        configBuilder.setShutdownTimeoutMillis(500000);
+        configBuilder.setShutdownTimeoutMillis(testShutdownTimeout);
         mSoftApManager.updateConfiguration(configBuilder.build());
+        SoftApInfo expectedInfo = new SoftApInfo(mTestSoftApInfo);
+        expectedInfo.setAutoShutdownTimeoutMillis(testShutdownTimeout);
+        mTestSoftApInfoMap.put(TEST_INTERFACE_NAME, expectedInfo);
         mLooper.dispatchAll();
+        // Verify the info changed
+        verify(mCallback).onConnectedClientsOrInfoChanged(
+                mTestSoftApInfoMap, mTestWifiClientsMap, false);
         // Verify timer is canceled at this point since timeout changed
         verify(mAlarmManager.getAlarmManager()).cancel(eq(mSoftApManager.mSoftApTimeoutMessage));
         // Verify timer setup again
