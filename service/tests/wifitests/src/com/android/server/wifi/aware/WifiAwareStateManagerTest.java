@@ -153,6 +153,8 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         when(mMockContext.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(
                 mock(ConnectivityManager.class));
+        when(mMockContext.getSystemService(ConnectivityManager.class)).thenReturn(
+                mock(ConnectivityManager.class));
         when(mMockContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(mMockAppOpsManager);
         when(mMockContext.getSystemServiceName(PowerManager.class)).thenReturn(
                 Context.POWER_SERVICE);
