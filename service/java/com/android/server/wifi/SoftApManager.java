@@ -1296,9 +1296,10 @@ public class SoftApManager implements ActiveModeManager {
                                 scheduleTimeoutMessages();
                                 // Update SoftApInfo
                                 for (SoftApInfo info : mCurrentSoftApInfoMap.values()) {
-                                    info.setAutoShutdownTimeoutMillis(mTimeoutEnabled
+                                    SoftApInfo newInfo = new SoftApInfo(info);
+                                    newInfo.setAutoShutdownTimeoutMillis(mTimeoutEnabled
                                             ? getShutdownTimeoutMillis() : 0);
-                                    updateSoftApInfo(info, false);
+                                    updateSoftApInfo(newInfo, false);
                                 }
                             }
                             mWifiMetrics.updateSoftApConfiguration(
