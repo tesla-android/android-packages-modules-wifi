@@ -82,7 +82,7 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
     /**
      * Calculates an individual candidate's score.
      */
-    private ScoredCandidate scoreCandidate(Candidate candidate) {
+    private ScoredCandidate scoreCandidate(Candidate candidate, boolean currentNetworkHasInternet) {
         int rssiSaturationThreshold = mScoringParams.getSufficientRssi(candidate.getFrequency());
         int rssi = Math.min(candidate.getScanRssi(), rssiSaturationThreshold);
         int rssiBaseScore = (rssi + RSSI_SCORE_OFFSET) * RSSI_SCORE_SLOPE_IS_4;
@@ -140,10 +140,14 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
             notOemPrivateAward = 0;
         }
 
-
         int score = rssiBaseScore + throughputBonusScore
                 + currentNetworkBoost + securityAward + unmeteredAward + savedNetworkAward
                 + trustedAward + notOemPaidAward + notOemPrivateAward;
+
+        // do not select a network that has no internet when the current network has internet.
+        if (currentNetworkHasInternet && !candidate.isCurrentNetwork() && unExpectedNoInternet) {
+            score = 0;
+        }
 
         if (candidate.getLastSelectionWeight() > 0.0) {
             // Put a recently-selected network in a tier above everything else,
@@ -178,11 +182,21 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
         return Math.min(throughputScoreRaw, mScoringParams.getThroughputBonusLimit());
     }
 
+    private boolean doesAnyCurrentNetworksHaveInternet(@NonNull Collection<Candidate> candidates) {
+        for (Candidate candidate : candidates) {
+            if (candidate.isCurrentNetwork() && !candidate.hasNoInternetAccess()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public ScoredCandidate scoreCandidates(@NonNull Collection<Candidate> candidates) {
         ScoredCandidate choice = ScoredCandidate.NONE;
+        boolean currentNetworkHasInternet = doesAnyCurrentNetworksHaveInternet(candidates);
         for (Candidate candidate : candidates) {
-            ScoredCandidate scoredCandidate = scoreCandidate(candidate);
+            ScoredCandidate scoredCandidate = scoreCandidate(candidate, currentNetworkHasInternet);
             if (scoredCandidate.value > choice.value) {
                 choice = scoredCandidate;
             }
