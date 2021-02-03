@@ -303,6 +303,7 @@ public class DppManagerTest extends WifiBaseTest {
         selectedNetwork.networkId = TEST_NETWORK_ID;
         selectedNetwork.preSharedKey = TEST_PASSWORD;
         selectedNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        selectedNetwork.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
 
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
