@@ -57,7 +57,7 @@ import android.util.SparseBooleanArray;
 import android.view.WindowManager;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.internal.messages.nano.SystemMessageProto;
+import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.wifi.resources.R;
 
@@ -296,8 +296,8 @@ public class WifiCarrierInfoManager {
                             return;
                     }
                     // Clear notification once the user interacts with it.
-                    mNotificationManager.cancel(SystemMessageProto
-                            .SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+                    mNotificationManager.cancel(mContext.getNotificationTag(),
+                            SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
                 }
             };
     private void handleUserDismissAction() {
@@ -1601,8 +1601,8 @@ public class WifiCarrierInfoManager {
                 .build();
 
         // Post the notification.
-        mNotificationManager.notify(
-                SystemMessageProto.SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
+        mNotificationManager.notify(mContext.getNotificationTag(),
+                SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE, notification);
         mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = false;
     }
@@ -1746,8 +1746,8 @@ public class WifiCarrierInfoManager {
     }
 
     public void resetNotification() {
-        mNotificationManager
-                .cancel(SystemMessageProto.SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mNotificationManager.cancel(mContext.getNotificationTag(),
+                SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
     }
 }

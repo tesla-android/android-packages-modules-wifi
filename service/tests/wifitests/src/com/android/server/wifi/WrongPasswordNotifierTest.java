@@ -50,6 +50,7 @@ import org.mockito.MockitoSession;
 public class WrongPasswordNotifierTest extends WifiBaseTest {
     private static final String TEST_SSID = "Test SSID";
     private static final String TEST_SETTINGS_PACKAGE = "android";
+    private static final String NOTIFICATION_TAG = "com.android.wifi";
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
@@ -73,6 +74,7 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
                 .thenReturn(mNotificationManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
+        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
         mWrongPassNotifier = new WrongPasswordNotifier(mContext, mFrameworkFacade);
 
         // static mocking
@@ -104,7 +106,8 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
         mWrongPassNotifier.onWrongPasswordError(TEST_SSID);
-        verify(mNotificationManager).notify(eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+                eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
                 any(Context.class), anyInt(), intent.capture(), anyInt());
@@ -125,7 +128,8 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         reset(mNotificationManager);
 
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager).cancel(any(), eq(WrongPasswordNotifier.NOTIFICATION_ID));
+        verify(mNotificationManager).cancel(eq(NOTIFICATION_TAG),
+                eq(WrongPasswordNotifier.NOTIFICATION_ID));
     }
 
     /**
@@ -137,6 +141,6 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
     @Test
     public void onNewConnectionAttemptWithoutPreviousWrongPasswordError() throws Exception {
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager, never()).cancel(any(), anyInt());
+        verify(mNotificationManager, never()).cancel(eq(NOTIFICATION_TAG), anyInt());
     }
 }

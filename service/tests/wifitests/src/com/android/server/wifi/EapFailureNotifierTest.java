@@ -48,6 +48,7 @@ import org.mockito.MockitoSession;
 @SmallTest
 public class EapFailureNotifierTest extends WifiBaseTest {
     private static final String TEST_SETTINGS_PACKAGE = "test.com.android.settings";
+    private static final String NOTIFICATION_TAG = "com.android.wifi";
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
@@ -93,6 +94,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         when(mResources.getString(eq(1), anyString())).thenReturn("Error Message");
         when(mContext.createPackageContext(anyString(), eq(0))).thenReturn(mContext);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
+        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
         when(mFrameworkFacade.getSettingsPackageName(any())).thenReturn(TEST_SETTINGS_PACKAGE);
         mEapFailureNotifier =
                 new EapFailureNotifier(mContext, mFrameworkFacade, mWifiCarrierInfoManager);
@@ -122,7 +124,8 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         when(mNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
         mWifiConfiguration.SSID = SSID_2;
         mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration);
-        verify(mNotificationManager).notify(eq(EapFailureNotifier.NOTIFICATION_ID), any());
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+                eq(EapFailureNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
                 eq(mContext), eq(0), intent.capture(),
@@ -150,7 +153,8 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         mEapFailureNotifier.setCurrentShownSsid(SSID_1);
         mWifiConfiguration.SSID = SSID_2;
         mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration);
-        verify(mNotificationManager).notify(eq(EapFailureNotifier.NOTIFICATION_ID), any());
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+                eq(EapFailureNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
                 eq(mContext), eq(0), intent.capture(),

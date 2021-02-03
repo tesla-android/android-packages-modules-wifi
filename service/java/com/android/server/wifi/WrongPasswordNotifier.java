@@ -100,7 +100,8 @@ public class WrongPasswordNotifier {
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setColor(mContext.getResources().getColor(
                         android.R.color.system_notification_accent_color));
-        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        mNotificationManager.notify(mContext.getNotificationTag(), NOTIFICATION_ID,
+                builder.build());
     }
 
     /**
@@ -111,6 +112,6 @@ public class WrongPasswordNotifier {
     private void dismissNotification() {
         // Notification might have already been dismissed, either by user or timeout. It is
         // still okay to cancel it if already dismissed.
-        mNotificationManager.cancel(null, NOTIFICATION_ID);
+        mNotificationManager.cancel(mContext.getNotificationTag(), NOTIFICATION_ID);
     }
 }

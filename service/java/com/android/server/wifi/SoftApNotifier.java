@@ -55,7 +55,8 @@ public class SoftApNotifier {
      * Show notification to notify user softap disable because auto shutdown timeout expired.
      */
     public void showSoftApShutdownTimeoutExpiredNotification() {
-        mNotificationManager.notify(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
+        mNotificationManager.notify(mContext.getNotificationTag(),
+                NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
                 buildSoftApShutdownTimeoutExpiredNotification());
     }
 
@@ -64,7 +65,8 @@ public class SoftApNotifier {
      * timeout expired.
      */
     public void dismissSoftApShutdownTimeoutExpiredNotification() {
-        mNotificationManager.cancel(null, NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
+        mNotificationManager.cancel(mContext.getNotificationTag(),
+                NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
     }
 
     private Notification buildSoftApShutdownTimeoutExpiredNotification() {

@@ -28,7 +28,6 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -53,7 +52,9 @@ import org.mockito.MockitoAnnotations;
  */
 @SmallTest
 public class ConnectionFailureNotifierTest extends WifiBaseTest {
-    @Mock private Context mContext;
+    private static final String NOTIFICATION_TAG = "com.android.wifi";
+
+    @Mock private WifiContext mContext;
     @Mock private Resources mResources;
     @Mock private FrameworkFacade mFrameworkFacade;
     @Mock private WifiConfigManager mWifiConfigManager;
@@ -75,6 +76,7 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mLooper = new TestLooper();
         MockitoAnnotations.initMocks(this);
         when(mContext.getResources()).thenReturn(mResources);
+        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
         when(mConnectionFailureNotificationBuilder
                 .buildNoMacRandomizationSupportNotification(any())).thenReturn(mNotification);
         when(mConnectionFailureNotificationBuilder.buildChangeMacRandomizationSettingDialog(any(),
@@ -123,7 +125,7 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mConnectionFailureNotifier.showFailedToConnectDueToNoRandomizedMacSupportNotification(
                 config.networkId);
         // verify that a notification is sent
-        verify(mNotificationManager).notify(
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
                 eq(SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT), eq(mNotification));
 
         // sets up the intent that simulates the user tapping on the notification.
@@ -159,7 +161,7 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mConnectionFailureNotifier.showFailedToConnectDueToNoRandomizedMacSupportNotification(
                 config.networkId);
         // verify that a notification is sent
-        verify(mNotificationManager).notify(
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
                 eq(SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT), any());
 
         // sets up the intent that simulates the user tapping on the notification.
