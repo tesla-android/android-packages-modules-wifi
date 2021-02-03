@@ -321,8 +321,8 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
             int numFilteredScanResults = 0;
             for (int i = 0; i < mNativePnoScanResults.size(); ++i) {
                 ScanResult result = mNativePnoScanResults.get(i).getScanResult();
-                // microseconds -> nanoseconds
-                if (result.timestamp * 1_000 > mLastPnoScanSettings.startTimeNanos) {
+                // nanoseconds -> microseconds
+                if (result.timestamp >= mLastPnoScanSettings.startTimeNanos / 1_000) {
                     hwPnoScanResults.add(result);
                 } else {
                     numFilteredScanResults++;
@@ -367,8 +367,8 @@ public class WificondScannerImpl extends WifiScannerImpl implements Handler.Call
             int numFilteredScanResults = 0;
             for (int i = 0; i < mNativeScanResults.size(); ++i) {
                 ScanResult result = mNativeScanResults.get(i).getScanResult();
-                // microseconds -> nanoseconds
-                if (result.timestamp * 1_000 > mLastScanSettings.startTimeNanos) {
+                // nanoseconds -> microseconds
+                if (result.timestamp >= mLastScanSettings.startTimeNanos / 1_000) {
                     if (mLastScanSettings.singleScanFreqs.containsChannel(
                                     result.frequency)) {
                         singleScanResults.add(result);

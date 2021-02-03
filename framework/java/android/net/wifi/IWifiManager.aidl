@@ -268,9 +268,9 @@ interface IWifiManager
 
     void unregisterScanResultsCallback(in IScanResultsCallback callback);
 
-    void registerSuggestionConnectionStatusListener(in IBinder binder, in ISuggestionConnectionStatusListener listener, int listenerIdentifier, String packageName, String featureId);
+    void registerSuggestionConnectionStatusListener(in ISuggestionConnectionStatusListener listener, String packageName, String featureId);
 
-    void unregisterSuggestionConnectionStatusListener(int listenerIdentifier, String packageName);
+    void unregisterSuggestionConnectionStatusListener(in ISuggestionConnectionStatusListener listener, String packageName);
 
     int calculateSignalLevel(int rssi);
 
@@ -311,11 +311,13 @@ interface IWifiManager
 
     void restartWifiSubsystem(String reason);
 
-    boolean addSuggestionUserApprovalStatusListener(in IBinder binder, in ISuggestionUserApprovalStatusListener listener, int listenerIdentifier, String packageName, String featureId);
+    boolean addSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
 
-    void removeSuggestionUserApprovalStatusListener(int listenerIdentifier, String packageName);
+    void removeSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
 
     void setEmergencyScanRequestInProgress(boolean inProgress);
 
     void removeAppState(int targetAppUid, String targetApppackageName);
+
+    boolean setWifiScoringEnabled(boolean enabled);
 }

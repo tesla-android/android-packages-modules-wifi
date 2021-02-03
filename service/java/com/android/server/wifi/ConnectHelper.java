@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
-import android.annotation.Nullable;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
@@ -45,8 +44,8 @@ public class ConnectHelper {
      * This uses the primary client mode manager for making the connection.
      */
     public void connectToNetwork(
-            NetworkUpdateResult result,
-            @Nullable ActionListenerWrapper wrapper,
+            @NonNull NetworkUpdateResult result,
+            @NonNull ActionListenerWrapper wrapper,
             int callingUid) {
         connectToNetwork(
                 mActiveModeWarden.getPrimaryClientModeManager(), result, wrapper, callingUid);
@@ -58,8 +57,8 @@ public class ConnectHelper {
      */
     public void connectToNetwork(
             @NonNull ClientModeManager clientModeManager,
-            NetworkUpdateResult result,
-            @Nullable ActionListenerWrapper wrapper,
+            @NonNull NetworkUpdateResult result,
+            @NonNull ActionListenerWrapper wrapper,
             int callingUid) {
         int netId = result.getNetworkId();
         if (mWifiConfigManager.getConfiguredNetwork(netId) == null) {

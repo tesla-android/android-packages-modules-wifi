@@ -1741,6 +1741,13 @@ public class WifiCarrierInfoManager {
         mImsiPrivacyProtectionExemptionMap.clear();
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
+        resetNotification();
         saveToStore();
+    }
+
+    public void resetNotification() {
+        mNotificationManager
+                .cancel(SystemMessageProto.SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mUserApprovalUiActive = false;
     }
 }

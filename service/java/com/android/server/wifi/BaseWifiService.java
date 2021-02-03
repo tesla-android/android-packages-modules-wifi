@@ -678,7 +678,13 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by
+     * {@link #registerSuggestionConnectionStatusListener(ISuggestionConnectionStatusListener,
+     * String, String)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void registerSuggestionConnectionStatusListener(IBinder binder,
             ISuggestionConnectionStatusListener listener,
             int listenerIdentifier, String packageName, String featureId) {
@@ -686,8 +692,26 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public void registerSuggestionConnectionStatusListener(
+            ISuggestionConnectionStatusListener listener, String packageName, String featureId) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Replaced by
+     * {@link #unregisterSuggestionConnectionStatusListener(ISuggestionConnectionStatusListener,
+     * String)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void unregisterSuggestionConnectionStatusListener(int listenerIdentifier,
             String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterSuggestionConnectionStatusListener(
+            ISuggestionConnectionStatusListener listener, String packageName) {
         throw new UnsupportedOperationException();
     }
 
@@ -747,7 +771,13 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by
+     * {@link #addSuggestionUserApprovalStatusListener(ISuggestionUserApprovalStatusListener,
+     * String)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public boolean addSuggestionUserApprovalStatusListener(IBinder binder,
             ISuggestionUserApprovalStatusListener listener, int listenerIdentifier,
             String packageName, String featureId) {
@@ -755,8 +785,26 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public boolean addSuggestionUserApprovalStatusListener(
+            ISuggestionUserApprovalStatusListener listener, String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Replaced by
+     * {@link #removeSuggestionUserApprovalStatusListener(ISuggestionUserApprovalStatusListener,
+     * String)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void removeSuggestionUserApprovalStatusListener(int listenerIdentifier,
             String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeSuggestionUserApprovalStatusListener(
+            ISuggestionUserApprovalStatusListener listener, String packageName) {
         throw new UnsupportedOperationException();
     }
 
@@ -767,6 +815,11 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setWifiScoringEnabled(boolean enabled) {
         throw new UnsupportedOperationException();
     }
 }

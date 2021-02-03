@@ -43,12 +43,13 @@ public class OpenNetworkNotifier extends AvailableNetworkNotifier {
             WifiConfigManager wifiConfigManager,
             WifiConfigStore wifiConfigStore,
             ConnectHelper connectHelper,
-            ConnectToNetworkNotificationBuilder connectToNetworkNotificationBuilder) {
+            ConnectToNetworkNotificationBuilder connectToNetworkNotificationBuilder,
+            MakeBeforeBreakManager makeBeforeBreakManager) {
         super(TAG, STORE_DATA_IDENTIFIER, TOGGLE_SETTINGS_NAME,
                 SystemMessage.NOTE_NETWORK_AVAILABLE,
                 WifiMetricsProto.ConnectionEvent.NOMINATOR_OPEN_NETWORK_AVAILABLE,
                 context, looper, framework, clock,
                 wifiMetrics, wifiConfigManager, wifiConfigStore, connectHelper,
-                connectToNetworkNotificationBuilder);
+                connectToNetworkNotificationBuilder, makeBeforeBreakManager);
     }
 }

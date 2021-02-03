@@ -206,6 +206,7 @@ public class WifiInjector {
             mAdaptiveConnectivityEnabledSettingObserver;
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final ClientModeImplMonitor mCmiMonitor = new ClientModeImplMonitor();
+    private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
 
     public WifiInjector(WifiContext context) {
         if (context == null) {
@@ -332,7 +333,7 @@ public class WifiInjector {
                 new NetworkListSharedStoreData(mContext),
                 new NetworkListUserStoreData(mContext),
                 new RandomizedMacStoreData(), mFrameworkFacade, mDeviceConfigFacade,
-                mWifiScoreCard, mLruConnectionTracker);
+                mWifiScoreCard, mLruConnectionTracker, mBuildProperties);
         mSettingsConfigStore = new WifiSettingsConfigStore(context, wifiHandler,
                 mSettingsMigrationDataHolder, mWifiConfigManager, mWifiConfigStore);
         mSettingsStore = new WifiSettingsStore(mContext, mSettingsConfigStore);
@@ -391,15 +392,22 @@ public class WifiInjector {
                 mWifiScoreCard, wifiHandler, mWifiNative, l2KeySeed, mDeviceConfigFacade);
         mWifiMetrics.setWifiHealthMonitor(mWifiHealthMonitor);
         mDefaultClientModeManager = new DefaultClientModeManager();
+        mExternalScoreUpdateObserverProxy =
+                new ExternalScoreUpdateObserverProxy(mWifiThreadRunner);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper,
                 mWifiNative, mDefaultClientModeManager, mBatteryStats, mWifiDiagnostics,
-                mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics);
+                mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics,
+                mExternalScoreUpdateObserverProxy);
         mWifiP2pConnection = new WifiP2pConnection(mContext, wifiLooper, mActiveModeWarden);
         mConnectHelper = new ConnectHelper(mActiveModeWarden, mWifiConfigManager);
+        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
+        mMakeBeforeBreakManager = new MakeBeforeBreakManager(mActiveModeWarden, mFrameworkFacade,
+                mContext, mCmiMonitor, mBroadcastQueue);
         mOpenNetworkNotifier = new OpenNetworkNotifier(mContext,
                 wifiLooper, mFrameworkFacade, mClock, mWifiMetrics,
                 mWifiConfigManager, mWifiConfigStore, mConnectHelper,
-                new ConnectToNetworkNotificationBuilder(mContext, mFrameworkFacade));
+                new ConnectToNetworkNotificationBuilder(mContext, mFrameworkFacade),
+                mMakeBeforeBreakManager);
         mWifiConnectivityManager = new WifiConnectivityManager(
                 mContext, mScoringParams, mWifiConfigManager,
                 mWifiNetworkSuggestionsManager, mWifiNetworkSelector,
@@ -408,7 +416,6 @@ public class WifiInjector {
                 mClock, mConnectivityLocalLog, mWifiScoreCard, mWifiBlocklistMonitor,
                 mWifiChannelUtilizationScan, mPasspointManager, mDeviceConfigFacade,
                 mActiveModeWarden);
-        mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
@@ -475,9 +482,6 @@ public class WifiInjector {
         mWifiNetworkSelector.registerNetworkNominator(mScoredNetworkNominator);
 
         mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade);
-
-        mMakeBeforeBreakManager = new MakeBeforeBreakManager(mActiveModeWarden, mFrameworkFacade,
-                mContext, mCmiMonitor, mBroadcastQueue);
     }
 
     /**
@@ -693,9 +697,10 @@ public class WifiInjector {
                 new WifiScoreReport(mScoringParams, mClock, mWifiMetrics, wifiInfo,
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiDataStall,
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
-                        ifaceName),
+                        ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
-                mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, verboseLoggingEnabled);
+                mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
+                verboseLoggingEnabled);
     }
 
     /**
@@ -965,5 +970,9 @@ public class WifiInjector {
 
     public MakeBeforeBreakManager getMakeBeforeBreakManager() {
         return mMakeBeforeBreakManager;
+    }
+
+    public OpenNetworkNotifier getOpenNetworkNotifier() {
+        return mOpenNetworkNotifier;
     }
 }

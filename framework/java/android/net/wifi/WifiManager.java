@@ -1386,6 +1386,10 @@ public class WifiManager {
 
     private static final SparseArray<IOnWifiUsabilityStatsListener>
             sOnWifiUsabilityStatsListenerMap = new SparseArray();
+    private static final SparseArray<ISuggestionConnectionStatusListener>
+            sSuggestionConnectionStatusListenerMap = new SparseArray();
+    private static final SparseArray<ISuggestionUserApprovalStatusListener>
+            sSuggestionUserApprovalStatusListenerMap = new SparseArray();
     /**
      * Create a new WifiManager instance.
      * Applications will almost always want to use
@@ -6808,9 +6812,14 @@ public class WifiManager {
         Log.v(TAG, "addSuggestionConnectionStatusListener listener=" + listener
                 + ", executor=" + executor);
         try {
-            mService.registerSuggestionConnectionStatusListener(new Binder(),
-                    new SuggestionConnectionStatusListenerProxy(executor, listener),
-                    listener.hashCode(), mContext.getOpPackageName(), mContext.getAttributionTag());
+            synchronized (sSuggestionConnectionStatusListenerMap) {
+                ISuggestionConnectionStatusListener.Stub binderCallback =
+                        new SuggestionConnectionStatusListenerProxy(executor, listener);
+                sSuggestionConnectionStatusListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.registerSuggestionConnectionStatusListener(binderCallback,
+                        mContext.getOpPackageName(), mContext.getAttributionTag());
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -6829,8 +6838,17 @@ public class WifiManager {
         if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
         Log.v(TAG, "removeSuggestionConnectionStatusListener: listener=" + listener);
         try {
-            mService.unregisterSuggestionConnectionStatusListener(listener.hashCode(),
-                    mContext.getOpPackageName());
+            synchronized (sSuggestionConnectionStatusListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sSuggestionConnectionStatusListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.unregisterSuggestionConnectionStatusListener(
+                        sSuggestionConnectionStatusListenerMap.get(listenerIdentifier),
+                        mContext.getOpPackageName());
+                sSuggestionConnectionStatusListenerMap.remove(listenerIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -7371,9 +7389,14 @@ public class WifiManager {
         Log.v(TAG, "addSuggestionUserApprovalStatusListener listener=" + listener
                 + ", executor=" + executor);
         try {
-            return mService.addSuggestionUserApprovalStatusListener(new Binder(),
-                    new SuggestionUserApprovalStatusListenerProxy(executor, listener),
-                    listener.hashCode(), mContext.getOpPackageName(), mContext.getAttributionTag());
+            synchronized (sSuggestionUserApprovalStatusListenerMap) {
+                ISuggestionUserApprovalStatusListener.Stub binderCallback =
+                        new SuggestionUserApprovalStatusListenerProxy(executor, listener);
+                sSuggestionUserApprovalStatusListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                return mService.addSuggestionUserApprovalStatusListener(binderCallback,
+                        mContext.getOpPackageName());
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -7398,8 +7421,17 @@ public class WifiManager {
         if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
         Log.v(TAG, "removeSuggestionUserApprovalStatusListener: listener=" + listener);
         try {
-            mService.removeSuggestionUserApprovalStatusListener(listener.hashCode(),
-                    mContext.getOpPackageName());
+            synchronized (sSuggestionUserApprovalStatusListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sSuggestionUserApprovalStatusListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.removeSuggestionUserApprovalStatusListener(
+                        sSuggestionUserApprovalStatusListenerMap.get(listenerIdentifier),
+                        mContext.getOpPackageName());
+                sSuggestionUserApprovalStatusListenerMap.remove(listenerIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -7428,4 +7460,28 @@ public class WifiManager {
         }
     }
 
+    /**
+     * Enable or disable Wi-Fi scoring.  Wi-Fi network status is evaluated by Wi-Fi scoring
+     * {@link WifiScoreReport}. This API enables/disables Wi-Fi scoring to take action on network
+     * selection.
+     *
+     * @param enabled {@code true} to enable, {@code false} to disable.
+     * @return true The status of Wifi scoring is set successfully.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public boolean setWifiScoringEnabled(boolean enabled) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "setWifiScoringEnabled: " + enabled);
+        }
+        try {
+            return mService.setWifiScoringEnabled(enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

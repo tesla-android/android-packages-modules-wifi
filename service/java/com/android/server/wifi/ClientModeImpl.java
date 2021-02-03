@@ -229,6 +229,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final WifiP2pConnection mWifiP2pConnection;
     private final WifiGlobals mWifiGlobals;
     private final ClientModeManagerBroadcastQueue mBroadcastQueue;
+    private final TelephonyManager mTelephonyManager;
     private final long mId;
 
     private boolean mScreenOn = false;
@@ -655,6 +656,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull ClientModeImplMonitor cmiMonitor,
             @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
             @NonNull WifiNetworkSelector wifiNetworkSelector,
+            @NonNull TelephonyManager telephonyManager,
             boolean verboseLoggingEnabled) {
         super(TAG, looper);
         mWifiMetrics = wifiMetrics;
@@ -729,6 +731,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mInterfaceName = ifaceName;
         mClientModeManager = clientModeManager;
         mCmiMonitor = cmiMonitor;
+        mTelephonyManager = telephonyManager;
         updateInterfaceCapabilities();
 
         PowerManager powerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
@@ -4618,14 +4621,25 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         + config.noInternetAccessExpected);
             }
 
-            final NetworkAgentConfig naConfig = new NetworkAgentConfig.Builder()
+            NetworkAgentConfig.Builder naConfigBuilder = new NetworkAgentConfig.Builder()
                     .setLegacyType(ConnectivityManager.TYPE_WIFI)
                     .setLegacyTypeName(NETWORKTYPE)
                     .setExplicitlySelected(explicitlySelected)
                     .setUnvalidatedConnectivityAcceptable(
                             explicitlySelected && config.noInternetAccessExpected)
-                    .setPartialConnectivityAcceptable(config.noInternetAccessExpected)
-                    .build();
+                    .setPartialConnectivityAcceptable(config.noInternetAccessExpected);
+            if (config.carrierMerged) {
+                String subscriberId = null;
+                TelephonyManager subMgr = mTelephonyManager.createForSubscriptionId(
+                        config.subscriptionId);
+                if (subMgr != null) {
+                    subscriberId = subMgr.getSubscriberId();
+                }
+                if (subscriberId != null) {
+                    naConfigBuilder.setSubscriberId(subscriberId);
+                }
+            }
+            final NetworkAgentConfig naConfig = naConfigBuilder.build();
             final NetworkCapabilities nc = getCapabilities(getConnectedWifiConfigurationInternal());
             // This should never happen.
             if (mNetworkAgent != null) {

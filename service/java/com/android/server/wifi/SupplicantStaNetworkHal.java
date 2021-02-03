@@ -3609,6 +3609,10 @@ public class SupplicantStaNetworkHal {
         }
     }
 
+    private String getTag() {
+        return TAG + "[" + mIfaceName + "]";
+    }
+
     /**
      * Returns true if provided status code is SUCCESS, logs debug message and returns false
      * otherwise
@@ -3616,11 +3620,11 @@ public class SupplicantStaNetworkHal {
     private boolean checkStatusAndLogFailure(SupplicantStatus status, final String methodStr) {
         synchronized (mLock) {
             if (status.code != SupplicantStatusCode.SUCCESS) {
-                Log.e(TAG, "ISupplicantStaNetwork." + methodStr + " failed: " + status);
+                Log.e(getTag(), "ISupplicantStaNetwork." + methodStr + " failed: " + status);
                 return false;
             } else {
                 if (mVerboseLoggingEnabled) {
-                    Log.d(TAG, "ISupplicantStaNetwork." + methodStr + " succeeded");
+                    Log.d(getTag(), "ISupplicantStaNetwork." + methodStr + " succeeded");
                 }
                 return true;
             }

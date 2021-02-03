@@ -115,6 +115,7 @@ public class ActiveModeWarden {
     private final WifiController mWifiController;
     private final Graveyard mGraveyard;
     private final WifiMetrics mWifiMetrics;
+    private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
 
     private WifiServiceImpl.SoftApCallbackInternal mSoftApCallback;
     private WifiServiceImpl.SoftApCallbackInternal mLohsCallback;
@@ -253,7 +254,8 @@ public class ActiveModeWarden {
             WifiSettingsStore settingsStore,
             FrameworkFacade facade,
             WifiPermissionsUtil wifiPermissionsUtil,
-            WifiMetrics wifiMetrics) {
+            WifiMetrics wifiMetrics,
+            ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy) {
         mWifiInjector = wifiInjector;
         mLooper = looper;
         mHandler = new Handler(looper);
@@ -269,6 +271,7 @@ public class ActiveModeWarden {
         mWifiMetrics = wifiMetrics;
         mWifiController = new WifiController();
         mGraveyard = new Graveyard();
+        mExternalScoreUpdateObserverProxy = externalScoreUpdateObserverProxy;
 
         wifiNative.registerStatusListener(isReady -> {
             if (!isReady && !mIsShuttingdown) {
@@ -355,6 +358,12 @@ public class ActiveModeWarden {
      */
     public boolean setWifiConnectedNetworkScorer(IBinder binder,
             IWifiConnectedNetworkScorer scorer) {
+        try {
+            scorer.onSetScoreUpdateObserver(mExternalScoreUpdateObserverProxy);
+        } catch (RemoteException e) {
+            Log.e(TAG, "Unable to set score update observer " + scorer, e);
+            return false;
+        }
         mClientModeManagerScorer = Pair.create(binder, scorer);
         return getPrimaryClientModeManager().setWifiConnectedNetworkScorer(binder, scorer);
     }
@@ -814,8 +823,9 @@ public class ActiveModeWarden {
         return true;
     }
 
+    /** Get any client mode manager in the given role, or null if none was found. */
     @Nullable
-    private ConcreteClientModeManager getClientModeManagerInRole(ClientRole role) {
+    public ConcreteClientModeManager getClientModeManagerInRole(ClientRole role) {
         for (ConcreteClientModeManager manager : mClientModeManagers) {
             if (manager.getRole() == role) return manager;
         }

@@ -2713,8 +2713,8 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ISuggestionConnectionStatusListener.Stub.class);
         Executor executor = new SynchronousExecutor();
         mWifiManager.addSuggestionConnectionStatusListener(executor, mSuggestionConnectionListener);
-        verify(mWifiService).registerSuggestionConnectionStatusListener(any(IBinder.class),
-                callbackCaptor.capture(), anyInt(), anyString(), nullable(String.class));
+        verify(mWifiService).registerSuggestionConnectionStatusListener(callbackCaptor.capture(),
+                anyString(), nullable(String.class));
         callbackCaptor.getValue().onConnectionStatus(mWifiNetworkSuggestion, errorCode);
         verify(mSuggestionConnectionListener).onConnectionStatus(any(WifiNetworkSuggestion.class),
                 eq(errorCode));
@@ -2730,8 +2730,8 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ISuggestionConnectionStatusListener.Stub.class);
         mWifiManager.addSuggestionConnectionStatusListener(mExecutor,
                 mSuggestionConnectionListener);
-        verify(mWifiService).registerSuggestionConnectionStatusListener(any(IBinder.class),
-                callbackCaptor.capture(), anyInt(), anyString(), nullable(String.class));
+        verify(mWifiService).registerSuggestionConnectionStatusListener(callbackCaptor.capture(),
+                anyString(), nullable(String.class));
         callbackCaptor.getValue().onConnectionStatus(any(WifiNetworkSuggestion.class), errorCode);
         verify(mExecutor).execute(any(Runnable.class));
     }
@@ -2749,8 +2749,16 @@ public class WifiManagerTest {
      */
     @Test
     public void testRemoveSuggestionConnectionListener() throws Exception {
+        ArgumentCaptor<ISuggestionConnectionStatusListener.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISuggestionConnectionStatusListener.Stub.class);
+        mWifiManager.addSuggestionConnectionStatusListener(mExecutor,
+                mSuggestionConnectionListener);
+        verify(mWifiService).registerSuggestionConnectionStatusListener(callbackCaptor.capture(),
+                anyString(), nullable(String.class));
+
         mWifiManager.removeSuggestionConnectionStatusListener(mSuggestionConnectionListener);
-        verify(mWifiService).unregisterSuggestionConnectionStatusListener(anyInt(), anyString());
+        verify(mWifiService).unregisterSuggestionConnectionStatusListener(
+                eq(callbackCaptor.getValue()), anyString());
     }
 
     /** Test {@link WifiManager#calculateSignalLevel(int)} */
@@ -2918,6 +2926,16 @@ public class WifiManagerTest {
         verify(mWifiConnectedNetworkScorer).onStop(10);
     }
 
+    /**
+     * Verify the call to setWifiScoringEnabled goes to WifiServiceImpl.
+     */
+    @Test
+    public void setWifiScoringEnabledGoesToWifiServiceImpl() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiManager.setWifiScoringEnabled(true);
+        verify(mWifiService).setWifiScoringEnabled(true);
+    }
+
     @Test
     public void testScanThrottle() throws Exception {
         mWifiManager.setScanThrottleEnabled(true);
@@ -2994,10 +3012,17 @@ public class WifiManagerTest {
     @Test
     public void testRemoveSuggestionUserApprovalStatusListener() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
+        ArgumentCaptor<ISuggestionUserApprovalStatusListener.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISuggestionUserApprovalStatusListener.Stub.class);
+        mWifiManager.addSuggestionUserApprovalStatusListener(mExecutor,
+                mSuggestionUserApprovalStatusListener);
+        verify(mWifiService).addSuggestionUserApprovalStatusListener(callbackCaptor.capture(),
+                anyString());
 
         mWifiManager.removeSuggestionUserApprovalStatusListener(
                 mSuggestionUserApprovalStatusListener);
-        verify(mWifiService).removeSuggestionUserApprovalStatusListener(anyInt(), anyString());
+        verify(mWifiService).removeSuggestionUserApprovalStatusListener(
+                eq(callbackCaptor.getValue()), anyString());
     }
 
     /**
@@ -3033,8 +3058,8 @@ public class WifiManagerTest {
         Executor executor = new SynchronousExecutor();
         mWifiManager.addSuggestionUserApprovalStatusListener(executor,
                 mSuggestionUserApprovalStatusListener);
-        verify(mWifiService).addSuggestionUserApprovalStatusListener(any(IBinder.class),
-                callbackCaptor.capture(), anyInt(), anyString(), nullable(String.class));
+        verify(mWifiService).addSuggestionUserApprovalStatusListener(callbackCaptor.capture(),
+                anyString());
         callbackCaptor.getValue().onUserApprovalStatusChange();
         verify(mSuggestionUserApprovalStatusListener).onUserApprovalStatusChange();
     }
@@ -3050,8 +3075,8 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ISuggestionUserApprovalStatusListener.Stub.class);
         mWifiManager.addSuggestionUserApprovalStatusListener(mExecutor,
                 mSuggestionUserApprovalStatusListener);
-        verify(mWifiService).addSuggestionUserApprovalStatusListener(any(IBinder.class),
-                callbackCaptor.capture(), anyInt(), anyString(), nullable(String.class));
+        verify(mWifiService).addSuggestionUserApprovalStatusListener(callbackCaptor.capture(),
+                anyString());
         callbackCaptor.getValue().onUserApprovalStatusChange();
         verify(mExecutor).execute(any(Runnable.class));
     }
