@@ -1702,14 +1702,13 @@ public class ActiveModeWarden {
                         break;
                     case CMD_RECOVERY_RESTART_WIFI:
                         log("Recovery triggered, already in disabled state");
-                        // intentional fallthrough
+                        sendMessageDelayed(CMD_RECOVERY_RESTART_WIFI_CONTINUE,
+                                Collections.emptyList(), readWifiRecoveryDelay());
+                        break;
                     case CMD_DEFERRED_RECOVERY_RESTART_WIFI:
                         // wait mRecoveryDelayMillis for letting driver clean reset.
                         sendMessageDelayed(CMD_RECOVERY_RESTART_WIFI_CONTINUE,
-                                // msg.obj == null if recovery is triggered in disabled state
-                                // (i.e intentional fallthrough from above case statement).
-                                msg.obj == null ? Collections.emptyList() : msg.obj,
-                                readWifiRecoveryDelay());
+                                msg.obj, readWifiRecoveryDelay());
                         break;
                     case CMD_RECOVERY_RESTART_WIFI_CONTINUE:
                         log("Recovery in progress, start wifi");
