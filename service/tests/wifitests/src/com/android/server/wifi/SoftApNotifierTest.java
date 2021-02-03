@@ -44,6 +44,7 @@ import org.mockito.MockitoAnnotations;
 @SmallTest
 public class SoftApNotifierTest extends WifiBaseTest {
     private static final String TEST_SSID = "Test SSID";
+    private static final String NOTIFICATION_TAG = "com.android.wifi";
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
@@ -62,6 +63,7 @@ public class SoftApNotifierTest extends WifiBaseTest {
                 .thenReturn(mNotificationManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
+        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
         mSoftApNotifier = new SoftApNotifier(mContext, mFrameworkFacade);
     }
 
@@ -75,7 +77,7 @@ public class SoftApNotifierTest extends WifiBaseTest {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_STATUS))).thenReturn(mNotificationBuilder);
         mSoftApNotifier.showSoftApShutdownTimeoutExpiredNotification();
-        verify(mNotificationManager).notify(
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
@@ -92,7 +94,7 @@ public class SoftApNotifierTest extends WifiBaseTest {
     @Test
     public void dismissSoftApShutdownTimeoutExpiredNotification() throws Exception {
         mSoftApNotifier.dismissSoftApShutdownTimeoutExpiredNotification();
-        verify(mNotificationManager).cancel(any(),
+        verify(mNotificationManager).cancel(eq(NOTIFICATION_TAG),
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED));
     }
 }

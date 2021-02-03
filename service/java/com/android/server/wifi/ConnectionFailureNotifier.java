@@ -38,7 +38,7 @@ import com.android.wifi.resources.R;
 public class ConnectionFailureNotifier {
     private static final String TAG = "ConnectionFailureNotifier";
 
-    private final Context mContext;
+    private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
     private final WifiConfigManager mWifiConfigManager;
     private final WifiConnectivityManager mWifiConnectivityManager;
@@ -47,7 +47,7 @@ public class ConnectionFailureNotifier {
     private final ConnectionFailureNotificationBuilder mConnectionFailureNotificationBuilder;
 
     public ConnectionFailureNotifier(
-            Context context,
+            WifiContext context,
             FrameworkFacade framework,
             WifiConfigManager wifiConfigManager,
             WifiConnectivityManager wifiConnectivityManager,
@@ -97,8 +97,8 @@ public class ConnectionFailureNotifier {
         }
         Notification notification = mConnectionFailureNotificationBuilder
                 .buildNoMacRandomizationSupportNotification(config);
-        mNotificationManager.notify(SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT,
-                notification);
+        mNotificationManager.notify(mContext.getNotificationTag(),
+                SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT, notification);
     }
 
     class DisableMacRandomizationListener implements DialogInterface.OnClickListener {

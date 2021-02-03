@@ -51,8 +51,9 @@ import org.mockito.MockitoAnnotations;
 /** Unit tests for {@link com.android.server.wifi.WakeupOnboarding} */
 @SmallTest
 public class WakeupOnboardingTest extends WifiBaseTest {
+    private static final String NOTIFICATION_TAG = "com.android.wifi";
 
-    @Mock private Context mContext;
+    @Mock private WifiContext mContext;
     @Mock private WifiConfigManager mWifiConfigManager;
     @Mock private FrameworkFacade mFrameworkFacade;
     @Mock private WakeupNotificationFactory mWakeupNotificationFactory;
@@ -76,6 +77,7 @@ public class WakeupOnboardingTest extends WifiBaseTest {
 
         when(mContext.getSystemService(Context.NOTIFICATION_SERVICE))
                 .thenReturn(mNotificationManager);
+        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
 
         mLooper = new TestLooper();
         mWakeupOnboarding = new WakeupOnboarding(mContext, mWifiConfigManager,
@@ -90,7 +92,8 @@ public class WakeupOnboardingTest extends WifiBaseTest {
         setOnboardedStatus(false);
         mWakeupOnboarding.maybeShowNotification();
 
-        verify(mNotificationManager).notify(eq(WakeupNotificationFactory.ONBOARD_ID), any());
+        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+                eq(WakeupNotificationFactory.ONBOARD_ID), any());
     }
 
     /**
@@ -102,7 +105,7 @@ public class WakeupOnboardingTest extends WifiBaseTest {
         mWakeupOnboarding.maybeShowNotification();
 
         verify(mNotificationManager, never())
-                .notify(eq(WakeupNotificationFactory.ONBOARD_ID), any());
+                .notify(eq(NOTIFICATION_TAG), eq(WakeupNotificationFactory.ONBOARD_ID), any());
     }
 
     /**
@@ -116,7 +119,7 @@ public class WakeupOnboardingTest extends WifiBaseTest {
 
         InOrder inOrder = Mockito.inOrder(mNotificationManager);
         inOrder.verify(mNotificationManager)
-                .notify(eq(WakeupNotificationFactory.ONBOARD_ID), any());
+                .notify(eq(NOTIFICATION_TAG), eq(WakeupNotificationFactory.ONBOARD_ID), any());
         inOrder.verifyNoMoreInteractions();
     }
 
@@ -238,7 +241,7 @@ public class WakeupOnboardingTest extends WifiBaseTest {
 
         InOrder inOrder = Mockito.inOrder(mNotificationManager);
         inOrder.verify(mNotificationManager)
-                .notify(eq(WakeupNotificationFactory.ONBOARD_ID), any());
+                .notify(eq(NOTIFICATION_TAG), eq(WakeupNotificationFactory.ONBOARD_ID), any());
         inOrder.verify(mNotificationManager).cancel(WakeupNotificationFactory.ONBOARD_ID);
         inOrder.verifyNoMoreInteractions();
     }
@@ -258,7 +261,7 @@ public class WakeupOnboardingTest extends WifiBaseTest {
         mWakeupOnboarding.maybeShowNotification(WakeupOnboarding.REQUIRED_NOTIFICATION_DELAY + 1);
 
         verify(mNotificationManager, times(2))
-                .notify(eq(WakeupNotificationFactory.ONBOARD_ID), any());
+                .notify(eq(NOTIFICATION_TAG), eq(WakeupNotificationFactory.ONBOARD_ID), any());
     }
 
     /**

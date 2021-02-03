@@ -603,7 +603,8 @@ public class WifiNetworkSuggestionsManager {
                             return;
                     }
                     // Clear notification once the user interacts with it.
-                    mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+                    mNotificationManager.cancel(mContext.getNotificationTag(),
+                            SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
                 }
             };
 
@@ -1563,7 +1564,7 @@ public class WifiNetworkSuggestionsManager {
                 .build();
 
         // Post the notification.
-        mNotificationManager.notify(
+        mNotificationManager.notify(mContext.getNotificationTag(),
                 SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
         mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = false;
@@ -2587,7 +2588,8 @@ public class WifiNetworkSuggestionsManager {
     }
 
     public void resetNotification() {
-        mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mNotificationManager.cancel(mContext.getNotificationTag(),
+                SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
     }
 }

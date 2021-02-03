@@ -62,7 +62,8 @@ public class SimRequiredNotifier {
      * Dismiss notification
      */
     public void dismissSimRequiredNotification() {
-        mNotificationManager.cancel(null, SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
+        mNotificationManager.cancel(mContext.getNotificationTag(),
+                SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
     }
 
     private void showNotification(String ssid, String carrier) {
@@ -94,7 +95,7 @@ public class SimRequiredNotifier {
                 .setContentIntent(mFrameworkFacade.getActivity(
                         mContext, 0, intent,
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-        mNotificationManager.notify(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED,
-                builder.build());
+        mNotificationManager.notify(mContext.getNotificationTag(),
+                SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED, builder.build());
     }
 }
