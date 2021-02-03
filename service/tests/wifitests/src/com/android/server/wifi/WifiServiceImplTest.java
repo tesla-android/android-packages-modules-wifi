@@ -95,7 +95,7 @@ import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.app.NotificationManager;
-import android.app.test.MockAnswerUtil;
+import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -371,6 +371,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock OpenNetworkNotifier mOpenNetworkNotifier;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
+    @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
 
     WifiConfiguration mWifiConfig;
 
@@ -493,6 +494,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
+
+        doAnswer(new AnswerWithArguments() {
+            public void answer(Runnable onStoppedListener) throws Throwable {
+                onStoppedListener.run();
+            }
+        }).when(mMakeBeforeBreakManager).stopAllSecondaryTransientClientModeManagers(any());
 
         mWifiServiceImpl = makeWifiServiceImpl();
         mDppCallback = new IDppCallback() {
@@ -5560,7 +5567,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
                 .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
 
-        doAnswer(new MockAnswerUtil.AnswerWithArguments() {
+        doAnswer(new AnswerWithArguments() {
             public void answer(NetworkUpdateResult result, ActionListenerWrapper callback,
                     int callingUid) {
                 callback.sendSuccess(); // return success
@@ -5590,7 +5597,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(),
                 eq(Build.VERSION_CODES.Q), anyInt())).thenReturn(true);
 
-        doAnswer(new MockAnswerUtil.AnswerWithArguments() {
+        doAnswer(new AnswerWithArguments() {
             public void answer(NetworkUpdateResult result, ActionListenerWrapper callback,
                     int callingUid) {
                 callback.sendSuccess(); // return success

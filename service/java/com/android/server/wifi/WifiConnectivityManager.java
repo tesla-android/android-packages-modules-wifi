@@ -2035,14 +2035,13 @@ public class WifiConnectivityManager {
                 + " wifiState=" + stateToString(mWifiState)
                 + " scanImmediately=" + scanImmediately
                 + " wifiEnabled=" + mWifiEnabled
-                + " wifiConnectivityManagerEnabled="
-                + mAutoJoinEnabled);
+                + " mAutoJoinEnabled=" + mAutoJoinEnabled);
 
         if (!mWifiEnabled || !mAutoJoinEnabled) {
             return;
         }
 
-        // Always stop outstanding connecivity scan if there is any
+        // Always stop outstanding connectivity scan if there is any
         stopConnectivityScan();
 
         // Don't start a connectivity scan while Wifi is in the transition
@@ -2059,7 +2058,6 @@ public class WifiConnectivityManager {
                 startDisconnectedPnoScan();
             }
         }
-
     }
 
     // Stop connectivity scan if there is any.
@@ -2179,11 +2177,12 @@ public class WifiConnectivityManager {
     /**
      * Handler for WiFi state (connected/disconnected) changes
      */
-    public void handleConnectionStateChanged(ActiveModeManager activeModeManager, int state) {
+    public void handleConnectionStateChanged(
+            ConcreteClientModeManager clientModeManager, int state) {
         List<ClientModeManager> internetConnectivityCmms =
                 mActiveModeWarden.getInternetConnectivityClientModeManagers();
-        if (!(internetConnectivityCmms.contains(activeModeManager))) {
-            Log.w(TAG, "Ignoring call from non primary Mode Manager " + activeModeManager,
+        if (!(internetConnectivityCmms.contains(clientModeManager))) {
+            Log.w(TAG, "Ignoring call from non primary Mode Manager " + clientModeManager,
                     new Throwable());
             return;
         }

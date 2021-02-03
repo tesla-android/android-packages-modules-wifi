@@ -110,7 +110,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mAlarmManager = new TestAlarmManager();
         mContext = mockContext();
         mLocalLog = new LocalLog(512);
-        mPrimaryClientModeManager = mockClientModeManager();
+        setupMockForClientModeManager(mPrimaryClientModeManager);
         mWifiConfigManager = mockWifiConfigManager();
         mWifiInfo = getWifiInfo();
         mScanData = mockScanData();
@@ -234,8 +234,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     @Mock private IPowerManager mPowerManagerService;
     @Mock private DeviceConfigFacade mDeviceConfigFacade;
     @Mock private ActiveModeWarden mActiveModeWarden;
-    @Mock private ClientModeManager mPrimaryClientModeManager;
-    @Mock private ClientModeManager mSecondaryClientModeManager;
+    @Mock private ConcreteClientModeManager mPrimaryClientModeManager;
+    @Mock private ConcreteClientModeManager mSecondaryClientModeManager;
     @Mock WifiCandidates.Candidate mCandidate1;
     @Mock WifiCandidates.Candidate mCandidate2;
     private WifiConfiguration mCandidateWifiConfig1;
@@ -369,14 +369,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         return connectivityHelper;
     }
 
-    ClientModeManager mockClientModeManager() {
-        ClientModeManager stateMachine = mock(ClientModeManager.class);
-        when(stateMachine.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_PRIMARY);
-        when(stateMachine.isConnected()).thenReturn(false);
-        when(stateMachine.isDisconnected()).thenReturn(true);
-        when(stateMachine.isSupplicantTransientState()).thenReturn(false);
-
-        return stateMachine;
+    private void setupMockForClientModeManager(ConcreteClientModeManager cmm) {
+        when(cmm.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_PRIMARY);
+        when(cmm.isConnected()).thenReturn(false);
+        when(cmm.isDisconnected()).thenReturn(true);
+        when(cmm.isSupplicantTransientState()).thenReturn(false);
     }
 
     WifiNetworkSelector mockWifiNetworkSelector() {
@@ -3999,7 +3996,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set screen to on
         setScreenState(true);
 
-        ClientModeManager primaryCmm = mock(ClientModeManager.class);
+        ConcreteClientModeManager primaryCmm = mock(ConcreteClientModeManager.class);
         WifiInfo wifiInfo1 = mock(WifiInfo.class);
         when(primaryCmm.getInterfaceName()).thenReturn("wlan0");
         when(primaryCmm.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
@@ -4007,7 +4004,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         when(primaryCmm.isDisconnected()).thenReturn(true);
         when(primaryCmm.syncRequestConnectionInfo()).thenReturn(wifiInfo1);
 
-        ClientModeManager secondaryCmm = mock(ClientModeManager.class);
+        ConcreteClientModeManager secondaryCmm = mock(ConcreteClientModeManager.class);
         WifiInfo wifiInfo2 = mock(WifiInfo.class);
         when(secondaryCmm.getInterfaceName()).thenReturn("wlan1");
         when(secondaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_LONG_LIVED);
@@ -4040,7 +4037,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         WorkSource oemPaidWs = new WorkSource();
         mWifiConnectivityManager.setOemPaidConnectionAllowed(true, oemPaidWs);
 
-        ClientModeManager primaryCmm = mock(ClientModeManager.class);
+        ConcreteClientModeManager primaryCmm = mock(ConcreteClientModeManager.class);
         WifiInfo wifiInfo1 = mock(WifiInfo.class);
         when(primaryCmm.getInterfaceName()).thenReturn("wlan0");
         when(primaryCmm.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
