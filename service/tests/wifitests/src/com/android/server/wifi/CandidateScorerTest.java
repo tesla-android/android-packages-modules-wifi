@@ -411,4 +411,35 @@ public class CandidateScorerTest extends WifiBaseTest {
                                                 .setTrusted(false))));
     }
 
+    /**
+     * Verify that the ThroughputScorer prefers a current network that has internet over a
+     * candidate that has no internet.
+     */
+    @Test
+    public void testPreferCurrentNetworkWithInternetOverNetworkWithNoInternet() throws Exception {
+        if (mExpectedExpId == ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) {
+            // First verify that when evaluated separately, mCandidate2 has a higher score due
+            // to it having better RSSI and throughput.
+            mCandidate1.setScanRssi(-77)
+                    .setPredictedThroughputMbps(30)
+                    .setCurrentNetwork(true)
+                    .setNoInternetAccess(false);
+            mCandidate2.setScanRssi(-40)
+                    .setPredictedThroughputMbps(100)
+                    .setCurrentNetwork(false)
+                    .setNoInternetAccess(true)
+                    .setNoInternetAccessExpected(false);
+            double score1 = evaluate(mCandidate1);
+            assertThat(evaluate(mCandidate2), greaterThan(score1));
+
+            // Then verify that when evaluated together, mCandidate1 wins because it is the current
+            // network and has internet
+            List<Candidate> candidates = new ArrayList<>();
+            candidates.add(mCandidate1);
+            candidates.add(mCandidate2);
+            ScoredCandidate choice = mCandidateScorer.scoreCandidates(candidates);
+            assertEquals(score1, choice.value, TOL);
+        }
+    }
+
 }
