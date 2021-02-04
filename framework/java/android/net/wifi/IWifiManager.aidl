@@ -245,8 +245,8 @@ interface IWifiManager
 
     void setDeviceMobilityState(int state);
 
-    void startDppAsConfiguratorInitiator(in IBinder binder, in String enrolleeUri,
-        int selectedNetworkId, int netRole, in IDppCallback callback);
+    void startDppAsConfiguratorInitiator(in IBinder binder, in String packageName,
+        in String enrolleeUri, int selectedNetworkId, int netRole, in IDppCallback callback);
 
     void startDppAsEnrolleeInitiator(in IBinder binder, in String configuratorUri,
         in IDppCallback callback);

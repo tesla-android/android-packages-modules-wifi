@@ -4306,14 +4306,15 @@ public class WifiServiceImpl extends BaseWifiService {
      * with a peer, and send the SSID and password of the selected network.
      *
      * @param binder Caller's binder context
+     * @param packageName Package name of the calling app
      * @param enrolleeUri URI of the Enrollee obtained externally (e.g. QR code scanning)
      * @param selectedNetworkId Selected network ID to be sent to the peer
      * @param netRole The network role of the enrollee
      * @param callback Callback for status updates
      */
     @Override
-    public void startDppAsConfiguratorInitiator(IBinder binder, String enrolleeUri,
-            int selectedNetworkId, int netRole, IDppCallback callback) {
+    public void startDppAsConfiguratorInitiator(IBinder binder, @NonNull String packageName,
+            String enrolleeUri, int selectedNetworkId, int netRole, IDppCallback callback) {
         // verify arguments
         if (binder == null) {
             throw new IllegalArgumentException("Binder must not be null");
@@ -4330,12 +4331,14 @@ public class WifiServiceImpl extends BaseWifiService {
 
         final int uid = getMockableCallingUid();
 
-        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
+        int callingUid = Binder.getCallingUid();
+        mAppOps.checkPackage(callingUid, packageName);
+        if (!isSettingsOrSuw(Binder.getCallingPid(), callingUid)) {
             throw new SecurityException(TAG + ": Permission denied");
         }
 
         mWifiThreadRunner.post(() -> mDppManager.startDppAsConfiguratorInitiator(
-                uid, binder, enrolleeUri, selectedNetworkId, netRole, callback));
+                uid, packageName, binder, enrolleeUri, selectedNetworkId, netRole, callback));
     }
 
     /**

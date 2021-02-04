@@ -6045,7 +6045,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test(expected = SecurityException.class)
     public void testStartDppAsConfiguratorInitiatorWithoutPermissions() {
-        mWifiServiceImpl.startDppAsConfiguratorInitiator(mAppBinder, DPP_URI,
+        mWifiServiceImpl.startDppAsConfiguratorInitiator(mAppBinder, TEST_PACKAGE_NAME, DPP_URI,
                 1, 1, mDppCallback);
     }
 
