@@ -271,7 +271,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"network-suggestions-set-user-approved", TEST_PACKAGE, "yes"});
         verify(mWifiNetworkSuggestionsManager, never()).setHasUserApprovedForApp(
-                anyBoolean(), anyString());
+                anyBoolean(), anyInt(), anyString());
         assertFalse(mWifiShellCommand.getErrPrintWriter().toString().isEmpty());
 
         BinderUtil.setUid(Process.ROOT_UID);
@@ -280,13 +280,13 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"network-suggestions-set-user-approved", TEST_PACKAGE, "yes"});
         verify(mWifiNetworkSuggestionsManager).setHasUserApprovedForApp(
-                true, TEST_PACKAGE);
+                eq(true), anyInt(), eq(TEST_PACKAGE));
 
         mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"network-suggestions-set-user-approved", TEST_PACKAGE, "no"});
         verify(mWifiNetworkSuggestionsManager).setHasUserApprovedForApp(
-                false, TEST_PACKAGE);
+                eq(false), anyInt(), eq(TEST_PACKAGE));
     }
 
     @Test

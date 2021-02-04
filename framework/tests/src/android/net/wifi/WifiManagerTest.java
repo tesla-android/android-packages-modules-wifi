@@ -2968,17 +2968,6 @@ public class WifiManagerTest {
     }
 
     @Test
-    public void testGetNetworkSuggestionUserApprovalStatus() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
-
-        when(mWifiService.getNetworkSuggestionUserApprovalStatus(TEST_PACKAGE_NAME))
-                .thenReturn(WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER);
-        assertEquals(WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER,
-                mWifiManager.getNetworkSuggestionUserApprovalStatus());
-        verify(mWifiService).getNetworkSuggestionUserApprovalStatus(TEST_PACKAGE_NAME);
-    }
-
-    @Test
     public void testSetCarrierNetworkOffload() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setCarrierNetworkOffloadEnabled(TEST_SUB_ID, true, false);
@@ -3028,7 +3017,7 @@ public class WifiManagerTest {
     /**
      * Verify an IllegalArgumentException is thrown if executor not provided.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testAddSuggestionUserApprovalStatusListenerWithNullExecutor() {
         assumeTrue(SdkLevel.isAtLeastS());
 
@@ -3039,7 +3028,7 @@ public class WifiManagerTest {
     /**
      * Verify an IllegalArgumentException is thrown if listener is not provided.
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testAddSuggestionUserApprovalStatusListenerWithNullListener() {
         assumeTrue(SdkLevel.isAtLeastS());
 
@@ -3060,8 +3049,10 @@ public class WifiManagerTest {
                 mSuggestionUserApprovalStatusListener);
         verify(mWifiService).addSuggestionUserApprovalStatusListener(callbackCaptor.capture(),
                 anyString());
-        callbackCaptor.getValue().onUserApprovalStatusChange();
-        verify(mSuggestionUserApprovalStatusListener).onUserApprovalStatusChange();
+        callbackCaptor.getValue().onUserApprovalStatusChange(
+                WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER);
+        verify(mSuggestionUserApprovalStatusListener).onUserApprovalStatusChange(
+                WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER);
     }
 
     /**
@@ -3077,7 +3068,8 @@ public class WifiManagerTest {
                 mSuggestionUserApprovalStatusListener);
         verify(mWifiService).addSuggestionUserApprovalStatusListener(callbackCaptor.capture(),
                 anyString());
-        callbackCaptor.getValue().onUserApprovalStatusChange();
+        callbackCaptor.getValue().onUserApprovalStatusChange(
+                WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER);
         verify(mExecutor).execute(any(Runnable.class));
     }
 

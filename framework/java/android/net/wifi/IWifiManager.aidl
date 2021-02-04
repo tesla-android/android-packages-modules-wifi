@@ -295,8 +295,6 @@ interface IWifiManager
 
     boolean isAutoWakeupEnabled();
 
-    int getNetworkSuggestionUserApprovalStatus(String packageName);
-
     void startTemporarilyDisablingAllNonCarrierMergedWifi(int subId);
 
     void stopTemporarilyDisablingAllNonCarrierMergedWifi();
@@ -311,7 +309,7 @@ interface IWifiManager
 
     void restartWifiSubsystem(String reason);
 
-    boolean addSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
+    void addSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
 
     void removeSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
 

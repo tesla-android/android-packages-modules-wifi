@@ -23,5 +23,5 @@ package android.net.wifi;
  */
 oneway interface ISuggestionUserApprovalStatusListener
 {
-   void onUserApprovalStatusChange();
+   void onUserApprovalStatusChange(int status);
 }

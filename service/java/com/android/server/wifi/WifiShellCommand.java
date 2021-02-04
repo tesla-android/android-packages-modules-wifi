@@ -268,7 +268,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "network-suggestions-set-user-approved": {
                     String packageName = getNextArgRequired();
                     boolean approved = getNextArgRequiredTrueOrFalse("yes", "no");
-                    mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(approved, packageName);
+                    mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(approved,
+                            Binder.getCallingUid(), packageName);
                     return 0;
                 }
                 case "network-suggestions-has-user-approved": {
