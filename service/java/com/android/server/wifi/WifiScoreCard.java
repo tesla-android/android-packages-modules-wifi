@@ -50,6 +50,10 @@ import com.android.server.wifi.WifiBlocklistMonitor.FailureReason;
 import com.android.server.wifi.WifiHealthMonitor.FailureStats;
 import com.android.server.wifi.proto.WifiScoreCardProto;
 import com.android.server.wifi.proto.WifiScoreCardProto.AccessPoint;
+import com.android.server.wifi.proto.WifiScoreCardProto.BandwidthStats;
+import com.android.server.wifi.proto.WifiScoreCardProto.BandwidthStatsAll;
+import com.android.server.wifi.proto.WifiScoreCardProto.BandwidthStatsAllLevel;
+import com.android.server.wifi.proto.WifiScoreCardProto.BandwidthStatsAllLink;
 import com.android.server.wifi.proto.WifiScoreCardProto.ConnectionStats;
 import com.android.server.wifi.proto.WifiScoreCardProto.Event;
 import com.android.server.wifi.proto.WifiScoreCardProto.HistogramBucket;
@@ -774,6 +778,8 @@ public class WifiScoreCard {
             for (PerSignal sig: mSignalForEventAndFrequency.values()) {
                 builder.addEventStats(sig.toSignal());
             }
+            builder.setBandwidthStatsAll(toBandwidthStatsAll(
+                    bandwidthStatsValue, bandwidthStatsCount));
             return builder.build();
         }
         PerBssid merge(AccessPoint ap) {
@@ -803,6 +809,10 @@ public class WifiScoreCard {
                     perSignal.merge(signal);
                     changed = true;
                 }
+            }
+            if (ap.hasBandwidthStatsAll()) {
+                mergeBandwidthStatsAll(ap.getBandwidthStatsAll(),
+                        bandwidthStatsValue, bandwidthStatsCount);
             }
             return this;
         }
@@ -861,6 +871,69 @@ public class WifiScoreCard {
         }
     }
 
+    private BandwidthStatsAll toBandwidthStatsAll(long[][][] values, int[][][] counts) {
+        BandwidthStatsAll.Builder builder = BandwidthStatsAll.newBuilder();
+        builder.setStats2G(toBandwidthStatsAllLink(values[0], counts[0]));
+        builder.setStatsAbove2G(toBandwidthStatsAllLink(values[1], counts[1]));
+        return builder.build();
+    }
+
+    private BandwidthStatsAllLink toBandwidthStatsAllLink(long[][] values, int[][] counts) {
+        BandwidthStatsAllLink.Builder builder = BandwidthStatsAllLink.newBuilder();
+        builder.setTx(toBandwidthStatsAllLevel(values[LINK_TX], counts[LINK_TX]));
+        builder.setRx(toBandwidthStatsAllLevel(values[LINK_RX], counts[LINK_RX]));
+        return builder.build();
+    }
+
+    private BandwidthStatsAllLevel toBandwidthStatsAllLevel(long[] values, int[] counts) {
+        BandwidthStatsAllLevel.Builder builder = BandwidthStatsAllLevel.newBuilder();
+        for (int i = 0; i < NUM_SIGNAL_LEVEL; i++) {
+            builder.addLevel(toBandwidthStats(values[i], counts[i]));
+        }
+        return builder.build();
+    }
+
+    private BandwidthStats toBandwidthStats(long value, int count) {
+        BandwidthStats.Builder builder = BandwidthStats.newBuilder();
+        builder.setValue(value);
+        builder.setCount(count);
+        return builder.build();
+    }
+
+    private void mergeBandwidthStatsAll(BandwidthStatsAll source,
+            long[][][] values, int[][][] counts) {
+        if (source.hasStats2G()) {
+            mergeBandwidthStatsAllLink(source.getStats2G(), values[0], counts[0]);
+        }
+        if (source.hasStatsAbove2G()) {
+            mergeBandwidthStatsAllLink(source.getStatsAbove2G(), values[1], counts[1]);
+        }
+    }
+
+    private void mergeBandwidthStatsAllLink(BandwidthStatsAllLink source,
+            long[][] values, int[][] counts) {
+        if (source.hasTx()) {
+            mergeBandwidthStatsAllLevel(source.getTx(), values[LINK_TX], counts[LINK_TX]);
+        }
+        if (source.hasRx()) {
+            mergeBandwidthStatsAllLevel(source.getRx(), values[LINK_RX], counts[LINK_RX]);
+        }
+    }
+
+    private void mergeBandwidthStatsAllLevel(BandwidthStatsAllLevel source,
+            long[] values, int[] counts) {
+        int levelCnt = source.getLevelCount();
+        for (int i = 0; i < levelCnt; i++) {
+            BandwidthStats stats = source.getLevel(i);
+            if (stats.hasValue()) {
+                values[i] += stats.getValue();
+            }
+            if (stats.hasCount()) {
+                counts[i] += stats.getCount();
+            }
+        }
+    }
+
     // TODO: b/178641307 move the following parameters to config.xml
     // Array dimension : int [NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
     static final int[][][] LINK_BANDWIDTH_INIT_KBPS =
@@ -903,10 +976,9 @@ public class WifiScoreCard {
         private int mBandIdx;
         private int mTxKbps = -1;
         private int mRxKbps = -1;
-        // TODO: memory store operation for the following fields and similar fields in perBssid
-        private long[][][] mBandwidthStatsValue =
+        long[][][] mBandwidthStatsValue =
                 new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-        private int[][][] mBandwidthStatsCount =
+        int[][][] mBandwidthStatsCount =
                 new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
 
         PerNetwork(String ssid) {
@@ -1153,6 +1225,7 @@ public class WifiScoreCard {
             if (bytesDelta < LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE[mSignalLevel] * 1024) {
                 return;
             }
+            changed = true;
             int linkBandwidthKbps = bytesDelta * 8 / onTimeMs;
             logd(link == LINK_TX ? "txKbps=" : "rxKbps=" + linkBandwidthKbps);
             // Update SSID level stats
@@ -1161,6 +1234,7 @@ public class WifiScoreCard {
             // Update BSSID level stats
             PerBssid perBssid = lookupBssid(ssid, mBssid);
             if (perBssid != mPlaceholderPerBssid) {
+                perBssid.changed = true;
                 perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] += linkBandwidthKbps;
                 perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel]++;
             }
@@ -1397,6 +1471,8 @@ public class WifiScoreCard {
             if (mFrequencyList.size() > 0) {
                 builder.addAllFrequencies(mFrequencyList.getEntries());
             }
+            builder.setBandwidthStatsAll(toBandwidthStatsAll(
+                    mBandwidthStatsValue, mBandwidthStatsCount));
             return builder.build();
         }
 
@@ -1457,6 +1533,10 @@ public class WifiScoreCard {
                 for (int i = mergedFrequencyList.size() - 1; i >= 0; i--) {
                     mFrequencyList.add(mergedFrequencyList.get(i));
                 }
+            }
+            if (ns.hasBandwidthStatsAll()) {
+                mergeBandwidthStatsAll(ns.getBandwidthStatsAll(),
+                        mBandwidthStatsValue, mBandwidthStatsCount);
             }
             return this;
         }

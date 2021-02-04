@@ -55,6 +55,7 @@ import com.android.server.wifi.WifiHealthMonitor.FailureStats;
 import com.android.server.wifi.WifiScoreCard.NetworkConnectionStats;
 import com.android.server.wifi.WifiScoreCard.PerNetwork;
 import com.android.server.wifi.proto.WifiScoreCardProto.AccessPoint;
+import com.android.server.wifi.proto.WifiScoreCardProto.BandwidthStatsAll;
 import com.android.server.wifi.proto.WifiScoreCardProto.ConnectionStats;
 import com.android.server.wifi.proto.WifiScoreCardProto.Event;
 import com.android.server.wifi.proto.WifiScoreCardProto.Network;
@@ -521,6 +522,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
                 }
             }
         }
+        makeUpdateLinkBandwidthExample();
         mWifiScoreCard.resetConnectionState();
 
         WifiScoreCard.PerBssid perBssid = mWifiScoreCard.fetchByBssid(TEST_BSSID_1);
@@ -627,6 +629,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
                     fail(signal.getEvent().toString());
             }
         }
+        checkSerializationUpdateLinkBandwidthExample(ap.getBandwidthStatsAll());
     }
 
     /**
@@ -1203,12 +1206,52 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mWifiScoreCard.resetConnectionState();
     }
 
+    private void makeUpdateLinkBandwidthExample() {
+        int signalLevel = 1;
+        mWifiInfo.setFrequency(2437);
+        mNewLlStats.on_time = 100;
+        mNewLlStats.timeStampInMs = 5_000;
+        long txBytes = 2_000_000L;
+        long rxBytes = 4_000_000L;
+        PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        for (int i = 0; i < LINK_BANDWIDTH_STATS_COUNT_THR; i++) {
+            addTotalBytes(txBytes, rxBytes);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo, signalLevel);
+        }
+        mWifiInfo.setFrequency(5210);
+        txBytes = 5_000_000L;
+        rxBytes = 1000L;
+        for (int i = 0; i < LINK_BANDWIDTH_STATS_COUNT_THR + 2; i++) {
+            addTotalBytes(txBytes, rxBytes);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo, signalLevel);
+        }
+    }
+
+    private void checkSerializationUpdateLinkBandwidthExample(BandwidthStatsAll stats) {
+        assertEquals(2_000_000L * 8 / 100 * LINK_BANDWIDTH_STATS_COUNT_THR,
+                stats.getStats2G().getTx().getLevel(1).getValue());
+        assertEquals(4_000_000L * 8 / 100 * LINK_BANDWIDTH_STATS_COUNT_THR,
+                stats.getStats2G().getRx().getLevel(1).getValue());
+        assertEquals(LINK_BANDWIDTH_STATS_COUNT_THR,
+                stats.getStats2G().getTx().getLevel(1).getCount());
+        assertEquals(LINK_BANDWIDTH_STATS_COUNT_THR,
+                stats.getStats2G().getRx().getLevel(1).getCount());
+
+        assertEquals(5_000_000L * 8 / 100 * (LINK_BANDWIDTH_STATS_COUNT_THR + 2),
+                stats.getStatsAbove2G().getTx().getLevel(1).getValue());
+        assertEquals(0, stats.getStatsAbove2G().getRx().getLevel(1).getValue());
+        assertEquals(LINK_BANDWIDTH_STATS_COUNT_THR + 2,
+                stats.getStatsAbove2G().getTx().getLevel(1).getCount());
+        assertEquals(0, stats.getStatsAbove2G().getRx().getLevel(1).getCount());
+    }
+
     /**
      * Constructs a protobuf form of Network example.
      */
     private byte[] makeSerializedNetworkExample() {
         makeDisconnectionConnectingExample(true);
         makeShortConnectionExample(true);
+        makeUpdateLinkBandwidthExample();
         PerNetwork perNetwork = mWifiScoreCard.fetchByNetwork(mWifiInfo.getSSID());
         checkSerializationNetworkExample("before serialization", perNetwork);
         // Now convert to protobuf form
@@ -1252,6 +1295,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getNumAssociationRejection());
         assertEquals(0, dailyStats.getNumAssociationTimeout());
         assertEquals(0, dailyStats.getNumAuthenticationFailure());
+
+        checkSerializationUpdateLinkBandwidthExample(ns.getBandwidthStatsAll());
     }
 
     /**
