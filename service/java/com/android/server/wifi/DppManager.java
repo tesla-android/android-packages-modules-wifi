@@ -31,6 +31,7 @@ import android.net.wifi.IDppCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -39,11 +40,14 @@ import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.WakeupMessage;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative.DppEventCallback;
 import com.android.server.wifi.util.ApConfigUtil;
+import com.android.server.wifi.util.WifiPermissionsUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+
 /**
  * DPP Manager class
  * Implements the DPP Initiator APIs and callbacks
@@ -69,6 +73,7 @@ public class DppManager {
     public static final int DPP_AUTH_ROLE_RESPONDER = 1;
     private final DppMetrics mDppMetrics;
     private final ScanRequestProxy mScanRequestProxy;
+    private final WifiPermissionsUtil mWifiPermissionsUtil;
 
     private final DppEventCallback mDppEventCallback = new DppEventCallback() {
         @Override
@@ -101,7 +106,8 @@ public class DppManager {
     };
 
     DppManager(Handler handler, WifiNative wifiNative, WifiConfigManager wifiConfigManager,
-            Context context, DppMetrics dppMetrics, ScanRequestProxy scanRequestProxy) {
+            Context context, DppMetrics dppMetrics, ScanRequestProxy scanRequestProxy,
+            WifiPermissionsUtil wifiPermissionsUtil) {
         mHandler = handler;
         mWifiNative = wifiNative;
         mWifiConfigManager = wifiConfigManager;
@@ -110,6 +116,7 @@ public class DppManager {
         mClock = new Clock();
         mDppMetrics = dppMetrics;
         mScanRequestProxy = scanRequestProxy;
+        mWifiPermissionsUtil = wifiPermissionsUtil;
 
         // Setup timer
         mDppTimeoutMessage = new WakeupMessage(mContext, mHandler,
@@ -157,20 +164,22 @@ public class DppManager {
      *
      * @param uid                 User ID
      * @param binder              Binder object
+     * @param packageName         Package name of the calling app
      * @param enrolleeUri         The Enrollee URI, scanned externally (e.g. via QR code)
      * @param selectedNetworkId   The selected Wi-Fi network ID to be sent
      * @param enrolleeNetworkRole Network role of remote enrollee: STA or AP
      * @param callback            DPP Callback object
      */
-    public void startDppAsConfiguratorInitiator(int uid, IBinder binder,
-            String enrolleeUri, int selectedNetworkId,
+    public void startDppAsConfiguratorInitiator(int uid, @Nullable String packageName,
+            IBinder binder, String enrolleeUri, int selectedNetworkId,
             @WifiManager.EasyConnectNetworkRole int enrolleeNetworkRole, IDppCallback callback) {
         mDppMetrics.updateDppConfiguratorInitiatorRequests();
         if (mDppRequestInfo != null) {
             try {
                 Log.e(TAG, "DPP request already in progress");
-                Log.e(TAG, "Ongoing request UID: " + mDppRequestInfo.uid + ", new UID: "
-                        + uid);
+                Log.e(TAG, "Ongoing request - UID: " + mDppRequestInfo.uid
+                        + " Package: " + mDppRequestInfo.packageName
+                        + ", New request - UID: " + uid + " Package: " + packageName);
 
                 mDppMetrics.updateDppFailure(EasyConnectStatusCallback
                         .EASY_CONNECT_EVENT_FAILURE_BUSY);
@@ -251,6 +260,7 @@ public class DppManager {
 
         mDppRequestInfo = new DppRequestInfo();
         mDppRequestInfo.uid = uid;
+        mDppRequestInfo.packageName = packageName;
         mDppRequestInfo.binder = binder;
         mDppRequestInfo.callback = callback;
         mDppRequestInfo.authRole = DPP_AUTH_ROLE_INITIATOR;
@@ -518,6 +528,7 @@ public class DppManager {
 
     private static class DppRequestInfo {
         public int uid;
+        public String packageName;
         public IBinder binder;
         public IBinder.DeathRecipient dr;
         public int peerId;
@@ -748,12 +759,27 @@ public class DppManager {
         }
 
         if (isNetworkInScanCache & !channelMatch) {
-            Log.d(TAG, "Update the error code to NOT_COMPATIBLE"
-                    + " as enrollee didn't scan network's operating channel");
+            Log.d(TAG, "Optionally update the error code to "
+                    + "ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL as enrollee didn't scan"
+                    + "network's operating channel");
             mDppMetrics.updateDppR2EnrolleeResponderIncompatibleConfiguration();
             return false;
         }
         return true;
+    }
+
+    private @EasyConnectStatusCallback.EasyConnectFailureStatusCode int
+            getFailureStatusCodeOnEnrolleeInCompatibleWithNetwork() {
+        if (!SdkLevel.isAtLeastS() || mDppRequestInfo.packageName != null
+                && mWifiPermissionsUtil.isTargetSdkLessThan(
+                mDppRequestInfo.packageName, Build.VERSION_CODES.S,
+                mDppRequestInfo.uid)) {
+            return EasyConnectStatusCallback
+                    .EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE;
+        } else {
+            return EasyConnectStatusCallback
+                    .EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL;
+        }
     }
 
     private void onFailure(int dppStatusCode, String ssid, String channelList, int[] bandList) {
@@ -813,9 +839,7 @@ public class DppManager {
                                 EasyConnectStatusCallback
                                 .EASY_CONNECT_EVENT_FAILURE_CANNOT_FIND_NETWORK;
                     } else {
-                        dppFailureCode =
-                                EasyConnectStatusCallback
-                                .EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE;
+                        dppFailureCode = getFailureStatusCodeOnEnrolleeInCompatibleWithNetwork();
                     }
                     break;
 

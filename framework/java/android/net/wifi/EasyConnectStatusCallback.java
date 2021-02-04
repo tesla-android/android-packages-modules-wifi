@@ -166,6 +166,15 @@ public abstract class EasyConnectStatusCallback {
      */
     public static final int EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = -13;
 
+    /**
+     * Easy Connect Failure event: Enrollee didn't scan the network's operating channel.
+     * This error is generated when framework finds that Network's operating channel
+     * is not included in the list of channels the Enrollee scanned in attempting to
+     * discover the network prior to connection.
+     */
+    public static final int EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL =
+            -14;
+
     /** @hide */
     @IntDef(prefix = {"EASY_CONNECT_EVENT_FAILURE_"}, value = {
             EASY_CONNECT_EVENT_FAILURE_INVALID_URI,
@@ -181,6 +190,7 @@ public abstract class EasyConnectStatusCallback {
             EASY_CONNECT_EVENT_FAILURE_ENROLLEE_AUTHENTICATION,
             EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION,
             EASY_CONNECT_EVENT_FAILURE_URI_GENERATION,
+            EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface EasyConnectFailureStatusCode {

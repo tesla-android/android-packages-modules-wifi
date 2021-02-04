@@ -7,6 +7,7 @@ package android.net.wifi {
     field public static final int EASY_CONNECT_EVENT_FAILURE_CANNOT_FIND_NETWORK = -10; // 0xfffffff6
     field public static final int EASY_CONNECT_EVENT_FAILURE_CONFIGURATION = -4; // 0xfffffffc
     field public static final int EASY_CONNECT_EVENT_FAILURE_ENROLLEE_AUTHENTICATION = -11; // 0xfffffff5
+    field public static final int EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL = -14; // 0xfffffff2
     field public static final int EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION = -12; // 0xfffffff4
     field public static final int EASY_CONNECT_EVENT_FAILURE_GENERIC = -7; // 0xfffffff9
     field public static final int EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK = -9; // 0xfffffff7
