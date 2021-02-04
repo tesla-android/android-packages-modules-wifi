@@ -970,24 +970,28 @@ public class WifiConfigManager {
             return;
         }
 
+        WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(externalConfig);
+
         // An external caller is only allowed to set one type manually.
         // As a result, only default type matters.
-        // There might be 2 cases:
+        // There might be 3 cases:
         // 1. Existing config with new upgradable type config,
         //    ex. PSK/SAE config with SAE config.
         // 2. Existing configuration with downgradable type config,
         //    ex. SAE config with PSK config.
-        // As security params list is not empty, new config won't be an
-        // non-upgradable or non-downgradable type, or it cannot match
-        // any existing configs.
+        // 3. The new type is not a compatible type of existing config.
+        //    ex. Open config with PSK config.
+        //    This might happen when updating a config via network ID directly.
         int oldType = internalConfig.getDefaultSecurityParams().getSecurityType();
         int newType = externalConfig.getDefaultSecurityParams().getSecurityType();
         if (oldType != newType) {
             if (internalConfig.isSecurityType(newType)) {
                 internalConfig.setSecurityParamsIsAddedByAutoUpgrade(newType, false);
-            } else {
+            } else if (externalConfig.isSecurityType(oldType)) {
                 internalConfig.setSecurityParams(newType);
                 internalConfig.addSecurityParams(oldType);
+            } else {
+                internalConfig.setSecurityParams(externalConfig.getSecurityParamsList());
             }
         }
     }
