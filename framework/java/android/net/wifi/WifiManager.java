@@ -2100,26 +2100,6 @@ public class WifiManager {
     }
 
     /**
-     * Get the Suggestion approval status of the calling app. When an app makes suggestions using
-     * the {@link #addNetworkSuggestions(List)} API they may trigger a user approval flow. This API
-     * provides the current approval status.
-     *
-     * @return Status code for the user approval. One of the STATUS_SUGGESTION_APPROVAL_ values.
-     * @throws {@link SecurityException} if the caller is missing required permissions.
-     */
-    @RequiresPermission(ACCESS_WIFI_STATE)
-    public @SuggestionUserApprovalStatus int getNetworkSuggestionUserApprovalStatus() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        try {
-            return mService.getNetworkSuggestionUserApprovalStatus(mContext.getOpPackageName());
-        } catch (RemoteException e) {
-            throw e.rethrowAsRuntimeException();
-        }
-    }
-
-    /**
      * Add or update a Passpoint configuration.  The configuration provides a credential
      * for connecting to Passpoint networks that are operated by the Passpoint
      * service provider specified in the configuration.
@@ -7341,10 +7321,11 @@ public class WifiManager {
     public interface SuggestionUserApprovalStatusListener {
 
         /**
-         * Called when the user approval status of the App has changed. The current status can be
-         * queried by {@link #getNetworkSuggestionUserApprovalStatus()}
+         * Called when the user approval status of the App has changed.
+         * @param status The current status code for the user approval. One of the
+         *               {@code STATUS_SUGGESTION_APPROVAL_} values.
          */
-        void onUserApprovalStatusChange();
+        void onUserApprovalStatusChange(@SuggestionUserApprovalStatus int status);
     }
 
     private class SuggestionUserApprovalStatusListenerProxy extends
@@ -7359,8 +7340,8 @@ public class WifiManager {
         }
 
         @Override
-        public void onUserApprovalStatusChange() {
-            mExecutor.execute(() -> mListener.onUserApprovalStatusChange());
+        public void onUserApprovalStatusChange(int status) {
+            mExecutor.execute(() -> mListener.onUserApprovalStatusChange(status));
         }
 
     }
@@ -7368,24 +7349,24 @@ public class WifiManager {
     /**
      * Add a listener for Wi-Fi network suggestion user approval status.
      * See {@link SuggestionUserApprovalStatusListener}.
-     * Caller will receive a callback when the user approval status of the caller has changed.
+     * Caller will receive a callback immediately after adding a listener and when the user approval
+     * status of the caller has changed.
      * Caller can remove a previously registered listener using
      * {@link WifiManager#removeSuggestionUserApprovalStatusListener(
      * SuggestionUserApprovalStatusListener)}
      * A caller can add multiple listeners to monitor the event.
      * @param executor The executor to execute the listener of the {@code listener} object.
      * @param listener listener for suggestion user approval status changes.
-     * @return true if succeed otherwise false.
      */
     @RequiresPermission(ACCESS_WIFI_STATE)
-    public boolean addSuggestionUserApprovalStatusListener(
+    public void addSuggestionUserApprovalStatusListener(
             @NonNull @CallbackExecutor Executor executor,
             @NonNull SuggestionUserApprovalStatusListener listener) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
-        if (executor == null) throw new IllegalArgumentException("Executor cannot be null");
+        if (listener == null) throw new NullPointerException("Listener cannot be null");
+        if (executor == null) throw new NullPointerException("Executor cannot be null");
         Log.v(TAG, "addSuggestionUserApprovalStatusListener listener=" + listener
                 + ", executor=" + executor);
         try {
@@ -7394,7 +7375,7 @@ public class WifiManager {
                         new SuggestionUserApprovalStatusListenerProxy(executor, listener);
                 sSuggestionUserApprovalStatusListenerMap.put(System.identityHashCode(listener),
                         binderCallback);
-                return mService.addSuggestionUserApprovalStatusListener(binderCallback,
+                mService.addSuggestionUserApprovalStatusListener(binderCallback,
                         mContext.getOpPackageName());
             }
         } catch (RemoteException e) {
@@ -7409,8 +7390,6 @@ public class WifiManager {
      * SuggestionUserApprovalStatusListener)}. After calling this method,
      * applications will no longer receive network suggestion user approval status change through
      * that listener.
-     *
-     * @param listener listener to remove.
      */
     @RequiresPermission(ACCESS_WIFI_STATE)
     public void removeSuggestionUserApprovalStatusListener(

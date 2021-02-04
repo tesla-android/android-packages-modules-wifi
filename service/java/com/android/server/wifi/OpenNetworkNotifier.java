@@ -16,7 +16,6 @@
 
 package com.android.server.wifi;
 
-import android.content.Context;
 import android.os.Looper;
 import android.provider.Settings;
 
@@ -35,7 +34,7 @@ public class OpenNetworkNotifier extends AvailableNetworkNotifier {
             Settings.Global.WIFI_NETWORKS_AVAILABLE_NOTIFICATION_ON;
 
     public OpenNetworkNotifier(
-            Context context,
+            WifiContext context,
             Looper looper,
             FrameworkFacade framework,
             Clock clock,

@@ -112,7 +112,8 @@ public class EapFailureNotifier {
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setColor(mContext.getResources().getColor(
                         android.R.color.system_notification_accent_color));
-        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
+        mNotificationManager.notify(mContext.getNotificationTag(), NOTIFICATION_ID,
+                builder.build());
         mCurrentShownSsid = ssid;
     }
 

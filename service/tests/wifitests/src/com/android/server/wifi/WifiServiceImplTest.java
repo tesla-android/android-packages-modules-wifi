@@ -488,6 +488,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mActiveModeWarden.getClientModeManagersInRoles(
                 ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
                 .thenReturn(Collections.emptyList());
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
         when(mContext.getSystemService(NotificationManager.class)).thenReturn(mNotificationManager);
         when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
@@ -7209,20 +7210,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWakeupController).dump(any(), any(), any());
     }
 
-    @Test
-    public void testGetNetworkSuggestionUserApprovalStatus() {
-        when(mWifiNetworkSuggestionsManager
-                .getNetworkSuggestionUserApprovalStatus(anyInt(), anyString()))
-                .thenReturn(WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER);
-        mLooper.startAutoDispatch();
-        assertEquals(WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER,
-                mWifiServiceImpl.getNetworkSuggestionUserApprovalStatus(TEST_PACKAGE_NAME));
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mWifiNetworkSuggestionsManager)
-                .getNetworkSuggestionUserApprovalStatus(
-                        Binder.getCallingUid(), TEST_PACKAGE_NAME);
-    }
-
     /**
      * Test register listener without permission.
      */
@@ -7235,9 +7222,19 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Test register listener without permission.
+     */
+    @Test(expected = SecurityException.class)
+    public void testAddSuggestionUserApprovalStatusListenerFromNoncurrentUser() {
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        mWifiServiceImpl.addSuggestionUserApprovalStatusListener(
+                mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
+    }
+
+    /**
      * Test register listener without listener
      */
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = NullPointerException.class)
     public void testAddSuggestionUserApprovalStatusListenerWithIllegalArgument() {
         mWifiServiceImpl.addSuggestionUserApprovalStatusListener(null, TEST_PACKAGE_NAME);
     }
@@ -7258,12 +7255,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testAddRemoveSuggestionUserApprovalStatusListener() {
-        mLooper.startAutoDispatch();
-        when(mWifiNetworkSuggestionsManager.addSuggestionUserApprovalStatusListener(
-                any(), anyString(), anyInt())).thenReturn(true);
-        assertTrue(mWifiServiceImpl.addSuggestionUserApprovalStatusListener(
-                mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME));
-        mLooper.stopAutoDispatch();
+        mWifiServiceImpl.addSuggestionUserApprovalStatusListener(
+                mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
         verify(mWifiNetworkSuggestionsManager).addSuggestionUserApprovalStatusListener(
                 eq(mSuggestionUserApprovalStatusListener), eq(TEST_PACKAGE_NAME), anyInt());
 

@@ -51,7 +51,7 @@ public class WakeupOnboarding {
     static final long REQUIRED_NOTIFICATION_DELAY = DateUtils.DAY_IN_MILLIS;
     private static final long NOT_SHOWN_TIMESTAMP = -1;
 
-    private final Context mContext;
+    private final WifiContext mContext;
     private final WakeupNotificationFactory mWakeupNotificationFactory;
     private NotificationManager mNotificationManager;
     private final Handler mHandler;
@@ -90,7 +90,7 @@ public class WakeupOnboarding {
     };
 
     public WakeupOnboarding(
-            Context context,
+            WifiContext context,
             WifiConfigManager wifiConfigManager,
             Handler handler,
             FrameworkFacade frameworkFacade,
@@ -130,7 +130,8 @@ public class WakeupOnboarding {
 
         mContext.registerReceiver(mBroadcastReceiver, mIntentFilter,
                 null /* broadcastPermission */, mHandler);
-        getNotificationManager().notify(WakeupNotificationFactory.ONBOARD_ID,
+        getNotificationManager().notify(mContext.getNotificationTag(),
+                WakeupNotificationFactory.ONBOARD_ID,
                 mWakeupNotificationFactory.createOnboardingNotification());
     }
 

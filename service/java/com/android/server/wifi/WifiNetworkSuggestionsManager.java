@@ -550,7 +550,7 @@ public class WifiNetworkSuggestionsManager {
     private void handleUserAllowAction(int uid, String packageName) {
         Log.i(TAG, "User clicked to allow app");
         // Set the user approved flag.
-        setHasUserApprovedForApp(true, packageName);
+        setHasUserApprovedForApp(true, uid, packageName);
         mUserApprovalUiActive = false;
         mWifiMetrics.addUserApprovalSuggestionAppUiReaction(
                 ACTION_USER_ALLOWED_APP,
@@ -563,7 +563,7 @@ public class WifiNetworkSuggestionsManager {
         mAppOps.setMode(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, uid, packageName,
                 MODE_IGNORED);
         // Set the user approved flag.
-        setHasUserApprovedForApp(false, packageName);
+        setHasUserApprovedForApp(false, uid, packageName);
         mUserApprovalUiActive = false;
         mWifiMetrics.addUserApprovalSuggestionAppUiReaction(
                 ACTION_USER_DISALLOWED_APP,
@@ -603,7 +603,8 @@ public class WifiNetworkSuggestionsManager {
                             return;
                     }
                     // Clear notification once the user interacts with it.
-                    mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+                    mNotificationManager.cancel(mContext.getNotificationTag(),
+                            SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
                 }
             };
 
@@ -951,7 +952,7 @@ public class WifiNetworkSuggestionsManager {
                 mWifiMetrics.incrementNetworkSuggestionApiUsageNumOfAppInType(
                         APP_TYPE_NON_PRIVILEGED);
             }
-            onSuggestionUserApprovalStatusChanged(packageName);
+            onSuggestionUserApprovalStatusChanged(uid, packageName);
         }
         // If PerAppInfo is upgrade from pre-R, uid may not be set.
         perAppInfo.setUid(uid);
@@ -1363,7 +1364,7 @@ public class WifiNetworkSuggestionsManager {
     /**
      * Enable or Disable network suggestions for the app.
      */
-    public void setHasUserApprovedForApp(boolean approved, String packageName) {
+    public void setHasUserApprovedForApp(boolean approved, int uid, String packageName) {
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);
         if (perAppInfo == null) return;
 
@@ -1372,7 +1373,7 @@ public class WifiNetworkSuggestionsManager {
                     + (approved ? " approved" : " not approved"));
         }
         perAppInfo.hasUserApproved = approved;
-        onSuggestionUserApprovalStatusChanged(packageName);
+        onSuggestionUserApprovalStatusChanged(uid, packageName);
         saveToStore();
     }
 
@@ -1563,7 +1564,7 @@ public class WifiNetworkSuggestionsManager {
                 .build();
 
         // Post the notification.
-        mNotificationManager.notify(
+        mNotificationManager.notify(mContext.getNotificationTag(),
                 SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
         mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = false;
@@ -2113,14 +2114,9 @@ public class WifiNetworkSuggestionsManager {
      * Register a SuggestionUserApprovalStatusListener on user approval status changes.
      * @param listener ISuggestionUserApprovalStatusListener instance to add.
      * @param uid uid of the app.
-     * @return true if succeed otherwise false.
      */
-    public boolean addSuggestionUserApprovalStatusListener(
+    public void addSuggestionUserApprovalStatusListener(
             @NonNull ISuggestionUserApprovalStatusListener listener, String packageName, int uid) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
-            Log.e(TAG, "UID " + uid + " not visible to the current user");
-            return false;
-        }
         RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
         if (listenersTracker == null) {
@@ -2128,7 +2124,12 @@ public class WifiNetworkSuggestionsManager {
         }
         listenersTracker.register(listener);
         mSuggestionUserApprovalStatusListenerPerApp.put(packageName, listenersTracker);
-        return true;
+        try {
+            listener.onUserApprovalStatusChange(
+                    getNetworkSuggestionUserApprovalStatus(uid, packageName));
+        } catch (RemoteException e) {
+            Log.e(TAG, "sendUserApprovalStatusChange: remote exception -- " + e);
+        }
     }
 
     /**
@@ -2381,12 +2382,8 @@ public class WifiNetworkSuggestionsManager {
     /**
      * Check the suggestion user approval status.
      */
-    public @WifiManager.SuggestionUserApprovalStatus int getNetworkSuggestionUserApprovalStatus(
+    private  @WifiManager.SuggestionUserApprovalStatus int getNetworkSuggestionUserApprovalStatus(
             int uid, String packageName) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
-            Log.e(TAG, "UID " + uid + " not visible to the current user");
-            return WifiManager.STATUS_SUGGESTION_APPROVAL_UNKNOWN;
-        }
         if (mAppOps.unsafeCheckOpNoThrow(OPSTR_CHANGE_WIFI_STATE, uid, packageName)
                 == AppOpsManager.MODE_IGNORED) {
             return WifiManager.STATUS_SUGGESTION_APPROVAL_REJECTED_BY_USER;
@@ -2541,19 +2538,21 @@ public class WifiNetworkSuggestionsManager {
         saveToStore();
     }
 
-    private void onSuggestionUserApprovalStatusChanged(String packageName) {
+    private void onSuggestionUserApprovalStatusChanged(int uid, String packageName) {
         RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
         if (listenersTracker == null || listenersTracker.getRegisteredCallbackCount() == 0) {
             return;
         }
+
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Sending user approval status change event to " + packageName);
         }
         int itemCount = listenersTracker.beginBroadcast();
         for (int i = 0; i < itemCount; i++) {
             try {
-                listenersTracker.getBroadcastItem(i).onUserApprovalStatusChange();
+                listenersTracker.getBroadcastItem(i).onUserApprovalStatusChange(
+                        getNetworkSuggestionUserApprovalStatus(uid, packageName));
             } catch (RemoteException e) {
                 Log.e(TAG, "sendUserApprovalStatusChange: remote exception -- " + e);
             }
@@ -2587,7 +2586,8 @@ public class WifiNetworkSuggestionsManager {
     }
 
     public void resetNotification() {
-        mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mNotificationManager.cancel(mContext.getNotificationTag(),
+                SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
     }
 }
