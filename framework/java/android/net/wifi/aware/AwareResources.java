@@ -80,7 +80,7 @@ public final class AwareResources implements Parcelable {
     /**
      * Return the number of Aware subscribe sessions which an app could create. Please refer to the
      * {@link WifiAwareSession#subscribe(SubscribeConfig, DiscoverySessionCallback, Handler)}
-     * to create a publish session.
+     * to create a subscribe session.
      * <p>
      * Note that these resources aren't reserved - other apps could use them by the time you
      * attempt to create a subscribe session.
