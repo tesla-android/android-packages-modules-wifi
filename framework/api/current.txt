@@ -318,7 +318,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int addNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
     method public void addOrUpdatePasspointConfiguration(android.net.wifi.hotspot2.PasspointConfiguration);
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_WIFI_STATE}) public void addSuggestionConnectionStatusListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SuggestionConnectionStatusListener);
-    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean addSuggestionUserApprovalStatusListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener);
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void addSuggestionUserApprovalStatusListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener);
     method @Deprecated public static int calculateSignalLevel(int, int);
     method @IntRange(from=0) public int calculateSignalLevel(int);
     method @Deprecated public void cancelWps(android.net.wifi.WifiManager.WpsCallback);
@@ -334,7 +334,6 @@ package android.net.wifi {
     method @Deprecated public android.net.DhcpInfo getDhcpInfo();
     method public int getMaxNumberOfNetworkSuggestionsPerApp();
     method @IntRange(from=0) public int getMaxSignalLevel();
-    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public int getNetworkSuggestionUserApprovalStatus();
     method @NonNull @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public java.util.List<android.net.wifi.WifiNetworkSuggestion> getNetworkSuggestions();
     method @Deprecated @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.List<android.net.wifi.hotspot2.PasspointConfiguration> getPasspointConfigurations();
     method public java.util.List<android.net.wifi.ScanResult> getScanResults();
@@ -480,7 +479,7 @@ package android.net.wifi {
   }
 
   public static interface WifiManager.SuggestionUserApprovalStatusListener {
-    method public void onUserApprovalStatusChange();
+    method public void onUserApprovalStatusChange(int);
   }
 
   public class WifiManager.WifiLock {

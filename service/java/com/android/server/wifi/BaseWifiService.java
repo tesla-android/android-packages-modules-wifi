@@ -560,11 +560,6 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public int getNetworkSuggestionUserApprovalStatus(String packageName) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void setCarrierNetworkOffloadEnabled(int subId, boolean merged, boolean enabled)
             throws RemoteException {
         throw new UnsupportedOperationException();
@@ -771,34 +766,9 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * Replaced by
-     * {@link #addSuggestionUserApprovalStatusListener(ISuggestionUserApprovalStatusListener,
-     * String)}
-     * @deprecated This is no longer supported.
-     */
-    @Deprecated
-    public boolean addSuggestionUserApprovalStatusListener(IBinder binder,
-            ISuggestionUserApprovalStatusListener listener, int listenerIdentifier,
-            String packageName, String featureId) {
-        throw new UnsupportedOperationException();
-    }
-
     @Override
-    public boolean addSuggestionUserApprovalStatusListener(
+    public void addSuggestionUserApprovalStatusListener(
             ISuggestionUserApprovalStatusListener listener, String packageName) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Replaced by
-     * {@link #removeSuggestionUserApprovalStatusListener(ISuggestionUserApprovalStatusListener,
-     * String)}
-     * @deprecated This is no longer supported.
-     */
-    @Deprecated
-    public void removeSuggestionUserApprovalStatusListener(int listenerIdentifier,
-            String packageName) {
         throw new UnsupportedOperationException();
     }
 

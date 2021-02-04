@@ -4248,27 +4248,6 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * See {@link android.net.wifi.WifiManager#getNetworkSuggestionUserApprovalStatus(String)
-     * @param callingPackageName Package Name of the app getting the approval status.
-     * @return
-     */
-    @Override
-    public int getNetworkSuggestionUserApprovalStatus(String callingPackageName) {
-        int callingUid = Binder.getCallingUid();
-        mAppOps.checkPackage(callingUid, callingPackageName);
-        enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
-            mLog.info("getNetworkSuggestionUserApprovalStatus uid=%")
-                    .c(callingUid).flush();
-        }
-        return mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager
-                        .getNetworkSuggestionUserApprovalStatus(callingUid,
-                                callingPackageName),
-                WifiManager.STATUS_SUGGESTION_APPROVAL_UNKNOWN);
-    }
-
-
-    /**
      * Gets the factory Wi-Fi MAC addresses.
      * @throws SecurityException if the caller does not have permission.
      * @return Array of String representing Wi-Fi MAC addresses, or empty array if failed.
@@ -4853,18 +4832,22 @@ public class WifiServiceImpl extends BaseWifiService {
      * WifiManager.SuggestionUserApprovalStatusListener)}
      */
     @Override
-    public boolean addSuggestionUserApprovalStatusListener(
+    public void addSuggestionUserApprovalStatusListener(
             ISuggestionUserApprovalStatusListener listener, String packageName) {
         if (listener == null) {
-            throw new IllegalArgumentException("listener must not be null");
+            throw new NullPointerException("listener must not be null");
         }
         final int uid = Binder.getCallingUid();
         enforceAccessPermission();
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+            Log.e(TAG, "UID " + uid + " not visible to the current user");
+            throw new SecurityException("UID " + uid + " not visible to the current user");
+        }
         if (mVerboseLoggingEnabled) {
             mLog.info("addSuggestionUserApprovalStatusListener uid=%").c(uid).flush();
         }
-        return mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager
-                .addSuggestionUserApprovalStatusListener(listener, packageName, uid), false);
+        mWifiThreadRunner.post(() -> mWifiNetworkSuggestionsManager
+                .addSuggestionUserApprovalStatusListener(listener, packageName, uid));
     }
 
     /**
