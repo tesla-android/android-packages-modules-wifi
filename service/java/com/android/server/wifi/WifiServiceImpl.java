@@ -4842,9 +4842,15 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         final int uid = Binder.getCallingUid();
         enforceAccessPermission();
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
-            Log.e(TAG, "UID " + uid + " not visible to the current user");
-            throw new SecurityException("UID " + uid + " not visible to the current user");
+        long callingIdentity = Binder.clearCallingIdentity();
+        try {
+            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+                Log.e(TAG, "UID " + uid + " not visible to the current user");
+                throw new SecurityException("UID " + uid + " not visible to the current user");
+            }
+        } finally {
+            // restore calling identity
+            Binder.restoreCallingIdentity(callingIdentity);
         }
         if (mVerboseLoggingEnabled) {
             mLog.info("addSuggestionUserApprovalStatusListener uid=%").c(uid).flush();
@@ -4862,6 +4868,16 @@ public class WifiServiceImpl extends BaseWifiService {
             ISuggestionUserApprovalStatusListener listener, String packageName) {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
+        long callingIdentity = Binder.clearCallingIdentity();
+        try {
+            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+                Log.e(TAG, "UID " + uid + " not visible to the current user");
+                throw new SecurityException("UID " + uid + " not visible to the current user");
+            }
+        } finally {
+            // restore calling identity
+            Binder.restoreCallingIdentity(callingIdentity);
+        }
         if (mVerboseLoggingEnabled) {
             mLog.info("removeSuggestionUserApprovalStatusListener uid=%")
                     .c(uid).flush();
