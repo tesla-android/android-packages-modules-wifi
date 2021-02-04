@@ -7222,12 +7222,22 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Test register listener without permission.
+     * Test register listener from background user.
      */
     @Test(expected = SecurityException.class)
-    public void testAddSuggestionUserApprovalStatusListenerFromNoncurrentUser() {
+    public void testAddSuggestionUserApprovalStatusListenerFromBackgroundUser() {
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
         mWifiServiceImpl.addSuggestionUserApprovalStatusListener(
+                mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
+    }
+
+    /**
+     * Test unregister listener from background user.
+     */
+    @Test(expected = SecurityException.class)
+    public void testRemoveSuggestionUserApprovalStatusListenerFromBackgroundUser() {
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        mWifiServiceImpl.removeSuggestionUserApprovalStatusListener(
                 mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
     }
 

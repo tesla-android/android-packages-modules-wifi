@@ -2139,10 +2139,6 @@ public class WifiNetworkSuggestionsManager {
      */
     public void removeSuggestionUserApprovalStatusListener(
             @NonNull ISuggestionUserApprovalStatusListener listener, String packageName, int uid) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
-            Log.e(TAG, "UID " + uid + " not visible to the current user");
-            return;
-        }
         RemoteCallbackList<ISuggestionUserApprovalStatusListener> listenersTracker =
                 mSuggestionUserApprovalStatusListenerPerApp.get(packageName);
         if (listenersTracker == null || !listenersTracker.unregister(listener)) {
