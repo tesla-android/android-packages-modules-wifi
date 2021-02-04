@@ -200,6 +200,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getSystemService(eq(Context.CONNECTIVITY_SERVICE)))
                 .thenReturn(mConnectivityManager);
+        when(mContext.getSystemService(eq(ConnectivityManager.class)))
+                .thenReturn(mConnectivityManager);
         when(mContext.getSystemService(CompanionDeviceManager.class))
                 .thenReturn(mCompanionDeviceManager);
         when(mContext.getSystemService(PowerManager.class)).thenReturn(mPowerManager);
