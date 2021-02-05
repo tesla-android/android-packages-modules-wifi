@@ -39,6 +39,7 @@ import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAIL
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_CANNOT_FIND_NETWORK;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_CONFIGURATION;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_AUTHENTICATION;
+import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_GENERIC;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK;
@@ -54,6 +55,8 @@ import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_SUCC
 import static android.net.wifi.WifiManager.EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1;
 import static android.net.wifi.WifiManager.EASY_CONNECT_NETWORK_ROLE_STA;
 
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
@@ -70,12 +73,15 @@ import android.net.wifi.IDppCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiSsid;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.test.TestLooper;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.util.WakeupMessage;
+import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.util.WifiPermissionsUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -103,6 +109,7 @@ public class DppManagerTest extends WifiBaseTest {
     private static final String TEST_PASSWORD_ENCODED = "73656372657450617373776f7264";
     private static final int TEST_NETWORK_ID = 1;
     private static final String TEST_BSSID = "01:02:03:04:05:06";
+    private static final String TEST_PACKAGE_NAME = "TestPackage";
 
     TestLooper mLooper;
 
@@ -128,6 +135,8 @@ public class DppManagerTest extends WifiBaseTest {
     DppMetrics mDppMetrics;
     @Mock
     ScanRequestProxy mScanRequestProxy;
+    @Mock
+    WifiPermissionsUtil mWifiPermissionsUtil;
 
     String mUri =
             "DPP:C:81/1;I:DPP_TESTER;K:MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADebGHMJoCcE7OZP/aek5muaJo"
@@ -173,7 +182,7 @@ public class DppManagerTest extends WifiBaseTest {
 
     private DppManager createDppManager() {
         DppManager dppManger = new DppManager(new Handler(mLooper.getLooper()), mWifiNative,
-                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy);
+                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy, mWifiPermissionsUtil);
         dppManger.mDppTimeoutMessage = mWakeupMessage;
         dppManger.enableVerboseLogging(1);
         return dppManger;
@@ -187,9 +196,8 @@ public class DppManagerTest extends WifiBaseTest {
         // Return NULL when for the selected network (invalid network)
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(null);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
@@ -216,9 +224,8 @@ public class DppManagerTest extends WifiBaseTest {
         // Fail to add Peer URI
         when(mWifiNative.addDppPeerUri(anyString(), anyString())).thenReturn(-1);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_URI), eq(null),
                 eq(null), eq(new int[0]));
@@ -265,9 +272,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.startDppConfiguratorInitiator(anyString(), anyInt(), anyInt(), anyString(),
                 any(), any(), anyInt(), anyInt())).thenReturn(false);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -308,9 +314,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -333,9 +338,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -357,9 +361,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -381,9 +384,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -419,8 +421,8 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -428,9 +430,8 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(SAE));
 
-        mDppManager.startDppAsConfiguratorInitiator(1, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallbackConcurrent);
+        mDppManager.startDppAsConfiguratorInitiator(1, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallbackConcurrent);
         verify(mDppCallbackConcurrent).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallbackConcurrent, never()).onSuccess(anyInt());
@@ -476,8 +477,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -569,9 +570,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA,
-                mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -800,6 +800,35 @@ public class DppManagerTest extends WifiBaseTest {
     @Test
     public void testOnFailureCallbackCannotFindNetworkErrCodeIsUpdatedOnChannelMismatch()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(), eq(Build.VERSION_CODES.S),
+                anyInt())).thenReturn(false);
+        int[] bandList = new int[]{81, 83, 84, 115};
+        addTestNetworkInScanResult(5180); //channel number 36
+        // Don't include Network channel(36) in Enrollee scanned channels.
+        testOnFailureCallback(CANNOT_FIND_NETWORK, TEST_SSID_NO_QUOTE,
+                "81/1,2,3,4,5,6,7,8,9,10,11,115/48",
+                bandList, EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL);
+    }
+
+    @Test
+    public void testCannotFindNetworkErrCodeIsUpdatedToNotCompatibleOnSdkLevelLessThanS()
+            throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+        int[] bandList = new int[]{81, 83, 84, 115};
+        addTestNetworkInScanResult(5180); //channel number 36
+        // Don't include Network channel(36) in Enrollee scanned channels.
+        testOnFailureCallback(CANNOT_FIND_NETWORK, TEST_SSID_NO_QUOTE,
+                "81/1,2,3,4,5,6,7,8,9,10,11,115/48",
+                bandList, EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE);
+    }
+
+    @Test
+    public void testCannotFindNetworkErrCodeIsUpdatedToNotCompatibleOnTargetSdkLessThanS()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(), eq(Build.VERSION_CODES.S),
+                anyInt())).thenReturn(true);
         int[] bandList = new int[]{81, 83, 84, 115};
         addTestNetworkInScanResult(5180); //channel number 36
         // Don't include Network channel(36) in Enrollee scanned channels.
@@ -855,8 +884,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -911,8 +940,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, mBinder, mUri, 1,
-                EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
+                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -934,7 +963,9 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(appFailure));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         if ((internalFailure == CANNOT_FIND_NETWORK)
-                && (appFailure == EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE)) {
+                && (appFailure == EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE
+                || appFailure
+                == EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL)) {
             verify(mDppMetrics, times(1)).updateDppR2EnrolleeResponderIncompatibleConfiguration();
         }
         verifyNoMoreInteractions(mDppMetrics);

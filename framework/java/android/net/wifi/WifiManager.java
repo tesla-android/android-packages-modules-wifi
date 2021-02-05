@@ -6318,8 +6318,9 @@ public class WifiManager {
             @NonNull EasyConnectStatusCallback callback) {
         Binder binder = new Binder();
         try {
-            mService.startDppAsConfiguratorInitiator(binder, enrolleeUri, selectedNetworkId,
-                    enrolleeNetworkRole, new EasyConnectCallbackProxy(executor, callback));
+            mService.startDppAsConfiguratorInitiator(binder, mContext.getOpPackageName(),
+                    enrolleeUri, selectedNetworkId, enrolleeNetworkRole,
+                    new EasyConnectCallbackProxy(executor, callback));
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

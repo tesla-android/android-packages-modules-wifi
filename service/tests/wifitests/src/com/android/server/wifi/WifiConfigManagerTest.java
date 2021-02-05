@@ -6573,4 +6573,27 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
         assertEquals(2, mWifiConfigManager.getConfiguredNetworks().size());
     }
+
+    /**
+     * Verify that updating an existing config to a incompatible type works well.
+     */
+    @Test
+    public void testUpdateExistingConfigWithIncompatibleSecurityType() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        int networkIdBefore = verifyAddNetworkToWifiConfigManager(testNetwork).getNetworkId();
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkIdBefore);
+        assertFalse(configBefore.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
+        assertTrue(configBefore.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+
+        // Change the type from PSK to Open.
+        testNetwork.networkId = networkIdBefore;
+        testNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        testNetwork.preSharedKey = null;
+        int networkIdAfter = addNetworkToWifiConfigManager(testNetwork).getNetworkId();
+        assertEquals(networkIdBefore, networkIdAfter);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkIdAfter);
+        assertFalse(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+        assertTrue(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
+    }
 }

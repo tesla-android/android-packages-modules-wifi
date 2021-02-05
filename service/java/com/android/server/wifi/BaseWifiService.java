@@ -582,8 +582,8 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void startDppAsConfiguratorInitiator(IBinder binder, String enrolleeUri,
-            int selectedNetworkId, int netRole, IDppCallback callback) {
+    public void startDppAsConfiguratorInitiator(IBinder binder, String packageName,
+            String enrolleeUri, int selectedNetworkId, int netRole, IDppCallback callback) {
         throw new UnsupportedOperationException();
     }
 

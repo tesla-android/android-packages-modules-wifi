@@ -88,19 +88,26 @@ public class WifiInjector {
 
     @VisibleForTesting
     static final NetworkCapabilities NETWORK_CAPABILITIES_FILTER =
-            new NetworkCapabilities.Builder()
-                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)
-                    .setLinkUpstreamBandwidthKbps(1024 * 1024)
-                    .setLinkDownstreamBandwidthKbps(1024 * 1024)
-                    .setNetworkSpecifier(new MatchAllNetworkSpecifier())
-                    .build();
+            makeNetworkCapatibilitesFilter();
+
+    private static NetworkCapabilities makeNetworkCapatibilitesFilter() {
+        NetworkCapabilities.Builder builder = new NetworkCapabilities.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+                .setLinkUpstreamBandwidthKbps(1024 * 1024)
+                .setLinkDownstreamBandwidthKbps(1024 * 1024)
+                .setNetworkSpecifier(new MatchAllNetworkSpecifier());
+        if (SdkLevel.isAtLeastS()) {
+            builder.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
+        return builder.build();
+    }
+
     private static final NetworkCapabilities OEM_PAID_NETWORK_CAPABILITIES_FILTER =
             new NetworkCapabilities.Builder(NETWORK_CAPABILITIES_FILTER)
                     .addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID)
@@ -475,7 +482,7 @@ public class WifiInjector {
         mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock);
         mWifiMulticastLockManager = new WifiMulticastLockManager(mActiveModeWarden, mBatteryStats);
         mDppManager = new DppManager(wifiHandler, mWifiNative,
-                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy);
+                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy, mWifiPermissionsUtil);
 
         // Register the various network Nominators with the network selector.
         mWifiNetworkSelector.registerNetworkNominator(mSavedNetworkNominator);
