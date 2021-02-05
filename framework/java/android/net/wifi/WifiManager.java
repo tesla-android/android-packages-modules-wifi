@@ -1390,6 +1390,8 @@ public class WifiManager {
             sSuggestionConnectionStatusListenerMap = new SparseArray();
     private static final SparseArray<ISuggestionUserApprovalStatusListener>
             sSuggestionUserApprovalStatusListenerMap = new SparseArray();
+    private static final SparseArray<INetworkRequestMatchCallback>
+            sNetworkRequestMatchCallbackMap = new SparseArray();
     /**
      * Create a new WifiManager instance.
      * Applications will almost always want to use
@@ -1936,11 +1938,14 @@ public class WifiManager {
         Log.v(TAG, "registerNetworkRequestMatchCallback: callback=" + callback
                 + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerNetworkRequestMatchCallback(
-                    binder, new NetworkRequestMatchCallbackProxy(executor, callback),
-                    callback.hashCode());
+            synchronized (sNetworkRequestMatchCallbackMap) {
+                INetworkRequestMatchCallback.Stub binderCallback =
+                        new NetworkRequestMatchCallbackProxy(executor, callback);
+                sNetworkRequestMatchCallbackMap.put(System.identityHashCode(callback),
+                        binderCallback);
+                mService.registerNetworkRequestMatchCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -1965,7 +1970,16 @@ public class WifiManager {
         Log.v(TAG, "unregisterNetworkRequestMatchCallback: callback=" + callback);
 
         try {
-            mService.unregisterNetworkRequestMatchCallback(callback.hashCode());
+            synchronized (sNetworkRequestMatchCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sNetworkRequestMatchCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterNetworkRequestMatchCallback(
+                        sNetworkRequestMatchCallbackMap.get(callbackIdentifier));
+                sNetworkRequestMatchCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

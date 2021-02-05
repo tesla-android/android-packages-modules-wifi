@@ -530,14 +530,34 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by
+     * {@link #registerNetworkRequestMatchCallback(INetworkRequestMatchCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void registerNetworkRequestMatchCallback(
             IBinder binder, INetworkRequestMatchCallback callback, int callbackIdentifier) {
         throw new UnsupportedOperationException();
     }
 
     @Override
+    public void registerNetworkRequestMatchCallback(INetworkRequestMatchCallback callback) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Replaced by
+     * {@link #unregisterNetworkRequestMatchCallback(INetworkRequestMatchCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void unregisterNetworkRequestMatchCallback(int callbackIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterNetworkRequestMatchCallback(INetworkRequestMatchCallback callback) {
         throw new UnsupportedOperationException();
     }
 

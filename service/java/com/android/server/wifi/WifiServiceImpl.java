@@ -4119,24 +4119,15 @@ public class WifiServiceImpl extends BaseWifiService {
      * {@link WifiManager#registerNetworkRequestMatchCallback(
      * Executor, WifiManager.NetworkRequestMatchCallback)}
      *
-     * @param binder IBinder instance to allow cleanup if the app dies
      * @param callback Network Request Match callback to register
-     * @param callbackIdentifier Unique ID of the registering callback. This ID will be used to
-     *                           unregister the callback.
-     *                           See {@link #unregisterNetworkRequestMatchCallback(int)} (int)}
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      * @throws RemoteException if remote exception happens
      * @throws IllegalArgumentException if the arguments are null or invalid
      */
     @Override
-    public void registerNetworkRequestMatchCallback(IBinder binder,
-                                                    INetworkRequestMatchCallback callback,
-                                                    int callbackIdentifier) {
+    public void registerNetworkRequestMatchCallback(INetworkRequestMatchCallback callback) {
         // verify arguments
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
         }
@@ -4147,20 +4138,19 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiInjector.getWifiNetworkFactory().addCallback(
-                        binder, callback, callbackIdentifier));
+                mWifiInjector.getWifiNetworkFactory().addCallback(callback));
     }
 
     /**
      * see {@link android.net.wifi.WifiManager#unregisterNetworkRequestMatchCallback(
      * WifiManager.NetworkRequestMatchCallback)}
      *
-     * @param callbackIdentifier Unique ID of the callback to be unregistered.
+     * @param callback Network Request Match callback to unregister
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      */
     @Override
-    public void unregisterNetworkRequestMatchCallback(int callbackIdentifier) {
+    public void unregisterNetworkRequestMatchCallback(INetworkRequestMatchCallback callback) {
         enforceNetworkSettingsPermission();
         if (mVerboseLoggingEnabled) {
             mLog.info("unregisterNetworkRequestMatchCallback uid=%")
@@ -4168,7 +4158,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiInjector.getWifiNetworkFactory().removeCallback(callbackIdentifier));
+                mWifiInjector.getWifiNetworkFactory().removeCallback(callback));
     }
 
     /**
