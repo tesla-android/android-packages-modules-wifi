@@ -15,6 +15,10 @@
 //
 
 // APK to hold all the wifi overlayable resources.
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_app {
     name: "ServiceWifiResources",
     defaults: ["wifi-service-common"],

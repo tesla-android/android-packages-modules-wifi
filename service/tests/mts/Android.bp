@@ -15,6 +15,10 @@
 // Wifi MTS-only tests i.e. not part of CTS or GTS
 // Used to test functionality that is only guaranteed to be implemented in the Wifi Mainline module,
 // but is not required if the Wifi Mainline module is not present on the device.
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_test {
     name: "MtsWifiTestCases",
     defaults: ["cts_defaults"],
