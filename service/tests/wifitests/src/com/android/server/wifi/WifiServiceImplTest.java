@@ -228,7 +228,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final int OTHER_TEST_UID = 1300000;
     private static final int TEST_USER_HANDLE = 13;
     private static final int TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER = 17;
-    private static final int TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER = 234;
     private static final int TEST_WIFI_CONNECTED_NETWORK_SCORER_IDENTIFIER = 1;
     private static final String WIFI_IFACE_NAME = "wlan0";
     private static final String WIFI_IFACE_NAME2 = "wlan1";
@@ -5272,9 +5271,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
         try {
-            mWifiServiceImpl.registerNetworkRequestMatchCallback(mAppBinder,
-                    mNetworkRequestMatchCallback,
-                    TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.registerNetworkRequestMatchCallback(mNetworkRequestMatchCallback);
             fail("expected SecurityException");
         } catch (SecurityException expected) {
         }
@@ -5288,8 +5285,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     public void
             registerNetworkRequestMatchCallbackThrowsIllegalArgumentExceptionOnInvalidArguments() {
         try {
-            mWifiServiceImpl.registerNetworkRequestMatchCallback(
-                    mAppBinder, null, TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.registerNetworkRequestMatchCallback(null);
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
@@ -5305,8 +5301,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
         try {
-            mWifiServiceImpl.unregisterNetworkRequestMatchCallback(
-                    TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.unregisterNetworkRequestMatchCallback(mNetworkRequestMatchCallback);
             fail("expected SecurityException");
         } catch (SecurityException expected) {
         }
@@ -5318,13 +5313,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void registerNetworkRequestMatchCallbackAndVerify() throws Exception {
-        mWifiServiceImpl.registerNetworkRequestMatchCallback(
-                mAppBinder, mNetworkRequestMatchCallback,
-                TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+        mWifiServiceImpl.registerNetworkRequestMatchCallback(mNetworkRequestMatchCallback);
         mLooper.dispatchAll();
-        verify(mWifiNetworkFactory).addCallback(
-                mAppBinder, mNetworkRequestMatchCallback,
-                TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+        verify(mWifiNetworkFactory).addCallback(mNetworkRequestMatchCallback);
     }
 
     /**
@@ -5333,11 +5324,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void unregisterNetworkRequestMatchCallbackAndVerify() throws Exception {
-        mWifiServiceImpl.unregisterNetworkRequestMatchCallback(
-                TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+        mWifiServiceImpl.unregisterNetworkRequestMatchCallback(mNetworkRequestMatchCallback);
         mLooper.dispatchAll();
-        verify(mWifiNetworkFactory).removeCallback(
-                TEST_NETWORK_REQUEST_MATCH_CALLBACK_IDENTIFIER);
+        verify(mWifiNetworkFactory).removeCallback(mNetworkRequestMatchCallback);
     }
 
     /**

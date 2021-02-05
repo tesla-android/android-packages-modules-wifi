@@ -47,11 +47,11 @@ import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.os.Handler;
 import android.os.HandlerExecutor;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.PatternMatcher;
 import android.os.PowerManager;
 import android.os.Process;
+import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.WorkSource;
@@ -62,7 +62,6 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.ActionListenerWrapper;
-import com.android.server.wifi.util.ExternalCallbackTracker;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 
@@ -129,7 +128,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     private final PeriodicScanAlarmListener mPeriodicScanTimerListener;
     private final ConnectionTimeoutAlarmListener mConnectionTimeoutAlarmListener;
     private final ConnectHelper mConnectHelper;
-    private final ExternalCallbackTracker<INetworkRequestMatchCallback> mRegisteredCallbacks;
+    private RemoteCallbackList<INetworkRequestMatchCallback> mRegisteredCallbacks;
     // Store all user approved access points for apps.
     @VisibleForTesting
     public final Map<String, LinkedHashSet<AccessPoint>> mUserApprovedAccessPointMap;
@@ -449,7 +448,6 @@ public class WifiNetworkFactory extends NetworkFactory {
         mScanListener = new NetworkFactoryScanListener();
         mPeriodicScanTimerListener = new PeriodicScanAlarmListener();
         mConnectionTimeoutAlarmListener = new ConnectionTimeoutAlarmListener();
-        mRegisteredCallbacks = new ExternalCallbackTracker<INetworkRequestMatchCallback>(mHandler);
         mUserApprovedAccessPointMap = new HashMap<>();
 
         IntentFilter filter = new IntentFilter();
@@ -496,8 +494,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     /**
      * Add a new callback for network request match handling.
      */
-    public void addCallback(IBinder binder, INetworkRequestMatchCallback callback,
-            int callbackIdentifier) {
+    public void addCallback(INetworkRequestMatchCallback callback) {
         if (mActiveSpecificNetworkRequest == null) {
             Log.wtf(TAG, "No valid network request. Ignoring callback registration");
             try {
@@ -507,12 +504,16 @@ public class WifiNetworkFactory extends NetworkFactory {
             }
             return;
         }
-        if (!mRegisteredCallbacks.add(binder, callback, callbackIdentifier)) {
+        if (mRegisteredCallbacks == null) {
+            mRegisteredCallbacks = new RemoteCallbackList<>();
+        }
+        if (!mRegisteredCallbacks.register(callback)) {
             Log.e(TAG, "Failed to add callback");
             return;
         }
         if (mVerboseLoggingEnabled) {
-            Log.v(TAG, "Adding callback. Num callbacks: " + mRegisteredCallbacks.getNumCallbacks());
+            Log.v(TAG, "Adding callback. Num callbacks: "
+                    + mRegisteredCallbacks.getRegisteredCallbackCount());
         }
         // Register our user selection callback.
         try {
@@ -534,11 +535,12 @@ public class WifiNetworkFactory extends NetworkFactory {
     /**
      * Remove an existing callback for network request match handling.
      */
-    public void removeCallback(int callbackIdentifier) {
-        mRegisteredCallbacks.remove(callbackIdentifier);
+    public void removeCallback(INetworkRequestMatchCallback callback) {
+        if (mRegisteredCallbacks == null) return;
+        mRegisteredCallbacks.unregister(callback);
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Removing callback. Num callbacks: "
-                    + mRegisteredCallbacks.getNumCallbacks());
+                    + mRegisteredCallbacks.getRegisteredCallbackCount());
         }
     }
 
@@ -964,13 +966,17 @@ public class WifiNetworkFactory extends NetworkFactory {
             return;
         }
         Log.d(TAG, "Connected to network " + mUserSelectedNetwork);
-        for (INetworkRequestMatchCallback callback : mRegisteredCallbacks.getCallbacks()) {
-            try {
-                callback.onUserSelectionConnectSuccess(mUserSelectedNetwork);
-            } catch (RemoteException e) {
-                Log.e(TAG, "Unable to invoke network request connect failure callback "
-                        + callback, e);
+        if (mRegisteredCallbacks != null) {
+            int itemCount = mRegisteredCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
+                try {
+                    mRegisteredCallbacks.getBroadcastItem(i).onUserSelectionConnectSuccess(
+                            mUserSelectedNetwork);
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Unable to invoke network request connect failure callback ", e);
+                }
             }
+            mRegisteredCallbacks.finishBroadcast();
         }
         // transition the request from "active" to "connected".
         setupForConnectedRequest();
@@ -996,13 +1002,17 @@ public class WifiNetworkFactory extends NetworkFactory {
             return;
         }
         Log.e(TAG, "Connection failures, cancelling " + mUserSelectedNetwork);
-        for (INetworkRequestMatchCallback callback : mRegisteredCallbacks.getCallbacks()) {
-            try {
-                callback.onUserSelectionConnectFailure(mUserSelectedNetwork);
-            } catch (RemoteException e) {
-                Log.e(TAG, "Unable to invoke network request connect failure callback "
-                        + callback, e);
+        if (mRegisteredCallbacks != null) {
+            int itemCount = mRegisteredCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
+                try {
+                    mRegisteredCallbacks.getBroadcastItem(i).onUserSelectionConnectFailure(
+                            mUserSelectedNetwork);
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Unable to invoke network request connect failure callback ", e);
+                }
             }
+            mRegisteredCallbacks.finishBroadcast();
         }
         teardownForActiveRequest();
     }
@@ -1030,12 +1040,16 @@ public class WifiNetworkFactory extends NetworkFactory {
     // Common helper method for start/end of active request processing.
     private void cleanupActiveRequest() {
         // Send the abort to the UI for the current active request.
-        for (INetworkRequestMatchCallback callback : mRegisteredCallbacks.getCallbacks()) {
-            try {
-                callback.onAbort();
-            } catch (RemoteException e) {
-                Log.e(TAG, "Unable to invoke network request abort callback " + callback, e);
+        if (mRegisteredCallbacks != null) {
+            int itemCount = mRegisteredCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
+                try {
+                    mRegisteredCallbacks.getBroadcastItem(i).onAbort();
+                } catch (RemoteException e) {
+                    Log.e(TAG, "Unable to invoke network request abort callback ", e);
+                }
             }
+            mRegisteredCallbacks.finishBroadcast();
         }
         // Force-release the network request to let the app know early that the attempt failed.
         if (mActiveSpecificNetworkRequest != null) {
@@ -1054,7 +1068,8 @@ public class WifiNetworkFactory extends NetworkFactory {
         cancelPeriodicScans();
         cancelConnectionTimeout();
         // Remove any callbacks registered for the request.
-        mRegisteredCallbacks.clear();
+        if (mRegisteredCallbacks != null) mRegisteredCallbacks.kill();
+        mRegisteredCallbacks = null;
     }
 
     // Invoked at the start of new active request processing.
@@ -1288,18 +1303,22 @@ public class WifiNetworkFactory extends NetworkFactory {
     private void sendNetworkRequestMatchCallbacksForActiveRequest(
             @NonNull Collection<ScanResult> matchedScanResults) {
         if (matchedScanResults.isEmpty()) return;
-        if (mRegisteredCallbacks.getNumCallbacks() == 0) {
+        if (mRegisteredCallbacks == null
+                || mRegisteredCallbacks.getRegisteredCallbackCount() == 0) {
             Log.e(TAG, "No callback registered for sending network request matches. "
                     + "Ignoring...");
             return;
         }
-        for (INetworkRequestMatchCallback callback : mRegisteredCallbacks.getCallbacks()) {
+        int itemCount = mRegisteredCallbacks.beginBroadcast();
+        for (int i = 0; i < itemCount; i++) {
             try {
-                callback.onMatch(new ArrayList<>(matchedScanResults));
+                mRegisteredCallbacks.getBroadcastItem(i).onMatch(
+                        new ArrayList<>(matchedScanResults));
             } catch (RemoteException e) {
-                Log.e(TAG, "Unable to invoke network request match callback " + callback, e);
+                Log.e(TAG, "Unable to invoke network request match callback ", e);
             }
         }
+        mRegisteredCallbacks.finishBroadcast();
     }
 
     private void cancelConnectionTimeout() {
