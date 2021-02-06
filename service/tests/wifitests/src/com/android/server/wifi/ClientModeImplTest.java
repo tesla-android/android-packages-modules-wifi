@@ -2795,8 +2795,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(signalPollResult.txBitrateMbps, wifiInfo.getTxLinkSpeedMbps());
         assertEquals(signalPollResult.rxBitrateMbps, wifiInfo.getRxLinkSpeedMbps());
         assertEquals(sFreq, wifiInfo.getFrequency());
-        verify(mWifiDataStall, atLeastOnce()).getTxThroughputKbps();
-        verify(mWifiDataStall, atLeastOnce()).getRxThroughputKbps();
+        verify(mPerNetwork, atLeastOnce()).getTxLinkBandwidthKbps(any(), anyInt());
+        verify(mPerNetwork, atLeastOnce()).getRxLinkBandwidthKbps(any(), anyInt());
         verify(mWifiScoreCard).noteSignalPoll(any());
     }
 
@@ -3878,8 +3878,8 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifyNetworkCapabilities() throws Exception {
-        when(mWifiDataStall.getTxThroughputKbps()).thenReturn(70_000);
-        when(mWifiDataStall.getRxThroughputKbps()).thenReturn(-1);
+        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(50_000);
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any()))
                 .thenReturn(Pair.create(Process.INVALID_UID, ""));
         // Simulate the first connection.
@@ -3906,8 +3906,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         // Should set bandwidth correctly
         assertEquals(-42, mWifiInfo.getRssi());
-        assertEquals(70_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
-        assertEquals(70_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
+        assertEquals(40_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
+        assertEquals(50_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
     }
 
     /**
@@ -3917,8 +3917,8 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifyNetworkCapabilitiesForSpecificRequest() throws Exception {
-        when(mWifiDataStall.getTxThroughputKbps()).thenReturn(-1);
-        when(mWifiDataStall.getRxThroughputKbps()).thenReturn(-1);
+        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(30_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any()))
                 .thenReturn(Pair.create(TEST_UID, OP_PACKAGE_NAME));
         // Simulate the first connection.
@@ -3945,8 +3945,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(expectedWifiNetworkAgentSpecifier, wifiNetworkAgentSpecifier);
         assertEquals(TEST_UID, networkCapabilities.getRequestorUid());
         assertEquals(OP_PACKAGE_NAME, networkCapabilities.getRequestorPackageName());
-        assertEquals(90_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
-        assertEquals(80_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
+        assertEquals(30_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
+        assertEquals(40_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
     }
 
     /**

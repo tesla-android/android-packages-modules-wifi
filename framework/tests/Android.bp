@@ -15,6 +15,10 @@
 // Make test APK
 // ============================================================
 
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 android_test {
     name: "FrameworksWifiApiTests",
 

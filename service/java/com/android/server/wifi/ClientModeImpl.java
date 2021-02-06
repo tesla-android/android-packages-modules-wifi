@@ -24,7 +24,6 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
-import static com.android.server.wifi.WifiDataStall.INVALID_THROUGHPUT;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -2157,7 +2156,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
             network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo, newSignalLevel);
             if (newSignalLevel != mLastSignalLevel) {
-                // TODO (b/162602799): Do we need to change the update frequency?
+                // TODO (b/162602799 and b/178725509): Do we need to change the update frequency?
                 updateCapabilities();
                 sendRssiChangeBroadcast(newRssi);
             }
@@ -3807,28 +3806,20 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     private void updateLinkBandwidth(NetworkCapabilities.Builder networkCapabilitiesBuilder) {
-        int rssiDbm = mWifiInfo.getRssi();
-        int txTputKbps = INVALID_THROUGHPUT;
-        int rxTputKbps = INVALID_THROUGHPUT;
-        // TODO: switch to TrafficStats poll based link bandwidth estimation value
-        // If RSSI is available, check if throughput is available
-        if (rssiDbm != WifiInfo.INVALID_RSSI && mWifiDataStall != null) {
-            txTputKbps = mWifiDataStall.getTxThroughputKbps();
-            rxTputKbps = mWifiDataStall.getRxThroughputKbps();
-        }
-        if (txTputKbps == INVALID_THROUGHPUT && rxTputKbps != INVALID_THROUGHPUT) {
-            txTputKbps = rxTputKbps;
-        } else if (rxTputKbps == INVALID_THROUGHPUT && txTputKbps != INVALID_THROUGHPUT) {
-            rxTputKbps = txTputKbps;
-        } else if (txTputKbps == INVALID_THROUGHPUT && rxTputKbps == INVALID_THROUGHPUT) {
+        int txTputKbps = 0;
+        int rxTputKbps = 0;
+        int currRssi = mWifiInfo.getRssi();
+        if (currRssi != WifiInfo.INVALID_RSSI) {
+            int signalLevel = RssiUtil.calculateSignalLevel(mContext, currRssi);
+            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+            txTputKbps = network.getTxLinkBandwidthKbps(mWifiInfo, signalLevel);
+            rxTputKbps = network.getRxLinkBandwidthKbps(mWifiInfo, signalLevel);
+        } else {
+            // Fall back to max link speed. This should rarely happen if ever
             int maxTxLinkSpeedMbps = mWifiInfo.getMaxSupportedTxLinkSpeedMbps();
             int maxRxLinkSpeedMbps = mWifiInfo.getMaxSupportedRxLinkSpeedMbps();
-            if (maxTxLinkSpeedMbps > 0) {
-                txTputKbps = maxTxLinkSpeedMbps * 1000;
-            }
-            if (maxRxLinkSpeedMbps > 0) {
-                rxTputKbps = maxRxLinkSpeedMbps * 1000;
-            }
+            txTputKbps = maxTxLinkSpeedMbps * 1000;
+            rxTputKbps = maxRxLinkSpeedMbps * 1000;
         }
         if (mVerboseLoggingEnabled) {
             logd("tx tput in kbps: " + txTputKbps);

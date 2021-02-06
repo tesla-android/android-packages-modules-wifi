@@ -230,9 +230,9 @@ interface IWifiManager
 
     void unregisterTrafficStateCallback(int callbackIdentifier);
 
-    void registerNetworkRequestMatchCallback(in IBinder binder, in INetworkRequestMatchCallback callback, int callbackIdentifier);
+    void registerNetworkRequestMatchCallback(in INetworkRequestMatchCallback callback);
 
-    void unregisterNetworkRequestMatchCallback(int callbackIdentifier);
+    void unregisterNetworkRequestMatchCallback(in INetworkRequestMatchCallback callback);
 
     int addNetworkSuggestions(in List<WifiNetworkSuggestion> networkSuggestions, in String packageName,
         in String featureId);

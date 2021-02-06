@@ -1968,8 +1968,7 @@ public class WifiManagerTest {
         mWifiManager.registerNetworkRequestMatchCallback(
                 new HandlerExecutor(new Handler(mLooper.getLooper())),
                 mNetworkRequestMatchCallback);
-        verify(mWifiService).registerNetworkRequestMatchCallback(
-                any(IBinder.class), callbackCaptor.capture(), anyInt());
+        verify(mWifiService).registerNetworkRequestMatchCallback(callbackCaptor.capture());
 
         INetworkRequestUserSelectionCallback iUserSelectionCallback =
                 mock(INetworkRequestUserSelectionCallback.class);
@@ -2000,16 +1999,14 @@ public class WifiManagerTest {
      */
     @Test
     public void unregisterNetworkRequestMatchCallbackCallGoesToWifiServiceImpl() throws Exception {
-        ArgumentCaptor<Integer> callbackIdentifier = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<INetworkRequestMatchCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(INetworkRequestMatchCallback.Stub.class);
         mWifiManager.registerNetworkRequestMatchCallback(new HandlerExecutor(mHandler),
                 mNetworkRequestMatchCallback);
-        verify(mWifiService).registerNetworkRequestMatchCallback(
-                any(IBinder.class), any(INetworkRequestMatchCallback.class),
-                callbackIdentifier.capture());
+        verify(mWifiService).registerNetworkRequestMatchCallback(callbackCaptor.capture());
 
         mWifiManager.unregisterNetworkRequestMatchCallback(mNetworkRequestMatchCallback);
-        verify(mWifiService).unregisterNetworkRequestMatchCallback(
-                eq((int) callbackIdentifier.getValue()));
+        verify(mWifiService).unregisterNetworkRequestMatchCallback(callbackCaptor.getValue());
     }
 
     /**
@@ -2024,8 +2021,7 @@ public class WifiManagerTest {
         mWifiManager.registerNetworkRequestMatchCallback(
                 new HandlerExecutor(new Handler(mLooper.getLooper())),
                 mNetworkRequestMatchCallback);
-        verify(mWifiService).registerNetworkRequestMatchCallback(
-                any(IBinder.class), callbackCaptor.capture(), anyInt());
+        verify(mWifiService).registerNetworkRequestMatchCallback(callbackCaptor.capture());
 
         INetworkRequestUserSelectionCallback iUserSelectionCallback =
                 mock(INetworkRequestUserSelectionCallback.class);

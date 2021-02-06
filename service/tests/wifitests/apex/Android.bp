@@ -15,6 +15,10 @@
 // A test version of wifi apex.
 // It has a version code that should beat a "real" APEX and enables end-to-end
 // installation testing on devices with the latests real data.
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 apex_test {
     name: "test_com.android.wifi",
     visibility: [
