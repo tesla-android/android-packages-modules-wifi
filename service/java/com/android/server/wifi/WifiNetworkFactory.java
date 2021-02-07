@@ -134,6 +134,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     public final Map<String, LinkedHashSet<AccessPoint>> mUserApprovedAccessPointMap;
     private WifiScanner mWifiScanner;
     @Nullable private ClientModeManager mClientModeManager;
+    @Nullable private ActiveModeManager.ClientRole mClientModeManagerRole;
     private CompanionDeviceManager mCompanionDeviceManager;
     // Temporary approval set by shell commands.
     @Nullable private String mApprovedApp = null;
@@ -344,6 +345,7 @@ public class WifiNetworkFactory extends NetworkFactory {
                     return;
                 }
                 mClientModeManager = modeManager;
+                mClientModeManagerRole = modeManager.getRole();
                 handleClientModeManagerRetrieval();
             } else {
                 handleClientModeManagerRemovalOrFailure();
@@ -1079,6 +1081,18 @@ public class WifiNetworkFactory extends NetworkFactory {
         }
     }
 
+    private void removeClientModeManagerIfNecessary() {
+        if (mClientModeManager != null) {
+            if (mClientModeManagerRole == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+                mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
+            }
+            mActiveModeWarden.removeClientModeManager(mClientModeManager);
+            // For every connection attempt, get the appropriate client mode impl to use.
+            mClientModeManager = null;
+            mClientModeManagerRole = null;
+        }
+    }
+
     // Invoked at the termination of current active request processing.
     private void teardownForActiveRequest() {
         if (mPendingConnectionSuccess) {
@@ -1088,14 +1102,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         cleanupActiveRequest();
         // ensure there is no connected request in progress.
         if (mConnectedSpecificNetworkRequest == null) {
-            if (mClientModeManager != null) {
-                if (mClientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
-                    mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
-                }
-                mActiveModeWarden.removeClientModeManager(mClientModeManager);
-                // For every connection attempt, get the appropriate client mode impl to use.
-                mClientModeManager = null;
-            }
+            removeClientModeManagerIfNecessary();
         }
     }
 
@@ -1119,14 +1126,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         mConnectedSpecificNetworkRequestSpecifier = null;
         // ensure there is no active request in progress.
         if (mActiveSpecificNetworkRequest == null) {
-            if (mClientModeManager != null) {
-                if (mClientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
-                    mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
-                }
-                mActiveModeWarden.removeClientModeManager(mClientModeManager);
-                // For every connection attempt, get the appropriate client mode impl to use.
-                mClientModeManager = null;
-            }
+            removeClientModeManagerIfNecessary();
         }
     }
 
@@ -1178,7 +1178,7 @@ public class WifiNetworkFactory extends NetworkFactory {
 
         // If using primary STA, disable Auto-join so that NetworkFactory can take control of the
         // network connection.
-        if (mClientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+        if (mClientModeManagerRole == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
             mWifiConnectivityManager.setSpecificNetworkRequestInProgress(true);
         }
 

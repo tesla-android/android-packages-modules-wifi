@@ -2139,7 +2139,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Now remove the active request2 & ensure auto-join is re-enabled.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
-        verify(mClientModeManager, times(3)).getRole();
+        verify(mClientModeManager, times(2)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -2192,7 +2192,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.setNetworkSpecifier(specifier2);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         verify(mClientModeManager, times(3)).disconnect();
-        verify(mClientModeManager, times(5)).getRole();
+        verify(mClientModeManager, times(4)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -2235,7 +2235,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.setNetworkSpecifier(specifier1);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         verify(mClientModeManager, times(2)).disconnect();
-        verify(mClientModeManager, times(3)).getRole();
+        verify(mClientModeManager, times(2)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -2345,6 +2345,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // toggle wifi off & verify we aborted ongoing request (CMM not retrieved yet).
         when(mActiveModeWarden.hasPrimaryClientModeManager()).thenReturn(false);
+        when(mClientModeManager.getRole()).thenReturn(null); // Role returned is null on removal.
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(
                 mock(ConcreteClientModeManager.class));
         mLooper.dispatchAll();
@@ -2360,6 +2361,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         // toggle wifi off & verify we aborted ongoing request.
+        when(mClientModeManager.getRole()).thenReturn(null); // Role returned is null on removal.
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mClientModeManager);
         mLooper.dispatchAll();
 

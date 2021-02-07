@@ -2411,6 +2411,7 @@ public class WifiConnectivityManager {
         retrieveWifiScanner();
         mConnectivityHelper.getFirmwareRoamingInfo();
         mWifiChannelUtilization.init(getPrimaryClientModeManager().getWifiLinkLayerStats());
+        clearConnectionAttemptTimeStamps(); // clear connection attempts.
 
         if (mContext.getResources().getBoolean(R.bool.config_wifiEnablePartialInitialScan)) {
             setInitialScanState(INITIAL_SCAN_STATE_START);
