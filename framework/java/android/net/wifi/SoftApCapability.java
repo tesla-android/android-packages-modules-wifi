@@ -46,18 +46,18 @@ public final class SoftApCapability implements Parcelable {
      * Support for automatic channel selection in driver (ACS).
      * Driver will auto select best channel based on interference to optimize performance.
      *
-     * flag when {@link R.bool.config_wifi_softap_acs_supported} is true.
+     * flag when {@code R.bool.config_wifi_softap_acs_supported} is true.
      *
      * <p>
      * Use {@link WifiManager.SoftApCallback#onInfoChanged(SoftApInfo)} and
-     * {@link SoftApInfo#getFrequency} and {@link SoftApInfo#getBandwidth} to get
+     * {@link SoftApInfo#getFrequency()} and {@link SoftApInfo#getBandwidth()} to get
      * driver channel selection result.
      */
     public static final long SOFTAP_FEATURE_ACS_OFFLOAD = 1 << 0;
 
     /**
      * Support for client force disconnect.
-     * flag when {@link R.bool.config_wifiSofapClientForceDisconnectSupported} is true
+     * flag when {@code R.bool.config_wifiSofapClientForceDisconnectSupported} is true
      *
      * <p>
      * Several Soft AP client control features, e.g. specifying the maximum number of
@@ -70,13 +70,13 @@ public final class SoftApCapability implements Parcelable {
     /**
      * Support for WPA3 Simultaneous Authentication of Equals (WPA3-SAE).
      *
-     * flag when {@link config_wifi_softap_sae_supported} is true.
+     * flag when {@code config_wifi_softap_sae_supported} is true.
      */
     public static final long SOFTAP_FEATURE_WPA3_SAE = 1 << 2;
 
     /**
      * Support for MAC address customization.
-     * flag when {@link R.bool.config_wifiSoftapMacAddressCustomizationSupported} is true
+     * flag when {@code R.bool.config_wifiSoftapMacAddressCustomizationSupported} is true
      *
      * <p>
      * Check feature support before invoking
@@ -88,13 +88,37 @@ public final class SoftApCapability implements Parcelable {
 
     /**
      * Support for 802.11ax SAP.
-     * flag when {@link R.bool.config_wifiSoftapIeee80211axSupported} is true
+     * flag when {@code R.bool.config_wifiSoftapIeee80211axSupported} is true
      *
      * <p>
      * Check feature support before invoking
-     * {@link SoftApConfiguration.Builder#setIeee80211axEnabled)}
+     * {@link SoftApConfiguration.Builder#setIeee80211axEnabled(boolean)}
      */
     public static final long SOFTAP_FEATURE_IEEE80211_AX = 1 << 4;
+
+    /**
+     * Support for 2.4G Band.
+     * flag when {@code R.bool.config_wifiSoftap24ghzSupported} is true
+     */
+    public static final long SOFTAP_FEATURE_BAND_24G_SUPPORTED = 1 << 5;
+
+    /**
+     * Support for 5G Band.
+     * flag when {@code R.bool.config_wifiSoftap5ghzSupported} is true
+     */
+    public static final long SOFTAP_FEATURE_BAND_5G_SUPPORTED = 1 << 6;
+
+    /**
+     * Support for 6G Band.
+     * flag when {@code R.bool.config_wifiSoftap6ghzSupported} is true
+     */
+    public static final long SOFTAP_FEATURE_BAND_6G_SUPPORTED = 1 << 7;
+
+    /**
+     * Support for 60G Band.
+     * flag when {@code R.bool.config_wifiSoftap60ghzSupported} is true
+     */
+    public static final long SOFTAP_FEATURE_BAND_60G_SUPPORTED = 1 << 8;
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
@@ -104,6 +128,10 @@ public final class SoftApCapability implements Parcelable {
             SOFTAP_FEATURE_WPA3_SAE,
             SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION,
             SOFTAP_FEATURE_IEEE80211_AX,
+            SOFTAP_FEATURE_BAND_24G_SUPPORTED,
+            SOFTAP_FEATURE_BAND_5G_SUPPORTED,
+            SOFTAP_FEATURE_BAND_6G_SUPPORTED,
+            SOFTAP_FEATURE_BAND_60G_SUPPORTED
     })
     public @interface HotspotFeatures {}
 
@@ -151,7 +179,7 @@ public final class SoftApCapability implements Parcelable {
     /**
      * Returns true when all of the queried features are supported, otherwise false.
      *
-     * @param features One or combination of the following features:
+     * @param features One or combination of {@code SOFTAP_FEATURE_}, for instance:
      * {@link #SOFTAP_FEATURE_ACS_OFFLOAD}, {@link #SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT} or
      * {@link #SOFTAP_FEATURE_WPA3_SAE}.
      */
@@ -243,7 +271,7 @@ public final class SoftApCapability implements Parcelable {
      * Constructor with combination of the feature.
      * Zero to no supported feature.
      *
-     * @param features One or combination of the following features:
+     * @param features One or combination of {@code SOFTAP_FEATURE_}, for instance:
      * {@link #SOFTAP_FEATURE_ACS_OFFLOAD}, {@link #SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT} or
      * {@link #SOFTAP_FEATURE_WPA3_SAE}.
      * @hide

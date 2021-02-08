@@ -475,7 +475,9 @@ public class ApConfigUtilTest extends WifiBaseTest {
 
     @Test
     public void testSoftApCapabilityInitWithResourceValue() throws Exception {
-        long testFeatures = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT;
+        long testFeatures = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
+                | SoftApCapability.SOFTAP_FEATURE_BAND_6G_SUPPORTED
+                | SoftApCapability.SOFTAP_FEATURE_BAND_60G_SUPPORTED;
         SoftApCapability capability = new SoftApCapability(testFeatures);
         int test_max_client = 10;
         capability.setMaxSupportedClients(test_max_client);
@@ -487,6 +489,10 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 .thenReturn(false);
         when(mResources.getBoolean(R.bool.config_wifiSofapClientForceDisconnectSupported))
                 .thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifi6ghzSupport)).thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifi60ghzSupport)).thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifiSoftap6ghzSupported)).thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifiSoftap60ghzSupported)).thenReturn(true);
         assertEquals(ApConfigUtil.updateCapabilityFromResource(mContext),
                 capability);
     }

@@ -261,6 +261,10 @@ package android.net.wifi {
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.SoftApCapability> CREATOR;
     field public static final long SOFTAP_FEATURE_ACS_OFFLOAD = 1L; // 0x1L
+    field public static final long SOFTAP_FEATURE_BAND_24G_SUPPORTED = 32L; // 0x20L
+    field public static final long SOFTAP_FEATURE_BAND_5G_SUPPORTED = 64L; // 0x40L
+    field public static final long SOFTAP_FEATURE_BAND_60G_SUPPORTED = 256L; // 0x100L
+    field public static final long SOFTAP_FEATURE_BAND_6G_SUPPORTED = 128L; // 0x80L
     field public static final long SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT = 2L; // 0x2L
     field public static final long SOFTAP_FEATURE_IEEE80211_AX = 16L; // 0x10L
     field public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 8L; // 0x8L
