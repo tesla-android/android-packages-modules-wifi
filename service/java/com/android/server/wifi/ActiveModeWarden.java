@@ -1031,6 +1031,20 @@ public class ActiveModeWarden {
     }
 
     /**
+     * Method to switch role for an existing non-primary client mode manager.
+     */
+    private boolean switchRoleForAdditionalClientModeManager(
+            @NonNull ConcreteClientModeManager manager,
+            @NonNull ClientConnectivityRole role,
+            @NonNull ExternalClientModeManagerRequestListener externalRequestListener,
+            @NonNull WorkSource requestorWs) {
+        Log.d(TAG, "Switching role for additional ClientModeManager to role: " + role);
+        ClientListener listener = new ClientListener(externalRequestListener);
+        manager.setRole(role, requestorWs, listener);
+        return true;
+    }
+
+    /**
      * Method to stop client mode manger.
      */
     private void stopAdditionalClientModeManager(ClientModeManager clientModeManager) {
@@ -1144,7 +1158,8 @@ public class ActiveModeWarden {
     }
 
     private class ClientListener implements ActiveModeManager.Listener<ConcreteClientModeManager> {
-        private final ExternalClientModeManagerRequestListener mExternalRequestListener;
+        @Nullable
+        private ExternalClientModeManagerRequestListener mExternalRequestListener; // one shot
 
         ClientListener() {
             this(null);
@@ -1181,6 +1196,10 @@ public class ActiveModeWarden {
             updateClientScanMode();
             updateBatteryStats();
             configureHwForMultiStaIfNecessary(clientModeManager);
+            if (mExternalRequestListener != null) {
+                mExternalRequestListener.onAnswer(clientModeManager);
+                mExternalRequestListener = null; // reset after one shot.
+            }
         }
 
         private void onPrimaryChangedDueToStartedOrRoleChanged(
@@ -1202,9 +1221,6 @@ public class ActiveModeWarden {
         @Override
         public void onStarted(@NonNull ConcreteClientModeManager clientModeManager) {
             onStartedOrRoleChanged(clientModeManager);
-            if (mExternalRequestListener != null) {
-                mExternalRequestListener.onAnswer(clientModeManager);
-            }
             invokeOnAddedCallbacks(clientModeManager);
             // invoke "added" callbacks before primary changed
             onPrimaryChangedDueToStartedOrRoleChanged(clientModeManager);
@@ -1813,13 +1829,30 @@ public class ActiveModeWarden {
                                 requestInfo.ssid, requestInfo.bssid);
                 if (cmmForSameBssid != null) {
                     // Can't allow 2 client mode managers triggering connection to same bssid.
-                    // Fallback to single STA behavior.
-                    // TODO(b/158666312): Switch role here non primary CMM & wait for it to
-                    //  complete before handing it to the requestor, making sure to destroy any
-                    //  existing CMM in the new role beforehand.
-                    Log.v(TAG, "already connected to bssid=" + requestInfo.bssid
+                    Log.v(TAG, "Already connected to bssid=" + requestInfo.bssid
                             + " on ClientModeManager=" + cmmForSameBssid);
-                    requestInfo.listener.onAnswer(cmmForSameBssid);
+                    if (cmmForSameBssid.getRole() == ROLE_CLIENT_PRIMARY) {
+                        // fallback to single STA behavior.
+                        requestInfo.listener.onAnswer(cmmForSameBssid);
+                        return;
+                    }
+                    // Existing secondary CMM connected to the same ssid/bssid.
+                    if (!canRequestMoreClientModeManagersInRole(
+                            requestInfo.requestorWs, requestInfo.clientRole)) {
+                        Log.e(TAG, "New request cannot override existing request on "
+                                + "ClientModeManager=" + cmmForSameBssid);
+                        // If the new request does not have priority over the existing request,
+                        // reject it since we cannot have 2 CMM's connected to same ssid/bssid.
+                        requestInfo.listener.onAnswer(null);
+                        return;
+                    }
+                    // If the new request has a higher priority over the existing one, change it's
+                    // role and send it to the new client.
+                    // Switch role for non primary CMM & wait for it to complete before
+                    // handing it to the requestor.
+                    switchRoleForAdditionalClientModeManager(
+                            cmmForSameBssid, requestInfo.clientRole, requestInfo.listener,
+                            requestInfo.requestorWs);
                     return;
                 }
 
