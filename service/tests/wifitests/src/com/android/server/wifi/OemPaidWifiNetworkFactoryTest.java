@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.content.Context;
@@ -25,6 +26,8 @@ import android.net.NetworkRequest;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.After;
 import org.junit.Before;
@@ -55,6 +58,8 @@ public class OemPaidWifiNetworkFactoryTest extends WifiBaseTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        assumeTrue(SdkLevel.isAtLeastS());
 
         mLooper = new TestLooper();
         mNetworkCapabilities = new NetworkCapabilities();

@@ -48,6 +48,7 @@ import android.provider.Settings;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.BinderUtil;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
@@ -1260,8 +1261,10 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
             .thenReturn(mMockApplInfo);
         when(mMockContext.createPackageContextAsUser(any(), anyInt(), any()))
                 .thenReturn(mMockContext);
-        when(mMockPkgMgr.getTargetSdkVersion(TEST_PACKAGE_NAME))
-                .thenReturn(mMockApplInfo.targetSdkVersion);
+        if (SdkLevel.isAtLeastS()) {
+            when(mMockPkgMgr.getTargetSdkVersion(TEST_PACKAGE_NAME))
+                    .thenReturn(mMockApplInfo.targetSdkVersion);
+        }
         when(mMockPkgMgr.getApplicationInfoAsUser(eq(TEST_PACKAGE_NAME), eq(0), any()))
                 .thenReturn(mMockApplInfo);
         when(mMockContext.getPackageManager()).thenReturn(mMockPkgMgr);
