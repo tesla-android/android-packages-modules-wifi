@@ -218,9 +218,9 @@ interface IWifiManager
 
     void startSubscriptionProvisioning(in OsuProvider provider, in IProvisioningCallback callback);
 
-    void registerSoftApCallback(in IBinder binder, in ISoftApCallback callback, int callbackIdentifier);
+    void registerSoftApCallback(in ISoftApCallback callback);
 
-    void unregisterSoftApCallback(int callbackIdentifier);
+    void unregisterSoftApCallback(in ISoftApCallback callback);
 
     void addOnWifiUsabilityStatsListener(in IOnWifiUsabilityStatsListener listener);
 
