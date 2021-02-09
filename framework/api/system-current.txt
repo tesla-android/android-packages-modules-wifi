@@ -651,7 +651,7 @@ package android.net.wifi {
     method public default void blocklistCurrentBssid(int);
     method public void notifyScoreUpdate(int, int);
     method public default void notifyStatusUpdate(int, boolean);
-    method public default void requestNudOperation(int, boolean);
+    method public default void requestNudOperation(int);
     method public void triggerUpdateOfWifiUsabilityStats(int);
   }
 

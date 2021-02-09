@@ -29,7 +29,7 @@ oneway interface IScoreUpdateObserver
 
     void notifyStatusUpdate(int sessionId, boolean isUsable);
 
-    void requestNudOperation(int sessionId, boolean nudTrigger);
+    void requestNudOperation(int sessionId);
 
     void blocklistCurrentBssid(int sessionId);
 }
