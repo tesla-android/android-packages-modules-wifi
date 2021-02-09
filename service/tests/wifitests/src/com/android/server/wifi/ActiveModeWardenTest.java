@@ -3007,6 +3007,172 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     }
 
     @Test
+    public void requestHighPrioSecondaryTransientClientModeManagerWhenConnectedToLocalOnlyBssid()
+            throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled))
+                .thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_LOCAL_ONLY));
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_SECONDARY_TRANSIENT));
+
+        enterClientModeActiveState();
+
+        // Primary Connected to ssid1/bssid1
+        WifiConfiguration config1 = new WifiConfiguration();
+        config1.SSID = TEST_SSID_1;
+        when(mClientModeManager.getConnectedWifiConfiguration()).thenReturn(config1);
+        when(mClientModeManager.getConnectedBssid()).thenReturn(TEST_BSSID_1);
+
+        ConcreteClientModeManager additionalClientModeManager =
+                mock(ConcreteClientModeManager.class);
+        Mutable<ActiveModeManager.Listener<ConcreteClientModeManager>> additionalClientListener1 =
+                new Mutable<>();
+        doAnswer((invocation) -> {
+            Object[] args = invocation.getArguments();
+            additionalClientListener1.value =
+                    (ActiveModeManager.Listener<ConcreteClientModeManager>) args[0];
+            return additionalClientModeManager;
+        }).when(mWifiInjector).makeClientModeManager(
+                any(ActiveModeManager.Listener.class), any(), eq(ROLE_CLIENT_LOCAL_ONLY),
+                anyBoolean());
+        when(additionalClientModeManager.getRole()).thenReturn(ROLE_CLIENT_LOCAL_ONLY);
+
+        ActiveModeWarden.ExternalClientModeManagerRequestListener externalRequestListener = mock(
+                ActiveModeWarden.ExternalClientModeManagerRequestListener.class);
+        // request for ssid2/bssid2
+        mActiveModeWarden.requestLocalOnlyClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+        verify(mWifiInjector).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_LOCAL_ONLY), anyBoolean());
+        additionalClientListener1.value.onStarted(additionalClientModeManager);
+        mLooper.dispatchAll();
+        // Returns the new client mode manager.
+        ArgumentCaptor<ClientModeManager> requestedClientModeManager =
+                ArgumentCaptor.forClass(ClientModeManager.class);
+        verify(externalRequestListener).onAnswer(requestedClientModeManager.capture());
+        assertEquals(additionalClientModeManager, requestedClientModeManager.getValue());
+
+        // set additional CMM connected to ssid2/bssid2
+        WifiConfiguration config2 = new WifiConfiguration();
+        config2.SSID = TEST_SSID_2;
+        when(additionalClientModeManager.getConnectedWifiConfiguration()).thenReturn(config2);
+        when(additionalClientModeManager.getConnectedBssid()).thenReturn(TEST_BSSID_2);
+
+        // request for same ssid2/bssid2 for a different role.
+        // request for one more CMM (should return the existing local only one).
+        mActiveModeWarden.requestSecondaryTransientClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+
+        // Don't make another client mode manager, but should switch role of existing client mode
+        // manager.
+        verify(mWifiInjector, never())
+                .makeClientModeManager(any(), any(), eq(ROLE_CLIENT_SECONDARY_TRANSIENT),
+                        anyBoolean());
+        ArgumentCaptor<ActiveModeManager.Listener<ConcreteClientModeManager>>
+                additionalClientListener2 = ArgumentCaptor.forClass(
+                        ActiveModeManager.Listener.class);
+        verify(additionalClientModeManager).setRole(eq(ROLE_CLIENT_SECONDARY_TRANSIENT),
+                eq(TEST_WORKSOURCE), additionalClientListener2.capture());
+
+        // Simulate completion of role switch.
+        additionalClientListener2.getValue().onRoleChanged(additionalClientModeManager);
+
+        // Returns the existing client mode manager.
+        verify(externalRequestListener, times(2)).onAnswer(requestedClientModeManager.capture());
+        assertEquals(additionalClientModeManager, requestedClientModeManager.getValue());
+    }
+
+    @Test
+    public void requestLowPrioSecondaryTransientClientModeManagerWhenConnectedToLocalOnlyBssid()
+            throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled))
+                .thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_LOCAL_ONLY));
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_SECONDARY_TRANSIENT));
+
+        enterClientModeActiveState();
+
+        // Primary Connected to ssid1/bssid1
+        WifiConfiguration config1 = new WifiConfiguration();
+        config1.SSID = TEST_SSID_1;
+        when(mClientModeManager.getConnectedWifiConfiguration()).thenReturn(config1);
+        when(mClientModeManager.getConnectedBssid()).thenReturn(TEST_BSSID_1);
+
+        ConcreteClientModeManager additionalClientModeManager =
+                mock(ConcreteClientModeManager.class);
+        Mutable<ActiveModeManager.Listener<ConcreteClientModeManager>> additionalClientListener1 =
+                new Mutable<>();
+        doAnswer((invocation) -> {
+            Object[] args = invocation.getArguments();
+            additionalClientListener1.value =
+                    (ActiveModeManager.Listener<ConcreteClientModeManager>) args[0];
+            return additionalClientModeManager;
+        }).when(mWifiInjector).makeClientModeManager(
+                any(ActiveModeManager.Listener.class), any(), eq(ROLE_CLIENT_LOCAL_ONLY),
+                anyBoolean());
+        when(additionalClientModeManager.getRole()).thenReturn(ROLE_CLIENT_LOCAL_ONLY);
+
+        ActiveModeWarden.ExternalClientModeManagerRequestListener externalRequestListener = mock(
+                ActiveModeWarden.ExternalClientModeManagerRequestListener.class);
+        // request for ssid2/bssid2
+        mActiveModeWarden.requestLocalOnlyClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+        verify(mWifiInjector).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_LOCAL_ONLY), anyBoolean());
+        additionalClientListener1.value.onStarted(additionalClientModeManager);
+        mLooper.dispatchAll();
+        // Returns the new client mode manager.
+        ArgumentCaptor<ClientModeManager> requestedClientModeManager =
+                ArgumentCaptor.forClass(ClientModeManager.class);
+        verify(externalRequestListener).onAnswer(requestedClientModeManager.capture());
+        assertEquals(additionalClientModeManager, requestedClientModeManager.getValue());
+
+        // set additional CMM connected to ssid2/bssid2
+        WifiConfiguration config2 = new WifiConfiguration();
+        config2.SSID = TEST_SSID_2;
+        when(additionalClientModeManager.getConnectedWifiConfiguration()).thenReturn(config2);
+        when(additionalClientModeManager.getConnectedBssid()).thenReturn(TEST_BSSID_2);
+
+        // Now, deny the creation of STA for the new request
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(false);
+
+        // request for same ssid2/bssid2 for a different role.
+        // request for one more CMM (should return null).
+        mActiveModeWarden.requestSecondaryTransientClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+
+        // Don't make another client mode manager or change role
+        verify(mWifiInjector, never())
+                .makeClientModeManager(any(), any(), eq(ROLE_CLIENT_SECONDARY_TRANSIENT),
+                        anyBoolean());
+        verify(additionalClientModeManager, never()).setRole(eq(ROLE_CLIENT_SECONDARY_TRANSIENT),
+                eq(TEST_WORKSOURCE), any());
+
+        // Ensure the request is rejected.
+        verify(externalRequestListener, times(2)).onAnswer(requestedClientModeManager.capture());
+        assertNull(requestedClientModeManager.getValue());
+    }
+
+    @Test
     public void airplaneModeToggleOnDisablesWifi() throws Exception {
         enterClientModeActiveState();
         assertInEnabledState();

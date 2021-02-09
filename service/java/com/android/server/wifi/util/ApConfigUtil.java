@@ -619,6 +619,27 @@ public class ApConfigUtil {
             Log.d(TAG, "Update Softap capability, add MAC customization support");
             features |= SoftApCapability.SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION;
         }
+
+        if (isSoftAp24GhzSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add 2.4G support");
+            features |= SoftApCapability.SOFTAP_FEATURE_BAND_24G_SUPPORTED;
+        }
+
+        if (isSoftAp5GhzSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add 5G support");
+            features |= SoftApCapability.SOFTAP_FEATURE_BAND_5G_SUPPORTED;
+        }
+
+        if (isSoftAp6GhzSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add 6G support");
+            features |= SoftApCapability.SOFTAP_FEATURE_BAND_6G_SUPPORTED;
+        }
+
+        if (isSoftAp60GhzSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add 60G support");
+            features |= SoftApCapability.SOFTAP_FEATURE_BAND_60G_SUPPORTED;
+        }
+
         SoftApCapability capability = new SoftApCapability(features);
         int hardwareSupportedMaxClient = context.getResources().getInteger(
                 R.integer.config_wifiHardwareSoftapMaxClientCount);

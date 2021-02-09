@@ -26,6 +26,7 @@ import static com.android.server.wifi.WifiShellCommand.SHELL_PACKAGE_NAME;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -50,6 +51,8 @@ import android.os.Binder;
 import android.os.Process;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.After;
 import org.junit.Before;
@@ -499,6 +502,8 @@ public class WifiShellCommandTest extends WifiBaseTest {
 
     @Test
     public void testAddSuggestionWithOemPaid() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
         mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"add-suggestion", "ssid1234", "open", "-o"});
@@ -532,6 +537,8 @@ public class WifiShellCommandTest extends WifiBaseTest {
 
     @Test
     public void testAddSuggestionWithOemPrivate() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
         mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"add-suggestion", "ssid1234", "open", "-p"});

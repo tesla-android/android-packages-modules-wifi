@@ -24,11 +24,14 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.os.Parcel;
 import android.telephony.SubscriptionManager;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
@@ -87,7 +90,7 @@ public class WifiInfoTest {
         writeWifiInfo.setInformationElements(informationElements);
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithLocationSensitiveInfo = writeWifiInfo.makeCopy(true);
+        WifiInfo writeWifiInfoWithLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
 
         Parcel parcel = Parcel.obtain();
         writeWifiInfoWithLocationSensitiveInfo.writeToParcel(parcel, 0);
@@ -104,9 +107,6 @@ public class WifiInfoTest {
         assertEquals(TEST_BSSID, readWifiInfo.getBSSID());
         assertEquals(TEST_NETWORK_ID, readWifiInfo.getNetworkId());
         assertTrue(readWifiInfo.isTrusted());
-        assertTrue(readWifiInfo.isOemPaid());
-        assertTrue(readWifiInfo.isOemPrivate());
-        assertTrue(readWifiInfo.isCarrierMerged());
         assertTrue(readWifiInfo.isOsuAp());
         assertTrue(readWifiInfo.isPasspointAp());
         assertEquals(TEST_PACKAGE_NAME, readWifiInfo.getRequestingPackageName());
@@ -117,20 +117,25 @@ public class WifiInfoTest {
                 readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
                 readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
-        assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
-        assertEquals(2, readWifiInfo.getInformationElements().size());
-        assertEquals(informationElements.get(0).id,
-                readWifiInfo.getInformationElements().get(0).id);
-        assertEquals(informationElements.get(0).idExt,
-                readWifiInfo.getInformationElements().get(0).idExt);
-        assertArrayEquals(informationElements.get(0).bytes,
-                readWifiInfo.getInformationElements().get(0).bytes);
-        assertEquals(informationElements.get(1).id,
-                readWifiInfo.getInformationElements().get(1).id);
-        assertEquals(informationElements.get(1).idExt,
-                readWifiInfo.getInformationElements().get(1).idExt);
-        assertArrayEquals(informationElements.get(1).bytes,
-                readWifiInfo.getInformationElements().get(1).bytes);
+        if (SdkLevel.isAtLeastS()) {
+            assertTrue(readWifiInfo.isOemPaid());
+            assertTrue(readWifiInfo.isOemPrivate());
+            assertTrue(readWifiInfo.isCarrierMerged());
+            assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
+            assertEquals(2, readWifiInfo.getInformationElements().size());
+            assertEquals(informationElements.get(0).id,
+                    readWifiInfo.getInformationElements().get(0).id);
+            assertEquals(informationElements.get(0).idExt,
+                    readWifiInfo.getInformationElements().get(0).idExt);
+            assertArrayEquals(informationElements.get(0).bytes,
+                    readWifiInfo.getInformationElements().get(0).bytes);
+            assertEquals(informationElements.get(1).id,
+                    readWifiInfo.getInformationElements().get(1).id);
+            assertEquals(informationElements.get(1).idExt,
+                    readWifiInfo.getInformationElements().get(1).idExt);
+            assertArrayEquals(informationElements.get(1).bytes,
+                    readWifiInfo.getInformationElements().get(1).bytes);
+        }
     }
 
     /**
@@ -161,7 +166,7 @@ public class WifiInfoTest {
         writeWifiInfo.setInformationElements(generateIes());
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopy(false);
+        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(false);
 
         Parcel parcel = Parcel.obtain();
         writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
@@ -178,9 +183,6 @@ public class WifiInfoTest {
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getBSSID());
         assertEquals(WifiConfiguration.INVALID_NETWORK_ID, readWifiInfo.getNetworkId());
         assertTrue(readWifiInfo.isTrusted());
-        assertTrue(readWifiInfo.isOemPaid());
-        assertTrue(readWifiInfo.isOemPrivate());
-        assertTrue(readWifiInfo.isCarrierMerged());
         assertTrue(readWifiInfo.isOsuAp());
         assertFalse(readWifiInfo.isPasspointAp()); // fqdn & friendly name is masked.
         assertEquals(TEST_PACKAGE_NAME, readWifiInfo.getRequestingPackageName());
@@ -191,8 +193,13 @@ public class WifiInfoTest {
                 readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
                 readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
-        assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
-        assertNull(readWifiInfo.getInformationElements());
+        if (SdkLevel.isAtLeastS()) {
+            assertTrue(readWifiInfo.isOemPaid());
+            assertTrue(readWifiInfo.isOemPrivate());
+            assertTrue(readWifiInfo.isCarrierMerged());
+            assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
+            assertNull(readWifiInfo.getInformationElements());
+        }
     }
 
     /**
@@ -200,11 +207,13 @@ public class WifiInfoTest {
      */
     @Test
     public void testWifiInfoParcelWriteReadWithNullInfoElements() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
         WifiInfo writeWifiInfo = new WifiInfo();
         writeWifiInfo.setInformationElements(null);
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopy(true);
+        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
 
         Parcel parcel = Parcel.obtain();
         writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
@@ -219,11 +228,13 @@ public class WifiInfoTest {
      */
     @Test
     public void testWifiInfoParcelWriteReadWithEmptyInfoElements() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
         WifiInfo writeWifiInfo = new WifiInfo();
         writeWifiInfo.setInformationElements(new ArrayList<>());
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopy(true);
+        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
 
         Parcel parcel = Parcel.obtain();
         writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
@@ -260,9 +271,6 @@ public class WifiInfoTest {
         assertEquals(TEST_TX_BAD, readWifiInfo.txBad);
         assertEquals(TEST_RX_SUCCESS, readWifiInfo.rxSuccess);
         assertTrue(readWifiInfo.isTrusted());
-        assertTrue(readWifiInfo.isOemPaid());
-        assertTrue(readWifiInfo.isOemPrivate());
-        assertTrue(readWifiInfo.isCarrierMerged());
         assertTrue(readWifiInfo.isOsuAp());
         assertTrue(readWifiInfo.isPasspointAp());
         assertEquals(TEST_PACKAGE_NAME, readWifiInfo.getRequestingPackageName());
@@ -273,7 +281,12 @@ public class WifiInfoTest {
                 readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
                 readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
-        assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
+        if (SdkLevel.isAtLeastS()) {
+            assertTrue(readWifiInfo.isOemPaid());
+            assertTrue(readWifiInfo.isOemPrivate());
+            assertTrue(readWifiInfo.isCarrierMerged());
+            assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
+        }
     }
 
     /**
@@ -291,10 +304,12 @@ public class WifiInfoTest {
         assertEquals(WifiManager.UNKNOWN_SSID, wifiInfo.getSSID());
         assertEquals(null, wifiInfo.getBSSID());
         assertEquals(-1, wifiInfo.getNetworkId());
-        assertFalse(wifiInfo.isOemPaid());
-        assertFalse(wifiInfo.isOemPrivate());
-        assertFalse(wifiInfo.isCarrierMerged());
-        assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID, wifiInfo.getSubscriptionId());
+        if (SdkLevel.isAtLeastS()) {
+            assertFalse(wifiInfo.isOemPaid());
+            assertFalse(wifiInfo.isOemPrivate());
+            assertFalse(wifiInfo.isCarrierMerged());
+            assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID, wifiInfo.getSubscriptionId());
+        }
     }
 
     /**
@@ -346,19 +361,34 @@ public class WifiInfoTest {
 
         WifiInfo info1 = builder.build();
         WifiInfo info2 = builder.build();
-        assertEquals(info1, info2);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1, info2);
+        } else {
+            // On R devices, reference equality.
+            assertNotEquals(info1, info2);
+        }
 
         info1.setSubscriptionId(TEST_SUB_ID);
         assertNotEquals(info1, info2);
 
         info2.setSubscriptionId(TEST_SUB_ID);
-        assertEquals(info1, info2);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1, info2);
+        } else {
+            // On R devices, reference equality.
+            assertNotEquals(info1, info2);
+        }
 
         info1.setSSID(WifiSsid.createFromHex(null));
         assertNotEquals(info1, info2);
 
         info2.setSSID(WifiSsid.createFromHex(null));
-        assertEquals(info1, info2);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1, info2);
+        } else {
+            // On R devices, reference equality.
+            assertNotEquals(info1, info2);
+        }
     }
 
     @Test
@@ -371,12 +401,22 @@ public class WifiInfoTest {
 
         WifiInfo info1 = builder.build();
         WifiInfo info2 = builder.build();
-        assertEquals(info1, info2);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1, info2);
+        } else {
+            // On R devices, reference equality.
+            assertNotEquals(info1, info2);
+        }
 
         info1.setInformationElements(generateIes());
         info2.setInformationElements(generateIes());
 
-        assertEquals(info1, info2);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1, info2);
+        } else {
+            // On R devices, reference equality.
+            assertNotEquals(info1, info2);
+        }
     }
 
     @Test
@@ -389,19 +429,34 @@ public class WifiInfoTest {
 
         WifiInfo info1 = builder.build();
         WifiInfo info2 = builder.build();
-        assertEquals(info1.hashCode(), info2.hashCode());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1.hashCode(), info2.hashCode());
+        } else {
+            // On R devices, system generated hashcode.
+            assertNotEquals(info1.hashCode(), info2.hashCode());
+        }
 
         info1.setSubscriptionId(TEST_SUB_ID);
         assertNotEquals(info1.hashCode(), info2.hashCode());
 
         info2.setSubscriptionId(TEST_SUB_ID);
-        assertEquals(info1.hashCode(), info2.hashCode());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1.hashCode(), info2.hashCode());
+        } else {
+            // On R devices, system generated hashcode.
+            assertNotEquals(info1.hashCode(), info2.hashCode());
+        }
 
         info1.setSSID(WifiSsid.createFromHex(null));
         assertNotEquals(info1.hashCode(), info2.hashCode());
 
         info2.setSSID(WifiSsid.createFromHex(null));
-        assertEquals(info1.hashCode(), info2.hashCode());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(info1.hashCode(), info2.hashCode());
+        } else {
+            // On R devices, system generated hashcode.
+            assertNotEquals(info1.hashCode(), info2.hashCode());
+        }
     }
 
     private static List<ScanResult.InformationElement> generateIes() {
@@ -419,6 +474,5 @@ public class WifiInfoTest {
         informationElements.add(informationElement);
 
         return informationElements;
-
     }
 }

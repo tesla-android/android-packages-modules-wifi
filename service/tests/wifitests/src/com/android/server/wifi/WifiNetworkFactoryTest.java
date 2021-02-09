@@ -69,6 +69,7 @@ import android.util.Pair;
 import android.util.Xml;
 
 import com.android.internal.util.FastXmlSerializer;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNetworkFactory.AccessPoint;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.ActionListenerWrapper;
@@ -190,9 +191,11 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mLooper = new TestLooper();
         mNetworkCapabilities = new NetworkCapabilities();
         mNetworkCapabilities.addTransportType(NetworkCapabilities.TRANSPORT_WIFI);
-        // NOT_VCN_MANAGED is not part of default network capabilities and needs to be manually
-        // added for non-VCN-underlying network factory/agent implementations.
-        mNetworkCapabilities.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        if (SdkLevel.isAtLeastS()) {
+            // NOT_VCN_MANAGED is not part of default network capabilities and needs to be manually
+            // added for non-VCN-underlying network factory/agent implementations.
+            mNetworkCapabilities.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
         mNetworkCapabilities.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         mTestScanDatas = ScanTestUtil.createScanDatas(new int[][]{ { 2417, 2427, 5180, 5170 } });
 

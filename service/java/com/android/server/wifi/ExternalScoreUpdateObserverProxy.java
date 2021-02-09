@@ -101,13 +101,13 @@ public class ExternalScoreUpdateObserverProxy extends IScoreUpdateObserver.Stub 
     }
 
     @Override
-    public void requestNudOperation(int sessionId, boolean nudTrigger) {
+    public void requestNudOperation(int sessionId) {
         mWifiThreadRunner.post(() -> {
             if (mCallback == null) {
                 Log.wtf(TAG, "No callback registered, dropping requestNudOperation");
                 return;
             }
-            mCallback.requestNudOperation(sessionId, nudTrigger);
+            mCallback.requestNudOperation(sessionId);
         });
     }
 

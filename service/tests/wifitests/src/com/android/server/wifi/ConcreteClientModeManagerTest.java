@@ -1340,12 +1340,15 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verify(mListener, never()).onRoleChanged(any()); // no callback sent.
 
         // Change the connectivity role.
+        ActiveModeManager.Listener<ConcreteClientModeManager> newListener =
+                mock(ActiveModeManager.Listener.class);
         mClientModeManager.setRole(
-                ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT, TEST_WORKSOURCE);
+                ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT, TEST_WORKSOURCE, newListener);
         mLooper.dispatchAll();
         verify(mWifiNative, times(2)).replaceStaIfaceRequestorWs(
                 eq(TEST_INTERFACE_NAME), same(TEST_WORKSOURCE));
-        verify(mListener).onRoleChanged(mClientModeManager); // callback sent.
+        verify(newListener).onRoleChanged(mClientModeManager); // callback sent on new listener.
+        verifyNoMoreInteractions(mListener); // no callback sent on older listener.
     }
 
     @Test
