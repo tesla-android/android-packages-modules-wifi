@@ -29,23 +29,15 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.net.ConnectivityManager;
-import android.net.LinkProperties;
 import android.net.Network;
 import android.net.NetworkAgent;
-import android.net.NetworkAgentConfig;
-import android.net.NetworkCapabilities;
-import android.net.NetworkProvider;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiInfo;
@@ -93,7 +85,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     WifiScoreReport mWifiScoreReport;
     WifiInfo mWifiInfo;
     ScoringParams mScoringParams;
-    NetworkAgent mNetworkAgent;
+    @Mock NetworkAgent mNetworkAgent;
     WifiThreadRunner mWifiThreadRunner;
     @Mock Context mContext;
     @Mock Resources mResources;
@@ -128,20 +120,6 @@ public class WifiScoreReportTest extends WifiBaseTest {
         @Override
         public void onSetScoreUpdateObserver(IScoreUpdateObserver observerImpl) {
         }
-    }
-
-    // NetworkAgent is abstract, so a subclass is necessary
-    private static class TestNetworkAgent extends NetworkAgent {
-        TestNetworkAgent(Context context) {
-            this(context, new TestLooper().getLooper());
-        }
-        private TestNetworkAgent(Context context, Looper looper) {
-            super(context, looper, "TestNetworkAgent", new NetworkCapabilities(),
-                    new LinkProperties(), 0, new NetworkAgentConfig.Builder().build(),
-                    new NetworkProvider(context, looper, "ScoreReportTest agent"));
-            register();
-        }
-        @Override protected void unwanted() { }
     }
 
     /**
@@ -205,12 +183,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiInfo.setFrequency(2412);
         mLooper = new TestLooper();
         when(mContext.getResources()).thenReturn(mResources);
-        final ConnectivityManager cm = mock(ConnectivityManager.class);
-        when(mContext.getSystemService(Context.CONNECTIVITY_SERVICE)).thenReturn(cm);
-        when(cm.registerNetworkAgent(any(), any(), any(), any(), anyInt(), any(), anyInt()))
-                .thenReturn(mNetwork);
         when(mNetwork.getNetId()).thenReturn(0);
-        mNetworkAgent = spy(new TestNetworkAgent(mContext));
+        when(mNetworkAgent.getNetwork()).thenReturn(mNetwork);
         mClock = new FakeClock();
         mScoringParams = new ScoringParams();
         mWifiThreadRunner = new WifiThreadRunner(new Handler(mLooper.getLooper()));
