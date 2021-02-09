@@ -53,6 +53,7 @@ import java.util.Set;
 @SmallTest
 public class ConfigurationMapTest extends WifiBaseTest {
     private static final int SYSTEM_MANAGE_PROFILE_USER_ID = 12;
+    private static final String TEST_BSSID = "0a:08:5c:67:89:01";
     private static final List<WifiConfiguration> CONFIGS = Arrays.asList(
             WifiConfigurationTestUtil.generateWifiConfig(
                     0, 1000000, "\"red\"", true, true, null, null,
@@ -221,7 +222,7 @@ public class ConfigurationMapTest extends WifiBaseTest {
     }
 
     private ScanResult createScanResultForNetwork(WifiConfiguration config) {
-        return WifiConfigurationTestUtil.createScanDetailForNetwork(config, "", 0, 0, 0, 0)
+        return WifiConfigurationTestUtil.createScanDetailForNetwork(config, TEST_BSSID, 0, 0, 0, 0)
                 .getScanResult();
     }
 
