@@ -6975,10 +6975,8 @@ public class WifiManager {
          *
          * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
-         * @param nudTrigger The boolean indicating whether triggering NUD is recommended.
-         *                   Populated by connected network scorer in applications.
          */
-        default void requestNudOperation(int sessionId, boolean nudTrigger) {}
+        default void requestNudOperation(int sessionId) {}
 
         /**
          * Called by applications to blocklist currently connected BSSID. No blocklisting operation
@@ -7033,12 +7031,12 @@ public class WifiManager {
         }
 
         @Override
-        public void requestNudOperation(int sessionId, boolean nudTrigger) {
+        public void requestNudOperation(int sessionId) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
             try {
-                mScoreUpdateObserver.requestNudOperation(sessionId, nudTrigger);
+                mScoreUpdateObserver.requestNudOperation(sessionId);
             } catch (RemoteException e) {
                 throw e.rethrowFromSystemServer();
             }
