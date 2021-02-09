@@ -23,6 +23,9 @@ android_test {
     name: "MtsWifiTestCases",
     defaults: ["cts_defaults"],
 
+    min_sdk_version: "30",
+    target_sdk_version: "30",
+
     libs: [
         "org.apache.http.legacy",
         "android.test.base.stubs",
