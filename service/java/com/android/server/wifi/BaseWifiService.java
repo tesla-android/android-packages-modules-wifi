@@ -508,14 +508,34 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by
+     * {@link #registerNetworkRequestMatchCallback(INetworkRequestMatchCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void registerSoftApCallback(
             IBinder binder, ISoftApCallback callback, int callbackIdentifier) {
         throw new UnsupportedOperationException();
     }
 
     @Override
+    public void registerSoftApCallback(ISoftApCallback callback) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Replaced by
+     * {@link #unregisterSoftApCallback(ISoftApCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void unregisterSoftApCallback(int callbackIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterSoftApCallback(ISoftApCallback callback) {
         throw new UnsupportedOperationException();
     }
 
