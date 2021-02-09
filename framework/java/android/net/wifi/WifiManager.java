@@ -2677,12 +2677,24 @@ public class WifiManager {
     }
 
     /**
-     * @return true if this device supports connected MAC randomization.
+     * @return true if this device supports AP MAC randomization.
      * @hide
      */
     @SystemApi
     public boolean isApMacRandomizationSupported() {
         return isFeatureSupported(WIFI_FEATURE_AP_RAND_MAC);
+    }
+
+    /**
+     * Check if the chipset supports 2.4GHz band.
+     * @return {@code true} if supported, {@code false} otherwise.
+     */
+    public boolean is24GHzBandSupported() {
+        try {
+            return mService.is24GHzBandSupported();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**

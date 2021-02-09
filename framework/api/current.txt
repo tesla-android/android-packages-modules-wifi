@@ -339,6 +339,7 @@ package android.net.wifi {
     method @Deprecated @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.List<android.net.wifi.hotspot2.PasspointConfiguration> getPasspointConfigurations();
     method public java.util.List<android.net.wifi.ScanResult> getScanResults();
     method public int getWifiState();
+    method public boolean is24GHzBandSupported();
     method public boolean is5GHzBandSupported();
     method public boolean is60GHzBandSupported();
     method public boolean is6GHzBandSupported();

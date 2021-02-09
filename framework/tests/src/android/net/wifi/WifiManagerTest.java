@@ -2466,6 +2466,16 @@ public class WifiManagerTest {
     }
 
     /**
+     * Test behavior of {@link WifiManager#is24GHzBandSupported()}
+     */
+    @Test
+    public void testIs24GHzBandSupported() throws Exception {
+        when(mWifiService.is24GHzBandSupported()).thenReturn(true);
+        assertTrue(mWifiManager.is24GHzBandSupported());
+        verify(mWifiService).is24GHzBandSupported();
+    }
+
+    /**
      * Test behavior of {@link WifiManager#is5GHzBandSupported()}
      */
     @Test

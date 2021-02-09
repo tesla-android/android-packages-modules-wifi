@@ -118,6 +118,8 @@ interface IWifiManager
 
     String getCountryCode();
 
+    boolean is24GHzBandSupported();
+
     boolean is5GHzBandSupported();
 
     boolean is6GHzBandSupported();
