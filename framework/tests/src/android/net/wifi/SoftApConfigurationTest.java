@@ -533,6 +533,7 @@ public class SoftApConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidConfigWhenSet60GhzChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         SparseIntArray invalid_channels = new SparseIntArray();
         invalid_channels.put(SoftApConfiguration.BAND_60GHZ, 99);
         SoftApConfiguration config = new SoftApConfiguration.Builder()
