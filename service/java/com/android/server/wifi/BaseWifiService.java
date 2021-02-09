@@ -247,6 +247,11 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public boolean is24GHzBandSupported() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean is5GHzBandSupported() {
         throw new UnsupportedOperationException();
     }

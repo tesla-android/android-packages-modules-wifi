@@ -3225,6 +3225,25 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     @Override
+    public boolean is24GHzBandSupported() {
+        if (mVerboseLoggingEnabled) {
+            mLog.info("is24GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
+        }
+
+        return is24GhzBandSupportedInternal();
+    }
+
+    private boolean is24GhzBandSupportedInternal() {
+        if (mContext.getResources().getBoolean(R.bool.config_wifi24ghzSupport)) {
+            return true;
+        }
+        return mWifiThreadRunner.call(
+                () -> mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ).length > 0,
+                false);
+    }
+
+
+    @Override
     public boolean is5GHzBandSupported() {
         if (mVerboseLoggingEnabled) {
             mLog.info("is5GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();

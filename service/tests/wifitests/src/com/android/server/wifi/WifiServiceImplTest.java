@@ -1757,6 +1757,18 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify isWifiBandSupported for 24GHz with an overlay override config
+     */
+    @Test
+    public void testIsWifiBandSupported24gWithOverride() throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(true);
+        mLooper.startAutoDispatch();
+        assertTrue(mWifiServiceImpl.is24GHzBandSupported());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiNative, never()).getChannelsForBand(anyInt());
+    }
+
+    /**
      * Verify isWifiBandSupported for 5GHz with an overlay override config
      */
     @Test
@@ -1781,6 +1793,20 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify isWifiBandSupported for 24GHz with no overlay override config no channels
+     */
+    @Test
+    public void testIsWifiBandSupported24gNoOverrideNoChannels() throws Exception {
+        final int[] emptyArray = {};
+        when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(false);
+        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(emptyArray);
+        mLooper.startAutoDispatch();
+        assertFalse(mWifiServiceImpl.is24GHzBandSupported());
+        mLooper.stopAutoDispatch();
+        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ);
+    }
+
+    /**
      * Verify isWifiBandSupported for 5GHz with no overlay override config no channels
      */
     @Test
@@ -1792,6 +1818,20 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertFalse(mWifiServiceImpl.is5GHzBandSupported());
         mLooper.stopAutoDispatch();
         verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ);
+    }
+
+    /**
+     * Verify isWifiBandSupported for 24GHz with no overlay override config with channels
+     */
+    @Test
+    public void testIsWifiBandSupported24gNoOverrideWithChannels() throws Exception {
+        final int[] channelArray = {2412};
+        when(mResources.getBoolean(R.bool.config_wifi24ghzSupport)).thenReturn(false);
+        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(channelArray);
+        mLooper.startAutoDispatch();
+        assertTrue(mWifiServiceImpl.is24GHzBandSupported());
+        mLooper.stopAutoDispatch();
+        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ);
     }
 
     /**
