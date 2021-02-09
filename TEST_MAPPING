@@ -22,6 +22,9 @@
           "exclude-annotation": "android.net.wifi.cts.VirtualDeviceNotSupported"
         }
       ]
+    },
+    {
+      "name": "MtsWifiTestCases[com.google.android.wifi.apex]"
     }
   ]
 }
