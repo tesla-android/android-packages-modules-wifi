@@ -612,6 +612,7 @@ public class WifiConfiguration implements Parcelable {
             throw new IllegalArgumentException("An empty security params list is invalid.");
         }
         mSecurityParamsList = new ArrayList<>(securityParamsList);
+        updateLegacySecurityParams();
     }
 
     /**
