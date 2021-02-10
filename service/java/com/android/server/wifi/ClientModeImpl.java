@@ -245,6 +245,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // The subId used by WifiConfiguration with SIM credential which was connected successfully
     private int mLastSubId;
     private String mLastSimBasedConnectionCarrierName;
+    private URL mTermsAndConditionsUrl; // Indicates that the Passpoint network is captive
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -872,7 +873,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onProvisioningSuccess(LinkProperties newLp) {
-            addPasspointUrlsToLinkProperties(newLp);
+            addPasspointInfoToLinkProperties(newLp);
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_CMD_IP_CONFIGURATION_SUCCESSFUL);
             sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
             sendMessage(CMD_IP_CONFIGURATION_SUCCESSFUL);
@@ -886,7 +887,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onLinkPropertiesChange(LinkProperties newLp) {
-            addPasspointUrlsToLinkProperties(newLp);
+            addPasspointInfoToLinkProperties(newLp);
             sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
         }
 
@@ -3577,9 +3578,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectedWifiConfigurationInternal());
                     break;
                 case WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT:
-                    if (!mPasspointManager.handleTermsAndConditionsEvent((WnmData) message.obj,
-                            getConnectedWifiConfigurationInternal())) {
-                        loge("Disconnecting from Passpoint network due to an issue with T&C");
+                    mTermsAndConditionsUrl = mPasspointManager
+                            .handleTermsAndConditionsEvent((WnmData) message.obj,
+                            getConnectedWifiConfigurationInternal());
+                    if (mTermsAndConditionsUrl == null) {
+                        loge("Disconnecting from Passpoint network due to an issue with the "
+                                + "Terms and Conditions URL");
                         sendMessage(CMD_DISCONNECT);
                     }
                     break;
@@ -4174,7 +4178,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     }
                     // When connecting to Passpoint, ask for the Venue URL
                     if (config.isPasspoint()) {
-                        mPasspointManager.clearTermsAndConditionsUrl();
+                        mTermsAndConditionsUrl = null;
                         if (scanResult == null && mLastBssid != null) {
                             // The cached scan result of connected network would be null at the
                             // first connection, try to check full scan result list again to look up
@@ -4221,7 +4225,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (!newConnectionInProgress) {
                         transitionTo(mDisconnectedState);
                     }
-                    mPasspointManager.clearTermsAndConditionsUrl();
+                    mTermsAndConditionsUrl = null;
                     break;
                 }
                 case WifiMonitor.TARGET_BSSID_EVENT: {
@@ -5344,6 +5348,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                             .DISABLED_NONE);
                             mWifiConfigManager.setNetworkValidatedInternetAccess(
                                     config.networkId, true);
+                            if (config.isPasspoint()
+                                    && mTermsAndConditionsUrl != null) {
+                                // Clear the T&C after the user accepted them and the we are
+                                // notified that the network validation is successful
+                                mTermsAndConditionsUrl = null;
+                                LinkProperties newLp = new LinkProperties(mLinkProperties);
+                                addPasspointInfoToLinkProperties(newLp);
+                                sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
+                            }
                         }
                         mCmiMonitor.onL3Validated(mClientModeManager);
                     }
@@ -6114,7 +6127,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiScoreReport.setShouldReduceNetworkScore(shouldReduceNetworkScore);
     }
 
-    private void addPasspointUrlsToLinkProperties(LinkProperties linkProperties) {
+    private void addPasspointInfoToLinkProperties(LinkProperties linkProperties) {
         WifiConfiguration currentNetwork = getConnectedWifiConfigurationInternal();
         if (currentNetwork == null || !currentNetwork.isPasspoint()) {
             return;
@@ -6125,11 +6138,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
         URL venueUrl = mPasspointManager.getVenueUrl(scanResult);
-        URL termsAndConditionsUrl = mPasspointManager.getTermsAndConditionsUrl();
-
-        if (venueUrl == null && termsAndConditionsUrl == null) {
-            return;
-        }
 
         // Update the friendly name to populate the notification
         CaptivePortalData.Builder captivePortalDataBuilder = new CaptivePortalData.Builder()
@@ -6137,14 +6145,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         // Update the Venue URL if available
         if (venueUrl != null) {
-            captivePortalDataBuilder.setVenueInfoUrl(Uri.parse(venueUrl.toString()));
+            captivePortalDataBuilder.setVenueInfoUrl(Uri.parse(venueUrl.toString()),
+                    CaptivePortalData.CAPTIVE_PORTAL_DATA_SOURCE_PASSPOINT);
         }
 
         // Update the T&C URL if available. The network is captive if T&C URL is available
-        if (termsAndConditionsUrl != null) {
-            // TODO: Add when NetworkStack changes are implemented
-            //captivePortalDataBuilder.setUserPortalUrl(Uri.parse(termsAndConditionsUrl.toString()))
-            //        .setCaptive(true);
+        if (mTermsAndConditionsUrl != null) {
+            captivePortalDataBuilder.setUserPortalUrl(
+                    Uri.parse(mTermsAndConditionsUrl.toString()),
+                    CaptivePortalData.CAPTIVE_PORTAL_DATA_SOURCE_PASSPOINT).setCaptive(true);
         }
 
         linkProperties.setCaptivePortalData(captivePortalDataBuilder.build());

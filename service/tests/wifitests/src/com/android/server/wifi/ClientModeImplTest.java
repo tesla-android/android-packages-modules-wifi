@@ -863,7 +863,22 @@ public class ClientModeImplTest extends WifiBaseTest {
      * Tests the entire successful network connection flow.
      */
     @Test
-    public void connect() throws Exception {
+    public void testConnect() throws Exception {
+        connect(null);
+    }
+
+    private void connect() throws Exception {
+        connect(null);
+    }
+
+    /**
+     * Simulate a connect
+     *
+     * @param wnmDataForTermsAndConditions Use null unless it is required to simulate a terms and
+     *                                     conditions acceptance notification from Passpoint
+     * @throws Exception
+     */
+    private void connect(WnmData wnmDataForTermsAndConditions) throws Exception {
         assertNull(mCmi.getConnectingWifiConfiguration());
         assertNull(mCmi.getConnectedWifiConfiguration());
 
@@ -913,6 +928,12 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mContext).sendStickyBroadcastAsUser(
                 argThat(new NetworkStateChangedIntentMatcher(OBTAINING_IPADDR)), any());
 
+        if (wnmDataForTermsAndConditions != null) {
+            mCmi.sendMessage(WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT,
+                    0, 0, wnmDataForTermsAndConditions);
+            mLooper.dispatchAll();
+        }
+
         DhcpResultsParcelable dhcpResults = new DhcpResultsParcelable();
         dhcpResults.baseConfiguration = new StaticIpConfiguration();
         dhcpResults.baseConfiguration.gateway = InetAddresses.parseNumericAddress("1.2.3.4");
@@ -935,7 +956,12 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(sFreq, wifiInfo.getFrequency());
         assertTrue(TEST_WIFI_SSID.equals(wifiInfo.getWifiSsid()));
         assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfo.getMacAddress());
-        assertNull(wifiInfo.getPasspointProviderFriendlyName());
+        if (wifiInfo.isPasspointAp()) {
+            assertEquals(wifiInfo.getPasspointProviderFriendlyName(),
+                    WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME);
+        } else {
+            assertNull(wifiInfo.getPasspointProviderFriendlyName());
+        }
         assertEquals(Arrays.asList(scanResult.informationElements),
                 wifiInfo.getInformationElements());
         expectRegisterNetworkAgent((na) -> {
@@ -949,7 +975,12 @@ public class ClientModeImplTest extends WifiBaseTest {
                     assertEquals(sFreq, wifiInfoFromTi.getFrequency());
                     assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfoFromTi.getMacAddress());
                     assertTrue(TEST_WIFI_SSID.equals(wifiInfoFromTi.getWifiSsid()));
-                    assertNull(wifiInfoFromTi.getPasspointProviderFriendlyName());
+                    if (wifiInfo.isPasspointAp()) {
+                        assertEquals(wifiInfoFromTi.getPasspointProviderFriendlyName(),
+                                WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME);
+                    } else {
+                        assertNull(wifiInfoFromTi.getPasspointProviderFriendlyName());
+                    }
                 }
             });
         // Ensure the connection stats for the network is updated.
@@ -1912,7 +1943,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 any(), anyInt(), any(), any());
         assertEquals("DisconnectedState", getCurrentState().getName());
-        verify(mPasspointManager).clearTermsAndConditionsUrl();
     }
 
     /**
@@ -3919,6 +3949,53 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiBlocklistMonitor).handleNetworkValidationSuccess(TEST_BSSID_STR, TEST_SSID);
     }
 
+    /**
+     * Verify that the logic clears the terms and conditions URL after we got a notification that
+     * the network was validated (i.e. the user accepted and internt access is available).
+     */
+    @Test
+    public void testTermsAndConditionsClearUrlAfterNetworkValidation() throws Exception {
+        // Simulate the first connection.
+        mConnectedNetwork = spy(WifiConfigurationTestUtil.createPasspointNetwork());
+        WnmData wnmData = WnmData.createTermsAndConditionsAccetanceRequiredEvent(TEST_BSSID,
+                TEST_TERMS_AND_CONDITIONS_URL);
+        when(mPasspointManager.handleTermsAndConditionsEvent(eq(wnmData),
+                any(WifiConfiguration.class))).thenReturn(new URL(TEST_TERMS_AND_CONDITIONS_URL));
+        connect(wnmData);
+        // Verify that link properties contains the T&C URL and captive is set to true
+        inOrder(mNetworkAgentRegistry).verify(mNetworkAgentRegistry)
+                .sendLinkProperties(argThat(linkProperties -> TEST_TERMS_AND_CONDITIONS_URL.equals(
+                        linkProperties.getCaptivePortalData().getUserPortalUrl().toString())
+                        && linkProperties.getCaptivePortalData().isCaptive()));
+        verify(mWifiBlocklistMonitor).handleBssidConnectionSuccess(TEST_BSSID_STR, TEST_SSID);
+        verify(mWifiBlocklistMonitor).handleDhcpProvisioningSuccess(TEST_BSSID_STR, TEST_SSID);
+        verify(mWifiBlocklistMonitor, never())
+                .handleNetworkValidationSuccess(TEST_BSSID_STR, TEST_SSID);
+        ArgumentCaptor<INetworkAgent> agentCaptor = ArgumentCaptor.forClass(INetworkAgent.class);
+        verify(mConnectivityManager).registerNetworkAgent(agentCaptor.capture(),
+                any(NetworkInfo.class), any(LinkProperties.class), any(NetworkCapabilities.class),
+                anyInt(), any(NetworkAgentConfig.class), anyInt());
+
+        when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID + 1);
+        agentCaptor.getValue().onValidationStatusChanged(
+                NetworkAgent.VALID_NETWORK, null /* captivePortalUrl */);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager)
+                .setNetworkValidatedInternetAccess(FRAMEWORK_NETWORK_ID, true);
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(
+                FRAMEWORK_NETWORK_ID, DISABLED_NONE);
+        verify(mWifiScoreCard).noteValidationSuccess(any());
+        verify(mWifiBlocklistMonitor).handleNetworkValidationSuccess(TEST_BSSID_STR, TEST_SSID);
+
+        // Now that the network has been validated, link properties must not have a T&C URL anymore
+        // and captive is set to false
+        inOrder(mNetworkAgentRegistry).verify(mNetworkAgentRegistry)
+                .sendLinkProperties(argThat(linkProperties ->
+                        linkProperties.getCaptivePortalData().getUserPortalUrl() == null
+                                && !linkProperties.getCaptivePortalData().isCaptive()));
+    }
+
     private void connectWithValidInitRssi(int initRssiDbm) throws Exception {
         triggerConnect();
         mWifiInfo.setRssi(initRssiDbm);
@@ -5565,6 +5642,12 @@ public class ClientModeImplTest extends WifiBaseTest {
     public void testVenueAndTCUrlsUpdateForPasspointNetworks() throws Exception {
         setupPasspointConnection();
         when(mPasspointManager.getVenueUrl(any(ScanResult.class))).thenReturn(new URL(VENUE_URL));
+        WnmData wnmData = WnmData.createTermsAndConditionsAccetanceRequiredEvent(TEST_BSSID,
+                TEST_TERMS_AND_CONDITIONS_URL);
+        when(mPasspointManager.handleTermsAndConditionsEvent(eq(wnmData),
+                any(WifiConfiguration.class))).thenReturn(new URL(TEST_TERMS_AND_CONDITIONS_URL));
+        mCmi.sendMessage(WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT,
+                0, 0, wnmData);
         DhcpResultsParcelable dhcpResults = new DhcpResultsParcelable();
         dhcpResults.baseConfiguration = new StaticIpConfiguration();
         dhcpResults.baseConfiguration.gateway = InetAddresses.parseNumericAddress("1.2.3.4");
@@ -5578,7 +5661,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         LinkProperties linkProperties = mock(LinkProperties.class);
         mIpClientCallback.onLinkPropertiesChange(linkProperties);
         mLooper.dispatchAll();
-        verify(mPasspointManager).clearTermsAndConditionsUrl();
         verify(mPasspointManager, times(2)).getVenueUrl(any(ScanResult.class));
         final ArgumentCaptor<CaptivePortalData> captivePortalDataCaptor =
                 ArgumentCaptor.forClass(CaptivePortalData.class);
@@ -5586,7 +5668,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME,
                 captivePortalDataCaptor.getValue().getVenueFriendlyName());
         assertEquals(VENUE_URL, captivePortalDataCaptor.getValue().getVenueInfoUrl().toString());
-        verify(mPasspointManager, times(2)).getTermsAndConditionsUrl();
+        assertEquals(TEST_TERMS_AND_CONDITIONS_URL, captivePortalDataCaptor.getValue()
+                .getUserPortalUrl().toString());
     }
 
     /**
@@ -5599,7 +5682,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         WnmData wnmData = WnmData.createTermsAndConditionsAccetanceRequiredEvent(TEST_BSSID,
                 TEST_TERMS_AND_CONDITIONS_URL);
         when(mPasspointManager.handleTermsAndConditionsEvent(eq(wnmData),
-                any(WifiConfiguration.class))).thenReturn(true);
+                any(WifiConfiguration.class))).thenReturn(new URL(TEST_TERMS_AND_CONDITIONS_URL));
         mCmi.sendMessage(WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT,
                 0, 0, wnmData);
         mLooper.dispatchAll();
@@ -5618,7 +5701,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         WnmData wnmData = WnmData.createTermsAndConditionsAccetanceRequiredEvent(TEST_BSSID,
                 TEST_TERMS_AND_CONDITIONS_URL);
         when(mPasspointManager.handleTermsAndConditionsEvent(eq(wnmData),
-                any(WifiConfiguration.class))).thenReturn(false);
+                any(WifiConfiguration.class))).thenReturn(null);
         mCmi.sendMessage(WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT,
                 0, 0, wnmData);
         mLooper.dispatchAll();
