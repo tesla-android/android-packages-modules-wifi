@@ -502,6 +502,31 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
     /**
      * Validates handling of acceptNetwork with a network specifier from a foreground
+     * service when we're in the midst of processing the same request from a foreground app.
+     * Caused by the app transitioning to a fg service & connectivity stack triggering a
+     * re-evaluation.
+     */
+    @Test
+    public void
+            testHandleAcceptNetworkRequestFromFgSvcWithSpecifierWithSamePendingRequestFromFgApp()
+            throws Exception {
+        when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_1))
+                .thenReturn(IMPORTANCE_FOREGROUND);
+        when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_2))
+                .thenReturn(IMPORTANCE_FOREGROUND_SERVICE);
+
+        // Handle request 1.
+        attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_1, false);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
+
+        // Resend the request from a fg service (should be accepted since it is already being
+        // processed).
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
+        mLooper.dispatchAll();
+    }
+
+    /**
+     * Validates handling of acceptNetwork with a network specifier from a foreground
      * app when we're connected to a request from a foreground app.
      */
     @Test
@@ -552,6 +577,32 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
         mLooper.dispatchAll();
         verify(mConnectivityManager).declareNetworkRequestUnfulfillable(eq(mNetworkRequest));
+    }
+
+    /**
+     * Validates handling of acceptNetwork with a network specifier from a foreground
+     * service when we're in the connected to the same request from a foreground app.
+     * Caused by the app transitioning to a fg service & connectivity stack triggering a
+     * re-evaluation.
+     */
+    @Test
+    public void
+            testHandleAcceptNetworkRequestFromFgSvcWithSpecifierWithSameConnectedRequestFromFgApp()
+            throws Exception {
+        when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_1))
+                .thenReturn(IMPORTANCE_FOREGROUND);
+        when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_2))
+                .thenReturn(IMPORTANCE_FOREGROUND_SERVICE);
+
+        // Connect to request 1
+        sendNetworkRequestAndSetupForConnectionStatus(TEST_SSID_1);
+        // Send network connection success indication.
+        assertNotNull(mSelectedNetwork);
+        mWifiNetworkFactory.handleConnectionAttemptEnded(
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
+
+        // Resend the request from a fg service (should be accepted since it is already connected).
+        assertTrue(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
     }
 
     /**
@@ -1125,7 +1176,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         assertNotNull(networkRequestUserSelectionCallback);
 
         // Now send another network request.
-        mWifiNetworkFactory.needNetworkFor(new NetworkRequest(mNetworkRequest));
+        attachDefaultWifiNetworkSpecifierAndAppInfo(TEST_UID_2, false);
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
 
         // Now trigger user selection to some network.
         WifiConfiguration selectedNetwork = WifiConfigurationTestUtil.createOpenNetwork();
@@ -2224,6 +2276,29 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     }
 
     /**
+     *  Verify handling for same network request while connected to it.
+     */
+    @Test
+    public void testHandleSameNetworkRequestWithSpecifierAfterConnectionSuccess() throws Exception {
+        sendNetworkRequestAndSetupForConnectionStatus();
+
+        // Send network connection success indication.
+        assertNotNull(mSelectedNetwork);
+        mWifiNetworkFactory.handleConnectionAttemptEnded(
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
+        // Cancel the connection timeout.
+        verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+
+        clearInvocations(mWifiConnectivityManager, mWifiScanner, mClientModeManager, mAlarmManager);
+
+        // Send same request again (nothing should happen).
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiConnectivityManager, mWifiScanner, mClientModeManager,
+                mAlarmManager);
+    }
+    /**
      *  Verify handling for new network request while processing another one.
      */
     @Test
@@ -2476,6 +2551,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         mWifiNetworkFactory.removeCallback(mNetworkRequestMatchCallback);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager, mClientModeManager,
                 mConnectHelper);
 
@@ -2520,6 +2596,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         mWifiNetworkFactory.removeCallback(mNetworkRequestMatchCallback);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager, mClientModeManager,
                 mConnectHelper);
 
@@ -2562,6 +2639,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         mWifiNetworkFactory.removeCallback(mNetworkRequestMatchCallback);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager, mClientModeManager,
                 mConnectHelper);
 
@@ -2603,6 +2681,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         mWifiNetworkFactory.removeCallback(mNetworkRequestMatchCallback);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager, mClientModeManager,
                 mConnectHelper);
 
@@ -2646,6 +2725,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         sendNetworkRequestAndSetupForConnectionStatus();
 
         mWifiNetworkFactory.removeCallback(mNetworkRequestMatchCallback);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager, mClientModeManager,
                 mConnectHelper);
 
