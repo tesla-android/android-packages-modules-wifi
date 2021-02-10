@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import android.net.wifi.WifiEnterpriseConfig.Eap;
 import android.net.wifi.WifiEnterpriseConfig.Phase2;
@@ -31,6 +32,8 @@ import android.os.Parcel;
 import android.security.Credentials;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -545,6 +548,7 @@ public class WifiEnterpriseConfigTest {
 
     @Test
     public void testIsEnterpriseConfigServerCertNotEnabled() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig baseConfig = new WifiEnterpriseConfig();
         baseConfig.setEapMethod(Eap.PEAP);
         baseConfig.setPhase2Method(Phase2.MSCHAPV2);
@@ -570,16 +574,19 @@ public class WifiEnterpriseConfigTest {
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithPeap() {
+        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.PEAP);
     }
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithTls() {
+        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.TLS);
     }
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithTTLS() {
+        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.TTLS);
     }
 

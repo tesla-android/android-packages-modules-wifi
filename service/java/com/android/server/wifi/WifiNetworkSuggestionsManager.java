@@ -1101,6 +1101,7 @@ public class WifiNetworkSuggestionsManager {
                 }
                 if (wns.wifiConfiguration.carrierMerged) {
                     Log.e(TAG, "Setting carrier merged network is only allowed from Android S.");
+                    return false;
                 }
             }
         }
