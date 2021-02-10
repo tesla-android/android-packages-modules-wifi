@@ -2753,7 +2753,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mClientModeManager, level2FailureCode, bssid, ssid);
         if (configuration != null) {
-            mNetworkFactory.handleConnectionAttemptEnded(level2FailureCode, configuration);
+            mNetworkFactory.handleConnectionAttemptEnded(level2FailureCode, configuration, bssid);
             mWifiNetworkSuggestionsManager.handleConnectionAttemptEnded(
                     level2FailureCode, configuration, getConnectedBssidInternal());
             ScanResult candidate = configuration.getNetworkSelectionStatus().getCandidate();
@@ -2880,7 +2880,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiMetrics.addMeteredStat(config, false);
         }
 
-        updateCapabilities(config);
+        updateCapabilities();
     }
 
     private void handleSuccessfulIpConfiguration() {
@@ -3723,7 +3723,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return wns;
     }
 
-    private NetworkCapabilities getCapabilities(WifiConfiguration currentWifiConfiguration) {
+    private NetworkCapabilities getCapabilities(
+            WifiConfiguration currentWifiConfiguration, String currentBssid) {
         final NetworkCapabilities.Builder builder =
                 new NetworkCapabilities.Builder(mNetworkCapabilitiesFilter);
         // MatchAllNetworkSpecifier set in the mNetworkCapabilitiesFilter should never be set in the
@@ -3789,7 +3790,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         Pair<Integer, String> specificRequestUidAndPackageName =
                 mNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        currentWifiConfiguration);
+                        currentWifiConfiguration, currentBssid);
         // There is an active specific request.
         if (specificRequestUidAndPackageName.first != Process.INVALID_UID) {
             // Remove internet capability.
@@ -3841,7 +3842,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     private void updateCapabilities(WifiConfiguration currentWifiConfiguration) {
-        updateCapabilities(getCapabilities(currentWifiConfiguration));
+        updateCapabilities(getCapabilities(currentWifiConfiguration, getConnectedBssidInternal()));
     }
 
     private void updateCapabilities(NetworkCapabilities networkCapabilities) {
@@ -4631,7 +4632,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
             }
             final NetworkAgentConfig naConfig = naConfigBuilder.build();
-            final NetworkCapabilities nc = getCapabilities(getConnectedWifiConfigurationInternal());
+            final NetworkCapabilities nc = getCapabilities(
+                    getConnectedWifiConfigurationInternal(), getConnectedBssidInternal());
             // This should never happen.
             if (mNetworkAgent != null) {
                 Log.wtf(getTag(), "mNetworkAgent is not null: " + mNetworkAgent);

@@ -279,7 +279,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         @Override
         public void onAlarm() {
             Log.e(TAG, "Timed-out connecting to network");
-            handleNetworkConnectionFailure(mUserSelectedNetwork);
+            handleNetworkConnectionFailure(mUserSelectedNetwork, mUserSelectedNetwork.BSSID);
             mConnectionTimeoutSet = false;
         }
     }
@@ -327,7 +327,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         @Override
         public void onFailure(int reason) {
             Log.e(TAG, "Failed to trigger network connection");
-            handleNetworkConnectionFailure(mUserSelectedNetwork);
+            handleNetworkConnectionFailure(mUserSelectedNetwork, mUserSelectedNetwork.BSSID);
         }
     }
 
@@ -779,12 +779,13 @@ public class WifiNetworkFactory extends NetworkFactory {
      * @return Pair of uid & package name of the specific request (if any), else <-1, "">.
      */
     public Pair<Integer, String> getSpecificNetworkRequestUidAndPackageName(
-            @NonNull WifiConfiguration connectedNetwork) {
+            @NonNull WifiConfiguration connectedNetwork, @NonNull String connectedBssid) {
         if (mUserSelectedNetwork == null || connectedNetwork == null) {
             return Pair.create(Process.INVALID_UID, "");
         }
-        if (!isUserSelectedNetwork(connectedNetwork)) {
-            Log.w(TAG, "Connected to unknown network " + connectedNetwork + ". Ignoring...");
+        if (!isUserSelectedNetwork(connectedNetwork, connectedBssid)) {
+            Log.w(TAG, "Connected to unknown network " + connectedNetwork + ":" + connectedBssid
+                    + ". Ignoring...");
             return Pair.create(Process.INVALID_UID, "");
         }
         if (mConnectedSpecificNetworkRequestSpecifier != null) {
@@ -932,12 +933,15 @@ public class WifiNetworkFactory extends NetworkFactory {
         mWifiMetrics.incrementNetworkRequestApiNumUserReject();
     }
 
-    private boolean isUserSelectedNetwork(WifiConfiguration config) {
+    private boolean isUserSelectedNetwork(WifiConfiguration config, String bssid) {
         if (!TextUtils.equals(mUserSelectedNetwork.SSID, config.SSID)) {
             return false;
         }
         if (!Objects.equals(
                 mUserSelectedNetwork.allowedKeyManagement, config.allowedKeyManagement)) {
+            return false;
+        }
+        if (!TextUtils.equals(mUserSelectedNetwork.BSSID, bssid)) {
             return false;
         }
         return true;
@@ -947,24 +951,26 @@ public class WifiNetworkFactory extends NetworkFactory {
      * Invoked by {@link ClientModeImpl} on end of connection attempt to a network.
      */
     public void handleConnectionAttemptEnded(
-            int failureCode, @NonNull WifiConfiguration network) {
+            int failureCode, @NonNull WifiConfiguration network, @NonNull String bssid) {
         if (failureCode == WifiMetrics.ConnectionEvent.FAILURE_NONE) {
-            handleNetworkConnectionSuccess(network);
+            handleNetworkConnectionSuccess(network, bssid);
         } else {
-            handleNetworkConnectionFailure(network);
+            handleNetworkConnectionFailure(network, bssid);
         }
     }
 
     /**
      * Invoked by {@link ClientModeImpl} on successful connection to a network.
      */
-    private void handleNetworkConnectionSuccess(@NonNull WifiConfiguration connectedNetwork) {
+    private void handleNetworkConnectionSuccess(@NonNull WifiConfiguration connectedNetwork,
+            @NonNull String connectedBssid) {
         if (mUserSelectedNetwork == null || connectedNetwork == null
                 || !mPendingConnectionSuccess) {
             return;
         }
-        if (!isUserSelectedNetwork(connectedNetwork)) {
-            Log.w(TAG, "Connected to unknown network " + connectedNetwork + ". Ignoring...");
+        if (!isUserSelectedNetwork(connectedNetwork, connectedBssid)) {
+            Log.w(TAG, "Connected to unknown network " + connectedNetwork + ":" + connectedBssid
+                    + ". Ignoring...");
             return;
         }
         Log.d(TAG, "Connected to network " + mUserSelectedNetwork);
@@ -988,12 +994,14 @@ public class WifiNetworkFactory extends NetworkFactory {
     /**
      * Invoked by {@link ClientModeImpl} on failure to connect to a network.
      */
-    private void handleNetworkConnectionFailure(@NonNull WifiConfiguration failedNetwork) {
+    private void handleNetworkConnectionFailure(@NonNull WifiConfiguration failedNetwork,
+            @NonNull String failedBssid) {
         if (mUserSelectedNetwork == null || failedNetwork == null || !mPendingConnectionSuccess) {
             return;
         }
-        if (!isUserSelectedNetwork(failedNetwork)) {
-            Log.w(TAG, "Connection failed to unknown network " + failedNetwork + ". Ignoring...");
+        if (!isUserSelectedNetwork(failedNetwork, failedBssid)) {
+            Log.w(TAG, "Connection failed to unknown network " + failedNetwork + ":" + failedBssid
+                    + ". Ignoring...");
             return;
         }
         Log.w(TAG, "Failed to connect to network " + mUserSelectedNetwork);

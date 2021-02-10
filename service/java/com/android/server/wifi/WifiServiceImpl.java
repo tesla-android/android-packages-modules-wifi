@@ -109,6 +109,7 @@ import android.os.ParcelFileDescriptor;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Process;
+import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -134,7 +135,6 @@ import com.android.server.wifi.hotspot2.PasspointProvider;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.UserActionEvent;
 import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.ApConfigUtil;
-import com.android.server.wifi.util.ExternalCallbackTracker;
 import com.android.server.wifi.util.RssiUtil;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
@@ -160,7 +160,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1390,17 +1389,15 @@ public class WifiServiceImpl extends BaseWifiService {
             onCapabilityChanged(newSoftApCapability);
         }
 
-        private final ExternalCallbackTracker<ISoftApCallback> mRegisteredSoftApCallbacks =
-                new ExternalCallbackTracker<>(
-                        new Handler(mWifiInjector.getWifiHandlerThread().getLooper()));
+        private final RemoteCallbackList<ISoftApCallback> mRegisteredSoftApCallbacks =
+                new RemoteCallbackList<>();
 
-        public boolean registerSoftApCallback(IBinder binder, ISoftApCallback callback,
-                int callbackIdentifier) {
-            return mRegisteredSoftApCallbacks.add(binder, callback, callbackIdentifier);
+        public boolean registerSoftApCallback(ISoftApCallback callback) {
+            return mRegisteredSoftApCallbacks.register(callback);
         }
 
-        public void unregisterSoftApCallback(int callbackIdentifier) {
-            mRegisteredSoftApCallbacks.remove(callbackIdentifier);
+        public void unregisterSoftApCallback(ISoftApCallback callback) {
+            mRegisteredSoftApCallbacks.unregister(callback);
         }
 
         /**
@@ -1418,16 +1415,16 @@ public class WifiServiceImpl extends BaseWifiService {
                 mTetheredSoftApState = state;
             }
 
-            Iterator<ISoftApCallback> iterator =
-                    mRegisteredSoftApCallbacks.getCallbacks().iterator();
-            while (iterator.hasNext()) {
-                ISoftApCallback callback = iterator.next();
+            int itemCount = mRegisteredSoftApCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
                 try {
-                    callback.onStateChanged(state, failureReason);
+                    mRegisteredSoftApCallbacks.getBroadcastItem(i).onStateChanged(state,
+                            failureReason);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onStateChanged: remote exception -- " + e);
                 }
             }
+            mRegisteredSoftApCallbacks.finishBroadcast();
         }
 
         /**
@@ -1447,17 +1444,17 @@ public class WifiServiceImpl extends BaseWifiService {
                 mTetheredSoftApConnectedClientsMap = clients;
                 mTetheredSoftApInfoMap = infos;
             }
-            Iterator<ISoftApCallback> iterator =
-                    mRegisteredSoftApCallbacks.getCallbacks().iterator();
-            while (iterator.hasNext()) {
-                ISoftApCallback callback = iterator.next();
+            int itemCount = mRegisteredSoftApCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
                 try {
-                    callback.onConnectedClientsOrInfoChanged(mTetheredSoftApInfoMap,
-                            mTetheredSoftApConnectedClientsMap, isBridged, false);
+                    mRegisteredSoftApCallbacks.getBroadcastItem(i).onConnectedClientsOrInfoChanged(
+                            mTetheredSoftApInfoMap, mTetheredSoftApConnectedClientsMap, isBridged,
+                            false);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onConnectedClientsOrInfoChanged: remote exception -- " + e);
                 }
             }
+            mRegisteredSoftApCallbacks.finishBroadcast();
         }
 
         /**
@@ -1473,16 +1470,16 @@ public class WifiServiceImpl extends BaseWifiService {
                 }
                 mTetheredSoftApCapability = new SoftApCapability(capability);
             }
-            Iterator<ISoftApCallback> iterator =
-                    mRegisteredSoftApCallbacks.getCallbacks().iterator();
-            while (iterator.hasNext()) {
-                ISoftApCallback callback = iterator.next();
+            int itemCount = mRegisteredSoftApCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
                 try {
-                    callback.onCapabilityChanged(mTetheredSoftApCapability);
+                    mRegisteredSoftApCallbacks.getBroadcastItem(i).onCapabilityChanged(
+                            mTetheredSoftApCapability);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onCapabiliyChanged: remote exception -- " + e);
                 }
             }
+            mRegisteredSoftApCallbacks.finishBroadcast();
         }
 
         /**
@@ -1494,16 +1491,16 @@ public class WifiServiceImpl extends BaseWifiService {
          */
         @Override
         public void onBlockedClientConnecting(WifiClient client, int blockedReason) {
-            Iterator<ISoftApCallback> iterator =
-                    mRegisteredSoftApCallbacks.getCallbacks().iterator();
-            while (iterator.hasNext()) {
-                ISoftApCallback callback = iterator.next();
+            int itemCount = mRegisteredSoftApCallbacks.beginBroadcast();
+            for (int i = 0; i < itemCount; i++) {
                 try {
-                    callback.onBlockedClientConnecting(client, blockedReason);
+                    mRegisteredSoftApCallbacks.getBroadcastItem(i).onBlockedClientConnecting(client,
+                            blockedReason);
                 } catch (RemoteException e) {
                     Log.e(TAG, "onBlockedClientConnecting: remote exception -- " + e);
                 }
             }
+            mRegisteredSoftApCallbacks.finishBroadcast();
         }
     }
 
@@ -1846,24 +1843,18 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#registerSoftApCallback(Executor, SoftApCallback)}
+     * see {@link android.net.wifi.WifiManager#registerSoftApCallback(Executor,
+     * WifiManager.SoftApCallback)}
      *
-     * @param binder IBinder instance to allow cleanup if the app dies
      * @param callback Soft AP callback to register
-     * @param callbackIdentifier Unique ID of the registering callback. This ID will be used to
-     *        unregister the callback. See {@link unregisterSoftApCallback(int)}
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      * @throws RemoteException if remote exception happens
      * @throws IllegalArgumentException if the arguments are null or invalid
      */
     @Override
-    public void registerSoftApCallback(IBinder binder, ISoftApCallback callback,
-            int callbackIdentifier) {
+    public void registerSoftApCallback(ISoftApCallback callback) {
         // verify arguments
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
         }
@@ -1876,8 +1867,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
         // post operation to handler thread
         mWifiThreadRunner.post(() -> {
-            if (!mTetheredSoftApTracker.registerSoftApCallback(binder, callback,
-                    callbackIdentifier)) {
+            if (!mTetheredSoftApTracker.registerSoftApCallback(callback)) {
                 Log.e(TAG, "registerSoftApCallback: Failed to add callback");
                 return;
             }
@@ -1895,14 +1885,14 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#unregisterSoftApCallback(SoftApCallback)}
+     * see {@link android.net.wifi.WifiManager#unregisterSoftApCallback(WifiManager.SoftApCallback)}
      *
-     * @param callbackIdentifier Unique ID of the callback to be unregistered.
+     * @param callback Soft AP callback to unregister
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      */
     @Override
-    public void unregisterSoftApCallback(int callbackIdentifier) {
+    public void unregisterSoftApCallback(ISoftApCallback callback) {
         enforceNetworkStackOrSettingsPermission();
 
         if (mVerboseLoggingEnabled) {
@@ -1911,7 +1901,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
         // post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mTetheredSoftApTracker.unregisterSoftApCallback(callbackIdentifier));
+                mTetheredSoftApTracker.unregisterSoftApCallback(callback));
     }
 
     /**
@@ -3233,6 +3223,25 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         return mCountryCode.getCountryCode();
     }
+
+    @Override
+    public boolean is24GHzBandSupported() {
+        if (mVerboseLoggingEnabled) {
+            mLog.info("is24GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
+        }
+
+        return is24GhzBandSupportedInternal();
+    }
+
+    private boolean is24GhzBandSupportedInternal() {
+        if (mContext.getResources().getBoolean(R.bool.config_wifi24ghzSupport)) {
+            return true;
+        }
+        return mWifiThreadRunner.call(
+                () -> mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ).length > 0,
+                false);
+    }
+
 
     @Override
     public boolean is5GHzBandSupported() {

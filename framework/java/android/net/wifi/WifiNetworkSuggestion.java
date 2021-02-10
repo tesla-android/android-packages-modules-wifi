@@ -124,7 +124,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         /**
          * Priority of this network among other network suggestions from same priority group
          * provided by the app.
-         * The lower the number, the higher the priority (i.e value of 0 = lowest priority).
+         * The higher the number, the higher the priority (i.e value of 0 = lowest priority).
          */
         private int mPriority;
         /**
@@ -490,14 +490,15 @@ public final class WifiNetworkSuggestion implements Parcelable {
         }
 
         /**
-         * The priority group ID is an arbitrary integer identifier used to group subscriptions
-         * together for the purpose of prioritization. Prioritization is performed using the
-         * priority value set using the {@link #setPriority(int)} method. Each group forms a
-         * unique namespace where suggestions with the higher priority are preferred over other
-         * suggestions within the same group.
+         * By default all Suggestions are considered for connection. A suggesting application may
+         * provide priorities for Suggestions. Only the currently visible Suggestions with the
+         * highest priority (0 being the lowest) are considered for connection. A suggesting
+         * application may further assign a group number for a Suggestion - only the currently
+         * visible Suggestions with the highest priority within a priority group are considered for
+         * connection.
          * <p>
-         * Using priority groups allows a single application to provide multiple groups of
-         * suggestions and provide priorities within these groups.
+         * Specify an arbitrary integer only used as the priority group. Use with
+         * {@link #setPriority(int)}.
          *
          * @param priorityGroup priority group id, if not set default is 0.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
@@ -616,13 +617,19 @@ public final class WifiNetworkSuggestion implements Parcelable {
         }
 
         /**
+         * By default all Suggestions are considered for connection. A suggesting application may
+         * provide priorities for Suggestions. Only the currently visible Suggestions with the
+         * highest priority (0 being the lowest) are considered for connection. A suggesting
+         * application may further assign a group number for a Suggestion - only the currently
+         * visible Suggestions with the highest priority within a priority group are considered for
+         * connection.
+         * <p>
          * Specify the priority of this network among other network suggestions provided by the same
          * app and within the same priority group, see {@link #setPriorityGroup(int)}. Priorities
-         * have no impact on suggestions by different apps or in different priority groups from the
-         * same app.
-         * The higher the number, the higher the priority (i.e value of 0 = lowest priority).
-         * <p>
-         * <li>If not set, defaults a lower priority than any assigned priority.</li>
+         * have no impact on suggestions by other apps or suggestions from the same app using a
+         * different priority group. The higher the number, the higher the priority
+         * (i.e value of 0 = lowest priority). If not set, defaults to a lower priority than any
+         * assigned priority.
          *
          * @param priority Integer number representing the priority among suggestions by the app.
          * @return Instance of {@link Builder} to enable chaining of the builder method.

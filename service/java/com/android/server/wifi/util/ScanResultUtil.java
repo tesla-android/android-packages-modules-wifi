@@ -17,6 +17,7 @@
 package com.android.server.wifi.util;
 
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -24,6 +25,7 @@ import com.android.server.wifi.ScanDetail;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 /**
  * Scan result utility for any {@link ScanResult} related operations.
@@ -40,8 +42,11 @@ public class ScanResultUtil {
      * result is filled in with the IEs from the beacon.
      */
     public static ScanDetail toScanDetail(ScanResult scanResult) {
+        ScanResult.InformationElement[] ieArray = (null != scanResult.informationElements)
+            ? scanResult.informationElements
+            : new ScanResult.InformationElement[0];
         NetworkDetail networkDetail = new NetworkDetail(scanResult.BSSID,
-                scanResult.informationElements, scanResult.anqpLines, scanResult.frequency);
+                ieArray, scanResult.anqpLines, scanResult.frequency);
         return new ScanDetail(scanResult, networkDetail);
     }
 
@@ -79,6 +84,53 @@ public class ScanResultUtil {
         return scanResult.capabilities.contains("EAP/SHA1");
     }
 
+    private static boolean isScanResultForPmfMandatoryNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("[MFPR]");
+    }
+
+    private static boolean isScanResultForPmfCapableNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("[MFPC]");
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to a Passpoint R1/R2
+     * network or not.
+     * Passpoint R1/R2 requirements:
+     * - WPA2 Enterprise network.
+     * - interworking bit is set.
+     * - HotSpot Release presents.
+     */
+    public static boolean isScanResultForPasspointR1R2Network(ScanResult scanResult) {
+        if (!isScanResultForEapNetwork(scanResult)) return false;
+
+        ScanDetail detail = toScanDetail(scanResult);
+        if (!detail.getNetworkDetail().isInterworking()) return false;
+        return null != detail.getNetworkDetail().getHSRelease();
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to a Passpoint R3
+     * network or not.
+     * Passpoint R3 requirements:
+     * - Must be WPA2 Enterprise network, WPA3 Enterprise network,
+     *   or WPA3 Enterprise 192-bit mode network.
+     * - interworking bit is set.
+     * - HotSpot Release presents.
+     * - PMF is mandatory.
+     */
+    public static boolean isScanResultForPasspointR3Network(ScanResult scanResult) {
+        if (!isScanResultForEapNetwork(scanResult)
+                && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
+                && !isScanResultForEapSuiteBNetwork(scanResult)) {
+            return false;
+        }
+        if (!isScanResultForPmfMandatoryNetwork(scanResult)) return false;
+
+        ScanDetail detail = toScanDetail(scanResult);
+        if (!detail.getNetworkDetail().isInterworking()) return false;
+        return null != detail.getNetworkDetail().getHSRelease();
+    }
+
     /**
      * Helper method to check if the provided |scanResult| corresponds to
      * a WPA3 Enterprise transition network or not.
@@ -91,8 +143,8 @@ public class ScanResultUtil {
     public static boolean isScanResultForWpa3EnterpriseTransitionNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA1")
                 && scanResult.capabilities.contains("EAP/SHA256")
-                && !scanResult.capabilities.contains("[MFPR]")
-                && scanResult.capabilities.contains("[MFPC]");
+                && !isScanResultForPmfMandatoryNetwork(scanResult)
+                && isScanResultForPmfCapableNetwork(scanResult);
     }
 
     /**
@@ -108,8 +160,8 @@ public class ScanResultUtil {
     public static boolean isScanResultForWpa3EnterpriseOnlyNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA256")
                 && !scanResult.capabilities.contains("EAP/SHA1")
-                && scanResult.capabilities.contains("[MFPR]")
-                && scanResult.capabilities.contains("[MFPC]");
+                && isScanResultForPmfMandatoryNetwork(scanResult)
+                && isScanResultForPmfCapableNetwork(scanResult);
     }
 
     /**
@@ -119,7 +171,7 @@ public class ScanResultUtil {
      */
     public static boolean isScanResultForEapSuiteBNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("SUITE_B_192")
-                && scanResult.capabilities.contains("[MFPR]");
+                && isScanResultForPmfMandatoryNetwork(scanResult);
     }
 
     /**
@@ -209,39 +261,102 @@ public class ScanResultUtil {
     public static WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = createQuotedSSID(scanResult.SSID);
-        setAllowedKeyManagementFromScanResult(scanResult, config);
+        config.setSecurityParams(generateSecurityParamsListFromScanResult(scanResult));
         return config;
     }
 
     /**
-     * Sets the {@link WifiConfiguration#allowedKeyManagement} field on the given
-     * {@link WifiConfiguration} based on its corresponding {@link ScanResult}.
+     * Generate security params from the scan result.
      */
-    public static void setAllowedKeyManagementFromScanResult(ScanResult scanResult,
-            WifiConfiguration config) {
-        if (isScanResultForSaeNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
-        } else if (isScanResultForWapiPskNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_PSK);
-        } else if (isScanResultForWapiCertNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_CERT);
-        } else if (isScanResultForPskNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
-        } else if (isScanResultForEapSuiteBNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
-        } else if (isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
-        } else if (isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
-        } else if (isScanResultForEapNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
-        } else if (isScanResultForWepNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WEP);
-        } else if (isScanResultForOweNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
-        } else {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+    public static List<SecurityParams> generateSecurityParamsListFromScanResult(
+            ScanResult scanResult) {
+        List<SecurityParams> list = new ArrayList<>();
+
+        // Open network & its upgradable types
+        if (ScanResultUtil.isScanResultForOweTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForOweNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForOpenNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            return list;
         }
+
+        // WEP network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWepNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WEP));
+            return list;
+        }
+
+        // WAPI PSK network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_PSK));
+            return list;
+        }
+
+        // WAPI CERT network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiCertNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_CERT));
+            return list;
+        }
+
+        // WPA2 personal network & its upgradable types
+        if (ScanResultUtil.isScanResultForPskNetwork(scanResult)
+                && ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            return list;
+        } else if (ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        }
+
+        // WPA3 Enterprise 192-bit mode, WPA2/WPA3 enterprise network & its upgradable types
+        if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT));
+        } else if (ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        } else if (ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        } else if (ScanResultUtil.isScanResultForEapNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+        }
+        // An Enterprise network might be a Passpoint network as well.
+        // R3 network might be also a valid R1/R2 network.
+        if (isScanResultForPasspointR1R2Network(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2));
+        }
+        if (isScanResultForPasspointR3Network(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
+        }
+        if (!list.isEmpty()) return list;
+
+        throw new IllegalArgumentException("Invalid ScanResult: " + scanResult);
     }
 
     /**

@@ -1392,6 +1392,7 @@ public class WifiManager {
             sSuggestionUserApprovalStatusListenerMap = new SparseArray();
     private static final SparseArray<INetworkRequestMatchCallback>
             sNetworkRequestMatchCallbackMap = new SparseArray();
+    private static final SparseArray<ISoftApCallback> sSoftApCallbackMap = new SparseArray();
     /**
      * Create a new WifiManager instance.
      * Applications will almost always want to use
@@ -2676,12 +2677,24 @@ public class WifiManager {
     }
 
     /**
-     * @return true if this device supports connected MAC randomization.
+     * @return true if this device supports AP MAC randomization.
      * @hide
      */
     @SystemApi
     public boolean isApMacRandomizationSupported() {
         return isFeatureSupported(WIFI_FEATURE_AP_RAND_MAC);
+    }
+
+    /**
+     * Check if the chipset supports 2.4GHz band.
+     * @return {@code true} if supported, {@code false} otherwise.
+     */
+    public boolean is24GHzBandSupported() {
+        try {
+            return mService.is24GHzBandSupported();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**
@@ -4529,10 +4542,12 @@ public class WifiManager {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "registerSoftApCallback: callback=" + callback + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerSoftApCallback(
-                    binder, new SoftApCallbackProxy(executor, callback), callback.hashCode());
+            synchronized (sSoftApCallbackMap) {
+                ISoftApCallback.Stub binderCallback = new SoftApCallbackProxy(executor, callback);
+                sSoftApCallbackMap.put(System.identityHashCode(callback), binderCallback);
+                mService.registerSoftApCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -4553,7 +4568,15 @@ public class WifiManager {
         Log.v(TAG, "unregisterSoftApCallback: callback=" + callback);
 
         try {
-            mService.unregisterSoftApCallback(callback.hashCode());
+            synchronized (sSoftApCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sSoftApCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterSoftApCallback(sSoftApCallbackMap.get(callbackIdentifier));
+                sSoftApCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

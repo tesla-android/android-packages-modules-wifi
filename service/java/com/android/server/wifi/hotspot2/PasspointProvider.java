@@ -23,6 +23,7 @@ import static com.android.server.wifi.MboOceConstants.DEFAULT_BLOCKLIST_DURATION
 import android.annotation.Nullable;
 import android.net.wifi.EAPConstants;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -496,9 +497,12 @@ public class PasspointProvider {
     public WifiConfiguration getWifiConfig() {
         WifiConfiguration wifiConfig = new WifiConfiguration();
 
-        // TODO: b/175928647, Initialize PASSPOINT_R3 type if AP broadcasts MFPR
-        //       or configuration mandates R3 only.
-        wifiConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2);
+        List<SecurityParams> paramsList = Arrays.asList(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2),
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
+        wifiConfig.setSecurityParams(paramsList);
 
         wifiConfig.FQDN = mConfig.getHomeSp().getFqdn();
         wifiConfig.setPasspointUniqueId(mConfig.getUniqueId());
