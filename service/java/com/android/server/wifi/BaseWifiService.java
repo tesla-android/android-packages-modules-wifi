@@ -544,14 +544,32 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * Replaced by {@link #registerTrafficStateCallback(ITrafficStateCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void registerTrafficStateCallback(
             IBinder binder, ITrafficStateCallback callback, int callbackIdentifier) {
         throw new UnsupportedOperationException();
     }
 
     @Override
+    public void registerTrafficStateCallback(ITrafficStateCallback callback) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Replaced by {@link #unregisterTrafficStateCallback(ITrafficStateCallback)}
+     * @deprecated This is no longer supported.
+     */
+    @Deprecated
     public void unregisterTrafficStateCallback(int callbackIdentifier) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterTrafficStateCallback(ITrafficStateCallback callback) {
         throw new UnsupportedOperationException();
     }
 

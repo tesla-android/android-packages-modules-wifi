@@ -16,15 +16,12 @@
 
 package com.android.server.wifi;
 
-import android.annotation.NonNull;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
-import android.os.IBinder;
+import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.util.Log;
-
-import com.android.server.wifi.util.ExternalCallbackTracker;
+import android.util.SparseBooleanArray;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -40,30 +37,19 @@ public class WifiTrafficPoller {
 
     private int mLastActivity = -1;
 
-    private static class CallbackWrapper {
-        public final ITrafficStateCallback callback;
-        /**
-         * On the first invocation, the callback is invoked no matter if the data activity changed
-         * or not.
-         */
-        public boolean isFirstInvocation = true;
+    private final SparseBooleanArray mCallbackFirstInvocationTracker = new SparseBooleanArray();
+    private final RemoteCallbackList<ITrafficStateCallback> mRegisteredCallbacks;
 
-        CallbackWrapper(ITrafficStateCallback callback) {
-            this.callback = callback;
-        }
-    }
-
-    private final ExternalCallbackTracker<CallbackWrapper> mRegisteredCallbacks;
-
-    public WifiTrafficPoller(@NonNull Handler handler) {
-        mRegisteredCallbacks = new ExternalCallbackTracker<>(handler);
+    public WifiTrafficPoller() {
+        mRegisteredCallbacks = new RemoteCallbackList<>();
     }
 
     /**
      * Add a new callback to the traffic poller.
      */
-    public void addCallback(IBinder binder, ITrafficStateCallback callback, int callbackId) {
-        if (!mRegisteredCallbacks.add(binder, new CallbackWrapper(callback), callbackId)) {
+    public void addCallback(ITrafficStateCallback callback) {
+        mCallbackFirstInvocationTracker.put(callback.hashCode(), true);
+        if (!mRegisteredCallbacks.register(callback)) {
             Log.e(TAG, "Failed to add callback");
         }
     }
@@ -71,8 +57,9 @@ public class WifiTrafficPoller {
     /**
      * Remove an existing callback from the traffic poller.
      */
-    public void removeCallback(int callbackId) {
-        mRegisteredCallbacks.remove(callbackId);
+    public void removeCallback(ITrafficStateCallback callback) {
+        mRegisteredCallbacks.unregister(callback);
+        mCallbackFirstInvocationTracker.delete(callback.hashCode());
     }
 
     /**
@@ -93,19 +80,22 @@ public class WifiTrafficPoller {
             dataActivity |= WifiManager.TrafficStateCallback.DATA_ACTIVITY_IN;
         }
 
-        for (CallbackWrapper wrapper : mRegisteredCallbacks.getCallbacks()) {
-            // if this callback hasn't been triggered before, or the data activity changed,
-            // notify the callback
-            if (wrapper.isFirstInvocation || dataActivity != mLastActivity) {
-                wrapper.isFirstInvocation = false;
+        int itemCount = mRegisteredCallbacks.beginBroadcast();
+        for (int i = 0; i < itemCount; i++) {
+            ITrafficStateCallback callback = mRegisteredCallbacks.getBroadcastItem(i);
+            int callbackIdentifier = callback.hashCode();
+            if (mCallbackFirstInvocationTracker.get(callbackIdentifier)
+                    || dataActivity != mLastActivity) {
+                mCallbackFirstInvocationTracker.put(callbackIdentifier, false);
                 try {
-                    wrapper.callback.onStateChanged(dataActivity);
+                    callback.onStateChanged(dataActivity);
                 } catch (RemoteException e) {
                     // Failed to reach, skip
                     // Client removal is handled in WifiService
                 }
             }
         }
+        mRegisteredCallbacks.finishBroadcast();
 
         mTxPkts = newTxPkts;
         mRxPkts = newRxPkts;
@@ -119,6 +109,6 @@ public class WifiTrafficPoller {
         pw.println("mTxPkts " + mTxPkts);
         pw.println("mRxPkts " + mRxPkts);
         pw.println("mLastActivity " + mLastActivity);
-        pw.println("mRegisteredCallbacks " + mRegisteredCallbacks.getNumCallbacks());
+        pw.println("mRegisteredCallbacks " + mRegisteredCallbacks.getRegisteredCallbackCount());
     }
 }

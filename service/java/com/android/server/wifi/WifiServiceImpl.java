@@ -4017,22 +4017,15 @@ public class WifiServiceImpl extends BaseWifiService {
      * See
      * {@link WifiManager#registerTrafficStateCallback(Executor, WifiManager.TrafficStateCallback)}
      *
-     * @param binder IBinder instance to allow cleanup if the app dies
      * @param callback Traffic State callback to register
-     * @param callbackIdentifier Unique ID of the registering callback. This ID will be used to
-     *        unregister the callback. See {@link unregisterTrafficStateCallback(int)}
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      * @throws RemoteException if remote exception happens
      * @throws IllegalArgumentException if the arguments are null or invalid
      */
     @Override
-    public void registerTrafficStateCallback(IBinder binder, ITrafficStateCallback callback,
-                                             int callbackIdentifier) {
+    public void registerTrafficStateCallback(ITrafficStateCallback callback) {
         // verify arguments
-        if (binder == null) {
-            throw new IllegalArgumentException("Binder must not be null");
-        }
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
         }
@@ -4042,26 +4035,26 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiTrafficPoller.addCallback(binder, callback, callbackIdentifier));
+                mWifiTrafficPoller.addCallback(callback));
     }
 
     /**
      * see {@link android.net.wifi.WifiManager#unregisterTrafficStateCallback(
      * WifiManager.TrafficStateCallback)}
      *
-     * @param callbackIdentifier Unique ID of the callback to be unregistered.
+     * @param callback Traffic State callback to unregister
      *
      * @throws SecurityException if the caller does not have permission to register a callback
      */
     @Override
-    public void unregisterTrafficStateCallback(int callbackIdentifier) {
+    public void unregisterTrafficStateCallback(ITrafficStateCallback callback) {
         enforceNetworkSettingsPermission();
         if (mVerboseLoggingEnabled) {
             mLog.info("unregisterTrafficStateCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mWifiTrafficPoller.removeCallback(callbackIdentifier));
+                mWifiTrafficPoller.removeCallback(callback));
     }
 
     private long getSupportedFeaturesInternal() {
