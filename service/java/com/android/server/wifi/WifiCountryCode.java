@@ -116,6 +116,7 @@ public class WifiCountryCode {
         // We are ready to set country code now.
         // We need to post pending country code request.
         if (mReady) {
+            initializeTelephonyCountryCodeIfNeeded();
             updateCountryCode();
         }
     }
@@ -223,6 +224,7 @@ public class WifiCountryCode {
      * Returns null when there is no Country Code available.
      */
     public synchronized String getCountryCode() {
+        initializeTelephonyCountryCodeIfNeeded();
         return pickCountryCode();
     }
 
@@ -260,9 +262,6 @@ public class WifiCountryCode {
     }
 
     private String pickCountryCode() {
-
-        initializeTelephonyCountryCodeIfNeeded();
-
         if (mTelephonyCountryCode != null) {
             return mTelephonyCountryCode;
         }
