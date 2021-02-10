@@ -21,10 +21,10 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.WifiManager;
-import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.test.TestLooper;
@@ -48,8 +48,6 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     private final static long DEFAULT_PACKET_COUNT = 10;
     private final static long TX_PACKET_COUNT = 40;
     private final static long RX_PACKET_COUNT = 50;
-    private static final int TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER = 14;
-    private static final int TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER2 = 42;
 
     @Mock IBinder mAppBinder;
     @Mock ITrafficStateCallback mTrafficStateCallback;
@@ -66,10 +64,13 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
         mLooper = new TestLooper();
         MockitoAnnotations.initMocks(this);
 
-        mWifiTrafficPoller = new WifiTrafficPoller(new Handler(mLooper.getLooper()));
+        mWifiTrafficPoller = new WifiTrafficPoller();
 
         // Set the current mTxPkts and mRxPkts to DEFAULT_PACKET_COUNT
         mWifiTrafficPoller.notifyOnDataActivity(DEFAULT_PACKET_COUNT, DEFAULT_PACKET_COUNT);
+
+        when(mTrafficStateCallback.asBinder()).thenReturn(mAppBinder);
+        when(mTrafficStateCallback2.asBinder()).thenReturn(mAppBinder2);
     }
 
     /**
@@ -78,8 +79,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     @Test
     public void testClientNotification() throws RemoteException {
         // Register Client to verify that Tx/RX packet message is properly received.
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
 
         // Client should get the DATA_ACTIVITY_NOTIFICATION
@@ -93,9 +93,8 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     @Test
     public void testRemoveClient() throws RemoteException {
         // Register Client to verify that Tx/RX packet message is properly received.
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
-        mWifiTrafficPoller.removeCallback(TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
+        mWifiTrafficPoller.removeCallback(mTrafficStateCallback);
         verify(mAppBinder).unlinkToDeath(any(), anyInt());
 
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
@@ -105,14 +104,13 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that remove client ignores when callback identifier is wrong.
+     * Verify that remove client ignores when callback is wrong.
      */
     @Test
-    public void testRemoveClientWithWrongIdentifier() throws RemoteException {
+    public void testRemoveClientWithWrongCallback() throws RemoteException {
         // Register Client to verify that Tx/RX packet message is properly received.
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
-        mWifiTrafficPoller.removeCallback(TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER + 5);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
+        mWifiTrafficPoller.removeCallback(mTrafficStateCallback2);
         mLooper.dispatchAll();
 
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
@@ -128,8 +126,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
      */
     @Test
     public void registersForBinderDeathOnAddClient() throws Exception {
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
         verify(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
     }
 
@@ -141,8 +138,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     public void addCallbackFailureOnLinkToDeath() throws Exception {
         doThrow(new RemoteException())
                 .when(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
         verify(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
 
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
@@ -154,8 +150,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     /** Test that if the data activity didn't change, the client is not notified. */
     @Test
     public void unchangedDataActivityNotNotified() throws Exception {
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
 
         verify(mTrafficStateCallback).onStateChanged(
@@ -175,16 +170,14 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
      */
     @Test
     public void multipleCallbacksOnlyChangedNotified() throws Exception {
-        mWifiTrafficPoller.addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
 
         verify(mTrafficStateCallback).onStateChanged(
                 WifiManager.TrafficStateCallback.DATA_ACTIVITY_INOUT);
         verify(mTrafficStateCallback2, never()).onStateChanged(anyInt());
 
-        mWifiTrafficPoller.addCallback(
-                mAppBinder2, mTrafficStateCallback2, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER2);
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback2);
         mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 1, RX_PACKET_COUNT + 1);
 
         // still only called once

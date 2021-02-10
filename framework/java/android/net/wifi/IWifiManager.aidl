@@ -228,9 +228,9 @@ interface IWifiManager
 
     void removeOnWifiUsabilityStatsListener(in IOnWifiUsabilityStatsListener listener);
 
-    void registerTrafficStateCallback(in IBinder binder, in ITrafficStateCallback callback, int callbackIdentifier);
+    void registerTrafficStateCallback(in ITrafficStateCallback callback);
 
-    void unregisterTrafficStateCallback(int callbackIdentifier);
+    void unregisterTrafficStateCallback(in ITrafficStateCallback callback);
 
     void registerNetworkRequestMatchCallback(in INetworkRequestMatchCallback callback);
 

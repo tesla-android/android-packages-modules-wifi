@@ -1392,7 +1392,10 @@ public class WifiManager {
             sSuggestionUserApprovalStatusListenerMap = new SparseArray();
     private static final SparseArray<INetworkRequestMatchCallback>
             sNetworkRequestMatchCallbackMap = new SparseArray();
+    private static final SparseArray<ITrafficStateCallback>
+            sTrafficStateCallbackMap = new SparseArray();
     private static final SparseArray<ISoftApCallback> sSoftApCallbackMap = new SparseArray();
+
     /**
      * Create a new WifiManager instance.
      * Applications will almost always want to use
@@ -6053,10 +6056,13 @@ public class WifiManager {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "registerTrafficStateCallback: callback=" + callback + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerTrafficStateCallback(
-                    binder, new TrafficStateCallbackProxy(executor, callback), callback.hashCode());
+            synchronized (sTrafficStateCallbackMap) {
+                ITrafficStateCallback.Stub binderCallback = new TrafficStateCallbackProxy(executor,
+                        callback);
+                sTrafficStateCallbackMap.put(System.identityHashCode(callback), binderCallback);
+                mService.registerTrafficStateCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -6076,7 +6082,16 @@ public class WifiManager {
         Log.v(TAG, "unregisterTrafficStateCallback: callback=" + callback);
 
         try {
-            mService.unregisterTrafficStateCallback(callback.hashCode());
+            synchronized (sTrafficStateCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sTrafficStateCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterTrafficStateCallback(
+                        sTrafficStateCallbackMap.get(callbackIdentifier));
+                sTrafficStateCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

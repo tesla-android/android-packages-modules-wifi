@@ -121,7 +121,6 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiRadioUsage;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStatsEntry;
 import com.android.server.wifi.rtt.RttMetrics;
-import com.android.server.wifi.util.ExternalCallbackTracker;
 import com.android.server.wifi.util.InformationElementUtil;
 import com.android.wifi.resources.R;
 
@@ -179,7 +178,6 @@ public class WifiMetricsTest extends WifiBaseTest {
     @Mock WifiHealthMonitor mWifiHealthMonitor;
     @Mock IBinder mAppBinder;
     @Mock IOnWifiUsabilityStatsListener mOnWifiUsabilityStatsListener;
-    @Mock ExternalCallbackTracker<IOnWifiUsabilityStatsListener> mListenerTracker;
     @Mock WifiP2pMetrics mWifiP2pMetrics;
     @Mock DppMetrics mDppMetrics;
     @Mock WifiScoreCard mWifiScoreCard;
