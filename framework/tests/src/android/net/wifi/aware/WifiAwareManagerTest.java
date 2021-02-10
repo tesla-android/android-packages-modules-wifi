@@ -398,11 +398,13 @@ public class WifiAwareManagerTest {
         inOrder.verify(mockSessionCallback).onSessionConfigFailed();
 
         // (5) discovery session is no longer visible
-        sessionProxyCallback.getValue().onMatchExpired(peerHandle.peerId);
-        mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onServiceLost(peerIdCaptor.capture(),
-                eq(WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE));
-        assertEquals(peerHandle.peerId, peerIdCaptor.getValue().peerId);
+        if (SdkLevel.isAtLeastS()) {
+            sessionProxyCallback.getValue().onMatchExpired(peerHandle.peerId);
+            mMockLooper.dispatchAll();
+            inOrder.verify(mockSessionCallback).onServiceLost(peerIdCaptor.capture(),
+                    eq(WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE));
+            assertEquals(peerHandle.peerId, peerIdCaptor.getValue().peerId);
+        }
 
         // (6) terminate
         publishSession.getValue().close();
@@ -547,11 +549,13 @@ public class WifiAwareManagerTest {
         inOrder.verify(mockSessionCallback).onSessionConfigFailed();
 
         // (5) discovery session is no longer visible
-        sessionProxyCallback.getValue().onMatchExpired(peerHandle.peerId);
-        mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onServiceLost(peerIdCaptor.capture(),
-                eq(WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE));
-        assertEquals(peerHandle.peerId, peerIdCaptor.getValue().peerId);
+        if (SdkLevel.isAtLeastS()) {
+            sessionProxyCallback.getValue().onMatchExpired(peerHandle.peerId);
+            mMockLooper.dispatchAll();
+            inOrder.verify(mockSessionCallback).onServiceLost(peerIdCaptor.capture(),
+                    eq(WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE));
+            assertEquals(peerHandle.peerId, peerIdCaptor.getValue().peerId);
+        }
 
         // (6) terminate
         subscribeSession.getValue().close();

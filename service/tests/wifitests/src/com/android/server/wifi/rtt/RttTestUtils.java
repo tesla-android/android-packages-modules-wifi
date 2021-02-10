@@ -23,6 +23,8 @@ import android.net.wifi.rtt.RangingResult;
 import android.net.wifi.rtt.ResponderConfig;
 import android.util.Pair;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,11 +71,14 @@ public class RttTestUtils {
         MacAddress mac1 = MacAddress.fromString("08:09:08:07:06:05");
 
         builder.addAccessPoint(scan1);
-        builder.addNon80211mcCapableAccessPoint(scan2);
+        if (SdkLevel.isAtLeastS()) {
+            builder.addNon80211mcCapableAccessPoint(scan2);
+            // Changing default RTT burst size to a valid, but maximum, value
+            builder.setRttBurstSize(RangingRequest.getMaxRttBurstSize());
+        } else {
+            builder.addAccessPoint(scan2);
+        }
         builder.addWifiAwarePeer(mac1);
-        // Changing default RTT burst size to a valid, but maximum, value
-        builder.setRttBurstSize(RangingRequest.getMaxRttBurstSize());
-
         return builder.build();
     }
 
