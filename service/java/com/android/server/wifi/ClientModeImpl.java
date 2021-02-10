@@ -4782,12 +4782,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     break;
                 }
                 case CMD_RSSI_POLL: {
+                    // TODO(b/179792830): getBSSID() shouldn't be null in L2ConnectedState,
+                    //  add debug logs in the meantime. Remove once root cause identified.
+                    if (mWifiInfo.getBSSID() == null) {
+                        Log.wtf(getTag(), "WifiInfo.getBSSID() is null in L2ConnectedState!");
+                        break;
+                    }
                     if (message.arg1 == mRssiPollToken) {
-                        WifiLinkLayerStats stats =
-                                updateLinkLayerStatsRssiDataStallScoreReport();
+                        updateLinkLayerStatsRssiDataStallScoreReport();
                         mWifiScoreCard.noteSignalPoll(mWifiInfo);
-                        mLinkProbeManager.updateConnectionStats(
-                                mWifiInfo, mInterfaceName);
+                        mLinkProbeManager.updateConnectionStats(mWifiInfo, mInterfaceName);
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                         if (mVerboseLoggingEnabled) sendRssiChangeBroadcast(mWifiInfo.getRssi());
