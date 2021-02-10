@@ -618,7 +618,11 @@ public class WifiNetworkFactory extends NetworkFactory {
                 releaseRequestAsUnfulfillableByAnyFactory(networkRequest);
                 return false;
             }
-            WifiNetworkSpecifier wns = (WifiNetworkSpecifier) ns;
+            if (Objects.equals(mActiveSpecificNetworkRequest, networkRequest)
+                    || Objects.equals(mConnectedSpecificNetworkRequest, networkRequest)) {
+                Log.e(TAG, "acceptRequest: Already processing the request " + networkRequest);
+                return true;
+            }
             // Only allow specific wifi network request from foreground app/service.
             if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
                     networkRequest.getRequestorUid())
@@ -684,6 +688,11 @@ public class WifiNetworkFactory extends NetworkFactory {
                 Log.e(TAG, "Request with wifi network specifier when wifi is off."
                         + "Rejecting");
                 releaseRequestAsUnfulfillableByAnyFactory(networkRequest);
+                return;
+            }
+            if (Objects.equals(mActiveSpecificNetworkRequest, networkRequest)
+                    || Objects.equals(mConnectedSpecificNetworkRequest, networkRequest)) {
+                Log.e(TAG, "needNetworkFor: Already processing the request " + networkRequest);
                 return;
             }
 
