@@ -560,6 +560,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         reset(mContext);
         setUpSystemServiceForContext();
         when(mWifiGlobals.isConnectedMacRandomizationEnabled()).thenReturn(true);
+        when(mClientModeImpl.isConnecting()).thenReturn(true);
         mInterfaceCallbackCaptor.getValue().onDown(TEST_INTERFACE_NAME);
         mLooper.dispatchAll();
         verify(mSelfRecovery, never()).trigger(SelfRecovery.REASON_STA_IFACE_DOWN);
