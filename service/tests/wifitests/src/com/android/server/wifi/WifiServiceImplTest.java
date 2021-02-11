@@ -227,7 +227,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final int TEST_UID = 1200000;
     private static final int OTHER_TEST_UID = 1300000;
     private static final int TEST_USER_HANDLE = 13;
-    private static final int TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER = 17;
     private static final int TEST_WIFI_CONNECTED_NETWORK_SCORER_IDENTIFIER = 1;
     private static final String WIFI_IFACE_NAME = "wlan0";
     private static final String WIFI_IFACE_NAME2 = "wlan1";
@@ -5190,8 +5189,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
         try {
-            mWifiServiceImpl.registerTrafficStateCallback(mAppBinder, mTrafficStateCallback,
-                    TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.registerTrafficStateCallback(mTrafficStateCallback);
             fail("expected SecurityException");
         } catch (SecurityException expected) {
         }
@@ -5204,8 +5202,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void registerTrafficStateCallbackThrowsIllegalArgumentExceptionOnInvalidArguments() {
         try {
-            mWifiServiceImpl.registerTrafficStateCallback(
-                    mAppBinder, null, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.registerTrafficStateCallback(null);
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
@@ -5221,7 +5218,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
         try {
-            mWifiServiceImpl.unregisterTrafficStateCallback(TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+            mWifiServiceImpl.unregisterTrafficStateCallback(mTrafficStateCallback);
             fail("expected SecurityException");
         } catch (SecurityException expected) {
         }
@@ -5232,11 +5229,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void registerTrafficStateCallbackAndVerify() throws Exception {
-        mWifiServiceImpl.registerTrafficStateCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        mWifiServiceImpl.registerTrafficStateCallback(mTrafficStateCallback);
         mLooper.dispatchAll();
-        verify(mWifiTrafficPoller).addCallback(
-                mAppBinder, mTrafficStateCallback, TEST_TRAFFIC_STATE_CALLBACK_IDENTIFIER);
+        verify(mWifiTrafficPoller).addCallback(mTrafficStateCallback);
     }
 
     /**
@@ -5244,9 +5239,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void unregisterTrafficStateCallbackAndVerify() throws Exception {
-        mWifiServiceImpl.unregisterTrafficStateCallback(0);
+        mWifiServiceImpl.unregisterTrafficStateCallback(mTrafficStateCallback);
         mLooper.dispatchAll();
-        verify(mWifiTrafficPoller).removeCallback(0);
+        verify(mWifiTrafficPoller).removeCallback(mTrafficStateCallback);
     }
 
     /**

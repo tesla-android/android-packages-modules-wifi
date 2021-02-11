@@ -295,7 +295,7 @@ public class WifiInjector {
         mCoexManager = new CoexManager(mContext, makeTelephonyManager(), wifiHandler);
 
         // Now get instances of all the objects that depend on the HandlerThreads
-        mWifiTrafficPoller = new WifiTrafficPoller(wifiHandler);
+        mWifiTrafficPoller = new WifiTrafficPoller();
         // WifiConfigManager/Store objects and their dependencies.
         KeyStore keyStore = null;
         try {

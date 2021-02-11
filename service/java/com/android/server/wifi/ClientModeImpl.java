@@ -24,6 +24,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
+import static com.android.server.wifi.proto.WifiStatsLog.WIFI_DISCONNECT_REPORTED__FAILURE_CODE__SUPPLICANT_DISCONNECTED;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -4077,11 +4078,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             log("Missed CTRL-EVENT-DISCONNECTED, disconnect");
                         }
                         handleNetworkDisconnect(false,
-                                WifiStatsLog.WIFI_DISCONNECT_REPORTED__FAILURE_CODE__SUPPLICANT_DISCONNECTED);
-                        if (stateChangeResult.wifiSsid.toString().equals(
-                                WifiInfo.sanitizeSsid(getConnectingSsidInternal()))) {
-                            transitionTo(mDisconnectedState);
-                        }
+                                WIFI_DISCONNECT_REPORTED__FAILURE_CODE__SUPPLICANT_DISCONNECTED);
+                        transitionTo(mDisconnectedState);
                     }
                     if (state == SupplicantState.COMPLETED) {
                         mWifiScoreReport.noteIpCheck();
@@ -4784,12 +4782,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     break;
                 }
                 case CMD_RSSI_POLL: {
+                    // TODO(b/179792830): getBSSID() shouldn't be null in L2ConnectedState,
+                    //  add debug logs in the meantime. Remove once root cause identified.
+                    if (mWifiInfo.getBSSID() == null) {
+                        Log.wtf(getTag(), "WifiInfo.getBSSID() is null in L2ConnectedState!");
+                        break;
+                    }
                     if (message.arg1 == mRssiPollToken) {
-                        WifiLinkLayerStats stats =
-                                updateLinkLayerStatsRssiDataStallScoreReport();
+                        updateLinkLayerStatsRssiDataStallScoreReport();
                         mWifiScoreCard.noteSignalPoll(mWifiInfo);
-                        mLinkProbeManager.updateConnectionStats(
-                                mWifiInfo, mInterfaceName);
+                        mLinkProbeManager.updateConnectionStats(mWifiInfo, mInterfaceName);
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                         if (mVerboseLoggingEnabled) sendRssiChangeBroadcast(mWifiInfo.getRssi());
@@ -5128,20 +5130,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                      * and handle the rest of the events there.
                      */
                     StateChangeResult stateChangeResult = (StateChangeResult) message.obj;
-                    handleSupplicantStateChange(stateChangeResult);
-                    if (stateChangeResult.state == SupplicantState.DISCONNECTED
-                            || stateChangeResult.state == SupplicantState.INACTIVE
-                            || stateChangeResult.state == SupplicantState.INTERFACE_DISABLED) {
+                    SupplicantState state = handleSupplicantStateChange(stateChangeResult);
+                    if (state == SupplicantState.DISCONNECTED
+                            || state == SupplicantState.INACTIVE
+                            || state == SupplicantState.INTERFACE_DISABLED) {
                         if (mVerboseLoggingEnabled) {
-                            log("STATE_CHANGE_EVENT in roaming state "
-                                    + stateChangeResult.toString());
+                            log("RoamingState: Supplicant State change " + stateChangeResult);
                         }
-                        if (isValidBssid(stateChangeResult.bssid)
-                                && stateChangeResult.bssid.equals(mTargetBssid)) {
-                            handleNetworkDisconnect(false,
-                                    WifiStatsLog.WIFI_DISCONNECT_REPORTED__FAILURE_CODE__SUPPLICANT_DISCONNECTED);
-                            transitionTo(mDisconnectedState);
-                        }
+                        handleNetworkDisconnect(false,
+                                WIFI_DISCONNECT_REPORTED__FAILURE_CODE__SUPPLICANT_DISCONNECTED);
+                        transitionTo(mDisconnectedState);
                     }
                     if (stateChangeResult.state == SupplicantState.ASSOCIATED) {
                         // We completed the layer2 roaming part

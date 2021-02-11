@@ -1873,8 +1873,7 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ITrafficStateCallback.Stub.class);
         mWifiManager.registerTrafficStateCallback(
                 new HandlerExecutor(new Handler(mLooper.getLooper())), mTrafficStateCallback);
-        verify(mWifiService).registerTrafficStateCallback(
-                any(IBinder.class), callbackCaptor.capture(), anyInt());
+        verify(mWifiService).registerTrafficStateCallback(callbackCaptor.capture());
 
         assertEquals(0, mLooper.dispatchAll());
         callbackCaptor.getValue().onStateChanged(TrafficStateCallback.DATA_ACTIVITY_INOUT);
@@ -1887,15 +1886,14 @@ public class WifiManagerTest {
      */
     @Test
     public void unregisterTrafficStateCallbackCallGoesToWifiServiceImpl() throws Exception {
-        ArgumentCaptor<Integer> callbackIdentifier = ArgumentCaptor.forClass(Integer.class);
+        ArgumentCaptor<ITrafficStateCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ITrafficStateCallback.Stub.class);
         mWifiManager.registerTrafficStateCallback(new HandlerExecutor(mHandler),
                 mTrafficStateCallback);
-        verify(mWifiService).registerTrafficStateCallback(any(IBinder.class),
-                any(ITrafficStateCallback.Stub.class), callbackIdentifier.capture());
+        verify(mWifiService).registerTrafficStateCallback(callbackCaptor.capture());
 
         mWifiManager.unregisterTrafficStateCallback(mTrafficStateCallback);
-        verify(mWifiService).unregisterTrafficStateCallback(
-                eq((int) callbackIdentifier.getValue()));
+        verify(mWifiService).unregisterTrafficStateCallback(callbackCaptor.getValue());
     }
 
     /*
@@ -1907,8 +1905,7 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ITrafficStateCallback.Stub.class);
         mWifiManager.registerTrafficStateCallback(new HandlerExecutor(mHandler),
                 mTrafficStateCallback);
-        verify(mWifiService).registerTrafficStateCallback(
-                any(IBinder.class), callbackCaptor.capture(), anyInt());
+        verify(mWifiService).registerTrafficStateCallback(callbackCaptor.capture());
 
         InOrder inOrder = inOrder(mTrafficStateCallback);
 
@@ -1938,8 +1935,7 @@ public class WifiManagerTest {
                 mTrafficStateCallback);
         verify(mContext, never()).getMainLooper();
         verify(mContext, never()).getMainExecutor();
-        verify(mWifiService).registerTrafficStateCallback(
-                any(IBinder.class), callbackCaptor.capture(), anyInt());
+        verify(mWifiService).registerTrafficStateCallback(callbackCaptor.capture());
 
         assertEquals(0, altLooper.dispatchAll());
         callbackCaptor.getValue().onStateChanged(TrafficStateCallback.DATA_ACTIVITY_INOUT);
