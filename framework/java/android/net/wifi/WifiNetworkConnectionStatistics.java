@@ -24,7 +24,9 @@ import android.os.Parcelable;
 /**
  * Connection Statistics For a WiFi Network.
  * @hide
+ * @deprecated This is no longer supported.
  */
+@Deprecated
 @SystemApi
 public class WifiNetworkConnectionStatistics implements Parcelable {
     private static final String TAG = "WifiNetworkConnnectionStatistics";
