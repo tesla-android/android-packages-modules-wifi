@@ -16,6 +16,7 @@
 
 package android.net.wifi;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
@@ -28,6 +29,8 @@ import android.os.Parcelable;
 
 import com.android.modules.utils.build.SdkLevel;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -351,6 +354,37 @@ public final class ScanResult implements Parcelable {
     public static final int WIFI_STANDARD_11AD = 7;
 
     /**
+     * Wi-Fi 2.4 GHz band.
+     */
+    public static final int WIFI_BAND_24_GHZ = WifiScanner.WIFI_BAND_24_GHZ;
+
+    /**
+     * Wi-Fi 5 GHz band.
+     */
+    public static final int WIFI_BAND_5_GHZ = WifiScanner.WIFI_BAND_5_GHZ;
+
+    /**
+     * Wi-Fi 6 GHz band.
+     */
+    public static final int WIFI_BAND_6_GHZ = WifiScanner.WIFI_BAND_6_GHZ;
+
+    /**
+     * Wi-Fi 60 GHz band.
+     */
+    public static final int WIFI_BAND_60_GHZ = WifiScanner.WIFI_BAND_60_GHZ;
+
+    /**
+     * @hide
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WIFI_BAND_"}, value = {
+            WIFI_BAND_24_GHZ,
+            WIFI_BAND_5_GHZ,
+            WIFI_BAND_6_GHZ,
+            WIFI_BAND_60_GHZ})
+    public @interface WifiBand {};
+
+    /**
      * AP wifi standard.
      */
     private @WifiStandard int mWifiStandard;
@@ -492,7 +526,7 @@ public final class ScanResult implements Parcelable {
 
     /**
      * The approximate distance to the AP in centimeter, if available.  Else
-     * {@link UNSPECIFIED}.
+     * {@link #UNSPECIFIED}.
      * {@hide}
      */
     @UnsupportedAppUsage
@@ -500,7 +534,7 @@ public final class ScanResult implements Parcelable {
 
     /**
      * The standard deviation of the distance to the access point, if available.
-     * Else {@link UNSPECIFIED}.
+     * Else {@link #UNSPECIFIED}.
      * {@hide}
      */
     @UnsupportedAppUsage
@@ -565,7 +599,7 @@ public final class ScanResult implements Parcelable {
     public CharSequence operatorFriendlyName;
 
     /**
-     * {@hide}
+     * The unspecified value.
      */
     public final static int UNSPECIFIED = -1;
 
@@ -707,15 +741,21 @@ public final class ScanResult implements Parcelable {
     }
 
     /**
-     * Utility function to convert channel number/band to frequency in MHz
-     * @param channel number to convert
-     * @param band of channel to convert
-     * @return center frequency in Mhz of the channel, {@link UNSPECIFIED} if no match
+     * Utility function to convert Wi-Fi channel number to frequency in MHz.
      *
-     * @hide
+     * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+     * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
+     *
+     * See also {@link #convertFrequencyMhzToChannel(int)}.
+     *
+     * @param channel number to convert.
+     * @param band of channel to convert. One of the following bands:
+     *        {@link #WIFI_BAND_24_GHZ},  {@link #WIFI_BAND_5_GHZ},
+     *        {@link #WIFI_BAND_6_GHZ},  {@link #WIFI_BAND_60_GHZ}.
+     * @return center frequency in Mhz of the channel, {@link #UNSPECIFIED} if no match
      */
-    public static int convertChannelToFrequencyMhz(int channel, @WifiScanner.WifiBand int band) {
-        if (band == WifiScanner.WIFI_BAND_24_GHZ) {
+    public static int convertChannelToFrequencyMhz(int channel, @WifiBand int band) {
+        if (band == WIFI_BAND_24_GHZ) {
             // Special case
             if (channel == 14) {
                 return 2484;
@@ -725,14 +765,14 @@ public final class ScanResult implements Parcelable {
                 return UNSPECIFIED;
             }
         }
-        if (band == WifiScanner.WIFI_BAND_5_GHZ) {
+        if (band == WIFI_BAND_5_GHZ) {
             if (channel >= BAND_5_GHZ_FIRST_CH_NUM && channel <= BAND_5_GHZ_LAST_CH_NUM) {
                 return ((channel - BAND_5_GHZ_FIRST_CH_NUM) * 5) + BAND_5_GHZ_START_FREQ_MHZ;
             } else {
                 return UNSPECIFIED;
             }
         }
-        if (band == WifiScanner.WIFI_BAND_6_GHZ) {
+        if (band == WIFI_BAND_6_GHZ) {
             if (channel >= BAND_6_GHZ_FIRST_CH_NUM && channel <= BAND_6_GHZ_LAST_CH_NUM) {
                 if (channel == 2) {
                     return BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ;
@@ -742,7 +782,7 @@ public final class ScanResult implements Parcelable {
                 return UNSPECIFIED;
             }
         }
-        if (band == WifiScanner.WIFI_BAND_60_GHZ) {
+        if (band == WIFI_BAND_60_GHZ) {
             if (channel >= BAND_60_GHZ_FIRST_CH_NUM && channel <= BAND_60_GHZ_LAST_CH_NUM) {
                 return ((channel - BAND_60_GHZ_FIRST_CH_NUM) * 2160) + BAND_60_GHZ_START_FREQ_MHZ;
             } else {
@@ -753,11 +793,12 @@ public final class ScanResult implements Parcelable {
     }
 
     /**
-     * Utility function to convert frequency in MHz to channel number
-     * @param freqMhz frequency in MHz
-     * @return channel number associated with given frequency, {@link UNSPECIFIED} if no match
+     * Utility function to convert frequency in MHz to channel number.
      *
-     * @hide
+     * See also {@link #convertChannelToFrequencyMhz(int, int)}.
+     *
+     * @param freqMhz frequency in MHz
+     * @return channel number associated with given frequency, {@link #UNSPECIFIED} if no match
      */
     public static int convertFrequencyMhzToChannel(int freqMhz) {
         // Special case
