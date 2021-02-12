@@ -582,4 +582,9 @@
      Enabling this configuration will restore legacy behavior but may result in incorrect behavior.
      -->
     <bool translatable="false" name="config_wifiAllowMultipleNetworksOnSameAwareNdi">false</bool>
+
+    <!-- Integer threshold for minimum packets required to notify clients of data activity -->
+    <integer translatable="false" name="config_wifiTrafficPollerTxPacketThreshold">0</integer>
+    <integer translatable="false" name="config_wifiTrafficPollerRxPacketThreshold">0</integer>
+
 </resources>
