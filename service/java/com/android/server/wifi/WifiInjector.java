@@ -24,9 +24,12 @@ import android.app.AppOpsManager;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.net.IpMemoryStore;
+import android.net.LinkProperties;
 import android.net.MatchAllNetworkSpecifier;
+import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkKey;
+import android.net.NetworkProvider;
 import android.net.NetworkScoreManager;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.nl80211.WifiNl80211Manager;
@@ -708,7 +711,18 @@ public class WifiInjector {
                         ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
-                verboseLoggingEnabled);
+                this, verboseLoggingEnabled);
+    }
+
+    public WifiNetworkAgent makeWifiNetworkAgent(
+            @NonNull NetworkCapabilities nc,
+            @NonNull LinkProperties linkProperties,
+            int score,
+            @NonNull NetworkAgentConfig naConfig,
+            @Nullable NetworkProvider provider,
+            @NonNull WifiNetworkAgent.Callback callback) {
+        return new WifiNetworkAgent(mContext, mWifiHandlerThread.getLooper(),
+                nc, linkProperties, score, naConfig, provider, callback);
     }
 
     /**
