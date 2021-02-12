@@ -126,6 +126,7 @@ message BandwidthStatsAllLink {
 }
 
 // Bandwidth of all signal levels
+// The number of entries will match WifiScoreCard.NUM_SIGNAL_LEVEL
 message BandwidthStatsAllLevel {
   repeated BandwidthStats level = 1;
 }

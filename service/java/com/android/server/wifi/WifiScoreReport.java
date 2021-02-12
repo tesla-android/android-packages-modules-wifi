@@ -16,8 +16,6 @@
 
 package com.android.server.wifi;
 
-import static com.android.server.wifi.WifiDataStall.INVALID_THROUGHPUT;
-
 import android.annotation.Nullable;
 import android.content.Context;
 import android.net.Network;
@@ -32,6 +30,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.util.RssiUtil;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -82,7 +81,7 @@ public class WifiScoreReport {
     private int mSessionNumber = 0; // not to be confused with sessionid, this just counts resets
     private final String mInterfaceName;
     private final WifiBlocklistMonitor mWifiBlocklistMonitor;
-    private final WifiDataStall mWifiDataStall;
+    private final WifiScoreCard mWifiScoreCard;
     private final Context mContext;
     private long mLastScoreBreachLowTimeMillis = INVALID_WALL_CLOCK_MILLIS;
     private long mLastScoreBreachHighTimeMillis = INVALID_WALL_CLOCK_MILLIS;
@@ -95,7 +94,7 @@ public class WifiScoreReport {
     @Nullable
     private NetworkAgent mNetworkAgent;
     private final WifiMetrics mWifiMetrics;
-    private final WifiInfo mWifiInfo;
+    private final ExtendedWifiInfo mWifiInfo;
     private final WifiNative mWifiNative;
     private final WifiThreadRunner mWifiThreadRunner;
     private final DeviceConfigFacade mDeviceConfigFacade;
@@ -443,9 +442,9 @@ public class WifiScoreReport {
             mAdaptiveConnectivityEnabledSettingObserver;
 
     WifiScoreReport(ScoringParams scoringParams, Clock clock, WifiMetrics wifiMetrics,
-            WifiInfo wifiInfo, WifiNative wifiNative,
+            ExtendedWifiInfo wifiInfo, WifiNative wifiNative,
             WifiBlocklistMonitor wifiBlocklistMonitor,
-            WifiThreadRunner wifiThreadRunner, WifiDataStall wifiDataStall,
+            WifiThreadRunner wifiThreadRunner, WifiScoreCard wifiScoreCard,
             DeviceConfigFacade deviceConfigFacade, Context context,
             AdaptiveConnectivityEnabledSettingObserver adaptiveConnectivityEnabledSettingObserver,
             String interfaceName,
@@ -461,7 +460,7 @@ public class WifiScoreReport {
         mWifiNative = wifiNative;
         mWifiBlocklistMonitor = wifiBlocklistMonitor;
         mWifiThreadRunner = wifiThreadRunner;
-        mWifiDataStall = wifiDataStall;
+        mWifiScoreCard = wifiScoreCard;
         mDeviceConfigFacade = deviceConfigFacade;
         mContext = context;
         mInterfaceName = interfaceName;
@@ -714,8 +713,10 @@ public class WifiScoreReport {
         int freq = mWifiInfo.getFrequency();
         int txLinkSpeed = mWifiInfo.getLinkSpeed();
         int rxLinkSpeed = mWifiInfo.getRxLinkSpeedMbps();
-        int txThroughputMbps = convertKbpsToMbps(mWifiDataStall.getTxThroughputKbps());
-        int rxThroughputMbps = convertKbpsToMbps(mWifiDataStall.getRxThroughputKbps());
+        int signalLevel = RssiUtil.calculateSignalLevel(mContext, mWifiInfo.getRssi());
+        WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        int txThroughputMbps = network.getTxLinkBandwidthKbps(mWifiInfo, signalLevel) / 1000;
+        int rxThroughputMbps = network.getRxLinkBandwidthKbps(mWifiInfo, signalLevel) / 1000;
         double txSuccessRate = mWifiInfo.getSuccessfulTxPacketsPerSecond();
         double txRetriesRate = mWifiInfo.getRetriedTxPacketsPerSecond();
         double txBadRate = mWifiInfo.getLostTxPacketsPerSecond();
@@ -743,10 +744,6 @@ public class WifiScoreReport {
                 mLinkMetricsHistory.removeFirst();
             }
         }
-    }
-
-    private int convertKbpsToMbps(int throughputKbps) {
-        return (throughputKbps == INVALID_THROUGHPUT) ? INVALID_THROUGHPUT : throughputKbps / 1000;
     }
 
     /**
