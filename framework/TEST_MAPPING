@@ -8,5 +8,10 @@
       // other way around)
       "name": "FrameworksWifiTests"
     }
+  ],
+  "mainline-presubmit": [
+    {
+      "name": "FrameworksWifiApiTests[com.google.android.wifi.apex]"
+    }
   ]
 }
