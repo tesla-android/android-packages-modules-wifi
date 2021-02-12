@@ -6130,6 +6130,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     private void addPasspointInfoToLinkProperties(LinkProperties linkProperties) {
+        // CaptivePortalData.Builder.setVenueFriendlyName API not available on R
+        if (!SdkLevel.isAtLeastS()) {
+            return;
+        }
         WifiConfiguration currentNetwork = getConnectedWifiConfigurationInternal();
         if (currentNetwork == null || !currentNetwork.isPasspoint()) {
             return;
