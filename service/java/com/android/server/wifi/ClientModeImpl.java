@@ -52,7 +52,6 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkInfo.DetailedState;
-import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
 import android.net.StaticIpConfiguration;
 import android.net.TcpKeepalivePacketData;
@@ -378,7 +377,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
     private final OemPaidWifiNetworkFactory mOemPaidWifiNetworkFactory;
     @Nullable private final OemPrivateWifiNetworkFactory mOemPrivateWifiNetworkFactory;
+
     @VisibleForTesting
+    @Nullable
     WifiNetworkAgent mNetworkAgent;
 
     private byte[] mRssiRanges;
@@ -584,6 +585,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final WifiNetworkSelector mWifiNetworkSelector;
 
+    private final WifiInjector mWifiInjector;
+
     // Maximum duration to continue to log Wifi usability stats after a data stall is triggered.
     @VisibleForTesting
     public static final long DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS = 30 * 1000;
@@ -658,6 +661,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
             @NonNull WifiNetworkSelector wifiNetworkSelector,
             @NonNull TelephonyManager telephonyManager,
+            @NonNull WifiInjector wifiInjector,
             boolean verboseLoggingEnabled) {
         super(TAG, looper);
         mWifiMetrics = wifiMetrics;
@@ -744,6 +748,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiConfigManager.addOnNetworkUpdateListener(mOnNetworkUpdateListener);
 
         mWifiNetworkSelector = wifiNetworkSelector;
+        mWifiInjector = wifiInjector;
 
         enableVerboseLogging(verboseLoggingEnabled);
 
@@ -3876,40 +3881,38 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
-    private class WifiNetworkAgent extends NetworkAgent {
-        WifiNetworkAgent(Context c, Looper l, String tag, NetworkCapabilities nc, LinkProperties lp,
-                int score, NetworkAgentConfig config, NetworkProvider provider) {
-            super(c, l, tag, nc, lp, score, config, provider);
-            register();
-        }
+    private class WifiNetworkAgentCallback implements WifiNetworkAgent.Callback {
         private int mLastNetworkStatus = -1; // To detect when the status really changes
+
+        private boolean isThisCallbackActive() {
+            return mNetworkAgent != null && mNetworkAgent.getCallback() == this;
+        }
 
         @Override
         public void onNetworkUnwanted() {
             // Ignore if we're not the current networkAgent.
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             if (mVerboseLoggingEnabled) {
-                logd("WifiNetworkAgent -> Wifi unwanted score " + Integer.toString(
-                        mWifiInfo.getScore()));
+                logd("WifiNetworkAgent -> Wifi unwanted score " + mWifiInfo.getScore());
             }
             unwantedNetwork(NETWORK_STATUS_UNWANTED_DISCONNECT);
         }
 
         @Override
         public void onValidationStatus(int status, @Nullable Uri redirectUri) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             if (status == mLastNetworkStatus) return;
             mLastNetworkStatus = status;
             if (status == NetworkAgent.VALIDATION_STATUS_NOT_VALID) {
                 if (mVerboseLoggingEnabled) {
                     logd("WifiNetworkAgent -> Wifi networkStatus invalid, score="
-                            + Integer.toString(mWifiInfo.getScore()));
+                            + mWifiInfo.getScore());
                 }
                 unwantedNetwork(NETWORK_STATUS_UNWANTED_VALIDATION_FAILED);
             } else if (status == NetworkAgent.VALIDATION_STATUS_VALID) {
                 if (mVerboseLoggingEnabled) {
                     logd("WifiNetworkAgent -> Wifi networkStatus valid, score= "
-                            + Integer.toString(mWifiInfo.getScore()));
+                            + mWifiInfo.getScore());
                 }
                 mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_NETWORK_AGENT_VALID_NETWORK);
                 doNetworkStatus(status);
@@ -3923,40 +3926,40 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onSaveAcceptUnvalidated(boolean accept) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_ACCEPT_UNVALIDATED, accept ? 1 : 0);
         }
 
         @Override
         public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
                 @NonNull KeepalivePacketData packet) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(
                     CMD_START_IP_PACKET_OFFLOAD, slot, (int) interval.getSeconds(), packet);
         }
 
         @Override
         public void onStopSocketKeepalive(int slot) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_STOP_IP_PACKET_OFFLOAD, slot);
         }
 
         @Override
         public void onAddKeepalivePacketFilter(int slot, @NonNull KeepalivePacketData packet) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(
                     CMD_ADD_KEEPALIVE_PACKET_FILTER_TO_APF, slot, 0, packet);
         }
 
         @Override
         public void onRemoveKeepalivePacketFilter(int slot) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_REMOVE_KEEPALIVE_PACKET_FILTER_FROM_APF, slot);
         }
 
         @Override
         public void onSignalStrengthThresholdsUpdated(@NonNull int[] thresholds) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             // 0. If there are no thresholds, or if the thresholds are invalid,
             //    stop RSSI monitoring.
             // 1. Tell the hardware to start RSSI monitoring here, possibly adding MIN_VALUE and
@@ -3999,7 +4002,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onAutomaticReconnectDisabled() {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             unwantedNetwork(NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN);
         }
     }
@@ -4641,9 +4644,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 Log.wtf(getTag(), "mNetworkAgent is not null: " + mNetworkAgent);
                 mNetworkAgent.unregister();
             }
-            mNetworkAgent = new WifiNetworkAgent(mContext, getHandler().getLooper(),
-                    "WifiNetworkAgent", nc, mLinkProperties, 60, naConfig,
-                    mNetworkFactory.getProvider());
+            mNetworkAgent = mWifiInjector.makeWifiNetworkAgent(nc, mLinkProperties, 60, naConfig,
+                    mNetworkFactory.getProvider(), new WifiNetworkAgentCallback());
             mWifiScoreReport.setNetworkAgent(mNetworkAgent);
 
             // We must clear the config BSSID, as the wifi chipset may decide to roam
