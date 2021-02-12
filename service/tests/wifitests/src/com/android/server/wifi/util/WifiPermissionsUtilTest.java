@@ -85,6 +85,7 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
     @Mock private WifiInjector mWifiInjector;
     @Mock private LocationManager mLocationManager;
     @Mock private DevicePolicyManager mDevicePolicyManager;
+    @Mock private PackageManager mPackageManager;
     @Spy private FakeWifiLog mWifiLog;
 
     private static final String TEST_WIFI_STACK_APK_NAME = "com.android.wifi";
@@ -860,7 +861,7 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
      * Verifies the helper method exposed for checking if the app is a DeviceOwner.
      */
     @Test
-    public void testIsDeviceOwnerApp() throws Exception {
+    public void testIsDeviceOwnerByPackageName() throws Exception {
         setupMocks();
         WifiPermissionsUtil wifiPermissionsUtil = new WifiPermissionsUtil(mMockPermissionsWrapper,
                 mMockContext, mMockUserManager, mWifiInjector);
@@ -903,6 +904,62 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
                 .thenReturn(null);
         assertFalse(wifiPermissionsUtil.isDeviceOwner(
                 MANAGED_PROFILE_UID, TEST_PACKAGE_NAME));
+    }
+
+    /**
+     * Verifies the helper method exposed for checking if UID is a DeviceOwner.
+     */
+    @Test
+    public void testIsDeviceOwnerByUid() throws Exception {
+        setupMocks();
+        WifiPermissionsUtil wifiPermissionsUtil = new WifiPermissionsUtil(mMockPermissionsWrapper,
+                mMockContext, mMockUserManager, mWifiInjector);
+
+        when(mMockContext.getSystemService(DevicePolicyManager.class))
+                .thenReturn(mDevicePolicyManager);
+        when(mMockContext.getPackageManager()).thenReturn(mPackageManager);
+
+        when(mDevicePolicyManager.getDeviceOwnerComponentOnAnyUser())
+                .thenReturn(new ComponentName(TEST_PACKAGE_NAME, new String()));
+        when(mDevicePolicyManager.getDeviceOwnerUser())
+                .thenReturn(UserHandle.getUserHandleForUid(MANAGED_PROFILE_UID));
+        when(mPackageManager.getPackagesForUid(MANAGED_PROFILE_UID)).thenReturn(
+                new String[] { TEST_PACKAGE_NAME });
+        assertTrue(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
+
+        // userId does not match
+        when(mDevicePolicyManager.getDeviceOwnerComponentOnAnyUser())
+                .thenReturn(new ComponentName(TEST_PACKAGE_NAME, new String()));
+        when(mDevicePolicyManager.getDeviceOwnerUser())
+                .thenReturn(UserHandle.getUserHandleForUid(OTHER_USER_UID));
+        assertFalse(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
+
+        // uid does not match
+        when(mDevicePolicyManager.getDeviceOwnerComponentOnAnyUser())
+                .thenReturn(new ComponentName(TEST_PACKAGE_NAME, new String()));
+        when(mDevicePolicyManager.getDeviceOwnerUser())
+                .thenReturn(UserHandle.getUserHandleForUid(MANAGED_PROFILE_UID));
+        when(mPackageManager.getPackagesForUid(MANAGED_PROFILE_UID)).thenReturn(
+                new String[] { TEST_FEATURE_ID });
+        assertFalse(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
+
+        // no packages for uid
+        when(mDevicePolicyManager.getDeviceOwnerComponentOnAnyUser())
+                .thenReturn(new ComponentName(TEST_PACKAGE_NAME, new String()));
+        when(mDevicePolicyManager.getDeviceOwnerUser())
+                .thenReturn(UserHandle.getUserHandleForUid(MANAGED_PROFILE_UID));
+        when(mPackageManager.getPackagesForUid(MANAGED_PROFILE_UID)).thenReturn(null);
+        assertFalse(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
+
+        // No device owner.
+        when(mDevicePolicyManager.getDeviceOwnerComponentOnAnyUser())
+                .thenReturn(null);
+        assertFalse(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
+
+        // DevicePolicyManager does not exist.
+        when(mMockContext.getSystemService(Context.DEVICE_POLICY_SERVICE))
+                .thenReturn(null);
+        assertFalse(wifiPermissionsUtil.isDeviceOwner(MANAGED_PROFILE_UID));
     }
 
     /**

@@ -33,6 +33,7 @@ import android.os.UserManager;
 import android.provider.Settings;
 import android.util.EventLog;
 import android.util.Log;
+import android.util.Pair;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.modules.utils.build.SdkLevel;
@@ -40,12 +41,17 @@ import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiLog;
 
+import java.util.Arrays;
+
 /**
  * A wifi permissions utility assessing permissions
  * for getting scan results by a package.
  */
 public class WifiPermissionsUtil {
     private static final String TAG = "WifiPermissionsUtil";
+
+    private static final boolean DEBUG = false;
+
     private static final int APP_INFO_FLAGS_SYSTEM_APP =
             ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP;
     private final WifiPermissionsWrapper mWifiPermissionsWrapper;
@@ -565,19 +571,11 @@ public class WifiPermissionsUtil {
         return retrieveDevicePolicyManagerFromContext(userContext);
     }
 
-    /**
-     * Returns true if the |callingUid|/\callingPackage| is the device owner.
-     */
-    public boolean isDeviceOwner(int uid, @Nullable String packageName) {
-        // Cannot determine if the app is DO/PO if packageName is null. So, will return false to be
-        // safe.
-        if (packageName == null) {
-            Log.e(TAG, "isDeviceOwner: packageName is null, returning false");
-            return false;
-        }
+    @Nullable
+    private Pair<UserHandle, ComponentName> getDeviceOwner() {
         DevicePolicyManager devicePolicyManager =
                 retrieveDevicePolicyManagerFromContext(mContext);
-        if (devicePolicyManager == null) return false;
+        if (devicePolicyManager == null) return null;
         long ident = Binder.clearCallingIdentity();
         UserHandle deviceOwnerUser = null;
         ComponentName deviceOwnerComponent = null;
@@ -587,10 +585,61 @@ public class WifiPermissionsUtil {
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
+        if (deviceOwnerUser == null || deviceOwnerComponent == null) return null;
+
+        if (deviceOwnerComponent.getPackageName() == null) {
+            // shouldn't happen
+            Log.wtf(TAG, "no package name on device owner component: " + deviceOwnerComponent);
+            return null;
+        }
+        return new Pair<>(deviceOwnerUser, deviceOwnerComponent);
+    }
+
+    /**
+     * Returns {@code true} if the calling {@code uid} and {@code packageName} is the device owner.
+     */
+    public boolean isDeviceOwner(int uid, @Nullable String packageName) {
+        // Cannot determine if the app is DO/PO if packageName is null. So, will return false to be
+        // safe.
+        if (packageName == null) {
+            Log.e(TAG, "isDeviceOwner: packageName is null, returning false");
+            return false;
+        }
+        Pair<UserHandle, ComponentName> deviceOwner = getDeviceOwner();
+        if (DEBUG) Log.d(TAG, "deviceOwner:" + deviceOwner);
+
         // no device owner
-        if (deviceOwnerUser == null || deviceOwnerComponent == null) return false;
-        return deviceOwnerUser.equals(UserHandle.getUserHandleForUid(uid))
-                && deviceOwnerComponent.getPackageName().equals(packageName);
+        if (deviceOwner == null) return false;
+
+        return deviceOwner.first.equals(UserHandle.getUserHandleForUid(uid))
+                && deviceOwner.second.getPackageName().equals(packageName);
+    }
+
+    /**
+     * Returns {@code true} if the calling {@code uid} is the device owner.
+     */
+    public boolean isDeviceOwner(int uid) {
+        Pair<UserHandle, ComponentName> deviceOwner = getDeviceOwner();
+
+        // no device owner
+        if (deviceOwner == null) return false;
+
+        // device owner belowngs to wrong user
+        if (!deviceOwner.first.equals(UserHandle.getUserHandleForUid(uid))) return false;
+
+        // finally, check uid
+        String deviceOwnerPackageName = deviceOwner.second.getPackageName();
+        String[] packageNames = mContext.getPackageManager().getPackagesForUid(uid);
+        if (DEBUG) Log.d(TAG, "Packages for uid " + uid + ":" + Arrays.toString(packageNames));
+        if (packageNames == null) {
+            Log.w(TAG, "isDeviceOwner(): could not find packages for uid " + uid);
+            return false;
+        }
+        for (String packageName : packageNames) {
+            if (deviceOwnerPackageName.equals(packageName)) return true;
+        }
+
+        return false;
     }
 
     /**
@@ -627,7 +676,7 @@ public class WifiPermissionsUtil {
     }
 
     /**
-     * Check if the given UID belongs to the current foreground user. This is
+     * Checks if the given UID belongs to the current foreground or device owner user. This is
      * used to prevent apps running in background users from modifying network
      * configurations.
      * <p>
@@ -651,6 +700,7 @@ public class WifiPermissionsUtil {
             EventLog.writeEvent(0x534e4554, "174749461", -1,
                     "Non foreground user trying to modify wifi configuration");
         }
-        return isCurrentProfile;
+        return isCurrentProfile || isDeviceOwner(uid);
     }
+
 }

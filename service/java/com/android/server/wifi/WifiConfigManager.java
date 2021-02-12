@@ -932,7 +932,13 @@ public class WifiConfigManager {
             return true;
         }
 
-        final boolean isDeviceOwner = mWifiPermissionsUtil.isDeviceOwner(uid, packageName);
+        // TODO: ideally package should not be null here (and hence we wouldn't need the
+        // isDeviceOwner(uid) method), but it would require changing  many methods to pass the
+        // package name around (for example, all methods called by
+        // WifiServiceImpl.triggerConnectAndReturnStatus(netId, callingUid)
+        final boolean isDeviceOwner = packageName == null
+                ? mWifiPermissionsUtil.isDeviceOwner(uid)
+                : mWifiPermissionsUtil.isDeviceOwner(uid, packageName);
 
         // If |uid| corresponds to the device owner, allow all modifications.
         if (isDeviceOwner) {
