@@ -87,7 +87,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
 
     FakeClock mClock;
     WifiScoreReport mWifiScoreReport;
-    WifiInfo mWifiInfo;
+    ExtendedWifiInfo mWifiInfo;
     ScoringParams mScoringParams;
     @Mock NetworkAgent mNetworkAgent;
     WifiThreadRunner mWifiThreadRunner;
@@ -100,7 +100,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
     @Mock WifiNative mWifiNative;
     @Mock WifiBlocklistMonitor mWifiBlocklistMonitor;
     @Mock Network mNetwork;
-    @Mock WifiDataStall mWifiDataStall;
+    @Mock WifiScoreCard mWifiScoreCard;
+    @Mock WifiScoreCard.PerNetwork mPerNetwork;
     @Mock DeviceConfigFacade mDeviceConfigFacade;
     @Mock Looper mWifiLooper;
     @Mock FrameworkFacade mFrameworkFacade;
@@ -109,6 +110,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     ArgumentCaptor<WifiManager.ScoreUpdateObserver> mExternalScoreUpdateObserverCbCaptor =
             ArgumentCaptor.forClass(WifiManager.ScoreUpdateObserver.class);
     @Mock WifiSettingsStore mWifiSettingsStore;
+    @Mock WifiGlobals mWifiGlobals;
     private TestLooper mLooper;
 
     public class WifiConnectedNetworkScorerImpl extends IWifiConnectedNetworkScorer.Stub {
@@ -174,6 +176,9 @@ public class WifiScoreReportTest extends WifiBaseTest {
         when(resources.getBoolean(
                 R.bool.config_wifiMinConfirmationDurationSendNetworkScoreEnabled))
             .thenReturn(false);
+        when(resources.getIntArray(
+                R.array.config_wifiRssiLevelThresholds))
+                .thenReturn(new int[]{-88, -77, -66, -55});
     }
 
     /**
@@ -183,7 +188,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         setUpResources(mResources);
-        mWifiInfo = new WifiInfo();
+        mWifiInfo = new ExtendedWifiInfo(mWifiGlobals);
         mWifiInfo.setFrequency(2412);
         mWifiInfo.setBSSID(TEST_BSSID);
         mLooper = new TestLooper();
@@ -195,7 +200,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiThreadRunner = new WifiThreadRunner(new Handler(mLooper.getLooper()));
         when(mAdaptiveConnectivityEnabledSettingObserver.get()).thenReturn(true);
         mWifiScoreReport = new WifiScoreReport(mScoringParams, mClock, mWifiMetrics, mWifiInfo,
-                mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiDataStall,
+                mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
                 mDeviceConfigFacade, mContext,
                 mAdaptiveConnectivityEnabledSettingObserver, TEST_IFACE_NAME,
                 mExternalScoreUpdateObserverProxy, mWifiSettingsStore);
@@ -207,6 +212,9 @@ public class WifiScoreReportTest extends WifiBaseTest {
         when(mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm()).thenReturn(
                 DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
         when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(true);
+        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(50_000);
+        when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
     }
 
     /**
