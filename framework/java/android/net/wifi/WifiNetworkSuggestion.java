@@ -578,6 +578,9 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
         public @NonNull Builder setIsEnhancedMacRandomizationEnabled(boolean enabled) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
             mIsEnhancedMacRandomizationEnabled = enabled;
             return this;
         }
