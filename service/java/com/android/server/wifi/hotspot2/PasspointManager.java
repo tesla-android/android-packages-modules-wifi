@@ -132,7 +132,6 @@ public class PasspointManager {
     private final MacAddressUtil mMacAddressUtil;
     private final Clock mClock;
     private final WifiPermissionsUtil mWifiPermissionsUtil;
-    private URL mTermsAndConditionsUrl = null;
 
     /**
      * Map of package name of an app to the app ops changed listener for the app.
@@ -1541,57 +1540,41 @@ public class PasspointManager {
     }
 
     /**
-     * Clears the Terms & Conditions URL, to be used upon a successful connection to Passpoint
-     */
-    public void clearTermsAndConditionsUrl() {
-        mTermsAndConditionsUrl = null;
-    }
-
-    /**
      * Handle Terms & Conditions acceptance required WNM-Notification event
      *
      * @param event Terms & Conditions WNM-Notification data
      * @param config Configuration of the currently connected Passpoint network
      *
-     * @return true if Terms & conditions URL is valid, false otherwise
+     * @return The Terms & conditions URL if it is valid, null otherwise
      */
-    public boolean handleTermsAndConditionsEvent(WnmData event, WifiConfiguration config) {
+    public URL handleTermsAndConditionsEvent(WnmData event, WifiConfiguration config) {
         if (event == null || config == null || !config.isPasspoint()) {
-            return false;
+            return null;
         }
         final int oneHourInSeconds = 60 * 60;
         final int twentyFourHoursInSeconds = 24 * 60 * 60;
-        URL termsAndConditionsUrl;
+        final URL termsAndConditionsUrl;
         try {
             termsAndConditionsUrl = new URL(event.getUrl());
         } catch (java.net.MalformedURLException e) {
-            Log.e(TAG, "Malformed T&C URL: " + event.getUrl() + " from BSSID: "
-                    + Utils.macToString(event.getBssid()));
+            Log.e(TAG, "Malformed Terms and Conditions URL: " + event.getUrl()
+                    + " from BSSID: " + Utils.macToString(event.getBssid()));
 
             // Block this provider for an hour, this unlikely issue may be resolved shortly
             blockProvider(config.getProfileKey(), event.getBssid(), true, oneHourInSeconds);
-            return false;
+            return null;
         }
         // Reject URLs that are not HTTPS
         if (!TextUtils.equals(termsAndConditionsUrl.getProtocol(), "https")) {
-            Log.e(TAG, "Non-HTTPS T&C URL rejected: " + termsAndConditionsUrl
+            Log.e(TAG, "Non-HTTPS Terms and Conditions URL rejected: " + termsAndConditionsUrl
                     + " from BSSID: " + Utils.macToString(event.getBssid()));
 
             // Block this provider for 24 hours, it is unlikely to be changed
             blockProvider(config.getProfileKey(), event.getBssid(), true, twentyFourHoursInSeconds);
-            return false;
+            return null;
         }
-        mTermsAndConditionsUrl = termsAndConditionsUrl;
-        return true;
-    }
-
-    /**
-     * Get the Terms & Conditions URL, if acceptance is required in this network
-     *
-     * @return URL to T&C website, null if not required by this network
-     */
-    @Nullable
-    public URL getTermsAndConditionsUrl() {
-        return mTermsAndConditionsUrl;
+        Log.i(TAG, "Captive network, Terms and Conditions URL: " + termsAndConditionsUrl
+                + " from BSSID: " + Utils.macToString(event.getBssid()));
+        return termsAndConditionsUrl;
     }
 }

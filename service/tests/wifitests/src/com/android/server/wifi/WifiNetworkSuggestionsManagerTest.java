@@ -36,6 +36,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.app.ActivityManager;
@@ -824,6 +825,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
     @Test
     public void testAddNetworkSuggestionWithMismatchBetweenCarrierIdAndSubId() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createEapNetwork(), null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
@@ -3596,7 +3598,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         networkSuggestion2.wifiConfiguration.carrierId = TEST_CARRIER_ID;
         WifiConfiguration configuration = networkSuggestion1.wifiConfiguration;
 
-        // Suggestion das SIM present, suggestion has SIM absent
+        // Suggestion1 has SIM present, suggestion2 has SIM absent
         when(mWifiCarrierInfoManager
                 .getBestMatchSubscriptionId(argThat(new WifiConfigMatcher(configuration))))
                 .thenReturn(TEST_SUBID);
@@ -3613,15 +3615,14 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                     add(networkSuggestion2);
                 }};
 
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
         networkSuggestion1.wifiConfiguration.fromWifiNetworkSuggestion = true;
         networkSuggestion2.wifiConfiguration.fromWifiNetworkSuggestion = true;
         networkSuggestion1.wifiConfiguration.creatorName = TEST_PACKAGE_1;
         networkSuggestion2.wifiConfiguration.creatorName = TEST_PACKAGE_1;
         networkSuggestion1.wifiConfiguration.subscriptionId = TEST_SUBID;
-
-        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
-                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
-                        TEST_PACKAGE_1, TEST_FEATURE));
         setupGetConfiguredNetworksFromWcm(networkSuggestion1.wifiConfiguration,
                 networkSuggestion2.wifiConfiguration);
         List<WifiConfiguration> wifiConfigurationList = mWifiNetworkSuggestionsManager
@@ -3669,7 +3670,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration config =
                 WifiConfigurationTestUtil.createEapNetwork(WifiEnterpriseConfig.Eap.SIM,
                         WifiEnterpriseConfig.Phase2.NONE);
-        config.subscriptionId = TEST_SUBID;
+        if (SdkLevel.isAtLeastS()) {
+            config.subscriptionId = TEST_SUBID;
+        }
         WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
                 config, null, true, false, true, true, DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
@@ -3696,7 +3699,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration config =
                 WifiConfigurationTestUtil.createEapNetwork(WifiEnterpriseConfig.Eap.SIM,
                         WifiEnterpriseConfig.Phase2.NONE);
-        config.subscriptionId = TEST_SUBID;
+        if (SdkLevel.isAtLeastS()) {
+            config.subscriptionId = TEST_SUBID;
+        }
         WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
                 config, null, true, false, true, true, DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
@@ -3724,9 +3729,11 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration config =
                 WifiConfigurationTestUtil.createEapNetwork(WifiEnterpriseConfig.Eap.SIM,
                         WifiEnterpriseConfig.Phase2.NONE);
-        config.subscriptionId = TEST_SUBID;
+        if (SdkLevel.isAtLeastS()) {
+            config.subscriptionId = TEST_SUBID;
+        }
         WifiNetworkSuggestion networkSuggestion = new WifiNetworkSuggestion(
-                config, null, true, false, true, true, TEST_PRIORITY_GROUP);
+                config, null, true, false, true, true, DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
         networkSuggestionList.add(networkSuggestion);
         when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
@@ -3735,7 +3742,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 .thenReturn(TelephonyManager.UNKNOWN_CARRIER_ID);
         int status = mWifiNetworkSuggestionsManager
                 .add(networkSuggestionList, TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE);
-        assertEquals(status, WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS, status);
         verify(mNotificationManager, never()).notify(eq(NOTIFICATION_TAG), anyInt(), any());
         assertEquals(1,  mWifiNetworkSuggestionsManager.get(TEST_PACKAGE_1, TEST_UID_1).size());
     }
@@ -4576,6 +4583,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
      */
     @Test
     public void testAddCarrierMergedNetwork() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiConfiguration eapSimConfig = WifiConfigurationTestUtil.createEapNetwork(
                 WifiEnterpriseConfig.Eap.SIM, WifiEnterpriseConfig.Phase2.NONE);
         WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork();

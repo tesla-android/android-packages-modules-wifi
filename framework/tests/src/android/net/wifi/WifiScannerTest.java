@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -48,6 +49,7 @@ import android.os.test.TestLooper;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.test.BidirectionalAsyncChannelServer;
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.After;
 import org.junit.Before;
@@ -249,6 +251,7 @@ public class WifiScannerTest {
     @Test
     public void testSetRnrSetting() throws Exception {
         // First verify IllegalArgumentException if an invalid input is passed in.
+        assumeTrue(SdkLevel.isAtLeastS());
         try {
             WifiScanner.ScanSettings scanSettings = new WifiScanner.ScanSettings();
             scanSettings.setRnrSetting(-1);

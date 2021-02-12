@@ -63,6 +63,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiCarrierInfoManager.SimAuthRequestData;
 import com.android.server.wifi.WifiCarrierInfoManager.SimAuthResponseData;
 import com.android.wifi.resources.R;
@@ -1909,14 +1910,22 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         bundle.putAll(wifiBundle);
         when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
 
-        // Verify MAC randomization is disable for config1, but not disabled for config2
-        assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
-                config2.carrierId, config2.subscriptionId));
-        assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
-                config1.carrierId, config1.subscriptionId));
+        if (SdkLevel.isAtLeastS()) {
+            // Verify MAC randomization is disable for config1, but not disabled for config2
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                    config2.carrierId, config2.subscriptionId));
+            assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                    config1.carrierId, config1.subscriptionId));
 
-        // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
-        verify(mCarrierConfigManager).getConfigForSubId(anyInt());
+            // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
+            verify(mCarrierConfigManager).getConfigForSubId(anyInt());
+        } else {
+            // Verify MAC randomization is not disabled for either configuration.
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                    config2.carrierId, config2.subscriptionId));
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                    config1.carrierId, config1.subscriptionId));
+        }
     }
 
     /**
@@ -1939,14 +1948,21 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         bundle.putAll(wifiBundle);
         when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
 
-        // Verify MAC randomization is disable for config1, but not disabled for config2
-        assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
-                config1.carrierId, config1.subscriptionId));
-        assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
-                config2.carrierId, config2.subscriptionId));
-
-        // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
-        verify(mCarrierConfigManager).getConfigForSubId(anyInt());
+        if (SdkLevel.isAtLeastS()) {
+            // Verify MAC randomization is disable for config1, but not disabled for config2
+            assertTrue(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                    config1.carrierId, config1.subscriptionId));
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                    config2.carrierId, config2.subscriptionId));
+            // Verify getConfigForSubId is only called once since the CarrierConfig gets cached.
+            verify(mCarrierConfigManager).getConfigForSubId(anyInt());
+        } else {
+            // Verify MAC randomization is not disabled for either configuration.
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config1.SSID,
+                    config1.carrierId, config1.subscriptionId));
+            assertFalse(mWifiCarrierInfoManager.shouldDisableMacRandomization(config2.SSID,
+                    config2.carrierId, config2.subscriptionId));
+        }
     }
 
     @Test

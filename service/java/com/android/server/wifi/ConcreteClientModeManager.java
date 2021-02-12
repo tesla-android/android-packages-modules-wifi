@@ -1011,15 +1011,16 @@ public class ConcreteClientModeManager implements ClientModeManager {
                             break;  // no change
                         }
                         if (!isUp) {
-                            if (!mWifiGlobals.isConnectedMacRandomizationEnabled()) {
+                            if (mWifiGlobals.isConnectedMacRandomizationEnabled()
+                                    && getClientMode().isConnecting()) {
+                                return HANDLED; // For MAC randomization, ignore...
+                            } else {
                                 // Handle the error case where our underlying interface went down if
                                 // we do not have mac randomization enabled (b/72459123).
                                 // if the interface goes down we should exit and go back to idle
                                 // state.
                                 updateConnectModeState(mRole, WifiManager.WIFI_STATE_UNKNOWN,
                                         WifiManager.WIFI_STATE_ENABLED);
-                            } else {
-                                return HANDLED; // For MAC randomization, ignore...
                             }
                         }
                         return NOT_HANDLED; // Handled in StartedState.

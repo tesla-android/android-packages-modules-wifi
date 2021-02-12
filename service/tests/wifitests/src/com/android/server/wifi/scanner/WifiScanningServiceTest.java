@@ -36,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -80,6 +81,7 @@ import androidx.test.filters.SmallTest;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.test.BidirectionalAsyncChannel;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
@@ -750,6 +752,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
      */
     @Test
     public void testRnrIsDisabledIf6GhzBandIsNotScanned() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         // Verify RNR is disabled by default since WIFI_BAND_BOTH doesn't include the 6Ghz band.
         WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH, 0,
                 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
@@ -767,6 +770,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
      */
     @Test
     public void testRnrIsEnabledIf6GhzBandIsScanned() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_ALL, 0,
                 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
         WifiNative.ScanSettings nativeSettings = computeSingleScanNativeSettings(requestSettings);
@@ -783,6 +787,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
      */
     @Test
     public void testForceEnableRnr() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH, 0,
                 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
         requestSettings.setRnrSetting(WifiScanner.WIFI_RNR_ENABLED);
@@ -800,6 +805,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
      */
     @Test
     public void testRnrIsExplicitlyDisabled() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_ALL, 0,
                 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
         requestSettings.setRnrSetting(WifiScanner.WIFI_RNR_NOT_NEEDED);

@@ -52,7 +52,6 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkInfo.DetailedState;
-import android.net.NetworkProvider;
 import android.net.SocketKeepalive;
 import android.net.StaticIpConfiguration;
 import android.net.TcpKeepalivePacketData;
@@ -245,6 +244,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // The subId used by WifiConfiguration with SIM credential which was connected successfully
     private int mLastSubId;
     private String mLastSimBasedConnectionCarrierName;
+    private URL mTermsAndConditionsUrl; // Indicates that the Passpoint network is captive
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -377,7 +377,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
     private final OemPaidWifiNetworkFactory mOemPaidWifiNetworkFactory;
     @Nullable private final OemPrivateWifiNetworkFactory mOemPrivateWifiNetworkFactory;
+
     @VisibleForTesting
+    @Nullable
     WifiNetworkAgent mNetworkAgent;
 
     private byte[] mRssiRanges;
@@ -583,6 +585,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final WifiNetworkSelector mWifiNetworkSelector;
 
+    private final WifiInjector mWifiInjector;
+
     // Maximum duration to continue to log Wifi usability stats after a data stall is triggered.
     @VisibleForTesting
     public static final long DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS = 30 * 1000;
@@ -657,6 +661,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
             @NonNull WifiNetworkSelector wifiNetworkSelector,
             @NonNull TelephonyManager telephonyManager,
+            @NonNull WifiInjector wifiInjector,
             boolean verboseLoggingEnabled) {
         super(TAG, looper);
         mWifiMetrics = wifiMetrics;
@@ -743,6 +748,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiConfigManager.addOnNetworkUpdateListener(mOnNetworkUpdateListener);
 
         mWifiNetworkSelector = wifiNetworkSelector;
+        mWifiInjector = wifiInjector;
 
         enableVerboseLogging(verboseLoggingEnabled);
 
@@ -872,7 +878,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onProvisioningSuccess(LinkProperties newLp) {
-            addPasspointUrlsToLinkProperties(newLp);
+            addPasspointInfoToLinkProperties(newLp);
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_CMD_IP_CONFIGURATION_SUCCESSFUL);
             sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
             sendMessage(CMD_IP_CONFIGURATION_SUCCESSFUL);
@@ -886,7 +892,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onLinkPropertiesChange(LinkProperties newLp) {
-            addPasspointUrlsToLinkProperties(newLp);
+            addPasspointInfoToLinkProperties(newLp);
             sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
         }
 
@@ -3577,9 +3583,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectedWifiConfigurationInternal());
                     break;
                 case WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT:
-                    if (!mPasspointManager.handleTermsAndConditionsEvent((WnmData) message.obj,
-                            getConnectedWifiConfigurationInternal())) {
-                        loge("Disconnecting from Passpoint network due to an issue with T&C");
+                    mTermsAndConditionsUrl = mPasspointManager
+                            .handleTermsAndConditionsEvent((WnmData) message.obj,
+                            getConnectedWifiConfigurationInternal());
+                    if (mTermsAndConditionsUrl == null) {
+                        loge("Disconnecting from Passpoint network due to an issue with the "
+                                + "Terms and Conditions URL");
                         sendMessage(CMD_DISCONNECT);
                     }
                     break;
@@ -3872,40 +3881,38 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
-    private class WifiNetworkAgent extends NetworkAgent {
-        WifiNetworkAgent(Context c, Looper l, String tag, NetworkCapabilities nc, LinkProperties lp,
-                int score, NetworkAgentConfig config, NetworkProvider provider) {
-            super(c, l, tag, nc, lp, score, config, provider);
-            register();
-        }
+    private class WifiNetworkAgentCallback implements WifiNetworkAgent.Callback {
         private int mLastNetworkStatus = -1; // To detect when the status really changes
+
+        private boolean isThisCallbackActive() {
+            return mNetworkAgent != null && mNetworkAgent.getCallback() == this;
+        }
 
         @Override
         public void onNetworkUnwanted() {
             // Ignore if we're not the current networkAgent.
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             if (mVerboseLoggingEnabled) {
-                logd("WifiNetworkAgent -> Wifi unwanted score " + Integer.toString(
-                        mWifiInfo.getScore()));
+                logd("WifiNetworkAgent -> Wifi unwanted score " + mWifiInfo.getScore());
             }
             unwantedNetwork(NETWORK_STATUS_UNWANTED_DISCONNECT);
         }
 
         @Override
         public void onValidationStatus(int status, @Nullable Uri redirectUri) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             if (status == mLastNetworkStatus) return;
             mLastNetworkStatus = status;
             if (status == NetworkAgent.VALIDATION_STATUS_NOT_VALID) {
                 if (mVerboseLoggingEnabled) {
                     logd("WifiNetworkAgent -> Wifi networkStatus invalid, score="
-                            + Integer.toString(mWifiInfo.getScore()));
+                            + mWifiInfo.getScore());
                 }
                 unwantedNetwork(NETWORK_STATUS_UNWANTED_VALIDATION_FAILED);
             } else if (status == NetworkAgent.VALIDATION_STATUS_VALID) {
                 if (mVerboseLoggingEnabled) {
                     logd("WifiNetworkAgent -> Wifi networkStatus valid, score= "
-                            + Integer.toString(mWifiInfo.getScore()));
+                            + mWifiInfo.getScore());
                 }
                 mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_NETWORK_AGENT_VALID_NETWORK);
                 doNetworkStatus(status);
@@ -3919,40 +3926,40 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onSaveAcceptUnvalidated(boolean accept) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_ACCEPT_UNVALIDATED, accept ? 1 : 0);
         }
 
         @Override
         public void onStartSocketKeepalive(int slot, @NonNull Duration interval,
                 @NonNull KeepalivePacketData packet) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(
                     CMD_START_IP_PACKET_OFFLOAD, slot, (int) interval.getSeconds(), packet);
         }
 
         @Override
         public void onStopSocketKeepalive(int slot) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_STOP_IP_PACKET_OFFLOAD, slot);
         }
 
         @Override
         public void onAddKeepalivePacketFilter(int slot, @NonNull KeepalivePacketData packet) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(
                     CMD_ADD_KEEPALIVE_PACKET_FILTER_TO_APF, slot, 0, packet);
         }
 
         @Override
         public void onRemoveKeepalivePacketFilter(int slot) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             ClientModeImpl.this.sendMessage(CMD_REMOVE_KEEPALIVE_PACKET_FILTER_FROM_APF, slot);
         }
 
         @Override
         public void onSignalStrengthThresholdsUpdated(@NonNull int[] thresholds) {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             // 0. If there are no thresholds, or if the thresholds are invalid,
             //    stop RSSI monitoring.
             // 1. Tell the hardware to start RSSI monitoring here, possibly adding MIN_VALUE and
@@ -3995,7 +4002,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         @Override
         public void onAutomaticReconnectDisabled() {
-            if (this != mNetworkAgent) return;
+            if (!isThisCallbackActive()) return;
             unwantedNetwork(NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN);
         }
     }
@@ -4174,7 +4181,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     }
                     // When connecting to Passpoint, ask for the Venue URL
                     if (config.isPasspoint()) {
-                        mPasspointManager.clearTermsAndConditionsUrl();
+                        mTermsAndConditionsUrl = null;
                         if (scanResult == null && mLastBssid != null) {
                             // The cached scan result of connected network would be null at the
                             // first connection, try to check full scan result list again to look up
@@ -4221,7 +4228,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (!newConnectionInProgress) {
                         transitionTo(mDisconnectedState);
                     }
-                    mPasspointManager.clearTermsAndConditionsUrl();
+                    mTermsAndConditionsUrl = null;
                     break;
                 }
                 case WifiMonitor.TARGET_BSSID_EVENT: {
@@ -4637,9 +4644,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 Log.wtf(getTag(), "mNetworkAgent is not null: " + mNetworkAgent);
                 mNetworkAgent.unregister();
             }
-            mNetworkAgent = new WifiNetworkAgent(mContext, getHandler().getLooper(),
-                    "WifiNetworkAgent", nc, mLinkProperties, 60, naConfig,
-                    mNetworkFactory.getProvider());
+            mNetworkAgent = mWifiInjector.makeWifiNetworkAgent(nc, mLinkProperties, 60, naConfig,
+                    mNetworkFactory.getProvider(), new WifiNetworkAgentCallback());
             mWifiScoreReport.setNetworkAgent(mNetworkAgent);
 
             // We must clear the config BSSID, as the wifi chipset may decide to roam
@@ -5344,6 +5350,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                             .DISABLED_NONE);
                             mWifiConfigManager.setNetworkValidatedInternetAccess(
                                     config.networkId, true);
+                            if (config.isPasspoint()
+                                    && mTermsAndConditionsUrl != null) {
+                                // Clear the T&C after the user accepted them and the we are
+                                // notified that the network validation is successful
+                                mTermsAndConditionsUrl = null;
+                                LinkProperties newLp = new LinkProperties(mLinkProperties);
+                                addPasspointInfoToLinkProperties(newLp);
+                                sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
+                            }
                         }
                         mCmiMonitor.onL3Validated(mClientModeManager);
                     }
@@ -6114,7 +6129,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiScoreReport.setShouldReduceNetworkScore(shouldReduceNetworkScore);
     }
 
-    private void addPasspointUrlsToLinkProperties(LinkProperties linkProperties) {
+    private void addPasspointInfoToLinkProperties(LinkProperties linkProperties) {
+        // CaptivePortalData.Builder.setVenueFriendlyName API not available on R
+        if (!SdkLevel.isAtLeastS()) {
+            return;
+        }
         WifiConfiguration currentNetwork = getConnectedWifiConfigurationInternal();
         if (currentNetwork == null || !currentNetwork.isPasspoint()) {
             return;
@@ -6125,11 +6144,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
         URL venueUrl = mPasspointManager.getVenueUrl(scanResult);
-        URL termsAndConditionsUrl = mPasspointManager.getTermsAndConditionsUrl();
-
-        if (venueUrl == null && termsAndConditionsUrl == null) {
-            return;
-        }
 
         // Update the friendly name to populate the notification
         CaptivePortalData.Builder captivePortalDataBuilder = new CaptivePortalData.Builder()
@@ -6137,14 +6151,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         // Update the Venue URL if available
         if (venueUrl != null) {
-            captivePortalDataBuilder.setVenueInfoUrl(Uri.parse(venueUrl.toString()));
+            captivePortalDataBuilder.setVenueInfoUrl(Uri.parse(venueUrl.toString()),
+                    CaptivePortalData.CAPTIVE_PORTAL_DATA_SOURCE_PASSPOINT);
         }
 
         // Update the T&C URL if available. The network is captive if T&C URL is available
-        if (termsAndConditionsUrl != null) {
-            // TODO: Add when NetworkStack changes are implemented
-            //captivePortalDataBuilder.setUserPortalUrl(Uri.parse(termsAndConditionsUrl.toString()))
-            //        .setCaptive(true);
+        if (mTermsAndConditionsUrl != null) {
+            captivePortalDataBuilder.setUserPortalUrl(
+                    Uri.parse(mTermsAndConditionsUrl.toString()),
+                    CaptivePortalData.CAPTIVE_PORTAL_DATA_SOURCE_PASSPOINT).setCaptive(true);
         }
 
         linkProperties.setCaptivePortalData(captivePortalDataBuilder.build());
