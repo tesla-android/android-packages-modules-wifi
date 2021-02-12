@@ -36,6 +36,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyByte;
@@ -963,7 +964,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertNotNull(wifiInfo);
         assertEquals(TEST_BSSID_STR, wifiInfo.getBSSID());
         assertEquals(sFreq, wifiInfo.getFrequency());
-        assertTrue(TEST_WIFI_SSID.equals(wifiInfo.getWifiSsid()));
+        assertEquals(TEST_WIFI_SSID, wifiInfo.getWifiSsid());
         assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfo.getMacAddress());
         if (wifiInfo.isPasspointAp()) {
             assertEquals(wifiInfo.getPasspointProviderFriendlyName(),
@@ -971,8 +972,10 @@ public class ClientModeImplTest extends WifiBaseTest {
         } else {
             assertNull(wifiInfo.getPasspointProviderFriendlyName());
         }
-        assertEquals(Arrays.asList(scanResult.informationElements),
-                wifiInfo.getInformationElements());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(Arrays.asList(scanResult.informationElements),
+                    wifiInfo.getInformationElements());
+        }
         expectRegisterNetworkAgent((na) -> {
             if (!mConnectedNetwork.carrierMerged) {
                 assertNull(na.subscriberId);
@@ -983,7 +986,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                     assertEquals(TEST_BSSID_STR, wifiInfoFromTi.getBSSID());
                     assertEquals(sFreq, wifiInfoFromTi.getFrequency());
                     assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfoFromTi.getMacAddress());
-                    assertTrue(TEST_WIFI_SSID.equals(wifiInfoFromTi.getWifiSsid()));
+                    assertEquals(TEST_WIFI_SSID, wifiInfoFromTi.getWifiSsid());
                     if (wifiInfo.isPasspointAp()) {
                         assertEquals(wifiInfoFromTi.getPasspointProviderFriendlyName(),
                                 WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME);
@@ -3931,6 +3934,7 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void testTermsAndConditionsClearUrlAfterNetworkValidation() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         InOrder inOrder = inOrder(mWifiNetworkAgent);
 
         // Simulate the first connection.
@@ -4912,11 +4916,13 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(FRAMEWORK_NETWORK_ID, mWifiInfo.getNetworkId());
         assertEquals(mConnectedNetwork.ephemeral, mWifiInfo.isEphemeral());
         assertEquals(mConnectedNetwork.trusted, mWifiInfo.isTrusted());
-        assertEquals(mConnectedNetwork.oemPaid, mWifiInfo.isOemPaid());
-        assertEquals(mConnectedNetwork.oemPrivate, mWifiInfo.isOemPrivate());
-        assertEquals(mConnectedNetwork.carrierMerged, mWifiInfo.isCarrierMerged());
         assertEquals(mConnectedNetwork.osu, mWifiInfo.isOsuAp());
-        assertEquals(DATA_SUBID, mWifiInfo.getSubscriptionId());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(mConnectedNetwork.oemPaid, mWifiInfo.isOemPaid());
+            assertEquals(mConnectedNetwork.oemPrivate, mWifiInfo.isOemPrivate());
+            assertEquals(mConnectedNetwork.carrierMerged, mWifiInfo.isCarrierMerged());
+            assertEquals(DATA_SUBID, mWifiInfo.getSubscriptionId());
+        }
     }
 
     /**
@@ -5425,6 +5431,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     @Test
     public void testOemPaidNetworkCapability() throws Exception {
+        // oemPaid introduced in S, not applicable to R
+        assumeTrue(SdkLevel.isAtLeastS());
         mConnectedNetwork.oemPaid = true;
         connect();
         expectRegisterNetworkAgent((agentConfig) -> { },
@@ -5434,6 +5442,8 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
     @Test
     public void testNotOemPaidNetworkCapability() throws Exception {
+        // oemPaid introduced in S, not applicable to R
+        assumeTrue(SdkLevel.isAtLeastS());
         mConnectedNetwork.oemPaid = false;
         connect();
         expectRegisterNetworkAgent((agentConfig) -> { },
@@ -5444,6 +5454,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     @Test
     public void testOemPrivateNetworkCapability() throws Exception {
+        // oemPrivate introduced in S, not applicable to R
+        assumeTrue(SdkLevel.isAtLeastS());
         mConnectedNetwork.oemPrivate = true;
         connect();
         expectRegisterNetworkAgent((agentConfig) -> { },
@@ -5454,6 +5466,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     @Test
     public void testNotOemPrivateNetworkCapability() throws Exception {
+        // oemPrivate introduced in S, not applicable to R
+        assumeTrue(SdkLevel.isAtLeastS());
         mConnectedNetwork.oemPrivate = false;
         connect();
         expectRegisterNetworkAgent((agentConfig) -> { },
@@ -5613,6 +5627,8 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void testVenueAndTCUrlsUpdateForPasspointNetworks() throws Exception {
+        // This tests new S functionality/APIs, not applicable to R.
+        assumeTrue(SdkLevel.isAtLeastS());
         setupPasspointConnection();
         when(mPasspointManager.getVenueUrl(any(ScanResult.class))).thenReturn(new URL(VENUE_URL));
         WnmData wnmData = WnmData.createTermsAndConditionsAccetanceRequiredEvent(TEST_BSSID,
