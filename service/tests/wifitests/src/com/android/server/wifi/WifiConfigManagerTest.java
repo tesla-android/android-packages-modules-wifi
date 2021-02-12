@@ -250,7 +250,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         setupStoreDataForRead(new ArrayList<>(), new ArrayList<>());
 
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(false);
+        mockIsDeviceOwner(false);
         when(mWifiPermissionsUtil.isProfileOwner(anyInt(), any())).thenReturn(false);
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
         when(mWifiLastResortWatchdog.shouldIgnoreSsidUpdate()).thenReturn(false);
@@ -285,6 +285,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         when(WifiConfigStore.createUserFiles(anyInt(), anyBoolean())).thenReturn(mock(List.class));
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
         when(mBuildProperties.isUserBuild()).thenReturn(false);
+    }
+
+    private void mockIsDeviceOwner(boolean result) {
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(result);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt())).thenReturn(result);
     }
 
     /**
@@ -723,7 +728,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(true);
+        mockIsDeviceOwner(true);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
 
@@ -787,7 +792,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(true);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(true);
+        mockIsDeviceOwner(true);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
         List<WifiConfiguration> networks = new ArrayList<>();
@@ -819,7 +824,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(false);
+        mockIsDeviceOwner(false);
         WifiConfiguration passpointNetwork = WifiConfigurationTestUtil.createPasspointNetwork();
         // Disable MAC randomization and verify this is added in successfully.
         passpointNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
@@ -850,7 +855,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(false);
+        mockIsDeviceOwner(false);
 
         // Create 2 open networks. One is from suggestion and the other is not.
         WifiConfiguration openNetworkSuggestion = WifiConfigurationTestUtil.createOpenNetwork();
@@ -5057,8 +5062,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
             network = mWifiConfigManager.getConfiguredNetwork(networkId);
         }
         network.setIpConfiguration(ipConfiguration);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any()))
-                .thenReturn(withDeviceOwnerPolicy);
+        mockIsDeviceOwner(withDeviceOwnerPolicy);
         when(mWifiPermissionsUtil.isProfileOwner(anyInt(), any()))
                 .thenReturn(withProfileOwnerPolicy);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt()))
