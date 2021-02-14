@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiConfiguration.RANDOMIZATION_NONE;
+
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
@@ -1192,7 +1194,8 @@ public class WifiConnectivityManager {
                 new ConnectHandler() {
                     @Override
                     public void triggerConnectWhenDisconnected(
-                            WifiConfiguration targetNetwork, String targetBssid) {
+                            WifiConfiguration targetNetwork,
+                            String targetBssid) {
                         triggerConnectToNetworkUsingCmm(primaryManager, targetNetwork, targetBssid);
                         // since using primary manager to connect, stop any existing managers in the
                         // secondary transient role since they are no longer needed.
@@ -1201,15 +1204,32 @@ public class WifiConnectivityManager {
                     }
 
                     @Override
-                    public void triggerConnectWhenConnected(WifiConfiguration targetNetwork,
+                    public void triggerConnectWhenConnected(
+                            WifiConfiguration currentNetwork,
+                            WifiConfiguration targetNetwork,
                             String targetBssid) {
-                        // Use MBB if possible.
-                        triggerConnectToNetworkUsingMbbIfAvailable(
-                                targetNetwork, targetBssid);
+                        // If both the current & target networks have MAC randomization disabled,
+                        // we cannot use MBB because then both ifaces would need to use the exact
+                        // same MAC address (the "designated" factory MAC for the device), which is
+                        // illegal. Fallback to single STA behavior.
+                        if (currentNetwork.macRandomizationSetting == RANDOMIZATION_NONE
+                                && targetNetwork.macRandomizationSetting == RANDOMIZATION_NONE) {
+                            triggerConnectToNetworkUsingCmm(
+                                    primaryManager, targetNetwork, targetBssid);
+                            // since using primary manager to connect, stop any existing managers in
+                            // the secondary transient role since they are no longer needed.
+                            mActiveModeWarden.stopAllClientModeManagersInRole(
+                                    ROLE_CLIENT_SECONDARY_TRANSIENT);
+                            return;
+                        }
+                        // Else, use MBB if available.
+                        triggerConnectToNetworkUsingMbbIfAvailable(targetNetwork, targetBssid);
                     }
 
                     @Override
-                    public void triggerRoamWhenConnected(WifiConfiguration targetNetwork,
+                    public void triggerRoamWhenConnected(
+                            WifiConfiguration currentNetwork,
+                            WifiConfiguration targetNetwork,
                             String targetBssid) {
                         triggerRoamToNetworkUsingCmm(
                                 primaryManager, targetNetwork, targetBssid);
@@ -1239,6 +1259,7 @@ public class WifiConnectivityManager {
 
                     @Override
                     public void triggerConnectWhenConnected(
+                            WifiConfiguration currentNetwork,
                             WifiConfiguration targetNetwork,
                             String targetBssid) {
                         triggerConnectToNetworkUsingCmm(
@@ -1247,6 +1268,7 @@ public class WifiConnectivityManager {
 
                     @Override
                     public void triggerRoamWhenConnected(
+                            WifiConfiguration currentNetwork,
                             WifiConfiguration targetNetwork,
                             String targetBssid) {
                         triggerRoamToNetworkUsingCmm(
@@ -1268,12 +1290,14 @@ public class WifiConnectivityManager {
          * Invoked to trigger connection to a network when connected to a different network.
          */
         void triggerConnectWhenConnected(
-                @NonNull WifiConfiguration targetNetwork, @NonNull String targetBssid);
+                @NonNull WifiConfiguration currentNetwork, @NonNull WifiConfiguration targetNetwork,
+                @NonNull String targetBssid);
         /**
          * Invoked to trigger roam to a specific bssid network when connected to a network.
          */
         void triggerRoamWhenConnected(
-                @NonNull WifiConfiguration targetNetwork, @NonNull String targetBssid);
+                @NonNull WifiConfiguration currentNetwork, @NonNull WifiConfiguration targetNetwork,
+                @NonNull String targetBssid);
     }
 
     private String getAssociationId(@Nullable WifiConfiguration config, @Nullable String bssid) {
@@ -1328,7 +1352,7 @@ public class WifiConnectivityManager {
                 /* || currentNetwork.isLinked(candidate) */)) {
             localLog("connectToNetwork(" + clientModeManager + "): Roam to " + targetAssociationId
                     + " from " + currentAssociationId);
-            connectHandler.triggerRoamWhenConnected(targetNetwork, targetBssid);
+            connectHandler.triggerRoamWhenConnected(currentNetwork, targetNetwork, targetBssid);
             return;
         }
 
@@ -1348,7 +1372,7 @@ public class WifiConnectivityManager {
             connectHandler.triggerConnectWhenDisconnected(targetNetwork, targetBssid);
             return;
         }
-        connectHandler.triggerConnectWhenConnected(targetNetwork, targetBssid);
+        connectHandler.triggerConnectWhenConnected(currentNetwork, targetNetwork, targetBssid);
     }
 
     private boolean shouldConnect() {

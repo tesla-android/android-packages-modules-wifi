@@ -65,4 +65,18 @@ public class ClientModeImplMonitor implements ClientModeImplListener {
             listener.onL3Validated(clientModeManager);
         }
     }
+
+    @Override
+    public void onConnectionStart(@NonNull ConcreteClientModeManager clientModeManager) {
+        for (ClientModeImplListener listener : mListeners) {
+            listener.onConnectionStart(clientModeManager);
+        }
+    }
+
+    @Override
+    public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
+        for (ClientModeImplListener listener : mListeners) {
+            listener.onConnectionEnd(clientModeManager);
+        }
+    }
 }

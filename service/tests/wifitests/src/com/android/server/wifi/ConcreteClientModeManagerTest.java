@@ -114,7 +114,6 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock ScanOnlyModeImpl mScanOnlyModeImpl;
     @Mock DefaultClientModeManager mDefaultClientModeManager;
-    @Mock WifiCountryCode mWifiCountryCode;
     @Mock ClientModeManagerBroadcastQueue mBroadcastQueue;
 
     private RegistrationManager.RegistrationCallback mImsMmTelManagerRegistrationCallback = null;
@@ -256,7 +255,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         return new ConcreteClientModeManager(mContext, mLooper.getLooper(), mClock, mWifiNative,
                 mListener, mWifiMetrics, mWakeupController, mWifiInjector, mSelfRecovery,
                 mWifiGlobals, mDefaultClientModeManager, 0, TEST_WORKSOURCE, role,
-                mBroadcastQueue, false, mWifiCountryCode);
+                mBroadcastQueue, false);
     }
 
     private void startClientInScanOnlyModeAndVerifyEnabled() throws Exception {
