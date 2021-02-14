@@ -16,12 +16,15 @@
 
 package com.android.server.wifi;
 
+import android.content.Context;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.WifiManager;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseBooleanArray;
+
+import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -39,8 +42,10 @@ public class WifiTrafficPoller {
 
     private final SparseBooleanArray mCallbackFirstInvocationTracker = new SparseBooleanArray();
     private final RemoteCallbackList<ITrafficStateCallback> mRegisteredCallbacks;
+    private final Context mContext;
 
-    public WifiTrafficPoller() {
+    public WifiTrafficPoller(Context context) {
+        mContext = context;
         mRegisteredCallbacks = new RemoteCallbackList<>();
     }
 
@@ -73,10 +78,15 @@ public class WifiTrafficPoller {
         long sent = newTxPkts - mTxPkts;
         long received = newRxPkts - mRxPkts;
         int dataActivity = WifiManager.TrafficStateCallback.DATA_ACTIVITY_NONE;
-        if (sent > 0) {
+        int txPacketThreshold = mContext.getResources().getInteger(
+                R.integer.config_wifiTrafficPollerTxPacketThreshold);
+        int rxPacketThreshold = mContext.getResources().getInteger(
+                R.integer.config_wifiTrafficPollerRxPacketThreshold);
+
+        if (sent > txPacketThreshold) {
             dataActivity |= WifiManager.TrafficStateCallback.DATA_ACTIVITY_OUT;
         }
-        if (received > 0) {
+        if (received > rxPacketThreshold) {
             dataActivity |= WifiManager.TrafficStateCallback.DATA_ACTIVITY_IN;
         }
 

@@ -18,11 +18,13 @@ package com.android.server.wifi;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.Context;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
@@ -31,8 +33,11 @@ import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.wifi.resources.R;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -55,6 +60,10 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
     @Mock IBinder mAppBinder2;
     @Mock ITrafficStateCallback mTrafficStateCallback2;
 
+    @Mock private Context mContext;
+    private MockResources mResources;
+    private InOrder mInOrder;
+
     /**
      * Called before each test
      */
@@ -63,8 +72,12 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
         // Ensure looper exists
         mLooper = new TestLooper();
         MockitoAnnotations.initMocks(this);
+        mResources = new MockResources();
+        mResources.setInteger(R.integer.config_wifiTrafficPollerTxPacketThreshold, 5);
+        mResources.setInteger(R.integer.config_wifiTrafficPollerRxPacketThreshold, 9);
+        when(mContext.getResources()).thenReturn(mResources);
 
-        mWifiTrafficPoller = new WifiTrafficPoller();
+        mWifiTrafficPoller = new WifiTrafficPoller(mContext);
 
         // Set the current mTxPkts and mRxPkts to DEFAULT_PACKET_COUNT
         mWifiTrafficPoller.notifyOnDataActivity(DEFAULT_PACKET_COUNT, DEFAULT_PACKET_COUNT);
@@ -86,6 +99,46 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
         verify(mTrafficStateCallback).onStateChanged(
                 WifiManager.TrafficStateCallback.DATA_ACTIVITY_INOUT);
     }
+
+    /**
+     * Verify that Tx/Rx packet count meets the threshold for updating data activity type
+     */
+    @Test
+    public void testDataActivityUpdatePacketThreshold() throws RemoteException {
+        // Register Client to verify that Tx/RX packet message is properly received.
+        mWifiTrafficPoller.addCallback(mTrafficStateCallback);
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT, RX_PACKET_COUNT);
+
+        mInOrder = inOrder(mTrafficStateCallback);
+        // Client should get the DATA_ACTIVITY_NOTIFICATION
+        mInOrder.verify(mTrafficStateCallback).onStateChanged(
+                WifiManager.TrafficStateCallback.DATA_ACTIVITY_INOUT);
+
+        // TxPacket increase below threshold
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 3, RX_PACKET_COUNT);
+        // Client should get the no DATA_ACTIVITY_NOTIFICATION
+        mInOrder.verify(mTrafficStateCallback).onStateChanged(
+                WifiManager.TrafficStateCallback.DATA_ACTIVITY_NONE);
+
+        // TxPacket increase above threshold
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 10, RX_PACKET_COUNT);
+        // called once with OUT
+        mInOrder.verify(mTrafficStateCallback)
+                .onStateChanged(WifiManager.TrafficStateCallback.DATA_ACTIVITY_OUT);
+
+        // RxPacket increase below threshold
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 10, RX_PACKET_COUNT + 6);
+        // Client should get the no DATA_ACTIVITY_NOTIFICATION
+        mInOrder.verify(mTrafficStateCallback).onStateChanged(
+                WifiManager.TrafficStateCallback.DATA_ACTIVITY_NONE);
+
+        // RxPacket increase above threshold
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 10, RX_PACKET_COUNT + 20);
+        // called once with IN
+        mInOrder.verify(mTrafficStateCallback)
+                .onStateChanged(WifiManager.TrafficStateCallback.DATA_ACTIVITY_IN);
+    }
+
 
     /**
      * Verify that remove client should be handled
@@ -158,7 +211,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
 
         // since TX and RX both increased, should still be INOUT. But since it's the same data
         // activity as before, the callback should not be triggered again.
-        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 1, RX_PACKET_COUNT + 1);
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 10, RX_PACKET_COUNT + 10);
 
         // still only called once
         verify(mTrafficStateCallback).onStateChanged(anyInt());
@@ -178,7 +231,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
         verify(mTrafficStateCallback2, never()).onStateChanged(anyInt());
 
         mWifiTrafficPoller.addCallback(mTrafficStateCallback2);
-        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 1, RX_PACKET_COUNT + 1);
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 10, RX_PACKET_COUNT + 10);
 
         // still only called once
         verify(mTrafficStateCallback).onStateChanged(anyInt());
@@ -189,7 +242,7 @@ public class WifiTrafficPollerTest extends WifiBaseTest {
         verify(mTrafficStateCallback2).onStateChanged(anyInt());
 
         // now only TX increased
-        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 2, RX_PACKET_COUNT + 1);
+        mWifiTrafficPoller.notifyOnDataActivity(TX_PACKET_COUNT + 20, RX_PACKET_COUNT + 10);
 
         // called once with OUT
         verify(mTrafficStateCallback)

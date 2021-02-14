@@ -24,8 +24,11 @@ import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
 import static com.android.server.wifi.WifiShellCommand.SHELL_PACKAGE_NAME;
 
+import static junit.framework.Assert.fail;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -45,6 +48,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SupplicantState;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.os.Binder;
@@ -571,6 +575,33 @@ public class WifiShellCommandTest extends WifiBaseTest {
     }
 
     @Test
+    public void testAddSuggestionWithEnhancedMacRandomization() {
+        // default
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-suggestion", "ssid1234", "open"});
+        verify(mWifiService).addNetworkSuggestions(argThat(sL -> {
+            return (sL.size() == 1)
+                    && (sL.get(0).getSsid().equals("ssid1234"))
+                    && (sL.get(0).getWifiConfiguration().macRandomizationSetting
+                    == WifiConfiguration.RANDOMIZATION_PERSISTENT);
+        }), eq(SHELL_PACKAGE_NAME), any());
+
+        // using enhanced MAC randomization.
+        if (SdkLevel.isAtLeastS()) {
+            mWifiShellCommand.exec(
+                    new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                    new String[]{"add-suggestion", "ssid1234", "open", "-r"});
+            verify(mWifiService).addNetworkSuggestions(argThat(sL -> {
+                return (sL.size() == 1)
+                        && (sL.get(0).getSsid().equals("ssid1234"))
+                        && (sL.get(0).getWifiConfiguration().macRandomizationSetting
+                        == WifiConfiguration.RANDOMIZATION_ENHANCED);
+            }), eq(SHELL_PACKAGE_NAME), any());
+        }
+    }
+
+    @Test
     public void testStatus() {
         when(mWifiService.getWifiEnabledState()).thenReturn(WIFI_STATE_ENABLED);
 
@@ -665,5 +696,45 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"set-emergency-call-state", "disabled"});
         verify(mActiveModeWarden).emergencyCallStateChanged(false);
+    }
+
+    @Test
+    public void testConnectNetworkWithNoneMacRandomization() {
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"connect-network", "ssid1234", "open", "-r", "none"});
+        verify(mWifiService).connect(argThat(wifiConfiguration -> {
+            return (wifiConfiguration.SSID.equals("\"ssid1234\"")
+                    && wifiConfiguration.macRandomizationSetting
+                    == WifiConfiguration.RANDOMIZATION_NONE);
+        }), eq(-1), any());
+    }
+
+    @Test
+    public void testConnectNetworkWithEnhancedMacRandomizationOnSAndAbove() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"});
+        verify(mWifiService).connect(argThat(wifiConfiguration -> {
+            return (wifiConfiguration.SSID.equals("\"ssid1234\"")
+                    && wifiConfiguration.macRandomizationSetting
+                    == WifiConfiguration.RANDOMIZATION_ENHANCED);
+        }), eq(-1), any());
+    }
+
+    @Test
+    public void testConnectNetworkWithEnhancedMacRandomizationOnR() {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        try {
+            mWifiShellCommand.exec(
+                    new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                    new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"});
+            fail();
+        } catch (IllegalArgumentException e) {
+            // pass
+        }
     }
 }

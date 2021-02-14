@@ -37,4 +37,18 @@ public interface ClientModeImplListener {
      * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
      */
     default void onL3Validated(@NonNull ConcreteClientModeManager clientModeManager) {}
+
+    /**
+     * Called when a ClientModeImpl starts a new connection attempt.
+     * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
+     */
+    default void onConnectionStart(@NonNull ConcreteClientModeManager clientModeManager) {}
+
+    /**
+     * Called when a ClientModeImpl ends a connection (could be result of disconnect from an active
+     * connection or a connection attempt failure),
+     *
+     * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
+     */
+    default void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {}
 }
