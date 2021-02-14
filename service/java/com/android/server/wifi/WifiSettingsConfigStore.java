@@ -88,6 +88,12 @@ public class WifiSettingsConfigStore {
     public static final Key<Boolean> WIFI_SCORING_ENABLED =
             new Key<>("wifi_scoring_enabled", true);
 
+    /**
+     * Store the STA factory MAC address retrieved from the driver on the first bootup.
+     */
+    public static final Key<String> WIFI_STA_FACTORY_MAC_ADDRESS =
+            new Key<>("wifi_sta_factory_mac_address", null);
+
     /******** Wifi shared pref keys ***************/
 
     private final Context mContext;

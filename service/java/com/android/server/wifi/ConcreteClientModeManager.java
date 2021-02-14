@@ -118,7 +118,6 @@ public class ConcreteClientModeManager implements ClientModeManager {
     private final ClientModeManagerBroadcastQueue mBroadcastQueue;
     private final long mId;
     private final Graveyard mGraveyard = new Graveyard();
-    private final WifiCountryCode mCountryCode;
 
     private String mClientInterfaceName;
     private boolean mIfaceIsUp = false;
@@ -165,8 +164,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             DefaultClientModeManager defaultClientModeManager, long id,
             @NonNull WorkSource requestorWs, @NonNull ClientRole role,
             @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
-            boolean verboseLoggingEnabled,
-            @NonNull WifiCountryCode countryCode) {
+            boolean verboseLoggingEnabled) {
         mContext = context;
         mClock = clock;
         mWifiNative = wifiNative;
@@ -183,7 +181,6 @@ public class ConcreteClientModeManager implements ClientModeManager {
         mTargetRoleChangeInfo = new RoleChangeInfo(role, requestorWs, listener);
         mBroadcastQueue = broadcastQueue;
         enableVerboseLogging(verboseLoggingEnabled);
-        mCountryCode = countryCode;
         mStateMachine.sendMessage(ClientModeStateMachine.CMD_START, mTargetRoleChangeInfo);
     }
 
@@ -920,7 +917,6 @@ public class ConcreteClientModeManager implements ClientModeManager {
                             new RoleChangeInfo(ROLE_CLIENT_SCAN_ONLY);
                 }
                 setRoleInternalAndInvokeCallback(mScanRoleChangeInfoToSetOnTransition);
-                mCountryCode.setReadyForChange(true);
                 mWakeupController.start();
                 mWifiNative.setScanMode(mClientInterfaceName, true);
             }

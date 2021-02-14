@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.content.Context;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -32,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Provide functions for making changes to WiFi country code.
@@ -46,7 +49,19 @@ public class WifiCountryCode {
     private final ActiveModeWarden mActiveModeWarden;
     private List<ChangeListener> mListeners = new ArrayList<>();
     private boolean DBG = false;
-    private boolean mReady = false;
+    /**
+     * Map of active ClientModeManager instance to whether it is ready for country code change.
+     *
+     * - When a new ClientModeManager instance is created, it is added to this map and starts out
+     * ready for any country code changes (value = true).
+     * - When the ClientModeManager instance starts a connection attempt, it is marked not ready for
+     * country code changes (value = false).
+     * - When the ClientModeManager instance ends the connection, it is again marked ready for
+     * country code changes (value = true).
+     * - When the ClientModeManager instance is destroyed, it is removed from this map.
+     */
+    private final Map<ConcreteClientModeManager, Boolean> mCmmToReadyForChangeMap =
+            new ArrayMap<>();
     private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
 
     private String mDefaultCountryCode = null;
@@ -57,13 +72,74 @@ public class WifiCountryCode {
     private String mReadyTimestamp = null;
     private boolean mForceCountryCode = false;
 
+    private class ModeChangeCallbackInternal implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            if (activeModeManager.getRole() instanceof ActiveModeManager.ClientRole) {
+                // Add this CMM for tracking. Interface is up and HAL is initialized at this point.
+                // If this device runs the 1.5 HAL version, use the IWifiChip.setCountryCode()
+                // to set the country code.
+                mCmmToReadyForChangeMap.put((ConcreteClientModeManager) activeModeManager, true);
+                evaluateAllCmmStateAndApplyIfAllReady();
+            }
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            if (mCmmToReadyForChangeMap.remove(activeModeManager)) {
+                // Remove this CMM from tracking.
+                evaluateAllCmmStateAndApplyIfAllReady();
+            }
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            if (activeModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+                // Set this CMM ready for change. This is needed to handle the transition from
+                // ROLE_CLIENT_SCAN_ONLY to ROLE_CLIENT_PRIMARY on devices running older HAL
+                // versions (since the IWifiChip.setCountryCode() was only added in the 1.5 HAL
+                // version, before that we need to wait till supplicant is up for country code
+                // change.
+                mCmmToReadyForChangeMap.put((ConcreteClientModeManager) activeModeManager, true);
+                evaluateAllCmmStateAndApplyIfAllReady();
+            }
+        }
+    }
+
+    private class ClientModeListenerInternal implements ClientModeImplListener {
+        @Override
+        public void onConnectionStart(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (mCmmToReadyForChangeMap.get(clientModeManager) == null) {
+                Log.wtf(TAG, "Connection start received from unknown client mode manager");
+            }
+            // connection start. CMM not ready for country code change.
+            mCmmToReadyForChangeMap.put(clientModeManager, false);
+            evaluateAllCmmStateAndApplyIfAllReady();
+        }
+
+        @Override
+        public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (mCmmToReadyForChangeMap.get(clientModeManager) == null) {
+                Log.wtf(TAG, "Connection end received from unknown client mode manager");
+            }
+            // connection end. CMM ready for country code change.
+            mCmmToReadyForChangeMap.put(clientModeManager, true);
+            evaluateAllCmmStateAndApplyIfAllReady();
+        }
+
+    }
+
     public WifiCountryCode(
             Context context,
             ActiveModeWarden activeModeWarden,
+            ClientModeImplMonitor clientModeImplMonitor,
             String oemDefaultCountryCode) {
         mContext = context;
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         mActiveModeWarden = activeModeWarden;
+
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallbackInternal());
+        clientModeImplMonitor.registerListener(new ClientModeListenerInternal());
 
         if (!TextUtils.isEmpty(oemDefaultCountryCode)) {
             mDefaultCountryCode = oemDefaultCountryCode.toUpperCase(Locale.US);
@@ -105,17 +181,26 @@ public class WifiCountryCode {
     }
 
     /**
-     * Change the state to indicates if wpa_supplicant is ready to handle country code changing
-     * request or not.
-     * We call native code to request country code changes only when wpa_supplicant is
-     * started but not yet L2 connected.
+     * We call native code to request country code changes only if all {@link ClientModeManager}
+     * instances are ready for country code change. Country code is a chip level configuration and
+     * results in all the connections on the chip being disrupted.
+     *
+     * @return true if there are active CMM's and all are ready for country code change.
      */
-    public synchronized void setReadyForChange(boolean ready) {
-        mReady = ready;
-        mReadyTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
-        // We are ready to set country code now.
-        // We need to post pending country code request.
-        if (mReady) {
+    private boolean isReady() {
+        return !mCmmToReadyForChangeMap.isEmpty()
+                && mCmmToReadyForChangeMap.values().stream().allMatch(r -> r);
+    }
+
+    /**
+     * Check all active CMM instances and apply country code change if ready.
+     */
+    private void evaluateAllCmmStateAndApplyIfAllReady() {
+        Log.d(TAG, "evaluateAllCmmStateAndApplyIfAllReady: " + mCmmToReadyForChangeMap);
+        if (isReady()) {
+            mReadyTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
+            // We are ready to set country code now.
+            // We need to post pending country code request.
             initializeTelephonyCountryCodeIfNeeded();
             updateCountryCode();
         }
@@ -138,7 +223,7 @@ public class WifiCountryCode {
 
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
-        if (mReady) {
+        if (isReady()) {
             updateCountryCode();
         } else {
             Log.d(TAG, "skip update supplicant not ready yet");
@@ -154,7 +239,7 @@ public class WifiCountryCode {
 
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
-        if (mReady) {
+        if (isReady()) {
             updateCountryCode();
         } else {
             Log.d(TAG, "skip update supplicant not ready yet");
@@ -193,7 +278,7 @@ public class WifiCountryCode {
         if (!setCountryCode(countryCode)) return false;
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
-        if (mReady) {
+        if (isReady()) {
             updateCountryCode();
         } else {
             Log.d(TAG, "skip update supplicant not ready yet");
@@ -241,7 +326,8 @@ public class WifiCountryCode {
         pw.println("mTelephonyCountryTimestamp: " + mTelephonyCountryTimestamp);
         pw.println("mDriverCountryTimestamp: " + mDriverCountryTimestamp);
         pw.println("mReadyTimestamp: " + mReadyTimestamp);
-        pw.println("mReady: " + mReady);
+        pw.println("isReady: " + isReady());
+        pw.println("mCmmToReadyForChangeMap: " + mCmmToReadyForChangeMap);
     }
 
     private void updateCountryCode() {
@@ -273,12 +359,12 @@ public class WifiCountryCode {
     }
 
     private boolean setCountryCodeNative(String country) {
-        List<ClientModeManager> cmms = mActiveModeWarden.getClientModeManagers();
+        Set<ConcreteClientModeManager> cmms = mCmmToReadyForChangeMap.keySet();
 
         // Set the country code using one of the active client mode managers. Since
         // country code is a chip level global setting, it can be set as long
         // as there is at least one active interface to communicate to Wifi chip
-        for (ClientModeManager cm : cmms) {
+        for (ConcreteClientModeManager cm : cmms) {
             if (cm.setCountryCode(country)) {
                 mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
                 mDriverCountryCode = country;

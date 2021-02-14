@@ -605,6 +605,83 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     }
 
     /**
+     * Verify MBB full flow.
+     */
+    @Test
+    public void connectWhenConnected_UsingMbb() {
+        when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
+
+        ClientModeManager mbbCmm = mock(ClientModeManager.class);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ExternalClientModeManagerRequestListener listener,
+                    WorkSource requestorWs, String ssid, String bssid) {
+                listener.onAnswer(mbbCmm);
+            }
+        }).when(mActiveModeWarden).requestSecondaryTransientClientModeManager(
+                any(), eq(ActiveModeWarden.INTERNAL_REQUESTOR_WS), any(), any());
+
+        // primary CMM already connected
+        when(mPrimaryClientModeManager.getConnectedWifiConfiguration())
+                .thenReturn(mCandidateWifiConfig2);
+
+        // Set screen to on
+        setScreenState(true);
+
+        // Set WiFi to connected state
+        mWifiConnectivityManager.handleConnectionStateChanged(
+                mPrimaryClientModeManager,
+                WifiConnectivityManager.WIFI_STATE_CONNECTED);
+
+        // Request secondary STA and connect using it.
+        verify(mActiveModeWarden).requestSecondaryTransientClientModeManager(
+                any(),
+                eq(ActiveModeWarden.INTERNAL_REQUESTOR_WS),
+                eq(CANDIDATE_SSID),
+                eq(null));
+        verify(mbbCmm).startConnectToNetwork(eq(CANDIDATE_NETWORK_ID), anyInt(), any());
+    }
+
+    /**
+     * Fallback to single STA behavior when both networks have MAC randomization disabled.
+     */
+    @Test
+    public void connectWhenConnected_UsingBbmIfBothNetworksHaveMacRandomizationDisabled() {
+        when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
+
+        ClientModeManager mbbCmm = mock(ClientModeManager.class);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ExternalClientModeManagerRequestListener listener,
+                    WorkSource requestorWs, String ssid, String bssid) {
+                listener.onAnswer(mbbCmm);
+            }
+        }).when(mActiveModeWarden).requestSecondaryTransientClientModeManager(
+                any(), eq(ActiveModeWarden.INTERNAL_REQUESTOR_WS), any(), any());
+
+        // Turn off MAC randomization on both networks.
+        mCandidateWifiConfig1.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
+        mCandidateWifiConfig2.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
+
+        // primary CMM already connected
+        when(mPrimaryClientModeManager.getConnectedWifiConfiguration())
+                .thenReturn(mCandidateWifiConfig2);
+
+        // Set screen to on
+        setScreenState(true);
+
+        // Set WiFi to connected state
+        mWifiConnectivityManager.handleConnectionStateChanged(
+                mPrimaryClientModeManager,
+                WifiConnectivityManager.WIFI_STATE_CONNECTED);
+
+        // Don't request secondary STA, fallback to primary STA.
+        verify(mActiveModeWarden, never()).requestSecondaryTransientClientModeManager(
+                any(), any(), any(), any());
+        verify(mbbCmm, never()).startConnectToNetwork(anyInt(), anyInt(), any());
+        verify(mPrimaryClientModeManager).startConnectToNetwork(
+                eq(CANDIDATE_NETWORK_ID), anyInt(), any());
+    }
+
+    /**
      * Setup all the mocks for the positive case, individual negative test cases below override
      * specific params.
      */
