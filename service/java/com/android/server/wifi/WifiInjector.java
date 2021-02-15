@@ -44,6 +44,7 @@ import android.os.UserManager;
 import android.os.WorkSource;
 import android.provider.Settings.Secure;
 import android.security.keystore.AndroidKeyStoreProvider;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
@@ -295,7 +296,8 @@ public class WifiInjector {
         mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor);
         mWifiP2pNative = new WifiP2pNative(mWifiCondManager, mWifiNative,
                 mWifiVendorHal, mSupplicantP2pIfaceHal, mHalDeviceManager, mPropertyService);
-        mCoexManager = new CoexManager(mContext, makeTelephonyManager(), wifiHandler);
+        mCoexManager = new CoexManager(mContext, makeTelephonyManager(), mContext.getSystemService(
+                CarrierConfigManager.class), wifiHandler);
 
         // Now get instances of all the objects that depend on the HandlerThreads
         mWifiTrafficPoller = new WifiTrafficPoller(mContext);
