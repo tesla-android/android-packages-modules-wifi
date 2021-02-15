@@ -94,6 +94,7 @@ public class CoexManager {
     @NonNull
     private final List<CoexUtils.CoexCellChannel> mCellChannels =
             new ArrayList<CoexUtils.CoexCellChannel>();
+    private boolean mIsUsingMockCellChannels = false;
     @NonNull
     private final Set<CoexUnsafeChannel> mCurrentCoexUnsafeChannels = new HashSet<>();
     private int mCoexRestrictions;
@@ -264,6 +265,9 @@ public class CoexManager {
         @java.lang.Override
         public void onPhysicalChannelConfigChanged(
                 @NonNull List<PhysicalChannelConfig> configs) {
+            if (mIsUsingMockCellChannels) {
+                return;
+            }
             mCellChannels.clear();
             for (PhysicalChannelConfig config : configs) {
                 mCellChannels.add(new CoexUtils.CoexCellChannel(config));
@@ -517,5 +521,32 @@ public class CoexManager {
             Log.e(TAG, "Failed to read coex table file: " + e);
         }
         return false;
+    }
+
+    /**
+     * Sets the mock CoexCellChannels to use for coex calculations.
+     * @param cellChannels list of mock cell channels
+     */
+    public void setMockCellChannels(@NonNull List<CoexUtils.CoexCellChannel> cellChannels) {
+        mIsUsingMockCellChannels = true;
+        mCellChannels.clear();
+        mCellChannels.addAll(cellChannels);
+        updateCoexUnsafeChannels(mCellChannels);
+    }
+
+    /**
+     * Removes all added mock CoexCellChannels.
+     */
+    public void resetMockCellChannels() {
+        mIsUsingMockCellChannels = false;
+        mCellChannels.clear();
+        updateCoexUnsafeChannels(mCellChannels);
+    }
+
+    /**
+     * Returns all cell channels used for coex calculations.
+     */
+    public List<CoexUtils.CoexCellChannel> getCellChannels() {
+        return new ArrayList<>(mCellChannels);
     }
 }

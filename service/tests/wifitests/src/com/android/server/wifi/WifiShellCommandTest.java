@@ -57,6 +57,7 @@ import android.os.Process;
 import androidx.test.filters.SmallTest;
 
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.coex.CoexManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -82,6 +83,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
     @Mock WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     @Mock WifiConfigManager mWifiConfigManager;
     @Mock WifiNative mWifiNative;
+    @Mock CoexManager mCoexManager;
     @Mock HostapdHal mHostapdHal;
     @Mock WifiCountryCode mWifiCountryCode;
     @Mock WifiLastResortWatchdog mWifiLastResortWatchdog;
@@ -108,6 +110,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
         when(mWifiInjector.getWifiConfigManager()).thenReturn(mWifiConfigManager);
         when(mWifiInjector.getHostapdHal()).thenReturn(mHostapdHal);
         when(mWifiInjector.getWifiNative()).thenReturn(mWifiNative);
+        when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
         when(mWifiInjector.getWifiCountryCode()).thenReturn(mWifiCountryCode);
         when(mWifiInjector.getWifiLastResortWatchdog()).thenReturn(mWifiLastResortWatchdog);
         when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
@@ -430,6 +433,70 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 new String[]{"network-requests-has-user-approved", TEST_PACKAGE});
         verify(mWifiNetworkFactory, times(2)).hasUserApprovedApp(TEST_PACKAGE);
         mWifiShellCommand.getOutPrintWriter().toString().contains("no");
+    }
+
+    @Test
+    public void testSetCoexCellChannels() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channels"});
+        verify(mCoexManager, never()).setMockCellChannels(any());
+        assertFalse(mWifiShellCommand.getErrPrintWriter().toString().isEmpty());
+
+        BinderUtil.setUid(Process.ROOT_UID);
+
+        // invalid arg
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channel",
+                        "invalid_band", "40", "2300_000", "2000", "2300000", "2000"});
+        verify(mCoexManager, never()).setMockCellChannels(any());
+        assertFalse(mWifiShellCommand.getErrPrintWriter().toString().isEmpty());
+
+        // invalid arg
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channels",
+                        "invalid_band", "40", "-2300000", "2000", "2300000", "2000"});
+        verify(mCoexManager, never()).setMockCellChannels(any());
+        assertFalse(mWifiShellCommand.getErrPrintWriter().toString().isEmpty());
+
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channels",
+                        "lte", "40", "2300000", "2000", "2300000", "2000"});
+        verify(mCoexManager, times(1)).setMockCellChannels(any());
+
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channels",
+                        "lte", "40", "2300000", "2000", "2300000", "2000",
+                        "lte", "46", "5000000", "2000", "5000000", "2000",
+                        "nr", "20", "700000", "2000", "700000", "2000"});
+        verify(mCoexManager, times(2)).setMockCellChannels(any());
+
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"set-coex-cell-channels"});
+        verify(mCoexManager, times(3)).setMockCellChannels(any());
+    }
+
+    @Test
+    public void testResetCoexCellChannel() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"reset-coex-cell-channels"});
+        verify(mCoexManager, never()).resetMockCellChannels();
+        assertFalse(mWifiShellCommand.getErrPrintWriter().toString().isEmpty());
+
+        BinderUtil.setUid(Process.ROOT_UID);
+
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"reset-coex-cell-channels"});
+        verify(mCoexManager).resetMockCellChannels();
     }
 
     @Test
