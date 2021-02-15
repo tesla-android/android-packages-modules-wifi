@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -88,6 +89,7 @@ import android.net.KeepalivePacketData;
 import android.net.MacAddress;
 import android.net.NattKeepalivePacketData;
 import android.net.apf.ApfCapabilities;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiManager;
@@ -102,6 +104,7 @@ import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
 import com.android.server.wifi.WifiNative.RoamingCapabilities;
@@ -2681,6 +2684,23 @@ public class WifiVendorHalTest extends WifiBaseTest {
         when(mIWifiChipV15.removeIfaceInstanceFromBridgedApIface(any(), any()))
                 .thenReturn(mWifiStatusSuccess);
         assertTrue(mWifiVendorHal.removeIfaceInstanceFromBridgedApIface(any(), any()));
+    }
+
+    /**
+     * Test setCoexUnsafeChannels
+     */
+    @Test
+    public void testSetCoexUnsafeChannels() throws RemoteException {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiVendorHal = new WifiVendorHalSpyV1_5(mContext, mHalDeviceManager, mHandler);
+        when(mIWifiChipV15.setCoexUnsafeChannels(any(), anyInt()))
+                .thenReturn(mWifiStatusSuccess);
+        final Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 6));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36));
+        final int restrictions = WifiManager.COEX_RESTRICTION_WIFI_DIRECT
+                | WifiManager.COEX_RESTRICTION_WIFI_AWARE | WifiManager.COEX_RESTRICTION_SOFTAP;
+        assertTrue(mWifiVendorHal.setCoexUnsafeChannels(unsafeChannels, restrictions));
     }
 
     /**

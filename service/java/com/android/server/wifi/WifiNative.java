@@ -24,6 +24,7 @@ import android.annotation.Nullable;
 import android.net.MacAddress;
 import android.net.TrafficStats;
 import android.net.apf.ApfCapabilities;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAnnotations;
@@ -95,6 +96,8 @@ public class WifiNative {
     private NetdWrapper mNetdWrapper;
     private boolean mVerboseLoggingEnabled = false;
     private boolean mIsEnhancedOpenSupported = false;
+    private final Set<CoexUnsafeChannel> mCachedCoexUnsafeChannels = new HashSet<>();
+    private int mCachedCoexRestrictions;
 
     public WifiNative(WifiVendorHal vendorHal,
                       SupplicantStaIfaceHal staIfaceHal, HostapdHal hostapdHal,
@@ -445,6 +448,10 @@ public class WifiNative {
                     if (!mWifiVendorHal.startVendorHal()) {
                         Log.e(TAG, "Failed to start vendor HAL");
                         return false;
+                    }
+                    if (SdkLevel.isAtLeastS()) {
+                        mWifiVendorHal.setCoexUnsafeChannels(
+                                mCachedCoexUnsafeChannels, mCachedCoexRestrictions);
                     }
                 } else {
                     Log.i(TAG, "Vendor Hal not supported, ignoring start.");
@@ -1951,6 +1958,18 @@ public class WifiNative {
         return mWifiVendorHal.resetApMacToFactoryMacAddress(interfaceName);
     }
 
+    /**
+     * Set the unsafe channels and restrictions to avoid for coex.
+     * @param unsafeChannels Set of {@link CoexUnsafeChannel} to avoid
+     * @param restrictions Bitmask of WifiManager.COEX_RESTRICTION_ flags
+     */
+    public void setCoexUnsafeChannels(
+            @NonNull Set<CoexUnsafeChannel> unsafeChannels, int restrictions) {
+        mCachedCoexUnsafeChannels.clear();
+        mCachedCoexUnsafeChannels.addAll(unsafeChannels);
+        mCachedCoexRestrictions = restrictions;
+        mWifiVendorHal.setCoexUnsafeChannels(mCachedCoexUnsafeChannels, mCachedCoexRestrictions);
+    }
 
     /********************************************************
      * Hostapd operations

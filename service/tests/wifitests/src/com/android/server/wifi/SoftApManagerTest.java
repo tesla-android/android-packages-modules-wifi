@@ -73,6 +73,7 @@ import android.provider.Settings;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.server.wifi.coex.CoexManager;
 import com.android.wifi.resources.R;
 
 import org.junit.Before;
@@ -131,6 +132,10 @@ public class SoftApManagerTest extends WifiBaseTest {
             SoftApInfo.CHANNEL_WIDTH_20MHZ_NOHT;
     private static final int TEST_AP_BANDWIDTH_IN_SOFTAPINFO = SoftApInfo.CHANNEL_WIDTH_20MHZ_NOHT;
     private static final int[] EMPTY_CHANNEL_ARRAY = {};
+    private static final int[] ALLOWED_2G_FREQS = {2462}; //ch# 11
+    private static final int[] ALLOWED_5G_FREQS = {5745, 5765}; //ch# 149, 153
+    private static final int[] ALLOWED_6G_FREQS = {5945, 5965};
+    private static final int[] ALLOWED_60G_FREQS = {58320, 60480}; // ch# 1, 2
     private static final WorkSource TEST_WORKSOURCE = new WorkSource();
     private SoftApConfiguration mDefaultApConfig = createDefaultApConfig();
     private final int mBand256G = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
@@ -148,10 +153,13 @@ public class SoftApManagerTest extends WifiBaseTest {
     private List<WifiClient> mCurrentConnectedTestedClientListOnTestInterface = new ArrayList();
     private List<WifiClient> mCurrentConnectedTestedClientListOnSecondInterface = new ArrayList();
     private SoftApCapability mTestSoftApCapability;
+    private final ArgumentCaptor<CoexManager.CoexListener> mCoexListenerCaptor =
+            ArgumentCaptor.forClass(CoexManager.CoexListener.class);
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
     @Mock WifiNative mWifiNative;
+    @Mock CoexManager mCoexManager;
     @Mock WifiServiceImpl.SoftApCallbackInternal mCallback;
     @Mock ActiveModeManager.Listener<SoftApManager> mListener;
     @Mock FrameworkFacade mFrameworkFacade;
@@ -235,6 +243,14 @@ public class SoftApManagerTest extends WifiBaseTest {
         when(mWifiNative.setApCountryCode(
                 TEST_INTERFACE_NAME, TEST_COUNTRY_CODE.toUpperCase(Locale.ROOT)))
                 .thenReturn(true);
+        when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ))
+                .thenReturn(ALLOWED_2G_FREQS);
+        when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
+                .thenReturn(ALLOWED_5G_FREQS);
+        when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_6_GHZ))
+                .thenReturn(ALLOWED_6G_FREQS);
+        when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_60_GHZ))
+                .thenReturn(ALLOWED_60G_FREQS);
         when(mWifiNative.getApFactoryMacAddress(any())).thenReturn(TEST_INTERFACE_MAC_ADDRESS);
         when(mWifiApConfigStore.randomizeBssidIfUnset(any(), any())).thenAnswer(
                 (invocation) -> invocation.getArgument(1));
@@ -285,6 +301,7 @@ public class SoftApManagerTest extends WifiBaseTest {
                 mLooper.getLooper(),
                 mFrameworkFacade,
                 mWifiNative,
+                mCoexManager,
                 countryCode,
                 mListener,
                 mCallback,
@@ -576,7 +593,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
     /**
      * Tests that the NO_CHANNEL error is propagated and properly reported when starting softap and
-     * a valid channel cannot be determined.
+     * a valid channel cannot be determined from WifiNative.
      */
     @Test
     public void startSoftApFailNoChannel() throws Exception {
@@ -590,7 +607,6 @@ public class SoftApManagerTest extends WifiBaseTest {
 
         when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
                 .thenReturn(EMPTY_CHANNEL_ARRAY);
-        when(mWifiNative.isHalStarted()).thenReturn(true);
 
         mSoftApManager = createSoftApManager(softApConfig, TEST_COUNTRY_CODE, ROLE_SOFTAP_TETHERED);
 

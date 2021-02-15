@@ -62,6 +62,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiBaseTest;
+import com.android.server.wifi.WifiNative;
 import com.android.wifi.resources.R;
 
 import org.junit.Before;
@@ -105,6 +106,7 @@ public class CoexManagerTest extends WifiBaseTest {
 
     @Mock private Context mMockContext;
     @Mock private Resources mMockResources;
+    @Mock private WifiNative mMockWifiNative;
     @Mock private TelephonyManager mMockTelephonyManager;
     @Mock private CarrierConfigManager mMockCarrierConfigManager;
     private PersistableBundle mUnrestrictedBundle = new PersistableBundle();
@@ -115,9 +117,9 @@ public class CoexManagerTest extends WifiBaseTest {
             ArgumentCaptor.forClass(BroadcastReceiver.class);
 
     private CoexManager createCoexManager() {
-        final CoexManager coexManager = new CoexManager(mMockContext, mMockTelephonyManager,
-                mMockCarrierConfigManager,
-                new Handler(mTestLooper.getLooper()));
+        final CoexManager coexManager = new CoexManager(mMockContext, mMockWifiNative,
+                mMockTelephonyManager,
+                mMockCarrierConfigManager, new Handler(mTestLooper.getLooper()));
         return coexManager;
     }
 
@@ -234,6 +236,22 @@ public class CoexManagerTest extends WifiBaseTest {
 
         assertThat(coexManager.getCoexUnsafeChannels()).containsExactlyElementsIn(unsafeChannels);
         assertThat(coexManager.getCoexRestrictions()).isEqualTo(restrictions);
+    }
+
+    /**
+     * Verifies that setCoexUnsafeChannels notifies WifiNative with the set values.
+     */
+    @Test
+    public void testSetCoexUnsafeChannels_notifiesWifiVendorHal() {
+        CoexManager coexManager = createCoexManager();
+        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36));
+        final int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
+                | COEX_RESTRICTION_WIFI_AWARE;
+        coexManager.setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        verify(mMockWifiNative).setCoexUnsafeChannels(unsafeChannels, restrictions);
     }
 
     /**
