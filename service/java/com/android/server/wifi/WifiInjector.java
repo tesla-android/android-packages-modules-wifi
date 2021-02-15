@@ -296,8 +296,8 @@ public class WifiInjector {
         mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor);
         mWifiP2pNative = new WifiP2pNative(mWifiCondManager, mWifiNative,
                 mWifiVendorHal, mSupplicantP2pIfaceHal, mHalDeviceManager, mPropertyService);
-        mCoexManager = new CoexManager(mContext, makeTelephonyManager(), mContext.getSystemService(
-                CarrierConfigManager.class), wifiHandler);
+        mCoexManager = new CoexManager(mContext, mWifiNative, makeTelephonyManager(),
+                mContext.getSystemService(CarrierConfigManager.class), wifiHandler);
 
         // Now get instances of all the objects that depend on the HandlerThreads
         mWifiTrafficPoller = new WifiTrafficPoller(mContext);
@@ -672,8 +672,8 @@ public class WifiInjector {
             @NonNull ActiveModeManager.SoftApRole role,
             boolean verboseLoggingEnabled) {
         return new SoftApManager(mContext, mWifiHandlerThread.getLooper(),
-                mFrameworkFacade, mWifiNative, mCountryCode.getCountryCode(), listener, callback,
-                mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
+                mFrameworkFacade, mWifiNative, mCoexManager, mCountryCode.getCountryCode(),
+                listener, callback, mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
                 new SoftApNotifier(mContext, mFrameworkFacade),
                 mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
     }

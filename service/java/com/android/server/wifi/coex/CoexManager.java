@@ -60,6 +60,7 @@ import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.WifiNative;
 import com.android.wifi.resources.R;
 
 import java.io.BufferedInputStream;
@@ -97,6 +98,8 @@ public class CoexManager {
     @NonNull
     private final Context mContext;
     @NonNull
+    private final WifiNative mWifiNative;
+    @NonNull
     private final TelephonyManager mTelephonyManager;
     @NonNull
     private final CarrierConfigManager mCarrierConfigManager;
@@ -132,10 +135,12 @@ public class CoexManager {
     boolean mIs5gSoftApAvoidedForLaa = false;
     boolean mIs5gWifiDirectAvoidedForLaa = false;
 
-    public CoexManager(@NonNull Context context, @NonNull TelephonyManager telephonyManager,
-            @NonNull CarrierConfigManager carrierConfigManager,
-            @NonNull Handler handler) {
+    public CoexManager(@NonNull Context context,
+            @NonNull WifiNative wifiNative,
+            @NonNull TelephonyManager telephonyManager,
+            @NonNull CarrierConfigManager carrierConfigManager, @NonNull Handler handler) {
         mContext = context;
+        mWifiNative = wifiNative;
         mTelephonyManager = telephonyManager;
         mCarrierConfigManager = carrierConfigManager;
         if (!SdkLevel.isAtLeastS()) {
@@ -201,6 +206,7 @@ public class CoexManager {
         mCurrentCoexUnsafeChannels.clear();
         mCurrentCoexUnsafeChannels.addAll(coexUnsafeChannels);
         mCoexRestrictions = coexRestrictions;
+        mWifiNative.setCoexUnsafeChannels(mCurrentCoexUnsafeChannels, mCoexRestrictions);
         notifyListeners();
         notifyRemoteCallbacks();
     }

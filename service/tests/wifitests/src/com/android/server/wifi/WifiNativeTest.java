@@ -16,6 +16,9 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
+import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,10 +34,12 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.net.MacAddress;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiScanner;
@@ -49,6 +54,7 @@ import android.os.WorkSource;
 import androidx.test.filters.SmallTest;
 
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.NetdWrapper;
 
@@ -61,6 +67,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -241,6 +248,7 @@ public class WifiNativeTest extends WifiBaseTest {
     @Mock private Random mRandom;
     @Mock private WifiInjector mWifiInjector;
     @Mock private NetdWrapper mNetdWrapper;
+    @Mock private CoexManager mCoexManager;
     @Mock private WifiNative.InterfaceCallback mInterfaceCallback;
 
     ArgumentCaptor<WifiNl80211Manager.ScanEventCallback> mScanCallbackCaptor =
@@ -269,6 +277,7 @@ public class WifiNativeTest extends WifiBaseTest {
         when(mStaIfaceHal.setupIface(any())).thenReturn(true);
 
         when(mWifiInjector.makeNetdWrapper()).thenReturn(mNetdWrapper);
+        when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
 
         mWifiNative = new WifiNative(
                 mWifiVendorHal, mStaIfaceHal, mHostapdHal, mWificondControl,
@@ -704,6 +713,31 @@ public class WifiNativeTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementPnoScanFailedCount();
     }
 
+    /**
+     * Verifies starting the hal results in coex unsafe channels being updated with cached values.
+     */
+    @Test
+    public void testStartHalUpdatesCoexUnsafeChannels() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        final Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36));
+        final int restrictions = 0;
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(unsafeChannels);
+        when(mCoexManager.getCoexRestrictions()).thenReturn(restrictions);
+        mWifiNative.setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
+        verify(mWifiVendorHal, times(2)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.teardownAllInterfaces();
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
+        verify(mWifiVendorHal, times(3)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.teardownAllInterfaces();
+        mWifiNative.setupInterfaceForSoftApMode(null, TEST_WORKSOURCE, WIFI_BAND_24_GHZ, false);
+        verify(mWifiVendorHal, times(4)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+    }
 
     /**
      * Verifies that signalPoll() calls underlying WificondControl.
@@ -922,6 +956,16 @@ public class WifiNativeTest extends WifiBaseTest {
     public void testResetApMacToFactoryMacAddress() throws Exception {
         mWifiNative.resetApMacToFactoryMacAddress(WIFI_IFACE_NAME);
         verify(mWifiVendorHal).resetApMacToFactoryMacAddress(WIFI_IFACE_NAME);
+    }
+
+    /**
+     * Verifies that setCoexUnsafeChannels() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testSetCoexUnsafeChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiNative.setCoexUnsafeChannels(Collections.emptySet(), 0);
+        verify(mWifiVendorHal).setCoexUnsafeChannels(Collections.emptySet(), 0);
     }
 
     /**

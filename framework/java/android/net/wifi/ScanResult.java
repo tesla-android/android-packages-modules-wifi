@@ -813,6 +813,8 @@ public final class ScanResult implements Parcelable {
                 return 2;
             }
             return ((freqMhz - BAND_6_GHZ_START_FREQ_MHZ) / 5) + BAND_6_GHZ_FIRST_CH_NUM;
+        } else if (is60GHz(freqMhz)) {
+            return ((freqMhz - BAND_60_GHZ_START_FREQ_MHZ) / 2160) + BAND_60_GHZ_FIRST_CH_NUM;
         }
 
         return UNSPECIFIED;
