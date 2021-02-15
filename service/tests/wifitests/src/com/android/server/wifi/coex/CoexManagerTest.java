@@ -72,6 +72,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -514,6 +515,43 @@ public class CoexManagerTest extends WifiBaseTest {
                 + CHANNEL_SET_5_GHZ_160_MHZ.size() - 1);
         assertThat(coexManager.getCoexUnsafeChannels()).doesNotContain(
                 new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36, -50));
+    }
+
+    /**
+     * Verifies that added mock cell channels are used instead of real channels to calculate unsafe
+     * channels until the mock cell channels are reset.
+     */
+    @Test
+    public void testGetCoexUnsafeChannels_mockCellChannelsAdded_mockCellChannelsUsed()
+            throws Exception {
+        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
+                .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        CoexManager coexManager = createCoexManager();
+        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
+        verify(mMockTelephonyManager).registerPhoneStateListener(any(Executor.class),
+                phoneStateListenerCaptor.capture());
+
+        // Mock channels set.
+        coexManager.setMockCellChannels(Arrays.asList(
+                new CoexUtils.CoexCellChannel(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)));
+        // Real channels changed.
+        phoneStateListenerCaptor.getValue()
+                .onPhysicalChannelConfigChanged(Collections.emptyList());
+
+        // Real channels should be ignored while mock channels are set/
+        assertThat(coexManager.getCoexUnsafeChannels()).containsExactly(
+                new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 1, -50),
+                new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 2, -50),
+                new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 3, -50),
+                new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 4, -50),
+                new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 5, -50)
+        );
+
+        coexManager.resetMockCellChannels();
+
+        // Real channels should be used when mock channels are reset.
+        assertThat(coexManager.getCoexUnsafeChannels()).isEmpty();
     }
 
     /**
