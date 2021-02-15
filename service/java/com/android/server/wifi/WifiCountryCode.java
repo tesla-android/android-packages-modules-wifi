@@ -86,7 +86,7 @@ public class WifiCountryCode {
 
         @Override
         public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
-            if (mCmmToReadyForChangeMap.remove(activeModeManager)) {
+            if (mCmmToReadyForChangeMap.remove(activeModeManager) != null) {
                 // Remove this CMM from tracking.
                 evaluateAllCmmStateAndApplyIfAllReady();
             }
