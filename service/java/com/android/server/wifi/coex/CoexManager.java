@@ -36,17 +36,24 @@ import static com.android.server.wifi.coex.CoexUtils.getIntermodCoexUnsafeChanne
 import static com.android.server.wifi.coex.CoexUtils.getNeighboringCoexUnsafeChannels;
 
 import android.annotation.NonNull;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.CoexRestriction;
 import android.os.Handler;
 import android.os.HandlerExecutor;
+import android.os.PersistableBundle;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.telephony.AccessNetworkConstants;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.util.Pair;
@@ -92,6 +99,8 @@ public class CoexManager {
     @NonNull
     private final TelephonyManager mTelephonyManager;
     @NonNull
+    private final CarrierConfigManager mCarrierConfigManager;
+    @NonNull
     private final List<CoexUtils.CoexCellChannel> mCellChannels =
             new ArrayList<CoexUtils.CoexCellChannel>();
     private boolean mIsUsingMockCellChannels = false;
@@ -108,21 +117,39 @@ public class CoexManager {
     @NonNull
     private final Map<Integer, Entry> mNrTableEntriesByBand = new HashMap<>();
 
-    private CoexPhoneStateListener mCoexPhoneStateListener;
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @java.lang.Override
+        public void onReceive(Context context, Intent intent) {
+            if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED
+                    .equals(intent.getAction())) {
+                if (updateCarrierConfigs(mActiveDataSubId)) {
+                    updateCoexUnsafeChannels(mCellChannels);
+                }
+            }
+        }
+    };
+    int mActiveDataSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    boolean mIs5gSoftApAvoidedForLaa = false;
+    boolean mIs5gWifiDirectAvoidedForLaa = false;
 
     public CoexManager(@NonNull Context context, @NonNull TelephonyManager telephonyManager,
+            @NonNull CarrierConfigManager carrierConfigManager,
             @NonNull Handler handler) {
         mContext = context;
         mTelephonyManager = telephonyManager;
+        mCarrierConfigManager = carrierConfigManager;
         if (!SdkLevel.isAtLeastS()) {
             return;
         }
-        if (mContext.getResources().getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled)
-                && readTableFromXml()) {
-            mCoexPhoneStateListener = new CoexPhoneStateListener(new HandlerExecutor(handler));
-            mTelephonyManager.registerPhoneStateListener(new HandlerExecutor(handler),
-                    mCoexPhoneStateListener);
+        if (!mContext.getResources().getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled)
+                || !readTableFromXml()) {
+            return;
         }
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        context.registerReceiver(mBroadcastReceiver, filter, null, handler);
+        mTelephonyManager.registerPhoneStateListener(new HandlerExecutor(handler),
+                new CoexPhoneStateListener());
     }
 
     /**
@@ -257,11 +284,8 @@ public class CoexManager {
 
     @VisibleForTesting
     /* package */ class CoexPhoneStateListener extends PhoneStateListener
-            implements PhoneStateListener.PhysicalChannelConfigChangedListener {
-        private CoexPhoneStateListener(Executor executor) {
-            super(executor);
-        }
-
+            implements PhoneStateListener.PhysicalChannelConfigChangedListener,
+                    PhoneStateListener.ActiveDataSubscriptionIdChangedListener {
         @java.lang.Override
         public void onPhysicalChannelConfigChanged(
                 @NonNull List<PhysicalChannelConfig> configs) {
@@ -273,6 +297,14 @@ public class CoexManager {
                 mCellChannels.add(new CoexUtils.CoexCellChannel(config));
             }
             updateCoexUnsafeChannels(mCellChannels);
+        }
+
+        @java.lang.Override
+        public void onActiveDataSubscriptionIdChanged(int subId) {
+            mActiveDataSubId = subId;
+            if (updateCarrierConfigs(mActiveDataSubId)) {
+                updateCoexUnsafeChannels(mCellChannels);
+            }
         }
     }
 
@@ -286,6 +318,8 @@ public class CoexManager {
         int numUnsafe5gChannels = 0;
         int default2gChannel = Integer.MAX_VALUE;
         int default5gChannel = Integer.MAX_VALUE;
+        boolean isEntire2gBandUnsafe = false;
+        boolean isEntire5gBandUnsafe = false;
         int coexRestrictions = 0;
         Map<Pair<Integer, Integer>, CoexUnsafeChannel> coexUnsafeChannelsByBandChannelPair =
                 new HashMap<>();
@@ -306,6 +340,22 @@ public class CoexManager {
                 continue;
             }
             final Set<CoexUnsafeChannel> currentBandUnsafeChannels = new HashSet<>();
+            // Set coex restrictions for LAA based on carrier config values.
+            if (cellChannel.getRat() == NETWORK_TYPE_LTE
+                    && cellChannel.getBand() == AccessNetworkConstants.EutranBand.BAND_46) {
+                if (mIs5gSoftApAvoidedForLaa || mIs5gWifiDirectAvoidedForLaa) {
+                    for (int channel : CHANNEL_SET_5_GHZ) {
+                        currentBandUnsafeChannels.add(
+                                new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel));
+                    }
+                    if (mIs5gSoftApAvoidedForLaa) {
+                        coexRestrictions |= COEX_RESTRICTION_SOFTAP;
+                    }
+                    if (mIs5gWifiDirectAvoidedForLaa) {
+                        coexRestrictions |= COEX_RESTRICTION_WIFI_DIRECT;
+                    }
+                }
+            }
             final Params params = entry.getParams();
             final Override override = entry.getOverride();
             if (params != null) {
@@ -337,21 +387,22 @@ public class CoexManager {
                                 uplinkBandwidthKhz,
                                 neighborThresholds.getWifiVictimMhz() * 1000));
                     }
-                    if (harmonicParams2g != null) {
+                    if (harmonicParams2g != null && !isEntire2gBandUnsafe) {
                         currentBandUnsafeChannels.addAll(get2gHarmonicCoexUnsafeChannels(
                                 uplinkFreqKhz,
                                 uplinkBandwidthKhz,
                                 harmonicParams2g.getN(),
                                 harmonicParams2g.getOverlap()));
                     }
-                    if (harmonicParams5g != null) {
+                    if (harmonicParams5g != null && !isEntire5gBandUnsafe) {
                         currentBandUnsafeChannels.addAll(get5gHarmonicCoexUnsafeChannels(
                                 uplinkFreqKhz,
                                 uplinkBandwidthKhz,
                                 harmonicParams5g.getN(),
                                 harmonicParams5g.getOverlap()));
                     }
-                    if (intermodParams2g != null) {
+
+                    if (intermodParams2g != null && !isEntire2gBandUnsafe) {
                         for (CoexUtils.CoexCellChannel victimCellChannel : cellChannels) {
                             if (victimCellChannel.getDownlinkFreqKhz() >= 0
                                     && victimCellChannel.getDownlinkBandwidthKhz() > 0) {
@@ -367,7 +418,7 @@ public class CoexManager {
                             }
                         }
                     }
-                    if (intermodParams5g != null) {
+                    if (intermodParams5g != null && !isEntire5gBandUnsafe) {
                         for (CoexUtils.CoexCellChannel victimCellChannel : cellChannels) {
                             if (victimCellChannel.getDownlinkFreqKhz() >= 0
                                     && victimCellChannel.getDownlinkBandwidthKhz() > 0) {
@@ -403,13 +454,14 @@ public class CoexManager {
             } else if (override != null) {
                 // Add all of the CoexUnsafeChannels defined by the override lists.
                 final Override2g override2g = override.getOverride2g();
-                if (override2g != null) {
+                if (override2g != null && !isEntire2gBandUnsafe) {
                     final List<Integer> channelList2g = override2g.getChannel();
                     for (OverrideCategory2g category : override2g.getCategory()) {
                         if (OverrideCategory2g.all.equals(category)) {
                             for (int i = 1; i <= 14; i++) {
                                 channelList2g.add(i);
                             }
+                            isEntire2gBandUnsafe = true;
                         }
                     }
                     for (int channel : channelList2g) {
@@ -418,7 +470,7 @@ public class CoexManager {
                     }
                 }
                 final Override5g override5g = override.getOverride5g();
-                if (override5g != null) {
+                if (override5g != null && !isEntire5gBandUnsafe) {
                     final List<Integer> channelList5g = override5g.getChannel();
                     for (OverrideCategory5g category : override5g.getCategory()) {
                         if (OverrideCategory5g._20Mhz.equals(category)) {
@@ -431,6 +483,7 @@ public class CoexManager {
                             channelList5g.addAll(CHANNEL_SET_5_GHZ_160_MHZ);
                         } else if (OverrideCategory5g.all.equals(category)) {
                             channelList5g.addAll(CHANNEL_SET_5_GHZ);
+                            isEntire5gBandUnsafe = true;
                         }
                     }
                     for (int channel : channelList5g) {
@@ -488,6 +541,25 @@ public class CoexManager {
         }
         setCoexUnsafeChannels(new HashSet<>(coexUnsafeChannelsByBandChannelPair.values()),
                 coexRestrictions);
+    }
+
+    /**
+     * Updates carrier config values and returns true if the values have changed, false otherwise.
+     */
+    private boolean updateCarrierConfigs(int subId) {
+        final boolean oldAvoidSoftAp = mIs5gSoftApAvoidedForLaa;
+        final boolean oldAvoidWifiDirect = mIs5gWifiDirectAvoidedForLaa;
+        mIs5gSoftApAvoidedForLaa = false;
+        mIs5gWifiDirectAvoidedForLaa = false;
+        PersistableBundle bundle = mCarrierConfigManager.getConfigForSubId(subId);
+        if (bundle != null) {
+            mIs5gSoftApAvoidedForLaa = bundle.getBoolean(
+                    CarrierConfigManager.Wifi.KEY_AVOID_5GHZ_SOFTAP_FOR_LAA_BOOL);
+            mIs5gWifiDirectAvoidedForLaa = bundle.getBoolean(
+                    CarrierConfigManager.Wifi.KEY_AVOID_5GHZ_WIFI_DIRECT_FOR_LAA_BOOL);
+        }
+        return (oldAvoidSoftAp != mIs5gSoftApAvoidedForLaa
+                || oldAvoidWifiDirect != mIs5gWifiDirectAvoidedForLaa);
     }
 
     /**
