@@ -3246,6 +3246,8 @@ public class WifiManager {
      * Registers a {@link SubsystemRestartTrackingCallback} to listen to Wi-Fi subsystem restarts.
      * The subsystem may restart due to internal recovery mechanisms or via user action.
      *
+     * @see #unregisterSubsystemRestartTrackingCallback(SubsystemRestartTrackingCallback)
+     *
      * @param executor Executor to execute callback on
      * @param callback {@link SubsystemRestartTrackingCallback} to register
      */
@@ -3272,7 +3274,7 @@ public class WifiManager {
      * @param callback {@link SubsystemRestartTrackingCallback} to unregister
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
-    public void unregisterWifiSubsystemRestartTrackingCallback(
+    public void unregisterSubsystemRestartTrackingCallback(
             @NonNull SubsystemRestartTrackingCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback must not be null");
         SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy proxy = callback.getProxy();
