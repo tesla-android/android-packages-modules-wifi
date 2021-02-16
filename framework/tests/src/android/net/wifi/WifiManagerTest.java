@@ -448,7 +448,7 @@ public class WifiManagerTest {
         mWifiManager.registerSubsystemRestartTrackingCallback(new SynchronousExecutor(),
                 mRestartCallback);
         verify(mWifiService).registerSubsystemRestartCallback(callbackCaptor.capture());
-        mWifiManager.unregisterWifiSubsystemRestartTrackingCallback(mRestartCallback);
+        mWifiManager.unregisterSubsystemRestartTrackingCallback(mRestartCallback);
         verify(mWifiService).unregisterSubsystemRestartCallback(callbackCaptor.capture());
         callbackCaptor.getValue().onSubsystemRestarting();
         verify(mRunnable, never()).run();
