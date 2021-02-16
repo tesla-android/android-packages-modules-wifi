@@ -63,3 +63,10 @@ android_app_certificate {
     name: "com.android.wifi.certificate",
     certificate: "com.android.wifi",
 }
+
+sdk {
+    name: "wifi-module-sdk",
+    java_sdk_libs: [
+        "framework-wifi",
+    ],
+}
