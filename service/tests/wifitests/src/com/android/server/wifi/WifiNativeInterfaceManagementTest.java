@@ -46,6 +46,7 @@ import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiNative.SupplicantDeathEventHandler;
 import com.android.server.wifi.WifiNative.VendorHalDeathEventHandler;
@@ -893,6 +894,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -915,6 +919,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -943,6 +950,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -978,6 +988,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -1033,6 +1046,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
         mInOrder.verify(mHostapdHal).startDaemon();
@@ -1055,6 +1071,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
         mInOrder.verify(mHostapdHal).startDaemon();
@@ -1082,6 +1101,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).startVendorHal();
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+        }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
         mInOrder.verify(mHostapdHal).startDaemon();
@@ -1431,6 +1453,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         if (!existingStaIface && !existingApIface) {
             mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
             mInOrder.verify(mWifiVendorHal).startVendorHal();
+            if (SdkLevel.isAtLeastS()) {
+                mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+            }
         }
         if (!existingStaIface) {
             mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
@@ -1518,6 +1543,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         if (!existingStaIface && !existingApIface) {
             mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
             mInOrder.verify(mWifiVendorHal).startVendorHal();
+            if (SdkLevel.isAtLeastS()) {
+                mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+            }
         }
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
         mInOrder.verify(mWifiVendorHal).createStaIface(
@@ -1604,6 +1632,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         if (!existingStaIface && !existingApIface) {
             mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
             mInOrder.verify(mWifiVendorHal).startVendorHal();
+            if (SdkLevel.isAtLeastS()) {
+                mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
+            }
         }
         if (!existingApIface) {
             mInOrder.verify(mHostapdHal).isInitializationStarted();

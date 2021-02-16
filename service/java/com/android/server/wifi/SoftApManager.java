@@ -52,6 +52,8 @@ import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative.InterfaceCallback;
 import com.android.server.wifi.WifiNative.SoftApListener;
+import com.android.server.wifi.coex.CoexManager;
+import com.android.server.wifi.coex.CoexManager.CoexListener;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.wifi.resources.R;
 
@@ -87,6 +89,7 @@ public class SoftApManager implements ActiveModeManager {
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
     private final WifiNative mWifiNative;
+    private final CoexManager mCoexManager;
 
     private final SoftApNotifier mSoftApNotifier;
 
@@ -201,11 +204,23 @@ public class SoftApManager implements ActiveModeManager {
         }
     };
 
+    private final CoexListener mCoexListener = new CoexListener() {
+        @Override
+        public void onCoexUnsafeChannelsChanged() {
+            final SoftApConfiguration config = mApConfig.getSoftApConfiguration();
+            if (config == null) {
+                return;
+            }
+            // TODO: (AP+AP) Shut down hard unsafe 5GHz AP if there is already a 2.4GHz AP
+        }
+    };
+
     public SoftApManager(
             @NonNull WifiContext context,
             @NonNull Looper looper,
             @NonNull FrameworkFacade framework,
             @NonNull WifiNative wifiNative,
+            @NonNull CoexManager coexManager,
             String countryCode,
             @NonNull Listener<SoftApManager> listener,
             @NonNull WifiServiceImpl.SoftApCallbackInternal callback,
@@ -222,6 +237,7 @@ public class SoftApManager implements ActiveModeManager {
         mFrameworkFacade = framework;
         mSoftApNotifier = softApNotifier;
         mWifiNative = wifiNative;
+        mCoexManager = coexManager;
         mCountryCode = countryCode;
         mModeListener = listener;
         mSoftApCallback = callback;
@@ -493,8 +509,8 @@ public class SoftApManager implements ActiveModeManager {
                 SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD);
 
         result = ApConfigUtil.updateApChannelConfig(
-                mWifiNative, mContext.getResources(), mCountryCode, localConfigBuilder, config,
-                acsEnabled);
+                mWifiNative, mCoexManager, mContext.getResources(), mCountryCode,
+                localConfigBuilder, config, acsEnabled);
         if (result != SUCCESS) {
             Log.e(getTag(), "Failed to update AP band and channel");
             return result;
@@ -1068,6 +1084,7 @@ public class SoftApManager implements ActiveModeManager {
                         SOFT_AP_SEND_MESSAGE_IDLE_IN_BRIDGED_MODE_TIMEOUT_TAG,
                         SoftApStateMachine.CMD_NO_ASSOCIATED_STATIONS_TIMEOUT_ON_ONE_INSTANCE);
 
+                mCoexManager.registerCoexListener(mCoexListener);
                 Log.d(getTag(), "Resetting connected clients on start");
                 mConnectedClientWithApInfoMap.clear();
                 mPendingDisconnectClients.clear();
@@ -1081,6 +1098,7 @@ public class SoftApManager implements ActiveModeManager {
                     stopSoftAp();
                 }
 
+                mCoexManager.unregisterCoexListener(mCoexListener);
                 if (getConnectedClientList().size() != 0) {
                     Log.d(getTag(), "Resetting num stations on stop");
                     mConnectedClientWithApInfoMap.clear();

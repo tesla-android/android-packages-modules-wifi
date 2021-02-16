@@ -162,6 +162,42 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         assertEquals(mTelephonyCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
     }
 
+
+    /**
+     * Test if we receive country code from Telephony after supplicant stop.
+     * @throws Exception
+     */
+    @Test
+    public void telephonyCountryCodeChangeAfterSupplicantStop() throws Exception {
+        // Start in scan only mode.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mClientModeManager);
+        assertEquals(mDefaultCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
+
+        // Supplicant starts.
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(mClientModeManager);
+        assertEquals(mDefaultCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
+
+        // Telephony country code arrives.
+        mWifiCountryCode.setCountryCodeAndUpdate(mTelephonyCountryCode);
+        // Wifi get L2 connected.
+        mClientModeImplListenerCaptor.getValue().onConnectionStart(mClientModeManager);
+
+        verify(mClientModeManager, times(3)).setCountryCode(anyString());
+        assertEquals(mTelephonyCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
+
+        // Remove mode manager.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mClientModeManager);
+
+        // Send Telephony country code again - should be ignored.
+        mWifiCountryCode.setCountryCodeAndUpdate(mTelephonyCountryCode);
+        verify(mClientModeManager, times(3)).setCountryCode(anyString());
+        assertEquals(mTelephonyCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
+
+        // Now try removing the mode manager again - should not crash.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mClientModeManager);
+    }
+
     /**
      * Test if we receive country code from Telephony after we get L2 connected.
      * @throws Exception

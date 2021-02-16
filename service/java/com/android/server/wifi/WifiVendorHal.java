@@ -630,6 +630,79 @@ public class WifiVendorHal {
         }
     }
 
+    @NonNull
+    private ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel>
+            frameworkCoexUnsafeChannelsToHidl(
+                    @NonNull Set<android.net.wifi.CoexUnsafeChannel> frameworkUnsafeChannels) {
+        final ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel> hidlList =
+                new ArrayList<>();
+        for (android.net.wifi.CoexUnsafeChannel frameworkUnsafeChannel : frameworkUnsafeChannels) {
+            final android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel hidlUnsafeChannel =
+                    new android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel();
+            switch (frameworkUnsafeChannel.getBand()) {
+                case (WifiScanner.WIFI_BAND_24_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_24GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_5_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_5GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_6_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_6GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_60_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_60GHZ;
+                    break;
+                default:
+                    mLog.err("Tried to set unsafe channel with unknown band: "
+                            + frameworkUnsafeChannel.getBand()).flush();
+                    continue;
+            }
+            hidlUnsafeChannel.channel = frameworkUnsafeChannel.getChannel();
+            if (frameworkUnsafeChannel.isPowerCapAvailable()) {
+                hidlUnsafeChannel.powerCapDbm = frameworkUnsafeChannel.getPowerCapDbm();
+            } else {
+                hidlUnsafeChannel.powerCapDbm =
+                        android.hardware.wifi.V1_5.IWifiChip.PowerCapConstant.NO_POWER_CAP;
+            }
+            hidlList.add(hidlUnsafeChannel);
+        }
+        return hidlList;
+    }
+
+    private int frameworkCoexRestrictionsToHidl(@WifiManager.CoexRestriction int restrictions) {
+        int hidlRestrictions = 0;
+        if ((restrictions & WifiManager.COEX_RESTRICTION_WIFI_DIRECT) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.WIFI_DIRECT;
+        }
+        if ((restrictions & WifiManager.COEX_RESTRICTION_SOFTAP) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.SOFTAP;
+        }
+        if ((restrictions & WifiManager.COEX_RESTRICTION_WIFI_AWARE) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.WIFI_AWARE;
+        }
+        return hidlRestrictions;
+    }
+
+    /**
+     * Set the current coex unsafe channels to avoid and their restrictions.
+     * @param unsafeChannels Set of {@link android.net.wifi.CoexUnsafeChannel} to avoid.
+     * @param restrictions int containing a bitwise-OR combination of
+     *                     {@link WifiManager.CoexRestriction}.
+     * @return true if the operation succeeded, false if there is an error in Hal.
+     */
+    public boolean setCoexUnsafeChannels(
+            @NonNull Set<android.net.wifi.CoexUnsafeChannel> unsafeChannels, int restrictions) {
+        try {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 == null) return boolResult(false);
+            return ok(iWifiChipV15.setCoexUnsafeChannels(
+                    frameworkCoexUnsafeChannelsToHidl(unsafeChannels),
+                    frameworkCoexRestrictionsToHidl(restrictions)));
+        } catch (RemoteException e) {
+            handleRemoteException(e);
+            return false;
+        }
+    }
 
     private boolean retrieveWifiChip(IWifiIface iface) {
         synchronized (sLock) {

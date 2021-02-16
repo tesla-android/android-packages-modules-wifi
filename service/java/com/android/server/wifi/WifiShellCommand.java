@@ -1420,7 +1420,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -s - Share the suggestion with user.");
         pw.println("    -d - Mark the suggestion autojoin disabled.");
         pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r - Enable enhanced randomization (disable by default)");
+        pw.println("    -r - Enable enhanced randomization (disabled by default)");
         pw.println("    -a - Mark the suggestion carrier merged");
         pw.println("    -c <carrierId> - set carrier Id");
         pw.println("    -i <subscriptionId> - set subscription Id, if -a is used, "

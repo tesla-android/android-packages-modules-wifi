@@ -20,11 +20,13 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.content.res.Resources;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApCapability;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.BandType;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
 import android.text.TextUtils;
 import android.util.Log;
@@ -32,12 +34,15 @@ import android.util.SparseArray;
 
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative;
+import com.android.server.wifi.coex.CoexManager;
 import com.android.wifi.resources.R;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 
 
 /**
@@ -367,60 +372,81 @@ public class ApConfigUtil {
     }
 
     /**
-     * Return a channel number for AP setup based on the frequency band.
+     * Return a channel frequency for AP setup based on the frequency band.
      * @param apBand one or combination of the values of SoftApConfiguration.BAND_*.
      * @param wifiNative reference used to collect regulatory restrictions.
+     * @param coexManager reference used to get unsafe channels to avoid for coex.
      * @param resources the resources to use to get configured allowed channels.
      * @return a valid channel frequency on success, -1 on failure.
      */
-    public static int chooseApChannel(int apBand, WifiNative wifiNative, Resources resources) {
+    public static int chooseApChannel(int apBand, @NonNull WifiNative wifiNative,
+            @NonNull CoexManager coexManager, @NonNull Resources resources) {
         if (!isBandValid(apBand)) {
             Log.e(TAG, "Invalid band: " + apBand);
             return -1;
         }
 
-        List<Integer> allowedFreqList = null;
-
-        if ((apBand & SoftApConfiguration.BAND_60GHZ) != 0) {
-            allowedFreqList = getAvailableChannelFreqsForBand(SoftApConfiguration.BAND_60GHZ,
-                    wifiNative, resources, true);
-            if (allowedFreqList != null && allowedFreqList.size() > 0) {
-                return allowedFreqList.get(sRandom.nextInt(allowedFreqList.size())).intValue();
+        Set<Integer> unsafeFreqs = new HashSet<>();
+        if (SdkLevel.isAtLeastS()) {
+            for (CoexUnsafeChannel unsafeChannel : coexManager.getCoexUnsafeChannels()) {
+                unsafeFreqs.add(ScanResult.convertChannelToFrequencyMhz(
+                        unsafeChannel.getChannel(), unsafeChannel.getBand()));
             }
         }
-
-        if ((apBand & SoftApConfiguration.BAND_6GHZ) != 0) {
-            allowedFreqList = getAvailableChannelFreqsForBand(SoftApConfiguration.BAND_6GHZ,
-                    wifiNative, resources, true);
-            if (allowedFreqList != null && allowedFreqList.size() > 0) {
-                return allowedFreqList.get(sRandom.nextInt(allowedFreqList.size())).intValue();
+        final int[] bandPreferences = new int[]{
+                SoftApConfiguration.BAND_60GHZ,
+                SoftApConfiguration.BAND_6GHZ,
+                SoftApConfiguration.BAND_5GHZ,
+                SoftApConfiguration.BAND_2GHZ};
+        int selectedUnsafeFreq = 0;
+        for (int band : bandPreferences) {
+            if ((apBand & band) == 0) {
+                continue;
+            }
+            final List<Integer> availableFreqs =
+                    getAvailableChannelFreqsForBand(band, wifiNative, resources, true);
+            if (availableFreqs == null || availableFreqs.isEmpty()) {
+                continue;
+            }
+            // Separate the available freqs by safe and unsafe.
+            List<Integer> availableSafeFreqs = new ArrayList<>();
+            List<Integer> availableUnsafeFreqs = new ArrayList<>();
+            for (int freq : availableFreqs) {
+                if (unsafeFreqs.contains(freq)) {
+                    availableUnsafeFreqs.add(freq);
+                } else {
+                    availableSafeFreqs.add(freq);
+                }
+            }
+            // If there are safe freqs available for this band, randomly select one.
+            if (!availableSafeFreqs.isEmpty()) {
+                return availableSafeFreqs.get(sRandom.nextInt(availableSafeFreqs.size()));
+            } else if (!availableUnsafeFreqs.isEmpty() && selectedUnsafeFreq == 0) {
+                // Save an unsafe freq from the first preferred band to fall back on later.
+                selectedUnsafeFreq = availableUnsafeFreqs.get(
+                        sRandom.nextInt(availableUnsafeFreqs.size()));
             }
         }
-
-        if ((apBand & SoftApConfiguration.BAND_5GHZ) != 0) {
-            allowedFreqList = getAvailableChannelFreqsForBand(SoftApConfiguration.BAND_5GHZ,
-                    wifiNative, resources, true);
-            if (allowedFreqList != null && allowedFreqList.size() > 0) {
-                return allowedFreqList.get(sRandom.nextInt(allowedFreqList.size())).intValue();
-            }
+        // If all available channels are soft unsafe, select a random one of the highest band.
+        boolean isHardUnsafe = false;
+        if (SdkLevel.isAtLeastS()) {
+            isHardUnsafe =
+                    (coexManager.getCoexRestrictions() & WifiManager.COEX_RESTRICTION_SOFTAP) != 0;
+        }
+        if (!isHardUnsafe && selectedUnsafeFreq != 0) {
+            return selectedUnsafeFreq;
         }
 
-        if ((apBand & SoftApConfiguration.BAND_2GHZ) != 0) {
-            allowedFreqList = getAvailableChannelFreqsForBand(SoftApConfiguration.BAND_2GHZ,
-                    wifiNative, resources, true);
-            if (allowedFreqList != null && allowedFreqList.size() > 0) {
-                return allowedFreqList.get(sRandom.nextInt(allowedFreqList.size())).intValue();
-            }
-        }
-
-        // If the default AP band is allowed, just use the default channel
+        // If all available channels are hard unsafe, select the default AP channel.
         if (containsBand(apBand, DEFAULT_AP_BAND)) {
-            Log.e(TAG, "Allowed channel list not specified, selecting default channel");
-            /* Use default channel. */
-            return convertChannelToFrequency(DEFAULT_AP_CHANNEL,
+            final int defaultChannelFreq = convertChannelToFrequency(DEFAULT_AP_CHANNEL,
                     DEFAULT_AP_BAND);
+            Log.e(TAG, "Allowed channel list not specified, selecting default channel");
+            if (isHardUnsafe && unsafeFreqs.contains(defaultChannelFreq)) {
+                Log.e(TAG, "Default channel is hard restricted due to coex");
+            }
+            return defaultChannelFreq;
         }
-
         Log.e(TAG, "No available channels");
         return -1;
     }
@@ -499,17 +525,19 @@ public class ApConfigUtil {
      * Update AP band and channel based on the provided country code and band.
      * This will also set
      * @param wifiNative reference to WifiNative
+     * @param coexManager reference to CoexManager
      * @param resources the resources to use to get configured allowed channels.
      * @param countryCode country code
      * @param config configuration to update
      * @return an integer result code
      */
     public static int updateApChannelConfig(WifiNative wifiNative,
-                                            Resources resources,
-                                            String countryCode,
-                                            SoftApConfiguration.Builder configBuilder,
-                                            SoftApConfiguration config,
-                                            boolean acsEnabled) {
+            @NonNull CoexManager coexManager,
+            Resources resources,
+            String countryCode,
+            SoftApConfiguration.Builder configBuilder,
+            SoftApConfiguration config,
+            boolean acsEnabled) {
         /* Use default band and channel for device without HAL. */
         if (!wifiNative.isHalStarted()) {
             configBuilder.setChannel(DEFAULT_AP_CHANNEL, DEFAULT_AP_BAND);
@@ -525,7 +553,7 @@ public class ApConfigUtil {
 
         /* Select a channel if it is not specified and ACS is not enabled */
         if ((config.getChannel() == 0) && !acsEnabled) {
-            int freq = chooseApChannel(config.getBand(), wifiNative, resources);
+            int freq = chooseApChannel(config.getBand(), wifiNative, coexManager, resources);
             if (freq == -1) {
                 /* We're not able to get channel from wificond. */
                 Log.e(TAG, "Failed to get available channel.");
