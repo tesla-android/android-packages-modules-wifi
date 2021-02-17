@@ -587,4 +587,8 @@
     <integer translatable="false" name="config_wifiTrafficPollerTxPacketThreshold">0</integer>
     <integer translatable="false" name="config_wifiTrafficPollerRxPacketThreshold">0</integer>
 
+    <!-- A value to decide when NetworkCapabilities are updated to reflect the latest link
+    bandwidth. If the bandwidth change is above this value, NetworkCapabilities are updated -->
+    <integer translatable="false" name="config_wifiLinkBandwidthUpdateThresholdPercent">40</integer>
+
 </resources>

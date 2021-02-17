@@ -238,6 +238,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final ConcreteClientModeManager mClientModeManager;
 
     private int mLastSignalLevel = -1;
+    private int mLastTxKbps = -1;
+    private int mLastRxKbps = -1;
     private int mLastScanRssi = WifiInfo.INVALID_RSSI;
     private String mLastBssid;
     // TODO (b/162942761): Ensure this is reset when mTargetNetworkId is set.
@@ -1565,6 +1567,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         pw.println("mDhcpResultsParcelable "
                 + dhcpResultsParcelableToString(mDhcpResultsParcelable));
         pw.println("mLastSignalLevel " + mLastSignalLevel);
+        pw.println("mLastTxKbps " + mLastTxKbps);
+        pw.println("mLastRxKbps " + mLastRxKbps);
         pw.println("mLastBssid " + mLastBssid);
         pw.println("mLastNetworkId " + mLastNetworkId);
         pw.println("mLastSubId " + mLastSubId);
@@ -2161,13 +2165,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
              * level.
              */
             int newSignalLevel = RssiUtil.calculateSignalLevel(mContext, newRssi);
-            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
             if (newSignalLevel != mLastSignalLevel) {
-                // TODO (b/162602799 and b/178725509): Do we need to change the update frequency?
-                updateCapabilities();
+                // TODO (b/162602799): Do we need to change the update frequency?
                 sendRssiChangeBroadcast(newRssi);
             }
+            updateLinkBandwidthAndCapabilities(stats, newSignalLevel != mLastSignalLevel);
             mLastSignalLevel = newSignalLevel;
         } else {
             mWifiInfo.setRssi(WifiInfo.INVALID_RSSI);
@@ -2179,6 +2181,27 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
          */
         mWifiMetrics.handlePollResult(mWifiInfo);
         return stats;
+    }
+
+    // Update the link bandwidth. If the link bandwidth changes by a large amount or signal level
+    // changes, also update network capabilities.
+    private void updateLinkBandwidthAndCapabilities(WifiLinkLayerStats stats,
+            boolean hasSignalLevelChanged) {
+        WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
+        int newTxKbps = network.getTxLinkBandwidthKbps();
+        int newRxKbps = network.getRxLinkBandwidthKbps();
+        int txDeltaKbps = Math.abs(newTxKbps - mLastTxKbps);
+        int rxDeltaKbps = Math.abs(newRxKbps - mLastRxKbps);
+        int bwUpdateThresholdPercent = mContext.getResources().getInteger(
+                R.integer.config_wifiLinkBandwidthUpdateThresholdPercent);
+        if ((txDeltaKbps * 100  >  bwUpdateThresholdPercent * mLastTxKbps)
+                || (rxDeltaKbps * 100  >  bwUpdateThresholdPercent * mLastRxKbps)
+                || hasSignalLevelChanged) {
+            mLastTxKbps = newTxKbps;
+            mLastRxKbps = newRxKbps;
+            updateCapabilities();
+        }
     }
 
     // Polling has completed, hence we won't have a score anymore
