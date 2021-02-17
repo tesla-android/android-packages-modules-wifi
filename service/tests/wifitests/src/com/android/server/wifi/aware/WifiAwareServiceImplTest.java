@@ -53,6 +53,7 @@ import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiBaseTest;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.util.NetdWrapper;
@@ -675,7 +676,9 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         assertEquals(characteristics.getMaxMatchFilterLength(), maxMatchFilter);
         assertEquals(characteristics.getSupportedCipherSuites(),
                 Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256);
-        assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
+        }
     }
 
     /*
