@@ -1862,6 +1862,12 @@ public class WifiConfiguration implements Parcelable {
         private static SparseArray<DisableReasonInfo> buildDisableReasonInfos() {
             SparseArray<DisableReasonInfo> reasons = new SparseArray<>();
 
+            // Note that some of these disable thresholds are overridden in
+            // WifiBlocklistMonitor#loadCustomConfigsForDisableReasonInfos using overlays.
+            // TODO(b/180148727): For a few of these disable reasons, we provide defaults here
+            //  and in the overlay XML, which is confusing. Clean this up so we only define the
+            //  default in one place.
+
             reasons.append(DISABLED_NONE,
                     new DisableReasonInfo(
                             // Note that these strings are persisted in
@@ -1877,19 +1883,19 @@ public class WifiConfiguration implements Parcelable {
                             // Note that there is a space at the end of this string. Cannot fix
                             // since this string is persisted.
                             "NETWORK_SELECTION_DISABLED_ASSOCIATION_REJECTION ",
-                            5,
+                            3,
                             5 * 60 * 1000));
 
             reasons.append(DISABLED_AUTHENTICATION_FAILURE,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_AUTHENTICATION_FAILURE",
-                            5,
+                            3,
                             5 * 60 * 1000));
 
             reasons.append(DISABLED_DHCP_FAILURE,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_DHCP_FAILURE",
-                            5,
+                            2,
                             5 * 60 * 1000));
 
             reasons.append(DISABLED_NO_INTERNET_TEMPORARY,
@@ -1942,7 +1948,7 @@ public class WifiConfiguration implements Parcelable {
 
             reasons.append(DISABLED_NETWORK_NOT_FOUND,
                     new DisableReasonInfo(
-                            "NETWORK_SELECTION_DISABLED_NETWORK_MISCONFIGURED",
+                            "NETWORK_SELECTION_DISABLED_NETWORK_NOT_FOUND",
                             2,
                             5 * 60 * 1000));
 
