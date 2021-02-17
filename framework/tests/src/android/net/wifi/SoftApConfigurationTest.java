@@ -89,9 +89,11 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastS()) {
             assertThat(original.getMacRandomizationSetting())
                     .isEqualTo(SoftApConfiguration.RANDOMIZATION_PERSISTENT);
-        }
-        if (SdkLevel.isAtLeastS()) {
             assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
+                    .isEqualTo(true);
+            assertThat(original.isIeee80211axEnabled())
+                    .isEqualTo(true);
+            assertThat(original.isUserConfiguration())
                     .isEqualTo(true);
         }
 
@@ -150,6 +152,7 @@ public class SoftApConfigurationTest {
             originalBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
             originalBuilder.setBridgedModeOpportunisticShutdownEnabled(false);
             originalBuilder.setIeee80211axEnabled(false);
+            originalBuilder.setUserConfiguration(false);
         }
 
         SoftApConfiguration original = originalBuilder.build();
@@ -171,6 +174,8 @@ public class SoftApConfigurationTest {
             assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
                     .isEqualTo(false);
             assertThat(original.isIeee80211axEnabled())
+                    .isEqualTo(false);
+            assertThat(original.isUserConfiguration())
                     .isEqualTo(false);
         }
 
