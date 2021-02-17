@@ -2162,7 +2162,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
              */
             int newSignalLevel = RssiUtil.calculateSignalLevel(mContext, newRssi);
             WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo, newSignalLevel);
+            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
             if (newSignalLevel != mLastSignalLevel) {
                 // TODO (b/162602799 and b/178725509): Do we need to change the update frequency?
                 updateCapabilities();
@@ -2899,7 +2899,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             c.getNetworkSelectionStatus().clearDisableReasonCounter(
                     WifiConfiguration.NetworkSelectionStatus.DISABLED_DHCP_FAILURE);
         }
-        mWifiScoreCard.noteIpConfiguration(mWifiInfo);
     }
 
     private void handleIPv4Failure() {
@@ -3822,10 +3821,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         int rxTputKbps = 0;
         int currRssi = mWifiInfo.getRssi();
         if (currRssi != WifiInfo.INVALID_RSSI) {
-            int signalLevel = RssiUtil.calculateSignalLevel(mContext, currRssi);
             WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            txTputKbps = network.getTxLinkBandwidthKbps(mWifiInfo, signalLevel);
-            rxTputKbps = network.getRxLinkBandwidthKbps(mWifiInfo, signalLevel);
+            txTputKbps = network.getTxLinkBandwidthKbps();
+            rxTputKbps = network.getRxLinkBandwidthKbps();
         } else {
             // Fall back to max link speed. This should rarely happen if ever
             int maxTxLinkSpeedMbps = mWifiInfo.getMaxSupportedTxLinkSpeedMbps();
@@ -5276,6 +5274,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiLockManager.updateWifiClientConnected(mClientModeManager, true);
             mWifiScoreReport.startConnectedNetworkScorer(mNetworkAgent.getNetwork().getNetId());
             updateLinkLayerStatsRssiAndScoreReport();
+            mWifiScoreCard.noteIpConfiguration(mWifiInfo);
             // too many places to record L3 failure with too many failure reasons.
             // So only record success here.
             mWifiMetrics.noteFirstL3ConnectionAfterBoot(true);

@@ -176,9 +176,6 @@ public class WifiScoreReportTest extends WifiBaseTest {
         when(resources.getBoolean(
                 R.bool.config_wifiMinConfirmationDurationSendNetworkScoreEnabled))
             .thenReturn(false);
-        when(resources.getIntArray(
-                R.array.config_wifiRssiLevelThresholds))
-                .thenReturn(new int[]{-88, -77, -66, -55});
     }
 
     /**
@@ -212,8 +209,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
         when(mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm()).thenReturn(
                 DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
         when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(true);
-        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
-        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(50_000);
+        when(mPerNetwork.getTxLinkBandwidthKbps()).thenReturn(40_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps()).thenReturn(50_000);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
     }
 

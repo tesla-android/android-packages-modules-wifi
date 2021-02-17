@@ -31,6 +31,7 @@ import android.content.Context;
 import android.content.pm.ModuleInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult.InformationElement;
 import android.net.wifi.WifiConfiguration;
@@ -54,7 +55,7 @@ import com.android.server.wifi.WifiScoreCard.PerNetwork;
 import com.android.server.wifi.proto.WifiScoreCardProto.SystemInfoStats;
 import com.android.server.wifi.proto.WifiStatsLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.HealthMonitorMetrics;
-
+import com.android.wifi.resources.R;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -103,6 +104,8 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
     ModuleInfo mModuleInfo;
     @Mock
     FrameworkFacade mFrameworkFacade;
+    @Mock
+    Resources mResources;
 
     private final ArrayList<String> mKeys = new ArrayList<>();
     private final ArrayList<WifiScoreCard.BlobListener> mBlobListeners = new ArrayList<>();
@@ -167,7 +170,7 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
         mWifiConfigManager = mockConfigManager();
 
         mWifiScoreCard = new WifiScoreCard(mClock, "some seed", mDeviceConfigFacade,
-                mFrameworkFacade);
+                mFrameworkFacade, mContext);
         mAlarmManager = new TestAlarmManager();
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager.getAlarmManager());
@@ -223,6 +226,9 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
                 DeviceConfigFacade.DEFAULT_NONSTATIONARY_SCAN_RSSI_VALID_TIME_MS);
         when(mDeviceConfigFacade.getStationaryScanRssiValidTimeMs()).thenReturn(
                 DeviceConfigFacade.DEFAULT_STATIONARY_SCAN_RSSI_VALID_TIME_MS);
+        when(mContext.getResources()).thenReturn(mResources);
+        when(mResources.getIntArray(R.array.config_wifiRssiLevelThresholds))
+                .thenReturn(new int[]{-88, -77, -66, -55});
         mWifiHealthMonitor = new WifiHealthMonitor(mContext, mWifiInjector, mClock,
                 mWifiConfigManager, mWifiScoreCard, new Handler(mLooper.getLooper()), mWifiNative,
                 "some seed", mDeviceConfigFacade);

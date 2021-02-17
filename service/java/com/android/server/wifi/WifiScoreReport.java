@@ -30,7 +30,6 @@ import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
-import com.android.server.wifi.util.RssiUtil;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -713,10 +712,9 @@ public class WifiScoreReport {
         int freq = mWifiInfo.getFrequency();
         int txLinkSpeed = mWifiInfo.getLinkSpeed();
         int rxLinkSpeed = mWifiInfo.getRxLinkSpeedMbps();
-        int signalLevel = RssiUtil.calculateSignalLevel(mContext, mWifiInfo.getRssi());
         WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-        int txThroughputMbps = network.getTxLinkBandwidthKbps(mWifiInfo, signalLevel) / 1000;
-        int rxThroughputMbps = network.getRxLinkBandwidthKbps(mWifiInfo, signalLevel) / 1000;
+        int txThroughputMbps = network.getTxLinkBandwidthKbps() / 1000;
+        int rxThroughputMbps = network.getRxLinkBandwidthKbps() / 1000;
         double txSuccessRate = mWifiInfo.getSuccessfulTxPacketsPerSecond();
         double txRetriesRate = mWifiInfo.getRetriedTxPacketsPerSecond();
         double txBadRate = mWifiInfo.getLostTxPacketsPerSecond();
