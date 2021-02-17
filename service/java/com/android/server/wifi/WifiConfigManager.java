@@ -447,7 +447,8 @@ public class WifiConfigManager {
     }
 
     private boolean shouldEnableEnhancedRandomizationOnOpenNetwork(WifiConfiguration config) {
-        if (!mContext.getResources().getBoolean(
+        if (!mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()
+                && !mContext.getResources().getBoolean(
                         R.bool.config_wifiAllowEnhancedMacRandomizationOnOpenSsids)) {
             return false;
         }
