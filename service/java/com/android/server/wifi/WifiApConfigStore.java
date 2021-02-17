@@ -152,7 +152,8 @@ public class WifiApConfigStore {
         } else {
             config = sanitizePersistentApConfig(config);
         }
-        persistConfigAndTriggerBackupManagerProxy(config);
+        persistConfigAndTriggerBackupManagerProxy(
+                new SoftApConfiguration.Builder(config).setUserConfiguration(true).build());
     }
 
     /**
@@ -344,6 +345,7 @@ public class WifiApConfigStore {
             }
         }
 
+        configBuilder.setUserConfiguration(false);
         return configBuilder.build();
     }
 

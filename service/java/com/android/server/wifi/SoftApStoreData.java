@@ -65,6 +65,7 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
     private static final String XML_TAG_MAC_RAMDOMIZATION_SETTING = "MacRandomizationSetting";
     private static final String XML_TAG_BAND_CHANNEL_MAP = "BandChannelMap";
     private static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
+    private static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
 
 
     private final Context mContext;
@@ -163,6 +164,8 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
                 XmlUtil.writeNextSectionEnd(out, XML_TAG_BAND_CHANNEL_MAP);
                 XmlUtil.writeNextValue(out, XML_TAG_80211_AX_ENABLED,
                         softApConfig.isIeee80211axEnabled());
+                XmlUtil.writeNextValue(out, XML_TAG_USER_CONFIGURATION,
+                        softApConfig.isUserConfiguration());
             }
         }
     }
@@ -259,6 +262,11 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
                         case XML_TAG_80211_AX_ENABLED:
                             if (SdkLevel.isAtLeastS()) {
                                 softApConfigBuilder.setIeee80211axEnabled((boolean) value);
+                            }
+                            break;
+                        case XML_TAG_USER_CONFIGURATION:
+                            if (SdkLevel.isAtLeastS()) {
+                                softApConfigBuilder.setUserConfiguration((boolean) value);
                             }
                             break;
                         default:
