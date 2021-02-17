@@ -4317,9 +4317,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     break;
                 case WifiMonitor.ASSOCIATION_REJECTION_EVENT: {
                     AssocRejectEventInfo assocRejectEventInfo = (AssocRejectEventInfo) message.obj;
-                    if (mVerboseLoggingEnabled) {
-                        log("L2ConnectingState: Association rejection " + assocRejectEventInfo);
-                    }
+                    log("L2ConnectingState: Association rejection " + assocRejectEventInfo);
                     if (!assocRejectEventInfo.ssid.equals(getConnectingSsidInternal())) {
                         loge("Association rejection event received on not target network");
                         break;
@@ -4330,12 +4328,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     String bssid = assocRejectEventInfo.bssid;
                     boolean timedOut = assocRejectEventInfo.timedOut;
                     int statusCode = assocRejectEventInfo.statusCode;
-                    Log.d(getTag(), "Association Rejection event: bssid=" + bssid + " statusCode="
-                            + statusCode + " timedOut=" + timedOut);
                     if (!isValidBssid(bssid)) {
                         // If BSSID is null, use the target roam BSSID
                         bssid = mTargetBssid;
-                    } else if (mTargetBssid == SUPPLICANT_BSSID_ANY) {
+                    } else if (SUPPLICANT_BSSID_ANY.equals(mTargetBssid)) {
                         // This is needed by WifiBlocklistMonitor to block continuously
                         // failing BSSIDs. Need to set here because mTargetBssid is currently
                         // not being set until association success.
@@ -4392,6 +4388,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     int disableReason = WifiConfiguration.NetworkSelectionStatus
                             .DISABLED_AUTHENTICATION_FAILURE;
                     int reasonCode = message.arg1;
+                    int errorCode = message.arg2;
+                    log("L2ConnectingState: Authentication failure "
+                            + " reason=" + reasonCode + " error=" + errorCode);
                     WifiConfiguration targetedNetwork =
                             mWifiConfigManager.getConfiguredNetwork(mTargetNetworkId);
                     // Check if this is a permanent wrong password failure.
@@ -4399,11 +4398,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         disableReason = WifiConfiguration.NetworkSelectionStatus
                                 .DISABLED_BY_WRONG_PASSWORD;
                         if (targetedNetwork != null) {
-                            mWrongPasswordNotifier.onWrongPasswordError(
-                                    targetedNetwork.SSID);
+                            mWrongPasswordNotifier.onWrongPasswordError(targetedNetwork.SSID);
                         }
                     } else if (reasonCode == WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE) {
-                        int errorCode = message.arg2;
                         if (targetedNetwork != null && targetedNetwork.enterpriseConfig != null
                                 && targetedNetwork.enterpriseConfig.isAuthenticationSimBased()) {
                             if (mEapFailureNotifier.onEapFailure(errorCode, targetedNetwork)) {

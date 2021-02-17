@@ -407,8 +407,8 @@
 
     <!-- List of constants to indicate how many failures are needed to temporarily disable a network
     from auto-connect -->
-    <integer translatable="false" name="config_wifiDisableReasonAssociationRejectionThreshold"> 5 </integer>
-    <integer translatable="false" name="config_wifiDisableReasonAuthenticationFailureThreshold"> 5 </integer>
+    <integer translatable="false" name="config_wifiDisableReasonAssociationRejectionThreshold"> 3 </integer>
+    <integer translatable="false" name="config_wifiDisableReasonAuthenticationFailureThreshold"> 3 </integer>
     <integer translatable="false" name="config_wifiDisableReasonDhcpFailureThreshold"> 2 </integer>
     <integer translatable="false" name="config_wifiDisableReasonNetworkNotFoundThreshold"> 2 </integer>
 
