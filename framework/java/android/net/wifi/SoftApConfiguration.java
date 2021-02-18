@@ -707,6 +707,14 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * @see #isIeee80211axEnabled()
+     * @hide
+     */
+    public boolean isIeee80211axEnabledInternal() {
+        return mIeee80211axEnabled;
+    }
+
+    /**
      * Returns whether or not 802.11ax is enabled on the SoftAP.
      * This is an indication that if the device support 802.11ax AP then to enable or disable
      * that feature. If the device does not support 802.11ax AP then this flag is ignored.
@@ -718,7 +726,7 @@ public final class SoftApConfiguration implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        return mIeee80211axEnabled;
+        return isIeee80211axEnabledInternal();
     }
 
     /**
