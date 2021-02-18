@@ -16,6 +16,7 @@
 package com.android.server.wifi;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -45,6 +46,7 @@ import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.wifi.resources.R;
@@ -1377,6 +1379,7 @@ public class HostapdHalTest extends WifiBaseTest {
      */
     @Test
     public void testAddAccessPointSuccess_DualBandConfig() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS()); // dual band supported on S.
         mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
         when(mServiceManagerMock.getTransport(anyString(), anyString()))
                 .thenReturn(IServiceManager.Transport.HWBINDER);
@@ -1473,6 +1476,7 @@ public class HostapdHalTest extends WifiBaseTest {
      */
     @Test
     public void testAddAccessPointSuccess_DualBandConfigAndEnableForceApChannel() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS()); // dual band supported on S.
         mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
         when(mServiceManagerMock.getTransport(anyString(), anyString()))
                 .thenReturn(IServiceManager.Transport.HWBINDER);
@@ -1584,6 +1588,7 @@ public class HostapdHalTest extends WifiBaseTest {
     @Test
     public void testAddAccessPointSuccess_WithMeteredSAEOn11AXSupportedDeviceBut11AXDisabled()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS()); // setIeee80211axEnabled() added on Android S.
         boolean isMetered = true;
         mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
         mResources.setBoolean(R.bool.config_wifiSoftapIeee80211axSupported, true);

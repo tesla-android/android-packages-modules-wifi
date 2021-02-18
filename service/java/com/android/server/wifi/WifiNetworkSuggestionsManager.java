@@ -926,12 +926,16 @@ public class WifiNetworkSuggestionsManager {
         if (perAppInfo == null) {
             perAppInfo = new PerAppInfo(uid, packageName, featureId);
             mActiveNetworkSuggestionsPerApp.put(packageName, perAppInfo);
-            if (mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)
-                    || isAppWorkingAsCrossCarrierProvider(packageName)) {
+            if (mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)) {
                 Log.i(TAG, "Setting the carrier provisioning app approved");
                 perAppInfo.hasUserApproved = true;
                 mWifiMetrics.incrementNetworkSuggestionApiUsageNumOfAppInType(
                         APP_TYPE_NETWORK_PROVISIONING);
+            } else if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                        || isAppWorkingAsCrossCarrierProvider(packageName)) {
+                // Bypass added for tests & shell commands.
+                Log.i(TAG, "Setting the test app approved");
+                perAppInfo.hasUserApproved = true;
             } else if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Setting the carrier privileged app approved");
                 perAppInfo.carrierId = carrierId;
