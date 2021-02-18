@@ -536,11 +536,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private static final int SUSPEND_DUE_TO_HIGH_PERF = 1 << 1;
     private static final int SUSPEND_DUE_TO_SCREEN = 1 << 2;
 
-    /**
-     * Time window in milliseconds for which we send
-     * {@link NetworkAgent#explicitlySelected(boolean, boolean)}
-     * after connecting to the network which the user last selected.
-     */
+    /** @see #isRecentlySelectedByTheUser */
     @VisibleForTesting
     public static final int LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS = 30 * 1000;
 
@@ -5084,26 +5080,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /**
-     * Helper function to check if a nework has been recently selected by the user.
+     * Helper function to check if a network has been recently selected by the user.
      * (i.e less than {@link #LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS) before).
-     *
-     * This is used to determine if we should call
-     * {@link NetworkAgent#explicitlySelected(boolean, boolean)} to indicate that we connected to
-     * a network the user just chose.
-     * This is also used to determine if we should set the network as the user connect choice when
-     * a connection gets successfully established.
      */
     @VisibleForTesting
-    public boolean isRecentlySelectedByTheUser(WifiConfiguration currentConfig) {
-        if (currentConfig == null) {
-            Log.wtf(getTag(), "Current WifiConfiguration is null, "
-                    + "but IP provisioning just succeeded");
-            return false;
-        }
+    public boolean isRecentlySelectedByTheUser(@NonNull WifiConfiguration currentConfig) {
         long currentTimeMillis = mClock.getElapsedSinceBootMillis();
-        return (mWifiConfigManager.getLastSelectedNetwork() == currentConfig.networkId
+        return mWifiConfigManager.getLastSelectedNetwork() == currentConfig.networkId
                 && currentTimeMillis - mWifiConfigManager.getLastSelectedTimeStamp()
-                < LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS);
+                < LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS;
     }
 
     private void sendConnectedState() {
@@ -5332,9 +5317,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                         WifiDiagnostics.CONNECTION_EVENT_FAILED);
                                 mWifiConfigManager.incrementNetworkNoInternetAccessReports(
                                         config.networkId);
-                                // If this was not the last selected network, update network
+                                // If this was not recently selected by the user, update network
                                 // selection status to temporarily disable the network.
-                                if (mWifiConfigManager.getLastSelectedNetwork() != config.networkId
+                                if (!isRecentlySelectedByTheUser(config)
                                         && !config.noInternetAccessExpected) {
                                     Log.i(getTag(), "Temporarily disabling network because of"
                                             + " no-internet access");

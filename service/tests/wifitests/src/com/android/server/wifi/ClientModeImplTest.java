@@ -3847,12 +3847,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(TEST_LOCAL_MAC_ADDRESS.toString(), mWifiInfo.getMacAddress());
     }
 
-    /**
-     * Verify that we temporarily disable the network when auto-connected to a network
-     * with no internet access.
-     */
     @Test
-    public void verifyAutoConnectedNetworkWithInternetValidationFailure() throws Exception {
+    public void internetValidationFailure_notUserSelected_expectTemporarilyDisabled()
+            throws Exception {
         // Setup RSSI poll to update WifiInfo with low RSSI
         mCmi.enableRssiPolling(true);
         WifiLinkLayerStats llStats = new WifiLinkLayerStats();
@@ -3863,7 +3860,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(llStats);
         when(mWifiNative.signalPoll(any())).thenReturn(signalPollResult);
 
-        // Simulate the first connection.
         connect();
         verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
                 mWifiNetworkAgentCallbackCaptor.capture());
@@ -3873,16 +3869,20 @@ public class ClientModeImplTest extends WifiBaseTest {
         currentNetwork.SSID = DEFAULT_TEST_SSID;
         currentNetwork.noInternetAccessExpected = false;
         currentNetwork.numNoInternetAccessReports = 1;
+
+        // not user selected
         when(mWifiConfigManager.getConfiguredNetwork(FRAMEWORK_NETWORK_ID))
                 .thenReturn(currentNetwork);
         when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID + 1);
 
+        // internet validation failure
         mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
                 NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUr; */);
         mLooper.dispatchAll();
 
         verify(mWifiConfigManager)
                 .incrementNetworkNoInternetAccessReports(FRAMEWORK_NETWORK_ID);
+        // expect temporarily disabled
         verify(mWifiConfigManager).updateNetworkSelectionStatus(
                 FRAMEWORK_NETWORK_ID, DISABLED_NO_INTERNET_TEMPORARY);
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(TEST_BSSID_STR, TEST_SSID,
@@ -3896,22 +3896,21 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
                 mWifiNetworkAgentCallbackCaptor.capture());
 
+        // Make Before Break CMM
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
 
+        // internet validation failure
         mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
                 NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUr; */);
         mLooper.dispatchAll();
 
+        // expect disconnection
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
     }
 
-    /**
-     * Verify that we don't temporarily disable the network when user selected to connect to a
-     * network with no internet access.
-     */
     @Test
-    public void verifyLastSelectedNetworkWithInternetValidationFailure() throws Exception {
-        // Simulate the first connection.
+    public void internetValidationFailure_userSelectedRecently_expectNotDisabled()
+            throws Exception {
         connect();
         verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
                 mWifiNetworkAgentCallbackCaptor.capture());
@@ -3920,46 +3919,88 @@ public class ClientModeImplTest extends WifiBaseTest {
         currentNetwork.networkId = FRAMEWORK_NETWORK_ID;
         currentNetwork.noInternetAccessExpected = false;
         currentNetwork.numNoInternetAccessReports = 1;
+
+        // user last picked this network
         when(mWifiConfigManager.getConfiguredNetwork(FRAMEWORK_NETWORK_ID))
                 .thenReturn(currentNetwork);
         when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID);
 
+        // user recently picked this network
+        when(mWifiConfigManager.getLastSelectedTimeStamp()).thenReturn(1234L);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(1235L);
+
+        // internet validation failure
         mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
                 NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUrl */);
         mLooper.dispatchAll();
 
         verify(mWifiConfigManager)
                 .incrementNetworkNoInternetAccessReports(FRAMEWORK_NETWORK_ID);
+        // expect not disabled
         verify(mWifiConfigManager, never()).updateNetworkSelectionStatus(
                 FRAMEWORK_NETWORK_ID, DISABLED_NO_INTERNET_TEMPORARY);
     }
 
-    /**
-     * Verify that we temporarily disable the network when auto-connected to a network
-     * with no internet access.
-     */
     @Test
-    public void verifyAutoConnectedNoInternetExpectedNetworkWithInternetValidationFailure()
+    public void internetValidationFailure_userSelectedTooLongAgo_expectTemporarilyDisabled()
             throws Exception {
-        // Simulate the first connection.
         connect();
         verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
                 mWifiNetworkAgentCallbackCaptor.capture());
 
         WifiConfiguration currentNetwork = new WifiConfiguration();
         currentNetwork.networkId = FRAMEWORK_NETWORK_ID;
-        currentNetwork.noInternetAccessExpected = true;
+        currentNetwork.noInternetAccessExpected = false;
         currentNetwork.numNoInternetAccessReports = 1;
+
+        // user last picked this network
         when(mWifiConfigManager.getConfiguredNetwork(FRAMEWORK_NETWORK_ID))
                 .thenReturn(currentNetwork);
-        when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID + 1);
+        when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID);
 
+        // user picked this network a long time ago
+        when(mWifiConfigManager.getLastSelectedTimeStamp()).thenReturn(1234L);
+        when(mClock.getElapsedSinceBootMillis())
+                .thenReturn(1235L + ClientModeImpl.LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS);
+
+        // internet validation failure
         mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
                 NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUrl */);
         mLooper.dispatchAll();
 
         verify(mWifiConfigManager)
                 .incrementNetworkNoInternetAccessReports(FRAMEWORK_NETWORK_ID);
+        // expect temporarily disabled
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(
+                FRAMEWORK_NETWORK_ID, DISABLED_NO_INTERNET_TEMPORARY);
+    }
+
+    @Test
+    public void noInternetExpectedNetwork_internetValidationFailure_notUserSelected_expectNotDisabled()
+            throws Exception {
+        connect();
+        verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
+                mWifiNetworkAgentCallbackCaptor.capture());
+
+        WifiConfiguration currentNetwork = new WifiConfiguration();
+        currentNetwork.networkId = FRAMEWORK_NETWORK_ID;
+        // no internet expected
+        currentNetwork.noInternetAccessExpected = true;
+        currentNetwork.numNoInternetAccessReports = 1;
+
+        // user didn't pick this network
+        when(mWifiConfigManager.getConfiguredNetwork(FRAMEWORK_NETWORK_ID))
+                .thenReturn(currentNetwork);
+        when(mWifiConfigManager.getLastSelectedNetwork()).thenReturn(FRAMEWORK_NETWORK_ID + 1);
+
+        // internet validation failure
+        mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
+                NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUrl */);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager)
+                .incrementNetworkNoInternetAccessReports(FRAMEWORK_NETWORK_ID);
+        // expect not disabled
         verify(mWifiConfigManager, never()).updateNetworkSelectionStatus(
                 FRAMEWORK_NETWORK_ID, DISABLED_NO_INTERNET_TEMPORARY);
     }
