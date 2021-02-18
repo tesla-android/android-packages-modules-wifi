@@ -285,6 +285,7 @@ package android.net.wifi {
     method public boolean isBridgedModeOpportunisticShutdownEnabled();
     method public boolean isClientControlByUserEnabled();
     method public boolean isIeee80211axEnabled();
+    method public boolean isUserConfiguration();
     method @Nullable public android.net.wifi.WifiConfiguration toWifiConfiguration();
     field public static final int BAND_2GHZ = 1; // 0x1
     field public static final int BAND_5GHZ = 2; // 0x2

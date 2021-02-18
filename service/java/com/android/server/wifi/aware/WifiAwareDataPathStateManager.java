@@ -1094,6 +1094,8 @@ public class WifiAwareDataPathStateManager {
     @VisibleForTesting
     public class WifiAwareNetworkAgent extends NetworkAgent {
         private final AwareNetworkRequestInformation mAwareNetworkRequestInfo;
+        @VisibleForTesting
+        public final NetworkCapabilities mDataPathCapabilities;
 
         WifiAwareNetworkAgent(Looper looper, Context context, String logTag,
                 NetworkCapabilities nc, LinkProperties lp, int score,
@@ -1101,6 +1103,7 @@ public class WifiAwareDataPathStateManager {
                 AwareNetworkRequestInformation anri) {
             super(context, looper, logTag, nc, lp, score, config, provider);
             mAwareNetworkRequestInfo = anri;
+            mDataPathCapabilities = nc;
             register();
         }
 

@@ -2883,8 +2883,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(signalPollResult.txBitrateMbps, wifiInfo.getTxLinkSpeedMbps());
         assertEquals(signalPollResult.rxBitrateMbps, wifiInfo.getRxLinkSpeedMbps());
         assertEquals(sFreq, wifiInfo.getFrequency());
-        verify(mPerNetwork, atLeastOnce()).getTxLinkBandwidthKbps(any(), anyInt());
-        verify(mPerNetwork, atLeastOnce()).getRxLinkBandwidthKbps(any(), anyInt());
+        verify(mPerNetwork, atLeastOnce()).getTxLinkBandwidthKbps();
+        verify(mPerNetwork, atLeastOnce()).getRxLinkBandwidthKbps();
         verify(mWifiScoreCard).noteSignalPoll(any());
     }
 
@@ -4042,8 +4042,8 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifyNetworkCapabilities() throws Exception {
-        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
-        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(50_000);
+        when(mPerNetwork.getTxLinkBandwidthKbps()).thenReturn(40_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps()).thenReturn(50_000);
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any(), any()))
                 .thenReturn(Pair.create(Process.INVALID_UID, ""));
         // Simulate the first connection.
@@ -4079,8 +4079,8 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifyNetworkCapabilitiesForSpecificRequest() throws Exception {
-        when(mPerNetwork.getTxLinkBandwidthKbps(any(), anyInt())).thenReturn(30_000);
-        when(mPerNetwork.getRxLinkBandwidthKbps(any(), anyInt())).thenReturn(40_000);
+        when(mPerNetwork.getTxLinkBandwidthKbps()).thenReturn(30_000);
+        when(mPerNetwork.getRxLinkBandwidthKbps()).thenReturn(40_000);
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any(), any()))
                 .thenReturn(Pair.create(TEST_UID, OP_PACKAGE_NAME));
         // Simulate the first connection.

@@ -94,6 +94,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             }};
 
     private static final boolean TEST_80211AX_ENABLED = false;
+    private static final boolean TEST_USER_CONFIGURATION = false;
 
     private static final String TEST_CONFIG_STRING_FROM_WIFICONFIGURATION =
             "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
@@ -110,43 +111,6 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
                     + "<int name=\"SecurityType\" value=\"" + TEST_SECURITY + "\" />\n"
                     + "<string name=\"Passphrase\">" + TEST_PASSPHRASE + "</string>\n";
-
-    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
-                    + "<string name=\"Bssid\">" + TEST_BSSID + "</string>\n"
-                    + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
-                    + "<int name=\"SecurityType\" value=\"" + TEST_SECURITY + "\" />\n"
-                    + "<string name=\"Passphrase\">" + TEST_PASSPHRASE + "</string>\n"
-                    + "<int name=\"MaxNumberOfClients\" value=\""
-                    + TEST_MAX_NUMBER_OF_CLIENTS + "\" />\n"
-                    + "<boolean name=\"ClientControlByUser\" value=\""
-                    + TEST_CLIENT_CONTROL_BY_USER + "\" />\n"
-                    + "<boolean name=\"AutoShutdownEnabled\" value=\""
-                    + TEST_AUTO_SHUTDOWN_ENABLED + "\" />\n"
-                    + "<long name=\"ShutdownTimeoutMillis\" value=\""
-                    + TEST_SHUTDOWN_TIMEOUT_MILLIS + "\" />\n"
-                    + "<BlockedClientList>\n"
-                    + "<string name=\"ClientMacAddress\">" + TEST_BLOCKED_CLIENT + "</string>\n"
-                    + "</BlockedClientList>\n"
-                    + "<AllowedClientList>\n"
-                    + "<string name=\"ClientMacAddress\">" + TEST_ALLOWED_CLIENT + "</string>\n"
-                    + "</AllowedClientList>\n"
-                    + "<boolean name=\"BridgedModeOpportunisticShutdownEnabled\" value=\""
-                    + TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED + "\" />\n"
-                    + "<int name=\"MacRandomizationSetting\" value=\""
-                    + TEST_MAC_RANDOMIZATIONSETTING + "\" />\n"
-                    + "<BandChannelMap>\n"
-                    + "<BandChannel>\n"
-                    + "<int name=\"Band\" value=\"" + TEST_BAND_2G + "\" />\n"
-                    + "<int name=\"Channel\" value=\"" + TEST_CHANNEL_2G + "\" />\n"
-                    + "</BandChannel>\n"
-                    + "<BandChannel>\n"
-                    + "<int name=\"Band\" value=\"" + TEST_BAND_5G + "\" />\n"
-                    + "<int name=\"Channel\" value=\"" + TEST_CHANNEL_5G + "\" />\n"
-                    + "</BandChannel>\n"
-                    + "</BandChannelMap>\n"
-                    + "<boolean name=\"80211axEnabled\" value=\""
-                    + TEST_80211AX_ENABLED + "\" />\n";
 
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R =
             "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
@@ -234,6 +198,48 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<AllowedClientList>\n"
                     + "<string name=\"ClientMacAddress\">" + TEST_ALLOWED_CLIENT + "</string>\n"
                     + "</AllowedClientList>\n";
+
+    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION =
+            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+                    + "<string name=\"Bssid\">" + TEST_BSSID + "</string>\n"
+                    + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
+                    + "<int name=\"SecurityType\" value=\"" + TEST_SECURITY + "\" />\n"
+                    + "<string name=\"Passphrase\">" + TEST_PASSPHRASE + "</string>\n"
+                    + "<int name=\"MaxNumberOfClients\" value=\""
+                    + TEST_MAX_NUMBER_OF_CLIENTS + "\" />\n"
+                    + "<boolean name=\"ClientControlByUser\" value=\""
+                    + TEST_CLIENT_CONTROL_BY_USER + "\" />\n"
+                    + "<boolean name=\"AutoShutdownEnabled\" value=\""
+                    + TEST_AUTO_SHUTDOWN_ENABLED + "\" />\n"
+                    + "<long name=\"ShutdownTimeoutMillis\" value=\""
+                    + TEST_SHUTDOWN_TIMEOUT_MILLIS + "\" />\n"
+                    + "<BlockedClientList>\n"
+                    + "<string name=\"ClientMacAddress\">" + TEST_BLOCKED_CLIENT + "</string>\n"
+                    + "</BlockedClientList>\n"
+                    + "<AllowedClientList>\n"
+                    + "<string name=\"ClientMacAddress\">" + TEST_ALLOWED_CLIENT + "</string>\n"
+                    + "</AllowedClientList>\n"
+                    + "<boolean name=\"BridgedModeOpportunisticShutdownEnabled\" value=\""
+                    + TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED + "\" />\n"
+                    + "<int name=\"MacRandomizationSetting\" value=\""
+                    + TEST_MAC_RANDOMIZATIONSETTING + "\" />\n"
+                    + "<BandChannelMap>\n"
+                    + "<BandChannel>\n"
+                    + "<int name=\"Band\" value=\"" + TEST_BAND_2G + "\" />\n"
+                    + "<int name=\"Channel\" value=\"" + TEST_CHANNEL_2G + "\" />\n"
+                    + "</BandChannel>\n"
+                    + "<BandChannel>\n"
+                    + "<int name=\"Band\" value=\"" + TEST_BAND_5G + "\" />\n"
+                    + "<int name=\"Channel\" value=\"" + TEST_CHANNEL_5G + "\" />\n"
+                    + "</BandChannel>\n"
+                    + "</BandChannelMap>\n"
+                    + "<boolean name=\"80211axEnabled\" value=\""
+                    + TEST_80211AX_ENABLED + "\" />\n";
+
+    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION =
+            TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION
+                    + "<boolean name=\"UserConfiguration\" value=\""
+                    + TEST_USER_CONFIGURATION + "\" />\n";
 
     @Mock private Context mContext;
     @Mock SoftApStoreData.DataSource mDataSource;
@@ -339,6 +345,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
                 TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
         softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
+        softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
 
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
@@ -377,6 +384,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         assertEquals(softApConfig.isBridgedModeOpportunisticShutdownEnabled(),
                 TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
         assertEquals(softApConfig.isIeee80211axEnabled(), TEST_80211AX_ENABLED);
+        assertEquals(softApConfig.isUserConfiguration(), TEST_USER_CONFIGURATION);
     }
 
     /**
@@ -652,4 +660,39 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         assertEquals(softApConfig.getChannels().toString(), TEST_CHANNELS_IN_R_CONFIG.toString());
     }
 
+    /**
+     * Verify that the old format is deserialized correctly.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void deserializeSoftApWithAllConfigInSExceptUserConfiguration() throws Exception {
+        // Start with the old serialized data
+        deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION
+                .getBytes());
+        ArgumentCaptor<SoftApConfiguration> softapConfigCaptor =
+                ArgumentCaptor.forClass(SoftApConfiguration.class);
+        verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
+        SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
+        assertNotNull(softApConfig);
+        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getBssid().toString(), TEST_BSSID);
+        assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
+        assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
+        assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
+        assertEquals(softApConfig.getBand(), TEST_BAND_2G);
+        assertEquals(softApConfig.getChannel(), TEST_CHANNEL_2G);
+        assertEquals(softApConfig.getChannels().toString(), TEST_CHANNELS.toString());
+        assertEquals(softApConfig.isClientControlByUserEnabled(), TEST_CLIENT_CONTROL_BY_USER);
+        assertEquals(softApConfig.getMaxNumberOfClients(), TEST_MAX_NUMBER_OF_CLIENTS);
+        assertTrue(softApConfig.isAutoShutdownEnabled());
+        assertEquals(softApConfig.getShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLIS);
+        assertEquals(softApConfig.getBlockedClientList(), TEST_BLOCKEDLIST);
+        assertEquals(softApConfig.getAllowedClientList(), TEST_ALLOWEDLIST);
+        assertEquals(softApConfig.getMacRandomizationSetting(), TEST_MAC_RANDOMIZATIONSETTING);
+        assertEquals(softApConfig.isBridgedModeOpportunisticShutdownEnabled(),
+                TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
+        assertEquals(softApConfig.isIeee80211axEnabled(), TEST_80211AX_ENABLED);
+        assertEquals(softApConfig.isUserConfiguration(), true);
+    }
 }

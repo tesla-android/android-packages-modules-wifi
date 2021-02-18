@@ -297,12 +297,14 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         WifiApConfigStore store = createWifiApConfigStore();
         mDataStoreSource.fromDeserialized(expectedConfig);
         verifyApConfig(expectedConfig, store.getApConfiguration());
+        assertTrue(store.getApConfiguration().isUserConfiguration());
 
         store.setApConfiguration(null);
         verifyDefaultApConfig(store.getApConfiguration(), TEST_DEFAULT_AP_SSID);
         verifyDefaultApConfig(mDataStoreSource.toSerialize(), TEST_DEFAULT_AP_SSID);
         verify(mWifiConfigManager).saveToStore(true);
         verify(mBackupManagerProxy).notifyDataChanged();
+        assertTrue(store.getApConfiguration().isUserConfiguration());
     }
 
     /**
@@ -314,6 +316,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         WifiApConfigStore store = createWifiApConfigStore();
 
         verifyDefaultApConfig(store.getApConfiguration(), TEST_DEFAULT_AP_SSID);
+        assertFalse(store.getApConfiguration().isUserConfiguration());
         verify(mWifiConfigManager).saveToStore(true);
 
         /* Update with a valid configuration. */
@@ -329,6 +332,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         verifyApConfig(expectedConfig, mDataStoreSource.toSerialize());
         verify(mWifiConfigManager, times(2)).saveToStore(true);
         verify(mBackupManagerProxy, times(2)).notifyDataChanged();
+        assertTrue(store.getApConfiguration().isUserConfiguration());
     }
 
     /**

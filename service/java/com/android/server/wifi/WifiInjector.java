@@ -320,7 +320,7 @@ public class WifiInjector {
                 mWifiConfigStore, wifiHandler, mWifiMetrics);
         String l2KeySeed = Secure.getString(mContext.getContentResolver(), Secure.ANDROID_ID);
         mWifiScoreCard = new WifiScoreCard(mClock, l2KeySeed, mDeviceConfigFacade,
-                mFrameworkFacade);
+                mFrameworkFacade, mContext);
         mWifiMetrics.setWifiScoreCard(mWifiScoreCard);
         mLruConnectionTracker = new LruConnectionTracker(MAX_RECENTLY_CONNECTED_NETWORK,
                 mContext);
