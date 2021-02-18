@@ -22,7 +22,6 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.app.AlertDialog;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -157,7 +156,7 @@ public class WifiCarrierInfoManager {
     private final Resources mResources;
     private final TelephonyManager mTelephonyManager;
     private final SubscriptionManager mSubscriptionManager;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
     private final WifiMetrics mWifiMetrics;
     /**
      * Cached Map of <subscription ID, CarrierConfig PersistableBundle> since retrieving the
@@ -296,8 +295,7 @@ public class WifiCarrierInfoManager {
                             return;
                     }
                     // Clear notification once the user interacts with it.
-                    mNotificationManager.cancel(mContext.getNotificationTag(),
-                            SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
+                    mNotificationManager.cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
                 }
             };
     private void handleUserDismissAction() {
@@ -347,8 +345,7 @@ public class WifiCarrierInfoManager {
         mSubscriptionManager = subscriptionManager;
         mFrameworkFacade = frameworkFacade;
         mWifiMetrics = wifiMetrics;
-        mNotificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = mWifiInjector.getWifiNotificationManager();
         // Register broadcast receiver for UI interactions.
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(NOTIFICATION_USER_DISMISSED_INTENT_ACTION);
@@ -1601,8 +1598,7 @@ public class WifiCarrierInfoManager {
                 .build();
 
         // Post the notification.
-        mNotificationManager.notify(mContext.getNotificationTag(),
-                SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE, notification);
+        mNotificationManager.notify(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE, notification);
         mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = false;
     }
@@ -1746,8 +1742,7 @@ public class WifiCarrierInfoManager {
     }
 
     public void resetNotification() {
-        mNotificationManager.cancel(mContext.getNotificationTag(),
-                SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
+        mNotificationManager.cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
     }
 }

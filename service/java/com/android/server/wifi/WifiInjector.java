@@ -21,7 +21,6 @@ import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.net.IpMemoryStore;
 import android.net.LinkProperties;
@@ -219,6 +218,7 @@ public class WifiInjector {
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final ClientModeImplMonitor mCmiMonitor = new ClientModeImplMonitor();
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
+    private final WifiNotificationManager mWifiNotificationManager;
 
     public WifiInjector(WifiContext context) {
         if (context == null) {
@@ -242,6 +242,7 @@ public class WifiInjector {
         mWifiDiagnosticsHandlerThread.start();
 
         mContext = context;
+        mWifiNotificationManager = new WifiNotificationManager(mContext);
         mWifiGlobals = new WifiGlobals(mContext);
         mScoringParams = new ScoringParams(mContext);
         mWifiChannelUtilizationScan = new WifiChannelUtilization(mClock, mContext);
@@ -374,7 +375,8 @@ public class WifiInjector {
         mWifiMetrics.setWifiNetworkSelector(mWifiNetworkSelector);
         mWifiNetworkSuggestionsManager = new WifiNetworkSuggestionsManager(mContext, wifiHandler,
                 this, mWifiPermissionsUtil, mWifiConfigManager, mWifiConfigStore, mWifiMetrics,
-                mWifiCarrierInfoManager, mWifiKeyStore, mLruConnectionTracker);
+                mWifiCarrierInfoManager, mWifiKeyStore, mLruConnectionTracker
+        );
         mPasspointManager = new PasspointManager(mContext, this,
                 wifiHandler, mWifiNative, mWifiKeyStore, mClock, new PasspointObjectFactory(),
                 mWifiConfigManager, mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager,
@@ -420,7 +422,7 @@ public class WifiInjector {
                 wifiLooper, mFrameworkFacade, mClock, mWifiMetrics,
                 mWifiConfigManager, mWifiConfigStore, mConnectHelper,
                 new ConnectToNetworkNotificationBuilder(mContext, mFrameworkFacade),
-                mMakeBeforeBreakManager);
+                mMakeBeforeBreakManager, mWifiNotificationManager);
         mWifiConnectivityManager = new WifiConnectivityManager(
                 mContext, mScoringParams, mWifiConfigManager,
                 mWifiNetworkSuggestionsManager, mWifiNetworkSelector,
@@ -432,12 +434,10 @@ public class WifiInjector {
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 mCmiMonitor, SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
-        NotificationManager notificationManager =
-                mContext.getSystemService(NotificationManager.class);
         mConnectionFailureNotifier = new ConnectionFailureNotifier(
                 mContext, mFrameworkFacade, mWifiConfigManager,
                 mWifiConnectivityManager, wifiHandler,
-                notificationManager, mConnectionFailureNotificationBuilder);
+                mWifiNotificationManager, mConnectionFailureNotificationBuilder);
         mWifiNetworkFactory = new WifiNetworkFactory(
                 wifiLooper, mContext, NETWORK_CAPABILITIES_FILTER,
                 (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE),
@@ -476,7 +476,7 @@ public class WifiInjector {
         WakeupNotificationFactory wakeupNotificationFactory =
                 new WakeupNotificationFactory(mContext, mFrameworkFacade);
         WakeupOnboarding wakeupOnboarding = new WakeupOnboarding(mContext, mWifiConfigManager,
-                wifiHandler, mFrameworkFacade, wakeupNotificationFactory);
+                wifiHandler, mFrameworkFacade, wakeupNotificationFactory, mWifiNotificationManager);
         mWakeupController = new WakeupController(mContext, wifiHandler,
                 new WakeupLock(mWifiConfigManager, mWifiMetrics.getWakeupMetrics(), mClock),
                 new WakeupEvaluator(mScoringParams), wakeupOnboarding, mWifiConfigManager,
@@ -494,7 +494,8 @@ public class WifiInjector {
         mWifiNetworkSelector.registerNetworkNominator(mNetworkSuggestionNominator);
         mWifiNetworkSelector.registerNetworkNominator(mScoredNetworkNominator);
 
-        mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade);
+        mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade,
+                mWifiNotificationManager);
     }
 
     /**
@@ -674,7 +675,7 @@ public class WifiInjector {
         return new SoftApManager(mContext, mWifiHandlerThread.getLooper(),
                 mFrameworkFacade, mWifiNative, mCoexManager, mCountryCode.getCountryCode(),
                 listener, callback, mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
-                new SoftApNotifier(mContext, mFrameworkFacade),
+                new SoftApNotifier(mContext, mFrameworkFacade, mWifiNotificationManager),
                 mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
     }
 
@@ -702,10 +703,12 @@ public class WifiInjector {
                 mWifiNetworkFactory, mUntrustedWifiNetworkFactory, mOemPaidWifiNetworkFactory,
                 mOemPrivateWifiNetworkFactory, mWifiLastResortWatchdog, mWakeupController,
                 mLockManager, mFrameworkFacade, mWifiHandlerThread.getLooper(),
-                mWifiNative, new WrongPasswordNotifier(mContext, mFrameworkFacade),
+                mWifiNative, new WrongPasswordNotifier(mContext, mFrameworkFacade,
+                mWifiNotificationManager),
                 mWifiTrafficPoller, mLinkProbeManager, mClock.getElapsedSinceBootMillis(),
                 mBatteryStats, supplicantStateTracker, mMboOceController, mWifiCarrierInfoManager,
-                new EapFailureNotifier(mContext, mFrameworkFacade, mWifiCarrierInfoManager),
+                new EapFailureNotifier(mContext, mFrameworkFacade, mWifiCarrierInfoManager,
+                        mWifiNotificationManager),
                 mSimRequiredNotifier,
                 new WifiScoreReport(mScoringParams, mClock, mWifiMetrics, wifiInfo,
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
@@ -998,5 +1001,9 @@ public class WifiInjector {
 
     public OpenNetworkNotifier getOpenNetworkNotifier() {
         return mOpenNetworkNotifier;
+    }
+
+    public WifiNotificationManager getWifiNotificationManager() {
+        return mWifiNotificationManager;
     }
 }

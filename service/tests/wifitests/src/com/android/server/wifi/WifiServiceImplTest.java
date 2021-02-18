@@ -94,7 +94,6 @@ import static org.mockito.Mockito.when;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
-import android.app.NotificationManager;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
@@ -364,9 +363,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock AdaptiveConnectivityEnabledSettingObserver mAdaptiveConnectivityEnabledSettingObserver;
     @Mock MakeBeforeBreakManager mMakeBeforeBreakManager;
-    @Mock NotificationManager mNotificationManager;
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
     @Mock OpenNetworkNotifier mOpenNetworkNotifier;
+    @Mock WifiNotificationManager mWifiNotificationManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -401,6 +400,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
         when(mWifiInjector.getWifiHandlerThread()).thenReturn(mHandlerThread);
         when(mWifiInjector.getMakeBeforeBreakManager()).thenReturn(mMakeBeforeBreakManager);
+        when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
         when(mHandlerThread.getThreadHandler()).thenReturn(new Handler(mLooper.getLooper()));
         when(mHandlerThread.getLooper()).thenReturn(mLooper.getLooper());
         when(mContext.getResources()).thenReturn(mResources);
@@ -487,7 +487,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
                 .thenReturn(Collections.emptyList());
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
-        when(mContext.getSystemService(NotificationManager.class)).thenReturn(mNotificationManager);
         when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
         when(mClientSoftApCallback.asBinder()).thenReturn(mAppBinder);
@@ -6471,6 +6470,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.handleUserSwitch(5);
         mLooper.dispatchAll();
         verify(mWifiConfigManager).handleUserSwitch(5);
+        verify(mWifiNotificationManager).createNotificationChannels();
+        verify(mWifiNetworkSuggestionsManager).resetNotification();
+        verify(mWifiCarrierInfoManager).resetNotification();
+        verify(mOpenNetworkNotifier).clearPendingNotification(false);
+        verify(mWakeupController).resetNotification();
     }
 
     /**
@@ -7357,10 +7361,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
                         filter.hasAction(Intent.ACTION_LOCALE_CHANGED)));
+        verify(mWifiNotificationManager).createNotificationChannels();
+        clearInvocations(mWifiNotificationManager);
 
         Intent intent = new Intent(Intent.ACTION_LOCALE_CHANGED);
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
-        verify(mNotificationManager).createNotificationChannels(any());
+        verify(mWifiNotificationManager).createNotificationChannels();
         verify(mWifiNetworkSuggestionsManager).resetNotification();
         verify(mWifiCarrierInfoManager).resetNotification();
         verify(mOpenNetworkNotifier).clearPendingNotification(false);

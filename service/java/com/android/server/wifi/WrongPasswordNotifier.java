@@ -17,9 +17,7 @@
 package com.android.server.wifi;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
 import android.provider.Settings;
@@ -44,14 +42,14 @@ public class WrongPasswordNotifier {
     private boolean mWrongPasswordDetected;
 
     private final WifiContext mContext;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
     private final FrameworkFacade mFrameworkFacade;
 
-    public WrongPasswordNotifier(WifiContext context, FrameworkFacade frameworkFacade) {
+    public WrongPasswordNotifier(WifiContext context, FrameworkFacade frameworkFacade,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = frameworkFacade;
-        mNotificationManager =
-                (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
@@ -100,8 +98,7 @@ public class WrongPasswordNotifier {
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setColor(mContext.getResources().getColor(
                         android.R.color.system_notification_accent_color));
-        mNotificationManager.notify(mContext.getNotificationTag(), NOTIFICATION_ID,
-                builder.build());
+        mNotificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 
     /**
@@ -112,6 +109,6 @@ public class WrongPasswordNotifier {
     private void dismissNotification() {
         // Notification might have already been dismissed, either by user or timeout. It is
         // still okay to cancel it if already dismissed.
-        mNotificationManager.cancel(mContext.getNotificationTag(), NOTIFICATION_ID);
+        mNotificationManager.cancel(NOTIFICATION_ID);
     }
 }

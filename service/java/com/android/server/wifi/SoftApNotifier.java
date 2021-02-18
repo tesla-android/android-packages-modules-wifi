@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
@@ -42,21 +41,20 @@ public class SoftApNotifier {
 
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
 
-    public SoftApNotifier(WifiContext context, FrameworkFacade framework) {
+    public SoftApNotifier(WifiContext context, FrameworkFacade framework,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = framework;
-        mNotificationManager =
-                mContext.getSystemService(NotificationManager.class);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
      * Show notification to notify user softap disable because auto shutdown timeout expired.
      */
     public void showSoftApShutdownTimeoutExpiredNotification() {
-        mNotificationManager.notify(mContext.getNotificationTag(),
-                NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
+        mNotificationManager.notify(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
                 buildSoftApShutdownTimeoutExpiredNotification());
     }
 
@@ -65,8 +63,7 @@ public class SoftApNotifier {
      * timeout expired.
      */
     public void dismissSoftApShutdownTimeoutExpiredNotification() {
-        mNotificationManager.cancel(mContext.getNotificationTag(),
-                NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
+        mNotificationManager.cancel(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
     }
 
     private Notification buildSoftApShutdownTimeoutExpiredNotification() {
