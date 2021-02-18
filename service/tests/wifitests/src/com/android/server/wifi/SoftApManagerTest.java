@@ -51,7 +51,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import android.app.NotificationManager;
 import android.app.test.TestAlarmManager;
 import android.content.Context;
 import android.content.Intent;
@@ -166,7 +165,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Mock WifiApConfigStore mWifiApConfigStore;
     @Mock WifiMetrics mWifiMetrics;
     @Mock WifiDiagnostics mWifiDiagnostics;
-    @Mock NotificationManager mNotificationManager;
+    @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock SoftApNotifier mFakeSoftApNotifier;
 
     final ArgumentCaptor<WifiNative.InterfaceCallback> mWifiNativeInterfaceCallbackCaptor =
@@ -230,8 +229,6 @@ public class SoftApManagerTest extends WifiBaseTest {
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager.getAlarmManager());
         when(mContext.getResources()).thenReturn(mResources);
-        when(mContext.getSystemService(NotificationManager.class))
-                .thenReturn(mNotificationManager);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
 
         when(mResources.getInteger(R.integer.config_wifiFrameworkSoftApShutDownTimeoutMilliseconds))

@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -42,7 +41,7 @@ public class EapFailureNotifier {
 
     private static final long CANCEL_TIMEOUT_MILLISECONDS = 5 * 60 * 1000;
     private final WifiContext mContext;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
     private final FrameworkFacade mFrameworkFacade;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
 
@@ -51,12 +50,12 @@ public class EapFailureNotifier {
     private String mCurrentShownSsid;
 
     public EapFailureNotifier(WifiContext context, FrameworkFacade frameworkFacade,
-            WifiCarrierInfoManager wifiCarrierInfoManager) {
+            WifiCarrierInfoManager wifiCarrierInfoManager,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = frameworkFacade;
         mWifiCarrierInfoManager = wifiCarrierInfoManager;
-        mNotificationManager =
-                mContext.getSystemService(NotificationManager.class);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
@@ -112,7 +111,7 @@ public class EapFailureNotifier {
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setColor(mContext.getResources().getColor(
                         android.R.color.system_notification_accent_color));
-        mNotificationManager.notify(mContext.getNotificationTag(), NOTIFICATION_ID,
+        mNotificationManager.notify(NOTIFICATION_ID,
                 builder.build());
         mCurrentShownSsid = ssid;
     }

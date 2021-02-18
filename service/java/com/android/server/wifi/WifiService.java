@@ -52,7 +52,6 @@ public final class WifiService extends SystemService {
     @Override
     public void onBootPhase(int phase) {
         if (phase == SystemService.PHASE_SYSTEM_SERVICES_READY) {
-            mImpl.createNotificationChannels();
             mImpl.checkAndStartWifi();
         } else if (phase == SystemService.PHASE_BOOT_COMPLETED) {
             mImpl.handleBootCompleted();

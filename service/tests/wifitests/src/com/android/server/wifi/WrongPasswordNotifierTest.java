@@ -21,7 +21,6 @@ import static org.mockito.Mockito.*;
 
 import android.app.ActivityManager;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -50,11 +49,10 @@ import org.mockito.MockitoSession;
 public class WrongPasswordNotifierTest extends WifiBaseTest {
     private static final String TEST_SSID = "Test SSID";
     private static final String TEST_SETTINGS_PACKAGE = "android";
-    private static final String NOTIFICATION_TAG = "com.android.wifi";
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
-    @Mock NotificationManager mNotificationManager;
+    @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock FrameworkFacade mFrameworkFacade;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS) private Notification.Builder mNotificationBuilder;
     WrongPasswordNotifier mWrongPassNotifier;
@@ -70,12 +68,10 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         settingsResolveInfo.activityInfo = new ActivityInfo();
         settingsResolveInfo.activityInfo.packageName = TEST_SETTINGS_PACKAGE;
         when(mFrameworkFacade.getSettingsPackageName(any())).thenReturn(TEST_SETTINGS_PACKAGE);
-        when(mContext.getSystemService(Context.NOTIFICATION_SERVICE))
-                .thenReturn(mNotificationManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
-        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
-        mWrongPassNotifier = new WrongPasswordNotifier(mContext, mFrameworkFacade);
+        mWrongPassNotifier = new WrongPasswordNotifier(mContext, mFrameworkFacade,
+                mWifiNotificationManager);
 
         // static mocking
         mSession = ExtendedMockito.mockitoSession()
@@ -106,8 +102,7 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
         mWrongPassNotifier.onWrongPasswordError(TEST_SSID);
-        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
-                eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
+        verify(mWifiNotificationManager).notify(eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
                 any(Context.class), anyInt(), intent.capture(), anyInt());
@@ -125,11 +120,10 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
     @Test
     public void onNewConnectionAttemptWithPreviousWrongPasswordError() throws Exception {
         onWrongPasswordError();
-        reset(mNotificationManager);
+        reset(mWifiNotificationManager);
 
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager).cancel(eq(NOTIFICATION_TAG),
-                eq(WrongPasswordNotifier.NOTIFICATION_ID));
+        verify(mWifiNotificationManager).cancel(eq(WrongPasswordNotifier.NOTIFICATION_ID));
     }
 
     /**
@@ -141,6 +135,6 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
     @Test
     public void onNewConnectionAttemptWithoutPreviousWrongPasswordError() throws Exception {
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager, never()).cancel(eq(NOTIFICATION_TAG), anyInt());
+        verify(mWifiNotificationManager, never()).cancel(anyInt());
     }
 }
