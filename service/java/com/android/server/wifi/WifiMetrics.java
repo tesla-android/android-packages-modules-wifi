@@ -5380,6 +5380,8 @@ public class WifiMetrics {
                 return "DISCONNECT_P2P_DISCONNECT_WIFI_REQUEST";
             case StaEvent.DISCONNECT_RESET_SIM_NETWORKS:
                 return "DISCONNECT_RESET_SIM_NETWORKS";
+            case StaEvent.DISCONNECT_MBB_NO_INTERNET:
+                return "DISCONNECT_MBB_NO_INTERNET";
             default:
                 return "DISCONNECT_UNKNOWN=" + frameworkDisconnectReason;
         }
