@@ -1356,6 +1356,9 @@ message StaEvent {
 
     // SIM was removed while using a SIM config
     DISCONNECT_RESET_SIM_NETWORKS = 6;
+
+    // The network being evaluated in Make-Before-Break was disconnected due to no internet.
+    DISCONNECT_MBB_NO_INTERNET = 7;
   }
 
   // Authentication Failure reasons as reported through the API.

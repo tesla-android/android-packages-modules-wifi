@@ -5337,7 +5337,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 if (mWifiConfigManager.getLastSelectedNetwork() != config.networkId
                                         && !config.noInternetAccessExpected) {
                                     Log.i(getTag(), "Temporarily disabling network because of"
-                                            + "no-internet access");
+                                            + " no-internet access");
                                     mWifiConfigManager.updateNetworkSelectionStatus(
                                             config.networkId,
                                             DISABLED_NO_INTERNET_TEMPORARY);
@@ -5348,6 +5348,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 }
                                 mWifiScoreCard.noteValidationFailure(mWifiInfo);
                             }
+                        }
+                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                            Log.d(getTag(), "Internet validation failed during MBB,"
+                                    + " disconnecting ClientModeManager=" + mClientModeManager);
+                            mWifiMetrics.logStaEvent(
+                                    mInterfaceName,
+                                    StaEvent.TYPE_FRAMEWORK_DISCONNECT,
+                                    StaEvent.DISCONNECT_MBB_NO_INTERNET);
+                            mWifiNative.disconnect(mInterfaceName);
                         }
                     }
                     break;

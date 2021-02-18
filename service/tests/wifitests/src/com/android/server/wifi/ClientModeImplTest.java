@@ -3890,6 +3890,21 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiScoreCard).noteValidationFailure(any());
     }
 
+    @Test
+    public void mbb_internetValidationError_expectDisconnect() throws Exception {
+        connect();
+        verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
+                mWifiNetworkAgentCallbackCaptor.capture());
+
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+
+        mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
+                NetworkAgent.VALIDATION_STATUS_NOT_VALID, null /* captivePortalUr; */);
+        mLooper.dispatchAll();
+
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+    }
+
     /**
      * Verify that we don't temporarily disable the network when user selected to connect to a
      * network with no internet access.
