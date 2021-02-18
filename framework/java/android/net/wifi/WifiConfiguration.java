@@ -2810,6 +2810,7 @@ public class WifiConfiguration implements Parcelable {
                 .append(" HIDDEN: ").append(this.hiddenSSID)
                 .append(" PMF: ").append(this.requirePmf)
                 .append("CarrierId: ").append(this.carrierId)
+                .append("SubscriptionId").append(this.subscriptionId)
                 .append('\n');
 
 
