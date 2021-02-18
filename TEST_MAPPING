@@ -30,9 +30,6 @@
   "mainline-postsubmit": [
     {
       "name": "FrameworksWifiTests[com.google.android.wifi.apex]"
-    },
-    {
-      "name": "FrameworksWifiApiTests[com.google.android.wifi.apex]"
     }
   ]
 }
