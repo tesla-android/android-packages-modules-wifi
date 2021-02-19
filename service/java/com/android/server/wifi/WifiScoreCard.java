@@ -995,8 +995,8 @@ public class WifiScoreCard {
         private long mLastRxBytes;
         private long mLastTxBytes;
         private String mBssid = "";
-        private int mSignalLevel = -1;
-        private int mBandIdx = -1;
+        private int mSignalLevel;  // initialize to zero to handle possible race condition
+        private int mBandIdx;  // initialize to zero to handle possible race condition
         private int[] mByteDeltaAccThr = new int[NUM_LINK_DIRECTION];
         private int[] mFilterKbps = new int[NUM_LINK_DIRECTION];
         private int[] mBandwidthSampleKbps = new int[NUM_LINK_DIRECTION];
@@ -1367,7 +1367,6 @@ public class WifiScoreCard {
             if (avgUsagKbps > 0) {
                 return avgUsagKbps;
             }
-
             // Fall back to a cold-start value
             return LINK_BANDWIDTH_INIT_KBPS[mBandIdx][link][mSignalLevel];
         }

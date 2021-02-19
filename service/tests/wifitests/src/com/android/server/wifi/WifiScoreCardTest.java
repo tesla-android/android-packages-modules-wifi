@@ -1722,4 +1722,16 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(LINK_BANDWIDTH_INIT_KBPS[1][LINK_RX][signalLevel],
                 perNetwork.getRxLinkBandwidthKbps());
     }
+
+    @Test
+    public void testGetLinkBandwidthWithoutUpdateReturnLevel0Band0Value() {
+        PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+
+        // Call getLinkBandwidth() without updateLinkBandwidth()
+        // Expect cold-start value at level 0 and band 0
+        assertEquals(LINK_BANDWIDTH_INIT_KBPS[0][LINK_TX][0],
+                perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(LINK_BANDWIDTH_INIT_KBPS[0][LINK_RX][0],
+                perNetwork.getRxLinkBandwidthKbps());
+    }
 }
