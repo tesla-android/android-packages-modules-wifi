@@ -27,7 +27,6 @@ import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.AppOpsManager;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -141,7 +140,7 @@ public class WifiNetworkSuggestionsManager {
     private final Handler mHandler;
     private final AppOpsManager mAppOps;
     private final ActivityManager mActivityManager;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
     private final NetworkScoreManager mNetworkScoreManager;
     private final PackageManager mPackageManager;
     private final WifiPermissionsUtil mWifiPermissionsUtil;
@@ -603,8 +602,7 @@ public class WifiNetworkSuggestionsManager {
                             return;
                     }
                     // Clear notification once the user interacts with it.
-                    mNotificationManager.cancel(mContext.getNotificationTag(),
-                            SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+                    mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
                 }
             };
 
@@ -641,8 +639,6 @@ public class WifiNetworkSuggestionsManager {
         mHandler = handler;
         mAppOps = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
         mActivityManager = context.getSystemService(ActivityManager.class);
-        mNotificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         mNetworkScoreManager = context.getSystemService(NetworkScoreManager.class);
         mPackageManager = context.getPackageManager();
         mWifiInjector = wifiInjector;
@@ -652,6 +648,7 @@ public class WifiNetworkSuggestionsManager {
         mWifiMetrics = wifiMetrics;
         mWifiCarrierInfoManager = wifiCarrierInfoManager;
         mWifiKeyStore = keyStore;
+        mNotificationManager = mWifiInjector.getWifiNotificationManager();
 
         // register the data store for serializing/deserializing data.
         wifiConfigStore.registerStoreData(
@@ -926,12 +923,16 @@ public class WifiNetworkSuggestionsManager {
         if (perAppInfo == null) {
             perAppInfo = new PerAppInfo(uid, packageName, featureId);
             mActiveNetworkSuggestionsPerApp.put(packageName, perAppInfo);
-            if (mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)
-                    || isAppWorkingAsCrossCarrierProvider(packageName)) {
+            if (mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)) {
                 Log.i(TAG, "Setting the carrier provisioning app approved");
                 perAppInfo.hasUserApproved = true;
                 mWifiMetrics.incrementNetworkSuggestionApiUsageNumOfAppInType(
                         APP_TYPE_NETWORK_PROVISIONING);
+            } else if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                        || isAppWorkingAsCrossCarrierProvider(packageName)) {
+                // Bypass added for tests & shell commands.
+                Log.i(TAG, "Setting the test app approved");
+                perAppInfo.hasUserApproved = true;
             } else if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Setting the carrier privileged app approved");
                 perAppInfo.carrierId = carrierId;
@@ -1576,8 +1577,7 @@ public class WifiNetworkSuggestionsManager {
                 .build();
 
         // Post the notification.
-        mNotificationManager.notify(mContext.getNotificationTag(),
-                SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
+        mNotificationManager.notify(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
         mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = false;
     }
@@ -2594,8 +2594,7 @@ public class WifiNetworkSuggestionsManager {
     }
 
     public void resetNotification() {
-        mNotificationManager.cancel(mContext.getNotificationTag(),
-                SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
+        mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
     }
 }

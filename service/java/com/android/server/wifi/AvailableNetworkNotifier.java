@@ -25,7 +25,6 @@ import static com.android.server.wifi.ConnectToNetworkNotificationBuilder.AVAILA
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -127,6 +126,7 @@ public class AvailableNetworkNotifier {
     private final ConnectHelper mConnectHelper;
     private final ConnectToNetworkNotificationBuilder mNotificationBuilder;
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
+    private final WifiNotificationManager mWifiNotificationManager;
 
     private ScanResult mRecommendedNetwork;
 
@@ -162,7 +162,8 @@ public class AvailableNetworkNotifier {
             WifiConfigStore wifiConfigStore,
             ConnectHelper connectHelper,
             ConnectToNetworkNotificationBuilder connectToNetworkNotificationBuilder,
-            MakeBeforeBreakManager makeBeforeBreakManager) {
+            MakeBeforeBreakManager makeBeforeBreakManager,
+            WifiNotificationManager wifiNotificationManager) {
         mTag = tag;
         mStoreDataIdentifier = storeDataIdentifier;
         mToggleSettingsName = toggleSettingsName;
@@ -177,6 +178,7 @@ public class AvailableNetworkNotifier {
         mConnectHelper = connectHelper;
         mNotificationBuilder = connectToNetworkNotificationBuilder;
         mMakeBeforeBreakManager = makeBeforeBreakManager;
+        mWifiNotificationManager = wifiNotificationManager;
         mScreenOn = false;
         wifiConfigStore.registerStoreData(new SsidSetStoreData(mStoreDataIdentifier,
                 new AvailableNetworkNotifierStoreData()));
@@ -249,8 +251,7 @@ public class AvailableNetworkNotifier {
         }
 
         if (mState != STATE_NO_NOTIFICATION) {
-            getNotificationManager().cancel(mContext.getNotificationTag(),
-                    mSystemMessageNotificationId);
+            mWifiNotificationManager.cancel(mSystemMessageNotificationId);
 
             if (mRecommendedNetwork != null) {
                 Log.d(mTag, "Notification with state="
@@ -392,10 +393,6 @@ public class AvailableNetworkNotifier {
                 TIME_TO_SHOW_FAILED_MILLIS);
     }
 
-    private NotificationManager getNotificationManager() {
-        return (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-    }
-
     private void postInitialNotification(ScanResult recommendedNetwork) {
         if (mRecommendedNetwork != null
                 && TextUtils.equals(mRecommendedNetwork.SSID, recommendedNetwork.SSID)) {
@@ -417,8 +414,7 @@ public class AvailableNetworkNotifier {
     }
 
     private void postNotification(Notification notification) {
-        getNotificationManager().notify(mContext.getNotificationTag(),
-                mSystemMessageNotificationId, notification);
+        mWifiNotificationManager.notify(mSystemMessageNotificationId, notification);
     }
 
     private void handleConnectToNetworkAction() {

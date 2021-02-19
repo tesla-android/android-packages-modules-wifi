@@ -44,8 +44,6 @@ public class WifiContext extends ContextWrapper {
     /** Since service-wifi runs within system_server, its package name is "android". */
     private static final String SERVICE_WIFI_PACKAGE_NAME = "android";
 
-    private static final String NOTIFICATION_TAG = "com.android.wifi";
-
     private String mWifiOverlayApkPkgName;
 
     // Cached resources from the resources APK.
@@ -147,12 +145,5 @@ public class WifiContext extends ContextWrapper {
     /** Get the package name that service-wifi runs under. */
     public String getServiceWifiPackageName() {
         return SERVICE_WIFI_PACKAGE_NAME;
-    }
-
-    /**
-     * Get the notification tag of wifi stack.
-     */
-    public String getNotificationTag() {
-        return NOTIFICATION_TAG;
     }
 }

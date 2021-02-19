@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
@@ -36,13 +35,13 @@ public class SimRequiredNotifier {
     private static final String TAG = "SimRequiredNotifier";
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
 
-    public SimRequiredNotifier(WifiContext context, FrameworkFacade framework) {
+    public SimRequiredNotifier(WifiContext context, FrameworkFacade framework,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = framework;
-        mNotificationManager =
-                mContext.getSystemService(NotificationManager.class);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
@@ -62,8 +61,7 @@ public class SimRequiredNotifier {
      * Dismiss notification
      */
     public void dismissSimRequiredNotification() {
-        mNotificationManager.cancel(mContext.getNotificationTag(),
-                SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
+        mNotificationManager.cancel(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
     }
 
     private void showNotification(String ssid, String carrier) {
@@ -95,7 +93,6 @@ public class SimRequiredNotifier {
                 .setContentIntent(mFrameworkFacade.getActivity(
                         mContext, 0, intent,
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-        mNotificationManager.notify(mContext.getNotificationTag(),
-                SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED, builder.build());
+        mNotificationManager.notify(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED, builder.build());
     }
 }

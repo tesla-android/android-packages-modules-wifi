@@ -20,13 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import android.app.AlertDialog;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -52,14 +48,12 @@ import org.mockito.MockitoAnnotations;
  */
 @SmallTest
 public class ConnectionFailureNotifierTest extends WifiBaseTest {
-    private static final String NOTIFICATION_TAG = "com.android.wifi";
-
     @Mock private WifiContext mContext;
     @Mock private Resources mResources;
     @Mock private FrameworkFacade mFrameworkFacade;
     @Mock private WifiConfigManager mWifiConfigManager;
     @Mock private WifiConnectivityManager mWifiConnectivityManager;
-    @Mock private NotificationManager mNotificationManager;
+    @Mock private WifiNotificationManager mWifiNotificationManager;
     @Mock private ConnectionFailureNotificationBuilder mConnectionFailureNotificationBuilder;
     @Mock private Notification mNotification;
     @Mock private AlertDialog mAlertDialog;
@@ -76,14 +70,13 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mLooper = new TestLooper();
         MockitoAnnotations.initMocks(this);
         when(mContext.getResources()).thenReturn(mResources);
-        when(mContext.getNotificationTag()).thenReturn(NOTIFICATION_TAG);
         when(mConnectionFailureNotificationBuilder
                 .buildNoMacRandomizationSupportNotification(any())).thenReturn(mNotification);
         when(mConnectionFailureNotificationBuilder.buildChangeMacRandomizationSettingDialog(any(),
                 any())).thenReturn(mAlertDialog);
         mConnectionFailureNotifier = new ConnectionFailureNotifier(
                 mContext, mFrameworkFacade, mWifiConfigManager, mWifiConnectivityManager,
-                new Handler(mLooper.getLooper()), mNotificationManager,
+                new Handler(mLooper.getLooper()), mWifiNotificationManager,
                 mConnectionFailureNotificationBuilder);
 
         verify(mContext).registerReceiver(mBroadCastReceiverCaptor.capture(), any());
@@ -125,7 +118,7 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mConnectionFailureNotifier.showFailedToConnectDueToNoRandomizedMacSupportNotification(
                 config.networkId);
         // verify that a notification is sent
-        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+        verify(mWifiNotificationManager).notify(
                 eq(SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT), eq(mNotification));
 
         // sets up the intent that simulates the user tapping on the notification.
@@ -161,7 +154,7 @@ public class ConnectionFailureNotifierTest extends WifiBaseTest {
         mConnectionFailureNotifier.showFailedToConnectDueToNoRandomizedMacSupportNotification(
                 config.networkId);
         // verify that a notification is sent
-        verify(mNotificationManager).notify(eq(NOTIFICATION_TAG),
+        verify(mWifiNotificationManager).notify(
                 eq(SystemMessage.NOTE_NETWORK_NO_MAC_RANDOMIZATION_SUPPORT), any());
 
         // sets up the intent that simulates the user tapping on the notification.

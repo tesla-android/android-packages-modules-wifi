@@ -24,8 +24,6 @@ import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
 import static com.android.server.wifi.WifiShellCommand.SHELL_PACKAGE_NAME;
 
-import static junit.framework.Assert.fail;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assume.assumeFalse;
@@ -795,13 +793,8 @@ public class WifiShellCommandTest extends WifiBaseTest {
     public void testConnectNetworkWithEnhancedMacRandomizationOnR() {
         assumeFalse(SdkLevel.isAtLeastS());
 
-        try {
-            mWifiShellCommand.exec(
-                    new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
-                    new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"});
-            fail();
-        } catch (IllegalArgumentException e) {
-            // pass
-        }
+        assertEquals(-1, mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"}));
     }
 }

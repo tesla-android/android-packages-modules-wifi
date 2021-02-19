@@ -238,6 +238,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final ConcreteClientModeManager mClientModeManager;
 
     private int mLastSignalLevel = -1;
+    private int mLastTxKbps = -1;
+    private int mLastRxKbps = -1;
     private int mLastScanRssi = WifiInfo.INVALID_RSSI;
     private String mLastBssid;
     // TODO (b/162942761): Ensure this is reset when mTargetNetworkId is set.
@@ -534,11 +536,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private static final int SUSPEND_DUE_TO_HIGH_PERF = 1 << 1;
     private static final int SUSPEND_DUE_TO_SCREEN = 1 << 2;
 
-    /**
-     * Time window in milliseconds for which we send
-     * {@link NetworkAgent#explicitlySelected(boolean, boolean)}
-     * after connecting to the network which the user last selected.
-     */
+    /** @see #isRecentlySelectedByTheUser */
     @VisibleForTesting
     public static final int LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS = 30 * 1000;
 
@@ -1565,6 +1563,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         pw.println("mDhcpResultsParcelable "
                 + dhcpResultsParcelableToString(mDhcpResultsParcelable));
         pw.println("mLastSignalLevel " + mLastSignalLevel);
+        pw.println("mLastTxKbps " + mLastTxKbps);
+        pw.println("mLastRxKbps " + mLastRxKbps);
         pw.println("mLastBssid " + mLastBssid);
         pw.println("mLastNetworkId " + mLastNetworkId);
         pw.println("mLastSubId " + mLastSubId);
@@ -2161,13 +2161,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
              * level.
              */
             int newSignalLevel = RssiUtil.calculateSignalLevel(mContext, newRssi);
-            WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-            network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
             if (newSignalLevel != mLastSignalLevel) {
-                // TODO (b/162602799 and b/178725509): Do we need to change the update frequency?
-                updateCapabilities();
+                // TODO (b/162602799): Do we need to change the update frequency?
                 sendRssiChangeBroadcast(newRssi);
             }
+            updateLinkBandwidthAndCapabilities(stats, newSignalLevel != mLastSignalLevel);
             mLastSignalLevel = newSignalLevel;
         } else {
             mWifiInfo.setRssi(WifiInfo.INVALID_RSSI);
@@ -2179,6 +2177,27 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
          */
         mWifiMetrics.handlePollResult(mWifiInfo);
         return stats;
+    }
+
+    // Update the link bandwidth. If the link bandwidth changes by a large amount or signal level
+    // changes, also update network capabilities.
+    private void updateLinkBandwidthAndCapabilities(WifiLinkLayerStats stats,
+            boolean hasSignalLevelChanged) {
+        WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        network.updateLinkBandwidth(mLastLinkLayerStats, stats, mWifiInfo);
+        int newTxKbps = network.getTxLinkBandwidthKbps();
+        int newRxKbps = network.getRxLinkBandwidthKbps();
+        int txDeltaKbps = Math.abs(newTxKbps - mLastTxKbps);
+        int rxDeltaKbps = Math.abs(newRxKbps - mLastRxKbps);
+        int bwUpdateThresholdPercent = mContext.getResources().getInteger(
+                R.integer.config_wifiLinkBandwidthUpdateThresholdPercent);
+        if ((txDeltaKbps * 100  >  bwUpdateThresholdPercent * mLastTxKbps)
+                || (rxDeltaKbps * 100  >  bwUpdateThresholdPercent * mLastRxKbps)
+                || hasSignalLevelChanged) {
+            mLastTxKbps = newTxKbps;
+            mLastRxKbps = newRxKbps;
+            updateCapabilities();
+        }
     }
 
     // Polling has completed, hence we won't have a score anymore
@@ -5061,26 +5080,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /**
-     * Helper function to check if a nework has been recently selected by the user.
+     * Helper function to check if a network has been recently selected by the user.
      * (i.e less than {@link #LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS) before).
-     *
-     * This is used to determine if we should call
-     * {@link NetworkAgent#explicitlySelected(boolean, boolean)} to indicate that we connected to
-     * a network the user just chose.
-     * This is also used to determine if we should set the network as the user connect choice when
-     * a connection gets successfully established.
      */
     @VisibleForTesting
-    public boolean isRecentlySelectedByTheUser(WifiConfiguration currentConfig) {
-        if (currentConfig == null) {
-            Log.wtf(getTag(), "Current WifiConfiguration is null, "
-                    + "but IP provisioning just succeeded");
-            return false;
-        }
+    public boolean isRecentlySelectedByTheUser(@NonNull WifiConfiguration currentConfig) {
         long currentTimeMillis = mClock.getElapsedSinceBootMillis();
-        return (mWifiConfigManager.getLastSelectedNetwork() == currentConfig.networkId
+        return mWifiConfigManager.getLastSelectedNetwork() == currentConfig.networkId
                 && currentTimeMillis - mWifiConfigManager.getLastSelectedTimeStamp()
-                < LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS);
+                < LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS;
     }
 
     private void sendConnectedState() {
@@ -5309,12 +5317,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                         WifiDiagnostics.CONNECTION_EVENT_FAILED);
                                 mWifiConfigManager.incrementNetworkNoInternetAccessReports(
                                         config.networkId);
-                                // If this was not the last selected network, update network
+                                // If this was not recently selected by the user, update network
                                 // selection status to temporarily disable the network.
-                                if (mWifiConfigManager.getLastSelectedNetwork() != config.networkId
+                                if (!isRecentlySelectedByTheUser(config)
                                         && !config.noInternetAccessExpected) {
                                     Log.i(getTag(), "Temporarily disabling network because of"
-                                            + "no-internet access");
+                                            + " no-internet access");
                                     mWifiConfigManager.updateNetworkSelectionStatus(
                                             config.networkId,
                                             DISABLED_NO_INTERNET_TEMPORARY);
@@ -5325,6 +5333,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 }
                                 mWifiScoreCard.noteValidationFailure(mWifiInfo);
                             }
+                        }
+                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                            Log.d(getTag(), "Internet validation failed during MBB,"
+                                    + " disconnecting ClientModeManager=" + mClientModeManager);
+                            mWifiMetrics.logStaEvent(
+                                    mInterfaceName,
+                                    StaEvent.TYPE_FRAMEWORK_DISCONNECT,
+                                    StaEvent.DISCONNECT_MBB_NO_INTERNET);
+                            mWifiNative.disconnect(mInterfaceName);
                         }
                     }
                     break;

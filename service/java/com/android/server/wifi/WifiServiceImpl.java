@@ -33,9 +33,6 @@ import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_DEFAULT_DA
 import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_SIM_INSERTED;
 import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_SIM_REMOVED;
 import static com.android.server.wifi.SelfRecovery.REASON_API_CALL;
-import static com.android.server.wifi.WifiService.NOTIFICATION_NETWORK_ALERTS;
-import static com.android.server.wifi.WifiService.NOTIFICATION_NETWORK_AVAILABLE;
-import static com.android.server.wifi.WifiService.NOTIFICATION_NETWORK_STATUS;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
 import android.Manifest;
@@ -43,8 +40,6 @@ import android.annotation.CheckResult;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.bluetooth.BluetoothAdapter;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -373,6 +368,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     "WifiService starting up with Wi-Fi " + (wifiEnabled ? "enabled" : "disabled"));
 
             mWifiInjector.getWifiScanAlwaysAvailableSettingsCompatibility().initialize();
+            mWifiInjector.getWifiNotificationManager().createNotificationChannels();
             mContext.registerReceiver(
                     new BroadcastReceiver() {
                         @Override
@@ -431,12 +427,7 @@ public class WifiServiceImpl extends BaseWifiService {
                         @Override
                         public void onReceive(Context context, Intent intent) {
                             Log.d(TAG, "locale changed");
-                            createNotificationChannels();
-                            mWifiInjector.getOpenNetworkNotifier().clearPendingNotification(false);
-                            mWifiCarrierInfoManager.resetNotification();
-                            mWifiNetworkSuggestionsManager.resetNotification();
-                            mWifiInjector.getWakeupController().resetNotification();
-
+                            resetNotificationManager();
                         }}, new IntentFilter(Intent.ACTION_LOCALE_CHANGED));
 
             // Adding optimizations of only receiving broadcasts when wifi is enabled
@@ -541,7 +532,11 @@ public class WifiServiceImpl extends BaseWifiService {
 
     public void handleUserSwitch(int userId) {
         Log.d(TAG, "Handle user switch " + userId);
-        mWifiThreadRunner.post(() -> mWifiConfigManager.handleUserSwitch(userId));
+
+        mWifiThreadRunner.post(() -> {
+            mWifiConfigManager.handleUserSwitch(userId);
+            resetNotificationManager();
+        });
     }
 
     public void handleUserUnlock(int userId) {
@@ -4904,36 +4899,6 @@ public class WifiServiceImpl extends BaseWifiService {
         });
     }
 
-    public void createNotificationChannels() {
-        final NotificationManager nm = mContext.getSystemService(NotificationManager.class);
-        List<NotificationChannel> channelsList = new ArrayList<>();
-        final NotificationChannel networkStatusChannel = new NotificationChannel(
-                NOTIFICATION_NETWORK_STATUS,
-                mContext.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_status),
-                NotificationManager.IMPORTANCE_LOW);
-        channelsList.add(networkStatusChannel);
-
-        final NotificationChannel networkAlertsChannel = new NotificationChannel(
-                NOTIFICATION_NETWORK_ALERTS,
-                mContext.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_alerts),
-                NotificationManager.IMPORTANCE_HIGH);
-        networkAlertsChannel.setBlockable(true);
-        channelsList.add(networkAlertsChannel);
-
-        final NotificationChannel networkAvailable = new NotificationChannel(
-                NOTIFICATION_NETWORK_AVAILABLE,
-                mContext.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_available),
-                NotificationManager.IMPORTANCE_LOW);
-        networkAvailable.setBlockable(true);
-        channelsList.add(networkAvailable);
-
-        nm.createNotificationChannels(channelsList);
-        nm.cancelAll();
-    }
-
     /**
      * See {@link android.net.wifi.WifiManager#setWifiScoringEnabled(boolean)}.
      */
@@ -4944,5 +4909,13 @@ public class WifiServiceImpl extends BaseWifiService {
         // Post operation to handler thread
         return mWifiThreadRunner.call(
                 () -> mSettingsStore.handleWifiScoringEnabled(enabled), false);
+    }
+
+    private void resetNotificationManager() {
+        mWifiInjector.getWifiNotificationManager().createNotificationChannels();
+        mWifiInjector.getOpenNetworkNotifier().clearPendingNotification(false);
+        mWifiCarrierInfoManager.resetNotification();
+        mWifiNetworkSuggestionsManager.resetNotification();
+        mWifiInjector.getWakeupController().resetNotification();
     }
 }

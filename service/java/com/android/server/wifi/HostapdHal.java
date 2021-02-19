@@ -826,7 +826,7 @@ public class HostapdHal {
         ifaceParamsV1_2.V1_1 = ifaceParamsV11;
         updateIfaceParams_1_2FromResource(ifaceParamsV1_2);
         //Update 80211ax support with the configuration.
-        ifaceParamsV1_2.hwModeParams.enable80211AX &= config.isIeee80211axEnabled();
+        ifaceParamsV1_2.hwModeParams.enable80211AX &= config.isIeee80211axEnabledInternal();
 
         ifaceParamsV1_2.channelParams.bandMask = getHalBandMask(config.getBand());
 
