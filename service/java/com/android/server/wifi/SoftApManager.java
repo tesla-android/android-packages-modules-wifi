@@ -266,7 +266,7 @@ public class SoftApManager implements ActiveModeManager {
             mAllowedClientList = new HashSet<>(softApConfig.getAllowedClientList());
             mTimeoutEnabled = softApConfig.isAutoShutdownEnabled();
             mBridgedModeOpportunisticsShutdownTimeoutEnabled =
-                    softApConfig.isBridgedModeOpportunisticShutdownEnabled();
+                    softApConfig.isBridgedModeOpportunisticShutdownEnabledInternal();
         }
         mDefaultShutdownTimeoutMillis = mContext.getResources().getInteger(
                 R.integer.config_wifiFrameworkSoftApShutDownTimeoutMilliseconds);
@@ -796,7 +796,7 @@ public class SoftApManager implements ActiveModeManager {
                         mAllowedClientList = new HashSet<>(newConfig.getAllowedClientList());
                         mTimeoutEnabled = newConfig.isAutoShutdownEnabled();
                         mBridgedModeOpportunisticsShutdownTimeoutEnabled =
-                                newConfig.isBridgedModeOpportunisticShutdownEnabled();
+                                newConfig.isBridgedModeOpportunisticShutdownEnabledInternal();
                         break;
                     default:
                         // Ignore all other commands.
@@ -1299,12 +1299,13 @@ public class SoftApManager implements ActiveModeManager {
                                     != newConfig.getShutdownTimeoutMillis()
                                     || mTimeoutEnabled != newConfig.isAutoShutdownEnabled()
                                     || mBridgedModeOpportunisticsShutdownTimeoutEnabled
-                                    != newConfig.isBridgedModeOpportunisticShutdownEnabled();
+                                    != newConfig
+                                    .isBridgedModeOpportunisticShutdownEnabledInternal();
                             mBlockedClientList = new HashSet<>(newConfig.getBlockedClientList());
                             mAllowedClientList = new HashSet<>(newConfig.getAllowedClientList());
                             mTimeoutEnabled = newConfig.isAutoShutdownEnabled();
                             mBridgedModeOpportunisticsShutdownTimeoutEnabled =
-                                    newConfig.isBridgedModeOpportunisticShutdownEnabled();
+                                    newConfig.isBridgedModeOpportunisticShutdownEnabledInternal();
                             mApConfig = new SoftApModeConfiguration(mApConfig.getTargetMode(),
                                     newConfig, mCurrentSoftApCapability);
                             updateClientConnection();
