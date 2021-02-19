@@ -46,6 +46,7 @@ import android.net.MacAddress;
 import android.net.NetworkCapabilities;
 import android.net.NetworkProvider;
 import android.net.NetworkRequest;
+import android.net.NetworkSpecifier;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.INetworkRequestUserSelectionCallback;
 import android.net.wifi.ScanResult;
@@ -333,10 +334,28 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     }
 
     /**
+     * Validates handling of acceptNetwork with an unsupported network specifier
+     */
+    @Test
+    public void testHandleAcceptNetworkRequestFromWithUnsupportedSpecifier() throws Exception {
+        // Attach an unsupported specifier.
+        mNetworkCapabilities.setNetworkSpecifier(mock(NetworkSpecifier.class));
+        mNetworkRequest = new NetworkRequest.Builder()
+                .setCapabilities(mNetworkCapabilities)
+                .build();
+
+        // request should be rejected, but not released.
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
+        mLooper.dispatchAll();
+        verify(mConnectivityManager, never()).declareNetworkRequestUnfulfillable(any());
+    }
+
+    /**
      * Validates handling of acceptNetwork with a network specifier with invalid uid/package name.
      */
     @Test
-    public void testHandleAcceptNetworkRequestFromWithInvalidSpecifier() throws Exception {
+    public void testHandleAcceptNetworkRequestFromWithInvalidWifiNetworkSpecifier()
+            throws Exception {
         when(mActivityManager.getPackageImportance(TEST_PACKAGE_NAME_1))
                 .thenReturn(IMPORTANCE_GONE);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(TEST_UID_1))
@@ -622,6 +641,25 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         validateScanSettings(null);
 
         verify(mWifiMetrics).incrementNetworkRequestApiNumRequest();
+    }
+
+    /**
+     * Validates handling of new network request with unsupported network specifier.
+     */
+    @Test
+    public void testHandleNetworkRequestWithUnsupportedSpecifier() throws Exception {
+        // Attach an unsupported specifier.
+        mNetworkCapabilities.setNetworkSpecifier(mock(NetworkSpecifier.class));
+        mNetworkRequest = new NetworkRequest.Builder()
+                .setCapabilities(mNetworkCapabilities)
+                .build();
+
+        // Ignore the request, but don't release it.
+        mWifiNetworkFactory.needNetworkFor(mNetworkRequest);
+        mLooper.dispatchAll();
+        verify(mConnectivityManager, never()).declareNetworkRequestUnfulfillable(any());
+
+        verifyNoMoreInteractions(mWifiScanner, mWifiConnectivityManager, mWifiMetrics);
     }
 
     /**
