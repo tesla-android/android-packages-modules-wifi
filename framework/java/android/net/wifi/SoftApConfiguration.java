@@ -707,6 +707,14 @@ public final class SoftApConfiguration implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return isBridgedModeOpportunisticShutdownEnabledInternal();
+    }
+
+    /**
+     * @see #isBridgedModeOpportunisticShutdownEnabled()
+     * @hide
+     */
+    public boolean isBridgedModeOpportunisticShutdownEnabledInternal() {
         return mBridgedModeOpportunisticShutdownEnabled;
     }
 
