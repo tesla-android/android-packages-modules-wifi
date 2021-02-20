@@ -4271,7 +4271,11 @@ public class WifiManager {
          * Called when the connected clients to soft AP changes.
          *
          * @param clients the currently connected clients
+         *
+         * @deprecated This API is deprecated.
+         * Use {@link #onConnectedClientsChanged(SoftApInfo, List<WifiClient>)} instead.
          */
+        @Deprecated
         default void onConnectedClientsChanged(@NonNull List<WifiClient> clients) {}
 
 
@@ -4283,9 +4287,6 @@ public class WifiManager {
          * When the Soft AP is configured in bridged mode, this callback is invoked with
          * the corresponding {@link SoftApInfo} for the instance in which the connected clients
          * changed.
-         *
-         * Use {@link #onConnectedClientsChanged(List<WifiClient>)} if you don't care about
-         * the mapping from SoftApInfo instance to connected clients.
          *
          * @param info The {@link SoftApInfo} of the AP.
          * @param clients The currently connected clients on the AP instance specified by
@@ -4303,7 +4304,11 @@ public class WifiManager {
          * {@link #onInfoChanged(List<SoftApInfo>)} callback in bridged AP mode.
          *
          * @param softApInfo is the softap information. {@link SoftApInfo}
+         *
+         * @deprecated This API is deprecated. Use {@link #onInfoChanged(List<SoftApInfo>)}
+         * instead.
          */
+        @Deprecated
         default void onInfoChanged(@NonNull SoftApInfo softApInfo) {
             // Do nothing: can be updated to add SoftApInfo details (e.g. channel) to the UI.
         }
@@ -4513,8 +4518,6 @@ public class WifiManager {
      * <li> {@link SoftApCallback#onCapabilityChanged(SoftApCapability)}</li>
      * </ul>
      *
-     * Use {@link SoftApCallback#onConnectedClientsChanged(List<WifiClient>)} to know if there are
-     * any clients connected to any of the bridged instances of this AP (if bridged AP is enabled).
      * Use {@link SoftApCallback#onConnectedClientsChanged(SoftApInfo, List<WifiClient>)} to know
      * if there are any clients connected to a specific bridged instance of this AP
      * (if bridged AP is enabled).

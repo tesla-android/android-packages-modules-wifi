@@ -525,12 +525,14 @@ public final class SoftApConfiguration implements Parcelable {
      * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, or {@code BAND_2GHZ | BAND_5GHZ}.
      *
      * Note: Returns the lowest band when more than one band is set.
-     * Use {@link #getBands()} to get dual bands setting.
+     * Use {@link #getChannels()} to get dual bands setting.
      *
      * See also {@link Builder#setBand(int)}.
      *
+     * @deprecated This API is deprecated. Use {@link #getChannels()} instead.
      * @hide
      */
+    @Deprecated
     @SystemApi
     public @BandType int getBand() {
         return mChannels.keyAt(0);
@@ -548,11 +550,7 @@ public final class SoftApConfiguration implements Parcelable {
      *
      * @hide
      */
-    @SystemApi
     public @NonNull int[] getBands() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         int[] bands = new int[mChannels.size()];
         for (int i = 0; i < bands.length; i++) {
             bands[i] = mChannels.keyAt(i);
@@ -567,8 +565,10 @@ public final class SoftApConfiguration implements Parcelable {
      * is set. Use {@link Builder#getChannels()} to get dual channel setting.
      * See also {@link Builder#setChannel(int, int)}.
      *
+     * @deprecated This API is deprecated. Use {@link #getChannels()} instead.
      * @hide
      */
+    @Deprecated
     @SystemApi
     public int getChannel() {
         return mChannels.valueAt(0);
@@ -578,6 +578,10 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns SparseIntArray (key: {@code BandType} , value: channel) that consists of
      * the configured bands and channels for the AP(s).
+     *
+     * The returned channel value is Wi-Fi channel numbering.
+     * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+     * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
      *
      * Note: return array may only include one channel when current setting is single AP mode.
      * See also {@link Builder#setChannels(SparseIntArray)}.
@@ -703,6 +707,14 @@ public final class SoftApConfiguration implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return isBridgedModeOpportunisticShutdownEnabledInternal();
+    }
+
+    /**
+     * @see #isBridgedModeOpportunisticShutdownEnabled()
+     * @hide
+     */
+    public boolean isBridgedModeOpportunisticShutdownEnabledInternal() {
         return mBridgedModeOpportunisticShutdownEnabled;
     }
 
@@ -1138,6 +1150,9 @@ public final class SoftApConfiguration implements Parcelable {
          * The API contains (band, channel) input since the 6GHz band uses the same channel
          * numbering scheme as is used in the 2.4GHz and 5GHz band. Therefore, both are needed to
          * uniquely identify individual channels.
+         *
+         * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+         * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
          *
          * <p>
          * @param channels SparseIntArray (key: {@code #BandType} , value: channel) consists of
