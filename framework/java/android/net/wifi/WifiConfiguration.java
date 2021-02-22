@@ -1564,7 +1564,7 @@ public class WifiConfiguration implements Parcelable {
     @IntDef(prefix = {"RANDOMIZATION_"}, value = {
             RANDOMIZATION_NONE,
             RANDOMIZATION_PERSISTENT,
-            RANDOMIZATION_ENHANCED,
+            RANDOMIZATION_NON_PERSISTENT,
             RANDOMIZATION_AUTO})
     public @interface MacRandomizationSetting {}
 
@@ -1587,7 +1587,7 @@ public class WifiConfiguration implements Parcelable {
      * @hide
      */
     @SystemApi
-    public static final int RANDOMIZATION_ENHANCED = 2;
+    public static final int RANDOMIZATION_NON_PERSISTENT = 2;
 
     /**
      * Let the wifi framework automatically decide the MAC randomization strategy.
@@ -1599,7 +1599,7 @@ public class WifiConfiguration implements Parcelable {
     /**
      * Level of MAC randomization for this network.
      * One of {@link #RANDOMIZATION_NONE}, {@link #RANDOMIZATION_AUTO},
-     * {@link #RANDOMIZATION_PERSISTENT} or {@link #RANDOMIZATION_ENHANCED}.
+     * {@link #RANDOMIZATION_PERSISTENT} or {@link #RANDOMIZATION_NON_PERSISTENT}.
      * By default this field is set to {@link #RANDOMIZATION_AUTO}.
      * @hide
      */

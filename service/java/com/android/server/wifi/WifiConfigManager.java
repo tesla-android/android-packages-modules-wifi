@@ -425,7 +425,7 @@ public class WifiConfigManager {
         }
 
         // use enhanced or persistent randomization if configured to do so.
-        if (config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_ENHANCED) {
+        if (config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_NON_PERSISTENT) {
             return true;
         }
         if (config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_PERSISTENT) {
