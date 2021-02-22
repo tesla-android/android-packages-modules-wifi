@@ -550,6 +550,8 @@ package android.net.wifi {
     method public boolean isUserInteractionRequired();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiNetworkSuggestion> CREATOR;
+    field public static final int RANDOMIZATION_NON_PERSISTENT = 1; // 0x1
+    field public static final int RANDOMIZATION_PERSISTENT = 0; // 0x0
   }
 
   public static final class WifiNetworkSuggestion.Builder {
@@ -559,12 +561,12 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierMerged(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCredentialSharedWithUser(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsAppInteractionRequired(boolean);
-    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsEnhancedMacRandomizationEnabled(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsEnhancedOpen(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsHiddenSsid(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsInitialAutojoinEnabled(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsMetered(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsUserInteractionRequired(boolean);
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setMacRandomizationSetting(int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPasspointConfig(@NonNull android.net.wifi.hotspot2.PasspointConfiguration);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriority(@IntRange(from=0) int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriorityGroup(int);

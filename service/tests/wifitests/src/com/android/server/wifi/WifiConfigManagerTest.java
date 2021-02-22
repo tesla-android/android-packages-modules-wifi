@@ -859,11 +859,12 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Create 2 open networks. One is from suggestion and the other is not.
         WifiConfiguration openNetworkSuggestion = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetworkSuggestion.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_ENHANCED;
+        openNetworkSuggestion.macRandomizationSetting =
+                WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
         openNetworkSuggestion.fromWifiNetworkSuggestion = true;
 
         WifiConfiguration openNetworkSaved = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetworkSaved.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_ENHANCED;
+        openNetworkSaved.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
         openNetworkSaved.fromWifiNetworkSuggestion = false;
 
         // Add both networks into WifiConfigManager, and verify only is network from suggestions is
@@ -2276,13 +2277,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that macRandomizationSetting == RANDOMIZATION_ENHANCED enables
+     * Verify that macRandomizationSetting == RANDOMIZATION_NON_PERSISTENT enables
      * enhanced MAC randomization.
      */
     @Test
     public void testShouldUseEnhancedRandomization_randomizationEnhanced() {
         WifiConfiguration c = WifiConfigurationTestUtil.createPasspointNetwork();
-        c.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_ENHANCED;
+        c.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
         assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(c));
     }
 

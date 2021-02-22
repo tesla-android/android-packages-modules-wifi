@@ -18,6 +18,7 @@ package android.net.wifi;
 
 import static com.android.internal.util.Preconditions.checkNotNull;
 
+import android.annotation.IntDef;
 import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -36,6 +37,8 @@ import android.text.TextUtils;
 
 import com.android.modules.utils.build.SdkLevel;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -50,6 +53,24 @@ import java.util.Objects;
  * {@link WifiManager#addNetworkSuggestions(List)}.
  */
 public final class WifiNetworkSuggestion implements Parcelable {
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"RANDOMIZATION_"}, value = {
+            RANDOMIZATION_PERSISTENT,
+            RANDOMIZATION_NON_PERSISTENT})
+    public @interface MacRandomizationSetting {}
+    /**
+     * Generate a randomized MAC from a secret seed and information from the Wi-Fi configuration
+     * (SSID or Passpoint profile) and reuse it for all connections to this network. The
+     * randomized MAC address for this network will stay the same for each subsequent association
+     * until the device undergoes factory reset.
+     */
+    public static final int RANDOMIZATION_PERSISTENT = 0;
+    /**
+     * With this option, the randomized MAC address will periodically get re-randomized, and
+     * the randomized MAC address will change if the suggestion is removed and then added back.
+     */
+    public static final int RANDOMIZATION_NON_PERSISTENT = 1;
     /**
      * Builder used to create {@link WifiNetworkSuggestion} objects.
      */
@@ -192,9 +213,10 @@ public final class WifiNetworkSuggestion implements Parcelable {
         private boolean mIsCarrierMerged;
 
         /**
-         * Whether this network will use enhanced MAC randomization.
+         * The MAC randomization strategy.
          */
-        private boolean mIsEnhancedMacRandomizationEnabled;
+        @MacRandomizationSetting
+        private int mMacRandomizationSetting;
 
         public Builder() {
             mSsid = null;
@@ -221,7 +243,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
             mIsNetworkOemPrivate = false;
             mIsCarrierMerged = false;
             mPriorityGroup = 0;
-            mIsEnhancedMacRandomizationEnabled = false;
+            mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
             mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }
 
@@ -563,25 +585,24 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * <p>
          * Suggested networks will never use the device (factory) MAC address to associate to the
          * network - instead they use a locally generated random MAC address. This method controls
-         * the strategy for generating the random MAC address:
-         * <li> Persisted MAC randomization (false - the default): generates the MAC address from a
-         * secret seed and information from the Wi-Fi configuration (SSID or Passpoint profile).
-         * This means that the same generated MAC address will be used for each subsequent
-         * association. </li>
-         * <li> Enhanced MAC randomization (true): periodically generates a new MAC
-         * address for new connections. Under this option, the randomized MAC address should change
-         * if the suggestion is removed and then added back. </li>
+         * the strategy for generating the random MAC address. If not set, defaults to
+         * {@link #RANDOMIZATION_PERSISTENT}.
          *
-         * @param enabled {@code true} to periodically change the randomized MAC address.
-         *                {@code false} to use the same randomized MAC for all connections to this
-         *                            network.
+         * @param macRandomizationSetting - one of {@code RANDOMIZATION_*} values
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
-        public @NonNull Builder setIsEnhancedMacRandomizationEnabled(boolean enabled) {
+        public @NonNull Builder setMacRandomizationSetting(int macRandomizationSetting) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
-            mIsEnhancedMacRandomizationEnabled = enabled;
+            switch (macRandomizationSetting) {
+                case RANDOMIZATION_PERSISTENT:
+                case RANDOMIZATION_NON_PERSISTENT:
+                    mMacRandomizationSetting = macRandomizationSetting;
+                    break;
+                default:
+                    throw new IllegalArgumentException();
+            }
             return this;
         }
 
@@ -911,8 +932,9 @@ public final class WifiNetworkSuggestion implements Parcelable {
             wifiConfiguration.oemPaid = mIsNetworkOemPaid;
             wifiConfiguration.oemPrivate = mIsNetworkOemPrivate;
             wifiConfiguration.carrierMerged = mIsCarrierMerged;
-            wifiConfiguration.macRandomizationSetting = mIsEnhancedMacRandomizationEnabled
-                    ? WifiConfiguration.RANDOMIZATION_ENHANCED
+            wifiConfiguration.macRandomizationSetting =
+                    mMacRandomizationSetting == RANDOMIZATION_NON_PERSISTENT
+                    ? WifiConfiguration.RANDOMIZATION_NON_PERSISTENT
                     : WifiConfiguration.RANDOMIZATION_PERSISTENT;
             wifiConfiguration.subscriptionId = mSubscriptionId;
             return wifiConfiguration;
@@ -953,8 +975,9 @@ public final class WifiNetworkSuggestion implements Parcelable {
             mPasspointConfiguration.setOemPrivate(mIsNetworkOemPrivate);
             mPasspointConfiguration.setOemPaid(mIsNetworkOemPaid);
             mPasspointConfiguration.setCarrierMerged(mIsCarrierMerged);
-            wifiConfiguration.macRandomizationSetting = mIsEnhancedMacRandomizationEnabled
-                    ? WifiConfiguration.RANDOMIZATION_ENHANCED
+            wifiConfiguration.macRandomizationSetting =
+                    mMacRandomizationSetting == RANDOMIZATION_NON_PERSISTENT
+                    ? WifiConfiguration.RANDOMIZATION_NON_PERSISTENT
                     : WifiConfiguration.RANDOMIZATION_PERSISTENT;
             return wifiConfiguration;
         }
@@ -1025,7 +1048,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 }
                 wifiConfiguration = buildWifiConfigurationForPasspoint();
                 mPasspointConfiguration.setEnhancedMacRandomizationEnabled(
-                        mIsEnhancedMacRandomizationEnabled);
+                        mMacRandomizationSetting == RANDOMIZATION_NON_PERSISTENT);
             } else {
                 if (mSsid == null) {
                     throw new IllegalStateException("setSsid should be invoked for suggestion");

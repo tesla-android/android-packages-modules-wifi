@@ -927,7 +927,7 @@ public class WifiNetworkSuggestionTest {
 
     /**
      * Verify that the macRandomizationSetting defaults to RANDOMIZATION_PERSISTENT and could be set
-     * to RANDOMIZATION_ENHANCED.
+     * to RANDOMIZATION_NON_PERSISTENT.
      */
     @Test
     public void testWifiNetworkSuggestionBuilderSetMacRandomization() {
@@ -940,16 +940,17 @@ public class WifiNetworkSuggestionTest {
         assumeTrue(SdkLevel.isAtLeastS());
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
-                .setIsEnhancedMacRandomizationEnabled(false)
+                .setMacRandomizationSetting(WifiNetworkSuggestion.RANDOMIZATION_PERSISTENT)
                 .build();
         assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
                 suggestion.wifiConfiguration.macRandomizationSetting);
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
-                .setIsEnhancedMacRandomizationEnabled(true)
+                .setMacRandomizationSetting(
+                        WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT)
                 .build();
-        assertEquals(WifiConfiguration.RANDOMIZATION_ENHANCED,
+        assertEquals(WifiConfiguration.RANDOMIZATION_NON_PERSISTENT,
                 suggestion.wifiConfiguration.macRandomizationSetting);
     }
 
@@ -968,15 +969,29 @@ public class WifiNetworkSuggestionTest {
         assumeTrue(SdkLevel.isAtLeastS());
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
-                .setIsEnhancedMacRandomizationEnabled(false)
+                .setMacRandomizationSetting(
+                        WifiNetworkSuggestion.RANDOMIZATION_PERSISTENT)
                 .build();
         assertEquals(false, suggestion.passpointConfiguration.isEnhancedMacRandomizationEnabled());
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
-                .setIsEnhancedMacRandomizationEnabled(true)
+                .setMacRandomizationSetting(
+                        WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT)
                 .build();
         assertEquals(true, suggestion.passpointConfiguration.isEnhancedMacRandomizationEnabled());
+    }
+
+    /**
+     * Verify calling setMacRandomizationSetting with an invalid argument throws an exception.
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testWifiNetworkSuggestionBuilderSetMacRandomizationInvalidParam() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setMacRandomizationSetting(-1234)
+                .build();
     }
 
     /**
