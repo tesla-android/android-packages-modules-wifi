@@ -434,15 +434,14 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         }
 
                     };
-                    int callbackId = softApCallback.hashCode();
-                    mWifiService.registerSoftApCallback(new Binder(), softApCallback, callbackId);
+                    mWifiService.registerSoftApCallback(softApCallback);
                     SoftApConfiguration config = buildSoftApConfiguration(pw);
                     if (!mWifiService.startTetheredHotspot(config, SHELL_PACKAGE_NAME)) {
                         pw.println("Soft AP failed to start. Please check config parameters");
                     }
                     // Wait for softap to start and complete callback
                     countDownLatch.await(3000, TimeUnit.MILLISECONDS);
-                    mWifiService.unregisterSoftApCallback(callbackId);
+                    mWifiService.unregisterSoftApCallback(softApCallback);
                     return 0;
                 }
                 case "stop-softap": {
