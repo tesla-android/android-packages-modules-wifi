@@ -1285,7 +1285,6 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
             }
 
             channels.fillBucketSettings(bucketSettings, Integer.MAX_VALUE);
-
             settings.buckets = new WifiNative.BucketSettings[] {bucketSettings};
 
             if (mScannerImplsTracker.startSingleScan(settings)) {
@@ -2768,6 +2767,9 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
                 .append(" maxScansToCache:").append(scanSettings.maxScansToCache)
                 .append(" rnrSetting:").append(
                         SdkLevel.isAtLeastS() ? scanSettings.getRnrSetting() : "Not supported")
+                .append(" 6GhzPscOnlyEnabled:").append(
+                        SdkLevel.isAtLeastS() ? scanSettings.is6GhzPscOnlyEnabled()
+                                : "Not supported")
                 .append(" channels:[ ");
         if (scanSettings.channels != null) {
             for (int i = 0; i < scanSettings.channels.length; i++) {

@@ -192,6 +192,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 LOW_RSSI_NETWORK_RETRY_START_DELAY_SEC);
         resources.setInteger(R.integer.config_wifiPnoScanLowRssiNetworkRetryMaxDelaySec,
                 LOW_RSSI_NETWORK_RETRY_MAX_DELAY_SEC);
+        resources.setBoolean(R.bool.config_wifiEnable6ghzPscScanning, true);
     }
 
     /**
@@ -2706,6 +2707,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 if (SdkLevel.isAtLeastS()) {
                     assertEquals("Should never force enable RNR for partial scans",
                             WifiScanner.WIFI_RNR_NOT_NEEDED, settings.getRnrSetting());
+                    assertFalse("PSC should be disabled for partial scans",
+                            settings.is6GhzPscOnlyEnabled());
                 }
                 for (int chanIdx = 0; chanIdx < settings.channels.length; chanIdx++) {
                     assertTrue(channelList.contains(settings.channels[chanIdx].frequency));
@@ -2801,11 +2804,15 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         doAnswer(new AnswerWithArguments() {
             public void answer(ScanSettings settings, Executor executor, ScanListener listener,
                     WorkSource workSource) throws Exception {
-                assertEquals(settings.band, WifiScanner.WIFI_BAND_ALL);
                 assertNull(settings.channels);
                 if (SdkLevel.isAtLeastS()) {
+                    assertEquals(WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_GHZ, settings.band);
                     assertEquals("RNR should be enabled for full scans",
                             WifiScanner.WIFI_RNR_ENABLED, settings.getRnrSetting());
+                    assertTrue("PSC should be enabled for full scans",
+                            settings.is6GhzPscOnlyEnabled());
+                } else {
+                    assertEquals(WifiScanner.WIFI_BAND_ALL, settings.band);
                 }
             }}).when(mWifiScanner).startScan(anyObject(), anyObject(), anyObject(), anyObject());
 

@@ -28,6 +28,7 @@ import android.net.wifi.WifiSsid;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 import com.android.server.wifi.scanner.ChannelHelper;
+import com.android.server.wifi.scanner.ChannelHelper.ChannelCollection;
 
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -150,6 +151,16 @@ public class ScanTestUtil {
             return this;
         }
 
+        public NativeScanSettingsBuilder addBucketWithChannelCollection(
+                int period, int reportEvents, ChannelCollection channelCollection) {
+            WifiNative.BucketSettings bucket = new WifiNative.BucketSettings();
+            bucket.bucket = mSettings.num_buckets;
+            bucket.period_ms = period;
+            bucket.report_events = reportEvents;
+            channelCollection.fillBucketSettings(bucket, Integer.MAX_VALUE);
+            return addBucket(bucket);
+        }
+
         public NativeScanSettingsBuilder addBucketWithBand(
                 int period, int reportEvents, int band) {
             WifiNative.BucketSettings bucket = new WifiNative.BucketSettings();
@@ -196,6 +207,33 @@ public class ScanTestUtil {
 
     /**
      * Compute the expected native scan settings that are expected for the given
+     * WifiScanner.ScanSettings using the given ChannelHelper.
+     * This method is created to test 6Ghz PSC scanning.
+     */
+    public static WifiNative.ScanSettings computeSingleScanNativeSettingsWithChannelHelper(
+            WifiScanner.ScanSettings requestSettings, ChannelHelper channelHelper) {
+        int reportEvents = requestSettings.reportEvents | WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN;
+        NativeScanSettingsBuilder builder = new NativeScanSettingsBuilder()
+                .withBasePeriod(0)
+                .withMaxApPerScan(0)
+                .withMaxPercentToCache(0)
+                .withMaxScansToCache(0)
+                .withType(requestSettings.type);
+        if (SdkLevel.isAtLeastS()) {
+            builder.withEnable6GhzRnr(requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED
+                    || (requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
+                    && ChannelHelper.is6GhzBandIncluded(requestSettings.band)));
+        }
+        ChannelCollection channelCollection = channelHelper.createChannelCollection();
+        channelCollection.addChannels(requestSettings);
+        builder.addBucketWithChannelCollection(0, reportEvents, channelCollection);
+        return builder.build();
+    }
+
+    /**
+     * Compute the expected native scan settings that are expected for the given
      * WifiScanner.ScanSettings.
      */
     public static WifiNative.ScanSettings computeSingleScanNativeSettings(
@@ -214,7 +252,6 @@ public class ScanTestUtil {
                     == WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
                     && ChannelHelper.is6GhzBandIncluded(requestSettings.band)));
         }
-
         if (requestSettings.band == WifiScanner.WIFI_BAND_UNSPECIFIED) {
             builder.addBucketWithChannels(0, reportEvents, requestSettings.channels);
         } else {
