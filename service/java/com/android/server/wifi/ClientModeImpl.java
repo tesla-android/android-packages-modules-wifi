@@ -4074,8 +4074,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (role == ROLE_CLIENT_SECONDARY_LONG_LIVED
                     || role == ROLE_CLIENT_SECONDARY_TRANSIENT) {
                 if (mVerboseLoggingEnabled) {
-                    Log.d(TAG, "Disconnected in ROLE_CLIENT_SECONDARY_*, stop ClientModeManager="
-                            + mClientModeManager);
+                    Log.d(getTag(), "Disconnected in ROLE_CLIENT_SECONDARY_*, "
+                            + "stop ClientModeManager=" + mClientModeManager);
                 }
                 // stop owner ClientModeManager, which will in turn stop this ClientModeImpl
                 mClientModeManager.stop();
