@@ -195,6 +195,14 @@
     <!-- Integer duration after connection that a user-selected network is considered sufficient (milliseconds) -->
     <integer translatable="false" name="config_wifiSufficientDurationAfterUserSelectionMilliseconds">60000</integer>
 
+    <!-- Boolean indicating whether the wifi module should always scan the 6Ghz Preferred Scanning
+         Channels when performing full connectivity scans.
+         If set to true, the wifi module will scan 6Ghz PSC channels in addition to the 2.4Ghz,
+         5Ghz, and 6Ghz channels co-located with 2.4/5Ghz APs when doing full connectivity scans.
+         If set to false, the wifi module will only scan the 2.4Ghz, 5Ghz,
+         and 6Ghz channels co-located with 2.4/5Ghz APs when doing full connectivity scans.-->
+    <bool translatable="false" name="config_wifiEnable6ghzPscScanning">true</bool>
+
     <!-- Boolean indicating performing a partial initial scan is enabled -->
     <bool translatable="false" name="config_wifiEnablePartialInitialScan">false</bool>
 

@@ -1452,11 +1452,12 @@ public class WifiConnectivityManager {
 
     private int getScanBand(boolean isFullBandScan) {
         if (isFullBandScan) {
-            // TODO b/158335433: Add an config.xml overlay to configure whether we want to do 6Ghz
-            // scanning with RNR + PSC (default option), or just RNR. Continue to return
-            // WIFI_BAND_ALL if PSC channels need to be scanned for 6Ghz. If PSC channels do not
-            // need to be scanned, this method should return WIFI_BAND_BOTH_WITH_DFS so that the
-            // 6Ghz band is scanned only via RNR.
+            if (SdkLevel.isAtLeastS()) {
+                if (mContext.getResources().getBoolean(R.bool.config_wifiEnable6ghzPscScanning)) {
+                    return WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_GHZ;
+                }
+                return WifiScanner.WIFI_BAND_BOTH_WITH_DFS;
+            }
             return WifiScanner.WIFI_BAND_ALL;
         } else {
             // Use channel list instead.
@@ -1790,6 +1791,9 @@ public class WifiConnectivityManager {
         if (SdkLevel.isAtLeastS()) {
             settings.setRnrSetting(isFullBandScan ? WifiScanner.WIFI_RNR_ENABLED
                     : WifiScanner.WIFI_RNR_NOT_NEEDED);
+            settings.set6GhzPscOnlyEnabled(isFullBandScan
+                    ? mContext.getResources().getBoolean(R.bool.config_wifiEnable6ghzPscScanning)
+                    : false);
         }
         settings.reportEvents = WifiScanner.REPORT_EVENT_FULL_SCAN_RESULT
                             | WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN;

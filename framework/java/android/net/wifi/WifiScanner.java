@@ -356,6 +356,11 @@ public class WifiScanner {
          */
         private int mRnrSetting = WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED;
 
+        /**
+         * See {@link #set6GhzPscOnlyEnabled}
+         */
+        private boolean mEnable6GhzPsc = false;
+
         /** list of channels; used when band is set to WIFI_BAND_UNSPECIFIED */
         public ChannelSpec[] channels;
         /**
@@ -462,6 +467,39 @@ public class WifiScanner {
         public boolean hideFromAppOps;
 
         /**
+         * Configure whether it is needed to scan 6Ghz non Preferred Scanning Channels when scanning
+         * {@link #WIFI_BAND_6_GHZ}. If set to true and a band that contains
+         * {@link #WIFI_BAND_6_GHZ} is configured for scanning, then only scan 6Ghz PSC channels in
+         * addition to any other bands configured for scanning. Note, 6Ghz non-PSC channels that
+         * are co-located with 2.4/5Ghz APs could still be scanned via the
+         * {@link #setRnrSetting(int)} API.
+         *
+         * <p>
+         * For example, given a ScanSettings with band set to {@link #WIFI_BAND_24_5_WITH_DFS_6_GHZ}
+         * If this API is set to "true" then the ScanSettings is configured to scan all of 2.4Ghz
+         * + all of 5Ghz(DFS and non-DFS) + 6Ghz PSC channels. If this API is set to "false", then
+         * the ScanSetting is configured to scan all of 2.4Ghz + all of 5Ghz(DFS and non_DFS)
+         * + all of 6Ghz channels.
+         * @param enable true to only scan 6Ghz PSC channels, false to scan all 6Ghz channels.
+         */
+        public void set6GhzPscOnlyEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mEnable6GhzPsc = enable;
+        }
+
+        /**
+         * See {@link #set6GhzPscOnlyEnabled}
+         */
+        public boolean is6GhzPscOnlyEnabled() {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            return mEnable6GhzPsc;
+        }
+
+        /**
          * Configure when to scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced
          * Neighbor Report (RNR).
          * @param rnrSetting one of the {@code WIFI_RNR_*} values
@@ -506,6 +544,7 @@ public class WifiScanner {
             dest.writeInt(ignoreLocationSettings ? 1 : 0);
             dest.writeInt(hideFromAppOps ? 1 : 0);
             dest.writeInt(mRnrSetting);
+            dest.writeBoolean(mEnable6GhzPsc);
             if (channels != null) {
                 dest.writeInt(channels.length);
                 for (int i = 0; i < channels.length; i++) {
@@ -539,6 +578,7 @@ public class WifiScanner {
                         settings.ignoreLocationSettings = in.readInt() == 1;
                         settings.hideFromAppOps = in.readInt() == 1;
                         settings.mRnrSetting = in.readInt();
+                        settings.mEnable6GhzPsc = in.readBoolean();
                         int num_channels = in.readInt();
                         settings.channels = new ChannelSpec[num_channels];
                         for (int i = 0; i < num_channels; i++) {

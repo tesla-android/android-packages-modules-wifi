@@ -812,6 +812,8 @@ package android.net.wifi {
   public static class WifiScanner.ScanSettings implements android.os.Parcelable {
     ctor public WifiScanner.ScanSettings();
     method public int getRnrSetting();
+    method public boolean is6GhzPscOnlyEnabled();
+    method public void set6GhzPscOnlyEnabled(boolean);
     method public void setRnrSetting(int);
     field public int band;
     field public android.net.wifi.WifiScanner.ChannelSpec[] channels;

@@ -27,6 +27,7 @@ import static com.android.server.wifi.ScanTestUtil.assertScanDatasEquals;
 import static com.android.server.wifi.ScanTestUtil.assertScanResultsEquals;
 import static com.android.server.wifi.ScanTestUtil.channelsToSpec;
 import static com.android.server.wifi.ScanTestUtil.computeSingleScanNativeSettings;
+import static com.android.server.wifi.ScanTestUtil.computeSingleScanNativeSettingsWithChannelHelper;
 import static com.android.server.wifi.ScanTestUtil.createRequest;
 import static com.android.server.wifi.ScanTestUtil.createSingleScanNativeSettingsForChannels;
 import static com.android.server.wifi.scanner.WifiScanningServiceImpl.WifiSingleScanStateMachine.CACHED_SCAN_RESULTS_MAX_AGE_IN_MILLIS;
@@ -34,6 +35,7 @@ import static com.android.server.wifi.scanner.WifiScanningServiceImpl.WifiSingle
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -111,6 +113,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -125,6 +128,8 @@ public class WifiScanningServiceTest extends WifiBaseTest {
     private static final String TEST_FEATURE_ID = "test.feature";
     private static final String TEST_IFACE_NAME_0 = "wlan0";
     private static final String TEST_IFACE_NAME_1 = "wlan1";
+    private static final int TEST_PSC_CHANNEL = ScanResult.BAND_6_GHZ_START_FREQ_MHZ;
+    private static final int TEST_NON_PSC_CHANNEL = 5985;
     private static final WifiScanner.ScanData PLACEHOLDER_SCAN_DATA =
             new WifiScanner.ScanData(0, 0, new ScanResult[0]);
 
@@ -164,7 +169,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
                 new int[]{2412, 2450},
                 new int[]{5160, 5175},
                 new int[]{5600, 5650, 5660},
-                new int[]{5945, 5985},
+                new int[]{TEST_PSC_CHANNEL, TEST_NON_PSC_CHANNEL},
                 new int[]{58320, 60480});
         mChannelHelper1 = new PresetKnownBandsChannelHelper(
                 new int[]{2412, 2450},
@@ -743,6 +748,79 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH, 0,
                 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
         doSuccessfulSingleScan(requestSettings, computeSingleScanNativeSettings(requestSettings),
+                ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
+    }
+
+    /**
+     * Verify that PSC channels not added when a channel list is explicitly specified for scanning.
+     */
+    @Test
+    public void testPscIsIgnoredForPartialScan() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiScanner.ScanSettings requestSettings = createRequest(
+                channelsToSpec(2412, 5160, 5955),
+                0, 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        int expectedChannelListSize = requestSettings.channels.length;
+        requestSettings.set6GhzPscOnlyEnabled(true);
+        WifiNative.ScanSettings fromChannelList = computeSingleScanNativeSettings(requestSettings);
+        assertEquals(expectedChannelListSize, fromChannelList.buckets[0].channels.length);
+        WifiNative.ScanSettings fromChannelHelper =
+                computeSingleScanNativeSettingsWithChannelHelper(requestSettings, mChannelHelper0);
+        assertNativeScanSettingsEquals(fromChannelList, fromChannelHelper);
+        doSuccessfulSingleScan(requestSettings, fromChannelList,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
+    }
+
+    /**
+     * Verify that when set6GhzPscOnlyEnabled(true) is used, only 6Ghz PSC channels get added
+     * when the 6Ghz band is being scanned.
+     */
+    @Test
+    public void testPscChannelAddedWhenScanning6GhzBand() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_ALL, 0,
+                0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        requestSettings.set6GhzPscOnlyEnabled(true);
+
+        // The expectedChannels should match with all supported channels configured for
+        // mChannelHelper0, less the TEST_NON_PSC_CHANNEL
+        Set<Integer> expectedChannels = new ArraySet<Integer>(
+                new Integer[]{2412, 2450, 5160, 5175, 5600, 5650, 5660, 5600, 5650, 5660,
+                        TEST_PSC_CHANNEL, 58320, 60480});
+
+        // Compute the expected nativeSettings
+        WifiNative.ScanSettings nativeSettings =
+                computeSingleScanNativeSettingsWithChannelHelper(requestSettings, mChannelHelper0);
+        assertEquals("The scan band should be WIFI_BAND_UNSPECIFIED since only a subset of 6Ghz "
+                + "channels need to be scanned", WifiScanner.WIFI_BAND_UNSPECIFIED,
+                nativeSettings.buckets[0].band);
+        Set<Integer> scanTestUtilcomputedExpectedChannels = new ArraySet<>();
+        for (WifiNative.ChannelSettings channelSettings : nativeSettings.buckets[0].channels) {
+            scanTestUtilcomputedExpectedChannels.add(channelSettings.frequency);
+        }
+
+        assertEquals("Computed native settings does not match with expected value",
+                expectedChannels, scanTestUtilcomputedExpectedChannels);
+        doSuccessfulSingleScan(requestSettings, nativeSettings,
+                ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
+    }
+
+    /**
+     * Verify that when set6GhzPscOnlyEnabled(true) is used but the 6Ghz band not being scanned,
+     * we ignore the flag.
+     */
+    @Test
+    public void testPscChannelNotAddedWhenNotScanning6GhzBand() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiScanner.ScanSettings requestSettings = createRequest(WifiScanner.WIFI_BAND_BOTH,
+                0, 0, 20, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN);
+        requestSettings.set6GhzPscOnlyEnabled(true);
+        WifiNative.ScanSettings fromChannelList = computeSingleScanNativeSettings(requestSettings);
+        assertNull("channel list should be null", fromChannelList.buckets[0].channels);
+        WifiNative.ScanSettings fromChannelHelper =
+                computeSingleScanNativeSettingsWithChannelHelper(requestSettings, mChannelHelper0);
+        assertNativeScanSettingsEquals(fromChannelList, fromChannelHelper);
+        doSuccessfulSingleScan(requestSettings, fromChannelList,
                 ScanResults.create(0, WifiScanner.WIFI_BAND_BOTH, new int[0]));
     }
 
