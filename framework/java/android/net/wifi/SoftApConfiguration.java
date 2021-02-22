@@ -1059,6 +1059,11 @@ public final class SoftApConfiguration implements Parcelable {
          * Use {@link WifiManager#isBridgedApConcurrencySupported()} to determine
          * whether or not concurrent APs are supported.
          *
+         * Requires the driver to support {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * when multiple bands are configured. Otherwise,
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
          * @param bands Array of the {@link #BandType}.
          * @return Builder for chaining.
          * @throws IllegalArgumentException when more than 2 bands are set or an invalid band type
@@ -1147,6 +1152,12 @@ public final class SoftApConfiguration implements Parcelable {
          * returns true. The driver will auto select the best channel (e.g. best performance)
          * based on environment interference. Check {@link SoftApCapability} for more detail.
          *
+         * Requires the driver to support {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * when multiple bands are configured without specified channel value (i.e. channel is
+         * the special value 0). Otherwise,
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
          * The API contains (band, channel) input since the 6GHz band uses the same channel
          * numbering scheme as is used in the 2.4GHz and 5GHz band. Therefore, both are needed to
          * uniquely identify individual channels.
@@ -1206,7 +1217,7 @@ public final class SoftApConfiguration implements Parcelable {
          *
          * This method requires HAL support. If the method is used to set a
          * non-zero {@code maxNumberOfClients} value then
-         * {@link WifiManager#startTetheredHotspot} will report error code
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
          * <p>

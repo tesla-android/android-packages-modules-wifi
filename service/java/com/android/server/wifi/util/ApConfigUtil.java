@@ -839,6 +839,13 @@ public class ApConfigUtil {
             Log.d(TAG, "Error, SAE requires HAL support");
             return false;
         }
+
+        if (config.getBands().length > 1
+                && !capability.areFeaturesSupported(SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)
+                && (config.getChannels().valueAt(0) == 0 || config.getChannels().valueAt(1) == 0)) {
+            Log.d(TAG, "Error, dual APs requires HAL ACS support when channel isn't specified");
+            return false;
+        }
         return true;
     }
 
