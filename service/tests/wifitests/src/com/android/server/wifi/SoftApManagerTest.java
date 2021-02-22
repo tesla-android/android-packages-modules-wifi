@@ -69,6 +69,7 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.provider.Settings;
+import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
@@ -1835,6 +1836,20 @@ public class SoftApManagerTest extends WifiBaseTest {
                         .build();
             }
         }
+
+        SoftApConfiguration expectedConfigWithFrameworkACS = null;
+        if (!softApConfig.getCapability().areFeaturesSupported(
+                SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)) {
+            if (expectedConfig.getChannel() == 0 && expectedConfig.getBands().length == 1) {
+                // Reset channel to 2.4G channel 11 for expected configuration
+                // Reason:The test 2G freq is "ALLOWED_2G_FREQS = {2462}; //ch# 11"
+                expectedConfigWithFrameworkACS = new SoftApConfiguration.Builder(expectedConfig)
+                        .setChannel(11, SoftApConfiguration.BAND_2GHZ)
+                        .build();
+            }
+        }
+
+
         mSoftApManager = createSoftApManager(softApConfig, countryCode,
                 softApConfig.getTargetMode() == IFACE_IP_MODE_LOCAL_ONLY
                         ? ROLE_SOFTAP_LOCAL_ONLY : ROLE_SOFTAP_TETHERED);
@@ -1852,7 +1867,8 @@ public class SoftApManagerTest extends WifiBaseTest {
                 configCaptor.capture(),
                 eq(softApConfig.getTargetMode() ==  WifiManager.IFACE_IP_MODE_TETHERED),
                 mSoftApListenerCaptor.capture());
-        assertThat(configCaptor.getValue()).isEqualTo(expectedConfig);
+        assertThat(configCaptor.getValue()).isEqualTo(expectedConfigWithFrameworkACS != null
+                ? expectedConfigWithFrameworkACS : expectedConfig);
         mWifiNativeInterfaceCallbackCaptor.getValue().onUp(TEST_INTERFACE_NAME);
         mLooper.dispatchAll();
         order.verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_ENABLED, 0);
@@ -1968,6 +1984,56 @@ public class SoftApManagerTest extends WifiBaseTest {
         verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_FAILED,
                 WifiManager.SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION);
         verify(mListener).onStartFailure(mSoftApManager);
+    }
+
+    @Test
+    public void testSoftApEnableFailureBecauseDaulBandConfigSetWhenACSNotSupport()
+            throws Exception {
+        long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
+                | SoftApCapability.SOFTAP_FEATURE_WPA3_SAE;
+        int[] dual_bands = {SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
+        SoftApCapability testCapability = new SoftApCapability(testSoftApFeature);
+        testCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_2GHZ, TEST_SUPPORTED_24G_CHANNELS);
+        testCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_5GHZ, TEST_SUPPORTED_5G_CHANNELS);
+        SoftApConfiguration softApConfig = new SoftApConfiguration.Builder(mDefaultApConfig)
+                .setBands(dual_bands)
+                .build();
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, softApConfig,
+                testCapability);
+
+        mSoftApManager = createSoftApManager(apConfig, TEST_COUNTRY_CODE, ROLE_SOFTAP_TETHERED);
+
+        verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_ENABLING, 0);
+        verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_FAILED,
+                WifiManager.SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION);
+        verify(mWifiMetrics).incrementSoftApStartResult(false,
+                WifiManager.SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION);
+        verify(mListener).onStartFailure(mSoftApManager);
+    }
+
+    @Test
+    public void testSoftApEnableWhenDaulBandConfigwithChannelSetWhenACSNotSupport()
+            throws Exception {
+        long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
+                | SoftApCapability.SOFTAP_FEATURE_WPA3_SAE;
+        SparseIntArray dual_channels = new SparseIntArray(2);
+        dual_channels.put(SoftApConfiguration.BAND_5GHZ, 149);
+        dual_channels.put(SoftApConfiguration.BAND_2GHZ, 2);
+        SoftApCapability testCapability = new SoftApCapability(testSoftApFeature);
+        testCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_2GHZ, TEST_SUPPORTED_24G_CHANNELS);
+        testCapability.setSupportedChannelList(
+                SoftApConfiguration.BAND_5GHZ, TEST_SUPPORTED_5G_CHANNELS);
+        SoftApConfiguration softApConfig = new SoftApConfiguration.Builder(mDefaultApConfig)
+                .setChannels(dual_channels)
+                .build();
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, softApConfig,
+                testCapability);
+        startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, null);
     }
 
     @Test
@@ -2574,7 +2640,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     }
 
     @Test
-    public void testBridgedModeFallbackToSingleMode()
+    public void testBridgedModeFallbackToSingleModeDueToUnavailableBand()
             throws Exception {
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_6GHZ,
                 SoftApConfiguration.BAND_5GHZ};
@@ -2587,7 +2653,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
                 WifiManager.IFACE_IP_MODE_TETHERED, configBuilder.build(),
                 testCapability);
-        // Reset band to 2.4G | 5G to generate expected configure
+        // Reset band to 2.4G | 5G to generate expected configuration
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
         startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, configBuilder.build());
     }
