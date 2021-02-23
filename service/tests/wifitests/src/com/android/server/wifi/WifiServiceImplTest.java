@@ -263,6 +263,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final String TEST_PACKAGE = "package";
     private static final int TEST_NETWORK_ID = 567;
     private static final WorkSource TEST_SETTINGS_WORKSOURCE = new WorkSource();
+    private static final int TEST_SUB_ID = 1;
 
     private SoftApInfo mTestSoftApInfo;
     private List<SoftApInfo> mTestSoftApInfoList;
@@ -4440,6 +4441,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID));
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = TEST_SSID;
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
         mWifiServiceImpl.connect(config, TEST_NETWORK_ID, mock(IActionListener.class));
         mLooper.dispatchAll();
         verify(mWifiConfigManager).addOrUpdateNetwork(eq(config), anyInt());
@@ -4457,6 +4459,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         NetworkUpdateResult result = new NetworkUpdateResult(TEST_NETWORK_ID);
         when(mWifiConfigManager.addOrUpdateNetwork(eq(mWifiConfig), anyInt()))
                 .thenReturn(result);
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(mWifiConfig);
 
         mWifiServiceImpl.connect(mWifiConfig, WifiConfiguration.INVALID_NETWORK_ID,
                 mActionListener);
@@ -4506,6 +4509,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(mWifiConfig);
 
         mWifiServiceImpl.connect(null, TEST_NETWORK_ID, mActionListener);
         mLooper.dispatchAll();
@@ -4514,6 +4518,51 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mConnectHelper).connectToNetwork(
                 eq(new NetworkUpdateResult(TEST_NETWORK_ID)), any(), anyInt());
+        verify(mContextAsUser, never()).sendBroadcastWithMultiplePermissions(any(), any());
+        verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_MANUAL_CONNECT), anyInt());
+    }
+
+    @Test
+    public void connectToSimBasedNetworkWhenSimPresent() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
+                WifiEnterpriseConfig.Eap.SIM, WifiEnterpriseConfig.Phase2.NONE);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
+        when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(TEST_SUB_ID);
+        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(true);
+
+        mWifiServiceImpl.connect(null, TEST_NETWORK_ID, mActionListener);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(), anyInt());
+
+        verify(mConnectHelper).connectToNetwork(
+                eq(new NetworkUpdateResult(TEST_NETWORK_ID)), any(), anyInt());
+        verify(mContextAsUser, never()).sendBroadcastWithMultiplePermissions(any(), any());
+        verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_MANUAL_CONNECT), anyInt());
+    }
+
+    @Test
+    public void connectToSimBasedNetworkWhenSimAbsent() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
+                WifiEnterpriseConfig.Eap.SIM, WifiEnterpriseConfig.Phase2.NONE);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
+        when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(TEST_SUB_ID);
+        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(false);
+
+        mWifiServiceImpl.connect(null, TEST_NETWORK_ID, mActionListener);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(), anyInt());
+
+        verify(mConnectHelper, never()).connectToNetwork(any(), any(), anyInt());
         verify(mContextAsUser, never()).sendBroadcastWithMultiplePermissions(any(), any());
         verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_MANUAL_CONNECT), anyInt());
     }
