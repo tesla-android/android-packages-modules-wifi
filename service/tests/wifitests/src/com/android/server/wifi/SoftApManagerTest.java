@@ -37,6 +37,7 @@ import static com.android.server.wifi.LocalOnlyHotspotRequestInfo.HOTSPOT_NO_ERR
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -73,6 +74,7 @@ import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.wifi.resources.R;
 
@@ -187,7 +189,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     private void mockApInfoChangedEvent(SoftApInfo apInfo) {
         mSoftApListenerCaptor.getValue().onInfoChanged(
                 apInfo.getApInstanceIdentifier(), apInfo.getFrequency(), apInfo.getBandwidth(),
-                apInfo.getWifiStandard(), apInfo.getBssid());
+                apInfo.getWifiStandardInternal(), apInfo.getBssidInternal());
         mTestSoftApInfoMap.put(apInfo.getApInstanceIdentifier(), apInfo);
         mTestWifiClientsMap.put(apInfo.getApInstanceIdentifier(), new ArrayList<WifiClient>());
     }
@@ -1989,6 +1991,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void testSoftApEnableFailureBecauseDaulBandConfigSetWhenACSNotSupport()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
                 | SoftApCapability.SOFTAP_FEATURE_WPA3_SAE;
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
@@ -2017,6 +2020,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void testSoftApEnableWhenDaulBandConfigwithChannelSetWhenACSNotSupport()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         long testSoftApFeature = SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT
                 | SoftApCapability.SOFTAP_FEATURE_WPA3_SAE;
         SparseIntArray dual_channels = new SparseIntArray(2);
@@ -2361,8 +2365,8 @@ public class SoftApManagerTest extends WifiBaseTest {
      * Test that dual interfaces will be setup when dual band config.
      */
     @Test
-    public void testSetupDualBandForSoftApModeApInterfaceName()
-            throws Exception {
+    public void testSetupDualBandForSoftApModeApInterfaceName() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = new int[] {
                 SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
         Builder configBuilder = new SoftApConfiguration.Builder();
@@ -2397,6 +2401,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
     @Test
     public void schedulesTimeoutTimerOnStartInBridgedMode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ ,
                 SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
         Builder configBuilder = new SoftApConfiguration.Builder();
@@ -2454,6 +2459,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
     @Test
     public void schedulesTimeoutTimerWorkFlowInBridgedMode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = new int[] {
                 SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
         Builder configBuilder = new SoftApConfiguration.Builder();
@@ -2570,6 +2576,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void schedulesTimeoutTimerOnStartInBridgedModeWhenOpportunisticShutdownDisabled()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ ,
                 SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
         Builder configBuilder = new SoftApConfiguration.Builder();
@@ -2601,6 +2608,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void testBridgedModeOpportunisticShutdownConfigureChanged()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ ,
                 SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
         Builder configBuilder = new SoftApConfiguration.Builder();
@@ -2634,14 +2642,12 @@ public class SoftApManagerTest extends WifiBaseTest {
         verify(mAlarmManager.getAlarmManager()).setExact(anyInt(), anyLong(),
                 eq(mSoftApManager.SOFT_AP_SEND_MESSAGE_IDLE_IN_BRIDGED_MODE_TIMEOUT_TAG),
                 any(), any());
-
-
-
     }
 
     @Test
     public void testBridgedModeFallbackToSingleModeDueToUnavailableBand()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_6GHZ,
                 SoftApConfiguration.BAND_5GHZ};
         SoftApCapability testCapability = new SoftApCapability(mTestSoftApCapability);
