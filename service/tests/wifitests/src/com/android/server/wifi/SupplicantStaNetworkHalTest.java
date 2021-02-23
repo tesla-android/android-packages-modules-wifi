@@ -1134,7 +1134,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         Map<String, String> networkExtras = new HashMap<>();
         assertTrue(mSupplicantNetwork.loadWifiConfiguration(loadConfig, networkExtras));
         WifiConfigurationTestUtil.assertConfigurationEqualForSupplicant(config, loadConfig);
-        assertEquals(config.getProfileKey(),
+        assertEquals(config.getProfileKeyInternal(),
                 networkExtras.get(SupplicantStaNetworkHal.ID_STRING_KEY_CONFIG_KEY));
         assertEquals(
                 config.creatorUid,

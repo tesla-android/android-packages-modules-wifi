@@ -5586,7 +5586,7 @@ public class WifiMetrics {
             meteredDetail.isMeteredOverrideSet = config.meteredOverride
                     != WifiConfiguration.METERED_OVERRIDE_NONE;
             meteredDetail.isFromSuggestion = config.fromWifiNetworkSuggestion;
-            mNetworkMap.put(config.getProfileKey(), meteredDetail);
+            mNetworkMap.put(config.getProfileKeyInternal(), meteredDetail);
         }
 
         void clear() {
