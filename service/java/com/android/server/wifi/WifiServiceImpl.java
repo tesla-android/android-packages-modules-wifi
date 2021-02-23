@@ -1011,6 +1011,9 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public void setCoexUnsafeChannels(
             @NonNull List<CoexUnsafeChannel> unsafeChannels, int restrictions) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS, "WifiService");
         if (unsafeChannels == null) {
@@ -1030,6 +1033,9 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public List<CoexUnsafeChannel> getCoexUnsafeChannels() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         return mWifiThreadRunner.call(() -> new ArrayList<>(mCoexManager.getCoexUnsafeChannels()),
@@ -1042,6 +1048,9 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public int getCoexRestrictions() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         return mWifiThreadRunner.call(mCoexManager::getCoexRestrictions, 0);
@@ -1051,6 +1060,9 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#registerCoexCallback(WifiManager.CoexCallback)}
      */
     public void registerCoexCallback(@NonNull ICoexCallback callback) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         if (callback == null) {
@@ -1066,6 +1078,9 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#unregisterCoexCallback(WifiManager.CoexCallback)}
      */
     public void unregisterCoexCallback(@NonNull ICoexCallback callback) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         if (callback == null) {
