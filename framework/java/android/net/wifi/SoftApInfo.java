@@ -183,6 +183,14 @@ public final class SoftApInfo implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return getBssidInternal();
+    }
+
+    /**
+     * @hide
+     */
+    @Nullable
+    public MacAddress getBssidInternal() {
         return mBssid;
     }
 
@@ -222,6 +230,13 @@ public final class SoftApInfo implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return getWifiStandardInternal();
+    }
+
+    /**
+     * @hide
+     */
+    public @WifiAnnotations.WifiStandard int getWifiStandardInternal() {
         return mWifiStandard;
     }
 

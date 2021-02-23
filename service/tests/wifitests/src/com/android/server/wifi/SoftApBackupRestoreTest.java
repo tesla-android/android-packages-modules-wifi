@@ -19,6 +19,7 @@ package com.android.server.wifi;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.content.Context;
@@ -31,6 +32,7 @@ import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.SettingsMigrationDataHolder;
 
@@ -271,6 +273,7 @@ public class SoftApBackupRestoreTest extends WifiBaseTest {
      */
     @Test
     public void testSoftApConfigBackupAndRestoreWithAllConfigInS() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mTestBlockedList.add(MacAddress.fromString(TEST_BLOCKED_CLIENT));
         mTestAllowedList.add(MacAddress.fromString(TEST_ALLOWED_CLIENT));
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder();
