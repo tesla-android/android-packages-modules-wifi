@@ -128,7 +128,7 @@ public class ConfigurationMap {
             return null;
         }
         for (WifiConfiguration config : mPerIDForCurrentUser.values()) {
-            if (config.getProfileKey().equals(key)) {
+            if (config.getProfileKeyInternal().equals(key)) {
                 return config;
             }
         }

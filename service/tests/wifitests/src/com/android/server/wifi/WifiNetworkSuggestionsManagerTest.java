@@ -673,9 +673,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         // Nothing in WCM.
         when(mWifiConfigManager.getConfiguredNetwork(networkSuggestion1.wifiConfiguration
-                .getProfileKey())).thenReturn(null);
+                .getProfileKeyInternal())).thenReturn(null);
         when(mWifiConfigManager.getConfiguredNetwork(networkSuggestion2.wifiConfiguration
-                .getProfileKey())).thenReturn(null);
+                .getProfileKeyInternal())).thenReturn(null);
 
         // Modify the same suggestion to mark it auto-join disabled.
         WifiNetworkSuggestion networkSuggestion3 = createWifiNetworkSuggestion(
@@ -2114,7 +2114,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mWifiNetworkSuggestionsManager.remove(networkSuggestionList, TEST_UID_1,
                         TEST_PACKAGE_1));
         verify(mWifiConfigManager).removeSuggestionConfiguredNetwork(
-                networkSuggestion.wifiConfiguration.getProfileKey());
+                networkSuggestion.wifiConfiguration.getProfileKeyInternal());
     }
 
     /**
@@ -2150,7 +2150,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mWifiNetworkSuggestionsManager.remove(new ArrayList<>(), TEST_UID_1,
                         TEST_PACKAGE_1));
         verify(mWifiConfigManager).removeSuggestionConfiguredNetwork(
-                networkSuggestion.wifiConfiguration.getProfileKey());
+                networkSuggestion.wifiConfiguration.getProfileKeyInternal());
     }
 
 
@@ -2198,7 +2198,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         // Now remove the current connected app and ensure we did trigger a disconnect.
         mWifiNetworkSuggestionsManager.removeApp(TEST_PACKAGE_1);
         verify(mWifiConfigManager).removeSuggestionConfiguredNetwork(
-                networkSuggestion1.wifiConfiguration.getProfileKey());
+                networkSuggestion1.wifiConfiguration.getProfileKeyInternal());
 
         // Now remove the other app and ensure we did not trigger a disconnect.
         mWifiNetworkSuggestionsManager.removeApp(TEST_PACKAGE_2);
@@ -3648,7 +3648,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     private void setupGetConfiguredNetworksFromWcm(WifiConfiguration...configs) {
         for (int i = 0; i < configs.length; i++) {
             WifiConfiguration config = configs[i];
-            when(mWifiConfigManager.getConfiguredNetwork(config.getProfileKey()))
+            when(mWifiConfigManager.getConfiguredNetwork(config.getProfileKeyInternal()))
                     .thenReturn(config);
         }
     }
@@ -4444,7 +4444,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mock(WifiConfiguration.NetworkSelectionStatus.class);
         when(status.isNetworkEnabled()).thenReturn(false);
         wcmConfig.setNetworkSelectionStatus(status);
-        when(mWifiConfigManager.getConfiguredNetwork(wcmConfig.getProfileKey()))
+        when(mWifiConfigManager.getConfiguredNetwork(wcmConfig.getProfileKeyInternal()))
                 .thenReturn(wcmConfig);
 
         List<ScanDetail> scanDetails = Arrays.asList(scanDetail1, scanDetail2);

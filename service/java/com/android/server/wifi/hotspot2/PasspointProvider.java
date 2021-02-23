@@ -1147,7 +1147,8 @@ public class PasspointProvider {
 
     /**
      * Set the user connect choice on the passpoint network.
-     * @param choice The {@link WifiConfiguration#getProfileKey()} of the user conncet network.
+     * @param choice The {@link WifiConfiguration#getProfileKeyInternal()} of the user connect
+     *               network.
      * @param rssi The signal strength of the network.
      */
     public void setUserConnectChoice(String choice, int rssi) {

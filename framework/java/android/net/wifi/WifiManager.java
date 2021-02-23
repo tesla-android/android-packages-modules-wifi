@@ -1519,7 +1519,7 @@ public class WifiManager {
                             new ArrayList<>(results.keySet()));
             for (WifiConfiguration configuration : wifiConfigurations) {
                 Map<Integer, List<ScanResult>> scanResultsPerNetworkType =
-                        results.get(configuration.getProfileKey());
+                        results.get(configuration.getProfileKeyInternal());
                 if (scanResultsPerNetworkType != null) {
                     configs.add(Pair.create(configuration, scanResultsPerNetworkType));
                 }

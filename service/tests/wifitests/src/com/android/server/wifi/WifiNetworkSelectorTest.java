@@ -870,7 +870,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         // set user connect choice
         userChoice.getNetworkSelectionStatus().setConnectChoice(null);
         networkSelectorChoice.getNetworkSelectionStatus()
-                .setConnectChoice(userChoice.getProfileKey());
+                .setConnectChoice(userChoice.getProfileKeyInternal());
 
         // After user connect choice is set, userChoice should override networkSelectorChoice.
         candidates = mWifiNetworkSelector.getCandidatesFromScan(
@@ -917,7 +917,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         userChoice.getNetworkSelectionStatus().setCandidate(scanDetails.get(1).getScanResult());
         userChoice.getNetworkSelectionStatus().setConnectChoice(null);
         networkSelectorChoice.getNetworkSelectionStatus()
-                .setConnectChoice(userChoice.getProfileKey());
+                .setConnectChoice(userChoice.getProfileKeyInternal());
         networkSelectorChoice.getNetworkSelectionStatus()
                 .setConnectChoiceRssi(observedUserChoiceRssi
                         + mScoringParams.getEstimateRssiErrorMargin());
@@ -976,7 +976,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         userChoice.getNetworkSelectionStatus().setCandidate(scanDetails.get(1).getScanResult());
         userChoice.getNetworkSelectionStatus().setConnectChoice(null);
         networkSelectorChoice.getNetworkSelectionStatus()
-                .setConnectChoice(userChoice.getProfileKey());
+                .setConnectChoice(userChoice.getProfileKeyInternal());
 
         // Verify that the user connect choice network is chosen.
         List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(

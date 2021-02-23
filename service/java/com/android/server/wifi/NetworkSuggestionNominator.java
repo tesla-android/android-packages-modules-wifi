@@ -112,14 +112,15 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
     private void addOrUpdateSuggestionToWifiConfigManger(ExtendedWifiNetworkSuggestion ewns) {
         WifiConfiguration config = ewns.createInternalWifiConfiguration(mWifiCarrierInfoManager);
         WifiConfiguration wCmConfiguredNetwork =
-                mWifiConfigManager.getConfiguredNetwork(config.getProfileKey());
+                mWifiConfigManager.getConfiguredNetwork(config.getProfileKeyInternal());
         NetworkUpdateResult result = mWifiConfigManager.addOrUpdateNetwork(
                 config, ewns.perAppInfo.uid, ewns.perAppInfo.packageName);
         if (!result.isSuccess()) {
             mLocalLog.log("Failed to add network suggestion");
             return;
         }
-        mLocalLog.log(config.getProfileKey() + " is added/updated in the WifiConfigManager");
+        mLocalLog.log(config.getProfileKeyInternal()
+                + " is added/updated in the WifiConfigManager");
         mWifiConfigManager.allowAutojoin(result.getNetworkId(), config.allowAutojoin);
         WifiConfiguration currentWCmConfiguredNetwork =
                 mWifiConfigManager.getConfiguredNetwork(result.getNetworkId());
@@ -186,7 +187,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                                     config.getPasspointUniqueId())).findFirst();
             if (!matchingPasspointExtSuggestion.isPresent()) {
                 mLocalLog.log("Suggestion is missing for passpoint FQDN: " + config.FQDN
-                        + " profile key: " + config.getProfileKey());
+                        + " profile key: " + config.getProfileKeyInternal());
                 continue;
             }
             if (!isNetworkAvailableToAutoConnect(config, untrustedNetworkAllowed,
@@ -212,9 +213,10 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                 WifiConfiguration config = ewns.createInternalWifiConfiguration(
                         mWifiCarrierInfoManager);
                 WifiConfiguration wCmConfiguredNetwork =
-                        mWifiConfigManager.getConfiguredNetwork(config.getProfileKey());
+                        mWifiConfigManager.getConfiguredNetwork(config.getProfileKeyInternal());
                 if (wCmConfiguredNetwork == null) {
-                    mLocalLog.log(config.getProfileKey() + "hasn't add to WifiConfigManager?");
+                    mLocalLog.log(config.getProfileKeyInternal()
+                            + "hasn't add to WifiConfigManager?");
                     continue;
                 }
                 if (!wCmConfiguredNetwork.getNetworkSelectionStatus().isNetworkEnabled()

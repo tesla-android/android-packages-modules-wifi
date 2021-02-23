@@ -2326,7 +2326,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         config.networkId = TEST_CONNECTED_NETWORK_ID;
         String networkKey = "NETWORK_KEY";
         when(mWifiConfigManager.getConfiguredNetwork(networkKey)).thenReturn(config);
-        when(mSuggestionConfig.getProfileKey()).thenReturn(networkKey);
+        when(mSuggestionConfig.getProfileKeyInternal()).thenReturn(networkKey);
         when(mWifiNetworkSuggestion.getWifiConfiguration()).thenReturn(mSuggestionConfig);
         Set<WifiNetworkSuggestion> suggestionNetworks = new HashSet<WifiNetworkSuggestion>();
         suggestionNetworks.add(mWifiNetworkSuggestion);
@@ -2377,7 +2377,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         config.networkId = TEST_CONNECTED_NETWORK_ID;
         String networkKey = "NETWORK_KEY";
         when(mWifiConfigManager.getConfiguredNetwork(networkKey)).thenReturn(config);
-        when(mSuggestionConfig.getProfileKey()).thenReturn(networkKey);
+        when(mSuggestionConfig.getProfileKeyInternal()).thenReturn(networkKey);
         when(mWifiNetworkSuggestion.getWifiConfiguration()).thenReturn(mSuggestionConfig);
         Set<WifiNetworkSuggestion> suggestionNetworks = new HashSet<WifiNetworkSuggestion>();
         suggestionNetworks.add(mWifiNetworkSuggestion);

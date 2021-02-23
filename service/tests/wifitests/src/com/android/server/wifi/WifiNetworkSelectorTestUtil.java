@@ -317,7 +317,7 @@ public class WifiNetworkSelectorTestUtil {
                 .then(new AnswerWithArguments() {
                     public WifiConfiguration answer(String configKey) {
                         for (WifiConfiguration config : configs) {
-                            if (TextUtils.equals(config.getProfileKey(), configKey)) {
+                            if (TextUtils.equals(config.getProfileKeyInternal(), configKey)) {
                                 return new WifiConfiguration(config);
                             }
                         }
