@@ -1979,7 +1979,7 @@ public class WifiScoreCard {
     // for instance when we are not associated.
     private final PerNetwork mPlaceholderPerNetwork;
     private final Map<String, PerNetwork> mApForNetwork = new ArrayMap<>();
-    PerNetwork lookupNetwork(String ssid) {
+    @NonNull PerNetwork lookupNetwork(String ssid) {
         if (ssid == null || WifiManager.UNKNOWN_SSID.equals(ssid)) {
             return mPlaceholderPerNetwork;
         }

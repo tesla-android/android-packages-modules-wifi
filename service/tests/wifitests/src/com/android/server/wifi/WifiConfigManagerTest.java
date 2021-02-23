@@ -116,7 +116,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     private static final String TEST_PAC_PROXY_LOCATION_2 = "http://blah";
     private static final int TEST_RSSI = -50;
     private static final int TEST_FREQUENCY_1 = 2412;
-    private static final int MAX_BLOCKED_BSSID_PER_NETWORK = 10;
     private static final MacAddress TEST_RANDOMIZED_MAC =
             MacAddress.fromString("d2:11:19:34:a5:20");
     private static final int DATA_SUBID = 1;
