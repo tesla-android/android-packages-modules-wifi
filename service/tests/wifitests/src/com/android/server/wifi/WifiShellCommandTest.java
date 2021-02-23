@@ -661,7 +661,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 return (sL.size() == 1)
                         && (sL.get(0).getSsid().equals("ssid1234"))
                         && (sL.get(0).getWifiConfiguration().macRandomizationSetting
-                        == WifiConfiguration.RANDOMIZATION_ENHANCED);
+                        == WifiConfiguration.RANDOMIZATION_NON_PERSISTENT);
             }), eq(SHELL_PACKAGE_NAME), any());
         }
     }
@@ -776,25 +776,25 @@ public class WifiShellCommandTest extends WifiBaseTest {
     }
 
     @Test
-    public void testConnectNetworkWithEnhancedMacRandomizationOnSAndAbove() {
+    public void testConnectNetworkWithNonPersistentMacRandomizationOnSAndAbove() {
         assumeTrue(SdkLevel.isAtLeastS());
 
         mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
-                new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"});
+                new String[]{"connect-network", "ssid1234", "open", "-r", "non_persistent"});
         verify(mWifiService).connect(argThat(wifiConfiguration -> {
             return (wifiConfiguration.SSID.equals("\"ssid1234\"")
                     && wifiConfiguration.macRandomizationSetting
-                    == WifiConfiguration.RANDOMIZATION_ENHANCED);
+                    == WifiConfiguration.RANDOMIZATION_NON_PERSISTENT);
         }), eq(-1), any());
     }
 
     @Test
-    public void testConnectNetworkWithEnhancedMacRandomizationOnR() {
+    public void testConnectNetworkWithNonPersistentMacRandomizationOnR() {
         assumeFalse(SdkLevel.isAtLeastS());
 
         assertEquals(-1, mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
-                new String[]{"connect-network", "ssid1234", "open", "-r", "enhanced"}));
+                new String[]{"connect-network", "ssid1234", "open", "-r", "non_persistent"}));
     }
 }

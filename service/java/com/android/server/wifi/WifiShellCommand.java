@@ -434,15 +434,14 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         }
 
                     };
-                    int callbackId = softApCallback.hashCode();
-                    mWifiService.registerSoftApCallback(new Binder(), softApCallback, callbackId);
+                    mWifiService.registerSoftApCallback(softApCallback);
                     SoftApConfiguration config = buildSoftApConfiguration(pw);
                     if (!mWifiService.startTetheredHotspot(config, SHELL_PACKAGE_NAME)) {
                         pw.println("Soft AP failed to start. Please check config parameters");
                     }
                     // Wait for softap to start and complete callback
                     countDownLatch.await(3000, TimeUnit.MILLISECONDS);
-                    mWifiService.unregisterSoftApCallback(callbackId);
+                    mWifiService.unregisterSoftApCallback(softApCallback);
                     return 0;
                 }
                 case "stop-softap": {
@@ -935,13 +934,13 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 } else if (macRandomizationScheme.equals("persistent")) {
                     configuration.macRandomizationSetting =
                             WifiConfiguration.RANDOMIZATION_PERSISTENT;
-                } else if (macRandomizationScheme.equals("enhanced")) {
+                } else if (macRandomizationScheme.equals("non_persistent")) {
                     if (SdkLevel.isAtLeastS()) {
                         configuration.macRandomizationSetting =
-                                WifiConfiguration.RANDOMIZATION_ENHANCED;
+                                WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
                     } else {
                         throw new IllegalArgumentException(
-                                "-r enhanced MAC randomization not supported before S");
+                                "-r non_persistent MAC randomization not supported before S");
                     }
                 }
             } else {
@@ -1050,10 +1049,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 suggestionBuilder.setBssid(MacAddress.fromString(getNextArgRequired()));
             } else if (option.equals("-r")) {
                 if (SdkLevel.isAtLeastS()) {
-                    suggestionBuilder.setIsEnhancedMacRandomizationEnabled(true);
+                    suggestionBuilder.setMacRandomizationSetting(
+                            WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT);
                 } else {
                     throw new IllegalArgumentException(
-                            "-r enhanced MAC randomization not supported before S");
+                            "-r non_persistent MAC randomization not supported before S");
                 }
             } else if (option.equals("-a")) {
                 if (SdkLevel.isAtLeastS()) {
@@ -1356,7 +1356,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("  list-networks");
         pw.println("    Lists the saved networks");
         pw.println("  connect-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-m] [-d] "
-                + "[-b <bssid>] [-r auto|none|persistent|enhanced]");
+                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
         pw.println("    Connect to a network with provided params and add to saved networks list");
         pw.println("    <ssid> - SSID of the network");
         pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
@@ -1369,10 +1369,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r auto|none|persistent|enhanced - MAC randomization scheme for the"
+        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
         pw.println("  add-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-m] [-d] "
-                + "[-b <bssid>] [-r auto|none|persistent|enhanced]");
+                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
         pw.println("    Add/update saved network with provided params");
         pw.println("    <ssid> - SSID of the network");
         pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
@@ -1385,7 +1385,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r auto|none|persistent|enhanced - MAC randomization scheme for the"
+        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
         pw.println("  forget-network <networkId>");
         pw.println("    Remove the network mentioned by <networkId>");
@@ -1420,7 +1420,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -s - Share the suggestion with user.");
         pw.println("    -d - Mark the suggestion autojoin disabled.");
         pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r - Enable enhanced randomization (disabled by default)");
+        pw.println("    -r - Enable non_persistent randomization (disabled by default)");
         pw.println("    -a - Mark the suggestion carrier merged");
         pw.println("    -c <carrierId> - set carrier Id");
         pw.println("    -i <subscriptionId> - set subscription Id, if -a is used, "
