@@ -4555,6 +4555,22 @@ public class WifiServiceImpl extends BaseWifiService {
                 }
                 result = new NetworkUpdateResult(netId);
             }
+            WifiConfiguration configuration = mWifiConfigManager
+                    .getConfiguredNetwork(result.getNetworkId());
+            if (configuration == null) {
+                Log.e(TAG, "connect to Invalid network Id=" + netId);
+                wrapper.sendFailure(WifiManager.ERROR);
+                return;
+            }
+            if (configuration.enterpriseConfig != null
+                    && configuration.enterpriseConfig.isAuthenticationSimBased()
+                    && !mWifiCarrierInfoManager.isSimPresent(mWifiCarrierInfoManager
+                    .getBestMatchSubscriptionId(configuration))) {
+                Log.e(TAG, "connect to SIM-based config=" + configuration
+                        + "while SIM is absent");
+                wrapper.sendFailure(WifiManager.ERROR);
+                return;
+            }
             mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
                     mConnectHelper.connectToNetwork(result, wrapper, uid));
         });
