@@ -2632,7 +2632,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 logd("Notify frequency conflict");
                 Resources r = mContext.getResources();
 
-                AlertDialog dialog = new AlertDialog.Builder(mContext)
+                AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                         .setMessage(r.getString(R.string.wifi_p2p_frequency_conflict_message,
                             getDeviceName(mSavedPeerConfig.deviceAddress)))
                         .setPositiveButton(r.getString(R.string.dlg_ok), new OnClickListener() {
@@ -3275,7 +3275,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             addRowToDialog(group, R.string.wifi_p2p_to_message, getDeviceName(peerAddress));
             addRowToDialog(group, R.string.wifi_p2p_show_pin_message, pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_sent_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.ok), null)
@@ -3296,7 +3296,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             addRowToDialog(group, R.string.wifi_p2p_to_message, getDeviceName(peerAddress));
             addRowToDialog(group, R.string.wifi_p2p_show_pin_message, pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_sent_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.accept), new OnClickListener() {
@@ -3324,7 +3324,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             final EditText pin = (EditText) textEntryView.findViewById(R.id.wifi_p2p_wps_pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_to_connect_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.accept), new OnClickListener() {
