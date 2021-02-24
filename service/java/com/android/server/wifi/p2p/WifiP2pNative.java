@@ -19,6 +19,7 @@ package com.android.server.wifi.p2p;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.hardware.wifi.V1_0.IWifiP2pIface;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
@@ -460,13 +461,26 @@ public class WifiP2pNative {
      * operating class (180).
      *
      * @param lc Wifi channel. eg, 1, 6, 11.
-     * @param oc Operating Class indicates the channel set of the AP
-     *        indicated by this BSSID
      *
      * @return true, if operation was successful.
      */
-    public boolean p2pSetChannel(int lc, int oc) {
-        return mSupplicantP2pIfaceHal.setListenChannel(lc, oc);
+    public boolean p2pSetListenChannel(int lc) {
+        return mSupplicantP2pIfaceHal.setListenChannel(lc);
+    }
+
+    /**
+     * Set P2P operating channel.
+     *
+     * @param oc Wifi channel, eg, 1, 6, 11.
+     * @param unsafeChannels channels are not allowed.
+     * @return true if operation was successful.
+     */
+    public boolean p2pSetOperatingChannel(int oc, @NonNull Set<CoexUnsafeChannel> unsafeChannels) {
+        if (null == unsafeChannels) {
+            Log.wtf(TAG, "unsafeChannels is null.");
+            return false;
+        }
+        return mSupplicantP2pIfaceHal.setOperatingChannel(oc, unsafeChannels);
     }
 
     /**
