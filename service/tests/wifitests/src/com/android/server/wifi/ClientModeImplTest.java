@@ -89,6 +89,8 @@ import android.net.NetworkSpecifier;
 import android.net.StaticIpConfiguration;
 import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
+import android.net.vcn.VcnManager;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
@@ -291,6 +293,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         WifiP2pManager p2pm = mock(WifiP2pManager.class);
         when(context.getSystemService(WifiP2pManager.class)).thenReturn(p2pm);
+        when(context.getSystemService(VcnManager.class)).thenReturn(mVcnManager);
         final CountDownLatch untilDone = new CountDownLatch(1);
         mP2pThread = new HandlerThread("WifiP2pMockThread") {
             @Override
@@ -457,10 +460,14 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiNetworkSelector mWifiNetworkSelector;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ClientModeManager mPrimaryClientModeManager;
+    @Mock VcnManager mVcnManager;
+    @Mock VcnNetworkPolicyResult mVcnUnderlyingNetworkPolicy;
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
 
     @Captor ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mConfigUpdateListenerCaptor;
     @Captor ArgumentCaptor<WifiNetworkAgent.Callback> mWifiNetworkAgentCallbackCaptor;
+    @Captor ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> mPolicyListenerCaptor =
+            ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
 
     private void setUpWifiNative() throws Exception {
         when(mWifiNative.getStaFactoryMacAddress(WIFI_IFACE_NAME)).thenReturn(
@@ -5936,12 +5943,23 @@ public class ClientModeImplTest extends WifiBaseTest {
                 mWifiNetworkSuggestionsManager);
     }
 
-    /*
+    /**
      * Verify that the subscriberId will be filled in NetworkAgentConfig
-     * after connecting to a merged network.
+     * after connecting to a merged network. And also VCN policy will be checked.
      */
     @Test
     public void triggerConnectToMergedNetwork() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        InOrder inOrder = inOrder(mVcnManager, mVcnUnderlyingNetworkPolicy);
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+            nc.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+            when(mVcnUnderlyingNetworkPolicy.getNetworkCapabilities()).thenReturn(nc);
+            return mVcnUnderlyingNetworkPolicy;
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
+
         String testSubscriberId = "TestSubscriberId";
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
         when(mDataTelephonyManager.getSubscriberId()).thenReturn(testSubscriberId);
@@ -5949,6 +5967,78 @@ public class ClientModeImplTest extends WifiBaseTest {
         connect();
         expectRegisterNetworkAgent((agentConfig) -> {
             assertEquals(testSubscriberId, agentConfig.subscriberId);
-        }, (cap) -> { });
+        }, (cap) -> {
+                assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
+            });
+        // Verify VCN policy listener is registered
+        inOrder.verify(mVcnManager).addVcnNetworkPolicyListener(any(),
+                    mPolicyListenerCaptor.capture());
+        assertNotNull(mPolicyListenerCaptor.getValue());
+
+        // Verify getting new capability from VcnManager
+        inOrder.verify(mVcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
+                any(LinkProperties.class));
+        inOrder.verify(mVcnUnderlyingNetworkPolicy).isTeardownRequested();
+        inOrder.verify(mVcnUnderlyingNetworkPolicy).getNetworkCapabilities();
+
+        // Update policy with tear down request.
+        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(true);
+        mPolicyListenerCaptor.getValue().onPolicyChanged();
+        mLooper.dispatchAll();
+
+        // The merged carrier network should be disconnected.
+        inOrder.verify(mVcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
+                any(LinkProperties.class));
+        inOrder.verify(mVcnUnderlyingNetworkPolicy).isTeardownRequested();
+        inOrder.verify(mVcnUnderlyingNetworkPolicy).getNetworkCapabilities();
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+        DisconnectEventInfo disconnectEventInfo =
+                new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+        assertEquals("DisconnectedState", getCurrentState().getName());
+
+        // In DisconnectedState, policy update should result no capability update.
+        reset(mWifiConfigManager, mVcnManager);
+        mPolicyListenerCaptor.getValue().onPolicyChanged();
+        verifyNoMoreInteractions(mWifiConfigManager, mVcnManager);
     }
+
+    /**
+     * Verify when connect to a unmerged network, will not mark it as a VCN network.
+     */
+    @Test
+    public void triggerConnectToUnmergedNetwork() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        doAnswer(invocation -> {
+            NetworkCapabilities nc = invocation.getArgument(0);
+            nc.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+            when(mVcnUnderlyingNetworkPolicy.getNetworkCapabilities())
+                    .thenReturn(nc);
+            return mVcnUnderlyingNetworkPolicy;
+        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
+        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
+
+        String testSubscriberId = "TestSubscriberId";
+        when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
+        when(mDataTelephonyManager.getSubscriberId()).thenReturn(testSubscriberId);
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> {
+            assertEquals(null, agentConfig.subscriberId);
+        }, (cap) -> {
+                assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
+            });
+
+        // Verify VCN policy listener is registered
+        verify(mVcnManager, atLeastOnce()).addVcnNetworkPolicyListener(any(),
+                mPolicyListenerCaptor.capture());
+        assertNotNull(mPolicyListenerCaptor.getValue());
+
+        mPolicyListenerCaptor.getValue().onPolicyChanged();
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mVcnManager, mVcnUnderlyingNetworkPolicy);
+    }
+
 }
