@@ -109,11 +109,10 @@ public class WifiBlocklistMonitor {
     private boolean mFailureCountDisableThresholdArrayInitialized = false;
     private static final long ABNORMAL_DISCONNECT_RESET_TIME_MS = TimeUnit.HOURS.toMillis(3);
     private static final int MIN_RSSI_DIFF_TO_UNBLOCK_BSSID = 5;
-    /**
-     * Maximum number of blocked BSSIDs per SSID used for calcualting the duration of temporarily
-     * disabling a network.
-     */
-    private static final int MAX_BLOCKED_BSSID_PER_NETWORK = 10;
+    @VisibleForTesting
+    public static final int NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF = 5;
+    @VisibleForTesting
+    public static final long WIFI_CONFIG_MAX_DISABLE_DURATION_MILLIS = TimeUnit.HOURS.toMillis(18);
     private static final String TAG = "WifiBlocklistMonitor";
 
     private final Context mContext;
@@ -378,6 +377,7 @@ public class WifiBlocklistMonitor {
             // To rule out potential device side issues, don't add to blocklist if
             // WifiLastResortWatchdog is still not triggered
             if (shouldWaitForWatchdogToTriggerFirst(bssid, reasonCode)) {
+                localLog("Ignoring failure to wait for watchdog to trigger first.");
                 return false;
             }
             int baseBlockDurationMs = getBaseBlockDurationForReason(reasonCode);
@@ -925,11 +925,16 @@ public class WifiBlocklistMonitor {
             long timeDifferenceMs =
                     mClock.getElapsedSinceBootMillis() - networkStatus.getDisableTime();
             int disableReason = networkStatus.getNetworkSelectionDisableReason();
-            int blockedBssids = Math.min(MAX_BLOCKED_BSSID_PER_NETWORK,
-                    updateAndGetNumBlockedBssidsForSsid(config.SSID));
             long disableTimeoutMs = (long) getNetworkSelectionDisableTimeoutMillis(disableReason);
-            if (blockedBssids > 1) {
-                disableTimeoutMs *= Math.pow(2.0, blockedBssids - 1.0);
+            int exponentialBackoffCount = mWifiScoreCard.lookupNetwork(config.SSID)
+                    .getRecentStats().getCount(WifiScoreCard.CNT_CONSECUTIVE_CONNECTION_FAILURE)
+                    - NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF;
+            for (int i = 0; i < exponentialBackoffCount; i++) {
+                disableTimeoutMs *= 2;
+                if (disableTimeoutMs > WIFI_CONFIG_MAX_DISABLE_DURATION_MILLIS) {
+                    disableTimeoutMs = WIFI_CONFIG_MAX_DISABLE_DURATION_MILLIS;
+                    break;
+                }
             }
             if (timeDifferenceMs >= disableTimeoutMs) {
                 return true;
@@ -1010,7 +1015,7 @@ public class WifiBlocklistMonitor {
         } else {
             setNetworkSelectionPermanentlyDisabled(config, reason);
         }
-        localLog("setNetworkSelectionStatus: configKey=" + config.getProfileKey()
+        localLog("setNetworkSelectionStatus: configKey=" + config.getProfileKeyInternal()
                 + " networkStatus=" + networkStatus.getNetworkStatusString() + " disableReason="
                 + networkStatus.getNetworkSelectionDisableReasonString());
     }
@@ -1022,7 +1027,7 @@ public class WifiBlocklistMonitor {
         NetworkSelectionStatus status = config.getNetworkSelectionStatus();
         if (status.getNetworkSelectionStatus()
                 != NetworkSelectionStatus.NETWORK_SELECTION_ENABLED) {
-            localLog("setNetworkSelectionEnabled: configKey=" + config.getProfileKey()
+            localLog("setNetworkSelectionEnabled: configKey=" + config.getProfileKeyInternal()
                     + " old networkStatus=" + status.getNetworkStatusString()
                     + " disableReason=" + status.getNetworkSelectionDisableReasonString());
         }

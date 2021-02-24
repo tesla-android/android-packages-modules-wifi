@@ -1011,6 +1011,9 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public void setCoexUnsafeChannels(
             @NonNull List<CoexUnsafeChannel> unsafeChannels, int restrictions) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS, "WifiService");
         if (unsafeChannels == null) {
@@ -1030,6 +1033,9 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public List<CoexUnsafeChannel> getCoexUnsafeChannels() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         return mWifiThreadRunner.call(() -> new ArrayList<>(mCoexManager.getCoexUnsafeChannels()),
@@ -1042,6 +1048,9 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public int getCoexRestrictions() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         return mWifiThreadRunner.call(mCoexManager::getCoexRestrictions, 0);
@@ -1051,6 +1060,9 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#registerCoexCallback(WifiManager.CoexCallback)}
      */
     public void registerCoexCallback(@NonNull ICoexCallback callback) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         if (callback == null) {
@@ -1066,6 +1078,9 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#unregisterCoexCallback(WifiManager.CoexCallback)}
      */
     public void unregisterCoexCallback(@NonNull ICoexCallback callback) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
         if (callback == null) {
@@ -3898,7 +3913,8 @@ public class WifiServiceImpl extends BaseWifiService {
                                 mWifiConfigManager.addOrUpdateNetwork(configuration, callingUid)
                                         .getNetworkId();
                         if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
-                            Log.e(TAG, "Restore network failed: " + configuration.getProfileKey());
+                            Log.e(TAG, "Restore network failed: "
+                                    + configuration.getProfileKeyInternal());
                             continue;
                         }
                         // Enable all networks restored.
@@ -4553,6 +4569,22 @@ public class WifiServiceImpl extends BaseWifiService {
                     mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_MANUAL_CONNECT, netId);
                 }
                 result = new NetworkUpdateResult(netId);
+            }
+            WifiConfiguration configuration = mWifiConfigManager
+                    .getConfiguredNetwork(result.getNetworkId());
+            if (configuration == null) {
+                Log.e(TAG, "connect to Invalid network Id=" + netId);
+                wrapper.sendFailure(WifiManager.ERROR);
+                return;
+            }
+            if (configuration.enterpriseConfig != null
+                    && configuration.enterpriseConfig.isAuthenticationSimBased()
+                    && !mWifiCarrierInfoManager.isSimPresent(mWifiCarrierInfoManager
+                    .getBestMatchSubscriptionId(configuration))) {
+                Log.e(TAG, "connect to SIM-based config=" + configuration
+                        + "while SIM is absent");
+                wrapper.sendFailure(WifiManager.ERROR);
+                return;
             }
             mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
                     mConnectHelper.connectToNetwork(result, wrapper, uid));

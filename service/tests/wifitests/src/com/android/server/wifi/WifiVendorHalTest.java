@@ -84,6 +84,7 @@ import android.hardware.wifi.V1_2.IWifiChipEventCallback.IfaceInfo;
 import android.hardware.wifi.V1_2.IWifiChipEventCallback.RadioModeInfo;
 import android.hardware.wifi.V1_3.WifiChannelStats;
 import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
+import android.hardware.wifi.V1_5.StaLinkLayerIfaceContentionTimeStats;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.MacAddress;
@@ -1139,6 +1140,39 @@ public class WifiVendorHalTest extends WifiBaseTest {
     }
 
     /**
+     * Test that the link layer stats V1_5 fields are populated correctly.
+     *
+     * This is done by filling Hal LinkLayerStats (V1_5) with random values, converting it to
+     * WifiLinkLayerStats and then asserting the values in the original structure are equal to the
+     * values in the converted structure.
+     */
+    @Test
+    public void testLinkLayerStatsAssignment_1_5() throws Exception {
+        Random r = new Random(1775968256);
+        android.hardware.wifi.V1_5.StaLinkLayerStats stats =
+                new android.hardware.wifi.V1_5.StaLinkLayerStats();
+        randomizePacketStats(r, stats.iface.V1_0.wmeBePktStats);
+        randomizePacketStats(r, stats.iface.V1_0.wmeBkPktStats);
+        randomizePacketStats(r, stats.iface.V1_0.wmeViPktStats);
+        randomizePacketStats(r, stats.iface.V1_0.wmeVoPktStats);
+        randomizeRadioStats_1_3(1, r, stats.radios);
+        stats.timeStampInMs = r.nextLong() & 0xFFFFFFFFFFL;
+        randomizeContentionTimeStats(r, stats.iface.wmeBeContentionTimeStats);
+        randomizeContentionTimeStats(r, stats.iface.wmeBkContentionTimeStats);
+        randomizeContentionTimeStats(r, stats.iface.wmeViContentionTimeStats);
+        randomizeContentionTimeStats(r, stats.iface.wmeVoContentionTimeStats);
+
+        WifiLinkLayerStats converted = WifiVendorHal.frameworkFromHalLinkLayerStats_1_5(stats);
+
+        verifyIFaceStats(stats.iface.V1_0, converted);
+        verifyIFaceStats_1_5(stats.iface, converted);
+        verifyRadioStats_1_3(stats.radios, converted);
+        assertEquals(stats.timeStampInMs, converted.timeStampInMs);
+        assertEquals(WifiLinkLayerStats.V1_5, converted.version);
+        assertEquals(1, converted.numRadios);
+    }
+
+    /**
      * Test that the link layer stats V1_3 fields are aggregated correctly for two radios.
      *
      * This is done by filling multiple Hal LinkLayerStats (V1_3) with random values,
@@ -1181,6 +1215,45 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertEquals(iface.wmeVoPktStats.txMpdu, wifiLinkLayerStats.txmpdu_vo);
         assertEquals(iface.wmeVoPktStats.lostMpdu, wifiLinkLayerStats.lostmpdu_vo);
         assertEquals(iface.wmeVoPktStats.retries, wifiLinkLayerStats.retries_vo);
+    }
+
+    private void verifyIFaceStats_1_5(android.hardware.wifi.V1_5.StaLinkLayerIfaceStats iface,
+            WifiLinkLayerStats wifiLinkLayerStats) {
+        assertEquals(iface.wmeBeContentionTimeStats.contentionTimeMinInUsec,
+                wifiLinkLayerStats.contentionTimeMinBeInUsec);
+        assertEquals(iface.wmeBeContentionTimeStats.contentionTimeMaxInUsec,
+                wifiLinkLayerStats.contentionTimeMaxBeInUsec);
+        assertEquals(iface.wmeBeContentionTimeStats.contentionTimeAvgInUsec,
+                wifiLinkLayerStats.contentionTimeAvgBeInUsec);
+        assertEquals(iface.wmeBeContentionTimeStats.contentionNumSamples,
+                wifiLinkLayerStats.contentionNumSamplesBe);
+
+        assertEquals(iface.wmeBkContentionTimeStats.contentionTimeMinInUsec,
+                wifiLinkLayerStats.contentionTimeMinBkInUsec);
+        assertEquals(iface.wmeBkContentionTimeStats.contentionTimeMaxInUsec,
+                wifiLinkLayerStats.contentionTimeMaxBkInUsec);
+        assertEquals(iface.wmeBkContentionTimeStats.contentionTimeAvgInUsec,
+                wifiLinkLayerStats.contentionTimeAvgBkInUsec);
+        assertEquals(iface.wmeBkContentionTimeStats.contentionNumSamples,
+                wifiLinkLayerStats.contentionNumSamplesBk);
+
+        assertEquals(iface.wmeViContentionTimeStats.contentionTimeMinInUsec,
+                wifiLinkLayerStats.contentionTimeMinViInUsec);
+        assertEquals(iface.wmeViContentionTimeStats.contentionTimeMaxInUsec,
+                wifiLinkLayerStats.contentionTimeMaxViInUsec);
+        assertEquals(iface.wmeViContentionTimeStats.contentionTimeAvgInUsec,
+                wifiLinkLayerStats.contentionTimeAvgViInUsec);
+        assertEquals(iface.wmeViContentionTimeStats.contentionNumSamples,
+                wifiLinkLayerStats.contentionNumSamplesVi);
+
+        assertEquals(iface.wmeVoContentionTimeStats.contentionTimeMinInUsec,
+                wifiLinkLayerStats.contentionTimeMinVoInUsec);
+        assertEquals(iface.wmeVoContentionTimeStats.contentionTimeMaxInUsec,
+                wifiLinkLayerStats.contentionTimeMaxVoInUsec);
+        assertEquals(iface.wmeVoContentionTimeStats.contentionTimeAvgInUsec,
+                wifiLinkLayerStats.contentionTimeAvgVoInUsec);
+        assertEquals(iface.wmeVoContentionTimeStats.contentionNumSamples,
+                wifiLinkLayerStats.contentionNumSamplesVo);
     }
 
     private void verifyRadioStats(List<StaLinkLayerRadioStats> radios,
@@ -1289,6 +1362,17 @@ public class WifiVendorHalTest extends WifiBaseTest {
         pstats.txMpdu = r.nextLong() & 0xFFFFFFFFFFL;
         pstats.lostMpdu = r.nextLong() & 0xFFFFFFFFFFL;
         pstats.retries = r.nextLong() & 0xFFFFFFFFFFL;
+    }
+
+    /**
+     * Populate contention time stats with non-negative random values
+     */
+    private static void randomizeContentionTimeStats(Random r,
+            StaLinkLayerIfaceContentionTimeStats cstats) {
+        cstats.contentionTimeMinInUsec = r.nextLong() & 0xFFFFFFFFFFL; // more than 32 bits
+        cstats.contentionTimeMaxInUsec = r.nextLong() & 0xFFFFFFFFFFL;
+        cstats.contentionTimeAvgInUsec = r.nextLong() & 0xFFFFFFFFFFL;
+        cstats.contentionNumSamples = r.nextLong() & 0xFFFFFFFFFFL;
     }
 
     /**

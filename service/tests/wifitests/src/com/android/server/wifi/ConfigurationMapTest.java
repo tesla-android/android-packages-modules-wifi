@@ -189,7 +189,8 @@ public class ConfigurationMapTest extends WifiBaseTest {
         // visible to the current user.
         for (WifiConfiguration config : configsForCurrentUser) {
             assertEquals(config, mConfigs.getForCurrentUser(config.networkId));
-            assertEquals(config, mConfigs.getByConfigKeyForCurrentUser(config.getProfileKey()));
+            assertEquals(config, mConfigs.getByConfigKeyForCurrentUser(
+                    config.getProfileKeyInternal()));
             final boolean wasEphemeral = config.ephemeral;
             config.ephemeral = false;
             assertNull(getEphemeralForCurrentUser(config.SSID));
@@ -202,7 +203,7 @@ public class ConfigurationMapTest extends WifiBaseTest {
         // visible to the current user.
         for (WifiConfiguration config : configsNotForCurrentUser) {
             assertNull(mConfigs.getForCurrentUser(config.networkId));
-            assertNull(mConfigs.getByConfigKeyForCurrentUser(config.getProfileKey()));
+            assertNull(mConfigs.getByConfigKeyForCurrentUser(config.getProfileKeyInternal()));
             final boolean wasEphemeral = config.ephemeral;
             config.ephemeral = false;
             assertNull(getEphemeralForCurrentUser(config.SSID));
@@ -236,7 +237,7 @@ public class ConfigurationMapTest extends WifiBaseTest {
         WifiConfiguration retrievedConfig =
                 mConfigs.getByScanResultForCurrentUser(scanResult);
         assertNotNull(retrievedConfig);
-        assertEquals(config.getProfileKey(), retrievedConfig.getProfileKey());
+        assertEquals(config.getProfileKeyInternal(), retrievedConfig.getProfileKeyInternal());
     }
 
     /**

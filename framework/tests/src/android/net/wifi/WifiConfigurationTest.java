@@ -36,6 +36,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import android.net.MacAddress;
 import android.net.wifi.WifiConfiguration.GroupCipher;
@@ -48,6 +51,7 @@ import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 
 import org.junit.Before;
@@ -748,11 +752,12 @@ public class WifiConfigurationTest {
     }
 
     /**
-     * Verifies that getProfileKey returns the correct String for networks of
+     * Verifies that getProfileKeyInternal returns the correct String for networks of
      * various different security types, the result should be stable.
      */
     @Test
     public void testGetProfileKeyString() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiConfiguration config = new WifiConfiguration();
         final String mSsid = "TestAP";
         config.SSID = mSsid;
@@ -872,6 +877,33 @@ public class WifiConfigurationTest {
         config.allowedKeyManagement.clear();
         config.setPasspointUniqueId(TEST_PASSPOINT_UNIQUE_ID);
         assertEquals(TEST_PASSPOINT_UNIQUE_ID, config.getProfileKey());
+    }
+
+    @Test
+    public void testGetProfileKeyInPreS() {
+        assumeFalse(SdkLevel.isAtLeastS());
+        WifiConfiguration config = new WifiConfiguration();
+        try {
+            config.getProfileKey();
+            fail("Expected UnsupportedOperationException");
+        } catch (UnsupportedOperationException expected) {
+        }
+    }
+
+    @Test
+    public void testGetProfileKeyInternal() {
+        WifiConfiguration config = new WifiConfiguration();
+        final String mSsid = "TestAP";
+        config.SSID = mSsid;
+        config.carrierId = TEST_CARRIER_ID;
+        config.subscriptionId = TEST_SUB_ID;
+        config.creatorName = TEST_PACKAGE_NAME;
+
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(config.getProfileKey(), config.getProfileKeyInternal());
+        } else {
+            assertEquals(config.getKey(), config.getProfileKeyInternal());
+        }
     }
 
     private String createProfileKey(String ssid, String keyMgmt, String providerName,

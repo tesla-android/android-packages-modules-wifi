@@ -43,6 +43,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 
 import java.lang.annotation.Retention;
@@ -3694,6 +3695,21 @@ public class WifiConfiguration implements Parcelable {
      */
     @SystemApi
     @NonNull public String getProfileKey() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return getProfileKeyInternal();
+    }
+
+    /**
+     * Get profile key for internal usage, if target level is less than S, will use the legacy
+     * {@link #getKey()} to generate the result.
+     * @hide
+     */
+    @NonNull public String getProfileKeyInternal() {
+        if (!SdkLevel.isAtLeastS()) {
+            return getKey();
+        }
         if (mPasspointUniqueId != null) {
             return mPasspointUniqueId;
         }
