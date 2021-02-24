@@ -2524,23 +2524,24 @@ public class WifiManager {
     public static final long WIFI_FEATURE_OCE              = 0x1000000000L; // OCE Support
     /** @hide */
     public static final long WIFI_FEATURE_WAPI             = 0x2000000000L; // WAPI
-    /** @hide */
-    public static final long WIFI_FEATURE_INFRA_60G        = 0x4000000000L; // 60 GHz Band Support
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA256     = 0x4000000000L; // FILS-SHA256
+    public static final long WIFI_FEATURE_FILS_SHA256      = 0x4000000000L; // FILS-SHA256
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA384     = 0x8000000000L; // FILS-SHA384
+    public static final long WIFI_FEATURE_FILS_SHA384      = 0x8000000000L; // FILS-SHA384
 
     /** @hide */
-    public static final long WIFI_FEATURE_SAE_PK          = 0x10000000000L; // SAE-PK
+    public static final long WIFI_FEATURE_SAE_PK           = 0x10000000000L; // SAE-PK
 
     /** @hide */
-    public static final long WIFI_FEATURE_STA_BRIDGED_AP       = 0x20000000000L; // STA + Bridged AP
+    public static final long WIFI_FEATURE_STA_BRIDGED_AP   = 0x20000000000L; // STA + Bridged AP
 
     /** @hide */
-    public static final long WIFI_FEATURE_BRIDGED_AP           = 0x40000000000L; // Bridged AP
+    public static final long WIFI_FEATURE_BRIDGED_AP       = 0x40000000000L; // Bridged AP
+
+    /** @hide */
+    public static final long WIFI_FEATURE_INFRA_60G        = 0x80000000000L; // 60 GHz Band Support
 
     private long getSupportedFeatures() {
         try {
