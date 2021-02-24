@@ -531,7 +531,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     return 0;
                 case "list-networks":
                     ParceledListSlice<WifiConfiguration> networks =
-                            mWifiService.getConfiguredNetworks(SHELL_PACKAGE_NAME, null);
+                            mWifiService.getConfiguredNetworks(SHELL_PACKAGE_NAME, null, false);
                     if (networks == null || networks.getList().isEmpty()) {
                         pw.println("No networks");
                     } else {
