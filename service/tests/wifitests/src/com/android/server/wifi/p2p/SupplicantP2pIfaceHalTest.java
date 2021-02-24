@@ -38,6 +38,7 @@ import android.hardware.wifi.supplicant.V1_0.SupplicantStatus;
 import android.hardware.wifi.supplicant.V1_0.SupplicantStatusCode;
 import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -67,6 +68,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Unit tests for SupplicantP2pIfaceHal
@@ -1609,45 +1611,14 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testSetListenChannel_success() throws Exception {
-        int lc = 4;
-        int oc = 163;
-        ISupplicantP2pIface.FreqRange range1 = new ISupplicantP2pIface.FreqRange();
-        range1.min = 1000;
-        range1.max = 5810;
-        ISupplicantP2pIface.FreqRange range2 = new ISupplicantP2pIface.FreqRange();
-        range2.min = 5820;
-        range2.max = 6000;
-        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-        ranges.add(range1);
-        ranges.add(range2);
+        int lc = 6;
 
-        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc),  anyInt()))
-                .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
+        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc), anyInt()))
                 .thenReturn(mStatusSuccess);
         // Default value when service is not initialized.
-        assertFalse(mDut.setListenChannel(lc, oc));
+        assertFalse(mDut.setListenChannel(lc));
         executeAndValidateInitializationSequence(false, false, false);
-        assertTrue(mDut.setListenChannel(lc, oc));
-    }
-
-    /**
-     * Sunny day scenario for setListenChannel()
-     */
-    @Test
-    public void testSetListenChannel_successResetDisallowedFreq() throws Exception {
-        int lc = 2;
-        int oc = 0;
-        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-
-        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc),  anyInt()))
-                .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
-                .thenReturn(mStatusSuccess);
-        // Default value when service is not initialized.
-        assertFalse(mDut.setListenChannel(lc, oc));
-        executeAndValidateInitializationSequence(false, false, false);
-        assertTrue(mDut.setListenChannel(lc, oc));
+        assertTrue(mDut.setListenChannel(lc));
     }
 
     /**
@@ -1658,10 +1629,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
-                .thenReturn(mStatusSuccess);
-        assertFalse(mDut.setListenChannel(-1, 1));
-        assertFalse(mDut.setListenChannel(1, -1));
+        assertFalse(mDut.setListenChannel(4));
     }
 
     /**
@@ -1672,9 +1640,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenReturn(mStatusFailure);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
-                .thenReturn(mStatusSuccess);
-        assertFalse(mDut.setListenChannel(1, 1));
+        assertFalse(mDut.setListenChannel(1));
         // Check that service is still alive.
         assertTrue(mDut.isInitializationComplete());
     }
@@ -1687,11 +1653,74 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.setListenChannel(1, 1));
+        assertFalse(mDut.setListenChannel(1));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
     }
 
+    /**
+     * Sunny day scenario for setOperatingChannel()
+     */
+    @Test
+    public void testSetOperatingChannel_success() throws Exception {
+        int oc = 163;
+        ISupplicantP2pIface.FreqRange range1 = new ISupplicantP2pIface.FreqRange();
+        range1.min = 1000;
+        range1.max = 5810;
+        ISupplicantP2pIface.FreqRange range2 = new ISupplicantP2pIface.FreqRange();
+        range2.min = 5820;
+        range2.max = 6000;
+        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
+        ranges.add(range1);
+        ranges.add(range2);
+        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
+                .thenReturn(mStatusSuccess);
+        // Default value when service is not initialized.
+        assertFalse(mDut.setOperatingChannel(oc, unsafeChannels));
+        executeAndValidateInitializationSequence(false, false, false);
+        assertTrue(mDut.setOperatingChannel(oc, unsafeChannels));
+    }
+
+    /**
+     * Test setOperatingChannel with invalid parameters.
+     */
+    @Test
+    public void testSetOperatingChannel_invalidArguments() throws Exception {
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenReturn(mStatusSuccess);
+        assertFalse(mDut.setOperatingChannel(1, null));
+    }
+
+    /**
+     * Verify that setOperatingChannel returns false, if status is not SUCCESS.
+     */
+    @Test
+    public void testSetOperatingChannel_failure() throws Exception {
+        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenReturn(mStatusFailure);
+        assertFalse(mDut.setOperatingChannel(1, unsafeChannels));
+        // Check that service is still alive.
+        assertTrue(mDut.isInitializationComplete());
+    }
+
+    /**
+     * Verify that setOperatingChannel disconnects and returns false, if HAL throws exception.
+     */
+    @Test
+    public void testSetOperatingChannel_exception() throws Exception {
+        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenThrow(mRemoteException);
+        assertFalse(mDut.setOperatingChannel(65, unsafeChannels));
+        // Check service is dead.
+        assertFalse(mDut.isInitializationComplete());
+    }
 
     /**
      * Sunny day scenario for serviceAdd()

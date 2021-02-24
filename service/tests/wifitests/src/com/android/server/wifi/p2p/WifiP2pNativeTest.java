@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
@@ -345,11 +346,22 @@ public class WifiP2pNativeTest extends WifiBaseTest {
      * Verifies setting p2p listen channel.
      */
     @Test
-    public void testP2pSetChannel() {
-        when(mSupplicantP2pIfaceHalMock.setListenChannel(anyInt(), anyInt()))
+    public void testP2pSetListenChannel() {
+        when(mSupplicantP2pIfaceHalMock.setListenChannel(anyInt()))
                 .thenReturn(true);
-        assertTrue(mWifiP2pNative.p2pSetChannel(1, 81));
-        verify(mSupplicantP2pIfaceHalMock).setListenChannel(eq(1), eq(81));
+        assertTrue(mWifiP2pNative.p2pSetListenChannel(1));
+        verify(mSupplicantP2pIfaceHalMock).setListenChannel(eq(1));
+    }
+
+    /**
+     * Verifies setting p2p operating channel.
+     */
+    @Test
+    public void testP2pSetOperatingChannel() {
+        when(mSupplicantP2pIfaceHalMock.setOperatingChannel(anyInt(), any()))
+                .thenReturn(true);
+        assertTrue(mWifiP2pNative.p2pSetOperatingChannel(65, new HashSet<CoexUnsafeChannel>()));
+        verify(mSupplicantP2pIfaceHalMock).setOperatingChannel(eq(65), any());
     }
 
     /**

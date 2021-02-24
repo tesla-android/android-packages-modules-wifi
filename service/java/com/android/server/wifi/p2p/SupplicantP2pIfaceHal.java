@@ -29,6 +29,8 @@ import android.hardware.wifi.supplicant.V1_0.SupplicantStatusCode;
 import android.hardware.wifi.supplicant.V1_0.WpsConfigMethods;
 import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
+import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -50,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1367,63 +1370,84 @@ public class SupplicantP2pIfaceHal {
 
 
     /**
-     * Set P2P Listen channel and operating chanel.
+     * Set P2P Listen channel.
      *
      * @param listenChannel Wifi channel. eg, 1, 6, 11.
-     * @param operatingChannel Wifi channel. eg, 1, 6, 11.
      *
      * @return true, if operation was successful.
      */
-    public boolean setListenChannel(int listenChannel, int operatingChannel) {
+    public boolean setListenChannel(int listenChannel) {
         synchronized (mLock) {
             if (!checkSupplicantP2pIfaceAndLogFailure("setListenChannel")) return false;
 
-            if (listenChannel >= 1 && listenChannel <= 11) {
-                SupplicantResult<Void> result = new SupplicantResult(
-                        "setListenChannel(" + listenChannel + ", " + DEFAULT_OPERATING_CLASS + ")");
-                try {
-                    result.setResult(mISupplicantP2pIface.setListenChannel(
-                            listenChannel, DEFAULT_OPERATING_CLASS));
-                } catch (RemoteException e) {
-                    Log.e(TAG, "ISupplicantP2pIface exception: " + e);
-                    supplicantServiceDiedHandler();
-                }
-                if (!result.isSuccess()) {
-                    return false;
-                }
-            } else if (listenChannel != 0) {
-                // listenChannel == 0 does not set any listen channel.
+            // There is no original channel recorded in supplicant, so just return true.
+            if (0 == listenChannel) return true;
+
+            // Using channels other than 1, 6, and 11 would result in discovery issue.
+            if (listenChannel != 1 && listenChannel != 6 && listenChannel != 11) {
                 return false;
             }
 
-            if (operatingChannel >= 0 && operatingChannel <= 165) {
-                ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-                // operatingChannel == 0 enables all freqs.
-                if (operatingChannel >= 1 && operatingChannel <= 165) {
-                    int freq = (operatingChannel <= 14 ? 2407 : 5000) + operatingChannel * 5;
-                    ISupplicantP2pIface.FreqRange range1 =  new ISupplicantP2pIface.FreqRange();
-                    range1.min = 1000;
-                    range1.max = freq - 5;
-                    ISupplicantP2pIface.FreqRange range2 =  new ISupplicantP2pIface.FreqRange();
-                    range2.min = freq + 5;
-                    range2.max = 6000;
-                    ranges.add(range1);
-                    ranges.add(range2);
-                }
-                SupplicantResult<Void> result = new SupplicantResult(
-                        "setDisallowedFrequencies(" + ranges + ")");
-                try {
-                    result.setResult(mISupplicantP2pIface.setDisallowedFrequencies(ranges));
-                } catch (RemoteException e) {
-                    Log.e(TAG, "ISupplicantP2pIface exception: " + e);
-                    supplicantServiceDiedHandler();
-                }
-                return result.isSuccess();
+            SupplicantResult<Void> result = new SupplicantResult(
+                    "setListenChannel(" + listenChannel + ", " + DEFAULT_OPERATING_CLASS + ")");
+            try {
+                result.setResult(mISupplicantP2pIface.setListenChannel(
+                        listenChannel, DEFAULT_OPERATING_CLASS));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
             }
-            return false;
+            return result.isSuccess();
         }
     }
 
+    /**
+     * Set P2P operating channel.
+     *
+     * @param operatingChannel the desired operating channel.
+     * @param unsafeChannels channels which p2p cannot use.
+     *
+     * @return true, if operation was successful.
+     */
+    public boolean setOperatingChannel(int operatingChannel,
+            @NonNull Set<CoexUnsafeChannel> unsafeChannels) {
+        synchronized (mLock) {
+            if (!checkSupplicantP2pIfaceAndLogFailure("setOperatingChannel")) return false;
+            if (null == unsafeChannels) return false;
+
+            ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
+            if (operatingChannel >= 1 && operatingChannel <= 165) {
+                int freq = (operatingChannel <= 14 ? 2407 : 5000) + operatingChannel * 5;
+                ISupplicantP2pIface.FreqRange range1 =  new ISupplicantP2pIface.FreqRange();
+                range1.min = 1000;
+                range1.max = freq - 5;
+                ISupplicantP2pIface.FreqRange range2 =  new ISupplicantP2pIface.FreqRange();
+                range2.min = freq + 5;
+                range2.max = 6000;
+                ranges.add(range1);
+                ranges.add(range2);
+            }
+            for (CoexUnsafeChannel cuc: unsafeChannels) {
+                int centerFreq = ScanResult.convertChannelToFrequencyMhz(
+                        cuc.getChannel(), cuc.getBand());
+                ISupplicantP2pIface.FreqRange range = new ISupplicantP2pIface.FreqRange();
+                // The range boundaries are inclusive in native frequency inclusion check.
+                // Minusing one to avoid affecting neighbors.
+                range.min = centerFreq - 5 - 1;
+                range.max = centerFreq + 5 - 1;
+                ranges.add(range);
+            }
+            SupplicantResult<Void> result = new SupplicantResult(
+                    "setDisallowedFrequencies(" + ranges + ")");
+            try {
+                result.setResult(mISupplicantP2pIface.setDisallowedFrequencies(ranges));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
+            }
+            return result.isSuccess();
+        }
+    }
 
     /**
      * This command can be used to add a upnp/bonjour service.

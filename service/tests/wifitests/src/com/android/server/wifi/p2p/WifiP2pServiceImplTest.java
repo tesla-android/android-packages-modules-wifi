@@ -57,9 +57,11 @@ import android.net.ConnectivityManager;
 import android.net.InetAddresses;
 import android.net.NetworkInfo;
 import android.net.TetheringManager;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiScanner;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -90,6 +92,7 @@ import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiSettingsConfigStore;
+import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.WifiPermissionsUtil;
@@ -110,7 +113,9 @@ import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Unit test harness for WifiP2pServiceImpl.
@@ -169,8 +174,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Mock WifiP2pMetrics mWifiP2pMetrics;
     @Mock WifiManager mWifiManager;
     @Mock WifiInfo mWifiInfo;
+    @Mock CoexManager mCoexManager;
     @Spy FakeWifiLog mLog;
     @Spy MockWifiP2pMonitor mWifiMonitor;
+    CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
         mTestWifiP2pGroup = new WifiP2pGroup();
@@ -803,6 +810,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiP2pServiceHandlerThread()).thenReturn(mHandlerThread);
         when(mWifiInjector.getWifiPermissionsUtil()).thenReturn(mWifiPermissionsUtil);
         when(mWifiInjector.getSettingsConfigStore()).thenReturn(mWifiSettingsConfigStore);
+        when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
         // enable all permissions, disable specific permissions in tests
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.checkNetworkStackPermission(anyInt())).thenReturn(true);
@@ -828,6 +836,14 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             }
         }).when(mWifiNative).removeP2pNetwork(anyInt());
         when(mWifiSettingsConfigStore.get(eq(WIFI_VERBOSE_LOGGING_ENABLED))).thenReturn(true);
+
+        doAnswer(new AnswerWithArguments() {
+            public void answer(CoexManager.CoexListener listener) {
+                mCoexListener = listener;
+            }
+        }).when(mCoexManager).registerCoexListener(any(CoexManager.CoexListener.class));
+        when(mCoexManager.getCoexRestrictions()).thenReturn(0);
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(new HashSet<CoexUnsafeChannel>());
 
         mWifiP2pServiceImpl = new WifiP2pServiceImpl(mContext, mWifiInjector);
         if (supported) {
@@ -2500,9 +2516,11 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         Bundle p2pChannels = new Bundle();
         p2pChannels.putInt("lc", 1);
         p2pChannels.putInt("oc", 2);
-        when(mWifiNative.p2pSetChannel(anyInt(), anyInt())).thenReturn(true);
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(true);
         sendSetChannelMsg(mClientMessenger, p2pChannels);
-        verify(mWifiNative).p2pSetChannel(eq(1), eq(2));
+        verify(mWifiNative).p2pSetListenChannel(eq(1));
+        verify(mWifiNative).p2pSetOperatingChannel(eq(2), any());
         verify(mClientHandler).sendMessage(mMessageCaptor.capture());
         Message message = mMessageCaptor.getValue();
         assertEquals(WifiP2pManager.SET_CHANNEL_SUCCEEDED, message.what);
@@ -2512,16 +2530,37 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      *  Verify WifiP2pManager.SET_CHANNEL_FAILED is returned when native call failure.
      */
     @Test
-    public void testSetChannelFailureWhenNativeCallFailure() throws Exception {
+    public void testSetChannelFailureWhenNativeCallSetListenChannelFailure() throws Exception {
         // Move to enabled state
         forceP2pEnabled(mClient1);
 
         Bundle p2pChannels = new Bundle();
         p2pChannels.putInt("lc", 1);
         p2pChannels.putInt("oc", 2);
-        when(mWifiNative.p2pSetChannel(anyInt(), anyInt())).thenReturn(false);
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(false);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(true);
         sendSetChannelMsg(mClientMessenger, p2pChannels);
-        verify(mWifiNative).p2pSetChannel(eq(1), eq(2));
+        verify(mWifiNative).p2pSetListenChannel(eq(1));
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        assertEquals(WifiP2pManager.SET_CHANNEL_FAILED, message.what);
+    }
+
+    /**
+     *  Verify WifiP2pManager.SET_CHANNEL_FAILED is returned when native call failure.
+     */
+    @Test
+    public void testSetChannelFailureWhenNativeCallSetOperatingChannelFailure() throws Exception {
+        // Move to enabled state
+        forceP2pEnabled(mClient1);
+
+        Bundle p2pChannels = new Bundle();
+        p2pChannels.putInt("lc", 1);
+        p2pChannels.putInt("oc", 2);
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(false);
+        sendSetChannelMsg(mClientMessenger, p2pChannels);
+        verify(mWifiNative).p2pSetListenChannel(eq(1));
         verify(mClientHandler).sendMessage(mMessageCaptor.capture());
         Message message = mMessageCaptor.getValue();
         assertEquals(WifiP2pManager.SET_CHANNEL_FAILED, message.what);
@@ -2551,16 +2590,22 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     *  Verify p2pSetChannel doesn't been called when message contain null object.
+     *  Verify p2pSetListenChannel doesn't been called when message contain null object.
      */
     @Test
     public void testSetChannelFailureWhenObjectIsNull() throws Exception {
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(true);
+
         // Move to enabled state
         forceP2pEnabled(mClient1);
 
-        when(mWifiNative.p2pSetChannel(anyInt(), anyInt())).thenReturn(false);
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(false);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(true);
         sendSetChannelMsg(mClientMessenger, null);
-        verify(mWifiNative, never()).p2pSetChannel(anyInt(), anyInt());
+        // Should be called only once on entering P2pEnabledState.
+        verify(mWifiNative, times(1)).p2pSetListenChannel(anyInt());
+        verify(mWifiNative, times(1)).p2pSetOperatingChannel(anyInt(), any());
     }
 
     /**
@@ -4104,5 +4149,66 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         WifiP2pConfig config = configCaptor.getValue();
         assertEquals(WifiP2pServiceImpl.DEFAULT_GROUP_OWNER_INTENT,
                 config.groupOwnerIntent);
+    }
+
+    private Set<CoexUnsafeChannel> setupCoexMock(int restrictionBits) {
+        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 2));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 3));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 40));
+        unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 165));
+        when(mCoexManager.getCoexRestrictions()).thenReturn(restrictionBits);
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(unsafeChannels);
+        when(mWifiNative.p2pSetListenChannel(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pSetOperatingChannel(anyInt(), any())).thenReturn(true);
+        return unsafeChannels;
+    }
+
+    /** Verify P2P unsafe channels are set if P2P bit presents in restriction bits. */
+    @Test
+    public void testCoexCallbackWithWifiP2pUnsafeChannels() throws Exception {
+        setupCoexMock(0);
+        assertNotNull(mCoexListener);
+        forceP2pEnabled(mClient1);
+        mLooper.dispatchAll();
+
+        Set<CoexUnsafeChannel> unsafeChannels =
+                setupCoexMock(WifiManager.COEX_RESTRICTION_WIFI_DIRECT);
+        mCoexListener.onCoexUnsafeChannelsChanged();
+        mLooper.dispatchAll();
+
+        // On entering P2pEnabledState, these are called once first.
+        verify(mWifiNative, times(2)).p2pSetListenChannel(eq(0));
+        ArgumentCaptor<Set<CoexUnsafeChannel>> unsafeChannelsCaptor =
+                ArgumentCaptor.forClass(Set.class);
+        verify(mWifiNative, times(2)).p2pSetOperatingChannel(eq(0), unsafeChannelsCaptor.capture());
+        List<Set<CoexUnsafeChannel>> capturedUnsafeChannelsList =
+                unsafeChannelsCaptor.getAllValues();
+        // The second one is what we sent.
+        assertEquals(unsafeChannels, capturedUnsafeChannelsList.get(1));
+    }
+
+    /** Verify P2P unsafe channels are cleared if P2P bit does not present in restriction bits. */
+    @Test
+    public void testCoexCallbackWithoutWifiP2pInRestrictionBits() throws Exception {
+        setupCoexMock(0);
+        assertNotNull(mCoexListener);
+        forceP2pEnabled(mClient1);
+        mLooper.dispatchAll();
+
+        mCoexListener.onCoexUnsafeChannelsChanged();
+        mLooper.dispatchAll();
+
+        // On entering P2pEnabledState, these are called once first.
+        verify(mWifiNative, times(2)).p2pSetListenChannel(eq(0));
+        ArgumentCaptor<Set<CoexUnsafeChannel>> unsafeChannelsCaptor =
+                ArgumentCaptor.forClass(Set.class);
+        verify(mWifiNative, times(2)).p2pSetOperatingChannel(eq(0), unsafeChannelsCaptor.capture());
+        List<Set<CoexUnsafeChannel>> capturedUnsafeChannelsList =
+                unsafeChannelsCaptor.getAllValues();
+        // The second one is what we sent.
+        assertEquals(0, capturedUnsafeChannelsList.get(1).size());
     }
 }
