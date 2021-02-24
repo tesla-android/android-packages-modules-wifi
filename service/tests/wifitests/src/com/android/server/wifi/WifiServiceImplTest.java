@@ -48,6 +48,7 @@ import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.LocalOnlyHotspotRequestInfo.HOTSPOT_NO_ERROR;
 import static com.android.server.wifi.SelfRecovery.REASON_API_CALL;
+import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_NONE;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -237,22 +238,22 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final List<WifiConfiguration> TEST_WIFI_CONFIGURATION_LIST = Arrays.asList(
             WifiConfigurationTestUtil.generateWifiConfig(
                     0, 1000000, "\"red\"", true, true, null, null,
-                    WifiConfigurationTestUtil.SECURITY_NONE),
+                    SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
                     1, 1000001, "\"green\"", true, false, "example.com", "Green",
-                    WifiConfigurationTestUtil.SECURITY_NONE),
+                    SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
                     2, 1200000, "\"blue\"", false, true, null, null,
-                    WifiConfigurationTestUtil.SECURITY_NONE),
+                    SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
                     3, 1100000, "\"cyan\"", true, true, null, null,
-                    WifiConfigurationTestUtil.SECURITY_NONE),
+                    SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
                     4, 1100001, "\"yellow\"", true, true, "example.org", "Yellow",
-                    WifiConfigurationTestUtil.SECURITY_NONE),
+                    SECURITY_NONE),
             WifiConfigurationTestUtil.generateWifiConfig(
                     5, 1100002, "\"magenta\"", false, false, null, null,
-                    WifiConfigurationTestUtil.SECURITY_NONE));
+                    SECURITY_NONE));
     private static final int TEST_AP_FREQUENCY = 2412;
     private static final int TEST_AP_BANDWIDTH = SoftApInfo.CHANNEL_WIDTH_20MHZ;
     private static final int NETWORK_CALLBACK_ID = 1100;
@@ -2510,7 +2511,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
 
         ParceledListSlice<WifiConfiguration> configs =
-                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
 
         assertEquals(0, configs.getList().size());
     }
@@ -2528,7 +2529,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyString(), nullable(String.class), anyInt(), nullable(String.class));
 
         ParceledListSlice<WifiConfiguration> configs =
-                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
 
         assertEquals(0, configs.getList().size());
 
@@ -2548,7 +2549,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         mLooper.startAutoDispatch();
         ParceledListSlice<WifiConfiguration> configs =
-                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mWifiConfigManager).getSavedNetworks(eq(Process.WIFI_UID));
@@ -2556,6 +2557,44 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 TEST_WIFI_CONFIGURATION_LIST, configs.getList());
     }
 
+    @Test(expected = SecurityException.class)
+    public void testGetCallerConfiguredNetworks_ThrowExceptionIfNotDoOrPO() {
+        when(mWifiPermissionsUtil.isDeviceOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(false);
+
+        mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE_NAME, TEST_FEATURE_ID, true);
+    }
+
+    @Test
+    public void testGetCallerConfiguredNetworks_ReturnsCallerNetworks() {
+        final int callerUid = Binder.getCallingUid();
+        WifiConfiguration callerNetwork0 = WifiConfigurationTestUtil.generateWifiConfig(
+                0, callerUid, "\"red\"", true, true, null, null, SECURITY_NONE);
+        WifiConfiguration callerNetwork1 = WifiConfigurationTestUtil.generateWifiConfig(
+                1, callerUid, "\"red\"", true, true, null, null, SECURITY_NONE);
+        WifiConfiguration nonCallerNetwork0 = WifiConfigurationTestUtil.generateWifiConfig(
+                2, 1200000, "\"blue\"", false, true, null, null, SECURITY_NONE);
+        WifiConfiguration nonCallerNetwork1 = WifiConfigurationTestUtil.generateWifiConfig(
+                3, 1100000, "\"cyan\"", true, true, null, null, SECURITY_NONE);
+        when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(Arrays.asList(
+                callerNetwork0, callerNetwork1, nonCallerNetwork0, nonCallerNetwork1));
+
+        // Caller does NOT need to have location permission to be able to retrieve its own networks.
+        doThrow(new SecurityException()).when(mWifiPermissionsUtil).enforceCanAccessScanResults(
+                anyString(), nullable(String.class), anyInt(), nullable(String.class));
+        when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+
+        mLooper.startAutoDispatch();
+        ParceledListSlice<WifiConfiguration> configs =
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE_NAME, TEST_FEATURE_ID, true);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                Arrays.asList(callerNetwork0, callerNetwork1), configs.getList());
+    }
 
     /**
      * Test that privileged network list are exposed null to an app that does not have the
@@ -5762,6 +5801,31 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mWifiNetworkSuggestionsManager, never()).remove(any(), anyInt(),
                 eq(TEST_PACKAGE_NAME));
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testRemoveNonCallerConfiguredNetworks_NormalAppCaller_ThrowsException() {
+        mWifiServiceImpl.removeNonCallerConfiguredNetworks(TEST_PACKAGE_NAME);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testRemoveNonCallerConfiguredNetworks_CallerIsProfileOwner_ThrowsException() {
+        when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+        mWifiServiceImpl.removeNonCallerConfiguredNetworks(TEST_PACKAGE_NAME);
+    }
+
+    @Test
+    public void testRemoveNonCallerConfiguredNetworks_NetworksRemoved() {
+        final int callerUid = Binder.getCallingUid();
+        when(mWifiPermissionsUtil.isDeviceOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.removeNonCallerConfiguredNetworks(TEST_PACKAGE_NAME);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiConfigManager).removeNonCallerConfiguredNetwork(eq(callerUid));
     }
 
     /**

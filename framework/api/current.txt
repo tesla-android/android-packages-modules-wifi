@@ -337,6 +337,7 @@ package android.net.wifi {
     method @Deprecated public boolean disableNetwork(int);
     method @Deprecated public boolean disconnect();
     method @Deprecated public boolean enableNetwork(int, boolean);
+    method @NonNull @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public java.util.List<android.net.wifi.WifiConfiguration> getCallerConfiguredNetworks();
     method @Deprecated @RequiresPermission(allOf={android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_WIFI_STATE}) public java.util.List<android.net.wifi.WifiConfiguration> getConfiguredNetworks();
     method @Deprecated public android.net.wifi.WifiInfo getConnectionInfo();
     method @Deprecated public android.net.DhcpInfo getDhcpInfo();
@@ -377,6 +378,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerSubsystemRestartTrackingCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SubsystemRestartTrackingCallback);
     method @Deprecated public boolean removeNetwork(int);
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
+    method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public boolean removeNonCallerConfiguredNetworks();
     method @Deprecated @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_CARRIER_PROVISIONING}) public void removePasspointConfiguration(String);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void removeSuggestionConnectionStatusListener(@NonNull android.net.wifi.WifiManager.SuggestionConnectionStatusListener);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void removeSuggestionUserApprovalStatusListener(@NonNull android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener);

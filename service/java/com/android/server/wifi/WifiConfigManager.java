@@ -1670,6 +1670,29 @@ public class WifiConfigManager {
     }
 
     /**
+     * Removes all save networks configurations not created by the caller.
+     *
+     * @param callerUid the uid of the caller
+     * @return {@code true} if at least one network is removed.
+     */
+    public boolean removeNonCallerConfiguredNetwork(int callerUid) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "removeNonCallerConfiguredNetwork caller = " + callerUid);
+        }
+        boolean didRemove = false;
+        WifiConfiguration[] copiedConfigs =
+                mConfiguredNetworks.valuesForAllUsers().toArray(new WifiConfiguration[0]);
+        for (WifiConfiguration config : copiedConfigs) {
+            if (config.creatorUid != callerUid) {
+                Log.d(TAG, "Removing non-caller network config " + config.getProfileKey());
+                removeNetwork(config.networkId, config.creatorUid, config.creatorName);
+                didRemove = true;
+            }
+        }
+        return didRemove;
+    }
+
+    /**
      * Check whether a network belong to a known list of networks that may not support randomized
      * MAC.
      * @param networkId

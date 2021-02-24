@@ -1461,7 +1461,7 @@ public class WifiManager {
         try {
             ParceledListSlice<WifiConfiguration> parceledList =
                     mService.getConfiguredNetworks(mContext.getOpPackageName(),
-                            mContext.getAttributionTag());
+                            mContext.getAttributionTag(), false);
             if (parceledList == null) {
                 return Collections.emptyList();
             }
@@ -1470,6 +1470,35 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Return a list of all the networks previously configured by the calling app. Can
+     * be called by Device Owner (DO), Profile Owner (PO), Callers with Carrier privilege and
+     * system apps.
+     *
+     * @return a list of network configurations in the form of a list
+     * of {@link WifiConfiguration} objects.
+     * @throws {@link java.lang.SecurityException} if the caller is allowed to call this API
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    @NonNull
+    public List<WifiConfiguration> getCallerConfiguredNetworks() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            ParceledListSlice<WifiConfiguration> parceledList =
+                    mService.getConfiguredNetworks(mContext.getOpPackageName(),
+                            mContext.getAttributionTag(), true);
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
 
     /** @hide */
     @SystemApi
@@ -2271,6 +2300,24 @@ public class WifiManager {
         }
     }
 
+    /**
+     * Remove all configured networks that were not created by the calling app. Can only
+     * be called by a Device Owner (DO) app.
+     *
+     * @return {@code true} if at least one network is removed, {@code false} otherwise
+     * @throws {@link java.lang.SecurityException} if the caller is not a Device Owner app
+     */
+    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    public boolean removeNonCallerConfiguredNetworks() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.removeNonCallerConfiguredNetworks(mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
     /**
      * Allow a previously configured network to be associated with. If
      * <code>attemptConnect</code> is true, an attempt to connect to the selected
