@@ -23,6 +23,8 @@ import android.os.Parcel;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -75,7 +77,7 @@ public class WifiUsabilityStatsEntryTest {
     private static WifiUsabilityStatsEntry createResult() {
         return new WifiUsabilityStatsEntry(
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-                14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, true
+                14, 15, 16, 17, 18, 19, 20, 21, 22, 50, 23, 24, 25, true
         );
     }
 
@@ -112,6 +114,10 @@ public class WifiUsabilityStatsEntryTest {
         assertEquals(expected.getProbeMcsRateSinceLastUpdate(),
                 actual.getProbeMcsRateSinceLastUpdate());
         assertEquals(expected.getRxLinkSpeedMbps(), actual.getRxLinkSpeedMbps());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(expected.getTimeSliceDutyCycleInPercent(),
+                    actual.getTimeSliceDutyCycleInPercent());
+        }
         assertEquals(expected.getCellularDataNetworkType(), actual.getCellularDataNetworkType());
         assertEquals(expected.getCellularSignalStrengthDbm(),
                 actual.getCellularSignalStrengthDbm());

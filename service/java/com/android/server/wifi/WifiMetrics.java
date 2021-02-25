@@ -4063,6 +4063,7 @@ public class WifiMetrics {
         line.append(",seq_num_inside_framework=" + entry.seqNumInsideFramework);
         line.append(",is_same_bssid_and_freq=" + entry.isSameBssidAndFreq);
         line.append(",device_mobility_state=" + entry.deviceMobilityState);
+        line.append(",time_slice_duty_cycle_in_percent=" + entry.timeSliceDutyCycleInPercent);
         pw.println(line.toString());
     }
 
@@ -5818,6 +5819,7 @@ public class WifiMetrics {
                 wifiUsabilityStatsEntry.totalCcaBusyFreqTimeMs = statsMap.ccaBusyTimeMs;
             }
             wifiUsabilityStatsEntry.totalBeaconRx = stats.beacon_rx;
+            wifiUsabilityStatsEntry.timeSliceDutyCycleInPercent = stats.timeSliceDutyCycleInPercent;
 
             boolean isSameBssidAndFreq = mLastBssid == null || mLastFrequency == -1
                     || (mLastBssid.equals(info.getBSSID())
@@ -5929,7 +5931,7 @@ public class WifiMetrics {
                 s.totalPnoScanTimeMs, s.totalHotspot2ScanTimeMs, s.totalCcaBusyFreqTimeMs,
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
-                s.rxLinkSpeedMbps, 0, 0, 0, false
+                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, 0, 0, 0, false
         );
     }
 
@@ -5965,6 +5967,7 @@ public class WifiMetrics {
         out.isSameBssidAndFreq = s.isSameBssidAndFreq;
         out.seqNumInsideFramework = s.seqNumInsideFramework;
         out.deviceMobilityState = s.deviceMobilityState;
+        out.timeSliceDutyCycleInPercent = s.timeSliceDutyCycleInPercent;
         return out;
     }
 

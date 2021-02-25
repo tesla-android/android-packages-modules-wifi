@@ -3607,6 +3607,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         out.on_time_roam_scan = current.on_time_roam_scan + nextRandInt();
         out.on_time_pno_scan = current.on_time_pno_scan + nextRandInt();
         out.on_time_hs20_scan = current.on_time_hs20_scan + nextRandInt();
+        out.timeSliceDutyCycleInPercent =
+                (short) ((current.timeSliceDutyCycleInPercent + nextRandInt()) % 101);
         return out;
     }
 
@@ -3632,7 +3634,6 @@ public class WifiMetricsTest extends WifiBaseTest {
                 mDecodedProto.wifiLinkLayerUsageStats.radioPnoScanTimeMs);
         assertEquals(newStats.on_time_hs20_scan - oldStats.on_time_hs20_scan,
                 mDecodedProto.wifiLinkLayerUsageStats.radioHs20ScanTimeMs);
-
     }
 
     /**
@@ -3716,6 +3717,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(stats.on_time_pno_scan, usabilityStats.totalPnoScanTimeMs);
         assertEquals(stats.on_time_hs20_scan, usabilityStats.totalHotspot2ScanTimeMs);
         assertEquals(stats.beacon_rx, usabilityStats.totalBeaconRx);
+        assertEquals(stats.timeSliceDutyCycleInPercent, usabilityStats.timeSliceDutyCycleInPercent);
     }
 
     // Simulate adding a LABEL_GOOD WifiUsabilityStats
