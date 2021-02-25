@@ -23,6 +23,7 @@ import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LO
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.ActiveModeManager.ROLE_SOFTAP_LOCAL_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_SOFTAP_TETHERED;
+import static com.android.server.wifi.ActiveModeWarden.INTERNAL_REQUESTOR_WS;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
@@ -351,7 +352,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         } else {
             mClientListener.onRoleChanged(mClientModeManager);
             mLooper.dispatchAll();
-            verify(mClientModeManager).setRole(ROLE_CLIENT_SCAN_ONLY, TEST_WORKSOURCE);
+            verify(mClientModeManager).setRole(ROLE_CLIENT_SCAN_ONLY, INTERNAL_REQUESTOR_WS);
             // If switching from client mode back to scan only mode, role change would have been
             // called once before when transitioning from scan only mode to client mode.
             // Verify that it was called again.
@@ -1152,6 +1153,9 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         mActiveModeWarden.wifiToggled(TEST_WORKSOURCE);
         mLooper.dispatchAll();
 
+        verify(mWifiInjector).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_PRIMARY),
+                anyBoolean());
         mClientListener.onStarted(mClientModeManager);
         mLooper.dispatchAll();
 
@@ -1169,6 +1173,30 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         verify(mWifiInjector).makeClientModeManager(
                 any(), eq(new WorkSource(Process.WIFI_UID)), eq(ROLE_CLIENT_SCAN_ONLY),
                 anyBoolean());
+        assertInEnabledState();
+        verify(mClientModeManager, never()).stop();
+    }
+
+    /**
+     * Test verifying that we ignore scan enable event when wifi is already enabled.
+     */
+    @Test
+    public void ignoreEnableScanModeWhenWifiEnabled() throws Exception {
+        // Turn on WIFI
+        assertInDisabledState();
+        when(mSettingsStore.isWifiToggleEnabled()).thenReturn(true);
+        mActiveModeWarden.wifiToggled(TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+        mClientListener.onStarted(mClientModeManager);
+        mLooper.dispatchAll();
+        assertInEnabledState();
+
+        // Now toggle scan only change, should be ignored. We should send a role change
+        // again with PRIMARY & the cached requestorWs.
+        when(mSettingsStore.isScanAlwaysAvailable()).thenReturn(true);
+        mActiveModeWarden.scanAlwaysModeChanged();
+        mLooper.dispatchAll();
+        verify(mClientModeManager).setRole(ROLE_CLIENT_PRIMARY, TEST_WORKSOURCE);
         assertInEnabledState();
         verify(mClientModeManager, never()).stop();
     }
@@ -3663,7 +3691,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SCAN_ONLY);
         mClientListener.onRoleChanged(mClientModeManager);
         mLooper.dispatchAll();
-        verify(mClientModeManager).setRole(ROLE_CLIENT_SCAN_ONLY, TEST_WORKSOURCE);
+        verify(mClientModeManager).setRole(ROLE_CLIENT_SCAN_ONLY, INTERNAL_REQUESTOR_WS);
         verify(mClientModeManager, never()).stop();
         assertInEnabledState();
 
