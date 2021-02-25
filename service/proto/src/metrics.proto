@@ -2500,6 +2500,12 @@ message WifiUsabilityStatsEntry {
   // The device mobility state
   optional DeviceMobilityStatePnoScanStats.DeviceMobilityState
           device_mobility_state = 34;
+
+  // Duty cycle of the connection.
+  // if this connection is being served using time slicing on a radio with one or more interfaces
+  // (i.e MCC), then this field contains the duty cycle assigned to this interface in percent.
+  // If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
+  optional int32 time_slice_duty_cycle_in_percent = 35;
 }
 
 message WifiUsabilityStats {

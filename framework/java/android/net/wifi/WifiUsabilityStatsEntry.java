@@ -17,11 +17,14 @@
 package android.net.wifi;
 
 import android.annotation.IntDef;
+import android.annotation.IntRange;
 import android.annotation.SystemApi;
 import android.os.Parcel;
 import android.os.Parcelable;
-
 import android.telephony.Annotation.NetworkType;
+
+import com.android.modules.utils.build.SdkLevel;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
@@ -99,6 +102,8 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     private final int mProbeMcsRateSinceLastUpdate;
     /** Rx link speed at the sample time in Mbps */
     private final int mRxLinkSpeedMbps;
+    /** @see #getTimeSliceDutyCycleInPercent() */
+    private final int mTimeSliceDutyCycleInPercent;
     private final @NetworkType int mCellularDataNetworkType;
     private final int mCellularSignalStrengthDbm;
     private final int mCellularSignalStrengthDb;
@@ -115,7 +120,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             long totalCcaBusyFreqTimeMillis, long totalRadioOnFreqTimeMillis, long totalBeaconRx,
             @ProbeStatus int probeStatusSinceLastUpdate, int probeElapsedTimeSinceLastUpdateMillis,
             int probeMcsRateSinceLastUpdate, int rxLinkSpeedMbps,
-            @NetworkType int cellularDataNetworkType,
+            int timeSliceDutyCycleInPercent, @NetworkType int cellularDataNetworkType,
             int cellularSignalStrengthDbm, int cellularSignalStrengthDb,
             boolean isSameRegisteredCell) {
         mTimeStampMillis = timeStampMillis;
@@ -141,6 +146,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         mProbeElapsedTimeSinceLastUpdateMillis = probeElapsedTimeSinceLastUpdateMillis;
         mProbeMcsRateSinceLastUpdate = probeMcsRateSinceLastUpdate;
         mRxLinkSpeedMbps = rxLinkSpeedMbps;
+        mTimeSliceDutyCycleInPercent = timeSliceDutyCycleInPercent;
         mCellularDataNetworkType = cellularDataNetworkType;
         mCellularSignalStrengthDbm = cellularSignalStrengthDbm;
         mCellularSignalStrengthDb = cellularSignalStrengthDb;
@@ -177,6 +183,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         dest.writeInt(mProbeElapsedTimeSinceLastUpdateMillis);
         dest.writeInt(mProbeMcsRateSinceLastUpdate);
         dest.writeInt(mRxLinkSpeedMbps);
+        dest.writeInt(mTimeSliceDutyCycleInPercent);
         dest.writeInt(mCellularDataNetworkType);
         dest.writeInt(mCellularSignalStrengthDbm);
         dest.writeInt(mCellularSignalStrengthDb);
@@ -196,7 +203,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
                     in.readLong(), in.readLong(), in.readLong(),
                     in.readLong(), in.readLong(), in.readInt(),
                     in.readInt(), in.readInt(), in.readInt(),
-                    in.readInt(), in.readInt(), in.readInt(),
+                    in.readInt(), in.readInt(), in.readInt(), in.readInt(),
                     in.readBoolean()
             );
         }
@@ -321,6 +328,19 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     /** Rx link speed at the sample time in Mbps */
     public int getRxLinkSpeedMbps() {
         return mRxLinkSpeedMbps;
+    }
+
+    /**
+     * Duty cycle of the connection.
+     * if this connection is being served using time slicing on a radio with one or more interfaces
+     * (i.e MCC), then this method returns the duty cycle assigned to this interface in percent.
+     * If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
+     */
+    public @IntRange(from = 0, to = 100) int getTimeSliceDutyCycleInPercent() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mTimeSliceDutyCycleInPercent;
     }
 
     /** Cellular data network type currently in use on the device for data transmission */
