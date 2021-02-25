@@ -64,6 +64,8 @@ import android.net.ip.IpClientManager;
 import android.net.shared.Layer2Information;
 import android.net.shared.ProvisioningConfiguration;
 import android.net.shared.ProvisioningConfiguration.ScanResultInfo;
+import android.net.vcn.VcnManager;
+import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
@@ -79,6 +81,7 @@ import android.net.wifi.nl80211.DeviceWiphyCapabilities;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.BatteryStatsManager;
 import android.os.ConditionVariable;
+import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
@@ -324,6 +327,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // TODO (b/162942761): Ensure this is reset when mLastNetworkId is set.
     private int mTargetNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
     private WifiConfiguration mTargetWifiConfiguration = null;
+    @Nullable private VcnManager mVcnManager = null;
 
     /**
      * Method to clear {@link #mTargetBssid} and reset the current connected network's
@@ -580,6 +584,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
 
     private final OnNetworkUpdateListener mOnNetworkUpdateListener;
+
+    private final WifiVcnNetworkPolicyListener mVcnPolicyListener =
+            new WifiVcnNetworkPolicyListener();
 
     private final ClientModeImplMonitor mCmiMonitor;
 
@@ -1362,6 +1369,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         quitNow();
 
         mWifiConfigManager.removeOnNetworkUpdateListener(mOnNetworkUpdateListener);
+        if (mVcnManager != null) {
+            mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
+            mVcnManager = null;
+        }
     }
 
     private void checkAbnormalConnectionFailureAndTakeBugReport(String ssid) {
@@ -3834,7 +3845,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     currentWifiConfiguration, getConnectedBssidInternal()));
         }
         updateLinkBandwidth(builder);
-        return builder.build();
+        final NetworkCapabilities networkCapabilities = builder.build();
+        if (mVcnManager == null || !currentWifiConfiguration.carrierMerged) {
+            return networkCapabilities;
+        }
+        final VcnNetworkPolicyResult vcnNetworkPolicy =
+                mVcnManager.applyVcnNetworkPolicy(networkCapabilities, mLinkProperties);
+        if (vcnNetworkPolicy.isTeardownRequested()) {
+            sendMessage(CMD_DISCONNECT);
+        }
+        return vcnNetworkPolicy.getNetworkCapabilities();
     }
 
     private void updateLinkBandwidth(NetworkCapabilities.Builder networkCapabilitiesBuilder) {
@@ -4651,6 +4671,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
                 if (subscriberId != null) {
                     naConfigBuilder.setSubscriberId(subscriberId);
+                }
+            }
+            if (mVcnManager == null && SdkLevel.isAtLeastS()) {
+                mVcnManager = mContext.getSystemService(VcnManager.class);
+                if (mVcnManager != null) {
+                    mVcnManager.addVcnNetworkPolicyListener(
+                            new HandlerExecutor(getHandler()),
+                            mVcnPolicyListener);
                 }
             }
             final NetworkAgentConfig naConfig = naConfigBuilder.build();
@@ -6225,5 +6253,24 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     /** Returns true if the ClientModeImpl has fully stopped, false otherwise. */
     public boolean hasQuit() {
         return mHasQuit;
+    }
+
+    /**
+     * WifiVcnNetworkPolicyListener tracks VCN-defined Network policies for a
+     * WifiNetworkAgent. These policies are used to restart Networks or update their
+     * NetworkCapabilities.
+     */
+    private class WifiVcnNetworkPolicyListener
+            implements VcnManager.VcnNetworkPolicyListener {
+        @Override
+        public void onPolicyChanged() {
+            if (mNetworkAgent == null) {
+                return;
+            }
+            // Update the NetworkAgent's NetworkCapabilities which will merge the current
+            // capabilities with VcnManagementService's underlying Network policy.
+            Log.i(getTag(), "VCN policy changed, updating NetworkCapabilities.");
+            updateCapabilities();
+        }
     }
 }

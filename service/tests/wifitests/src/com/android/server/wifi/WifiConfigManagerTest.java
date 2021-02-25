@@ -6613,4 +6613,22 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertFalse(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
         assertTrue(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
     }
+
+    @Test
+    public void testRemoveNonCallerConfiguredNetworks() {
+        final int callerUid = TEST_CREATOR_UID;
+        WifiConfiguration callerNetwork0 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(callerNetwork0, callerUid, null);
+        WifiConfiguration callerNetwork1 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(callerNetwork1, callerUid, null);
+        WifiConfiguration nonCallerNetwork0 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(nonCallerNetwork0, TEST_OTHER_USER_UID, null);
+        WifiConfiguration nonCallerNetwork1 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(nonCallerNetwork1, TEST_OTHER_USER_UID, null);
+
+        assertTrue(mWifiConfigManager.removeNonCallerConfiguredNetwork(callerUid));
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                Arrays.asList(callerNetwork0, callerNetwork1),
+                mWifiConfigManager.getConfiguredNetworksWithPasswords());
+    }
 }

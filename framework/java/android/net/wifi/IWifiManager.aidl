@@ -60,7 +60,7 @@ interface IWifiManager
 
     oneway void getWifiActivityEnergyInfoAsync(in IOnWifiActivityEnergyInfoListener listener);
 
-    ParceledListSlice getConfiguredNetworks(String packageName, String featureId);
+    ParceledListSlice getConfiguredNetworks(String packageName, String featureId, boolean callerNetworksOnly);
 
     ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId);
 
@@ -85,6 +85,8 @@ interface IWifiManager
     int matchProviderWithCurrentNetwork(String fqdn);
 
     boolean removeNetwork(int netId, String packageName);
+
+    boolean removeNonCallerConfiguredNetworks(String packageName);
 
     boolean enableNetwork(int netId, boolean disableOthers, String packageName);
 

@@ -82,8 +82,14 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    @Deprecated
     public ParceledListSlice getConfiguredNetworks(String packageName, String featureId) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ParceledListSlice getConfiguredNetworks(String packageName, String featureId,
+            boolean callerNetworksOnly) {
         throw new UnsupportedOperationException();
     }
 
@@ -148,6 +154,11 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public boolean removeNetwork(int netId, String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean removeNonCallerConfiguredNetworks(String packageName) {
         throw new UnsupportedOperationException();
     }
 

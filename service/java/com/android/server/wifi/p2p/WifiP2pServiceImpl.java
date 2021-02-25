@@ -44,6 +44,7 @@ import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
 import android.net.ip.IpClientUtil;
 import android.net.shared.ProvisioningConfiguration;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -97,6 +98,7 @@ import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiLog;
 import com.android.server.wifi.WifiSettingsConfigStore;
+import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.WifiAsyncChannel;
@@ -116,10 +118,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * WifiP2pService includes a state machine to perform Wi-Fi p2p operations. Applications
@@ -154,6 +159,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private FrameworkFacade mFrameworkFacade;
     private WifiSettingsConfigStore mSettingsConfigStore;
     private WifiP2pMetrics mWifiP2pMetrics;
+    private CoexManager mCoexManager;
 
     private static final Boolean JOIN_GROUP = true;
     private static final Boolean FORM_GROUP = false;
@@ -242,6 +248,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private static final int IPC_PROVISIONING_FAILURE       =   BASE + 34;
 
     private static final int GROUP_OWNER_TETHER_READY       =   BASE + 35;
+
+    private static final int UPDATE_P2P_DISALLOWED_CHANNELS =   BASE + 36;
 
     public static final int ENABLED                         = 1;
     public static final int DISABLED                        = 0;
@@ -486,6 +494,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         mFrameworkFacade = mWifiInjector.getFrameworkFacade();
         mSettingsConfigStore = mWifiInjector.getSettingsConfigStore();
         mWifiP2pMetrics = mWifiInjector.getWifiP2pMetrics();
+        mCoexManager = mWifiInjector.getCoexManager();
 
         mDetailedState = NetworkInfo.DetailedState.IDLE;
 
@@ -788,6 +797,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         private final WifiP2pDeviceList mPeers = new WifiP2pDeviceList();
         private String mInterfaceName;
 
+        private Set<CoexUnsafeChannel> mCoexUnsafeChannels = new HashSet<>();
+        private int mUserListenChannel = 0;
+        private int mUserOperatingChannel = 0;
+
         // During a connection, supplicant can tell us that a device was lost. From a supplicant's
         // perspective, the discovery stops during connection and it purges device since it does
         // not get latest updates about the device without being in discovery state.
@@ -897,7 +910,29 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         WIFI_VERBOSE_LOGGING_ENABLED,
                         (key, newValue) -> enableVerboseLogging(newValue),
                         getHandler());
+                mCoexManager.registerCoexListener(new CoexManager.CoexListener() {
+                    @Override
+                    public void onCoexUnsafeChannelsChanged() {
+                        checkCoexUnsafeChannels();
+                    }
+                });
             }
+        }
+
+        void checkCoexUnsafeChannels() {
+            Set<CoexUnsafeChannel> unsafeChannelSet = null;
+
+            // If WIFI DIRECT bit is not set, pass null to clear unsafe channels.
+            if ((mCoexManager.getCoexRestrictions() & WifiManager.COEX_RESTRICTION_WIFI_DIRECT)
+                    != 0) {
+                unsafeChannelSet = mCoexManager.getCoexUnsafeChannels();
+                Log.d(TAG, "UnsafeChannels: "
+                        + unsafeChannelSet.stream()
+                                .map(Object::toString)
+                                .collect(Collectors.joining(",")));
+            }
+
+            sendMessage(UPDATE_P2P_DISALLOWED_CHANNELS, unsafeChannelSet);
         }
 
         /**
@@ -1163,6 +1198,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case IPC_PROVISIONING_SUCCESS:
                     case IPC_PROVISIONING_FAILURE:
                     case GROUP_OWNER_TETHER_READY:
+                    case UPDATE_P2P_DISALLOWED_CHANNELS:
                     case WifiP2pMonitor.P2P_PROV_DISC_FAILURE_EVENT:
                     case SET_MIRACAST_MODE:
                     case WifiP2pManager.START_LISTEN:
@@ -1475,6 +1511,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     factoryReset(Process.SYSTEM_UID);
                 }
 
+                checkCoexUnsafeChannels();
+
                 sendP2pConnectionChangedBroadcast();
                 initializeP2pSettings();
             }
@@ -1776,13 +1814,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.ERROR);
                             break;
                         }
-                        Bundle p2pChannels = (Bundle) message.obj;
-                        int lc = p2pChannels.getInt("lc", 0);
-                        int oc = p2pChannels.getInt("oc", 0);
-                        if (mVerboseLoggingEnabled) {
-                            logd(getName() + " set listen and operating channel");
+                        if (message.obj == null) {
+                            Log.e(TAG, "Illegal arguments(s)");
+                            break;
                         }
-                        if (mWifiNative.p2pSetChannel(lc, oc)) {
+                        Bundle p2pChannels = (Bundle) message.obj;
+                        mUserListenChannel = p2pChannels.getInt("lc", 0);
+                        mUserOperatingChannel = p2pChannels.getInt("oc", 0);
+                        if (updateP2pChannels()) {
                             replyToMessage(message, WifiP2pManager.SET_CHANNEL_SUCCEEDED);
                         } else {
                             replyToMessage(message, WifiP2pManager.SET_CHANNEL_FAILED);
@@ -1802,6 +1841,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         replyToMessage(message, WifiP2pManager.RESPONSE_GET_HANDOVER_MESSAGE,
                                 selectBundle);
                         break;
+                    case UPDATE_P2P_DISALLOWED_CHANNELS:
+                        mCoexUnsafeChannels.clear();
+                        if (null != message.obj) {
+                            mCoexUnsafeChannels.addAll((Set<CoexUnsafeChannel>) message.obj);
+                        }
+                        updateP2pChannels();
+                        break;
                     default:
                         return NOT_HANDLED;
                 }
@@ -1811,6 +1857,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             @Override
             public void exit() {
                 sendP2pDiscoveryChangedBroadcast(false);
+                mUserListenChannel = 0;
+                mUserOperatingChannel = 0;
+                mCoexUnsafeChannels.clear();
             }
         }
 
@@ -2107,12 +2156,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         Bundle p2pChannels = (Bundle) message.obj;
-                        int lc = p2pChannels.getInt("lc", 0);
-                        int oc = p2pChannels.getInt("oc", 0);
-                        if (mVerboseLoggingEnabled) {
-                            logd(getName() + " set listen and operating channel");
-                        }
-                        if (mWifiNative.p2pSetChannel(lc, oc)) {
+                        mUserListenChannel = p2pChannels.getInt("lc", 0);
+                        mUserOperatingChannel = p2pChannels.getInt("oc", 0);
+                        if (updateP2pChannels()) {
                             replyToMessage(message, WifiP2pManager.SET_CHANNEL_SUCCEEDED);
                         } else {
                             replyToMessage(message, WifiP2pManager.SET_CHANNEL_FAILED);
@@ -2586,7 +2632,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 logd("Notify frequency conflict");
                 Resources r = mContext.getResources();
 
-                AlertDialog dialog = new AlertDialog.Builder(mContext)
+                AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                         .setMessage(r.getString(R.string.wifi_p2p_frequency_conflict_message,
                             getDeviceName(mSavedPeerConfig.deviceAddress)))
                         .setPositiveButton(r.getString(R.string.dlg_ok), new OnClickListener() {
@@ -3229,7 +3275,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             addRowToDialog(group, R.string.wifi_p2p_to_message, getDeviceName(peerAddress));
             addRowToDialog(group, R.string.wifi_p2p_show_pin_message, pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_sent_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.ok), null)
@@ -3250,7 +3296,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             addRowToDialog(group, R.string.wifi_p2p_to_message, getDeviceName(peerAddress));
             addRowToDialog(group, R.string.wifi_p2p_show_pin_message, pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_sent_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.accept), new OnClickListener() {
@@ -3278,7 +3324,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             final EditText pin = (EditText) textEntryView.findViewById(R.id.wifi_p2p_wps_pin);
 
-            AlertDialog dialog = new AlertDialog.Builder(mContext)
+            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
                     .setTitle(r.getString(R.string.wifi_p2p_invitation_to_connect_title))
                     .setView(textEntryView)
                     .setPositiveButton(r.getString(R.string.accept), new OnClickListener() {
@@ -4384,6 +4430,23 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             return intent;
         }
 
+        private boolean updateP2pChannels() {
+            Log.d(TAG, "Set P2P listen channel to " + mUserListenChannel);
+            if (!mWifiNative.p2pSetListenChannel(mUserListenChannel)) {
+                Log.e(TAG, "Cannot set listen channel.");
+                return false;
+            }
+
+            Log.d(TAG, "Set P2P operating channel to " + mUserOperatingChannel
+                    + ", unsafe channels: "
+                    + mCoexUnsafeChannels.stream()
+                            .map(Object::toString).collect(Collectors.joining(",")));
+            if (!mWifiNative.p2pSetOperatingChannel(mUserOperatingChannel, mCoexUnsafeChannels)) {
+                Log.e(TAG, "Cannot set operate channel.");
+                return false;
+            }
+            return true;
+        }
     }
 
     /**

@@ -16,7 +16,6 @@
 
 package com.android.server.wifi;
 
-import android.annotation.NonNull;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.UserHandle;
@@ -133,17 +132,6 @@ public class ConfigurationMap {
             }
         }
         return null;
-    }
-
-    /** Get the configuration based on SSID and the security type. */
-    public WifiConfiguration getBySsidSecurityTypeForCurrentUser(
-            @NonNull String ssid, @WifiConfiguration.SecurityType int type, boolean shared) {
-        if (null == ssid) return null;
-
-        return mPerIDForCurrentUser.values().stream()
-                .filter(c -> c.SSID.equals(ssid) && c.isSecurityType(type) && c.shared == shared)
-                .findAny()
-                .orElse(null);
     }
 
     /**

@@ -1461,7 +1461,7 @@ public class WifiManager {
         try {
             ParceledListSlice<WifiConfiguration> parceledList =
                     mService.getConfiguredNetworks(mContext.getOpPackageName(),
-                            mContext.getAttributionTag());
+                            mContext.getAttributionTag(), false);
             if (parceledList == null) {
                 return Collections.emptyList();
             }
@@ -1470,6 +1470,35 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Return a list of all the networks previously configured by the calling app. Can
+     * be called by Device Owner (DO), Profile Owner (PO), Callers with Carrier privilege and
+     * system apps.
+     *
+     * @return a list of network configurations in the form of a list
+     * of {@link WifiConfiguration} objects.
+     * @throws {@link java.lang.SecurityException} if the caller is allowed to call this API
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    @NonNull
+    public List<WifiConfiguration> getCallerConfiguredNetworks() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            ParceledListSlice<WifiConfiguration> parceledList =
+                    mService.getConfiguredNetworks(mContext.getOpPackageName(),
+                            mContext.getAttributionTag(), true);
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
 
     /** @hide */
     @SystemApi
@@ -2272,6 +2301,24 @@ public class WifiManager {
     }
 
     /**
+     * Remove all configured networks that were not created by the calling app. Can only
+     * be called by a Device Owner (DO) app.
+     *
+     * @return {@code true} if at least one network is removed, {@code false} otherwise
+     * @throws {@link java.lang.SecurityException} if the caller is not a Device Owner app
+     */
+    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    public boolean removeNonCallerConfiguredNetworks() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.removeNonCallerConfiguredNetworks(mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+    /**
      * Allow a previously configured network to be associated with. If
      * <code>attemptConnect</code> is true, an attempt to connect to the selected
      * network is initiated. This may result in the asynchronous delivery
@@ -2524,23 +2571,24 @@ public class WifiManager {
     public static final long WIFI_FEATURE_OCE              = 0x1000000000L; // OCE Support
     /** @hide */
     public static final long WIFI_FEATURE_WAPI             = 0x2000000000L; // WAPI
-    /** @hide */
-    public static final long WIFI_FEATURE_INFRA_60G        = 0x4000000000L; // 60 GHz Band Support
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA256     = 0x4000000000L; // FILS-SHA256
+    public static final long WIFI_FEATURE_FILS_SHA256      = 0x4000000000L; // FILS-SHA256
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA384     = 0x8000000000L; // FILS-SHA384
+    public static final long WIFI_FEATURE_FILS_SHA384      = 0x8000000000L; // FILS-SHA384
 
     /** @hide */
-    public static final long WIFI_FEATURE_SAE_PK          = 0x10000000000L; // SAE-PK
+    public static final long WIFI_FEATURE_SAE_PK           = 0x10000000000L; // SAE-PK
 
     /** @hide */
-    public static final long WIFI_FEATURE_STA_BRIDGED_AP       = 0x20000000000L; // STA + Bridged AP
+    public static final long WIFI_FEATURE_STA_BRIDGED_AP   = 0x20000000000L; // STA + Bridged AP
 
     /** @hide */
-    public static final long WIFI_FEATURE_BRIDGED_AP           = 0x40000000000L; // Bridged AP
+    public static final long WIFI_FEATURE_BRIDGED_AP       = 0x40000000000L; // Bridged AP
+
+    /** @hide */
+    public static final long WIFI_FEATURE_INFRA_60G        = 0x80000000000L; // 60 GHz Band Support
 
     private long getSupportedFeatures() {
         try {

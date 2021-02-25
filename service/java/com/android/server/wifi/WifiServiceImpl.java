@@ -2377,15 +2377,30 @@ public class WifiServiceImpl extends BaseWifiService {
      *
      * @param packageName String name of the calling package
      * @param featureId The feature in the package
+     * @param callerNetworksOnly Whether to only return networks created by the caller
      * @return the list of configured networks
      */
     @Override
     public ParceledListSlice<WifiConfiguration> getConfiguredNetworks(String packageName,
-            String featureId) {
+            String featureId, boolean callerNetworksOnly) {
         enforceAccessPermission();
         int callingUid = Binder.getCallingUid();
-        // bypass shell: can get varioud pkg name
-        if (callingUid != Process.SHELL_UID && callingUid != Process.ROOT_UID) {
+        boolean isDeviceOrProfileOwner = isDeviceOrProfileOwner(callingUid, packageName);
+        boolean isCarrierApp = mWifiInjector.makeTelephonyManager()
+                .checkCarrierPrivilegesForPackageAnyPhone(packageName)
+                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+        boolean isPrivileged = isPrivileged(getCallingPid(), callingUid);
+        // Only DO, PO, carrier app or system app can use callerNetworksOnly argument
+        if (callerNetworksOnly) {
+            if (!isDeviceOrProfileOwner && !isCarrierApp && !isPrivileged) {
+                throw new SecurityException(
+                        "Not a DO, PO, carrier or privileged app");
+            }
+        }
+        // bypass shell: can get various pkg name
+        // also bypass if caller is only retrieving networks added by itself
+        if (callingUid != Process.SHELL_UID && callingUid != Process.ROOT_UID
+                && !callerNetworksOnly) {
             long ident = Binder.clearCallingIdentity();
             try {
                 mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId,
@@ -2400,9 +2415,6 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         boolean isTargetSdkLessThanQOrPrivileged = isTargetSdkLessThanQOrPrivileged(
                 packageName, Binder.getCallingPid(), callingUid);
-        boolean isCarrierApp = mWifiInjector.makeTelephonyManager()
-                .checkCarrierPrivilegesForPackageAnyPhone(packageName)
-                == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
         if (!isTargetSdkLessThanQOrPrivileged && !isCarrierApp) {
             mLog.info("getConfiguredNetworks not allowed for uid=%")
                     .c(callingUid).flush();
@@ -2413,8 +2425,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
 
         int targetConfigUid = Process.INVALID_UID; // don't expose any MAC addresses
-        if (isPrivileged(getCallingPid(), callingUid)
-                || isDeviceOrProfileOwner(callingUid, packageName)) {
+        if (isPrivileged || isDeviceOrProfileOwner) {
             targetConfigUid = Process.WIFI_UID; // expose all MAC addresses
         } else if (isCarrierApp) {
             targetConfigUid = callingUid; // expose only those configs created by the Carrier App
@@ -2423,10 +2434,10 @@ public class WifiServiceImpl extends BaseWifiService {
         List<WifiConfiguration> configs = mWifiThreadRunner.call(
                 () -> mWifiConfigManager.getSavedNetworks(finalTargetConfigUid),
                 Collections.emptyList());
-        if (isTargetSdkLessThanQOrPrivileged) {
+        if (isTargetSdkLessThanQOrPrivileged && !callerNetworksOnly) {
             return new ParceledListSlice<>(configs);
         }
-        // Carrier app: should only get its own configs
+        // Should only get its own configs
         List<WifiConfiguration> creatorConfigs = new ArrayList<>();
         for (WifiConfiguration config : configs) {
             if (config.creatorUid == callingUid) {
@@ -2709,6 +2720,19 @@ public class WifiServiceImpl extends BaseWifiService {
         mLog.info("removeNetwork uid=%").c(callingUid).flush();
         return mWifiThreadRunner.call(
                 () -> mWifiConfigManager.removeNetwork(netId, callingUid, packageName), false);
+    }
+
+    @Override
+    public boolean removeNonCallerConfiguredNetworks(String packageName) {
+        if (enforceChangePermission(packageName) != MODE_ALLOWED) {
+            throw new SecurityException("Caller does not hold CHANGE_WIFI_STATE permission");
+        }
+        final int callingUid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.isDeviceOwner(callingUid, packageName)) {
+            throw new SecurityException("Caller is not device owner");
+        }
+        return mWifiThreadRunner.call(
+                () -> mWifiConfigManager.removeNonCallerConfiguredNetwork(callingUid), false);
     }
 
     /**

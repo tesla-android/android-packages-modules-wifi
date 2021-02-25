@@ -809,24 +809,34 @@ public class WifiConfigManager {
             WifiConfiguration config) {
         WifiConfiguration internalConfig = null;
         int securityType = config.getDefaultSecurityParams().getSecurityType();
-        internalConfig = mConfiguredNetworks.getBySsidSecurityTypeForCurrentUser(
-                config.SSID, securityType, config.shared);
-        if (internalConfig != null) {
-            return internalConfig;
-        }
+        WifiConfiguration possibleExistingConfig = new WifiConfiguration(config);
         switch (securityType) {
             case WifiConfiguration.SECURITY_TYPE_PSK:
-                return mConfiguredNetworks.getBySsidSecurityTypeForCurrentUser(
-                        config.SSID, WifiConfiguration.SECURITY_TYPE_SAE, config.shared);
+                possibleExistingConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+                break;
+            case WifiConfiguration.SECURITY_TYPE_SAE:
+                possibleExistingConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+                break;
             case WifiConfiguration.SECURITY_TYPE_EAP:
-                return mConfiguredNetworks.getBySsidSecurityTypeForCurrentUser(
-                        config.SSID, WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
-                        config.shared);
+                possibleExistingConfig.setSecurityParams(
+                        WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+                break;
+            case WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE:
+                possibleExistingConfig.setSecurityParams(
+                        WifiConfiguration.SECURITY_TYPE_EAP);
+                break;
             case WifiConfiguration.SECURITY_TYPE_OPEN:
-                return mConfiguredNetworks.getBySsidSecurityTypeForCurrentUser(
-                        config.SSID, WifiConfiguration.SECURITY_TYPE_OWE, config.shared);
+                possibleExistingConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+                break;
+            case WifiConfiguration.SECURITY_TYPE_OWE:
+                possibleExistingConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+                break;
+            default:
+                return null;
         }
-        return null;
+        internalConfig = mConfiguredNetworks.getByConfigKeyForCurrentUser(
+                possibleExistingConfig.getProfileKey());
+        return internalConfig;
     }
 
     /**
@@ -1667,6 +1677,29 @@ public class WifiConfigManager {
             return removeNetwork(config.networkId, config.creatorUid, config.creatorName);
         }
         return false;
+    }
+
+    /**
+     * Removes all save networks configurations not created by the caller.
+     *
+     * @param callerUid the uid of the caller
+     * @return {@code true} if at least one network is removed.
+     */
+    public boolean removeNonCallerConfiguredNetwork(int callerUid) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "removeNonCallerConfiguredNetwork caller = " + callerUid);
+        }
+        boolean didRemove = false;
+        WifiConfiguration[] copiedConfigs =
+                mConfiguredNetworks.valuesForAllUsers().toArray(new WifiConfiguration[0]);
+        for (WifiConfiguration config : copiedConfigs) {
+            if (config.creatorUid != callerUid) {
+                Log.d(TAG, "Removing non-caller network config " + config.getProfileKey());
+                removeNetwork(config.networkId, config.creatorUid, config.creatorName);
+                didRemove = true;
+            }
+        }
+        return didRemove;
     }
 
     /**

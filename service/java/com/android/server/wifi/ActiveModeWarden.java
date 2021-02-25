@@ -1188,8 +1188,13 @@ public class ActiveModeWarden {
             } else if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
                 mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY);
             }
-            mWifiNative.setMultiStaPrimaryConnection(
-                    getPrimaryClientModeManager().getInterfaceName());
+            String primaryIfaceName = getPrimaryClientModeManager().getInterfaceName();
+            // if no primary exists (occurs briefly during Make Before Break), don't update the
+            // primary and keep the previous primary. Only update WifiNative when the new primary is
+            // activated.
+            if (primaryIfaceName != null) {
+                mWifiNative.setMultiStaPrimaryConnection(primaryIfaceName);
+            }
         }
 
         private void onStartedOrRoleChanged(ConcreteClientModeManager clientModeManager) {
