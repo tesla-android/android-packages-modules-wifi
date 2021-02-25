@@ -1345,6 +1345,16 @@ public class ActiveModeWarden {
     }
 
     /**
+     * Called to pull metrics from ActiveModeWarden to WifiMetrics when a dump is triggered, as
+     * opposed to the more common push metrics which are reported to WifiMetrics as soon as they
+     * occur.
+     */
+    public void updateMetrics() {
+        mWifiMetrics.setIsMakeBeforeBreakSupported(
+                isStaStaConcurrencySupported() && isMakeBeforeBreakEnabled());
+    }
+
+    /**
      * WifiController is the class used to manage wifi state for various operating
      * modes (normal, airplane, wifi hotspot, etc.).
      */

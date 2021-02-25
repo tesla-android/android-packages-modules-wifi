@@ -3593,6 +3593,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner.run(() -> {
             mWifiMetrics.updateSavedNetworks(
                     mWifiConfigManager.getSavedNetworks(Process.WIFI_UID));
+            mActiveModeWarden.updateMetrics();
             mPasspointManager.updateMetrics();
         });
         boolean isEnhancedMacRandEnabled = mFrameworkFacade.getIntegerSetting(mContext,

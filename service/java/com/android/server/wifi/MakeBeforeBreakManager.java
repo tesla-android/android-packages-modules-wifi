@@ -40,6 +40,7 @@ public class MakeBeforeBreakManager {
     private final Context mContext;
     private final ClientModeImplMonitor mCmiMonitor;
     private final ClientModeManagerBroadcastQueue mBroadcastQueue;
+    private final WifiMetrics mWifiMetrics;
 
     private final List<Runnable> mOnAllSecondaryTransientCmmsStoppedListeners = new ArrayList<>();
     private boolean mVerboseLoggingEnabled = false;
@@ -74,18 +75,20 @@ public class MakeBeforeBreakManager {
             @NonNull FrameworkFacade frameworkFacade,
             @NonNull Context context,
             @NonNull ClientModeImplMonitor cmiMonitor,
-            @NonNull ClientModeManagerBroadcastQueue broadcastQueue) {
+            @NonNull ClientModeManagerBroadcastQueue broadcastQueue,
+            @NonNull WifiMetrics wifiMetrics) {
         mActiveModeWarden = activeModeWarden;
         mFrameworkFacade = frameworkFacade;
         mContext = context;
         mCmiMonitor = cmiMonitor;
         mBroadcastQueue = broadcastQueue;
+        mWifiMetrics = wifiMetrics;
 
         mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
         mCmiMonitor.registerListener(new ClientModeImplListener() {
             @Override
-            public void onL3Validated(@NonNull ConcreteClientModeManager clientModeManager) {
-                MakeBeforeBreakManager.this.onL3Validated(clientModeManager);
+            public void onInternetValidated(@NonNull ConcreteClientModeManager clientModeManager) {
+                MakeBeforeBreakManager.this.onInternetValidated(clientModeManager);
             }
         });
     }
@@ -169,6 +172,7 @@ public class MakeBeforeBreakManager {
             manager.setRole(ROLE_CLIENT_PRIMARY, mFrameworkFacade.getSettingsWorkSource(mContext));
             Log.i(TAG, "recoveryPrimary kicking in, making " + manager + " primary and stopping"
                     + " all other SECONDARY_TRANSIENT ClientModeManagers");
+            mWifiMetrics.incrementMakeBeforeBreakRecoverPrimaryCount();
             // tear down the extra secondary transient CMMs (if they exist)
             for (int i = 1; i < secondaryTransientCmms.size(); i++) {
                 secondaryTransientCmms.get(i).stop();
@@ -177,17 +181,17 @@ public class MakeBeforeBreakManager {
     }
 
     /**
-     * A ClientModeImpl instance has been L3 validated. This will begin the Make-Before-Break
-     * transition to make this the new primary network.
+     * A ClientModeImpl instance has been validated to have internet connection. This will begin the
+     * Make-Before-Break transition to make this the new primary network.
      *
      * Change the previous primary ClientModeManager to role
      * {@link ActiveModeManager#ROLE_CLIENT_SECONDARY_TRANSIENT} and change the new
      * primary to role {@link ActiveModeManager#ROLE_CLIENT_PRIMARY}.
      *
      * @param newPrimary the corresponding ConcreteClientModeManager instance for the ClientModeImpl
-     *                   that has been L3 validated.
+     *                   that had its internet connection validated.
      */
-    private void onL3Validated(@NonNull ConcreteClientModeManager newPrimary) {
+    private void onInternetValidated(@NonNull ConcreteClientModeManager newPrimary) {
         if (!mActiveModeWarden.isMakeBeforeBreakEnabled()) {
             return;
         }
@@ -207,6 +211,8 @@ public class MakeBeforeBreakManager {
 
         Log.i(TAG, "Starting MBB switch primary from " + currentPrimary + " to " + newPrimary
                 + " by setting current primary's role to ROLE_CLIENT_SECONDARY_TRANSIENT");
+
+        mWifiMetrics.incrementMakeBeforeBreakInternetValidatedCount();
 
         // Since role change is not atomic, we must first make the previous primary CMM into a
         // secondary transient CMM. Thus, after this call to setRole() completes, there is no
@@ -250,6 +256,11 @@ public class MakeBeforeBreakManager {
                     + " to " + mMakeBeforeBreakInfo.newPrimary
                     + " by setting new Primary's role to ROLE_CLIENT_PRIMARY and reducing network"
                     + " score");
+
+            // TODO(b/180974604): In theory, newPrimary.setRole() could still fail, but that would
+            //  still count as a MBB success in the metrics. But we don't really handle that
+            //  scenario well anyways, see TODO below.
+            mWifiMetrics.incrementMakeBeforeBreakSuccessCount();
 
             // otherwise, actually set the new primary's role to primary.
             mMakeBeforeBreakInfo.newPrimary.setRole(

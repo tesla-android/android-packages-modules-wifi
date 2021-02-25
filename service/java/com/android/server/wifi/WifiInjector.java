@@ -417,7 +417,7 @@ public class WifiInjector {
         mConnectHelper = new ConnectHelper(mActiveModeWarden, mWifiConfigManager);
         mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
         mMakeBeforeBreakManager = new MakeBeforeBreakManager(mActiveModeWarden, mFrameworkFacade,
-                mContext, mCmiMonitor, mBroadcastQueue);
+                mContext, mCmiMonitor, mBroadcastQueue, mWifiMetrics);
         mOpenNetworkNotifier = new OpenNetworkNotifier(mContext,
                 wifiLooper, mFrameworkFacade, mClock, mWifiMetrics,
                 mWifiConfigManager, mWifiConfigStore, mConnectHelper,

@@ -3722,7 +3722,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiNetworkSuggestionsManager).handleConnectionAttemptEnded(
                 eq(WifiMetrics.ConnectionEvent.FAILURE_NONE), any(WifiConfiguration.class),
                 any(String.class));
-        verify(mCmiMonitor).onL3Validated(mClientModeManager);
+        verify(mCmiMonitor).onInternetValidated(mClientModeManager);
         // BSSID different, record this connection.
         verify(mWifiMetrics).incrementNumBssidDifferentSelectionBetweenFrameworkAndFirmware();
         verifyConnectionEventTimeoutDoesNotOccur();

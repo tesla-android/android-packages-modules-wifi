@@ -5326,6 +5326,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (message.arg1 == NETWORK_STATUS_UNWANTED_DISCONNECT) {
                         mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_FRAMEWORK_DISCONNECT,
                                 StaEvent.DISCONNECT_UNWANTED);
+                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                            mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount();
+                        }
                         mWifiNative.disconnect(mInterfaceName);
                     } else if (message.arg1 == NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN
                             || message.arg1 == NETWORK_STATUS_UNWANTED_VALIDATION_FAILED) {
@@ -5371,6 +5374,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                     mInterfaceName,
                                     StaEvent.TYPE_FRAMEWORK_DISCONNECT,
                                     StaEvent.DISCONNECT_MBB_NO_INTERNET);
+                            mWifiMetrics.incrementMakeBeforeBreakNoInternetCount();
                             mWifiNative.disconnect(mInterfaceName);
                         }
                     }
@@ -5404,7 +5408,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
                             }
                         }
-                        mCmiMonitor.onL3Validated(mClientModeManager);
+                        mCmiMonitor.onInternetValidated(mClientModeManager);
                     }
                     break;
                 }
