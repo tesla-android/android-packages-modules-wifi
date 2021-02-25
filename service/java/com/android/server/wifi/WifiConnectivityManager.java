@@ -1208,6 +1208,7 @@ public class WifiConnectivityManager {
                             WifiConfiguration currentNetwork,
                             WifiConfiguration targetNetwork,
                             String targetBssid) {
+                        mWifiMetrics.incrementWifiToWifiSwitchTriggerCount();
                         // If both the current & target networks have MAC randomization disabled,
                         // we cannot use MBB because then both ifaces would need to use the exact
                         // same MAC address (the "designated" factory MAC for the device), which is
@@ -1437,6 +1438,9 @@ public class WifiConnectivityManager {
                         localLog("connectToNetwork: already connected or connecting to candidate="
                                 + targetNetwork + " on " + clientModeManager);
                         return;
+                    }
+                    if (clientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                        mWifiMetrics.incrementMakeBeforeBreakTriggerCount();
                     }
                     triggerConnectToNetworkUsingCmm(clientModeManager, targetNetwork, targetBssid);
                 },

@@ -60,9 +60,9 @@ public class ClientModeImplMonitor implements ClientModeImplListener {
     }
 
     @Override
-    public void onL3Validated(@NonNull ConcreteClientModeManager clientModeManager) {
+    public void onInternetValidated(@NonNull ConcreteClientModeManager clientModeManager) {
         for (ClientModeImplListener listener : mListeners) {
-            listener.onL3Validated(clientModeManager);
+            listener.onInternetValidated(clientModeManager);
         }
     }
 
