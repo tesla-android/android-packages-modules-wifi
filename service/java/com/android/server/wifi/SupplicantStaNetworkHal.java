@@ -28,7 +28,6 @@ import android.net.wifi.WifiManager;
 import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.MutableBoolean;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.util.ArrayUtils;
@@ -1353,7 +1352,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getId";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getId((SupplicantStatus status, int idValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -2134,7 +2133,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getSsid";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getSsid((SupplicantStatus status,
                         java.util.ArrayList<Byte> ssidValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2158,7 +2157,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getBssid";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getBssid((SupplicantStatus status,
                         byte[/* 6 */] bssidValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2182,7 +2181,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getScanSsid";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getScanSsid((SupplicantStatus status,
                         boolean enabledValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2209,7 +2208,7 @@ public class SupplicantStaNetworkHal {
                 return getKeyMgmt_1_3();
             } else {
                 try {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     mISupplicantStaNetwork.getKeyMgmt((SupplicantStatus status,
                             int keyMgmtMaskValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2232,7 +2231,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getKeyMgmt_1_3";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_3StaNetwork().getKeyMgmt_1_3((SupplicantStatus status,
                         int keyMgmtMaskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2259,7 +2258,7 @@ public class SupplicantStaNetworkHal {
                 return getProto_1_3();
             } else {
                 try {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     mISupplicantStaNetwork.getProto(
                             (SupplicantStatus status, int protoMaskValue) -> {
                             statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2282,7 +2281,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getProto_1_3";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_3StaNetwork().getProto_1_3((SupplicantStatus status, int protoMaskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -2308,7 +2307,7 @@ public class SupplicantStaNetworkHal {
                 return getAuthAlg_1_3();
             }
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getAuthAlg((SupplicantStatus status,
                         int authAlgMaskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2329,7 +2328,7 @@ public class SupplicantStaNetworkHal {
     private boolean getAuthAlg_1_3() {
         final String methodStr = "getAuthAlg_1_3";
         try {
-            MutableBoolean statusOk = new MutableBoolean(false);
+            Mutable<Boolean> statusOk = new Mutable<>(false);
             getV1_3StaNetwork().getAuthAlg_1_3((SupplicantStatus status,
                     int authAlgMaskValue) -> {
                 statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2357,7 +2356,7 @@ public class SupplicantStaNetworkHal {
                 return getGroupCipher_1_3();
             } else {
                 try {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     mISupplicantStaNetwork.getGroupCipher((SupplicantStatus status,
                             int groupCipherMaskValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2380,7 +2379,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getGroupCipher_1_3";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_3StaNetwork().getGroupCipher_1_3((SupplicantStatus status,
                         int groupCipherMaskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2402,7 +2401,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getGroupCipher_1_4";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_4StaNetwork().getGroupCipher_1_4((
                         android.hardware.wifi.supplicant.V1_4.SupplicantStatus status,
                         int groupCipherMaskValue) -> {
@@ -2432,7 +2431,7 @@ public class SupplicantStaNetworkHal {
                 return getPairwiseCipher_1_3();
             } else {
                 try {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     mISupplicantStaNetwork.getPairwiseCipher((SupplicantStatus status,
                             int pairwiseCipherMaskValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2455,7 +2454,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getPairwiseCipher_1_3";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_3StaNetwork().getPairwiseCipher_1_3((SupplicantStatus status,
                         int pairwiseCipherMaskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2477,7 +2476,7 @@ public class SupplicantStaNetworkHal {
         synchronized (mLock) {
             final String methodStr = "getPairwiseCipher_1_4";
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 getV1_4StaNetwork().getPairwiseCipher_1_4((
                         android.hardware.wifi.supplicant.V1_4.SupplicantStatus status,
                         int pairwiseCipherMaskValue) -> {
@@ -2507,7 +2506,7 @@ public class SupplicantStaNetworkHal {
             try {
                 iSupplicantStaNetworkV12 = getV1_2StaNetwork();
                 if (iSupplicantStaNetworkV12 != null) {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     iSupplicantStaNetworkV12.getGroupMgmtCipher((SupplicantStatus status,
                             int groupMgmtCipherMaskValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2533,7 +2532,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getPskPassphrase";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getPskPassphrase((SupplicantStatus status,
                         String pskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2562,7 +2561,7 @@ public class SupplicantStaNetworkHal {
             try {
                 iSupplicantStaNetworkV12 = getV1_2StaNetwork();
                 if (iSupplicantStaNetworkV12 != null) {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     iSupplicantStaNetworkV12.getSaePassword((SupplicantStatus status,
                             String saePassword) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2588,7 +2587,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getPsk";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getPsk((SupplicantStatus status, byte[] pskValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -2611,7 +2610,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "keyIdx";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getWepKey(keyIdx, (SupplicantStatus status,
                         java.util.ArrayList<Byte> wepKeyValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2635,7 +2634,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getWepTxKeyIdx";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getWepTxKeyIdx((SupplicantStatus status,
                         int keyIdxValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2659,7 +2658,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getRequirePmf";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getRequirePmf((SupplicantStatus status,
                         boolean enabledValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2687,7 +2686,7 @@ public class SupplicantStaNetworkHal {
                         iSupplicantStaNetworkV13;
                 iSupplicantStaNetworkV13 = getV1_3StaNetwork();
                 if (iSupplicantStaNetworkV13 != null) {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     iSupplicantStaNetworkV13.getWapiCertSuite((SupplicantStatus status,
                             String suiteValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2715,7 +2714,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapMethod";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapMethod((SupplicantStatus status,
                         int methodValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2739,7 +2738,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapPhase2Method";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapPhase2Method((SupplicantStatus status,
                         int methodValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2763,7 +2762,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapIdentity";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapIdentity((SupplicantStatus status,
                         ArrayList<Byte> identityValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2787,7 +2786,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapAnonymousIdentity";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapAnonymousIdentity((SupplicantStatus status,
                         ArrayList<Byte> identityValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2826,7 +2825,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapPassword";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapPassword((SupplicantStatus status,
                         ArrayList<Byte> passwordValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2850,7 +2849,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapCACert";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapCACert((SupplicantStatus status, String pathValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -2873,7 +2872,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapCAPath";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapCAPath((SupplicantStatus status, String pathValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -2896,7 +2895,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapClientCert";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapClientCert((SupplicantStatus status,
                         String pathValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2920,7 +2919,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapPrivateKeyId";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapPrivateKeyId((SupplicantStatus status,
                         String idValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2944,7 +2943,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapSubjectMatch";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapSubjectMatch((SupplicantStatus status,
                         String matchValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2968,7 +2967,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapAltSubjectMatch";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapAltSubjectMatch((SupplicantStatus status,
                         String matchValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -2992,7 +2991,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapEngine";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapEngine((SupplicantStatus status,
                         boolean enabledValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -3016,7 +3015,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapEngineID";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapEngineID((SupplicantStatus status, String idValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -3039,7 +3038,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getEapDomainSuffixMatch";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getEapDomainSuffixMatch((SupplicantStatus status,
                         String matchValue) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
@@ -3063,7 +3062,7 @@ public class SupplicantStaNetworkHal {
             final String methodStr = "getIdStr";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 mISupplicantStaNetwork.getIdStr((SupplicantStatus status, String idString) -> {
                     statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
                     if (statusOk.value) {
@@ -3484,7 +3483,7 @@ public class SupplicantStaNetworkHal {
                         iSupplicantStaNetworkV13;
                 iSupplicantStaNetworkV13 = getV1_3StaNetwork();
                 if (iSupplicantStaNetworkV13 != null) {
-                    MutableBoolean statusOk = new MutableBoolean(false);
+                    Mutable<Boolean> statusOk = new Mutable<>(false);
                     iSupplicantStaNetworkV13.getOcsp((SupplicantStatus status,
                             int halOcspValue) -> {
                         statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
