@@ -727,10 +727,26 @@ public class ApConfigUtilTest extends WifiBaseTest {
         int testBand_2_60 = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_60GHZ;
 
         assertEquals(testBand_2_5, ApConfigUtil.removeUnavailableBands(
-                testSoftApCapability, testBand_2_5));
+                testSoftApCapability, testBand_2_5, mCoexManager));
         assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnavailableBands(
-                testSoftApCapability, testBand_2_6));
+                testSoftApCapability, testBand_2_6, mCoexManager));
         assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnavailableBands(
-                testSoftApCapability, testBand_2_60));
+                testSoftApCapability, testBand_2_60, mCoexManager));
+        // Test with soft unsafe channels
+        when(mCoexManager.getCoexRestrictions()).thenReturn(0);
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+                new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1),
+                new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
+                new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)
+        ));
+        assertEquals(testBand_2_5, ApConfigUtil.removeUnavailableBands(
+                testSoftApCapability, testBand_2_5, mCoexManager));
+
+        // Test with hard unsafe channels
+        when(mCoexManager.getCoexRestrictions()).thenReturn(WifiManager.COEX_RESTRICTION_SOFTAP);
+        assertEquals(SoftApConfiguration.BAND_2GHZ, ApConfigUtil.removeUnavailableBands(
+                testSoftApCapability, testBand_2_5, mCoexManager));
+
+
     }
 }

@@ -4704,6 +4704,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // too many places to record connection failure with too many failure reasons.
             // So only record success here.
             mWifiMetrics.noteFirstL2ConnectionAfterBoot(true);
+
+            mCmiMonitor.onL2Connected(mClientModeManager);
         }
 
         @Override
