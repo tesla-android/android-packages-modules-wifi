@@ -3607,6 +3607,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         out.on_time_roam_scan = current.on_time_roam_scan + nextRandInt();
         out.on_time_pno_scan = current.on_time_pno_scan + nextRandInt();
         out.on_time_hs20_scan = current.on_time_hs20_scan + nextRandInt();
+        out.timeSliceDutyCycleInPercent =
+                (short) ((current.timeSliceDutyCycleInPercent + nextRandInt()) % 101);
         return out;
     }
 
@@ -3632,7 +3634,6 @@ public class WifiMetricsTest extends WifiBaseTest {
                 mDecodedProto.wifiLinkLayerUsageStats.radioPnoScanTimeMs);
         assertEquals(newStats.on_time_hs20_scan - oldStats.on_time_hs20_scan,
                 mDecodedProto.wifiLinkLayerUsageStats.radioHs20ScanTimeMs);
-
     }
 
     /**
@@ -3716,6 +3717,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(stats.on_time_pno_scan, usabilityStats.totalPnoScanTimeMs);
         assertEquals(stats.on_time_hs20_scan, usabilityStats.totalHotspot2ScanTimeMs);
         assertEquals(stats.beacon_rx, usabilityStats.totalBeaconRx);
+        assertEquals(stats.timeSliceDutyCycleInPercent, usabilityStats.timeSliceDutyCycleInPercent);
     }
 
     // Simulate adding a LABEL_GOOD WifiUsabilityStats
@@ -5929,5 +5931,55 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertNotNull(broadcastReceiver);
         Intent intent = new Intent(screenOn  ? ACTION_SCREEN_ON : ACTION_SCREEN_OFF);
         broadcastReceiver.onReceive(mContext, intent);
+    }
+
+    @Test
+    public void testWifiToWifiSwitchMetrics() throws Exception {
+        // initially all 0
+        dumpProtoAndDeserialize();
+
+        assertFalse(mDecodedProto.wifiToWifiSwitchStats.isMakeBeforeBreakSupported);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.wifiToWifiSwitchTriggerCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakTriggerCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakNoInternetCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakRecoverPrimaryCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
+
+        // increment everything
+        mWifiMetrics.setIsMakeBeforeBreakSupported(true);
+        mWifiMetrics.incrementWifiToWifiSwitchTriggerCount();
+        mWifiMetrics.incrementMakeBeforeBreakTriggerCount();
+        mWifiMetrics.incrementMakeBeforeBreakNoInternetCount();
+        mWifiMetrics.incrementMakeBeforeBreakRecoverPrimaryCount();
+        mWifiMetrics.incrementMakeBeforeBreakInternetValidatedCount();
+        mWifiMetrics.incrementMakeBeforeBreakSuccessCount();
+        mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount();
+
+        dumpProtoAndDeserialize();
+
+        // should be all 1
+        assertTrue(mDecodedProto.wifiToWifiSwitchStats.isMakeBeforeBreakSupported);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.wifiToWifiSwitchTriggerCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakTriggerCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakNoInternetCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakRecoverPrimaryCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
+        assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
+
+        // dump again
+        dumpProtoAndDeserialize();
+
+        // everything should be reset
+        assertFalse(mDecodedProto.wifiToWifiSwitchStats.isMakeBeforeBreakSupported);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.wifiToWifiSwitchTriggerCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakTriggerCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakNoInternetCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakRecoverPrimaryCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
+        assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
     }
 }

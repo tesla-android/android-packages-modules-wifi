@@ -860,6 +860,7 @@ package android.net.wifi {
     method public int getProbeStatusSinceLastUpdate();
     method public int getRssi();
     method public int getRxLinkSpeedMbps();
+    method @IntRange(from=0, to=100) public int getTimeSliceDutyCycleInPercent();
     method public long getTimeStampMillis();
     method public long getTotalBackgroundScanTimeMillis();
     method public long getTotalBeaconRx();

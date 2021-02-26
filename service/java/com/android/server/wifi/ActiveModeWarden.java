@@ -132,6 +132,11 @@ public class ActiveModeWarden {
     private ConcreteClientModeManager mLastPrimaryClientModeManager = null;
 
     @Nullable
+    private WorkSource mLastPrimaryClientModeManagerRequestorWs = null;
+    @Nullable
+    private WorkSource mLastScanOnlyClientModeManagerRequestorWs = null;
+
+    @Nullable
     private ConnectivityManager.NetworkCallback mNetworkCallback = null;
 
     /**
@@ -924,6 +929,19 @@ public class ActiveModeWarden {
         ConcreteClientModeManager manager = mWifiInjector.makeClientModeManager(
                 new ClientListener(), requestorWs, ROLE_CLIENT_SCAN_ONLY, mVerboseLoggingEnabled);
         mClientModeManagers.add(manager);
+        mLastScanOnlyClientModeManagerRequestorWs = requestorWs;
+        return true;
+    }
+
+    /**
+     * Method to enable a new primary client mode manager in connect mode.
+     */
+    private boolean startPrimaryClientModeManager(WorkSource requestorWs) {
+        Log.d(TAG, "Starting primary ClientModeManager in connect mode");
+        ConcreteClientModeManager manager = mWifiInjector.makeClientModeManager(
+                new ClientListener(), requestorWs, ROLE_CLIENT_PRIMARY, mVerboseLoggingEnabled);
+        mClientModeManagers.add(manager);
+        mLastPrimaryClientModeManagerRequestorWs = requestorWs;
         return true;
     }
 
@@ -931,14 +949,14 @@ public class ActiveModeWarden {
      * Method to enable a new primary client mode manager.
      */
     private boolean startPrimaryOrScanOnlyClientModeManager(WorkSource requestorWs) {
-        Log.d(TAG, "Starting primary ClientModeManager");
         ActiveModeManager.ClientRole role = getRoleForPrimaryOrScanOnlyClientModeManager();
-        if (role == null) return false;
-
-        ConcreteClientModeManager manager = mWifiInjector.makeClientModeManager(
-                new ClientListener(), requestorWs, role, mVerboseLoggingEnabled);
-        mClientModeManagers.add(manager);
-        return true;
+        if (role == ROLE_CLIENT_PRIMARY) {
+            return startPrimaryClientModeManager(requestorWs);
+        } else if (role == ROLE_CLIENT_SCAN_ONLY) {
+            return startScanOnlyClientModeManager(requestorWs);
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -978,14 +996,14 @@ public class ActiveModeWarden {
      * Method to switch all client mode manager mode of operation (from ScanOnly To Connect &
      * vice-versa) based on the toggle state.
      */
-    private boolean switchAllPrimaryOrScanOnlyClientModeManagers(@NonNull WorkSource requestorWs) {
+    private boolean switchAllPrimaryOrScanOnlyClientModeManagers() {
         Log.d(TAG, "Switching all client mode managers");
         for (ConcreteClientModeManager clientModeManager : mClientModeManagers) {
             if (clientModeManager.getRole() != ROLE_CLIENT_PRIMARY
                     && clientModeManager.getRole() != ROLE_CLIENT_SCAN_ONLY) {
                 continue;
             }
-            if (!switchPrimaryOrScanOnlyClientModeManagerRole(clientModeManager, requestorWs)) {
+            if (!switchPrimaryOrScanOnlyClientModeManagerRole(clientModeManager)) {
                 return false;
             }
         }
@@ -1008,10 +1026,17 @@ public class ActiveModeWarden {
      * vice-versa) based on the toggle state.
      */
     private boolean switchPrimaryOrScanOnlyClientModeManagerRole(
-            @NonNull ConcreteClientModeManager modeManager, @NonNull WorkSource requestorWs) {
+            @NonNull ConcreteClientModeManager modeManager) {
         ActiveModeManager.ClientRole role = getRoleForPrimaryOrScanOnlyClientModeManager();
-        if (role == null) return false;
-        modeManager.setRole(role, requestorWs);
+        final WorkSource lastRequestorWs;
+        if (role == ROLE_CLIENT_PRIMARY) {
+            lastRequestorWs = mLastPrimaryClientModeManagerRequestorWs;
+        } else if (role == ROLE_CLIENT_SCAN_ONLY) {
+            lastRequestorWs = mLastScanOnlyClientModeManagerRequestorWs;
+        } else {
+            return false;
+        }
+        modeManager.setRole(role, lastRequestorWs);
         return true;
     }
 
@@ -1320,6 +1345,16 @@ public class ActiveModeWarden {
     }
 
     /**
+     * Called to pull metrics from ActiveModeWarden to WifiMetrics when a dump is triggered, as
+     * opposed to the more common push metrics which are reported to WifiMetrics as soon as they
+     * occur.
+     */
+    public void updateMetrics() {
+        mWifiMetrics.setIsMakeBeforeBreakSupported(
+                isStaStaConcurrencySupported() && isMakeBeforeBreakEnabled());
+    }
+
+    /**
      * WifiController is the class used to manage wifi state for various operating
      * modes (normal, airplane, wifi hotspot, etc.).
      */
@@ -1434,9 +1469,16 @@ public class ActiveModeWarden {
                     + ", isScanningAvailable = " + isScanningAlwaysAvailable
                     + ", isLocationModeActive = " + isLocationModeActive);
 
-            if (shouldEnableSta()) {
-                // Assumes user toggled it on from settings before.
-                startPrimaryOrScanOnlyClientModeManager(mFacade.getSettingsWorkSource(mContext));
+            // Initialize these values at bootup to defaults, will be overridden by API calls
+            // for further toggles.
+            mLastPrimaryClientModeManagerRequestorWs = mFacade.getSettingsWorkSource(mContext);
+            mLastScanOnlyClientModeManagerRequestorWs = INTERNAL_REQUESTOR_WS;
+            ActiveModeManager.ClientRole role = getRoleForPrimaryOrScanOnlyClientModeManager();
+            if (role == ROLE_CLIENT_PRIMARY) {
+                startPrimaryClientModeManager(mLastPrimaryClientModeManagerRequestorWs);
+                setInitialState(mEnabledState);
+            } else if (role == ROLE_CLIENT_SCAN_ONLY) {
+                startScanOnlyClientModeManager(mLastScanOnlyClientModeManagerRequestorWs);
                 setInitialState(mEnabledState);
             } else {
                 setInitialState(mDisabledState);
@@ -1679,7 +1721,7 @@ public class ActiveModeWarden {
         private void handleStaToggleChangeInEnabledState(WorkSource requestorWs) {
             if (shouldEnableSta()) {
                 if (hasAnyClientModeManager()) {
-                    switchAllPrimaryOrScanOnlyClientModeManagers(requestorWs);
+                    switchAllPrimaryOrScanOnlyClientModeManagers();
                 } else {
                     startPrimaryOrScanOnlyClientModeManager(requestorWs);
                 }

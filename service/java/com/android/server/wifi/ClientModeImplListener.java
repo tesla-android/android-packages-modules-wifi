@@ -33,10 +33,10 @@ public interface ClientModeImplListener {
     default void onL3Connected(@NonNull ConcreteClientModeManager clientModeManager) {}
 
     /**
-     * Called when a ClientModeImpl has been L3 validated.
+     * Called when a ClientModeImpl's internet connection has been validated.
      * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
      */
-    default void onL3Validated(@NonNull ConcreteClientModeManager clientModeManager) {}
+    default void onInternetValidated(@NonNull ConcreteClientModeManager clientModeManager) {}
 
     /**
      * Called when a ClientModeImpl starts a new connection attempt.

@@ -736,6 +736,9 @@ message WifiLog {
 
   // Metrics about the first connection after boot.
   optional FirstConnectAfterBootStats first_connect_after_boot_stats = 208;
+
+  // Metrics for Wifi to Wifi switches.
+  optional WifiToWifiSwitchStats wifi_to_wifi_switch_stats = 209;
 }
 
 // Information that gets logged for every WiFi connection.
@@ -2500,6 +2503,12 @@ message WifiUsabilityStatsEntry {
   // The device mobility state
   optional DeviceMobilityStatePnoScanStats.DeviceMobilityState
           device_mobility_state = 34;
+
+  // Duty cycle of the connection.
+  // if this connection is being served using time slicing on a radio with one or more interfaces
+  // (i.e MCC), then this field contains the duty cycle assigned to this interface in percent.
+  // If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
+  optional int32 time_slice_duty_cycle_in_percent = 35;
 }
 
 message WifiUsabilityStats {
@@ -3492,3 +3501,41 @@ message FirstConnectAfterBootStats {
   // This field is null if `first_l2_connection.is_success` is false.
   optional Attempt first_l3_connection = 4;
 }
+
+// Stats for Autojoin switches between Wifi networks. Does not include user/app-initiated switches.
+message WifiToWifiSwitchStats {
+  // Whether Make Before Break is supported by the hardware and enabled.
+  optional bool is_make_before_break_supported = 1;
+
+  // Number of times Wifi to Wifi switch was triggered. This includes Make Before Break and Break
+  // Before Make.
+  optional int32 wifi_to_wifi_switch_trigger_count = 2;
+
+  // Number of times Wifi to Wifi switch was triggered using Make Before Break (MBB).
+  // Note that MBB may not always be used for various reasons e.g. no additional iface available due
+  // to ongoing SoftAP, both old and new network have MAC randomization disabled, etc.
+  // TODO(b/180974604): also add metrics for the various reasons to not use MBB even when it is
+  //  supported by the device.
+  optional int32 make_before_break_trigger_count = 3;
+
+  // TODO(b/180974604): add metrics for L2 failure and L3 failure
+
+  // Number of times Make Before Break was aborted due to the new network not having internet.
+  optional int32 make_before_break_no_internet_count = 4;
+
+  // Number of times where, for some reason, Make Before Break resulted in the loss of the primary
+  // ClientModeManager, and we needed to recover by making one of the SECONDARY_TRANSIENT
+  // ClientModeManagers primary.
+  optional int32 make_before_break_recover_primary_count = 5;
+
+  // Number of times the new network in Make Before Break had its internet connection validated.
+  optional int32 make_before_break_internet_validated_count = 6;
+
+  // Number of times the new network was made primary in Make Before Break.
+  // TODO(b/180974604): add metrics for the various ways this could fail.
+  optional int32 make_before_break_success_count = 7;
+
+  // Number of times the old network in Make Before Break completed lingering and was disconnected.
+  optional int32 make_before_break_linger_completed_count = 8;
+}
+

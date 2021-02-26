@@ -88,7 +88,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     @VisibleForTesting
     private static final int SCORE_FILTER = 60;
     @VisibleForTesting
-    public static final int CACHED_SCAN_RESULTS_MAX_AGE_IN_MILLIS = 20 * 1000;  // 20 seconds
+    public static final int CACHED_SCAN_RESULTS_MAX_AGE_IN_MILLIS = 30 * 1000;
     @VisibleForTesting
     public static final int PERIODIC_SCAN_INTERVAL_MS = 10 * 1000; // 10 seconds
     @VisibleForTesting

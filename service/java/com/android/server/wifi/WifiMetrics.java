@@ -109,6 +109,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiNetworkRequestApi
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiNetworkSuggestionApiLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiNetworkSuggestionApiLog.SuggestionAppCount;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiStatus;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiToWifiSwitchStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiToggleStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStatsEntry;
@@ -546,6 +547,8 @@ public class WifiMetrics {
     private FirstConnectAfterBootStats mFirstConnectAfterBootStats =
             new FirstConnectAfterBootStats();
     private boolean mIsFirstConnectionAttemptComplete = false;
+
+    private final WifiToWifiSwitchStats mWifiToWifiSwitchStats = new WifiToWifiSwitchStats();
 
     @VisibleForTesting
     static class NetworkSelectionExperimentResults {
@@ -4016,6 +4019,7 @@ public class WifiMetrics {
                 pw.println("mCarrierWifiMetrics:\n"
                         + mCarrierWifiMetrics);
                 pw.println(firstConnectAfterBootStatsToString(mFirstConnectAfterBootStats));
+                pw.println(wifiToWifiSwitchStatsToString(mWifiToWifiSwitchStats));
 
                 dumpInitPartialScanMetrics(pw);
             }
@@ -4063,6 +4067,7 @@ public class WifiMetrics {
         line.append(",seq_num_inside_framework=" + entry.seqNumInsideFramework);
         line.append(",is_same_bssid_and_freq=" + entry.isSameBssidAndFreq);
         line.append(",device_mobility_state=" + entry.deviceMobilityState);
+        line.append(",time_slice_duty_cycle_in_percent=" + entry.timeSliceDutyCycleInPercent);
         pw.println(line.toString());
     }
 
@@ -4702,6 +4707,7 @@ public class WifiMetrics {
             mWifiLogProto.carrierWifiMetrics = mCarrierWifiMetrics.toProto();
             mWifiLogProto.mainlineModuleVersion = mWifiHealthMonitor.getWifiStackVersion();
             mWifiLogProto.firstConnectAfterBootStats = mFirstConnectAfterBootStats;
+            mWifiLogProto.wifiToWifiSwitchStats = mWifiToWifiSwitchStats;
         }
     }
 
@@ -4927,6 +4933,7 @@ public class WifiMetrics {
             mInitPartialScanFailureHistogram.clear();
             mCarrierWifiMetrics.clear();
             mFirstConnectAfterBootStats = null;
+            mWifiToWifiSwitchStats.clear();
         }
     }
 
@@ -5818,6 +5825,7 @@ public class WifiMetrics {
                 wifiUsabilityStatsEntry.totalCcaBusyFreqTimeMs = statsMap.ccaBusyTimeMs;
             }
             wifiUsabilityStatsEntry.totalBeaconRx = stats.beacon_rx;
+            wifiUsabilityStatsEntry.timeSliceDutyCycleInPercent = stats.timeSliceDutyCycleInPercent;
 
             boolean isSameBssidAndFreq = mLastBssid == null || mLastFrequency == -1
                     || (mLastBssid.equals(info.getBSSID())
@@ -5929,7 +5937,7 @@ public class WifiMetrics {
                 s.totalPnoScanTimeMs, s.totalHotspot2ScanTimeMs, s.totalCcaBusyFreqTimeMs,
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
-                s.rxLinkSpeedMbps, 0, 0, 0, false
+                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, 0, 0, 0, false
         );
     }
 
@@ -5965,6 +5973,7 @@ public class WifiMetrics {
         out.isSameBssidAndFreq = s.isSameBssidAndFreq;
         out.seqNumInsideFramework = s.seqNumInsideFramework;
         out.deviceMobilityState = s.deviceMobilityState;
+        out.timeSliceDutyCycleInPercent = s.timeSliceDutyCycleInPercent;
         return out;
     }
 
@@ -7348,5 +7357,100 @@ public class WifiMetrics {
 
             long mTimeStartMillis;
         }
+    }
+
+    /** Set whether Make Before Break is supported by the hardware and enabled. */
+    public void setIsMakeBeforeBreakSupported(boolean supported) {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.isMakeBeforeBreakSupported = supported;
+        }
+    }
+
+    /**
+     * Increment the number of times Wifi to Wifi switch was triggered. This includes Make Before
+     * Break and Break Before Make.
+     */
+    public void incrementWifiToWifiSwitchTriggerCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.wifiToWifiSwitchTriggerCount++;
+        }
+    }
+
+    /**
+     * Increment the Number of times Wifi to Wifi switch was triggered using Make Before Break
+     * (MBB). Note that MBB may not always be used for various reasons e.g. no additional iface
+     * available due to ongoing SoftAP, both old and new network have MAC randomization disabled,
+     * etc.
+     */
+    public void incrementMakeBeforeBreakTriggerCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakTriggerCount++;
+        }
+    }
+
+    /**
+     * Increment the number of times Make Before Break was aborted due to the new network not having
+     * internet.
+     */
+    public void incrementMakeBeforeBreakNoInternetCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakNoInternetCount++;
+        }
+    }
+
+    /**
+     * Increment the number of times where, for some reason, Make Before Break resulted in the
+     * loss of the primary ClientModeManager, and we needed to recover by making one of the
+     * SECONDARY_TRANSIENT ClientModeManagers primary.
+     */
+    public void incrementMakeBeforeBreakRecoverPrimaryCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakRecoverPrimaryCount++;
+        }
+    }
+
+    /**
+     * Increment the number of times the new network in Make Before Break had its internet
+     * connection validated.
+     */
+    public void incrementMakeBeforeBreakInternetValidatedCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount++;
+        }
+    }
+
+    /**
+     * Increment the number of times the old network in Make Before Break was successfully
+     * transitioned from PRIMARY to SECONDARY_TRANSIENT role.
+     */
+    public void incrementMakeBeforeBreakSuccessCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakSuccessCount++;
+        }
+    }
+
+    /**
+     * Increment the number of times the old network in Make Before Break completed lingering and
+     * was disconnected.
+     */
+    public void incrementMakeBeforeBreakLingerCompletedCount() {
+        synchronized (mLock) {
+            mWifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount++;
+        }
+    }
+
+    private static String wifiToWifiSwitchStatsToString(WifiToWifiSwitchStats stats) {
+        return "WifiToWifiSwitchStats{"
+                + "isMakeBeforeBreakSupported=" + stats.isMakeBeforeBreakSupported
+                + ",wifiToWifiSwitchTriggerCount=" + stats.wifiToWifiSwitchTriggerCount
+                + ",makeBeforeBreakTriggerCount=" + stats.makeBeforeBreakTriggerCount
+                + ",makeBeforeBreakNoInternetCount=" + stats.makeBeforeBreakNoInternetCount
+                + ",makeBeforeBreakRecoverPrimaryCount=" + stats.makeBeforeBreakRecoverPrimaryCount
+                + ",makeBeforeBreakInternetValidatedCount="
+                + stats.makeBeforeBreakInternetValidatedCount
+                + ",makeBeforeBreakSuccessCount=" + stats.makeBeforeBreakSuccessCount
+                + ",makeBeforeBreakLingerCompletedCount="
+                + stats.makeBeforeBreakLingerCompletedCount
+                + "}";
     }
 }
