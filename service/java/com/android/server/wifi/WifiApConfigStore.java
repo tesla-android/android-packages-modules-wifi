@@ -407,7 +407,7 @@ public class WifiApConfigStore {
     SoftApConfiguration randomizeBssidIfUnset(Context context, SoftApConfiguration config) {
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder(config);
         if (config.getBssid() == null && ApConfigUtil.isApMacRandomizationSupported(mContext)) {
-            if (SdkLevel.isAtLeastS() && config.getMacRandomizationSetting()
+            if (config.getMacRandomizationSettingInternal()
                     == SoftApConfiguration.RANDOMIZATION_NONE) {
                 return configBuilder.build();
             }

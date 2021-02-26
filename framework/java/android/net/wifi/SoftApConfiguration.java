@@ -693,6 +693,14 @@ public final class SoftApConfiguration implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return getMacRandomizationSettingInternal();
+    }
+
+    /**
+     * @hide
+     */
+    @MacRandomizationSetting
+    public int getMacRandomizationSettingInternal() {
         return mMacRandomizationSetting;
     }
 
@@ -756,6 +764,13 @@ public final class SoftApConfiguration implements Parcelable {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
+        return isUserConfigurationInternal();
+    }
+
+    /**
+     * @hide
+     */
+    public boolean isUserConfigurationInternal() {
         return mIsUserConfiguration;
     }
 
