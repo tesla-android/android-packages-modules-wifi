@@ -676,7 +676,8 @@ public class WifiInjector {
                 mFrameworkFacade, mWifiNative, mCoexManager, mCountryCode.getCountryCode(),
                 listener, callback, mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
                 new SoftApNotifier(mContext, mFrameworkFacade, mWifiNotificationManager),
-                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
+                mCmiMonitor, mActiveModeWarden, mClock.getElapsedSinceBootMillis(),
+                requestorWs, role, verboseLoggingEnabled);
     }
 
     /**

@@ -115,6 +115,12 @@ public final class SoftApConfiguration implements Parcelable {
     })
     public @interface BandType {}
 
+    /**
+     * All of the supported band types.
+     * @hide
+     */
+    public static int[] BAND_TYPES = {BAND_2GHZ, BAND_5GHZ, BAND_6GHZ, BAND_60GHZ};
+
     private static boolean isBandValid(@BandType int band) {
         int bandAny = BAND_2GHZ | BAND_5GHZ | BAND_6GHZ | BAND_60GHZ;
         return ((band != 0) && ((band & ~bandAny) == 0));
