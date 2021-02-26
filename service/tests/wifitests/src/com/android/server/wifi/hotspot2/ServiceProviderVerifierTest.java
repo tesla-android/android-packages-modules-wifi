@@ -68,6 +68,7 @@ public class ServiceProviderVerifierTest extends WifiBaseTest {
             TEST_FRIENDLY_NAME);
     private static final ASN1ObjectIdentifier WFA_OID_HOTSPOT_FRIENDLYNAME =
             (new ASN1ObjectIdentifier(ID_WFA_OID_HOTSPOT_FRIENDLYNAME));
+    private static final int TAG_UTF8STRING = 12;
     @Mock
     private X509Certificate mX509Certificate;
 
@@ -165,7 +166,8 @@ public class ServiceProviderVerifierTest extends WifiBaseTest {
         // Create the valid entry for FriendlyName
         ASN1EncodableVector v = new ASN1EncodableVector();
         v.add(WFA_OID_HOTSPOT_FRIENDLYNAME);
-        v.add(new DERTaggedObject(12, new DERUTF8String(TEST_LANGUAGE + TEST_FRIENDLY_NAME)));
+        v.add(new DERTaggedObject(TAG_UTF8STRING,
+                new DERUTF8String(TEST_LANGUAGE + TEST_FRIENDLY_NAME)));
         mNewNames.add(
                 makeAltNames(new GeneralName(GeneralName.otherName, new DERSequence(v)), "DER"));
 
