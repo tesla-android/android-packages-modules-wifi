@@ -468,6 +468,9 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Captor ArgumentCaptor<WifiNetworkAgent.Callback> mWifiNetworkAgentCallbackCaptor;
     @Captor ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> mPolicyListenerCaptor =
             ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
+    @Captor ArgumentCaptor<WifiCarrierInfoManager.OnCarrierOffloadDisabledListener>
+            mOffloadDisabledListenerArgumentCaptor = ArgumentCaptor.forClass(
+                    WifiCarrierInfoManager.OnCarrierOffloadDisabledListener.class);
 
     private void setUpWifiNative() throws Exception {
         when(mWifiNative.getStaFactoryMacAddress(WIFI_IFACE_NAME)).thenReturn(
@@ -688,6 +691,10 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiConfigManager, atLeastOnce()).addOnNetworkUpdateListener(
                 mConfigUpdateListenerCaptor.capture());
         assertNotNull(mConfigUpdateListenerCaptor.getValue());
+
+        verify(mWifiCarrierInfoManager, atLeastOnce()).addOnCarrierOffloadDisabledListener(
+                mOffloadDisabledListenerArgumentCaptor.capture());
+        assertNotNull(mOffloadDisabledListenerArgumentCaptor.getValue());
 
         mCmi.enableVerboseLogging(true);
         mLooper.dispatchAll();
@@ -6039,6 +6046,22 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verifyNoMoreInteractions(mVcnManager, mVcnUnderlyingNetworkPolicy);
+    }
+
+    /**
+     * Verifies that we trigger a disconnect when the {@link WifiConfigManager}.
+     * OnNetworkUpdateListener#onNetworkRemoved(WifiConfiguration)} is invoked.
+     */
+    @Test
+    public void testOnCarrierOffloadDisabled() throws Exception {
+        mConnectedNetwork.subscriptionId = DATA_SUBID;
+        connect();
+
+        mOffloadDisabledListenerArgumentCaptor.getValue()
+                .onCarrierOffloadDisabled(DATA_SUBID, false);
+        mLooper.dispatchAll();
+
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
     }
 
 }

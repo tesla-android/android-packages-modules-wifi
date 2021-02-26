@@ -792,11 +792,19 @@ public class WifiInjector {
     }
 
     /**
-     *
+     * Construct an instance of {@link WifiCarrierInfoStoreManagerData}
      */
     public WifiCarrierInfoStoreManagerData makeWifiCarrierInfoStoreManagerData(
             WifiCarrierInfoStoreManagerData.DataSource dataSource) {
         return new WifiCarrierInfoStoreManagerData(dataSource);
+    }
+
+    /**
+     * Construct an instance of {@link ImsiPrivacyProtectionExemptionStoreData}
+     */
+    public ImsiPrivacyProtectionExemptionStoreData makeImsiPrivacyProtectionExemptionStoreData(
+            ImsiPrivacyProtectionExemptionStoreData.DataSource dataSource) {
+        return new ImsiPrivacyProtectionExemptionStoreData(dataSource);
     }
 
     /**

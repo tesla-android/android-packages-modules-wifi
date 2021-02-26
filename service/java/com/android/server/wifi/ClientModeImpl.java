@@ -585,6 +585,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final OnNetworkUpdateListener mOnNetworkUpdateListener;
 
+    private final OnCarrierOffloadDisabledListener mOnCarrierOffloadDisabledListener;
+
     private final WifiVcnNetworkPolicyListener mVcnPolicyListener =
             new WifiVcnNetworkPolicyListener();
 
@@ -753,6 +755,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         mOnNetworkUpdateListener = new OnNetworkUpdateListener();
         mWifiConfigManager.addOnNetworkUpdateListener(mOnNetworkUpdateListener);
+
+        mOnCarrierOffloadDisabledListener = new OnCarrierOffloadDisabledListener();
+        mWifiCarrierInfoManager.addOnCarrierOffloadDisabledListener(
+                mOnCarrierOffloadDisabledListener);
 
         mWifiNetworkSelector = wifiNetworkSelector;
         mWifiInjector = wifiInjector;
@@ -1040,6 +1046,25 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (disableReason == DISABLED_NO_INTERNET_PERMANENT) return;
             if (config.networkId == mTargetNetworkId || config.networkId == mLastNetworkId) {
                 // Disconnect and let autojoin reselect a new network
+                sendMessage(CMD_DISCONNECT);
+            }
+        }
+    }
+
+    private class OnCarrierOffloadDisabledListener implements
+            WifiCarrierInfoManager.OnCarrierOffloadDisabledListener {
+
+        @Override
+        public void onCarrierOffloadDisabled(int subscriptionId, boolean merged) {
+            int networkId = mTargetNetworkId == WifiConfiguration.INVALID_NETWORK_ID
+                    ? mLastNetworkId : mTargetNetworkId;
+            if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
+                return;
+            }
+            WifiConfiguration configuration = mWifiConfigManager.getConfiguredNetwork(networkId);
+            if (configuration.subscriptionId == subscriptionId
+                    && configuration.carrierMerged == merged) {
+                Log.i(getTag(), "Carrier network offload disabled, triggering disconnect");
                 sendMessage(CMD_DISCONNECT);
             }
         }
@@ -1369,6 +1394,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         quitNow();
 
         mWifiConfigManager.removeOnNetworkUpdateListener(mOnNetworkUpdateListener);
+        mWifiCarrierInfoManager
+                .removeOnCarrierOffloadDisabledListener(mOnCarrierOffloadDisabledListener);
         if (mVcnManager != null) {
             mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
             mVcnManager = null;

@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static android.Manifest.permission.NETWORK_SETTINGS;
+import static android.telephony.TelephonyManager.DATA_ENABLED_REASON_USER;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -40,10 +41,12 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Handler;
+import android.os.HandlerExecutor;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
+import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -178,14 +181,56 @@ public class WifiCarrierInfoManager {
     private final Map<Integer, Boolean> mImsiPrivacyProtectionExemptionMap = new HashMap<>();
     private final Map<Integer, Boolean> mMergedCarrierNetworkOffloadMap = new HashMap<>();
     private final Map<Integer, Boolean> mUnmergedCarrierNetworkOffloadMap = new HashMap<>();
-    private final List<OnUserApproveCarrierListener>
-            mOnUserApproveCarrierListeners =
+    private final List<OnUserApproveCarrierListener> mOnUserApproveCarrierListeners =
+            new ArrayList<>();
+    private final SparseBooleanArray mUserDataEnabled = new SparseBooleanArray();
+    private final List<UserDataEnabledChangedListener>  mUserDataEnabledListenerList =
+            new ArrayList<>();
+    private final List<OnCarrierOffloadDisabledListener> mOnCarrierOffloadDisabledListeners =
             new ArrayList<>();
 
     private boolean mUserApprovalUiActive = false;
-    private boolean mHasNewDataToSerialize = false;
+    private boolean mHasNewUserDataToSerialize = false;
+    private boolean mHasNewSharedDataToSerialize = false;
     private boolean mUserDataLoaded = false;
     private boolean mIsLastUserApprovalUiDialog = false;
+
+    /**
+     * Implement of {@link PhoneStateListener.DataEnabledChangedListener}
+     */
+    @VisibleForTesting
+    public final class UserDataEnabledChangedListener extends PhoneStateListener implements
+            PhoneStateListener.DataEnabledChangedListener {
+        private final int mSubscriptionId;
+
+        public UserDataEnabledChangedListener(int subscriptionId) {
+            mSubscriptionId = subscriptionId;
+        }
+
+        @Override
+        public void onDataEnabledChanged(boolean enabled, int reason) {
+            if (reason == DATA_ENABLED_REASON_USER) {
+                Log.d(TAG, "Mobile data change by user to "
+                        + (enabled ? "enabled" : "disabled") + " for subId: " + mSubscriptionId);
+                mUserDataEnabled.put(mSubscriptionId, enabled);
+                if (!enabled) {
+                    for (OnCarrierOffloadDisabledListener listener :
+                            mOnCarrierOffloadDisabledListeners) {
+                        listener.onCarrierOffloadDisabled(mSubscriptionId, true);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Unregister the listener from TelephonyManager,
+         */
+        public void unregisterListener() {
+            mTelephonyManager.createForSubscriptionId(mSubscriptionId)
+                    .unregisterPhoneStateListener(this);
+
+        }
+    }
 
     /**
      * Interface for other modules to listen to the user approve IMSI protection exemption.
@@ -199,14 +244,21 @@ public class WifiCarrierInfoManager {
     }
 
     /**
+     * Interface for other modules to listen to the carrier network offload disabled.
+     */
+    public interface OnCarrierOffloadDisabledListener {
+
+        /**
+         * Invoke when carrier offload on target subscriptionId is disabled.
+         */
+        void onCarrierOffloadDisabled(int subscriptionId, boolean merged);
+    }
+
+    /**
      * Module to interact with the wifi config store.
      */
     private class WifiCarrierInfoStoreManagerDataSource implements
             WifiCarrierInfoStoreManagerData.DataSource {
-        @Override
-        public Map<Integer, Boolean> toSerializeImsiMap() {
-            return mImsiPrivacyProtectionExemptionMap;
-        }
 
         @Override
         public Map<Integer, Boolean> toSerializeMergedCarrierNetworkOffloadMap() {
@@ -220,7 +272,7 @@ public class WifiCarrierInfoManager {
 
         @Override
         public void serializeComplete() {
-            mHasNewDataToSerialize = false;
+            mHasNewSharedDataToSerialize = false;
         }
 
 
@@ -238,15 +290,34 @@ public class WifiCarrierInfoManager {
             mUnmergedCarrierNetworkOffloadMap.putAll(subscriptionOffloadMap);
         }
 
-
         @Override
-        public void fromImsiMapDeserialized(Map<Integer, Boolean> persistMap) {
-            mImsiPrivacyProtectionExemptionMap.clear();
-            mImsiPrivacyProtectionExemptionMap.putAll(persistMap);
+        public void reset() {
+            mMergedCarrierNetworkOffloadMap.clear();
+            mUnmergedCarrierNetworkOffloadMap.clear();
         }
 
         @Override
-        public void deserializeComplete() {
+        public boolean hasNewDataToSerialize() {
+            return mHasNewSharedDataToSerialize;
+        }
+    }
+
+    /**
+     * Module to interact with the wifi config store.
+     */
+    private class ImsiProtectionExemptionDataSource implements
+            ImsiPrivacyProtectionExemptionStoreData.DataSource {
+        @Override
+        public Map<Integer, Boolean> toSerialize() {
+            // Clear the flag after writing to disk.
+            mHasNewUserDataToSerialize = false;
+            return mImsiPrivacyProtectionExemptionMap;
+        }
+
+        @Override
+        public void fromDeserialized(Map<Integer, Boolean> imsiProtectionExemptionMap) {
+            mImsiPrivacyProtectionExemptionMap.clear();
+            mImsiPrivacyProtectionExemptionMap.putAll(imsiProtectionExemptionMap);
             mUserDataLoaded = true;
         }
 
@@ -254,13 +325,11 @@ public class WifiCarrierInfoManager {
         public void reset() {
             mUserDataLoaded = false;
             mImsiPrivacyProtectionExemptionMap.clear();
-            mMergedCarrierNetworkOffloadMap.clear();
-            mUnmergedCarrierNetworkOffloadMap.clear();
         }
 
         @Override
         public boolean hasNewDataToSerialize() {
-            return mHasNewDataToSerialize;
+            return mHasNewUserDataToSerialize;
         }
     }
 
@@ -356,6 +425,8 @@ public class WifiCarrierInfoManager {
         mContext.registerReceiver(mBroadcastReceiver, mIntentFilter, NETWORK_SETTINGS, handler);
         configStore.registerStoreData(wifiInjector.makeWifiCarrierInfoStoreManagerData(
                 new WifiCarrierInfoStoreManagerDataSource()));
+        configStore.registerStoreData(wifiInjector.makeImsiPrivacyProtectionExemptionStoreData(
+                new ImsiProtectionExemptionDataSource()));
 
         onCarrierConfigChanged(context);
 
@@ -1517,6 +1588,22 @@ public class WifiCarrierInfoManager {
     }
 
     /**
+     * Add a listener to monitor carrier offload disabled.
+     */
+    public void addOnCarrierOffloadDisabledListener(
+            OnCarrierOffloadDisabledListener listener) {
+        mOnCarrierOffloadDisabledListeners.add(listener);
+    }
+
+    /**
+     * remove a {@link OnCarrierOffloadDisabledListener}.
+     */
+    public void removeOnCarrierOffloadDisabledListener(
+            OnCarrierOffloadDisabledListener listener) {
+        mOnCarrierOffloadDisabledListeners.remove(listener);
+    }
+
+    /**
      * Clear the Imsi Privacy Exemption user approval info the target carrier.
      */
     public void clearImsiPrivacyExemptionForCarrier(int carrierId) {
@@ -1705,6 +1792,11 @@ public class WifiCarrierInfoManager {
         } else {
             mUnmergedCarrierNetworkOffloadMap.put(subscriptionId, enabled);
         }
+        if (!enabled) {
+            for (OnCarrierOffloadDisabledListener listener : mOnCarrierOffloadDisabledListeners) {
+                listener.onCarrierOffloadDisabled(subscriptionId, merged);
+            }
+        }
         saveToStore();
     }
 
@@ -1716,15 +1808,31 @@ public class WifiCarrierInfoManager {
      */
     public boolean isCarrierNetworkOffloadEnabled(int subId, boolean merged) {
         if (merged) {
-            return mMergedCarrierNetworkOffloadMap.getOrDefault(subId, true);
+            return mMergedCarrierNetworkOffloadMap.getOrDefault(subId, true)
+                    && isMobileDataEnabled(subId);
         } else {
             return mUnmergedCarrierNetworkOffloadMap.getOrDefault(subId, true);
         }
     }
 
+    private boolean isMobileDataEnabled(int subId) {
+        if (mUserDataEnabled.indexOfKey(subId) >= 0) {
+            return mUserDataEnabled.get(subId);
+        }
+        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
+        boolean enabled = specifiedTm.isDataEnabled();
+        mUserDataEnabled.put(subId, enabled);
+        UserDataEnabledChangedListener listener = new UserDataEnabledChangedListener(subId);
+        specifiedTm.registerPhoneStateListener(new HandlerExecutor(mHandler), listener);
+        mUserDataEnabledListenerList.add(listener);
+
+        return enabled;
+    }
+
     private void saveToStore() {
         // Set the flag to let WifiConfigStore that we have new data to write.
-        mHasNewDataToSerialize = true;
+        mHasNewUserDataToSerialize = true;
+        mHasNewSharedDataToSerialize = true;
         if (!mWifiInjector.getWifiConfigManager().saveToStore(true)) {
             Log.w(TAG, "Failed to save to store");
         }
@@ -1737,6 +1845,10 @@ public class WifiCarrierInfoManager {
         mImsiPrivacyProtectionExemptionMap.clear();
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
+        mUserDataEnabled.clear();
+        for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
+            listener.unregisterListener();
+        }
         resetNotification();
         saveToStore();
     }

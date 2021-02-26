@@ -280,6 +280,13 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
             mLocalLog.log("Ignoring carrier network from non default data SIM, network: " + config);
             return false;
         }
+        if (!mWifiCarrierInfoManager
+                .isCarrierNetworkOffloadEnabled(config.subscriptionId, config.carrierMerged)) {
+            mLocalLog.log("Carrier offload is disabled for "
+                    + (config.carrierMerged ? "merged" : "unmerged")
+                    + " network from subId: " + config.subscriptionId);
+            return false;
+        }
         return isSimBasedNetworkAvailableToAutoConnect(config);
     }
 
