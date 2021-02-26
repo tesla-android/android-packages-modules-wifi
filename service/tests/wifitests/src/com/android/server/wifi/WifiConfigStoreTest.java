@@ -1047,54 +1047,6 @@ public class WifiConfigStoreTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that Imsi protection date can be loaded after upgrade from R to S.
-     */
-    @Test
-    public void testImsiProtectionDateMigration() throws Exception {
-        // Setup user store.
-        StoreFile userStoreFile = mock(StoreFile.class);
-        when(userStoreFile.getFileId())
-                .thenReturn(WifiConfigStore.STORE_FILE_USER_GENERAL);
-        mWifiConfigStore = new WifiConfigStore(mContext, new Handler(mLooper.getLooper()), mClock,
-                mWifiMetrics, Collections.emptyList());
-        mWifiConfigStore.setUserStores(Collections.singletonList(userStoreFile));
-        WifiCarrierInfoStoreManagerData wifiCarrierInfoStoreManagerData =
-                new WifiCarrierInfoStoreManagerData(mDataSource);
-        mWifiConfigStore.registerStoreData(wifiCarrierInfoStoreManagerData);
-        InputStream userStream = mock(InputStream.class);
-        when(WifiMigration.convertAndRetrieveUserConfigStoreFile(
-                eq(WifiMigration.STORE_FILE_USER_GENERAL), any()))
-                .thenReturn(userStream);
-
-        // User R section header tag in store file.
-        byte[] userStoreXmlBytes =
-                String.format(TEST_DATA_XML_STRING_FORMAT_V3_WITH_ONE_DATA_SOURCE,
-                        wifiCarrierInfoStoreManagerData.XML_TAG_SECTION_HEADER_PRE_S).getBytes();
-
-        when(userStream.available())
-                .thenReturn(userStoreXmlBytes.length) // first time return file contents, then 0.
-                .thenReturn(0);
-
-        Answer userStreamReadAnswer = new MockAnswerUtil.AnswerWithArguments() {
-            public int answer(byte[] b, int off, int len) {
-                System.arraycopy(userStoreXmlBytes, 0, b, 0, userStoreXmlBytes.length);
-                return userStoreXmlBytes.length;
-            }
-        };
-
-        when(userStream.read(any(byte[].class), anyInt(), anyInt()))
-                .thenAnswer(userStreamReadAnswer) // first time return file contents, then 0.
-                .thenReturn(0);
-
-        mWifiConfigStore.read();
-        verify(userStream, times(2)).available();
-        verify(userStream, times(2)).read(any(), anyInt(), anyInt());
-        // Verify data source is loaded and deserializeComplete.
-        verify(mDataSource, atLeast(1)).reset();
-        verify(mDataSource).deserializeComplete();
-    }
-
-    /**
      * Mock Store File to redirect all file writes from WifiConfigStore to local buffers.
      * This can be used to examine the data output by WifiConfigStore.
      */
