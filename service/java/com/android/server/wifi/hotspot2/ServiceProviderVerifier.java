@@ -29,6 +29,7 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.DERUTF8String;
+import org.bouncycastle.asn1.DLTaggedObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -123,12 +124,18 @@ public class ServiceProviderVerifier {
                 byte[] octets = (byte[]) entry.toArray()[1];
                 ASN1Encodable obj = new ASN1InputStream(octets).readObject();
 
-                if (!(obj instanceof DERTaggedObject)) {
+                if (!(obj instanceof DERTaggedObject) && !(obj instanceof DLTaggedObject)) {
                     continue;
                 }
 
-                DERTaggedObject taggedObject = (DERTaggedObject) obj;
-                ASN1Encodable encodedObject = taggedObject.getObject();
+                ASN1Encodable encodedObject;
+                if (obj instanceof DERTaggedObject) {
+                    DERTaggedObject taggedObject = (DERTaggedObject) obj;
+                    encodedObject = taggedObject.getObject();
+                } else {
+                    DLTaggedObject taggedObject = (DLTaggedObject) obj;
+                    encodedObject = taggedObject.getObject();
+                }
 
                 if (!(encodedObject instanceof ASN1Sequence)) {
                     continue;
@@ -148,12 +155,19 @@ public class ServiceProviderVerifier {
 
                 for (int index = 1; index < innerSequence.size(); index++) {
                     innerObject = innerSequence.getObjectAt(index);
-                    if (!(innerObject instanceof DERTaggedObject)) {
+                    if (!(innerObject instanceof DERTaggedObject)
+                            && !(innerObject instanceof DLTaggedObject)) {
                         continue;
                     }
 
-                    DERTaggedObject innerSequenceObj = (DERTaggedObject) innerObject;
-                    ASN1Encodable innerSequenceEncodedObject = innerSequenceObj.getObject();
+                    ASN1Encodable innerSequenceEncodedObject;
+                    if (innerObject instanceof DERTaggedObject) {
+                        DERTaggedObject innerSequenceObj = (DERTaggedObject) innerObject;
+                        innerSequenceEncodedObject = innerSequenceObj.getObject();
+                    } else {
+                        DLTaggedObject innerSequenceObj = (DLTaggedObject) innerObject;
+                        innerSequenceEncodedObject = innerSequenceObj.getObject();
+                    }
 
                     if (!(innerSequenceEncodedObject instanceof DERUTF8String)) {
                         continue;
