@@ -922,6 +922,8 @@ public class WifiConfiguration implements Parcelable {
 
     /**
      * Set SAE Public-Key only mode enabled.
+     * Before calling this API, call {@link WifiManager#isWpa3SaePkSupported()
+     * to know whether WPA3 SAE Public-Key is supported or not.
      *
      * @param enable true if enabled; false otherwise.
      * @hide
