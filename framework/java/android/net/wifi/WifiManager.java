@@ -6199,10 +6199,13 @@ public class WifiManager {
     }
 
     /**
-     * @return true if this device supports WPA3 AP validation.
+     * @return true if this device supports WPA3 SAE Public Key.
      */
-    public boolean isWpa3ApValidationSupported() {
-        return isFeatureSupported(WIFI_FEATURE_SAE_PK);
+    public boolean isWpa3SaePublicKeySupported() {
+        // This feature is not fully implemented in the framework yet.
+        // After the feature complete, it returns whether WIFI_FEATURE_SAE_PK
+        // is supported or not directly.
+        return false;
     }
 
     /**

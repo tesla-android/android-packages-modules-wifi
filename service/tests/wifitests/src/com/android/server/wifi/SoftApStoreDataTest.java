@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -38,6 +39,7 @@ import android.util.Xml;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.SettingsMigrationDataHolder;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 
@@ -334,22 +336,31 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         softApConfigBuilder.setBssid(MacAddress.fromString(TEST_BSSID));
         softApConfigBuilder.setPassphrase(TEST_PASSPHRASE,
                 SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
-        softApConfigBuilder.setChannels(TEST_CHANNELS);
+        if (SdkLevel.isAtLeastS()) {
+            softApConfigBuilder.setChannels(TEST_CHANNELS);
+        } else {
+            softApConfigBuilder.setBand(TEST_BAND);
+        }
         softApConfigBuilder.setClientControlByUserEnabled(TEST_CLIENT_CONTROL_BY_USER);
         softApConfigBuilder.setMaxNumberOfClients(TEST_MAX_NUMBER_OF_CLIENTS);
         softApConfigBuilder.setAutoShutdownEnabled(true);
         softApConfigBuilder.setShutdownTimeoutMillis(TEST_SHUTDOWN_TIMEOUT_MILLIS);
         softApConfigBuilder.setAllowedClientList(TEST_ALLOWEDLIST);
         softApConfigBuilder.setBlockedClientList(TEST_BLOCKEDLIST);
-        softApConfigBuilder.setMacRandomizationSetting(TEST_MAC_RANDOMIZATIONSETTING);
-        softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
-                TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
-        softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
-        softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
-
+        if (SdkLevel.isAtLeastS()) {
+            softApConfigBuilder.setMacRandomizationSetting(TEST_MAC_RANDOMIZATIONSETTING);
+            softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
+                    TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
+            softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
+            softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
+        }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
-        assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION, new String(actualData));
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION, new String(actualData));
+        } else {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R, new String(actualData));
+        }
     }
 
     /**
@@ -359,7 +370,11 @@ public class SoftApStoreDataTest extends WifiBaseTest {
      */
     @Test
     public void deserializeSoftAp() throws Exception {
-        deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION.getBytes());
+        if (SdkLevel.isAtLeastS()) {
+            deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION.getBytes());
+        } else {
+            deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R.getBytes());
+        }
 
         ArgumentCaptor<SoftApConfiguration> softapConfigCaptor =
                 ArgumentCaptor.forClass(SoftApConfiguration.class);
@@ -371,20 +386,27 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
-        assertEquals(softApConfig.getBand(), TEST_BAND_2G);
-        assertEquals(softApConfig.getChannel(), TEST_CHANNEL_2G);
-        assertEquals(softApConfig.getChannels().toString(), TEST_CHANNELS.toString());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(softApConfig.getBand(), TEST_BAND_2G);
+            assertEquals(softApConfig.getChannel(), TEST_CHANNEL_2G);
+        } else {
+            assertEquals(softApConfig.getBand(), TEST_BAND);
+            assertEquals(softApConfig.getChannel(), TEST_CHANNEL);
+        }
         assertEquals(softApConfig.isClientControlByUserEnabled(), TEST_CLIENT_CONTROL_BY_USER);
         assertEquals(softApConfig.getMaxNumberOfClients(), TEST_MAX_NUMBER_OF_CLIENTS);
         assertTrue(softApConfig.isAutoShutdownEnabled());
         assertEquals(softApConfig.getShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLIS);
         assertEquals(softApConfig.getBlockedClientList(), TEST_BLOCKEDLIST);
         assertEquals(softApConfig.getAllowedClientList(), TEST_ALLOWEDLIST);
-        assertEquals(softApConfig.getMacRandomizationSetting(), TEST_MAC_RANDOMIZATIONSETTING);
-        assertEquals(softApConfig.isBridgedModeOpportunisticShutdownEnabled(),
-                TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
-        assertEquals(softApConfig.isIeee80211axEnabled(), TEST_80211AX_ENABLED);
-        assertEquals(softApConfig.isUserConfiguration(), TEST_USER_CONFIGURATION);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(softApConfig.getChannels().toString(), TEST_CHANNELS.toString());
+            assertEquals(softApConfig.getMacRandomizationSetting(), TEST_MAC_RANDOMIZATIONSETTING);
+            assertEquals(softApConfig.isBridgedModeOpportunisticShutdownEnabled(),
+                    TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
+            assertEquals(softApConfig.isIeee80211axEnabled(), TEST_80211AX_ENABLED);
+            assertEquals(softApConfig.isUserConfiguration(), TEST_USER_CONFIGURATION);
+        }
     }
 
     /**
@@ -657,7 +679,10 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         assertEquals(softApConfig.getShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLIS);
         assertEquals(softApConfig.getBlockedClientList(), TEST_BLOCKEDLIST);
         assertEquals(softApConfig.getAllowedClientList(), TEST_ALLOWEDLIST);
-        assertEquals(softApConfig.getChannels().toString(), TEST_CHANNELS_IN_R_CONFIG.toString());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(softApConfig.getChannels().toString(),
+                    TEST_CHANNELS_IN_R_CONFIG.toString());
+        }
     }
 
     /**
@@ -667,6 +692,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
      */
     @Test
     public void deserializeSoftApWithAllConfigInSExceptUserConfiguration() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         // Start with the old serialized data
         deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION
                 .getBytes());

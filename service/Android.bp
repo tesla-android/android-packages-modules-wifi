@@ -67,6 +67,7 @@ java_library {
         // need pre-jarjar symbols so that wifi-service can reference the original class names at
         // compile time
         "framework-wifi-pre-jarjar",
+        "framework-connectivity.stubs.module_lib",
         "framework-statsd.stubs.module_lib",
         "framework-tethering.stubs.module_lib",
         "unsupportedappusage",
