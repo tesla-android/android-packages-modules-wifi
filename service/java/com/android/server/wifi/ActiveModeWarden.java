@@ -116,6 +116,7 @@ public class ActiveModeWarden {
     private final Graveyard mGraveyard;
     private final WifiMetrics mWifiMetrics;
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
+    private final DppManager mDppManager;
 
     private WifiServiceImpl.SoftApCallbackInternal mSoftApCallback;
     private WifiServiceImpl.SoftApCallbackInternal mLohsCallback;
@@ -260,7 +261,8 @@ public class ActiveModeWarden {
             FrameworkFacade facade,
             WifiPermissionsUtil wifiPermissionsUtil,
             WifiMetrics wifiMetrics,
-            ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy) {
+            ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy,
+            DppManager dppManager) {
         mWifiInjector = wifiInjector;
         mLooper = looper;
         mHandler = new Handler(looper);
@@ -275,8 +277,9 @@ public class ActiveModeWarden {
         mWifiNative = wifiNative;
         mWifiMetrics = wifiMetrics;
         mWifiController = new WifiController();
-        mGraveyard = new Graveyard();
         mExternalScoreUpdateObserverProxy = externalScoreUpdateObserverProxy;
+        mDppManager = dppManager;
+        mGraveyard = new Graveyard();
 
         wifiNative.registerStatusListener(isReady -> {
             if (!isReady && !mIsShuttingdown) {
@@ -1871,6 +1874,17 @@ public class ActiveModeWarden {
 
             private void handleAdditionalClientModeManagerRequest(
                     @NonNull AdditionalClientModeManagerRequestInfo requestInfo) {
+                ClientModeManager primaryManager = getPrimaryClientModeManager();
+                if (requestInfo.clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT
+                        && mDppManager.isSessionInProgress()) {
+                    // When MBB is triggered, we could end up switching the primary interface
+                    // after completion. So if we have any DPP session in progress, they will fail
+                    // when the previous primary iface is removed after MBB completion.
+                    Log.v(TAG, "DPP session in progress, fallback to single STA behavior "
+                            + "using primary ClientModeManager=" + primaryManager);
+                    requestInfo.listener.onAnswer(primaryManager);
+                    return;
+                }
                 ConcreteClientModeManager cmmForSameBssid =
                         findAnyClientModeManagerConnectingOrConnectedToBssid(
                                 requestInfo.ssid, requestInfo.bssid);
@@ -1945,7 +1959,6 @@ public class ActiveModeWarden {
                     return;
                 }
                 // Fall back to single STA behavior.
-                ClientModeManager primaryManager = getPrimaryClientModeManager();
                 Log.v(TAG, "Falling back to single STA behavior using primary ClientModeManager="
                         + primaryManager);
                 requestInfo.listener.onAnswer(primaryManager);

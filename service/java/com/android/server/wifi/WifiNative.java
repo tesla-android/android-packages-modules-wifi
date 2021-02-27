@@ -319,16 +319,6 @@ public class WifiNative {
             return false;
         }
 
-        /** Checks if there are any iface of the given type active. */
-        private Iface findAnyIfaceOfType(@Iface.IfaceType int type) {
-            for (Iface iface : mIfaces.values()) {
-                if (iface.type == type) {
-                    return iface;
-                }
-            }
-            return null;
-        }
-
         /** Checks if there are any STA (for connectivity) iface active. */
         private boolean hasAnyStaIfaceForConnectivity() {
             return hasAnyIfaceOfType(Iface.IFACE_TYPE_STA_FOR_CONNECTIVITY);
@@ -344,32 +334,21 @@ public class WifiNative {
             return hasAnyIfaceOfType(Iface.IFACE_TYPE_AP);
         }
 
-        /** Finds the name of any STA iface active. */
-        private String findAnyStaIfaceName() {
-            Iface iface = findAnyIfaceOfType(Iface.IFACE_TYPE_STA_FOR_CONNECTIVITY);
-            if (iface == null) {
-                iface = findAnyIfaceOfType(Iface.IFACE_TYPE_STA_FOR_SCAN);
-            }
-            if (iface == null) {
-                return null;
-            }
-            return iface.name;
-        }
-
-        /** Finds the name of any AP iface active. */
-        private String findAnyApIfaceName() {
-            Iface iface = findAnyIfaceOfType(Iface.IFACE_TYPE_AP);
-            if (iface == null) {
-                return null;
-            }
-            return iface.name;
-        }
-
         private @NonNull Set<String> findAllStaIfaceNames() {
             Set<String> ifaceNames = new ArraySet<>();
             for (Iface iface : mIfaces.values()) {
                 if (iface.type == Iface.IFACE_TYPE_STA_FOR_CONNECTIVITY
                         || iface.type == Iface.IFACE_TYPE_STA_FOR_SCAN) {
+                    ifaceNames.add(iface.name);
+                }
+            }
+            return ifaceNames;
+        }
+
+        private @NonNull Set<String> findAllApIfaceNames() {
+            Set<String> ifaceNames = new ArraySet<>();
+            for (Iface iface : mIfaces.values()) {
+                if (iface.type == Iface.IFACE_TYPE_AP) {
                     ifaceNames.add(iface.name);
                 }
             }
@@ -1448,27 +1427,6 @@ public class WifiNative {
     }
 
     /**
-     * Get name of the client interface.
-     *
-     * This is mainly used by external modules that needs to perform some
-     * client operations on the STA interface.
-     *
-     * TODO(b/70932231): This may need to be reworked once we start supporting STA + STA.
-     *
-     * @return Interface name of any active client interface, null if no active client interface
-     * exist.
-     * Return Values for the different scenarios are listed below:
-     * a) When there are no client interfaces, returns null.
-     * b) when there is 1 client interface, returns the name of that interface.
-     * c) When there are 2 or more client interface, returns the name of any client interface.
-     */
-    public String getClientInterfaceName() {
-        synchronized (mLock) {
-            return mIfaceMgr.findAnyStaIfaceName();
-        }
-    }
-
-    /**
      * Get names of all the client interfaces.
      *
      * @return List of interface name of all active client interfaces.
@@ -1480,23 +1438,13 @@ public class WifiNative {
     }
 
     /**
-     * Get name of the softap interface.
+     * Get names of all the client interfaces.
      *
-     * This is mainly used by external modules that needs to perform some
-     * operations on the AP interface.
-     *
-     * TODO(b/70932231): This may need to be reworked once we start supporting AP + AP.
-     *
-     * @return Interface name of any active softap interface, null if no active softap interface
-     * exist.
-     * Return Values for the different scenarios are listed below:
-     * a) When there are no softap interfaces, returns null.
-     * b) when there is 1 softap interface, returns the name of that interface.
-     * c) When there are 2 or more softap interface, returns the name of any softap interface.
+     * @return List of interface name of all active client interfaces.
      */
-    public String getSoftApInterfaceName() {
+    public Set<String> getSoftApInterfaceNames() {
         synchronized (mLock) {
-            return mIfaceMgr.findAnyApIfaceName();
+            return mIfaceMgr.findAllApIfaceNames();
         }
     }
 

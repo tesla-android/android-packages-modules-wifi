@@ -7513,4 +7513,15 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatch();
         verify(mSettingsStore).handleWifiScoringEnabled(true);
     }
+
+    @Test
+    public void testEnabledTdlsWithMacAddress() {
+        mWifiServiceImpl.enableTdlsWithMacAddress(TEST_BSSID, true);
+        mLooper.dispatchAll();
+        verify(mClientModeManager).enableTdls(TEST_BSSID, true);
+
+        mWifiServiceImpl.enableTdlsWithMacAddress(TEST_BSSID, false);
+        mLooper.dispatchAll();
+        verify(mClientModeManager).enableTdls(TEST_BSSID, false);
+    }
 }

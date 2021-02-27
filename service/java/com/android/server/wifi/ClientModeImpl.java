@@ -418,9 +418,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     /* Enable suspend mode optimizations in the driver */
     static final int CMD_SET_SUSPEND_OPT_ENABLED                        = BASE + 86;
 
-    /* Enable TDLS on a specific MAC address */
-    static final int CMD_ENABLE_TDLS                                    = BASE + 92;
-
     /**
      * Watchdog for protecting against b/16823537
      * Leave time for 4-way handshake to succeed
@@ -1550,8 +1547,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * Enable TDLS for a specific MAC address
      */
     public void enableTdls(String remoteMacAddress, boolean enable) {
-        int enabler = enable ? 1 : 0;
-        sendMessage(CMD_ENABLE_TDLS, enabler, 0, remoteMacAddress);
+        mWifiNative.startTdls(mInterfaceName, remoteMacAddress, enable);
     }
 
     /** Send a message indicating bluetooth connection state changed, e.g. connected/disconnected */
@@ -1946,8 +1942,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "CMD_DISCONNECT";
             case CMD_ENABLE_RSSI_POLL:
                 return "CMD_ENABLE_RSSI_POLL";
-            case CMD_ENABLE_TDLS:
-                return "CMD_ENABLE_TDLS";
             case CMD_INSTALL_PACKET_FILTER:
                 return "CMD_INSTALL_PACKET_FILTER";
             case CMD_IP_CONFIGURATION_LOST:
@@ -3610,14 +3604,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         }
                     } else {
                         setSuspendOptimizationsNative(SUSPEND_DUE_TO_SCREEN, false);
-                    }
-                    break;
-                }
-                case CMD_ENABLE_TDLS: {
-                    if (message.obj != null) {
-                        String remoteAddress = (String) message.obj;
-                        boolean enable = (message.arg1 == 1);
-                        mWifiNative.startTdls(mInterfaceName, remoteAddress, enable);
                     }
                     break;
                 }

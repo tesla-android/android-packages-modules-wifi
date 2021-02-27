@@ -147,6 +147,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     @Mock ISubsystemRestartCallback mSubsystemRestartCallback;
     @Mock ConnectivityManager mConnectivityManager;
     @Mock ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
+    @Mock DppManager mDppManager;
 
     ActiveModeManager.Listener<ConcreteClientModeManager> mClientListener;
     ActiveModeManager.Listener<SoftApManager> mSoftApListener;
@@ -265,7 +266,8 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 mFacade,
                 mWifiPermissionsUtil,
                 mWifiMetrics,
-                mExternalScoreUpdateObserverProxy);
+                mExternalScoreUpdateObserverProxy,
+                mDppManager);
         // SelfRecovery is created in WifiInjector after ActiveModeWarden, so getSelfRecovery()
         // returns null when constructing ActiveModeWarden.
         when(mWifiInjector.getSelfRecovery()).thenReturn(mSelfRecovery);
@@ -3198,6 +3200,70 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         // Ensure the request is rejected.
         verify(externalRequestListener, times(2)).onAnswer(requestedClientModeManager.capture());
         assertNull(requestedClientModeManager.getValue());
+    }
+
+
+    @Test
+    public void requestSecondaryTransientClientModeManagerWhenDppInProgress()
+            throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_SECONDARY_TRANSIENT));
+
+        // Create primary STA.
+        enterClientModeActiveState();
+
+        // Start DPP session
+        when(mDppManager.isSessionInProgress()).thenReturn(true);
+
+        // request secondary transient CMM creation.
+        ConcreteClientModeManager additionalClientModeManager =
+                mock(ConcreteClientModeManager.class);
+        Mutable<ActiveModeManager.Listener<ConcreteClientModeManager>> additionalClientListener =
+                new Mutable<>();
+        doAnswer((invocation) -> {
+            Object[] args = invocation.getArguments();
+            additionalClientListener.value =
+                    (ActiveModeManager.Listener<ConcreteClientModeManager>) args[0];
+            return additionalClientModeManager;
+        }).when(mWifiInjector).makeClientModeManager(
+                any(ActiveModeManager.Listener.class), any(), eq(ROLE_CLIENT_SECONDARY_TRANSIENT),
+                anyBoolean());
+        when(additionalClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+
+        ActiveModeWarden.ExternalClientModeManagerRequestListener externalRequestListener = mock(
+                ActiveModeWarden.ExternalClientModeManagerRequestListener.class);
+        mActiveModeWarden.requestSecondaryTransientClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+
+        // verify that we did not create a secondary CMM.
+        verifyNoMoreInteractions(additionalClientModeManager);
+        // Returns the existing primary client mode manager.
+        ArgumentCaptor<ClientModeManager> requestedClientModeManager =
+                ArgumentCaptor.forClass(ClientModeManager.class);
+        verify(externalRequestListener).onAnswer(requestedClientModeManager.capture());
+        assertEquals(mClientModeManager, requestedClientModeManager.getValue());
+
+        // Stop ongoing DPP session.
+        when(mDppManager.isSessionInProgress()).thenReturn(false);
+
+        // request secondary transient CMM creation again, now it should be allowed.
+        mActiveModeWarden.requestSecondaryTransientClientModeManager(
+                externalRequestListener, TEST_WORKSOURCE, TEST_SSID_2, TEST_BSSID_2);
+        mLooper.dispatchAll();
+        verify(mWifiInjector)
+                .makeClientModeManager(any(), eq(TEST_WORKSOURCE),
+                        eq(ROLE_CLIENT_SECONDARY_TRANSIENT), anyBoolean());
+        additionalClientListener.value.onStarted(additionalClientModeManager);
+        mLooper.dispatchAll();
+        // Returns the new secondary client mode manager.
+        verify(externalRequestListener, times(2)).onAnswer(requestedClientModeManager.capture());
+        assertEquals(additionalClientModeManager, requestedClientModeManager.getValue());
     }
 
     @Test

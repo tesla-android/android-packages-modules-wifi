@@ -18,7 +18,6 @@ package com.android.server.wifi;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,8 +60,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Unit tests for the interface management operations in
@@ -196,7 +194,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
     }
 
     /**
@@ -207,7 +205,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterfaceForScan(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
         verifyNoMoreInteractions(mWifiVendorHal, mWificondControl, mSupplicantStaIfaceHal,
                 mHostapdHal, mNetdWrapper, mIfaceCallback0, mIfaceCallback1, mWifiMetrics);
     }
@@ -221,7 +219,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                 false, false, IFACE_NAME_0,
                 mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertNull(mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
     }
 
     /**
@@ -233,7 +231,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                 false, false, IFACE_NAME_0,
                 mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0, true, true);
-        assertNull(mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
+        assertEquals(Set.of(), mWifiNative.getClientInterfaceNames());
     }
 
     /**
@@ -244,7 +243,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownClientInterface(false, false, IFACE_NAME_0, mIfaceCallback0,
                 mIfaceDestroyedListenerCaptor0.getValue(), mNetworkObserverCaptor0.getValue());
     }
@@ -257,7 +256,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterfaceForScan(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownClientInterfaceForScan(false, false, IFACE_NAME_0,
                 mIfaceCallback0, mIfaceDestroyedListenerCaptor0.getValue(),
                 mNetworkObserverCaptor0.getValue());
@@ -273,7 +272,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupSoftApInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertNull(mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
+        assertEquals(Set.of(), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownSoftApInterface(false, false, IFACE_NAME_0, mIfaceCallback0,
                 mIfaceDestroyedListenerCaptor0.getValue(), mNetworkObserverCaptor0.getValue());
     }
@@ -295,7 +295,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupSoftApInterface(
                 true, false, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownClientInterface(false, true, IFACE_NAME_0, mIfaceCallback0,
                 mIfaceDestroyedListenerCaptor0.getValue(), mNetworkObserverCaptor0.getValue());
         executeAndValidateTeardownSoftApInterface(false, false, IFACE_NAME_1, mIfaceCallback1,
@@ -319,7 +319,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupSoftApInterface(
                 true, false, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownSoftApInterface(true, false, IFACE_NAME_1, mIfaceCallback1,
                 mIfaceDestroyedListenerCaptor1.getValue(), mNetworkObserverCaptor1.getValue());
         executeAndValidateTeardownClientInterface(false, false, IFACE_NAME_0, mIfaceCallback0,
@@ -343,7 +343,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, true, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        assertEquals(IFACE_NAME_1, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
+        assertEquals(Set.of(IFACE_NAME_1), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownSoftApInterface(true, false, IFACE_NAME_0, mIfaceCallback0,
                 mIfaceDestroyedListenerCaptor0.getValue(), mNetworkObserverCaptor0.getValue());
         executeAndValidateTeardownClientInterface(false, false, IFACE_NAME_1, mIfaceCallback1,
@@ -367,7 +368,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, true, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        assertEquals(IFACE_NAME_1, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
+        assertEquals(Set.of(IFACE_NAME_1), mWifiNative.getClientInterfaceNames());
         executeAndValidateTeardownClientInterface(false, true, IFACE_NAME_1, mIfaceCallback1,
                 mIfaceDestroyedListenerCaptor1.getValue(), mNetworkObserverCaptor1.getValue());
         executeAndValidateTeardownSoftApInterface(false, false, IFACE_NAME_0, mIfaceCallback0,
@@ -393,8 +395,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                 mNetworkObserverCaptor1);
 
         // Assert that a client & softap interface is present.
-        assertNotNull(mWifiNative.getClientInterfaceName());
-        assertNotNull(mWifiNative.getSoftApInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getSoftApInterfaceNames());
+        assertEquals(Set.of(IFACE_NAME_1), mWifiNative.getClientInterfaceNames());
 
         mWifiNative.teardownAllInterfaces();
 
@@ -426,8 +428,8 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         verify(mWifiVendorHal, atLeastOnce()).isVendorHalSupported();
 
         // Assert that the client & softap interface is no more there.
-        assertNull(mWifiNative.getClientInterfaceName());
-        assertNull(mWifiNative.getSoftApInterfaceName());
+        assertEquals(Set.of(), mWifiNative.getClientInterfaceNames());
+        assertEquals(Set.of(), mWifiNative.getSoftApInterfaceNames());
     }
 
     /**
@@ -1152,7 +1154,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
      */
     @Test
     public void testGetClientInterfaceNameWithNoInterfacesSetup() throws Exception {
-        assertNull(mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(), mWifiNative.getClientInterfaceNames());
     }
 
     /**
@@ -1163,7 +1165,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupSoftApInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertNull(mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(), mWifiNative.getClientInterfaceNames());
     }
 
     /**
@@ -1174,7 +1176,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(IFACE_NAME_0, mWifiNative.getClientInterfaceName());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
     }
 
     /**
@@ -1189,9 +1191,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 true, false, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        String interfaceName = mWifiNative.getClientInterfaceName();
-        assertNotNull(interfaceName);
-        assertTrue(interfaceName.equals(IFACE_NAME_0) || interfaceName.equals(IFACE_NAME_1));
+        assertEquals(Set.of(IFACE_NAME_0, IFACE_NAME_1), mWifiNative.getClientInterfaceNames());
     }
 
     /*
@@ -1422,14 +1422,12 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         executeAndValidateSetupClientInterface(
                 false, false, IFACE_NAME_0, mIfaceCallback0, mIfaceDestroyedListenerCaptor0,
                 mNetworkObserverCaptor0);
-        assertEquals(new HashSet<>(Arrays.asList(IFACE_NAME_0)),
-                mWifiNative.getClientInterfaceNames());
+        assertEquals(Set.of(IFACE_NAME_0), mWifiNative.getClientInterfaceNames());
 
         executeAndValidateSetupClientInterface(
                 true, false, IFACE_NAME_1, mIfaceCallback1, mIfaceDestroyedListenerCaptor1,
                 mNetworkObserverCaptor1);
-        assertEquals(new HashSet<>(Arrays.asList(IFACE_NAME_0, IFACE_NAME_1)),
-                mWifiNative.getClientInterfaceNames());
+        assertEquals(Set.of(IFACE_NAME_0, IFACE_NAME_1), mWifiNative.getClientInterfaceNames());
     }
 
     private void executeAndValidateSetupClientInterface(
