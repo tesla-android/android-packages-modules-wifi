@@ -1213,6 +1213,11 @@ public class WifiConnectivityManager {
                         // we cannot use MBB because then both ifaces would need to use the exact
                         // same MAC address (the "designated" factory MAC for the device), which is
                         // illegal. Fallback to single STA behavior.
+
+                        // TODO(b/172086124): Possibly move this logic to
+                        // ActiveModeWarden.handleAdditionalClientModeManagerRequest() to
+                        // ensure that all fallback logic in 1 central place (all the necessary
+                        // info is already included in the secondary STA creation request).
                         if (currentNetwork.macRandomizationSetting == RANDOMIZATION_NONE
                                 && targetNetwork.macRandomizationSetting == RANDOMIZATION_NONE) {
                             triggerConnectToNetworkUsingCmm(

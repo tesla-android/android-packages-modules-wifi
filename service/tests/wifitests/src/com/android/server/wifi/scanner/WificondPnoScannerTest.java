@@ -81,7 +81,6 @@ public class WificondPnoScannerTest extends WifiBaseTest {
                 new int[]{5945, 5985},
                 new int[]{58320, 60480});
 
-        when(mWifiNative.getClientInterfaceName()).thenReturn(IFACE_NAME);
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager.getAlarmManager());
         when(mContext.getResources()).thenReturn(mResources);

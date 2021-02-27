@@ -85,8 +85,6 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
         mWifiMonitor = new MockWifiMonitor();
         mResources = new MockResources();
 
-        when(mWifiNative.getClientInterfaceName()).thenReturn(IFACE_NAME);
-
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager.getAlarmManager());
 

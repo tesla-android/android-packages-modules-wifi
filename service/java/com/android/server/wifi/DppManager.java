@@ -162,19 +162,21 @@ public class DppManager {
      * Start DPP request in Configurator-Initiator mode. The goal of this call is to send the
      * selected Wi-Fi configuration to a remote peer so it could join that network.
      *
-     * @param uid                 User ID
-     * @param binder              Binder object
+     * @param uid                 UID
      * @param packageName         Package name of the calling app
+     * @param clientIfaceName     Client interface to use for this operation.
+     * @param binder              Binder object
      * @param enrolleeUri         The Enrollee URI, scanned externally (e.g. via QR code)
      * @param selectedNetworkId   The selected Wi-Fi network ID to be sent
      * @param enrolleeNetworkRole Network role of remote enrollee: STA or AP
      * @param callback            DPP Callback object
      */
     public void startDppAsConfiguratorInitiator(int uid, @Nullable String packageName,
-            IBinder binder, String enrolleeUri, int selectedNetworkId,
-            @WifiManager.EasyConnectNetworkRole int enrolleeNetworkRole, IDppCallback callback) {
+            @Nullable String clientIfaceName, IBinder binder, String enrolleeUri,
+            int selectedNetworkId, @WifiManager.EasyConnectNetworkRole int enrolleeNetworkRole,
+            IDppCallback callback) {
         mDppMetrics.updateDppConfiguratorInitiatorRequests();
-        if (mDppRequestInfo != null) {
+        if (isSessionInProgress()) {
             try {
                 Log.e(TAG, "DPP request already in progress");
                 Log.e(TAG, "Ongoing request - UID: " + mDppRequestInfo.uid
@@ -192,7 +194,7 @@ public class DppManager {
             return;
         }
 
-        mClientIfaceName = mWifiNative.getClientInterfaceName();
+        mClientIfaceName = clientIfaceName;
         if (mClientIfaceName == null) {
             try {
                 Log.e(TAG, "Wi-Fi client interface does not exist");
@@ -318,15 +320,16 @@ public class DppManager {
      * Start DPP request in Enrollee-Initiator mode. The goal of this call is to receive a
      * Wi-Fi configuration object from the peer configurator in order to join a network.
      *
-     * @param uid             User ID
+     * @param uid             UID
+     * @param clientIfaceName     Client interface to use for this operation.
      * @param binder          Binder object
      * @param configuratorUri The Configurator URI, scanned externally (e.g. via QR code)
      * @param callback        DPP Callback object
      */
-    public void startDppAsEnrolleeInitiator(int uid, IBinder binder,
-            String configuratorUri, IDppCallback callback) {
+    public void startDppAsEnrolleeInitiator(int uid, @Nullable String clientIfaceName,
+            IBinder binder, String configuratorUri, IDppCallback callback) {
         mDppMetrics.updateDppEnrolleeInitiatorRequests();
-        if (mDppRequestInfo != null) {
+        if (isSessionInProgress()) {
             try {
                 Log.e(TAG, "DPP request already in progress");
                 Log.e(TAG, "Ongoing request UID: " + mDppRequestInfo.uid + ", new UID: "
@@ -358,7 +361,7 @@ public class DppManager {
         mDppRequestInfo.startTime = mClock.getElapsedSinceBootMillis();
         mDppTimeoutMessage.schedule(mDppRequestInfo.startTime + DPP_TIMEOUT_MS);
 
-        mClientIfaceName = mWifiNative.getClientInterfaceName();
+        mClientIfaceName = clientIfaceName;
         logd("Interface " + mClientIfaceName + ": Initializing URI: " + configuratorUri);
 
         // Send Configurator URI and get a peer ID
@@ -392,17 +395,18 @@ public class DppManager {
      * Wi-Fi configuration object from the peer configurator by showing a QR code and being scanned
      * by the peer configurator.
      *
-     * @param uid             User ID
+     * @param uid             UID
+     * @param clientIfaceName Client interface to use for this operation.
      * @param binder          Binder object
      * @param deviceInfo      The Device specific info to attach to the generated URI
      * @param curve           Elliptic curve cryptography type used to generate DPP
      *                        public/private key pair.
      * @param callback        DPP Callback object
      */
-    public void startDppAsEnrolleeResponder(int uid, IBinder binder,
-            @Nullable String deviceInfo, @WifiManager.EasyConnectCryptographyCurve int curve,
-            IDppCallback callback) {
-        if (mDppRequestInfo != null) {
+    public void startDppAsEnrolleeResponder(int uid, @Nullable String clientIfaceName,
+            IBinder binder, @Nullable String deviceInfo,
+            @WifiManager.EasyConnectCryptographyCurve int curve, IDppCallback callback) {
+        if (isSessionInProgress()) {
             try {
                 Log.e(TAG, "DPP request already in progress");
                 Log.e(TAG, "Ongoing request UID: " + mDppRequestInfo.uid + ", new UID: "
@@ -434,7 +438,7 @@ public class DppManager {
         mDppRequestInfo.startTime = mClock.getElapsedSinceBootMillis();
         mDppTimeoutMessage.schedule(mDppRequestInfo.startTime + DPP_RESPONDER_TIMEOUT_MS);
 
-        mClientIfaceName = mWifiNative.getClientInterfaceName();
+        mClientIfaceName = clientIfaceName;
         logd("Interface " + mClientIfaceName + " Product Info: " + deviceInfo
                 + " Curve: " + curve);
 
@@ -478,7 +482,7 @@ public class DppManager {
      * @param uid User ID
      */
     public void stopDppSession(int uid) {
-        if (mDppRequestInfo == null) {
+        if (!isSessionInProgress()) {
             logd("UID " + uid + " called stop DPP session with no active DPP session");
             return;
         }
@@ -503,7 +507,7 @@ public class DppManager {
 
     private void cleanupDppResources() {
         logd("DPP clean up resources");
-        if (mDppRequestInfo == null) {
+        if (!isSessionInProgress()) {
             return;
         }
 
@@ -524,6 +528,13 @@ public class DppManager {
         mDppRequestInfo.binder.unlinkToDeath(mDppRequestInfo.dr, 0);
 
         mDppRequestInfo = null;
+    }
+
+    /**
+     * Indicates whether there is a dpp session in progress or not.
+     */
+    public boolean isSessionInProgress() {
+        return mDppRequestInfo != null;
     }
 
     private static class DppRequestInfo {
