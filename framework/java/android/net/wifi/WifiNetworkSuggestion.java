@@ -399,6 +399,9 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         public @NonNull Builder setWpa3EnterpriseStandardModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
             checkNotNull(enterpriseConfig);
             if (enterpriseConfig.isTlsBasedEapMethod()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
@@ -425,6 +428,9 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         public @NonNull Builder setWpa3Enterprise192BitModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
             checkNotNull(enterpriseConfig);
             if (enterpriseConfig.getEapMethod() != WifiEnterpriseConfig.Eap.TLS) {
                 throw new IllegalArgumentException("The 192-bit mode network type must be TLS");

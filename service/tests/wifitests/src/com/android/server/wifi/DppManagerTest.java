@@ -55,6 +55,8 @@ import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_SUCC
 import static android.net.wifi.WifiManager.EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1;
 import static android.net.wifi.WifiManager.EASY_CONNECT_NETWORK_ROLE_STA;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
@@ -156,9 +158,6 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.removeDppUri(anyString(), anyInt()))
                 .thenReturn(true);
 
-        // Return test interface name
-        when(mWifiNative.getClientInterfaceName()).thenReturn(TEST_INTERFACE_NAME);
-
         // Successfully start enrollee
         when(mWifiNative.startDppEnrolleeInitiator(anyString(), anyInt(), anyInt())).thenReturn(
                 true);
@@ -196,8 +195,9 @@ public class DppManagerTest extends WifiBaseTest {
         // Return NULL when for the selected network (invalid network)
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(null);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
@@ -207,6 +207,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(EasyConnectStatusCallback
                 .EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK));
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -224,8 +225,9 @@ public class DppManagerTest extends WifiBaseTest {
         // Fail to add Peer URI
         when(mWifiNative.addDppPeerUri(anyString(), anyString())).thenReturn(-1);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_URI), eq(null),
                 eq(null), eq(new int[0]));
@@ -236,6 +238,7 @@ public class DppManagerTest extends WifiBaseTest {
                 .EASY_CONNECT_EVENT_FAILURE_INVALID_URI));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -243,7 +246,9 @@ public class DppManagerTest extends WifiBaseTest {
         // Fail to add Peer URI
         when(mWifiNative.addDppPeerUri(anyString(), anyString())).thenReturn(-1);
 
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_URI), eq(null),
                 eq(null), eq(new int[0]));
@@ -254,6 +259,7 @@ public class DppManagerTest extends WifiBaseTest {
                 .EASY_CONNECT_EVENT_FAILURE_INVALID_URI));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -268,12 +274,13 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
+        assertFalse(mDppManager.isSessionInProgress());
         // Fail to start
         when(mWifiNative.startDppConfiguratorInitiator(anyString(), anyInt(), anyInt(), anyString(),
                 any(), any(), anyInt(), anyInt())).thenReturn(false);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -282,6 +289,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -290,7 +298,9 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.startDppEnrolleeInitiator(anyString(), anyInt(), anyInt())).thenReturn(
                 false);
 
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -299,6 +309,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -314,8 +325,9 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -324,6 +336,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(PSK));
         verify(mDppMetrics).updateDppConfiguratorInitiatorRequests();
         verifyNoMoreInteractions(mDppMetrics);
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -338,8 +351,9 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -348,6 +362,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(SAE));
         verify(mDppMetrics).updateDppConfiguratorInitiatorRequests();
         verifyNoMoreInteractions(mDppMetrics);
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -361,8 +376,9 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -371,6 +387,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(EasyConnectStatusCallback
                 .EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK));
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -384,8 +401,9 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -394,11 +412,14 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppFailure(eq(EasyConnectStatusCallback
                 .EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK));
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
     public void testStartDppAsEnrolleeInitiatorStartCorrectly() throws Exception {
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
@@ -406,6 +427,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(TEST_PEER_ID), anyInt());
         verify(mDppMetrics).updateDppEnrolleeInitiatorRequests();
         verifyNoMoreInteractions(mDppMetrics);
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -421,17 +443,19 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(anyInt())).thenReturn(
                 selectedNetwork);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppConfiguratorInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(SAE));
+        assertTrue(mDppManager.isSessionInProgress());
 
-        mDppManager.startDppAsConfiguratorInitiator(1, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallbackConcurrent);
+        mDppManager.startDppAsConfiguratorInitiator(1, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallbackConcurrent);
         verify(mDppCallbackConcurrent).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallbackConcurrent, never()).onSuccess(anyInt());
@@ -439,19 +463,24 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics, times(2)).updateDppConfiguratorInitiatorRequests();
         verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY));
         verifyNoMoreInteractions(mDppMetrics);
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
     public void testStartDppAsEnrolleeInitiatorStartCorrectlyAndRejectConcurrentRequest()
             throws Exception {
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
 
-        mDppManager.startDppAsEnrolleeInitiator(1, mBinder, mUri, mDppCallbackConcurrent);
+        mDppManager.startDppAsEnrolleeInitiator(1, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallbackConcurrent);
         verify(mDppCallbackConcurrent).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallbackConcurrent, never()).onSuccess(anyInt());
@@ -459,6 +488,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics, times(2)).updateDppEnrolleeInitiatorRequests();
         verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY));
         verifyNoMoreInteractions(mDppMetrics);
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -477,8 +507,9 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -487,6 +518,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(
                         SAE));
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -507,6 +539,7 @@ public class DppManagerTest extends WifiBaseTest {
                 .EASY_CONNECT_EVENT_SUCCESS_CONFIGURATION_SENT));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -515,13 +548,16 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
 
         // Generate an onSuccessConfigReceived callback
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
@@ -553,6 +589,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_INITIATOR);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -570,8 +607,9 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -580,6 +618,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(
                         SAE));
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -601,6 +640,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_INITIATOR);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -611,9 +651,6 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.removeDppUri(anyString(), anyInt()))
                 .thenReturn(true);
 
-        // Return test interface name
-        when(mWifiNative.getClientInterfaceName()).thenReturn(TEST_INTERFACE_NAME);
-
         // Successful start
         when(mWifiNative.startDppEnrolleeInitiator(anyString(), anyInt(), anyInt())).thenReturn(
                 true);
@@ -622,13 +659,16 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsEnrolleeInitiator(0, mBinder, mUri, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeInitiator(0, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -650,6 +690,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_INITIATOR);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -672,9 +713,6 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.removeDppUri(anyString(), anyInt()))
                 .thenReturn(true);
 
-        // Return test interface name
-        when(mWifiNative.getClientInterfaceName()).thenReturn(TEST_INTERFACE_NAME);
-
         // Successful start
         when(mWifiNative.startDppEnrolleeInitiator(anyString(), anyInt(), anyInt())).thenReturn(
                 true);
@@ -683,19 +721,23 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
+        assertFalse(mDppManager.isSessionInProgress());
         // Start with UID 10
-        mDppManager.startDppAsEnrolleeInitiator(10, mBinder, mUri, mDppCallback);
+        mDppManager.startDppAsEnrolleeInitiator(10, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
 
         // Check that nothing is removed or canceled
         mDppManager.stopDppSession(0);
         verify(mWifiNative, never()).removeDppUri(eq(TEST_INTERFACE_NAME), anyInt());
         verify(mWakeupMessage, never()).cancel();
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -707,9 +749,6 @@ public class DppManagerTest extends WifiBaseTest {
         when(mWifiNative.removeDppUri(anyString(), anyInt()))
                 .thenReturn(true);
 
-        // Return test interface name
-        when(mWifiNative.getClientInterfaceName()).thenReturn(TEST_INTERFACE_NAME);
-
         // Successful start
         when(mWifiNative.startDppEnrolleeInitiator(anyString(), anyInt(), anyInt())).thenReturn(
                 true);
@@ -718,19 +757,23 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
+        assertFalse(mDppManager.isSessionInProgress());
         // Start with UID 10
-        mDppManager.startDppAsEnrolleeInitiator(10, mBinder, mUri, mDppCallback);
+        mDppManager.startDppAsEnrolleeInitiator(10, TEST_INTERFACE_NAME, mBinder, mUri,
+                mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
 
         // Check that WifiNative is called to stop the DPP session
         mDppManager.stopDppSession(10);
         verify(mWifiNative).stopDppInitiator(eq(TEST_INTERFACE_NAME));
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_INITIATOR);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     private void verifyCleanUpResources(int authRole) {
@@ -884,8 +927,9 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -894,6 +938,7 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(
                         SAE));
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -923,6 +968,7 @@ public class DppManagerTest extends WifiBaseTest {
                 .EASY_CONNECT_EVENT_SUCCESS_CONFIGURATION_APPLIED));
         verify(mDppMetrics).updateDppOperationTime(anyInt());
         verifyNoMoreInteractions(mDppMetrics);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     private void testOnFailureCallback(int internalFailure, String ssid, String channelList,
@@ -940,8 +986,9 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, mBinder, mUri,
-                1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsConfiguratorInitiator(0, TEST_PACKAGE_NAME, TEST_INTERFACE_NAME,
+                mBinder, mUri, 1, EASY_CONNECT_NETWORK_ROLE_STA, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
@@ -949,6 +996,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mWifiNative).startDppConfiguratorInitiator(eq(TEST_INTERFACE_NAME),
                 eq(TEST_PEER_ID), anyInt(), eq(TEST_SSID_ENCODED), eq(TEST_PASSWORD_ENCODED), any(),
                 eq(EASY_CONNECT_NETWORK_ROLE_STA), eq(SAE));
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -970,6 +1018,7 @@ public class DppManagerTest extends WifiBaseTest {
         }
         verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_INITIATOR);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     private void testOnFailureCallback(int internalFailure, int appFailure) throws Exception {
@@ -983,13 +1032,15 @@ public class DppManagerTest extends WifiBaseTest {
                 new WifiNative.DppBootstrapQrCodeInfo();
         when(mWifiNative.generateDppBootstrapInfoForResponder(
                 anyString(), anyString(), anyInt())).thenReturn(bootStrapInfo);
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mDppCallback).onFailure(
                 eq(EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_URI_GENERATION),
                 eq(null), eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -997,42 +1048,49 @@ public class DppManagerTest extends WifiBaseTest {
         // Fail to start
         when(mWifiNative.startDppEnrolleeResponder(anyString(), anyInt())).thenReturn(false);
 
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mDppCallback).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectly() throws Exception {
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectlyAndRejectConcurrentRequest()
             throws Exception {
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        assertTrue(mDppManager.isSessionInProgress());
 
-        mDppManager.startDppAsEnrolleeResponder(1, mBinder, mDeviceInfo,
+        mDppManager.startDppAsEnrolleeResponder(1, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallbackConcurrent);
         verify(mDppCallbackConcurrent).onFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY), eq(null),
                 eq(null), eq(new int[0]));
         verify(mDppCallbackConcurrent, never()).onSuccess(anyInt());
         verify(mDppCallbackConcurrent, never()).onSuccessConfigReceived(anyInt());
+        assertTrue(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -1041,7 +1099,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
@@ -1049,6 +1108,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        assertTrue(mDppManager.isSessionInProgress());
 
         // Generate an onSuccessConfigReceived callback
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
@@ -1076,6 +1136,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -1084,7 +1145,8 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
-        mDppManager.startDppAsEnrolleeResponder(0, mBinder, mDeviceInfo,
+        assertFalse(mDppManager.isSessionInProgress());
+        mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
@@ -1092,6 +1154,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        assertTrue(mDppManager.isSessionInProgress());
 
         WifiNative.DppEventCallback dppEventCallback = dppEventCallbackCaptor.getValue();
 
@@ -1108,6 +1171,7 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 
     @Test
@@ -1117,8 +1181,9 @@ public class DppManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
 
+        assertFalse(mDppManager.isSessionInProgress());
         // Start with UID 10
-        mDppManager.startDppAsEnrolleeResponder(10, mBinder, mDeviceInfo,
+        mDppManager.startDppAsEnrolleeResponder(10, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
         verify(mWifiNative).registerDppEventCallback(dppEventCallbackCaptor.capture());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
@@ -1126,10 +1191,12 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        assertTrue(mDppManager.isSessionInProgress());
 
         // Check that WifiNative is called to stop the DPP session
         mDppManager.stopDppSession(10);
         verify(mWifiNative).stopDppResponder(eq(TEST_INTERFACE_NAME), eq(TEST_BOOTSTRAP_ID));
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
+        assertFalse(mDppManager.isSessionInProgress());
     }
 }

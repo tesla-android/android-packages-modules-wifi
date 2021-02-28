@@ -40,9 +40,6 @@ import android.os.IHwBinder.DeathRecipient;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.util.Log;
-import android.util.MutableBoolean;
-import android.util.MutableInt;
-import android.util.MutableLong;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -938,7 +935,7 @@ public class HalDeviceManager {
 
         synchronized (mLock) {
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 Mutable<ArrayList<Integer>> chipIdsResp = new Mutable<>();
 
                 // get all chip IDs
@@ -1046,7 +1043,7 @@ public class HalDeviceManager {
             }
 
             try {
-                MutableBoolean statusOk = new MutableBoolean(false);
+                Mutable<Boolean> statusOk = new Mutable<>(false);
                 Mutable<ArrayList<Integer>> chipIdsResp = new Mutable<>();
 
                 // get all chip IDs
@@ -1099,8 +1096,8 @@ public class HalDeviceManager {
                         return null;
                     }
 
-                    MutableBoolean currentModeValidResp = new MutableBoolean(false);
-                    MutableInt currentModeResp = new MutableInt(0);
+                    Mutable<Boolean> currentModeValidResp = new Mutable<>(false);
+                    Mutable<Integer> currentModeResp = new Mutable<>(0);
                     chipResp.value.getMode((WifiStatus status, int modeId) -> {
                         statusOk.value = status.code == WifiStatusCode.SUCCESS;
                         if (statusOk.value) {
@@ -1116,11 +1113,11 @@ public class HalDeviceManager {
                         return null;
                     }
 
-                    MutableLong chipCapabilities = new MutableLong(0);
+                    Mutable<Long> chipCapabilities = new Mutable<>(0L);
                     chipCapabilities.value = getChipCapabilities(chipResp.value);
 
                     Mutable<ArrayList<String>> ifaceNamesResp = new Mutable<>();
-                    MutableInt ifaceIndex = new MutableInt(0);
+                    Mutable<Integer> ifaceIndex = new Mutable<>(0);
 
                     chipResp.value.getStaIfaceNames(
                             (WifiStatus status, ArrayList<String> ifnames) -> {
@@ -1473,9 +1470,9 @@ public class HalDeviceManager {
             return results;
         }
 
-        MutableInt chipIdIfProvided = new MutableInt(0); // NOT using 0 as a magic value
+        Mutable<Integer> chipIdIfProvided = new Mutable<>(0); // NOT using 0 as a magic value
         if (chip != null) {
-            MutableBoolean statusOk = new MutableBoolean(false);
+            Mutable<Boolean> statusOk = new Mutable<>(false);
             try {
                 chip.getId((WifiStatus status, int id) -> {
                     if (status.code == WifiStatusCode.SUCCESS) {
@@ -2529,7 +2526,7 @@ public class HalDeviceManager {
 
     // Will return -1 for invalid results! Otherwise will return one of the 4 valid values.
     private static int getType(IWifiIface iface) {
-        MutableInt typeResp = new MutableInt(-1);
+        Mutable<Integer> typeResp = new Mutable<>(-1);
         try {
             iface.getType((WifiStatus status, int type) -> {
                 if (status.code == WifiStatusCode.SUCCESS) {
@@ -2573,7 +2570,7 @@ public class HalDeviceManager {
         if (wifiChip == null) return featureSet;
 
         try {
-            final MutableLong feat = new MutableLong(CHIP_CAPABILITY_UNINITIALIZED);
+            final Mutable<Long> feat = new Mutable<>(CHIP_CAPABILITY_UNINITIALIZED);
             synchronized (mLock) {
                 android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 =
                         getWifiChipForV1_5Mockable(wifiChip);
@@ -2581,7 +2578,7 @@ public class HalDeviceManager {
                 if (iWifiChipV15 != null) {
                     iWifiChipV15.getCapabilities_1_5((status, capabilities) -> {
                         if (!ok("getCapabilities_1_5", status)) return;
-                        feat.value = capabilities;
+                        feat.value = (long) capabilities;
                     });
                 }
             }

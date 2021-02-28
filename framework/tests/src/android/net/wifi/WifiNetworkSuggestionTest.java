@@ -315,6 +315,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testWifiNetworkSuggestionBuilderForWpa3EapNetworkWithStandardApi() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setCaCertificate(FakeKeys.CA_CERT0);
@@ -350,6 +351,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testWifiNetworkSuggestionBuilderForWpa3EapNetworkWithSuiteBRsaCerts() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setCaCertificate(FakeKeys.CA_SUITE_B_RSA3072_CERT);
@@ -388,6 +390,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testWifiNetworkSuggestionBuilderForWpa3EapNetworkWithSuiteBEccCerts() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setCaCertificate(FakeKeys.CA_SUITE_B_ECDSA_CERT);
@@ -460,6 +463,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testWifiNetworkSuggestionBuilderForWpa3SuiteBRsaEapNetworWith192BitApi() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setCaCertificate(FakeKeys.CA_SUITE_B_RSA3072_CERT);
@@ -530,6 +534,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testWifiNetworkSuggestionBuilderForWpa3SuiteBEccEapNetworkWith192BitApi() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setCaCertificate(FakeKeys.CA_SUITE_B_ECDSA_CERT);
@@ -582,6 +587,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test (expected = IllegalArgumentException.class)
     public void testWifiNetworkSuggestionBuilderForEapNetworkWithoutMatch() {
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TLS);
         enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.GTC);
@@ -817,6 +823,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test(expected = IllegalStateException.class)
     public void testWifiNetworkSuggestionBuilderWithBothWpa3PasphraseAndEnterprise() {
+        assumeTrue(SdkLevel.isAtLeastS());
         new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
                 .setWpa3Passphrase(TEST_PRESHARED_KEY)
@@ -890,6 +897,7 @@ public class WifiNetworkSuggestionTest {
      */
     @Test(expected = IllegalStateException.class)
     public void testWifiNetworkSuggestionBuilderWithBothEnterpriseAndPasspointConfig() {
+        assumeTrue(SdkLevel.isAtLeastS());
         PasspointConfiguration passpointConfiguration = PasspointTestUtils.createConfig();
         new WifiNetworkSuggestion.Builder()
                 .setWpa3EnterpriseStandardModeConfig(new WifiEnterpriseConfig())

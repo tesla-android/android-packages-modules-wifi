@@ -418,9 +418,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     /* Enable suspend mode optimizations in the driver */
     static final int CMD_SET_SUSPEND_OPT_ENABLED                        = BASE + 86;
 
-    /* Enable TDLS on a specific MAC address */
-    static final int CMD_ENABLE_TDLS                                    = BASE + 92;
-
     /**
      * Watchdog for protecting against b/16823537
      * Leave time for 4-way handshake to succeed
@@ -584,6 +581,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
 
     private final OnNetworkUpdateListener mOnNetworkUpdateListener;
+
+    private final OnCarrierOffloadDisabledListener mOnCarrierOffloadDisabledListener;
 
     private final WifiVcnNetworkPolicyListener mVcnPolicyListener =
             new WifiVcnNetworkPolicyListener();
@@ -753,6 +752,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         mOnNetworkUpdateListener = new OnNetworkUpdateListener();
         mWifiConfigManager.addOnNetworkUpdateListener(mOnNetworkUpdateListener);
+
+        mOnCarrierOffloadDisabledListener = new OnCarrierOffloadDisabledListener();
+        mWifiCarrierInfoManager.addOnCarrierOffloadDisabledListener(
+                mOnCarrierOffloadDisabledListener);
 
         mWifiNetworkSelector = wifiNetworkSelector;
         mWifiInjector = wifiInjector;
@@ -1040,6 +1043,25 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (disableReason == DISABLED_NO_INTERNET_PERMANENT) return;
             if (config.networkId == mTargetNetworkId || config.networkId == mLastNetworkId) {
                 // Disconnect and let autojoin reselect a new network
+                sendMessage(CMD_DISCONNECT);
+            }
+        }
+    }
+
+    private class OnCarrierOffloadDisabledListener implements
+            WifiCarrierInfoManager.OnCarrierOffloadDisabledListener {
+
+        @Override
+        public void onCarrierOffloadDisabled(int subscriptionId, boolean merged) {
+            int networkId = mTargetNetworkId == WifiConfiguration.INVALID_NETWORK_ID
+                    ? mLastNetworkId : mTargetNetworkId;
+            if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
+                return;
+            }
+            WifiConfiguration configuration = mWifiConfigManager.getConfiguredNetwork(networkId);
+            if (configuration.subscriptionId == subscriptionId
+                    && configuration.carrierMerged == merged) {
+                Log.i(getTag(), "Carrier network offload disabled, triggering disconnect");
                 sendMessage(CMD_DISCONNECT);
             }
         }
@@ -1369,6 +1391,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         quitNow();
 
         mWifiConfigManager.removeOnNetworkUpdateListener(mOnNetworkUpdateListener);
+        mWifiCarrierInfoManager
+                .removeOnCarrierOffloadDisabledListener(mOnCarrierOffloadDisabledListener);
         if (mVcnManager != null) {
             mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
             mVcnManager = null;
@@ -1523,8 +1547,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * Enable TDLS for a specific MAC address
      */
     public void enableTdls(String remoteMacAddress, boolean enable) {
-        int enabler = enable ? 1 : 0;
-        sendMessage(CMD_ENABLE_TDLS, enabler, 0, remoteMacAddress);
+        mWifiNative.startTdls(mInterfaceName, remoteMacAddress, enable);
     }
 
     /** Send a message indicating bluetooth connection state changed, e.g. connected/disconnected */
@@ -1919,8 +1942,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "CMD_DISCONNECT";
             case CMD_ENABLE_RSSI_POLL:
                 return "CMD_ENABLE_RSSI_POLL";
-            case CMD_ENABLE_TDLS:
-                return "CMD_ENABLE_TDLS";
             case CMD_INSTALL_PACKET_FILTER:
                 return "CMD_INSTALL_PACKET_FILTER";
             case CMD_IP_CONFIGURATION_LOST:
@@ -3586,14 +3607,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     }
                     break;
                 }
-                case CMD_ENABLE_TDLS: {
-                    if (message.obj != null) {
-                        String remoteAddress = (String) message.obj;
-                        boolean enable = (message.arg1 == 1);
-                        mWifiNative.startTdls(mInterfaceName, remoteAddress, enable);
-                    }
-                    break;
-                }
                 case WifiMonitor.ANQP_DONE_EVENT: {
                     mPasspointManager.notifyANQPDone((AnqpEvent) message.obj);
                     break;
@@ -4704,6 +4717,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // too many places to record connection failure with too many failure reasons.
             // So only record success here.
             mWifiMetrics.noteFirstL2ConnectionAfterBoot(true);
+
+            mCmiMonitor.onL2Connected(mClientModeManager);
         }
 
         @Override

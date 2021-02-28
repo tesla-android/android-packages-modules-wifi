@@ -54,8 +54,6 @@ import android.os.IHwBinder.DeathRecipient;
 import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.MutableBoolean;
-import android.util.MutableInt;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -2978,7 +2976,7 @@ public class SupplicantStaIfaceHal {
 
     private int getKeyMgmtCapabilities_1_3(@NonNull String ifaceName) {
         final String methodStr = "getKeyMgmtCapabilities_1_3";
-        MutableInt keyMgmtMask = new MutableInt(0);
+        Mutable<Integer> keyMgmtMask = new Mutable<>(0);
         ISupplicantStaIface iface = checkSupplicantStaIfaceAndLogFailure(ifaceName, methodStr);
         if (iface == null) {
             return 0;
@@ -3011,8 +3009,8 @@ public class SupplicantStaIfaceHal {
 
     private int getKeyMgmtCapabilities(@NonNull String ifaceName) {
         final String methodStr = "getKeyMgmtCapabilities";
-        MutableBoolean status = new MutableBoolean(false);
-        MutableInt keyMgmtMask = new MutableInt(0);
+        Mutable<Boolean> status = new Mutable<>(false);
+        Mutable<Integer> keyMgmtMask = new Mutable<>(0);
 
         if (isV1_3()) {
             keyMgmtMask.value = getKeyMgmtCapabilities_1_3(ifaceName);
@@ -3054,9 +3052,9 @@ public class SupplicantStaIfaceHal {
         return keyMgmtMask.value;
     }
 
-    private MutableInt getWpaDriverCapabilities_1_4(@NonNull String ifaceName) {
+    private Mutable<Integer> getWpaDriverCapabilities_1_4(@NonNull String ifaceName) {
         final String methodStr = "getWpaDriverCapabilities_1_4";
-        MutableInt drvCapabilitiesMask = new MutableInt(0);
+        Mutable<Integer> drvCapabilitiesMask = new Mutable<>(0);
         ISupplicantStaIface iface = checkSupplicantStaIfaceAndLogFailure(ifaceName, methodStr);
 
         if (null == iface) return drvCapabilitiesMask;
@@ -3086,9 +3084,9 @@ public class SupplicantStaIfaceHal {
         return drvCapabilitiesMask;
     }
 
-    private MutableInt getWpaDriverCapabilities_1_3(@NonNull String ifaceName) {
+    private Mutable<Integer> getWpaDriverCapabilities_1_3(@NonNull String ifaceName) {
         final String methodStr = "getWpaDriverCapabilities_1_3";
-        MutableInt drvCapabilitiesMask = new MutableInt(0);
+        Mutable<Integer> drvCapabilitiesMask = new Mutable<>(0);
         ISupplicantStaIface iface = checkSupplicantStaIfaceAndLogFailure(ifaceName, methodStr);
 
         if (null == iface) return drvCapabilitiesMask;
@@ -3123,7 +3121,7 @@ public class SupplicantStaIfaceHal {
      */
     public long getWpaDriverFeatureSet(@NonNull String ifaceName) {
         final String methodStr = "getWpaDriverFeatureSet";
-        MutableInt drvCapabilitiesMask = new MutableInt(0);
+        Mutable<Integer> drvCapabilitiesMask = new Mutable<>(0);
         long featureSet = 0;
 
         if (isV1_4()) {
@@ -3292,8 +3290,8 @@ public class SupplicantStaIfaceHal {
      */
     public int addDppPeerUri(@NonNull String ifaceName, @NonNull String uri) {
         final String methodStr = "addDppPeerUri";
-        MutableBoolean status = new MutableBoolean(false);
-        MutableInt bootstrapId = new MutableInt(-1);
+        Mutable<Boolean> status = new Mutable<>(false);
+        Mutable<Integer> bootstrapId = new Mutable<>(-1);
 
         if (!isV1_2()) {
             Log.e(TAG, "Method " + methodStr + " is not supported in existing HAL");
@@ -3512,7 +3510,7 @@ public class SupplicantStaIfaceHal {
             @NonNull String ifaceName, String macAddress, @NonNull String deviceInfo,
             int dppCurve) {
         final String methodStr = "generateDppBootstrapInfoForResponder";
-        MutableBoolean status = new MutableBoolean(false);
+        Mutable<Boolean> status = new Mutable<>(false);
         WifiNative.DppBootstrapQrCodeInfo bootstrapInfoOut =
                 new WifiNative.DppBootstrapQrCodeInfo();
 

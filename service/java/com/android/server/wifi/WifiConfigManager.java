@@ -835,7 +835,7 @@ public class WifiConfigManager {
                 return null;
         }
         internalConfig = mConfiguredNetworks.getByConfigKeyForCurrentUser(
-                possibleExistingConfig.getProfileKey());
+                possibleExistingConfig.getProfileKeyInternal());
         return internalConfig;
     }
 

@@ -27,8 +27,8 @@ import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERTaggedObject;
 import org.bouncycastle.asn1.DERUTF8String;
+import org.bouncycastle.asn1.DLTaggedObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -123,11 +123,11 @@ public class ServiceProviderVerifier {
                 byte[] octets = (byte[]) entry.toArray()[1];
                 ASN1Encodable obj = new ASN1InputStream(octets).readObject();
 
-                if (!(obj instanceof DERTaggedObject)) {
+                if (!(obj instanceof DLTaggedObject)) {
                     continue;
                 }
 
-                DERTaggedObject taggedObject = (DERTaggedObject) obj;
+                DLTaggedObject taggedObject = (DLTaggedObject) obj;
                 ASN1Encodable encodedObject = taggedObject.getObject();
 
                 if (!(encodedObject instanceof ASN1Sequence)) {
@@ -148,11 +148,11 @@ public class ServiceProviderVerifier {
 
                 for (int index = 1; index < innerSequence.size(); index++) {
                     innerObject = innerSequence.getObjectAt(index);
-                    if (!(innerObject instanceof DERTaggedObject)) {
+                    if (!(innerObject instanceof DLTaggedObject)) {
                         continue;
                     }
 
-                    DERTaggedObject innerSequenceObj = (DERTaggedObject) innerObject;
+                    DLTaggedObject innerSequenceObj = (DLTaggedObject) innerObject;
                     ASN1Encodable innerSequenceEncodedObject = innerSequenceObj.getObject();
 
                     if (!(innerSequenceEncodedObject instanceof DERUTF8String)) {

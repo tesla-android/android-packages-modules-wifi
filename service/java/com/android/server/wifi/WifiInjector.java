@@ -409,10 +409,12 @@ public class WifiInjector {
         mDefaultClientModeManager = new DefaultClientModeManager();
         mExternalScoreUpdateObserverProxy =
                 new ExternalScoreUpdateObserverProxy(mWifiThreadRunner);
+        mDppManager = new DppManager(wifiHandler, mWifiNative,
+                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy, mWifiPermissionsUtil);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper,
                 mWifiNative, mDefaultClientModeManager, mBatteryStats, mWifiDiagnostics,
                 mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics,
-                mExternalScoreUpdateObserverProxy);
+                mExternalScoreUpdateObserverProxy, mDppManager);
         mWifiP2pConnection = new WifiP2pConnection(mContext, wifiLooper, mActiveModeWarden);
         mConnectHelper = new ConnectHelper(mActiveModeWarden, mWifiConfigManager);
         mBroadcastQueue = new ClientModeManagerBroadcastQueue(mActiveModeWarden, mContext);
@@ -486,8 +488,6 @@ public class WifiInjector {
                 mFrameworkFacade, wifiHandler, mClock, mWifiMetrics);
         mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock);
         mWifiMulticastLockManager = new WifiMulticastLockManager(mActiveModeWarden, mBatteryStats);
-        mDppManager = new DppManager(wifiHandler, mWifiNative,
-                mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy, mWifiPermissionsUtil);
 
         // Register the various network Nominators with the network selector.
         mWifiNetworkSelector.registerNetworkNominator(mSavedNetworkNominator);
@@ -676,7 +676,8 @@ public class WifiInjector {
                 mFrameworkFacade, mWifiNative, mCoexManager, mCountryCode.getCountryCode(),
                 listener, callback, mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
                 new SoftApNotifier(mContext, mFrameworkFacade, mWifiNotificationManager),
-                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
+                mCmiMonitor, mActiveModeWarden, mClock.getElapsedSinceBootMillis(),
+                requestorWs, role, verboseLoggingEnabled);
     }
 
     /**
@@ -791,11 +792,19 @@ public class WifiInjector {
     }
 
     /**
-     *
+     * Construct an instance of {@link WifiCarrierInfoStoreManagerData}
      */
     public WifiCarrierInfoStoreManagerData makeWifiCarrierInfoStoreManagerData(
             WifiCarrierInfoStoreManagerData.DataSource dataSource) {
         return new WifiCarrierInfoStoreManagerData(dataSource);
+    }
+
+    /**
+     * Construct an instance of {@link ImsiPrivacyProtectionExemptionStoreData}
+     */
+    public ImsiPrivacyProtectionExemptionStoreData makeImsiPrivacyProtectionExemptionStoreData(
+            ImsiPrivacyProtectionExemptionStoreData.DataSource dataSource) {
+        return new ImsiPrivacyProtectionExemptionStoreData(dataSource);
     }
 
     /**
