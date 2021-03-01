@@ -7159,18 +7159,34 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.getSupportedFeatures())
                 .thenReturn(supportedFeaturesFromClientModeManager);
 
-        when(mActiveModeWarden.isStaStaConcurrencySupported())
-                .thenReturn(false);
         mLooper.startAutoDispatch();
         assertEquals(supportedFeaturesFromClientModeManager,
                 mWifiServiceImpl.getSupportedFeatures());
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
-        when(mActiveModeWarden.isStaStaConcurrencySupported())
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForLocalOnlyConnections())
                 .thenReturn(true);
         mLooper.startAutoDispatch();
         assertEquals(supportedFeaturesFromClientModeManager
-                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA,
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY,
+                mWifiServiceImpl.getSupportedFeatures());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForMbb()).thenReturn(true);
+        mLooper.startAutoDispatch();
+        assertEquals(supportedFeaturesFromClientModeManager
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB,
+                mWifiServiceImpl.getSupportedFeatures());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections())
+                .thenReturn(true);
+        mLooper.startAutoDispatch();
+        assertEquals(supportedFeaturesFromClientModeManager
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED,
                 mWifiServiceImpl.getSupportedFeatures());
         mLooper.stopAutoDispatchAndIgnoreExceptions();
     }

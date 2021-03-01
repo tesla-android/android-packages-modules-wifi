@@ -36,7 +36,9 @@ import static android.net.wifi.WifiManager.STATUS_SUGGESTION_CONNECTION_FAILURE_
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_FAILED;
-import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_AP_STA;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
@@ -2227,18 +2229,27 @@ public class WifiManagerTest {
     }
 
     /**
-     * Test behavior of isMultiStaConcurrencySupported
+     * Test behavior of isStaConcurrencySupported
      */
     @Test
-    public void testIsMultiStaConcurrencyOpenSupported() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
+    public void testIsStaConcurrencySupported() throws Exception {
+        when(mWifiService.getSupportedFeatures()).thenReturn(0L);
+        assertFalse(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
+        assertFalse(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
+        assertFalse(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
 
         when(mWifiService.getSupportedFeatures())
-                .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA));
-        assertTrue(mWifiManager.isMultiStaConcurrencySupported());
+                .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY));
+        assertTrue(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
+        assertFalse(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
+        assertFalse(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
+
         when(mWifiService.getSupportedFeatures())
-                .thenReturn(new Long(~WIFI_FEATURE_ADDITIONAL_STA));
-        assertFalse(mWifiManager.isMultiStaConcurrencySupported());
+                .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA_MBB
+                        | WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED));
+        assertFalse(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
+        assertTrue(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
+        assertTrue(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
     }
 
     /**

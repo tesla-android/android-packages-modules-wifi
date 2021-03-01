@@ -766,13 +766,13 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * network configuration of the device. This network is typically only available to system
          * apps.
          * <li>On devices which do not support concurrent connection (indicated via
-         * {@link WifiManager#isMultiStaConcurrencySupported()}, Wi-Fi network selection process may
-         * use this information to influence priority of the suggested network for Wi-Fi network
-         * selection (most likely to reduce it).
-         * <li>On devices which support more than 1 concurrent connections (indicated via
-         * {@link WifiManager#isMultiStaConcurrencySupported()}, these OEM paid networks will be
-         * brought up as a secondary concurrent connection (primary connection will be used
-         * for networks available to the user and all apps.
+         * {@link WifiManager#isStaConcurrencyForRestrictedConnectionsSupported()}), Wi-Fi
+         * network selection process may use this information to influence priority of the
+         * suggested network for Wi-Fi network selection (most likely to reduce it).
+         * <li>On devices which support concurrent connections (indicated via
+         * {@link WifiManager#isStaConcurrencyForRestrictedConnectionsSupported()}), these
+         * OEM paid networks may be brought up as a secondary concurrent connection (primary
+         * connection will be used for networks available to the user and all apps.
          * <p>
          * <li> An OEM paid network's credentials may not be shared with the user using
          * {@link #setCredentialSharedWithUser(boolean)}.</li>
@@ -808,13 +808,13 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * network configuration of the device. This network is typically only available to system
          * apps.
          * <li>On devices which do not support concurrent connection (indicated via
-         * {@link WifiManager#isMultiStaConcurrencySupported()}, Wi-Fi network selection process may
-         * use this information to influence priority of the suggested network for Wi-Fi network
-         * selection (most likely to reduce it).
-         * <li>On devices which support more than 1 concurrent connections (indicated via
-         * {@link WifiManager#isMultiStaConcurrencySupported()}, these OEM private networks will be
-         * brought up as a secondary concurrent connection (primary connection will be used
-         * for networks available to the user and all apps.
+         * {@link WifiManager#isStaConcurrencyForRestrictedConnectionsSupported()}), Wi-Fi
+         * network selection process may use this information to influence priority of the suggested
+         * network for Wi-Fi network selection (most likely to reduce it).
+         * <li>On devices which support concurrent connections (indicated via
+         * {@link WifiManager#isStaConcurrencyForRestrictedConnectionsSupported()}), these OEM
+         * private networks may be brought up as a secondary concurrent connection (primary
+         * connection will be used for networks available to the user and all apps.
          * <p>
          * <li> An OEM private network's credentials may not be shared with the user using
          * {@link #setCredentialSharedWithUser(boolean)}.</li>

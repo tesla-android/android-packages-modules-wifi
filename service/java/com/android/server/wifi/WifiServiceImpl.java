@@ -4140,10 +4140,14 @@ public class WifiServiceImpl extends BaseWifiService {
                     if (mActiveModeWarden.isStaApConcurrencySupported()) {
                         concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_AP_STA;
                     }
-                    // New feature flag in S.
-                    if (SdkLevel.isAtLeastS()
-                            && mActiveModeWarden.isStaStaConcurrencySupported()) {
-                        concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA;
+                    if (mActiveModeWarden.isStaStaConcurrencySupportedForLocalOnlyConnections()) {
+                        concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY;
+                    }
+                    if (mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
+                        concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB;
+                    }
+                    if (mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections()) {
+                        concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
                     }
                     return concurrencyFeatureSet;
                 }, 0L);

@@ -2497,6 +2497,7 @@ public class WifiManager {
         return isWifiEnabled();
     }
 
+    /** TODO(b/181364583): Convert all of these to 1 << X form. */
     /** @hide */
     public static final long WIFI_FEATURE_INFRA            = 0x0001L;  // Basic infrastructure mode
     /** @hide */
@@ -2518,7 +2519,7 @@ public class WifiManager {
     /** @hide */
     public static final long WIFI_FEATURE_PNO              = 0x0400L;  // Preferred network offload
     /** @hide */
-    public static final long WIFI_FEATURE_ADDITIONAL_STA   = 0x0800L;  // Support for two STAs
+    public static final long WIFI_FEATURE_ADDITIONAL_STA   = 0x0800L;  // (unused)
     /** @hide */
     public static final long WIFI_FEATURE_TDLS             = 0x1000L;  // Tunnel directed link setup
     /** @hide */
@@ -2590,6 +2591,25 @@ public class WifiManager {
     /** @hide */
     public static final long WIFI_FEATURE_INFRA_60G        = 0x80000000000L; // 60 GHz Band Support
 
+    /**
+     * Support for 2 STA's for the local-only (peer to peer) connection + internet connection
+     * concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY = 0x100000000000L;
+
+    /**
+     * Support for 2 STA's for the make before break concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_MBB = 0x200000000000L;
+
+    /**
+     * Support for 2 STA's for the restricted connection + internet connection concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED = 0x400000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -2644,7 +2664,7 @@ public class WifiManager {
     }
 
     /**
-     * Query whether the device supports Station (STA) + Access point (AP) concurrency or not.
+     * Query whether or not the device supports Station (STA) + Access point (AP) concurrency.
      *
      * @return true if this device supports STA + AP concurrency, false otherwise.
      */
@@ -2653,15 +2673,41 @@ public class WifiManager {
     }
 
     /**
-     * Query whether the device supports 2 or more concurrent stations (STA) or not.
+     * Query whether or not the device supports concurrent station (STA) connections for local-only
+     * connections using {@link WifiNetworkSpecifier}.
      *
-     * @return true if this device supports multiple STA concurrency, false otherwise.
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
      */
-    public boolean isMultiStaConcurrencySupported() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA);
+    public boolean isStaConcurrencyForLocalOnlyConnectionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for
+     * make-before-break wifi to wifi switching.
+     *
+     * Note: This is an internal feature which is not available to apps.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     */
+    public boolean isMakeBeforeBreakWifiSwitchingSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_MBB);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for restricted
+     * connections using {@link WifiNetworkSuggestion.Builder#setOemPaid(boolean)} /
+     * {@link WifiNetworkSuggestion.Builder#setOemPrivate(boolean)}.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     * @hide
+     */
+    @SystemApi
+    public boolean isStaConcurrencyForRestrictedConnectionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED);
     }
 
     /**
@@ -3001,10 +3047,10 @@ public class WifiManager {
      * such as ability to mask out location sensitive data in WifiInfo will not be supported
      * via this API. </li>
      * <li>On devices supporting concurrent connections (indicated via
-     * {@link #isMultiStaConcurrencySupported()}), this API will return the details
-     * of the internet providing connection (if any) to all apps, except for the apps that triggered
-     * the creation of the concurrent connection. For such apps, this API will return the details of
-     * the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * {@link #isStaConcurrencyForLocalOnlyConnectionsSupported()}, etc) this API will return
+     * the details of the internet providing connection (if any) to all apps, except for the apps
+     * that triggered the creation of the concurrent connection. For such apps, this API will return
+     * the details of the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
      * trigger a concurrent connection on supported devices and hence this API will provide
      * details of their peer to peer connection (not the internet providing connection). This
      * is to maintain backwards compatibility with behavior on single STA devices.</li>
@@ -3152,10 +3198,10 @@ public class WifiManager {
      * <p>
      * <b>Compatibility Notes:</b>
      * <li>On devices supporting concurrent connections (indicated via
-     * {@link #isMultiStaConcurrencySupported()}), this API will return the details
-     * of the internet providing connection (if any) to all apps, except for the apps that triggered
-     * the creation of the concurrent connection. For such apps, this API will return the details of
-     * the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * {@link #isStaConcurrencyForLocalOnlyConnectionsSupported()}, etc), this API will return
+     * the details of the internet providing connection (if any) to all apps, except for the apps
+     * that triggered the creation of the concurrent connection. For such apps, this API will return
+     * the details of the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
      * trigger a concurrent connection on supported devices and hence this API will provide
      * details of their peer to peer connection (not the internet providing connection). This
      * is to maintain backwards compatibility with behavior on single STA devices.</li>
