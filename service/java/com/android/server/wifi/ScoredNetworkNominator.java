@@ -51,6 +51,11 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
             "use_open_wifi_package";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
 
+    /**
+     * Attribution tag used for checks on the scorers access to location permissions.
+     */
+    private static final String ATTRIBUTION_FEATURE_ID = "system_scored_network_nominator";
+
     private final NetworkScoreManager mNetworkScoreManager;
     private final PackageManager mPackageManager;
     private final WifiConfigManager mWifiConfigManager;
@@ -132,7 +137,8 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
         try {
             // TODO moltmann: Can we set a featureID here instead of null?
             mWifiPermissionsUtil.enforceCanAccessScanResults(
-                    scorerUidAndPackage.second, null, scorerUidAndPackage.first, null);
+                    scorerUidAndPackage.second, ATTRIBUTION_FEATURE_ID,
+                    scorerUidAndPackage.first, null);
             return true;
         } catch (SecurityException e) {
             return false;
