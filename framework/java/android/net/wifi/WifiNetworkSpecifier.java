@@ -36,6 +36,13 @@ import java.util.Objects;
 /**
  * Network specifier object used to request a local Wi-Fi network. Apps should use the
  * {@link WifiNetworkSpecifier.Builder} class to create an instance.
+ * <p>
+ * On devices which support concurrent connections (indicated via
+ * {@link WifiManager#isStaConcurrencyForLocalOnlyConnectionsSupported()}, these local only
+ * connections may be brought up as a secondary concurrent connection (primary
+ * connection will be used for networks with internet connectivity available to the user and all
+ * apps).
+ * </p>
  */
 public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parcelable {
     private static final String TAG = "WifiNetworkSpecifier";

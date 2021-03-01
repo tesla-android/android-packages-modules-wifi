@@ -2559,11 +2559,30 @@ public class ActiveModeWardenTest extends WifiBaseTest {
 
     @Test
     public void isStaStaConcurrencySupported() throws Exception {
+        // STA + STA not supported.
         when(mWifiNative.isStaStaConcurrencySupported()).thenReturn(false);
-        assertFalse(mActiveModeWarden.isStaStaConcurrencySupported());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForLocalOnlyConnections());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForMbb());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections());
 
+        // STA + STA supported, but no use-cases enabled.
         when(mWifiNative.isStaStaConcurrencySupported()).thenReturn(true);
-        assertTrue(mActiveModeWarden.isStaStaConcurrencySupported());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForLocalOnlyConnections());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForMbb());
+        assertFalse(mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections());
+
+        when(mResources.getBoolean(R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.isStaStaConcurrencySupportedForLocalOnlyConnections());
+
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.isStaStaConcurrencySupportedForMbb());
+
+        when(mResources.getBoolean(R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections());
     }
 
     private void requestRemoveAdditionalClientModeManager(

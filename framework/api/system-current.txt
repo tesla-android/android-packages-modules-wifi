@@ -508,6 +508,7 @@ package android.net.wifi {
     method public boolean isConnectedMacRandomizationSupported();
     method @Deprecated public boolean isDeviceToDeviceRttSupported();
     method public boolean isPortableHotspotSupported();
+    method public boolean isStaConcurrencyForRestrictedConnectionsSupported();
     method public boolean isVerboseLoggingEnabled();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isWifiApEnabled();
     method public boolean isWifiScannerSupported();

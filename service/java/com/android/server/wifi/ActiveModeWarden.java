@@ -435,7 +435,8 @@ public class ActiveModeWarden {
                     R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled);
         }
         if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
-            return isMakeBeforeBreakEnabled();
+            return mContext.getResources().getBoolean(
+                    R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled);
         }
         if (clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
             return mContext.getResources().getBoolean(
@@ -461,10 +462,33 @@ public class ActiveModeWarden {
     }
 
     /**
-     * @return Returns whether the device can support at least two concurrent client mode managers.
+     * @return Returns whether the device can support at least two concurrent client mode managers
+     * and the local only use-case is enabled.
      */
-    public boolean isStaStaConcurrencySupported() {
-        return mWifiNative.isStaStaConcurrencySupported();
+    public boolean isStaStaConcurrencySupportedForLocalOnlyConnections() {
+        return mWifiNative.isStaStaConcurrencySupported()
+                && mContext.getResources().getBoolean(
+                        R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled);
+    }
+
+    /**
+     * @return Returns whether the device can support at least two concurrent client mode managers
+     * and the mbb wifi switching is enabled.
+     */
+    public boolean isStaStaConcurrencySupportedForMbb() {
+        return mWifiNative.isStaStaConcurrencySupported()
+                && mContext.getResources().getBoolean(
+                        R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled);
+    }
+
+    /**
+     * @return Returns whether the device can support at least two concurrent client mode managers
+     * and the restricted use-case is enabled.
+     */
+    public boolean isStaStaConcurrencySupportedForRestrictedConnections() {
+        return mWifiNative.isStaStaConcurrencySupported()
+                && mContext.getResources().getBoolean(
+                        R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled);
     }
 
     /** Begin listening to broadcasts and start the internal state machine. */
@@ -1106,10 +1130,12 @@ public class ActiveModeWarden {
             manager.dump(fd, pw, args);
         }
         mGraveyard.dump(fd, pw, args);
-        boolean isStaStaConcurrencySupported = isStaStaConcurrencySupported();
+        boolean isStaStaConcurrencySupported = mWifiNative.isStaStaConcurrencySupported();
         pw.println("STA + STA Concurrency Supported: " + isStaStaConcurrencySupported);
         if (isStaStaConcurrencySupported) {
-            pw.println("   MBB use-case enabled: " + isMakeBeforeBreakEnabled());
+            pw.println("   MBB use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled));
             pw.println("   Local only use-case enabled: "
                     + mContext.getResources().getBoolean(
                             R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled));
@@ -1342,19 +1368,13 @@ public class ActiveModeWarden {
         mBatteryStatsManager.reportWifiState(BatteryStatsManager.WIFI_STATE_OFF_SCANNING, null);
     }
 
-    public boolean isMakeBeforeBreakEnabled() {
-        return mContext.getResources().getBoolean(
-                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled);
-    }
-
     /**
      * Called to pull metrics from ActiveModeWarden to WifiMetrics when a dump is triggered, as
      * opposed to the more common push metrics which are reported to WifiMetrics as soon as they
      * occur.
      */
     public void updateMetrics() {
-        mWifiMetrics.setIsMakeBeforeBreakSupported(
-                isStaStaConcurrencySupported() && isMakeBeforeBreakEnabled());
+        mWifiMetrics.setIsMakeBeforeBreakSupported(isStaStaConcurrencySupportedForMbb());
     }
 
     /**

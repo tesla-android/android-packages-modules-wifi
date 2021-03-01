@@ -420,7 +420,7 @@ public class WifiConnectivityManager {
         // We have an oem paid/private network request and device supports STA + STA, check if there
         // are oem paid/private suggestions.
         if ((mOemPaidConnectionAllowed || mOemPrivateConnectionAllowed)
-                && mActiveModeWarden.isStaStaConcurrencySupported()) {
+                && mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections()) {
             // Split the candidates based on whether they are oem paid/oem private or not.
             Map<Boolean, List<WifiCandidates.Candidate>> candidatesPartitioned =
                     candidates.stream()
