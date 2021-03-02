@@ -1369,10 +1369,10 @@ public class WifiVendorHalTest extends WifiBaseTest {
      */
     private static void randomizeContentionTimeStats(Random r,
             StaLinkLayerIfaceContentionTimeStats cstats) {
-        cstats.contentionTimeMinInUsec = r.nextLong() & 0xFFFFFFFFFFL; // more than 32 bits
-        cstats.contentionTimeMaxInUsec = r.nextLong() & 0xFFFFFFFFFFL;
-        cstats.contentionTimeAvgInUsec = r.nextLong() & 0xFFFFFFFFFFL;
-        cstats.contentionNumSamples = r.nextLong() & 0xFFFFFFFFFFL;
+        cstats.contentionTimeMinInUsec = r.nextInt() & 0x7FFFFFFF;
+        cstats.contentionTimeMaxInUsec = r.nextInt() & 0x7FFFFFFF;
+        cstats.contentionTimeAvgInUsec = r.nextInt() & 0x7FFFFFFF;
+        cstats.contentionNumSamples = r.nextInt() & 0x7FFFFFFF;
     }
 
     /**
