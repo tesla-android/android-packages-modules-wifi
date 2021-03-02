@@ -29,6 +29,8 @@ import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import static java.lang.Math.toIntExact;
+
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
@@ -94,6 +96,7 @@ import org.xmlpull.v1.XmlSerializer;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -101,6 +104,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiNetworkFactory}.
@@ -140,13 +144,14 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Mock PackageManager mPackageManager;
     @Mock IBinder mAppBinder;
     @Mock INetworkRequestMatchCallback mNetworkRequestMatchCallback;
-    @Mock ClientModeManager mClientModeManager;
+    @Mock ConcreteClientModeManager mClientModeManager;
     @Mock ConnectivityManager mConnectivityManager;
     @Mock WifiMetrics mWifiMetrics;
     @Mock NetworkProvider mNetworkProvider;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ConnectHelper mConnectHelper;
     @Mock PowerManager mPowerManager;
+    @Mock ClientModeImplMonitor mCmiMonitor;
     private @Mock ClientModeManager mPrimaryClientModeManager;
     private @Mock WifiGlobals mWifiGlobals;
     private MockitoSession mStaticMockSession = null;
@@ -172,6 +177,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     ArgumentCaptor<ActiveModeWarden.ModeChangeCallback> mModeChangeCallbackCaptor =
             ArgumentCaptor.forClass(ActiveModeWarden.ModeChangeCallback.class);
     @Captor ArgumentCaptor<BroadcastReceiver> mBroadcastReceiverCaptor;
+    @Captor ArgumentCaptor<ClientModeImplListener> mCmiListenerCaptor;
     InOrder mInOrder;
 
     private WifiNetworkFactory mWifiNetworkFactory;
@@ -245,7 +251,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 mNetworkCapabilities, mActivityManager, mAlarmManager, mAppOpsManager,
                 mClock, mWifiInjector, mWifiConnectivityManager,
                 mWifiConfigManager, mWifiConfigStore, mWifiPermissionsUtil, mWifiMetrics,
-                mActiveModeWarden, mConnectHelper);
+                mActiveModeWarden, mConnectHelper, mCmiMonitor);
 
         verify(mContext, atLeastOnce()).registerReceiver(
                 mBroadcastReceiverCaptor.capture(), any(), any(), any());
@@ -1823,7 +1829,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Now release the active network request.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
-        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccess();
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
         // Ensure that we toggle auto-join state.
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(true);
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
@@ -1833,7 +1839,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
      * Verify handling of connection success.
      */
     @Test
-    public void testNetworkSpecifierHandleConnectionSuccessOnSecondaryClientModeManager()
+    public void testNetworkSpecifierHandleConnectionSuccessOnSecondaryCmm()
             throws Exception {
         when(mClientModeManager.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY);
         sendNetworkRequestAndSetupForConnectionStatus();
@@ -1852,7 +1858,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Now release the active network request.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
-        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccess();
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
         // Don't toggle auto-join state.
         verify(mWifiConnectivityManager, never()).setSpecificNetworkRequestInProgress(anyBoolean());
     }
@@ -1876,7 +1882,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // verify we canceled the timeout alarm.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
 
-        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccess();
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
         verify(mNetworkRequestMatchCallback, atLeastOnce()).asBinder();
 
         // Send second network connection success indication which should be ignored.
@@ -1906,7 +1912,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // verify we canceled the timeout alarm.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
 
-        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccess();
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
         verify(mNetworkRequestMatchCallback, atLeastOnce()).asBinder();
 
         // Send a network connection failure indication which should be ignored (beyond the retry
@@ -2014,6 +2020,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
      */
     @Test
     public void testHandleNetworkReleaseWithSpecifierAfterConnectionSuccess() throws Exception {
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
         sendNetworkRequestAndSetupForConnectionStatus();
 
         // Send network connection success indication.
@@ -2026,6 +2033,10 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 argThat(new WifiConfigMatcher(mSelectedNetwork)));
         // verify we canceled the timeout alarm.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
+
+        long connectionDurationMillis = 5665L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(connectionDurationMillis);
 
         // Now release the network request.
         WifiConfiguration wcmNetwork = new WifiConfiguration(mSelectedNetwork);
@@ -2045,7 +2056,148 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Re-enable connectivity manager .
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
+        verify(mWifiMetrics).incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(
+                toIntExact(TimeUnit.MILLISECONDS.toSeconds(connectionDurationMillis)));
     }
+
+    /**
+     * Verify handling of request release after connecting to the network.
+     */
+    @Test
+    public void testHandleNetworkReleaseWithSpecifierAfterConnectionSuccessOnSecondaryCmm()
+            throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        sendNetworkRequestAndSetupForConnectionStatus();
+
+        // Send network connection success indication.
+        assertNotNull(mSelectedNetwork);
+        mWifiNetworkFactory.handleConnectionAttemptEnded(
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
+
+        // Verify that we sent the connection success callback.
+        verify(mNetworkRequestMatchCallback).onUserSelectionConnectSuccess(
+                argThat(new WifiConfigMatcher(mSelectedNetwork)));
+        // verify we canceled the timeout alarm.
+        verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
+
+        // Now release the network request.
+        long connectionDurationMillis = 5665L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(connectionDurationMillis);
+        WifiConfiguration wcmNetwork = new WifiConfiguration(mSelectedNetwork);
+        wcmNetwork.networkId = TEST_NETWORK_ID_1;
+        wcmNetwork.creatorUid = TEST_UID_1;
+        wcmNetwork.creatorName = TEST_PACKAGE_NAME_1;
+        wcmNetwork.shared = false;
+        wcmNetwork.fromWifiNetworkSpecifier = true;
+        wcmNetwork.ephemeral = true;
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+                .thenReturn(wcmNetwork);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
+        // Verify that we triggered a disconnect.
+        verify(mClientModeManager, times(2)).disconnect();
+        verify(mWifiConfigManager).removeNetwork(
+                TEST_NETWORK_ID_1, TEST_UID_1, TEST_PACKAGE_NAME_1);
+        // Re-enable connectivity manager .
+        verify(mActiveModeWarden).removeClientModeManager(any());
+        verify(mWifiMetrics)
+                .incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(
+                        toIntExact(TimeUnit.MILLISECONDS.toSeconds(connectionDurationMillis)));
+    }
+
+    @Test
+    public void testMetricsUpdateForConcurrentConnections() throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY);
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Arrays.asList(mClientModeManager));
+
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        sendNetworkRequestAndSetupForConnectionStatus();
+
+        // Send network connection success indication.
+        assertNotNull(mSelectedNetwork);
+        mWifiNetworkFactory.handleConnectionAttemptEnded(
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
+
+        verify(mCmiMonitor).registerListener(mCmiListenerCaptor.capture());
+
+        // Verify that we sent the connection success callback.
+        verify(mNetworkRequestMatchCallback).onUserSelectionConnectSuccess(
+                argThat(new WifiConfigMatcher(mSelectedNetwork)));
+        // verify we canceled the timeout alarm.
+        verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
+
+        // Indicate secondary connection via CMI listener.
+        when(mClientModeManager.isConnected()).thenReturn(true);
+        mCmiListenerCaptor.getValue().onL3Connected(mClientModeManager);
+
+        // Now indicate connection on the primary STA.
+        ConcreteClientModeManager primaryCmm = mock(ConcreteClientModeManager.class);
+        when(primaryCmm.isConnected()).thenReturn(true);
+        when(primaryCmm.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_PRIMARY);
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Arrays.asList(mClientModeManager, primaryCmm));
+        mCmiListenerCaptor.getValue().onL3Connected(primaryCmm);
+
+        // verify metrics update for concurrent connection count.
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConcurrentConnection();
+
+        // Now indicate end of connection on primary STA
+        long primaryConnectionDurationMillis1 = 5665L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(primaryConnectionDurationMillis1);
+        when(primaryCmm.isConnected()).thenReturn(false);
+        mCmiListenerCaptor.getValue().onConnectionEnd(primaryCmm);
+        // verify metrics update for concurrent connection duration.
+        verify(mWifiMetrics)
+                .incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(
+                        toIntExact(TimeUnit.MILLISECONDS.toSeconds(
+                                primaryConnectionDurationMillis1)));
+
+        // Indicate a new connection on primary STA.
+        when(primaryCmm.isConnected()).thenReturn(true);
+        mCmiListenerCaptor.getValue().onL3Connected(primaryCmm);
+
+        // verify that we did not update metrics gain for concurrent connection count.
+        verify(mWifiMetrics, times(1)).incrementNetworkRequestApiNumConcurrentConnection();
+
+        // Now indicate end of new connection on primary STA
+        long primaryConnectionDurationMillis2 = 5665L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(primaryConnectionDurationMillis2);
+        when(primaryCmm.isConnected()).thenReturn(false);
+        mCmiListenerCaptor.getValue().onConnectionEnd(primaryCmm);
+        // verify metrics update for concurrent connection duration.
+        verify(mWifiMetrics)
+                .incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(
+                        toIntExact(TimeUnit.MILLISECONDS.toSeconds(
+                                primaryConnectionDurationMillis2)));
+
+        // Now release the network request.
+        long secondaryConnectionDurationMillis = 5665L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(secondaryConnectionDurationMillis);
+        WifiConfiguration wcmNetwork = new WifiConfiguration(mSelectedNetwork);
+        wcmNetwork.networkId = TEST_NETWORK_ID_1;
+        wcmNetwork.creatorUid = TEST_UID_1;
+        wcmNetwork.creatorName = TEST_PACKAGE_NAME_1;
+        wcmNetwork.shared = false;
+        wcmNetwork.fromWifiNetworkSpecifier = true;
+        wcmNetwork.ephemeral = true;
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+                .thenReturn(wcmNetwork);
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
+        // Verify that we triggered a disconnect.
+        verify(mClientModeManager, times(2)).disconnect();
+        verify(mWifiConfigManager).removeNetwork(
+                TEST_NETWORK_ID_1, TEST_UID_1, TEST_PACKAGE_NAME_1);
+        // Re-enable connectivity manager .
+        verify(mActiveModeWarden).removeClientModeManager(any());
+        verify(mWifiMetrics)
+                .incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(
+                        toIntExact(TimeUnit.MILLISECONDS.toSeconds(
+                                secondaryConnectionDurationMillis)));
+    }
+
 
     /**
      * Verify we return the correct UID when processing network request with network specifier.
@@ -2248,7 +2400,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         verify(mWifiScanner, times(2)).getSingleScanResults();
         verify(mWifiScanner, times(2)).startScan(any(), any(), any(), any());
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
-        verify(mClientModeManager, times(2)).getRole();
+        verify(mClientModeManager, times(3)).getRole();
 
         // Remove the stale request1 & ensure nothing happens.
         mWifiNetworkFactory.releaseNetworkFor(oldRequest);
@@ -2297,7 +2449,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Remove the connected request1 & ensure we disconnect.
         mWifiNetworkFactory.releaseNetworkFor(oldRequest);
         verify(mClientModeManager, times(2)).disconnect();
-        verify(mClientModeManager, times(2)).getRole();
+        verify(mClientModeManager, times(3)).getRole();
 
         verifyNoMoreInteractions(mWifiConnectivityManager, mWifiScanner, mClientModeManager,
                 mAlarmManager);
@@ -2305,7 +2457,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Now remove the active request2 & ensure auto-join is re-enabled.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
-        verify(mClientModeManager, times(2)).getRole();
+        verify(mClientModeManager, times(3)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -2367,7 +2519,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // We shouldn't explicitly disconnect, the new connection attempt will implicitly disconnect
         // from the connected network.
         verify(mClientModeManager, times(2)).disconnect();
-        verify(mClientModeManager, times(4)).getRole();
+        verify(mClientModeManager, times(6)).getRole();
 
         // Remove the stale request1 & ensure nothing happens (because it was replaced by the
         // second request)
@@ -2381,7 +2533,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.setNetworkSpecifier(specifier2);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         verify(mClientModeManager, times(3)).disconnect();
-        verify(mClientModeManager, times(4)).getRole();
+        verify(mClientModeManager, times(6)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -2424,7 +2576,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkRequest.networkCapabilities.setNetworkSpecifier(specifier1);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         verify(mClientModeManager, times(2)).disconnect();
-        verify(mClientModeManager, times(2)).getRole();
+        verify(mClientModeManager, times(3)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
@@ -3098,6 +3250,13 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 eq(mClientModeManager),
                 eq(new NetworkUpdateResult(TEST_NETWORK_ID_1)),
                 mConnectListenerArgumentCaptor.capture(), anyInt());
+        if (mClientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+            verify(mWifiMetrics, atLeastOnce())
+                    .incrementNetworkRequestApiNumConnectOnPrimaryIface();
+        } else {
+            verify(mWifiMetrics, atLeastOnce())
+                    .incrementNetworkRequestApiNumConnectOnSecondaryIface();
+        }
 
         // Start the connection timeout alarm.
         mInOrder.verify(mAlarmManager).set(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),

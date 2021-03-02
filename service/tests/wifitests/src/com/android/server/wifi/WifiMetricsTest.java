@@ -56,6 +56,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static java.lang.StrictMath.toIntExact;
+
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -138,6 +140,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -4491,7 +4494,17 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.incrementNetworkRequestApiMatchSizeHistogram(0);
         mWifiMetrics.incrementNetworkRequestApiMatchSizeHistogram(1);
 
-        mWifiMetrics.incrementNetworkRequestApiNumConnectSuccess();
+        mWifiMetrics.incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
+        mWifiMetrics.incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
+
+        mWifiMetrics.incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
+
+        mWifiMetrics.incrementNetworkRequestApiNumConnectOnPrimaryIface();
+        mWifiMetrics.incrementNetworkRequestApiNumConnectOnPrimaryIface();
+
+        mWifiMetrics.incrementNetworkRequestApiNumConnectOnSecondaryIface();
+        mWifiMetrics.incrementNetworkRequestApiNumConnectOnSecondaryIface();
+        mWifiMetrics.incrementNetworkRequestApiNumConnectOnSecondaryIface();
 
         mWifiMetrics.incrementNetworkRequestApiNumUserApprovalBypass();
         mWifiMetrics.incrementNetworkRequestApiNumUserApprovalBypass();
@@ -4500,10 +4513,26 @@ public class WifiMetricsTest extends WifiBaseTest {
 
         mWifiMetrics.incrementNetworkRequestApiNumApps();
 
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(40);
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(670);
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(1801);
+
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(100);
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(350);
+        mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(750);
+
+        mWifiMetrics.incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(10);
+        mWifiMetrics.incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(589);
+        mWifiMetrics.incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(2900);
+        mWifiMetrics.incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(145);
+
         dumpProtoAndDeserialize();
 
         assertEquals(3, mDecodedProto.wifiNetworkRequestApiLog.numRequest);
-        assertEquals(1, mDecodedProto.wifiNetworkRequestApiLog.numConnectSuccess);
+        assertEquals(2, mDecodedProto.wifiNetworkRequestApiLog.numConnectSuccessOnPrimaryIface);
+        assertEquals(1, mDecodedProto.wifiNetworkRequestApiLog.numConnectSuccessOnSecondaryIface);
+        assertEquals(2, mDecodedProto.wifiNetworkRequestApiLog.numConnectOnPrimaryIface);
+        assertEquals(3, mDecodedProto.wifiNetworkRequestApiLog.numConnectOnSecondaryIface);
         assertEquals(2, mDecodedProto.wifiNetworkRequestApiLog.numUserApprovalBypass);
         assertEquals(1, mDecodedProto.wifiNetworkRequestApiLog.numUserReject);
         assertEquals(1, mDecodedProto.wifiNetworkRequestApiLog.numApps);
@@ -4515,6 +4544,38 @@ public class WifiMetricsTest extends WifiBaseTest {
         };
         assertHistogramBucketsEqual(expectedNetworkMatchSizeHistogram,
                 mDecodedProto.wifiNetworkRequestApiLog.networkMatchSizeHistogram);
+
+        HistogramBucketInt32[] expectedConnectionDurationOnPrimarySec = {
+                buildHistogramBucketInt32(0, toIntExact(Duration.ofMinutes(3).getSeconds()), 1),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(10).getSeconds()),
+                        toIntExact(Duration.ofMinutes(30).getSeconds()), 1),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(30).getSeconds()),
+                        toIntExact(Duration.ofHours(1).getSeconds()), 1)
+        };
+        assertHistogramBucketsEqual(expectedConnectionDurationOnPrimarySec,
+                mDecodedProto.wifiNetworkRequestApiLog
+                        .connectionDurationSecOnPrimaryIfaceHistogram);
+
+        HistogramBucketInt32[] expectedConnectionDurationOnSecondarySec = {
+                buildHistogramBucketInt32(0, toIntExact(Duration.ofMinutes(3).getSeconds()), 1),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(3).getSeconds()),
+                        toIntExact(Duration.ofMinutes(10).getSeconds()), 1),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(10).getSeconds()),
+                        toIntExact(Duration.ofMinutes(30).getSeconds()), 1),
+        };
+        assertHistogramBucketsEqual(expectedConnectionDurationOnSecondarySec,
+                mDecodedProto.wifiNetworkRequestApiLog
+                        .connectionDurationSecOnSecondaryIfaceHistogram);
+
+        HistogramBucketInt32[] expectedConcurrentConnectionDuration = {
+                buildHistogramBucketInt32(0, toIntExact(Duration.ofMinutes(3).getSeconds()), 2),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(3).getSeconds()),
+                        toIntExact(Duration.ofMinutes(10).getSeconds()), 1),
+                buildHistogramBucketInt32(toIntExact(Duration.ofMinutes(30).getSeconds()),
+                        toIntExact(Duration.ofHours(1).getSeconds()), 1)
+        };
+        assertHistogramBucketsEqual(expectedConcurrentConnectionDuration,
+                mDecodedProto.wifiNetworkRequestApiLog.concurrentConnectionDurationSecHistogram);
     }
 
     /**
