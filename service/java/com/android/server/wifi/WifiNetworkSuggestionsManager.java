@@ -72,7 +72,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1314,7 +1313,7 @@ public class WifiNetworkSuggestionsManager {
     public void removeApp(@NonNull String packageName) {
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);
         if (perAppInfo == null) return;
-        removeInternal(Collections.emptyList(), packageName, perAppInfo);
+        removeInternal(List.of(), packageName, perAppInfo);
         // Remove the package fully from the internal database.
         mActiveNetworkSuggestionsPerApp.remove(packageName);
         RemoteCallbackList<ISuggestionConnectionStatusListener> listenerTracker =
@@ -1355,7 +1354,7 @@ public class WifiNetworkSuggestionsManager {
                 mActiveNetworkSuggestionsPerApp.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, PerAppInfo> entry = iter.next();
-            removeInternal(Collections.emptyList(), entry.getKey(), entry.getValue());
+            removeInternal(List.of(), entry.getKey(), entry.getValue());
             iter.remove();
         }
         mSuggestionStatusListenerPerApp.clear();
@@ -1642,11 +1641,11 @@ public class WifiNetworkSuggestionsManager {
     /**
      * Returns a set of all network suggestions matching the provided FQDN.
      */
-    public @Nullable Set<ExtendedWifiNetworkSuggestion> getNetworkSuggestionsForFqdn(String fqdn) {
+    public @NonNull Set<ExtendedWifiNetworkSuggestion> getNetworkSuggestionsForFqdn(String fqdn) {
         Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions =
                 getNetworkSuggestionsForFqdnMatch(fqdn);
         if (extNetworkSuggestions == null) {
-            return null;
+            return Set.of();
         }
         final String activeScorerPackage = mNetworkScoreManager.getActiveScorerPackage();
         Set<ExtendedWifiNetworkSuggestion> approvedExtNetworkSuggestions = new HashSet<>();
@@ -1664,7 +1663,7 @@ public class WifiNetworkSuggestionsManager {
         }
 
         if (approvedExtNetworkSuggestions.isEmpty()) {
-            return null;
+            return Set.of();
         }
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "getNetworkSuggestionsForFqdn Found "
@@ -1676,12 +1675,12 @@ public class WifiNetworkSuggestionsManager {
     /**
      * Returns a set of all network suggestions matching the provided scan detail.
      */
-    public @Nullable Set<ExtendedWifiNetworkSuggestion> getNetworkSuggestionsForScanDetail(
+    public @NonNull Set<ExtendedWifiNetworkSuggestion> getNetworkSuggestionsForScanDetail(
             @NonNull ScanDetail scanDetail) {
         ScanResult scanResult = scanDetail.getScanResult();
         if (scanResult == null) {
             Log.e(TAG, "No scan result found in scan detail");
-            return null;
+            return Set.of();
         }
         Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions = null;
         try {
@@ -1693,7 +1692,7 @@ public class WifiNetworkSuggestionsManager {
             Log.e(TAG, "Failed to lookup network from scan result match info map", e);
         }
         if (extNetworkSuggestions == null) {
-            return null;
+            return Set.of();
         }
         final String activeScorerPackage = mNetworkScoreManager.getActiveScorerPackage();
         Set<ExtendedWifiNetworkSuggestion> approvedExtNetworkSuggestions = new HashSet<>();
@@ -1711,7 +1710,7 @@ public class WifiNetworkSuggestionsManager {
         }
 
         if (approvedExtNetworkSuggestions.isEmpty()) {
-            return null;
+            return Set.of();
         }
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "getNetworkSuggestionsForScanDetail Found "
@@ -2023,7 +2022,7 @@ public class WifiNetworkSuggestionsManager {
     private Set<ExtendedWifiNetworkSuggestion> getMatchedSuggestionsWithSameProfileKey(
             Set<ExtendedWifiNetworkSuggestion> matchingSuggestions, WifiConfiguration network) {
         if (matchingSuggestions == null || matchingSuggestions.isEmpty()) {
-            return Collections.emptySet();
+            return Set.of();
         }
         Set<ExtendedWifiNetworkSuggestion> matchingExtNetworkSuggestionsWithSameProfileKey =
                 new HashSet<>();
@@ -2226,7 +2225,7 @@ public class WifiNetworkSuggestionsManager {
             }
             if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Carrier privilege revoked for " + appInfo.packageName);
-                removeInternal(Collections.emptyList(), appInfo.packageName, appInfo);
+                removeInternal(List.of(), appInfo.packageName, appInfo);
                 mActiveNetworkSuggestionsPerApp.remove(appInfo.packageName);
                 continue;
             }

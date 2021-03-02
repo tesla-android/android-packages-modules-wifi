@@ -180,11 +180,18 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                 mPasspointNetworkNominateHelper.getPasspointNetworkCandidates(scanDetails, true);
         for (Pair<ScanDetail, WifiConfiguration> candidate : candidates) {
             WifiConfiguration config = candidate.second;
+            Set<ExtendedWifiNetworkSuggestion> matchingExtNetworkSuggestions =
+                    mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(config.FQDN);
+            if (matchingExtNetworkSuggestions.isEmpty()) {
+                mLocalLog.log("No user approved suggestion for FQDN:" + config.FQDN);
+                continue;
+            }
             Optional<ExtendedWifiNetworkSuggestion> matchingPasspointExtSuggestion =
-                    mWifiNetworkSuggestionsManager
-                            .getNetworkSuggestionsForFqdn(config.FQDN).stream().filter(ewns ->
-                            ewns.wns.wifiConfiguration.getPasspointUniqueId().equals(
-                                    config.getPasspointUniqueId())).findFirst();
+                    matchingExtNetworkSuggestions.stream()
+                            .filter(ewns -> Objects.equals(
+                                    ewns.wns.wifiConfiguration.getPasspointUniqueId(),
+                                    config.getPasspointUniqueId()))
+                            .findFirst();
             if (!matchingPasspointExtSuggestion.isPresent()) {
                 mLocalLog.log("Suggestion is missing for passpoint FQDN: " + config.FQDN
                         + " profile key: " + config.getProfileKeyInternal());
@@ -206,7 +213,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
         for (ScanDetail scanDetail : scanDetails) {
             Set<ExtendedWifiNetworkSuggestion> matchingExtNetworkSuggestions =
                     mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail);
-            if (matchingExtNetworkSuggestions == null || matchingExtNetworkSuggestions.isEmpty()) {
+            if (matchingExtNetworkSuggestions.isEmpty()) {
                 continue;
             }
             for (ExtendedWifiNetworkSuggestion ewns : matchingExtNetworkSuggestions) {
@@ -364,7 +371,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                                     }));
             if (matchedNetworkInfosPerPriority.isEmpty()) { // should never happen.
                 Log.wtf(TAG, "Unexepectedly got empty");
-                return Collections.EMPTY_LIST;
+                return List.of();
             }
             // Return the list associated with the highest priority value.
             return matchedNetworkInfosPerPriority.get(Collections.max(

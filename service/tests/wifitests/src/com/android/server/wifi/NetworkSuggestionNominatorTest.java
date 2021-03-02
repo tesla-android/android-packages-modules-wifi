@@ -777,6 +777,57 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
     }
 
     /**
+     * Ensure that we don't nominate the only matching passponit network suggestion when it's not
+     * approved.
+     * Expected connectable Networks: {}
+     */
+    @Test
+    public void testSuggestionPasspointNetworkCandidatesNoApprovedMatches() {
+        String[] scanSsids = {"test1", "test2"};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
+        int[] freqs = {2470, 2437};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-EAP/SHA1-CCMP][ESS]"};
+        int[] levels = {-67, -76};
+        String[] suggestionSsids = {"\"" + scanSsids[0] + "\""};
+        int[] securities = {SECURITY_PSK};
+        boolean[] appInteractions = {true};
+        boolean[] meteredness = {true};
+        int[] priorities = {-1};
+        int[] uids = {TEST_UID};
+        String[] packageNames = {TEST_PACKAGE};
+        boolean[] autojoin = {true};
+        boolean[] shareWithUser = {true};
+        int[] priorityGroup = {0};
+
+        ScanDetail[] scanDetails =
+                buildScanDetails(scanSsids, bssids, freqs, caps, levels, mClock);
+        ExtendedWifiNetworkSuggestion[] suggestions = buildNetworkSuggestions(suggestionSsids,
+                securities, appInteractions, meteredness, priorities, uids, packageNames,
+                autojoin, shareWithUser, priorityGroup);
+        HashSet<ExtendedWifiNetworkSuggestion> matchedExtSuggestions = new HashSet<>();
+        matchedExtSuggestions.add(suggestions[0]);
+        List<Pair<ScanDetail, WifiConfiguration>> passpointCandidates = new ArrayList<>();
+        suggestions[0].wns.wifiConfiguration.FQDN = TEST_FQDN;
+        suggestions[0].wns.wifiConfiguration.setPasspointUniqueId(PASSPOINT_UNIQUE_ID);
+
+        passpointCandidates.add(Pair.create(scanDetails[0],
+                suggestions[0].createInternalWifiConfiguration(mWifiCarrierInfoManager)));
+        when(mPasspointNetworkNominateHelper
+                .getPasspointNetworkCandidates(Arrays.asList(scanDetails), true))
+                .thenReturn(passpointCandidates);
+        // As user haven't approved this suggestion, return null
+        when(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(TEST_FQDN))
+                .thenReturn(Set.of());
+        List<Pair<ScanDetail, WifiConfiguration>> connectableNetworks = new ArrayList<>();
+        mNetworkSuggestionNominator.nominateNetworks(
+                Arrays.asList(scanDetails), false, false, false,
+                (ScanDetail scanDetail, WifiConfiguration configuration) -> {
+                    connectableNetworks.add(Pair.create(scanDetail, configuration));
+                });
+        assertTrue(connectableNetworks.isEmpty());
+    }
+
+    /**
      * Ensure that we will not nominate the matching network suggestions which auto-join is
      * disabled.
      * Expected connectable Networks: {}
@@ -1595,7 +1646,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
             for (int i = minLength; i < scanDetails.length; i++) {
                 ScanDetail scanDetail = scanDetails[i];
                 when(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(
-                        eq(scanDetail))).thenReturn(null);
+                        eq(scanDetail))).thenReturn(Set.of());
             }
         } else if (suggestions.length > scanDetails.length) {
             // All the additional suggestions match the last scan detail.
