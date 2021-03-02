@@ -470,7 +470,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWificondControl).setupInterfaceForSoftApMode(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).registerObserver(mNetworkObserverCaptor1.capture());
         mInOrder.verify(mNetdWrapper).isInterfaceUp(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
 
@@ -524,7 +524,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mNetdWrapper).clearInterfaceAddresses(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).setInterfaceIpv6PrivacyExtensions(IFACE_NAME_0, true);
         mInOrder.verify(mNetdWrapper).disableIpv6(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
 
@@ -740,7 +740,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWificondControl).setupInterfaceForSoftApMode(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).registerObserver(mNetworkObserverCaptor1.capture());
         mInOrder.verify(mNetdWrapper).isInterfaceUp(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
 
@@ -1226,7 +1226,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mNetdWrapper).clearInterfaceAddresses(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).setInterfaceIpv6PrivacyExtensions(IFACE_NAME_0, true);
         mInOrder.verify(mNetdWrapper).disableIpv6(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
 
@@ -1255,7 +1255,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWificondControl).setupInterfaceForSoftApMode(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).registerObserver(mNetworkObserverCaptor1.capture());
         mInOrder.verify(mNetdWrapper).isInterfaceUp(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
     }
@@ -1286,7 +1286,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWificondControl).setupInterfaceForSoftApMode(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).registerObserver(mNetworkObserverCaptor0.capture());
         mInOrder.verify(mNetdWrapper).isInterfaceUp(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
 
@@ -1320,7 +1320,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mNetdWrapper).clearInterfaceAddresses(IFACE_NAME_0);
         mInOrder.verify(mNetdWrapper).setInterfaceIpv6PrivacyExtensions(IFACE_NAME_0, true);
         mInOrder.verify(mNetdWrapper).disableIpv6(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
     }
@@ -1361,7 +1361,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mSupplicantStaIfaceHal).teardownIface(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).deregisterDeathHandler();
         mInOrder.verify(mSupplicantStaIfaceHal).terminate();
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
     }
@@ -1396,7 +1396,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationComplete();
         mInOrder.verify(mSupplicantStaIfaceHal).registerDeathHandler(any());
         mInOrder.verify(mSupplicantStaIfaceHal).setupIface(IFACE_NAME_0);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(IFACE_NAME_0);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(IFACE_NAME_0);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(IFACE_NAME_0);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(IFACE_NAME_0);
     }
@@ -1474,7 +1474,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mNetdWrapper).clearInterfaceAddresses(ifaceName);
         mInOrder.verify(mNetdWrapper).setInterfaceIpv6PrivacyExtensions(ifaceName, true);
         mInOrder.verify(mNetdWrapper).disableIpv6(ifaceName);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(ifaceName);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(ifaceName);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(ifaceName);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(ifaceName);
     }
@@ -1553,7 +1553,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mNetdWrapper).registerObserver(networkObserverCaptor.capture());
         mInOrder.verify(mWifiMonitor).startMonitoring(ifaceName);
         mInOrder.verify(mNetdWrapper).isInterfaceUp(ifaceName);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(ifaceName);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(ifaceName);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(ifaceName);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(ifaceName);
     }
@@ -1651,7 +1651,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         }
         mInOrder.verify(mNetdWrapper).registerObserver(networkObserverCaptor.capture());
         mInOrder.verify(mNetdWrapper).isInterfaceUp(ifaceName);
-        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedKeyMgmtCapabilities(ifaceName);
+        mInOrder.verify(mSupplicantStaIfaceHal).getAdvancedCapabilities(ifaceName);
         mInOrder.verify(mWifiVendorHal).getSupportedFeatureSet(ifaceName);
         mInOrder.verify(mSupplicantStaIfaceHal).getWpaDriverFeatureSet(ifaceName);
     }
