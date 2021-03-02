@@ -1909,8 +1909,9 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 android.hardware.wifi.supplicant.V1_3.ISupplicantStaIface
                         .getKeyMgmtCapabilities_1_3Callback.class));
 
-        assertEquals(WIFI_FEATURE_DPP | WIFI_FEATURE_DPP_ENROLLEE_RESPONDER,
-                mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
+        assertTrue((WIFI_FEATURE_DPP_ENROLLEE_RESPONDER
+                & mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME))
+                == WIFI_FEATURE_DPP_ENROLLEE_RESPONDER);
     }
 
     /**
