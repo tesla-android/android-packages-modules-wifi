@@ -16,6 +16,7 @@
 package com.android.server.wifi;
 
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA256;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_MBO;
@@ -1372,7 +1373,7 @@ public class SupplicantStaIfaceHal {
         synchronized (mLock) {
             SupplicantStaNetworkHal network =
                     new SupplicantStaNetworkHal(iSupplicantStaNetwork, ifaceName, mContext,
-                            mWifiMonitor, mWifiGlobals, getAdvancedKeyMgmtCapabilities(ifaceName));
+                            mWifiMonitor, mWifiGlobals, getAdvancedCapabilities(ifaceName));
             if (network != null) {
                 network.enableVerboseLogging(mVerboseLoggingEnabled);
             }
@@ -2890,7 +2891,7 @@ public class SupplicantStaIfaceHal {
     }
 
     /**
-     * Returns a bitmask of advanced key management capabilities: WPA3 SAE/SUITE B and OWE
+     * Returns a bitmask of advanced capabilities: WPA3 SAE/SUITE B and OWE
      * Bitmask used is:
      * - WIFI_FEATURE_WPA3_SAE
      * - WIFI_FEATURE_WPA3_SUITE_B
@@ -2899,8 +2900,8 @@ public class SupplicantStaIfaceHal {
      *  This is a v1.2+ HAL feature.
      *  On error, or if these features are not supported, 0 is returned.
      */
-    public long getAdvancedKeyMgmtCapabilities(@NonNull String ifaceName) {
-        final String methodStr = "getAdvancedKeyMgmtCapabilities";
+    public long getAdvancedCapabilities(@NonNull String ifaceName) {
+        final String methodStr = "getAdvancedCapabilities";
 
         long advancedCapabilities = 0;
         int keyMgmtCapabilities = getKeyMgmtCapabilities(ifaceName);
@@ -2938,6 +2939,12 @@ public class SupplicantStaIfaceHal {
 
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, methodStr + ": DPP supported");
+            }
+            if (isV1_4()) {
+                advancedCapabilities |= WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
+                if (mVerboseLoggingEnabled) {
+                    Log.v(TAG, methodStr + ": DPP ENROLLEE RESPONDER supported");
+                }
             }
         }
 

@@ -2610,6 +2610,12 @@ public class WifiManager {
      */
     public static final long WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED = 0x400000000000L;
 
+    /**
+     * DPP (Easy-Connect) Enrollee Responder mode support
+     * @hide
+     */
+    public static final long WIFI_FEATURE_DPP_ENROLLEE_RESPONDER = 0x800000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6235,6 +6241,13 @@ public class WifiManager {
      */
     public boolean isEasyConnectSupported() {
         return isFeatureSupported(WIFI_FEATURE_DPP);
+    }
+
+    /**
+     * @return true if this device supports Wi-Fi Easy Connect (DPP) Enrollee Responder mode.
+     */
+    public boolean isEasyConnectEnrolleeResponderModeSupported() {
+        return isFeatureSupported(WIFI_FEATURE_DPP_ENROLLEE_RESPONDER);
     }
 
     /**
