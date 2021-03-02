@@ -2780,6 +2780,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 checkAbnormalConnectionFailureAndTakeBugReport(ssid);
                 mWifiBlocklistMonitor.handleBssidConnectionFailure(bssid, ssid,
                         blocklistReason, mLastScanRssi);
+                WifiScoreCard.NetworkConnectionStats recentStats = mWifiScoreCard.lookupNetwork(
+                        ssid).getRecentStats();
+                if (recentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_CONNECTION_FAILURE)
+                        >= WifiBlocklistMonitor.NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF) {
+                    mWifiConfigManager.updateNetworkSelectionStatus(mTargetNetworkId,
+                            WifiConfiguration.NetworkSelectionStatus.DISABLED_CONSECUTIVE_FAILURES);
+                }
             }
         }
 
