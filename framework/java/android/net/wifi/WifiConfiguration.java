@@ -1734,7 +1734,8 @@ public class WifiConfiguration implements Parcelable {
                 DISABLED_AUTHENTICATION_NO_SUBSCRIPTION,
                 DISABLED_AUTHENTICATION_FAILURE_GENERIC,
                 DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC,
-                DISABLED_NETWORK_NOT_FOUND})
+                DISABLED_NETWORK_NOT_FOUND,
+                DISABLED_CONSECUTIVE_FAILURES})
         public @interface NetworkSelectionDisableReason {}
 
         // Quality Network disabled reasons
@@ -1783,10 +1784,16 @@ public class WifiConfiguration implements Parcelable {
          */
         public static final int DISABLED_NETWORK_NOT_FOUND = 11;
         /**
+         * This code is used to disable a network when a high number of consecutive connection
+         * failures are detected. The exact reasons of why these consecutive failures occurred is
+         * included but not limited to the reasons described by failure codes above.
+         */
+        public static final int DISABLED_CONSECUTIVE_FAILURES = 12;
+        /**
          * All other disable reasons should be strictly less than this value.
          * @hide
          */
-        public static final int NETWORK_SELECTION_DISABLED_MAX = 12;
+        public static final int NETWORK_SELECTION_DISABLED_MAX = 13;
 
         /**
          * Get an integer that is equal to the maximum integer value of all the
@@ -1953,6 +1960,11 @@ public class WifiConfiguration implements Parcelable {
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_NETWORK_NOT_FOUND",
                             2,
+                            5 * 60 * 1000));
+
+            reasons.append(DISABLED_CONSECUTIVE_FAILURES,
+                    new DisableReasonInfo("NETWORK_SELECTION_DISABLED_CONSECUTIVE_FAILURES",
+                            1,
                             5 * 60 * 1000));
 
             return reasons;
