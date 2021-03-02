@@ -100,7 +100,7 @@ public class MakeBeforeBreakManager {
     private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
         @Override
         public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
-            if (!mActiveModeWarden.isMakeBeforeBreakEnabled()) {
+            if (!mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
                 return;
             }
             if (!(activeModeManager instanceof ConcreteClientModeManager)) {
@@ -112,7 +112,7 @@ public class MakeBeforeBreakManager {
 
         @Override
         public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
-            if (!mActiveModeWarden.isMakeBeforeBreakEnabled()) {
+            if (!mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
                 return;
             }
             if (!(activeModeManager instanceof ConcreteClientModeManager)) {
@@ -139,7 +139,7 @@ public class MakeBeforeBreakManager {
 
         @Override
         public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
-            if (!mActiveModeWarden.isMakeBeforeBreakEnabled()) {
+            if (!mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
                 return;
             }
             if (!(activeModeManager instanceof ConcreteClientModeManager)) {
@@ -192,7 +192,7 @@ public class MakeBeforeBreakManager {
      *                   that had its internet connection validated.
      */
     private void onInternetValidated(@NonNull ConcreteClientModeManager newPrimary) {
-        if (!mActiveModeWarden.isMakeBeforeBreakEnabled()) {
+        if (!mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
             return;
         }
         if (newPrimary.getRole() != ROLE_CLIENT_SECONDARY_TRANSIENT) {

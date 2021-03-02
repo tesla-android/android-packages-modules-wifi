@@ -62,7 +62,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        when(mActiveModeWarden.isMakeBeforeBreakEnabled()).thenReturn(true);
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForMbb()).thenReturn(true);
         when(mNewPrimaryCmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
         when(mFrameworkFacade.getSettingsWorkSource(mContext)).thenReturn(mSettingsWorkSource);
         when(mActiveModeWarden.getPrimaryClientModeManagerNullable()).thenReturn(mOldPrimaryCmm);
@@ -79,7 +79,7 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
 
     @Test
     public void makeBeforeBreakDisabled_noOp() {
-        when(mActiveModeWarden.isMakeBeforeBreakEnabled()).thenReturn(false);
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForMbb()).thenReturn(false);
 
         mCmiListenerCaptor.getValue().onInternetValidated(mNewPrimaryCmm);
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mNewPrimaryCmm);
