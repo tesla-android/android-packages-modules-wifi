@@ -2964,9 +2964,6 @@ message WifiNetworkRequestApiLog {
   // Histogram of requests via this API surface to number of networks matched in scan results.
   repeated HistogramBucketInt32 network_match_size_histogram = 2;
 
-  // Number of successful network connection from this API.
-  optional int32 num_connect_success = 3;
-
   // Number of requests via this API surface that bypassed user approval.
   optional int32 num_user_approval_bypass = 4;
 
@@ -2975,6 +2972,32 @@ message WifiNetworkRequestApiLog {
 
   // Number of unique apps using this API surface.
   optional int32 num_apps = 6;
+
+  // Number of connections on primary iface.
+  optional int32 num_connect_on_primary_iface = 7;
+
+  // Number of successful network connection from this API.
+  optional int32 num_connect_success_on_primary_iface = 3;
+
+  // Histogram of connection durations in seconds using this API surface.
+  repeated HistogramBucketInt32 connection_duration_sec_on_primary_iface_histogram = 8;
+
+  // Number of connections on secondary iface (STA + STA)
+  optional int32 num_connect_on_secondary_iface = 9;
+
+  // Number of connection success on secondary iface (STA + STA)
+  optional int32 num_connect_success_on_secondary_iface = 10;
+
+  // Histogram of connection durations in seconds on secondary iface using this API surface.
+  repeated HistogramBucketInt32 connection_duration_sec_on_secondary_iface_histogram = 11;
+
+  // Number of times there were concurrent connections (STA + STA):
+  // - on a primary iface (internet) and
+  // - on a secondary iface (using this API surface)
+  optional int32 num_concurrent_connection = 12;
+
+  // Histogram of concurrent connection durations in seconds using this API surface (STA + STA).
+  repeated HistogramBucketInt32 concurrent_connection_duration_sec_histogram = 13;
 }
 
 // NetworkSuggestion API metrics.
