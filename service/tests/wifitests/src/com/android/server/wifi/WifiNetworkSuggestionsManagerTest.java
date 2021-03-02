@@ -33,7 +33,6 @@ import static com.android.server.wifi.WifiNetworkSuggestionsManager.NOTIFICATION
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
@@ -298,7 +297,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         verify(mWifiInjector).makeNetworkSuggestionStoreData(dataSourceArgumentCaptor.capture());
         mDataSource = dataSourceArgumentCaptor.getValue();
         assertNotNull(mDataSource);
-        mDataSource.fromDeserialized(Collections.EMPTY_MAP);
+        mDataSource.fromDeserialized(Map.of());
 
         verify(mWifiCarrierInfoManager).addImsiExemptionUserApprovalListener(
                 mUserApproveCarrierListenerArgumentCaptor.capture());
@@ -909,7 +908,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
-                mWifiNetworkSuggestionsManager.add(Collections.singletonList(networkSuggestion),
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion),
                         TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE));
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
                 mWifiNetworkSuggestionsManager.remove(Collections.singletonList(null),
@@ -1246,7 +1245,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         ScanDetail scanDetail = createScanDetailForNetwork(networkSuggestion.wifiConfiguration);
 
-        assertNull(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail));
+        assertTrue(mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail).isEmpty());
     }
 
     /**
@@ -1273,9 +1273,10 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         // remove the suggestion & ensure lookup fails.
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
-                mWifiNetworkSuggestionsManager.remove(Collections.EMPTY_LIST, TEST_UID_1,
+                mWifiNetworkSuggestionsManager.remove(List.of(), TEST_UID_1,
                         TEST_PACKAGE_1));
-        assertNull(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail));
+        assertTrue(mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail).isEmpty());
     }
 
     /**
@@ -1299,7 +1300,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         ScanDetail scanDetail = createScanDetailForNetwork(
                 WifiConfigurationTestUtil.createPskNetwork());
 
-        assertNull(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail));
+        assertTrue(mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail).isEmpty());
     }
 
     /**
@@ -2078,7 +2080,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         // Ensure that the previous network can no longer be looked up.
         ScanDetail scanDetail1 = createScanDetailForNetwork(networkSuggestion1.wifiConfiguration);
-        assertNull(mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail1));
+        assertTrue(mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail1).isEmpty());
     }
 
     /**
@@ -3406,7 +3409,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 TEST_PACKAGE_1, TEST_FEATURE), WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
         Set<ExtendedWifiNetworkSuggestion> ewns =
                 mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(TEST_FQDN);
-        assertNull(ewns);
+        assertTrue(ewns.isEmpty());
     }
 
     @Test
@@ -4781,7 +4784,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         configuration.creatorName = TEST_PACKAGE_1;
         configuration.creatorUid = TEST_UID_1;
 
-        listener.onConnectChoiceSet(Collections.singletonList(configuration),
+        listener.onConnectChoiceSet(List.of(configuration),
                 USER_CONNECT_CHOICE, TEST_RSSI);
         Set<ExtendedWifiNetworkSuggestion> matchedSuggestions = mWifiNetworkSuggestionsManager
                 .getNetworkSuggestionsForWifiConfiguration(configuration,
