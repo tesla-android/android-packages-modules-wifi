@@ -128,8 +128,6 @@ public final class CoexUnsafeChannel implements Parcelable {
     @Override
     public String toString() {
         StringBuilder sj = new StringBuilder("CoexUnsafeChannel{");
-        sj.append(mChannel);
-        sj.append(", ");
         if (mBand == WIFI_BAND_24_GHZ) {
             sj.append("2.4GHz");
         } else if (mBand == WIFI_BAND_5_GHZ) {
@@ -139,6 +137,7 @@ public final class CoexUnsafeChannel implements Parcelable {
         } else {
             sj.append("UNKNOWN BAND");
         }
+        sj.append(", ").append(mChannel);
         if (mIsPowerCapAvailable) {
             sj.append(", ").append(mPowerCapDbm).append("dBm");
         }
