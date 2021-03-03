@@ -120,6 +120,7 @@ public class CoexManagerTest extends WifiBaseTest {
         final CoexManager coexManager = new CoexManager(mMockContext, mMockWifiNative,
                 mMockTelephonyManager,
                 mMockCarrierConfigManager, new Handler(mTestLooper.getLooper()));
+        coexManager.enableVerboseLogging(true);
         return coexManager;
     }
 
