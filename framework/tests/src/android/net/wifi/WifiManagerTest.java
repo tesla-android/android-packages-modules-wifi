@@ -45,6 +45,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_P2P;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_SCANNER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SUITE_B;
@@ -3108,4 +3109,21 @@ public class WifiManagerTest {
         mWifiManager.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
         verify(mWifiService).removeAppState(TEST_UID, TEST_PACKAGE_NAME);
     }
+
+
+    /**
+     * Test behavior of isPasspointTermsAndConditionsSupported
+     */
+    @Test
+    public void testIsPasspointTermsAndConditionsSupported() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS));
+        assertTrue(mWifiManager.isPasspointTermsAndConditionsSupported());
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(~WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS));
+        assertFalse(mWifiManager.isPasspointTermsAndConditionsSupported());
+    }
+
 }
