@@ -16,6 +16,7 @@
 package com.android.server.wifi;
 
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA256;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_MBO;
@@ -1790,7 +1791,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     }
 
     /**
-     * Test get key management capabilities API on old HAL, should return 0 (not supported)
+     * Test get advanced capabilities API on old HAL, should return 0 (not supported)
      */
     @Test
     public void testGetKeyMgmtCapabilitiesOldHal() throws Exception {
@@ -1798,7 +1799,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
 
         executeAndValidateInitializationSequenceV1_1(false, false);
 
-        assertTrue(mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME) == 0);
+        assertTrue(mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME) == 0);
     }
 
     /**
@@ -1816,7 +1817,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 android.hardware.wifi.supplicant.V1_2.ISupplicantStaIface
                         .getKeyMgmtCapabilitiesCallback.class));
 
-        assertEquals(WIFI_FEATURE_WPA3_SAE, mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+        assertEquals(WIFI_FEATURE_WPA3_SAE, mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1835,7 +1836,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                         .getKeyMgmtCapabilitiesCallback.class));
 
         assertEquals(WIFI_FEATURE_WPA3_SUITE_B,
-                mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+                mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1853,7 +1854,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 android.hardware.wifi.supplicant.V1_2.ISupplicantStaIface
                         .getKeyMgmtCapabilitiesCallback.class));
 
-        assertEquals(WIFI_FEATURE_OWE, mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+        assertEquals(WIFI_FEATURE_OWE, mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1873,7 +1874,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                         .getKeyMgmtCapabilitiesCallback.class));
 
         assertEquals(WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE,
-                mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+                mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1891,7 +1892,46 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 android.hardware.wifi.supplicant.V1_2.ISupplicantStaIface
                         .getKeyMgmtCapabilitiesCallback.class));
 
-        assertEquals(WIFI_FEATURE_DPP, mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+        assertEquals(WIFI_FEATURE_DPP, mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
+    }
+
+    /**
+     * Test Easy Connect (DPP) Enrollee Responder mode supported on supplicant HAL V1_4
+     */
+    @Test
+    public void testGetDppEnrolleeResponderModeSupport() throws Exception {
+        setupMocksForHalV1_4();
+        executeAndValidateInitializationSequenceV1_4();
+
+        doAnswer(new GetKeyMgmtCapabilities_1_3Answer(android.hardware.wifi.supplicant.V1_2
+                .ISupplicantStaNetwork.KeyMgmtMask.DPP))
+                .when(mISupplicantStaIfaceMockV13).getKeyMgmtCapabilities_1_3(any(
+                android.hardware.wifi.supplicant.V1_3.ISupplicantStaIface
+                        .getKeyMgmtCapabilities_1_3Callback.class));
+
+        assertTrue((WIFI_FEATURE_DPP_ENROLLEE_RESPONDER
+                & mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME))
+                == WIFI_FEATURE_DPP_ENROLLEE_RESPONDER);
+    }
+
+    /**
+     * Test Easy Connect (DPP) Enrollee Responder mode is not supported on supplicant HAL
+     * V1_3 or less.
+     */
+    @Test
+    public void testDppEnrolleeResponderModeNotSupportedOnHalV1_3OrLess() throws Exception {
+        setupMocksForHalV1_3();
+        executeAndValidateInitializationSequenceV1_3();
+
+        doAnswer(new GetKeyMgmtCapabilities_1_3Answer(android.hardware.wifi.supplicant.V1_2
+                .ISupplicantStaNetwork.KeyMgmtMask.DPP))
+                .when(mISupplicantStaIfaceMockV13).getKeyMgmtCapabilities_1_3(any(
+                android.hardware.wifi.supplicant.V1_3.ISupplicantStaIface
+                        .getKeyMgmtCapabilities_1_3Callback.class));
+
+        assertFalse((WIFI_FEATURE_DPP_ENROLLEE_RESPONDER
+                & mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME))
+                == WIFI_FEATURE_DPP_ENROLLEE_RESPONDER);
     }
 
     /**
@@ -1909,7 +1949,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 android.hardware.wifi.supplicant.V1_3.ISupplicantStaIface
                         .getKeyMgmtCapabilities_1_3Callback.class));
 
-        assertEquals(WIFI_FEATURE_WAPI, mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+        assertEquals(WIFI_FEATURE_WAPI, mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1928,7 +1968,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                         .getKeyMgmtCapabilities_1_3Callback.class));
 
         assertEquals(WIFI_FEATURE_FILS_SHA256,
-                mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+                mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**
@@ -1947,7 +1987,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                         .getKeyMgmtCapabilities_1_3Callback.class));
 
         assertEquals(WIFI_FEATURE_FILS_SHA384,
-                mDut.getAdvancedKeyMgmtCapabilities(WLAN0_IFACE_NAME));
+                mDut.getAdvancedCapabilities(WLAN0_IFACE_NAME));
     }
 
     /**

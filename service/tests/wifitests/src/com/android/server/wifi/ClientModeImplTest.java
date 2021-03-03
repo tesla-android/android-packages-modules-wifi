@@ -293,7 +293,6 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         WifiP2pManager p2pm = mock(WifiP2pManager.class);
         when(context.getSystemService(WifiP2pManager.class)).thenReturn(p2pm);
-        when(context.getSystemService(VcnManager.class)).thenReturn(mVcnManager);
         final CountDownLatch untilDone = new CountDownLatch(1);
         mP2pThread = new HandlerThread("WifiP2pMockThread") {
             @Override
@@ -414,6 +413,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiNative mWifiNative;
     @Mock WifiScoreCard mWifiScoreCard;
     @Mock PerNetwork mPerNetwork;
+    @Mock WifiScoreCard.NetworkConnectionStats mPerNetworkRecentStats;
     @Mock WifiHealthMonitor mWifiHealthMonitor;
     @Mock WifiTrafficPoller mWifiTrafficPoller;
     @Mock WifiConnectivityManager mWifiConnectivityManager;
@@ -460,14 +460,10 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiNetworkSelector mWifiNetworkSelector;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ClientModeManager mPrimaryClientModeManager;
-    @Mock VcnManager mVcnManager;
-    @Mock VcnNetworkPolicyResult mVcnUnderlyingNetworkPolicy;
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
 
     @Captor ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mConfigUpdateListenerCaptor;
     @Captor ArgumentCaptor<WifiNetworkAgent.Callback> mWifiNetworkAgentCallbackCaptor;
-    @Captor ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> mPolicyListenerCaptor =
-            ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
     @Captor ArgumentCaptor<WifiCarrierInfoManager.OnCarrierOffloadDisabledListener>
             mOffloadDisabledListenerArgumentCaptor = ArgumentCaptor.forClass(
                     WifiCarrierInfoManager.OnCarrierOffloadDisabledListener.class);
@@ -610,6 +606,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
         when(mWifiScoreCard.detectAbnormalDisconnection())
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
+        when(mPerNetwork.getRecentStats()).thenReturn(mPerNetworkRecentStats);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
         when(mThroughputPredictor.predictMaxTxThroughput(any())).thenReturn(90);
         when(mThroughputPredictor.predictMaxRxThroughput(any())).thenReturn(80);
@@ -3455,8 +3452,7 @@ public class ClientModeImplTest extends WifiBaseTest {
      * disconnection occurs in middle of connection states.
      */
     @Test
-    public void testDisconnectConnecting()
-            throws Exception {
+    public void testDisconnectConnecting() throws Exception {
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT,
@@ -3470,6 +3466,31 @@ public class ClientModeImplTest extends WifiBaseTest {
         // that occurred mid connection attempt.
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(anyString(), anyString(),
                 eq(WifiBlocklistMonitor.REASON_NONLOCAL_DISCONNECT_CONNECTING), anyInt());
+        verify(mWifiConfigManager, never()).updateNetworkSelectionStatus(anyInt(),
+                eq(WifiConfiguration.NetworkSelectionStatus.DISABLED_CONSECUTIVE_FAILURES));
+    }
+
+    /**
+     * Verify that the WifiConfigManager is notified when a network experiences consecutive
+     * connection failures.
+     */
+    @Test
+    public void testDisableNetworkConsecutiveFailures() throws Exception {
+        initializeAndAddNetworkAndVerifySuccess();
+        when(mPerNetworkRecentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_CONNECTION_FAILURE))
+                .thenReturn(WifiBlocklistMonitor.NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF);
+        mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, FRAMEWORK_NETWORK_ID, 0, TEST_BSSID_STR);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT,
+                new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR,
+                        ISupplicantStaIfaceCallback.ReasonCode.FOURWAY_HANDSHAKE_TIMEOUT,
+                        false));
+        mLooper.dispatchAll();
+        verify(mWifiScoreCard).noteConnectionFailure(any(), anyInt(), anyString(), anyInt());
+        verify(mWifiScoreCard).resetConnectionState();
+        verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(anyString(), anyString(),
+                eq(WifiBlocklistMonitor.REASON_NONLOCAL_DISCONNECT_CONNECTING), anyInt());
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(FRAMEWORK_NETWORK_ID,
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_CONSECUTIVE_FAILURES);
     }
 
     /**
@@ -5957,15 +5978,23 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void triggerConnectToMergedNetwork() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
-
-        InOrder inOrder = inOrder(mVcnManager, mVcnUnderlyingNetworkPolicy);
-        doAnswer(invocation -> {
-            NetworkCapabilities nc = invocation.getArgument(0);
-            nc.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
-            when(mVcnUnderlyingNetworkPolicy.getNetworkCapabilities()).thenReturn(nc);
-            return mVcnUnderlyingNetworkPolicy;
-        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
-        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
+        VcnManager vcnManager = mock(VcnManager.class);
+        VcnNetworkPolicyResult vcnUnderlyingNetworkPolicy = mock(VcnNetworkPolicyResult.class);
+        when(mContext.getSystemService(VcnManager.class)).thenReturn(vcnManager);
+        ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> policyListenerCaptor =
+                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
+        InOrder inOrder = inOrder(vcnManager, vcnUnderlyingNetworkPolicy);
+        doAnswer(new AnswerWithArguments() {
+            public VcnNetworkPolicyResult answer(NetworkCapabilities networkCapabilities,
+                    LinkProperties linkProperties) throws Exception {
+                networkCapabilities.removeCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+                when(vcnUnderlyingNetworkPolicy.getNetworkCapabilities())
+                        .thenReturn(networkCapabilities);
+                return vcnUnderlyingNetworkPolicy;
+            }
+        }).when(vcnManager).applyVcnNetworkPolicy(any(), any());
+        when(vcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
 
         String testSubscriberId = "TestSubscriberId";
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
@@ -5978,26 +6007,26 @@ public class ClientModeImplTest extends WifiBaseTest {
                 assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
             });
         // Verify VCN policy listener is registered
-        inOrder.verify(mVcnManager).addVcnNetworkPolicyListener(any(),
-                    mPolicyListenerCaptor.capture());
-        assertNotNull(mPolicyListenerCaptor.getValue());
+        inOrder.verify(vcnManager).addVcnNetworkPolicyListener(any(),
+                    policyListenerCaptor.capture());
+        assertNotNull(policyListenerCaptor.getValue());
 
         // Verify getting new capability from VcnManager
-        inOrder.verify(mVcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
+        inOrder.verify(vcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
                 any(LinkProperties.class));
-        inOrder.verify(mVcnUnderlyingNetworkPolicy).isTeardownRequested();
-        inOrder.verify(mVcnUnderlyingNetworkPolicy).getNetworkCapabilities();
+        inOrder.verify(vcnUnderlyingNetworkPolicy).isTeardownRequested();
+        inOrder.verify(vcnUnderlyingNetworkPolicy).getNetworkCapabilities();
 
         // Update policy with tear down request.
-        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(true);
-        mPolicyListenerCaptor.getValue().onPolicyChanged();
+        when(vcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(true);
+        policyListenerCaptor.getValue().onPolicyChanged();
         mLooper.dispatchAll();
 
         // The merged carrier network should be disconnected.
-        inOrder.verify(mVcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
+        inOrder.verify(vcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
                 any(LinkProperties.class));
-        inOrder.verify(mVcnUnderlyingNetworkPolicy).isTeardownRequested();
-        inOrder.verify(mVcnUnderlyingNetworkPolicy).getNetworkCapabilities();
+        inOrder.verify(vcnUnderlyingNetworkPolicy).isTeardownRequested();
+        inOrder.verify(vcnUnderlyingNetworkPolicy).getNetworkCapabilities();
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
@@ -6006,9 +6035,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals("DisconnectedState", getCurrentState().getName());
 
         // In DisconnectedState, policy update should result no capability update.
-        reset(mWifiConfigManager, mVcnManager);
-        mPolicyListenerCaptor.getValue().onPolicyChanged();
-        verifyNoMoreInteractions(mWifiConfigManager, mVcnManager);
+        reset(mWifiConfigManager, vcnManager);
+        policyListenerCaptor.getValue().onPolicyChanged();
+        verifyNoMoreInteractions(mWifiConfigManager, vcnManager);
     }
 
     /**
@@ -6017,15 +6046,22 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void triggerConnectToUnmergedNetwork() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
-
-        doAnswer(invocation -> {
-            NetworkCapabilities nc = invocation.getArgument(0);
-            nc.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
-            when(mVcnUnderlyingNetworkPolicy.getNetworkCapabilities())
-                    .thenReturn(nc);
-            return mVcnUnderlyingNetworkPolicy;
-        }).when(mVcnManager).applyVcnNetworkPolicy(any(), any());
-        when(mVcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
+        VcnManager vcnManager = mock(VcnManager.class);
+        when(mContext.getSystemService(VcnManager.class)).thenReturn(vcnManager);
+        VcnNetworkPolicyResult vcnUnderlyingNetworkPolicy = mock(VcnNetworkPolicyResult.class);
+        ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> policyListenerCaptor =
+                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
+        doAnswer(new AnswerWithArguments() {
+            public VcnNetworkPolicyResult answer(NetworkCapabilities networkCapabilities,
+                    LinkProperties linkProperties) throws Exception {
+                networkCapabilities.removeCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+                when(vcnUnderlyingNetworkPolicy.getNetworkCapabilities())
+                        .thenReturn(networkCapabilities);
+                return vcnUnderlyingNetworkPolicy;
+            }
+        }).when(vcnManager).applyVcnNetworkPolicy(any(), any());
+        when(vcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(false);
 
         String testSubscriberId = "TestSubscriberId";
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
@@ -6038,14 +6074,14 @@ public class ClientModeImplTest extends WifiBaseTest {
             });
 
         // Verify VCN policy listener is registered
-        verify(mVcnManager, atLeastOnce()).addVcnNetworkPolicyListener(any(),
-                mPolicyListenerCaptor.capture());
-        assertNotNull(mPolicyListenerCaptor.getValue());
+        verify(vcnManager, atLeastOnce()).addVcnNetworkPolicyListener(any(),
+                policyListenerCaptor.capture());
+        assertNotNull(policyListenerCaptor.getValue());
 
-        mPolicyListenerCaptor.getValue().onPolicyChanged();
+        policyListenerCaptor.getValue().onPolicyChanged();
         mLooper.dispatchAll();
 
-        verifyNoMoreInteractions(mVcnManager, mVcnUnderlyingNetworkPolicy);
+        verifyNoMoreInteractions(vcnManager, vcnUnderlyingNetworkPolicy);
     }
 
     /**

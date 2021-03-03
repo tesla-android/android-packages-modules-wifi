@@ -17,7 +17,11 @@
 package com.android.server.wifi;
 
 import static com.android.internal.util.Preconditions.checkNotNull;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
+
+import static java.lang.Math.toIntExact;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -78,6 +82,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -128,6 +133,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     private final PeriodicScanAlarmListener mPeriodicScanTimerListener;
     private final ConnectionTimeoutAlarmListener mConnectionTimeoutAlarmListener;
     private final ConnectHelper mConnectHelper;
+    private final ClientModeImplMonitor mClientModeImplMonitor;
     private RemoteCallbackList<INetworkRequestMatchCallback> mRegisteredCallbacks;
     // Store all user approved access points for apps.
     @VisibleForTesting
@@ -154,6 +160,13 @@ public class WifiNetworkFactory extends NetworkFactory {
     //  - null, if there are no active requests.
     //  - empty, if there are no matching scan results received for the active request.
     @Nullable private Map<String, ScanResult> mActiveMatchedScanResults;
+    /** Connection start time to keep track of connection duration */
+    private long mConnectionStartTimeMillis = -1L;
+    /**
+     * CMI listener used for concurrent connection metrics collection.
+     * Not used when the connection is on primary STA (i.e not STA + STA).
+     */
+    @Nullable private CmiListener mCmiListener;
     // Verbose logging flag.
     private boolean mVerboseLoggingEnabled = false;
     private boolean mPeriodicScanTimerSet = false;
@@ -416,6 +429,74 @@ public class WifiNetworkFactory extends NetworkFactory {
         }
     }
 
+    /**
+     * To keep track of concurrent connections using this API surface (for metrics collection only).
+     *
+     * Only used if the connection is initiated on secondary STA.
+     */
+    private class CmiListener implements ClientModeImplListener {
+        /** Concurrent connection start time to keep track of connection duration */
+        private long mConcurrentConnectionStartTimeMillis = -1L;
+        /** Whether we have already indicated the presence of concurrent connection */
+        private boolean mHasAlreadyIncrementedConcurrentConnectionCount = false;
+
+        private boolean isLocalOnlyOrPrimary(@NonNull ClientModeManager cmm) {
+            return cmm.getRole() == ROLE_CLIENT_PRIMARY
+                    || cmm.getRole() == ROLE_CLIENT_LOCAL_ONLY;
+        }
+
+        private void checkForConcurrencyStartAndIncrementMetrics() {
+            int numLocalOnlyOrPrimaryConnectedCmms = 0;
+            for (ClientModeManager cmm : mActiveModeWarden.getClientModeManagers()) {
+                if (isLocalOnlyOrPrimary(cmm) && cmm.isConnected()) {
+                    numLocalOnlyOrPrimaryConnectedCmms++;
+                }
+            }
+            if (numLocalOnlyOrPrimaryConnectedCmms > 1) {
+                mConcurrentConnectionStartTimeMillis = mClock.getElapsedSinceBootMillis();
+                // Note: We could have multiple connect/disconnect of the primary connection
+                // while remaining connected to the local only connection. We want to keep track
+                // of the connection durations accurately across those disconnects. However, we do
+                // not want to increment the connection count metric since that should be a 1:1
+                // mapping with the number of requests processed (i.e don't indicate 2 concurrent
+                // connection count if the primary disconnected & connected back while processing
+                // the same local only request).
+                if (!mHasAlreadyIncrementedConcurrentConnectionCount) {
+                    mWifiMetrics.incrementNetworkRequestApiNumConcurrentConnection();
+                    mHasAlreadyIncrementedConcurrentConnectionCount = true;
+                }
+            }
+        }
+
+        public void checkForConcurrencyEndAndIncrementMetrics() {
+            if (mConcurrentConnectionStartTimeMillis != -1L) {
+                mWifiMetrics.incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(
+                        toIntExact(TimeUnit.MILLISECONDS.toSeconds(
+                                mClock.getElapsedSinceBootMillis()
+                                        - mConcurrentConnectionStartTimeMillis)));
+                mConcurrentConnectionStartTimeMillis = -1L;
+            }
+        }
+
+        CmiListener() {
+            checkForConcurrencyStartAndIncrementMetrics();
+        }
+
+        @Override
+        public void onL3Connected(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (isLocalOnlyOrPrimary(clientModeManager)) {
+                checkForConcurrencyStartAndIncrementMetrics();
+            }
+        }
+
+        @Override
+        public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (isLocalOnlyOrPrimary(clientModeManager)) {
+                checkForConcurrencyEndAndIncrementMetrics();
+            }
+        }
+    }
+
     public WifiNetworkFactory(Looper looper, Context context, NetworkCapabilities nc,
             ActivityManager activityManager, AlarmManager alarmManager,
             AppOpsManager appOpsManager,
@@ -426,7 +507,8 @@ public class WifiNetworkFactory extends NetworkFactory {
             WifiPermissionsUtil wifiPermissionsUtil,
             WifiMetrics wifiMetrics,
             ActiveModeWarden activeModeWarden,
-            ConnectHelper connectHelper) {
+            ConnectHelper connectHelper,
+            ClientModeImplMonitor clientModeImplMonitor) {
         super(looper, context, TAG, nc);
         mContext = context;
         mActivityManager = activityManager;
@@ -442,6 +524,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         mWifiMetrics = wifiMetrics;
         mActiveModeWarden = activeModeWarden;
         mConnectHelper = connectHelper;
+        mClientModeImplMonitor = clientModeImplMonitor;
         // Create the scan settings.
         mScanSettings = new WifiScanner.ScanSettings();
         mScanSettings.type = WifiScanner.SCAN_TYPE_HIGH_ACCURACY;
@@ -878,6 +961,11 @@ public class WifiNetworkFactory extends NetworkFactory {
 
         mWifiMetrics.setNominatorForNetwork(networkId,
                 WifiMetricsProto.ConnectionEvent.NOMINATOR_SPECIFIER);
+        if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
+            mWifiMetrics.incrementNetworkRequestApiNumConnectOnPrimaryIface();
+        } else {
+            mWifiMetrics.incrementNetworkRequestApiNumConnectOnSecondaryIface();
+        }
 
         // Send the connect request to ClientModeImpl.
         // TODO(b/117601161): Refactor this.
@@ -1001,7 +1089,6 @@ public class WifiNetworkFactory extends NetworkFactory {
         }
         // transition the request from "active" to "connected".
         setupForConnectedRequest();
-        mWifiMetrics.incrementNetworkRequestApiNumConnectSuccess();
     }
 
     /**
@@ -1104,7 +1191,7 @@ public class WifiNetworkFactory extends NetworkFactory {
 
     private void removeClientModeManagerIfNecessary() {
         if (mClientModeManager != null) {
-            if (mClientModeManagerRole == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+            if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
                 mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
             }
             mActiveModeWarden.removeClientModeManager(mClientModeManager);
@@ -1137,6 +1224,17 @@ public class WifiNetworkFactory extends NetworkFactory {
         mPendingConnectionSuccess = false;
         // Cancel connection timeout alarm.
         cancelConnectionTimeout();
+
+        mConnectionStartTimeMillis = mClock.getElapsedSinceBootMillis();
+        if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
+            mWifiMetrics.incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
+        } else {
+            mWifiMetrics.incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
+            // secondary STA being used, register CMI listener for concurrent connection metrics
+            // collection.
+            mCmiListener = new CmiListener();
+            mClientModeImplMonitor.registerListener(mCmiListener);
+        }
     }
 
     // Invoked at the termination of current connected request processing.
@@ -1145,6 +1243,26 @@ public class WifiNetworkFactory extends NetworkFactory {
         disconnectAndRemoveNetworkFromWifiConfigManager(mUserSelectedNetwork);
         mConnectedSpecificNetworkRequest = null;
         mConnectedSpecificNetworkRequestSpecifier = null;
+
+        if (mConnectionStartTimeMillis != -1) {
+            int connectionDurationSec = toIntExact(TimeUnit.MILLISECONDS.toSeconds(
+                    mClock.getElapsedSinceBootMillis() - mConnectionStartTimeMillis));
+            if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
+                mWifiMetrics.incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(
+                        connectionDurationSec);
+
+            } else {
+                mWifiMetrics
+                        .incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(
+                                connectionDurationSec);
+            }
+            mConnectionStartTimeMillis = -1L;
+        }
+        if (mCmiListener != null) {
+            mCmiListener.checkForConcurrencyEndAndIncrementMetrics();
+            mClientModeImplMonitor.unregisterListener(mCmiListener);
+            mCmiListener = null;
+        }
         // ensure there is no active request in progress.
         if (mActiveSpecificNetworkRequest == null) {
             removeClientModeManagerIfNecessary();
@@ -1199,7 +1317,7 @@ public class WifiNetworkFactory extends NetworkFactory {
 
         // If using primary STA, disable Auto-join so that NetworkFactory can take control of the
         // network connection.
-        if (mClientModeManagerRole == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+        if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
             mWifiConnectivityManager.setSpecificNetworkRequestInProgress(true);
         }
 

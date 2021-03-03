@@ -354,6 +354,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isAutoWakeupEnabled();
     method public boolean isBridgedApConcurrencySupported();
     method @Deprecated public boolean isDeviceToApRttSupported();
+    method public boolean isEasyConnectEnrolleeResponderModeSupported();
     method public boolean isEasyConnectSupported();
     method public boolean isEnhancedOpenSupported();
     method public boolean isEnhancedPowerReportingSupported();
@@ -763,8 +764,8 @@ package android.net.wifi.aware {
 
   public class WifiAwareSession implements java.lang.AutoCloseable {
     method public void close();
-    method public android.net.NetworkSpecifier createNetworkSpecifierOpen(int, @NonNull byte[]);
-    method public android.net.NetworkSpecifier createNetworkSpecifierPassphrase(int, @NonNull byte[], @NonNull String);
+    method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierOpen(int, @NonNull byte[]);
+    method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierPassphrase(int, @NonNull byte[], @NonNull String);
     method public void publish(@NonNull android.net.wifi.aware.PublishConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
     method public void subscribe(@NonNull android.net.wifi.aware.SubscribeConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
   }

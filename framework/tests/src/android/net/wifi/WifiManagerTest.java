@@ -41,6 +41,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_AP_STA;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_P2P;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT;
@@ -2213,6 +2214,21 @@ public class WifiManagerTest {
         when(mWifiService.getSupportedFeatures())
                 .thenReturn(new Long(~WIFI_FEATURE_DPP));
         assertFalse(mWifiManager.isEasyConnectSupported());
+    }
+
+    /**
+     * Test behavior of isEasyConnectEnrolleeResponderModeSupported
+     */
+    @Test
+    public void testIsEasyConnectEnrolleeResponderModeSupported() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(WIFI_FEATURE_DPP_ENROLLEE_RESPONDER));
+        assertTrue(mWifiManager.isEasyConnectEnrolleeResponderModeSupported());
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(~WIFI_FEATURE_DPP_ENROLLEE_RESPONDER));
+        assertFalse(mWifiManager.isEasyConnectEnrolleeResponderModeSupported());
     }
 
     /**

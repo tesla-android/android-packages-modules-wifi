@@ -419,6 +419,7 @@ package android.net.wifi {
     field @Deprecated public static final int DISABLED_AUTHENTICATION_NO_SUBSCRIPTION = 9; // 0x9
     field @Deprecated public static final int DISABLED_BY_WIFI_MANAGER = 7; // 0x7
     field @Deprecated public static final int DISABLED_BY_WRONG_PASSWORD = 8; // 0x8
+    field @Deprecated public static final int DISABLED_CONSECUTIVE_FAILURES = 12; // 0xc
     field @Deprecated public static final int DISABLED_DHCP_FAILURE = 3; // 0x3
     field @Deprecated public static final int DISABLED_NETWORK_NOT_FOUND = 11; // 0xb
     field @Deprecated public static final int DISABLED_NONE = 0; // 0x0
@@ -901,7 +902,7 @@ package android.net.wifi.aware {
   }
 
   public class WifiAwareSession implements java.lang.AutoCloseable {
-    method public android.net.NetworkSpecifier createNetworkSpecifierPmk(int, @NonNull byte[], @NonNull byte[]);
+    method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierPmk(int, @NonNull byte[], @NonNull byte[]);
   }
 
 }

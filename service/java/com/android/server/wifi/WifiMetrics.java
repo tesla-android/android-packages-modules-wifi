@@ -129,6 +129,7 @@ import org.json.JSONObject;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -450,6 +451,20 @@ public class WifiMetrics {
             {0, 1, 5, 10};
     private final IntHistogram mWifiNetworkRequestApiMatchSizeHistogram =
             new IntHistogram(NETWORK_REQUEST_API_MATCH_SIZE_HISTOGRAM_BUCKETS);
+
+    private static final int[] NETWORK_REQUEST_API_DURATION_SEC_BUCKETS =
+            {0, toIntExact(Duration.ofMinutes(3).getSeconds()),
+                    toIntExact(Duration.ofMinutes(10).getSeconds()),
+                    toIntExact(Duration.ofMinutes(30).getSeconds()),
+                    toIntExact(Duration.ofHours(1).getSeconds()),
+                    toIntExact(Duration.ofHours(6).getSeconds())};
+    private final IntHistogram mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram =
+            new IntHistogram(NETWORK_REQUEST_API_DURATION_SEC_BUCKETS);
+    private final IntHistogram
+            mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram =
+            new IntHistogram(NETWORK_REQUEST_API_DURATION_SEC_BUCKETS);
+    private final IntHistogram mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram =
+            new IntHistogram(NETWORK_REQUEST_API_DURATION_SEC_BUCKETS);
 
     private final WifiNetworkSuggestionApiLog mWifiNetworkSuggestionApiLog =
             new WifiNetworkSuggestionApiLog();
@@ -3955,6 +3970,12 @@ public class WifiMetrics {
                 pw.println("mWifiNetworkRequestApiLog:\n" + mWifiNetworkRequestApiLog);
                 pw.println("mWifiNetworkRequestApiMatchSizeHistogram:\n"
                         + mWifiNetworkRequestApiMatchSizeHistogram);
+                pw.println("mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram:\n"
+                        + mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram);
+                pw.println("mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram:\n"
+                        + mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram);
+                pw.println("mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram:\n"
+                        + mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram);
                 pw.println("mWifiNetworkSuggestionApiLog:\n" + mWifiNetworkSuggestionApiLog);
                 pw.println("mWifiNetworkSuggestionApiMatchSizeHistogram:\n"
                         + mWifiNetworkSuggestionApiListSizeHistogram);
@@ -4601,6 +4622,12 @@ public class WifiMetrics {
 
             mWifiNetworkRequestApiLog.networkMatchSizeHistogram =
                     mWifiNetworkRequestApiMatchSizeHistogram.toProto();
+            mWifiNetworkRequestApiLog.connectionDurationSecOnPrimaryIfaceHistogram =
+                    mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram.toProto();
+            mWifiNetworkRequestApiLog.connectionDurationSecOnSecondaryIfaceHistogram =
+                    mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram.toProto();
+            mWifiNetworkRequestApiLog.concurrentConnectionDurationSecHistogram =
+                    mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram.toProto();
             mWifiLogProto.wifiNetworkRequestApiLog = mWifiNetworkRequestApiLog;
 
             mWifiNetworkSuggestionApiLog.networkListSizeHistogram =
@@ -4902,6 +4929,9 @@ public class WifiMetrics {
             mNetworkSelectionExperimentPairNumChoicesCounts.clear();
             mWifiNetworkSuggestionApiLog.clear();
             mWifiNetworkRequestApiMatchSizeHistogram.clear();
+            mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram.clear();
+            mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram.clear();
+            mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram.clear();
             mWifiNetworkSuggestionApiListSizeHistogram.clear();
             mWifiNetworkSuggestionApiAppTypeCounter.clear();
             mUserApprovalSuggestionAppUiReactionList.clear();
@@ -6377,10 +6407,10 @@ public class WifiMetrics {
         }
     }
 
-    /** Increment number of connection success via network request API */
-    public void incrementNetworkRequestApiNumConnectSuccess() {
+    /** Increment number of connection success on primary iface via network request API */
+    public void incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface() {
         synchronized (mLock) {
-            mWifiNetworkRequestApiLog.numConnectSuccess++;
+            mWifiNetworkRequestApiLog.numConnectSuccessOnPrimaryIface++;
         }
     }
 
@@ -6402,6 +6432,61 @@ public class WifiMetrics {
     public void incrementNetworkRequestApiNumApps() {
         synchronized (mLock) {
             mWifiNetworkRequestApiLog.numApps++;
+        }
+    }
+
+    /** Add to the network request API connection duration histogram */
+    public void incrementNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram(
+            int durationSec) {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiConnectionDurationSecOnPrimaryIfaceHistogram.increment(
+                    durationSec);
+        }
+    }
+
+    /** Add to the network request API connection duration on secondary iface histogram */
+    public void incrementNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram(
+            int durationSec) {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiConnectionDurationSecOnSecondaryIfaceHistogram.increment(
+                    durationSec);
+        }
+    }
+
+    /** Increment number of connection on primary iface via network request API */
+    public void incrementNetworkRequestApiNumConnectOnPrimaryIface() {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiLog.numConnectOnPrimaryIface++;
+        }
+    }
+
+    /** Increment number of connection on secondary iface via network request API */
+    public void incrementNetworkRequestApiNumConnectOnSecondaryIface() {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiLog.numConnectOnSecondaryIface++;
+        }
+    }
+
+    /** Increment number of connection success on secondary iface via network request API */
+    public void incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface() {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiLog.numConnectSuccessOnSecondaryIface++;
+        }
+    }
+
+    /** Increment number of concurrent connection via network request API */
+    public void incrementNetworkRequestApiNumConcurrentConnection() {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiLog.numConcurrentConnection++;
+        }
+    }
+
+    /** Add to the network request API concurrent connection duration histogram */
+    public void incrementNetworkRequestApiConcurrentConnectionDurationSecHistogram(
+            int durationSec) {
+        synchronized (mLock) {
+            mWifiNetworkRequestApiConcurrentConnectionDurationSecHistogram.increment(
+                    durationSec);
         }
     }
 

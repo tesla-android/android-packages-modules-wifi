@@ -584,9 +584,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final OnCarrierOffloadDisabledListener mOnCarrierOffloadDisabledListener;
 
-    private final WifiVcnNetworkPolicyListener mVcnPolicyListener =
-            new WifiVcnNetworkPolicyListener();
-
     private final ClientModeImplMonitor mCmiMonitor;
 
     private final WifiNetworkSelector mWifiNetworkSelector;
@@ -601,6 +598,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     @Nullable
     private StateMachineObituary mObituary = null;
+
+    @Nullable
+    private WifiVcnNetworkPolicyListener mVcnPolicyListener;
 
     /**
      * Whether this ClientModeImpl is in lingering mode. When in lingering mode, the ClientModeImpl
@@ -1393,9 +1393,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiConfigManager.removeOnNetworkUpdateListener(mOnNetworkUpdateListener);
         mWifiCarrierInfoManager
                 .removeOnCarrierOffloadDisabledListener(mOnCarrierOffloadDisabledListener);
-        if (mVcnManager != null) {
+        if (mVcnPolicyListener != null) {
             mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
-            mVcnManager = null;
+            mVcnPolicyListener = null;
         }
     }
 
@@ -2780,6 +2780,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 checkAbnormalConnectionFailureAndTakeBugReport(ssid);
                 mWifiBlocklistMonitor.handleBssidConnectionFailure(bssid, ssid,
                         blocklistReason, mLastScanRssi);
+                WifiScoreCard.NetworkConnectionStats recentStats = mWifiScoreCard.lookupNetwork(
+                        ssid).getRecentStats();
+                if (recentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_CONNECTION_FAILURE)
+                        >= WifiBlocklistMonitor.NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF) {
+                    mWifiConfigManager.updateNetworkSelectionStatus(mTargetNetworkId,
+                            WifiConfiguration.NetworkSelectionStatus.DISABLED_CONSECUTIVE_FAILURES);
+                }
             }
         }
 
@@ -4688,11 +4695,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
             if (mVcnManager == null && SdkLevel.isAtLeastS()) {
                 mVcnManager = mContext.getSystemService(VcnManager.class);
-                if (mVcnManager != null) {
-                    mVcnManager.addVcnNetworkPolicyListener(
-                            new HandlerExecutor(getHandler()),
-                            mVcnPolicyListener);
-                }
+            }
+            if (mVcnManager != null) {
+                mVcnPolicyListener = new WifiVcnNetworkPolicyListener();
+                mVcnManager.addVcnNetworkPolicyListener(new HandlerExecutor(getHandler()),
+                        mVcnPolicyListener);
             }
             final NetworkAgentConfig naConfig = naConfigBuilder.build();
             final NetworkCapabilities nc = getCapabilities(

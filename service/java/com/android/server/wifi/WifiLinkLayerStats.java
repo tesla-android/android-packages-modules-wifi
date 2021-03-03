@@ -52,13 +52,13 @@ public class WifiLinkLayerStats {
     /** WME Best Effort Access Category number of transmission retries */
     public long retries_be;
     /** WME Best Effort Access Category data packet min contention time in microseconds */
-    public long contentionTimeMinBeInUsec;
+    public int contentionTimeMinBeInUsec;
     /** WME Best Effort Access Category data packet max contention time in microseconds */
-    public long contentionTimeMaxBeInUsec;
+    public int contentionTimeMaxBeInUsec;
     /** WME Best Effort Access Category data packet avg contention time in microseconds */
-    public long contentionTimeAvgBeInUsec;
+    public int contentionTimeAvgBeInUsec;
     /** WME Best Effort Access Category number of data packets used for contention statistics */
-    public long contentionNumSamplesBe;
+    public int contentionNumSamplesBe;
 
     /** WME Background Access Category received mpdu */
     public long rxmpdu_bk;
@@ -69,13 +69,13 @@ public class WifiLinkLayerStats {
     /** WME Background Access Category number of transmission retries */
     public long retries_bk;
     /** WME Background Access Category data packet min contention time in microseconds */
-    public long contentionTimeMinBkInUsec;
+    public int contentionTimeMinBkInUsec;
     /** WME Background Access Category data packet max contention time in microseconds */
-    public long contentionTimeMaxBkInUsec;
+    public int contentionTimeMaxBkInUsec;
     /** WME Background Access Category data packet avg contention time in microseconds */
-    public long contentionTimeAvgBkInUsec;
+    public int contentionTimeAvgBkInUsec;
     /** WME Background Access Category number of data packets used for contention statistics */
-    public long contentionNumSamplesBk;
+    public int contentionNumSamplesBk;
 
     /** WME Video Access Category received mpdu */
     public long rxmpdu_vi;
@@ -86,13 +86,13 @@ public class WifiLinkLayerStats {
     /** WME Video Access Category number of transmission retries */
     public long retries_vi;
     /** WME Video Access Category data packet min contention time in microseconds */
-    public long contentionTimeMinViInUsec;
+    public int contentionTimeMinViInUsec;
     /** WME Video Access Category data packet max contention time in microseconds */
-    public long contentionTimeMaxViInUsec;
+    public int contentionTimeMaxViInUsec;
     /** WME Video Access Category data packet avg contention time in microseconds */
-    public long contentionTimeAvgViInUsec;
+    public int contentionTimeAvgViInUsec;
     /** WME Video Access Category number of data packets used for contention statistics */
-    public long contentionNumSamplesVi;
+    public int contentionNumSamplesVi;
 
     /** WME Voice Access Category received mpdu */
     public long rxmpdu_vo;
@@ -103,13 +103,13 @@ public class WifiLinkLayerStats {
     /** WME Voice Access Category number of transmission retries */
     public long retries_vo;
     /** WME Voice Access Category data packet min contention time in microseconds */
-    public long contentionTimeMinVoInUsec;
+    public int contentionTimeMinVoInUsec;
     /** WME Voice Access Category data packet max contention time in microseconds */
-    public long contentionTimeMaxVoInUsec;
+    public int contentionTimeMaxVoInUsec;
     /** WME Voice Access Category data packet avg contention time in microseconds */
-    public long contentionTimeAvgVoInUsec;
+    public int contentionTimeAvgVoInUsec;
     /** WME Voice Access Category number of data packets used for contention statistics */
-    public long contentionNumSamplesVo;
+    public int contentionNumSamplesVo;
 
     /**
      * Cumulative milliseconds when radio is awake
