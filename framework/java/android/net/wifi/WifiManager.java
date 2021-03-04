@@ -2616,6 +2616,12 @@ public class WifiManager {
      */
     public static final long WIFI_FEATURE_DPP_ENROLLEE_RESPONDER = 0x800000000000L;
 
+    /**
+     * Passpoint Terms and Conditions feature support
+     * @hide
+     */
+    public static final long WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS = 0x1000000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6265,6 +6271,13 @@ public class WifiManager {
         // After the feature complete, it returns whether WIFI_FEATURE_SAE_PK
         // is supported or not directly.
         return false;
+    }
+
+    /**
+     * @return true if this device supports Wi-Fi Passpoint Terms and Conditions feature.
+     */
+    public boolean isPasspointTermsAndConditionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS);
     }
 
     /**

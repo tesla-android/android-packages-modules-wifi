@@ -22,6 +22,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_MBO;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OCE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_SAE_PK;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WAPI;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
@@ -2945,6 +2946,13 @@ public class SupplicantStaIfaceHal {
                 if (mVerboseLoggingEnabled) {
                     Log.v(TAG, methodStr + ": DPP ENROLLEE RESPONDER supported");
                 }
+            }
+        }
+
+        if (isV1_4()) {
+            advancedCapabilities |= WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, methodStr + ": Passpoint T&C supported");
             }
         }
 

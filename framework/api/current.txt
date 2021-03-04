@@ -360,6 +360,7 @@ package android.net.wifi {
     method public boolean isEnhancedPowerReportingSupported();
     method public boolean isMakeBeforeBreakWifiSwitchingSupported();
     method public boolean isP2pSupported();
+    method public boolean isPasspointTermsAndConditionsSupported();
     method public boolean isPreferredNetworkOffloadSupported();
     method @Deprecated public boolean isScanAlwaysAvailable();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isScanThrottleEnabled();

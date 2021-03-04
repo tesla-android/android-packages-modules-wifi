@@ -44,6 +44,7 @@ import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
@@ -255,6 +256,10 @@ public class ScanRequestProxyTest extends WifiBaseTest {
                 new WorkSource(TEST_UID, TEST_PACKAGE_NAME_1)));
         validateScanSettings(mScanSettingsArgumentCaptor.getValue(), false, true);
         verifyScanMetricsDataWasSet(0, 1);
+        if (SdkLevel.isAtLeastS()) {
+            assertFalse("6Ghz PSC should not enabled for scan requests from the settings app.",
+                    mScanSettingsArgumentCaptor.getValue().is6GhzPscOnlyEnabled());
+        }
     }
 
     /**
@@ -629,8 +634,11 @@ public class ScanRequestProxyTest extends WifiBaseTest {
         // Make next scan request from the same package name & ensure that it is not throttled.
         assertTrue(mScanRequestProxy.startScan(TEST_UID, TEST_PACKAGE_NAME_1));
         mInOrder.verify(mWifiScanner).startScan(any(), any(), any(), any());
-
         verifyScanMetricsDataWasSet(SCAN_REQUEST_THROTTLE_MAX_IN_TIME_WINDOW_FG_APPS + 1);
+        if (SdkLevel.isAtLeastS()) {
+            assertTrue("6Ghz PSC should be enabled for scan requests from normal apps.",
+                    mScanSettingsArgumentCaptor.getValue().is6GhzPscOnlyEnabled());
+        }
     }
 
     /**
