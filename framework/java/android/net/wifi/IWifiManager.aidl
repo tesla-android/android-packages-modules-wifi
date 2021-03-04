@@ -120,6 +120,12 @@ interface IWifiManager
 
     String getCountryCode();
 
+    void setOverrideCountryCode(String country);
+
+    void clearOverrideCountryCode();
+
+    void setDefaultCountryCode(String country);
+
     boolean is24GHzBandSupported();
 
     boolean is5GHzBandSupported();

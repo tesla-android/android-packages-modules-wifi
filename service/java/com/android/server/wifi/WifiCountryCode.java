@@ -66,11 +66,11 @@ public class WifiCountryCode {
 
     private String mDefaultCountryCode = null;
     private String mTelephonyCountryCode = null;
+    private String mOverrideCountryCode = null;
     private String mDriverCountryCode = null;
     private String mTelephonyCountryTimestamp = null;
     private String mDriverCountryTimestamp = null;
     private String mReadyTimestamp = null;
-    private boolean mForceCountryCode = false;
 
     private class ModeChangeCallbackInternal implements ActiveModeWarden.ModeChangeCallback {
         @Override
@@ -147,6 +147,15 @@ public class WifiCountryCode {
 
         Log.d(TAG, "mDefaultCountryCode " + mDefaultCountryCode);
     }
+    /**
+     * Is this a valid country code
+     * @param countryCode A 2-Character alphanumeric country code.
+     * @return true if the countryCode is valid, false otherwise.
+     */
+    public static boolean isValid(String countryCode) {
+        return countryCode != null && countryCode.length() == 2
+                && countryCode.chars().allMatch(Character::isLetterOrDigit);
+    }
 
     /**
      * The class for country code related change listener
@@ -176,7 +185,7 @@ public class WifiCountryCode {
         // If we don't have telephony country code set yet, poll it.
         if (mTelephonyCountryCode == null) {
             Log.d(TAG, "Reading country code from telephony");
-            setCountryCode(mTelephonyManager.getNetworkCountryIso());
+            setTelephonyCountryCode(mTelephonyManager.getNetworkCountryIso());
         }
     }
 
@@ -207,19 +216,18 @@ public class WifiCountryCode {
     }
 
     /**
-     * Enable force-country-code mode
-     * This is for forcing a country using cmd wifi from adb shell
+     * This call will override any existing country code.
      * This is for test purpose only and we should disallow any update from
-     * telephony in this mode
-     * @param countryCode The forced two-letter country code
+     * telephony in this mode.
+     * @param countryCode A 2-Character alphanumeric country code.
      */
-    synchronized void enableForceCountryCode(String countryCode) {
+    public synchronized void setOverrideCountryCode(String countryCode) {
         if (TextUtils.isEmpty(countryCode)) {
-            Log.d(TAG, "Fail to force country code because the received country code is empty");
+            Log.d(TAG, "Fail to override country code because"
+                    + "the received country code is empty");
             return;
         }
-        mForceCountryCode = true;
-        mTelephonyCountryCode = countryCode.toUpperCase(Locale.US);
+        mOverrideCountryCode = countryCode.toUpperCase(Locale.US);
 
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
@@ -231,11 +239,10 @@ public class WifiCountryCode {
     }
 
     /**
-     * Disable force-country-code mode
+     * This is for clearing the country code previously set through #setOverrideCountryCode() method
      */
-    synchronized void disableForceCountryCode() {
-        mForceCountryCode = false;
-        mTelephonyCountryCode = null;
+    public synchronized void clearOverrideCountryCode() {
+        mOverrideCountryCode = null;
 
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
@@ -246,11 +253,7 @@ public class WifiCountryCode {
         }
     }
 
-    private boolean setCountryCode(String countryCode) {
-        if (mForceCountryCode) {
-            Log.d(TAG, "Telephony Country code ignored due to force-country-code mode");
-            return false;
-        }
+    private void setTelephonyCountryCode(String countryCode) {
         Log.d(TAG, "Set telephony country code to: " + countryCode);
         mTelephonyCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
 
@@ -264,7 +267,6 @@ public class WifiCountryCode {
         } else {
             mTelephonyCountryCode = countryCode.toUpperCase(Locale.US);
         }
-        return true;
     }
 
     /**
@@ -274,8 +276,12 @@ public class WifiCountryCode {
      * otherwise we think it is from other applications.
      * @return Returns true if the country code passed in is acceptable.
      */
-    public boolean setCountryCodeAndUpdate(String countryCode) {
-        if (!setCountryCode(countryCode)) return false;
+    public boolean setTelephonyCountryCodeAndUpdate(String countryCode) {
+        setTelephonyCountryCode(countryCode);
+        if (mOverrideCountryCode != null) {
+            Log.d(TAG, "Skip Telephony Country code update due to override country code set");
+            return false;
+        }
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
         if (isReady()) {
@@ -314,6 +320,27 @@ public class WifiCountryCode {
     }
 
     /**
+     * set default country code
+     * @param countryCode A 2-Character alphanumeric country code.
+     */
+    public synchronized void setDefaultCountryCode(String countryCode) {
+        if (TextUtils.isEmpty(countryCode)) {
+            Log.d(TAG, "Fail to set default country code because the country code is empty");
+            return;
+        }
+
+        mDefaultCountryCode = countryCode.toUpperCase(Locale.US);
+
+        // If wpa_supplicant is ready we set the country code now, otherwise it will be
+        // set once wpa_supplicant is ready.
+        if (isReady()) {
+            updateCountryCode();
+        } else {
+            Log.d(TAG, "skip update supplicant not ready yet");
+        }
+    }
+
+    /**
      * Method to dump the current state of this WifiCounrtyCode object.
      */
     public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -324,6 +351,7 @@ public class WifiCountryCode {
         pw.println("mDriverCountryCode: " + mDriverCountryCode);
         pw.println("mTelephonyCountryCode: " + mTelephonyCountryCode);
         pw.println("mTelephonyCountryTimestamp: " + mTelephonyCountryTimestamp);
+        pw.println("mOverrideCountryCode: " + mOverrideCountryCode);
         pw.println("mDriverCountryTimestamp: " + mDriverCountryTimestamp);
         pw.println("mReadyTimestamp: " + mReadyTimestamp);
         pw.println("isReady: " + isReady());
@@ -348,14 +376,13 @@ public class WifiCountryCode {
     }
 
     private String pickCountryCode() {
+        if (mOverrideCountryCode != null) {
+            return mOverrideCountryCode;
+        }
         if (mTelephonyCountryCode != null) {
             return mTelephonyCountryCode;
         }
-        if (mDefaultCountryCode != null) {
-            return mDefaultCountryCode;
-        }
-        // If there is no candidate country code we will return null.
-        return null;
+        return mDefaultCountryCode;
     }
 
     private boolean setCountryCodeNative(String country) {

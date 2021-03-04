@@ -3181,9 +3181,20 @@ public class WifiManager {
     }
 
     /**
-     * Get the country code.
-     * @return the country code in ISO 3166 alpha-2 (2-letter) uppercase format, or null if
-     * there is no country code configured.
+     * Get the country code as resolved by the Wi-Fi framework.
+     * The Wi-Fi framework uses multiple sources to resolve a country code
+     * - in order of priority (high to low):
+     * 1. Override country code set by {@link WifiManager#setOverrideCountryCode(String)}
+     * and cleared by {@link WifiManager#clearOverrideCountryCode()}. Typically only used
+     * for testing.
+     * 2. Country code supplied by the telephony module. Typically provided from the
+     * current network or from emergency cell information.
+     * 3. Default country code set either via {@code ro.boot.wificountrycode}
+     * or the {@link WifiManager#setDefaultCountryCode(String)}.
+     *
+     * @return the country code in ISO 3166 alpha-2 (2-letter) upper format,
+     * or null if there is no country code configured.
+     *
      * @hide
      */
     @Nullable
@@ -3192,6 +3203,58 @@ public class WifiManager {
     public String getCountryCode() {
         try {
             return mService.getCountryCode();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Set the override country code - may be used for testing. See the country code resolution
+     * order and format in {@link #getCountryCode()}.
+     * @param country A 2-Character alphanumeric country code.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void setOverrideCountryCode(@NonNull String country) {
+        try {
+            mService.setOverrideCountryCode(country);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * This clears the override country code which was previously set by
+     * {@link WifiManager#setOverrideCountryCode(String)} method.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void clearOverrideCountryCode() {
+        try {
+            mService.clearOverrideCountryCode();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+    /**
+     * Used to configure the default country code. See {@link #getCountryCode()} for resolution
+     * method of the country code.
+     * @param country A 2-character alphanumeric country code.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void setDefaultCountryCode(@NonNull String country) {
+        try {
+            mService.setDefaultCountryCode(country);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

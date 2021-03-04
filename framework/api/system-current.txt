@@ -482,6 +482,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void allowAutojoin(int, boolean);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void allowAutojoinGlobal(boolean);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void allowAutojoinPasspoint(@NonNull String, boolean);
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE) public void clearOverrideCountryCode();
     method @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE) public void clearWifiConnectedNetworkScorer();
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD, android.Manifest.permission.NETWORK_STACK}) public void connect(@NonNull android.net.wifi.WifiConfiguration, @Nullable android.net.wifi.WifiManager.ActionListener);
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD, android.Manifest.permission.NETWORK_STACK}) public void connect(int, @Nullable android.net.wifi.WifiManager.ActionListener);
@@ -529,8 +530,10 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void setAutoWakeupEnabled(boolean);
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public void setCarrierNetworkOffloadEnabled(int, boolean, boolean);
     method @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS) public void setCoexUnsafeChannels(@NonNull java.util.Set<android.net.wifi.CoexUnsafeChannel>, int);
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE) public void setDefaultCountryCode(@NonNull String);
     method @RequiresPermission(android.Manifest.permission.WIFI_SET_DEVICE_MOBILITY_STATE) public void setDeviceMobilityState(int);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void setMacRandomizationSettingPasspointEnabled(@NonNull String, boolean);
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE) public void setOverrideCountryCode(@NonNull String);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void setPasspointMeteredOverride(@NonNull String, int);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void setScanAlwaysAvailable(boolean);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void setScanThrottleEnabled(boolean);
