@@ -4624,13 +4624,21 @@ public class WifiServiceImpl extends BaseWifiService {
                 return;
             }
             if (configuration.enterpriseConfig != null
-                    && configuration.enterpriseConfig.isAuthenticationSimBased()
-                    && !mWifiCarrierInfoManager.isSimPresent(mWifiCarrierInfoManager
-                    .getBestMatchSubscriptionId(configuration))) {
-                Log.e(TAG, "connect to SIM-based config=" + configuration
-                        + "while SIM is absent");
-                wrapper.sendFailure(WifiManager.ERROR);
-                return;
+                    && configuration.enterpriseConfig.isAuthenticationSimBased()) {
+                int subId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(configuration);
+                if (!mWifiCarrierInfoManager.isSimPresent(subId)) {
+                    Log.e(TAG, "connect to SIM-based config=" + configuration
+                            + "while SIM is absent");
+                    wrapper.sendFailure(WifiManager.ERROR);
+                    return;
+                }
+                if (mWifiCarrierInfoManager.requiresImsiEncryption(subId)
+                        && !mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(subId)) {
+                    Log.e(TAG, "Imsi protection required but not available for Network="
+                            + configuration);
+                    wrapper.sendFailure(WifiManager.ERROR);
+                    return;
+                }
             }
             mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
                     mConnectHelper.connectToNetwork(result, wrapper, uid));
