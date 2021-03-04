@@ -420,7 +420,7 @@ public class WifiServiceImpl extends BaseWifiService {
                         String countryCode = intent.getStringExtra(
                                 TelephonyManager.EXTRA_NETWORK_COUNTRY);
                         Log.d(TAG, "Country code changed to :" + countryCode);
-                        mCountryCode.setCountryCodeAndUpdate(countryCode);
+                        mCountryCode.setTelephonyCountryCodeAndUpdate(countryCode);
                     }}, new IntentFilter(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED));
             mContext.registerReceiver(
                     new BroadcastReceiver() {
@@ -3256,6 +3256,74 @@ public class WifiServiceImpl extends BaseWifiService {
             mLog.info("getCountryCode uid=%").c(Binder.getCallingUid()).flush();
         }
         return mCountryCode.getCountryCode();
+    }
+
+    /**
+     * Set the Wifi country code. This call will override the country code set by telephony.
+     * @param countryCode A 2-Character alphanumeric country code.
+     *
+     */
+    @Override
+    public void setOverrideCountryCode(@NonNull String countryCode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (!WifiCountryCode.isValid(countryCode)) {
+            throw new IllegalArgumentException("Country code must be a 2-Character alphanumeric"
+                    + " code. But got countryCode " + countryCode
+                    + " instead");
+        }
+        if (mVerboseLoggingEnabled) {
+            mLog.info("setOverrideCountryCode uid=% countryCode=%")
+                    .c(Binder.getCallingUid()).c(countryCode).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.setOverrideCountryCode(countryCode));
+    }
+
+    /**
+     * Clear the country code previously set through setOverrideCountryCode method.
+     *
+     */
+    @Override
+    public void clearOverrideCountryCode() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (mVerboseLoggingEnabled) {
+            mLog.info("clearCountryCode uid=%").c(Binder.getCallingUid()).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.clearOverrideCountryCode());
+    }
+
+    /**
+     * Change the default country code previously set from ro.boot.wificountrycode.
+     * @param countryCode A 2-Character alphanumeric country code.
+     *
+     */
+    @Override
+    public void setDefaultCountryCode(@NonNull String countryCode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (!WifiCountryCode.isValid(countryCode)) {
+            throw new IllegalArgumentException("Country code must be a 2-Character alphanumeric"
+                    + " code. But got countryCode " + countryCode
+                    + " instead");
+        }
+        if (mVerboseLoggingEnabled) {
+            mLog.info("setDefaultCountryCode uid=% countryCode=%")
+                    .c(Binder.getCallingUid()).c(countryCode).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.setDefaultCountryCode(countryCode));
     }
 
     @Override

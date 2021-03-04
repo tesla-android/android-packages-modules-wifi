@@ -3110,7 +3110,6 @@ public class WifiManagerTest {
         verify(mWifiService).removeAppState(TEST_UID, TEST_PACKAGE_NAME);
     }
 
-
     /**
      * Test behavior of isPasspointTermsAndConditionsSupported
      */
@@ -3126,4 +3125,33 @@ public class WifiManagerTest {
         assertFalse(mWifiManager.isPasspointTermsAndConditionsSupported());
     }
 
+    /**
+     * Verify the call to setOverrideCountryCode goes to WifiServiceImpl.
+     */
+    @Test
+    public void testSetOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiManager.setOverrideCountryCode(TEST_COUNTRY_CODE);
+        verify(mWifiService).setOverrideCountryCode(eq(TEST_COUNTRY_CODE));
+    }
+
+    /**
+     * Verify the call to clearOverrideCountryCode goes to WifiServiceImpl.
+     */
+    @Test
+    public void testClearOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiManager.clearOverrideCountryCode();
+        verify(mWifiService).clearOverrideCountryCode();
+    }
+
+    /**
+     * Verify the call to setDefaultCountryCode goes to WifiServiceImpl.
+     */
+    @Test
+    public void testSetDefaultCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiManager.setDefaultCountryCode(TEST_COUNTRY_CODE);
+        verify(mWifiService).setDefaultCountryCode(eq(TEST_COUNTRY_CODE));
+    }
 }

@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static android.Manifest.permission.ACCESS_WIFI_STATE;
+import static android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE;
 import static android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS;
 import static android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
@@ -5196,7 +5197,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intent.putExtra(Intent.EXTRA_USER_HANDLE, userHandle);
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
-        verify(mWifiCountryCode, never()).setCountryCodeAndUpdate(any());
+        verify(mWifiCountryCode, never()).setTelephonyCountryCodeAndUpdate(any());
     }
 
     /**
@@ -5216,7 +5217,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         intent.putExtra(Intent.EXTRA_USER_HANDLE, userHandle);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, Intent.SIM_STATE_ABSENT);
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
-        verify(mWifiCountryCode, never()).setCountryCodeAndUpdate(any());
+        verify(mWifiCountryCode, never()).setTelephonyCountryCodeAndUpdate(any());
     }
 
     /**
@@ -7335,7 +7336,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)));
         sendCountryCodeChangedBroadcast("US");
-        verify(mWifiCountryCode).setCountryCodeAndUpdate(any());
+        verify(mWifiCountryCode).setTelephonyCountryCodeAndUpdate(any());
     }
 
     @Test
@@ -7563,5 +7564,86 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.enableTdlsWithMacAddress(TEST_BSSID, false);
         mLooper.dispatchAll();
         verify(mClientModeManager).enableTdls(TEST_BSSID, false);
+    }
+
+    /**
+     * Verify that a call to setOverrideCountryCode() throws a SecurityException if the caller does
+     * not have the MANAGE_WIFI_COUNTRY_CODE permission.
+     */
+    @Test
+    public void testSetOverrideCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
+                        eq("WifiService"));
+        try {
+            mWifiServiceImpl.setOverrideCountryCode(TEST_COUNTRY_CODE);
+            fail("expected SecurityException");
+        } catch (SecurityException expected) { }
+    }
+
+    /**
+     * Verify the call to setOverrideCountryCode() goes to WifiCountryCode
+     */
+    @Test
+    public void testSetOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiServiceImpl.setOverrideCountryCode(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mWifiCountryCode).setOverrideCountryCode(TEST_COUNTRY_CODE);
+    }
+
+    /**
+     * Verify that a call to clearOverrideCountryCode() throws a SecurityException if the caller
+     * does not have the MANAGE_WIFI_COUNTRY_CODE permission.
+     */
+    @Test
+    public void testClearOverrideCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
+                        eq("WifiService"));
+        try {
+            mWifiServiceImpl.clearOverrideCountryCode();
+            fail("expected SecurityException");
+        } catch (SecurityException expected) { }
+    }
+
+    /**
+     * Verify the call to clearOverrideCountryCode() goes to WifiCountryCode
+     */
+    @Test
+    public void testClearOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiServiceImpl.clearOverrideCountryCode();
+        mLooper.dispatchAll();
+        verify(mWifiCountryCode).clearOverrideCountryCode();
+    }
+
+    /**
+     * Verify that a call to setDefaultCountryCode() throws a SecurityException if the caller does
+     * not have the MANAGE_WIFI_COUNTRY_CODE permission.
+     */
+    @Test
+    public void testSetDefaultCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
+                        eq("WifiService"));
+        try {
+            mWifiServiceImpl.setDefaultCountryCode(TEST_COUNTRY_CODE);
+            fail("expected SecurityException");
+        } catch (SecurityException expected) { }
+    }
+
+    /**
+     * Verify the call to setDefaultCountryCode() goes to WifiCountryCode
+     */
+    @Test
+    public void testSetDefaultCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiServiceImpl.setDefaultCountryCode(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mWifiCountryCode).setDefaultCountryCode(TEST_COUNTRY_CODE);
     }
 }
