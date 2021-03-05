@@ -7708,4 +7708,29 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Flush Passpoint ANQP cache, and clear pending ANQP requests. Allows the caller to reset the
+     * Passpoint ANQP state, if required.
+     *
+     * Notes:
+     * 1. Flushing the ANQP cache may cause delays in discovering and connecting to Passpoint
+     * networks.
+     * 2. Intended to be used by Device Owner (DO), Profile Owner (PO), Settings and provisioning
+     * apps.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
+            android.Manifest.permission.NETWORK_CARRIER_PROVISIONING
+            })
+    public void flushPasspointAnqpCache() {
+        try {
+            mService.flushPasspointAnqpCache(mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

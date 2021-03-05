@@ -756,4 +756,9 @@ public class BaseWifiService extends IWifiManager.Stub {
     public boolean setWifiScoringEnabled(boolean enabled) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void flushPasspointAnqpCache(@NonNull String packageName) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -7657,4 +7657,67 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiCountryCode).setDefaultCountryCode(TEST_COUNTRY_CODE);
     }
+
+    /**
+     * Verify that a call to flushPasspointAnqpCache throws a SecurityException if the
+     * caller does not have any permission.
+     */
+    @Test (expected = SecurityException.class)
+    public void testFlushPasspointAnqpCacheThrowsSecurityExceptionOnMissingPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), anyString())).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(), anyString())).thenReturn(false);
+
+        mWifiServiceImpl.flushPasspointAnqpCache(mContext.getPackageName());
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache with DO permission calls Passpoint
+     * manager to flush the ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCacheWithDoPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(true);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(),
+                eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache with PO permission calls Passpoint
+     * manager to flush the ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCacheWithPoPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(true);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache calls Passpoint manager to flush the
+     * ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCache() {
+        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
+                .thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(),
+                eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
 }
