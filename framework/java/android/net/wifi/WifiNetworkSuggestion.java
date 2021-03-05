@@ -597,7 +597,8 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * @param macRandomizationSetting - one of {@code RANDOMIZATION_*} values
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
-        public @NonNull Builder setMacRandomizationSetting(int macRandomizationSetting) {
+        public @NonNull Builder setMacRandomizationSetting(
+                @MacRandomizationSetting int macRandomizationSetting) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
