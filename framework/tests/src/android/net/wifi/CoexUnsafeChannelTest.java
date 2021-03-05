@@ -20,10 +20,15 @@ import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assume.assumeTrue;
+
 import android.os.Parcel;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
+
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -31,6 +36,11 @@ import org.junit.Test;
  */
 @SmallTest
 public class CoexUnsafeChannelTest {
+    @Before
+    public void setUp() {
+        assumeTrue(SdkLevel.isAtLeastS());
+    }
+
     /**
      * Verifies {@link CoexUnsafeChannel#isPowerCapAvailable()} returns false if no cap is set.
      */

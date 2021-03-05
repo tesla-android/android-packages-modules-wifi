@@ -3785,6 +3785,9 @@ public class WifiManager {
         private final CoexCallbackProxy mCoexCallbackProxy;
 
         public CoexCallback() {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
             mCoexCallbackProxy = new CoexCallbackProxy();
         }
 
