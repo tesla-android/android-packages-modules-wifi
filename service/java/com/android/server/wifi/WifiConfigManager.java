@@ -1796,6 +1796,7 @@ public class WifiConfigManager {
      * Re-enable all temporary disabled configured networks.
      */
     public void enableTemporaryDisabledNetworks() {
+        mWifiBlocklistMonitor.clearBssidBlocklist();
         for (WifiConfiguration config : getInternalConfiguredNetworks()) {
             if (config.getNetworkSelectionStatus().isNetworkTemporaryDisabled()) {
                 updateNetworkSelectionStatus(config,
