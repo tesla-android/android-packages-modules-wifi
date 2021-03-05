@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -298,7 +299,7 @@ public class WifiCountryCode {
      *
      * @return Returns the local copy of the Country Code that was sent to the driver upon
      * setReadyForChange(true).
-     * If wpa_supplicant was never started, this may be null even if a SIM reported a valid
+     * If wpa_supplicant was never started, this may be null even if Telephony reported a valid
      * country code.
      * Returns null if no Country Code was sent to driver.
      */
@@ -308,12 +309,13 @@ public class WifiCountryCode {
     }
 
     /**
-     * Method to return the currently reported Country Code from the SIM or phone default setting.
+     * Method to return the currently reported Country Code resolved from various sources:
+     * e.g. default country code, cellular network country code, country code override, etc.
      *
-     * @return The currently reported Country Code from the SIM. If there is no Country Code
-     * reported from SIM, a phone default Country Code will be returned.
-     * Returns null when there is no Country Code available.
+     * @return The current Wifi Country Code resolved from various sources. Returns null when there
+     * is no Country Code available.
      */
+    @Nullable
     public synchronized String getCountryCode() {
         initializeTelephonyCountryCodeIfNeeded();
         return pickCountryCode();
