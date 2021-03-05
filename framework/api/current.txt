@@ -615,6 +615,7 @@ package android.net.wifi.aware {
   }
 
   public final class AwareResources implements android.os.Parcelable {
+    ctor public AwareResources(@IntRange(from=0) int, @IntRange(from=0) int, @IntRange(from=0) int);
     method public int describeContents();
     method @IntRange(from=0) public int getAvailableDataPathsCount();
     method @IntRange(from=0) public int getAvailablePublishSessionsCount();
