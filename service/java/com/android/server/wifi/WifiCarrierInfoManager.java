@@ -1816,6 +1816,12 @@ public class WifiCarrierInfoManager {
     }
 
     private boolean isMobileDataEnabled(int subId) {
+        if (!SdkLevel.isAtLeastS()) {
+            // As the carrier offload enabled API and the merged carrier API (which is controlled by
+            // this toggle) were added in S. Don't check the mobile data toggle when Sdk is less
+            // than S.
+            return true;
+        }
         if (mUserDataEnabled.indexOfKey(subId) >= 0) {
             return mUserDataEnabled.get(subId);
         }
@@ -1846,8 +1852,11 @@ public class WifiCarrierInfoManager {
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
         mUserDataEnabled.clear();
-        for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
-            listener.unregisterListener();
+        if (SdkLevel.isAtLeastS()) {
+            for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
+                listener.unregisterListener();
+            }
+            mUserDataEnabledListenerList.clear();
         }
         resetNotification();
         saveToStore();
