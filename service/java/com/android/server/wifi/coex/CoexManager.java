@@ -51,9 +51,9 @@ import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.CarrierConfigManager;
-import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.util.Pair;
@@ -154,8 +154,8 @@ public class CoexManager {
         IntentFilter filter = new IntentFilter();
         filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         context.registerReceiver(mBroadcastReceiver, filter, null, handler);
-        mTelephonyManager.registerPhoneStateListener(new HandlerExecutor(handler),
-                new CoexPhoneStateListener());
+        mTelephonyManager.registerTelephonyCallback(new HandlerExecutor(handler),
+                new CoexTelephonyCallback());
     }
 
     /**
@@ -293,9 +293,9 @@ public class CoexManager {
     }
 
     @VisibleForTesting
-    /* package */ class CoexPhoneStateListener extends PhoneStateListener
-            implements PhoneStateListener.PhysicalChannelConfigChangedListener,
-                    PhoneStateListener.ActiveDataSubscriptionIdChangedListener {
+    /* package */ class CoexTelephonyCallback extends TelephonyCallback implements
+            TelephonyCallback.PhysicalChannelConfigListener,
+            TelephonyCallback.ActiveDataSubscriptionIdListener {
         @java.lang.Override
         public void onPhysicalChannelConfigChanged(
                 @NonNull List<PhysicalChannelConfig> configs) {

@@ -46,9 +46,9 @@ import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
 import android.telephony.ImsiEncryptionInfo;
-import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -196,11 +196,11 @@ public class WifiCarrierInfoManager {
     private boolean mIsLastUserApprovalUiDialog = false;
 
     /**
-     * Implement of {@link PhoneStateListener.DataEnabledChangedListener}
+     * Implement of {@link TelephonyCallback.DataEnabledListener}
      */
     @VisibleForTesting
-    public final class UserDataEnabledChangedListener extends PhoneStateListener implements
-            PhoneStateListener.DataEnabledChangedListener {
+    public final class UserDataEnabledChangedListener extends TelephonyCallback implements
+            TelephonyCallback.DataEnabledListener {
         private final int mSubscriptionId;
 
         public UserDataEnabledChangedListener(int subscriptionId) {
@@ -227,7 +227,7 @@ public class WifiCarrierInfoManager {
          */
         public void unregisterListener() {
             mTelephonyManager.createForSubscriptionId(mSubscriptionId)
-                    .unregisterPhoneStateListener(this);
+                    .unregisterTelephonyCallback(this);
 
         }
     }
@@ -1829,7 +1829,7 @@ public class WifiCarrierInfoManager {
         boolean enabled = specifiedTm.isDataEnabled();
         mUserDataEnabled.put(subId, enabled);
         UserDataEnabledChangedListener listener = new UserDataEnabledChangedListener(subId);
-        specifiedTm.registerPhoneStateListener(new HandlerExecutor(mHandler), listener);
+        specifiedTm.registerTelephonyCallback(new HandlerExecutor(mHandler), listener);
         mUserDataEnabledListenerList.add(listener);
 
         return enabled;
