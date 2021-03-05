@@ -1388,6 +1388,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 .getNetworkSelectionStatus().isNetworkTemporaryDisabled());
 
         mWifiConfigManager.enableTemporaryDisabledNetworks();
+        verify(mWifiBlocklistMonitor).clearBssidBlocklist();
         assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
                 .getNetworkSelectionStatus().isNetworkEnabled());
     }
@@ -1405,6 +1406,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 .getNetworkSelectionStatus().isNetworkPermanentlyDisabled());
 
         mWifiConfigManager.enableTemporaryDisabledNetworks();
+        verify(mWifiBlocklistMonitor).clearBssidBlocklist();
         assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
                 .getNetworkSelectionStatus().isNetworkPermanentlyDisabled());
     }

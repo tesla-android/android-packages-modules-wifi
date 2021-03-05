@@ -2501,7 +2501,6 @@ public class WifiConnectivityManager {
 
         if (!enable) {
             mNetworkSelector.resetOnDisable();
-            mWifiBlocklistMonitor.clearBssidBlocklist();
             mConfigManager.enableTemporaryDisabledNetworks();
             mConfigManager.stopTemporarilyDisablingAllNonCarrierMergedWifi();
         }

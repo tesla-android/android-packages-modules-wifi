@@ -5281,6 +5281,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mSimRequiredNotifier).dismissSimRequiredNotification();
         verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
         verify(mWifiConfigManager, never()).removeAllEphemeralOrPasspointConfiguredNetworks();
+        verify(mWifiConfigManager).enableTemporaryDisabledNetworks();
+        verify(mWifiConnectivityManager).forceConnectivityScan(any());
     }
 
     @Test

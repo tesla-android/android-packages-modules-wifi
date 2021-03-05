@@ -463,7 +463,12 @@ public class WifiServiceImpl extends BaseWifiService {
                 cmm.resetSimAuthNetworks(resetReason);
             }
             mWifiNetworkSuggestionsManager.resetCarrierPrivilegedApps();
-            if (resetReason != RESET_SIM_REASON_SIM_INSERTED) {
+            if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
+                // clear the blocklists in case any SIM based network were disabled due to the SIM
+                // not being available.
+                mWifiConfigManager.enableTemporaryDisabledNetworks();
+                mWifiConnectivityManager.forceConnectivityScan(ClientModeImpl.WIFI_WORK_SOURCE);
+            } else {
                 // Remove all ephemeral carrier networks keep subscriptionId update with SIM changes
                 mWifiConfigManager.removeEphemeralCarrierNetworks();
             }
