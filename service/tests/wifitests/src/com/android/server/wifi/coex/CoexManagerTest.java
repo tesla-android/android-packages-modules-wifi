@@ -54,8 +54,8 @@ import android.os.test.TestLooper;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
-import android.telephony.PhoneStateListener;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 
 import androidx.test.filters.SmallTest;
@@ -358,11 +358,11 @@ public class CoexManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies that CoexManager does register as a PhoneStateListener if the default coex algorithm
+     * Verifies that CoexManager does register as a TelephonyCallback if the default coex algorithm
      * is enabled and a coex table xml file exists and could be read.
      */
     @Test
-    public void testPhoneStateListener_defaultAlgorithmEnabledXmlExists_registersWithTelephony()
+    public void testTelephonyCallback_defaultAlgorithmEnabledXmlExists_registersWithTelephony()
             throws Exception {
         // config_wifiDefaultCoexAlgorithm defaults to true
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
@@ -370,15 +370,15 @@ public class CoexManagerTest extends WifiBaseTest {
         createCoexManager();
 
         verify(mMockTelephonyManager, times(1))
-                .registerPhoneStateListener(any(Executor.class), any(PhoneStateListener.class));
+                .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
     }
 
     /**
-     * Verifies that CoexManager does not register as a PhoneStateListener if the default coex
+     * Verifies that CoexManager does not register as a TelephonyCallback if the default coex
      * algorithm is disabled.
      */
     @Test
-    public void testPhoneStateListener_defaultAlgorithmDisabled_doesNotRegisterWithTelephony()
+    public void testTelephonyCallback_defaultAlgorithmDisabled_doesNotRegisterWithTelephony()
             throws Exception {
         when(mMockResources.getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled))
                 .thenReturn(false);
@@ -387,21 +387,21 @@ public class CoexManagerTest extends WifiBaseTest {
         createCoexManager();
 
         verify(mMockTelephonyManager, times(0))
-                .registerPhoneStateListener(any(Executor.class), any(PhoneStateListener.class));
+                .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
     }
 
     /**
      * Verifies that readTableFromXml returns false if the coex table XML is missing or malformed.
      */
     @Test
-    public void testPhoneStateListener_missingOrMalformedXml_doesNotRegisterWithTelephony()
+    public void testTelephonyCallback_missingOrMalformedXml_doesNotRegisterWithTelephony()
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_MALFORMED).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
 
         verify(mMockTelephonyManager, times(0))
-                .registerPhoneStateListener(any(Executor.class), any(PhoneStateListener.class));
+                .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
     }
 
     /**
@@ -414,12 +414,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(any(Executor.class),
-                phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
         ));
 
@@ -442,12 +442,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbackCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 5150_000, 10_000, 0, 0)
         ));
 
@@ -471,12 +471,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_27_HARMONIC).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbackCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 27,
                         854_500, 17_000, 809_500, 17_000)
         ));
@@ -499,12 +499,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_7_INTERMOD).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbackCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 7,
                         2680_000, 10_000, 2560_000, 10_000)
         ));
@@ -527,12 +527,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbaclCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 2000_000, 0, 0)
         ));
 
@@ -551,12 +551,12 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbaclCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 5150_000, 2000_000, 0, 0)
         ));
 
@@ -577,16 +577,16 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(any(Executor.class),
-                phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbaclCaptor.capture());
 
         // Mock channels set.
         coexManager.setMockCellChannels(Arrays.asList(
                 new CoexUtils.CoexCellChannel(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)));
         // Real channels changed.
-        phoneStateListenerCaptor.getValue()
+        telephonyCallbaclCaptor.getValue()
                 .onPhysicalChannelConfigChanged(Collections.emptyList());
 
         // Real channels should be ignored while mock channels are set/
@@ -625,12 +625,12 @@ public class CoexManagerTest extends WifiBaseTest {
         }
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 50));
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 114));
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbaclCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
         ));
 
@@ -650,17 +650,17 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID_RESTRICTED))
                 .thenReturn(mRestrictedBundle);
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbaclCaptor.capture());
 
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(
                         NETWORK_TYPE_LTE, AccessNetworkConstants.EutranBand.BAND_46,
                         5150_000, 1_000, 0, 0)
         ));
-        phoneStateListenerCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID_RESTRICTED);
+        telephonyCallbaclCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID_RESTRICTED);
 
         assertThat(coexManager.getCoexUnsafeChannels().stream()
                 .filter(unsafeChannel -> unsafeChannel.getBand() == WIFI_BAND_5_GHZ)
@@ -681,19 +681,19 @@ public class CoexManagerTest extends WifiBaseTest {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexPhoneStateListener> phoneStateListenerCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexPhoneStateListener.class);
-        verify(mMockTelephonyManager).registerPhoneStateListener(
-                any(Executor.class), phoneStateListenerCaptor.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(mMockTelephonyManager).registerTelephonyCallback(
+                any(Executor.class), telephonyCallbaclCaptor.capture());
         verify(mMockContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 any(IntentFilter.class), eq(null), any(Handler.class));
-        phoneStateListenerCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(
                         NETWORK_TYPE_LTE, AccessNetworkConstants.EutranBand.BAND_46,
                         5150_000, 1_000, 0, 0)
         ));
         when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mUnrestrictedBundle);
-        phoneStateListenerCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID);
+        telephonyCallbaclCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID);
 
         // Update the carrier configs
         when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mRestrictedBundle);
