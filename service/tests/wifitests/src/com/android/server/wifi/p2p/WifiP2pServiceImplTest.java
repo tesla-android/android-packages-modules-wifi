@@ -26,6 +26,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
@@ -87,6 +88,7 @@ import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
@@ -4152,6 +4154,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     private Set<CoexUnsafeChannel> setupCoexMock(int restrictionBits) {
+        assumeTrue(SdkLevel.isAtLeastS());
         Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
         unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1));
         unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 2));
@@ -4169,6 +4172,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     /** Verify P2P unsafe channels are set if P2P bit presents in restriction bits. */
     @Test
     public void testCoexCallbackWithWifiP2pUnsafeChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         setupCoexMock(0);
         assertNotNull(mCoexListener);
         forceP2pEnabled(mClient1);
@@ -4193,6 +4197,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     /** Verify P2P unsafe channels are cleared if P2P bit does not present in restriction bits. */
     @Test
     public void testCoexCallbackWithoutWifiP2pInRestrictionBits() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         setupCoexMock(0);
         assertNotNull(mCoexListener);
         forceP2pEnabled(mClient1);
