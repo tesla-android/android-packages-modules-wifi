@@ -99,8 +99,10 @@ public final class SoftApConfiguration implements Parcelable {
      * operating country code and current radio conditions.
      * @hide
      *
-     * @deprecated The bands are a bit mask - use any combination of {@code BAND_},
-     * for instance {@code BAND_2GHZ | BAND_5GHZ | BAND_6GHZ}.
+     * @deprecated This is no longer supported. The value is fixed at
+     * (BAND_2GHZ | BAND_5GHZ | BAND_6GHZ) even if a new band is supported in the future, for
+     * instance {@code BAND_60GHZ}. The bands are a bit mask - use any combination of
+     * {@code BAND_}, for instance {@code BAND_2GHZ | BAND_5GHZ}.
      */
     @SystemApi
     public static final int BAND_ANY = BAND_2GHZ | BAND_5GHZ | BAND_6GHZ;
