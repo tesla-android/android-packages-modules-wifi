@@ -534,32 +534,23 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             }
             return null;
         }
-        AwareResources awareResources = new AwareResources();
         Pair<Integer, Integer> numOfDiscoverySessions = getNumOfDiscoverySessions();
         int numOfAvailableNdps = mCapabilities.maxNdpSessions - mDataPathMgr.getNumOfNdps();
         int numOfAvailablePublishSessions =
                 mCapabilities.maxPublishes - numOfDiscoverySessions.first;
         int numOfAvailableSubscribeSessions =
                 mCapabilities.maxSubscribes - numOfDiscoverySessions.second;
-        if (numOfAvailableNdps >= 0) {
-            awareResources.setNumOfAvailableDataPaths(
-                    mCapabilities.maxNdpSessions - mDataPathMgr.getNumOfNdps());
-        } else {
+        if (numOfAvailableNdps < 0) {
             Log.w(TAG, "Available NDPs number is negative, wrong capability?");
         }
-        if (numOfAvailablePublishSessions >= 0) {
-            awareResources.setNumOfAvailablePublishSessions(
-                    mCapabilities.maxPublishes - numOfDiscoverySessions.first);
-        } else {
+        if (numOfAvailablePublishSessions < 0) {
             Log.w(TAG, "Available publish session number is negative, wrong capability?");
         }
-        if (numOfAvailableSubscribeSessions >= 0) {
-            awareResources.setNumOfAvailableSubscribeSessions(
-                    mCapabilities.maxSubscribes - numOfDiscoverySessions.second);
-        } else {
+        if (numOfAvailableSubscribeSessions < 0) {
             Log.w(TAG, "Available subscribe session number is negative, wrong capability?");
         }
-        return awareResources;
+        return new AwareResources(numOfAvailableNdps, numOfAvailablePublishSessions,
+                numOfAvailableSubscribeSessions);
     }
 
     private Pair<Integer, Integer> getNumOfDiscoverySessions() {
