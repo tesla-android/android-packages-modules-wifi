@@ -420,7 +420,7 @@ public class WifiServiceImpl extends BaseWifiService {
                         String countryCode = intent.getStringExtra(
                                 TelephonyManager.EXTRA_NETWORK_COUNTRY);
                         Log.d(TAG, "Country code changed to :" + countryCode);
-                        mCountryCode.setCountryCodeAndUpdate(countryCode);
+                        mCountryCode.setTelephonyCountryCodeAndUpdate(countryCode);
                     }}, new IntentFilter(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED));
             mContext.registerReceiver(
                     new BroadcastReceiver() {
@@ -3258,6 +3258,74 @@ public class WifiServiceImpl extends BaseWifiService {
         return mCountryCode.getCountryCode();
     }
 
+    /**
+     * Set the Wifi country code. This call will override the country code set by telephony.
+     * @param countryCode A 2-Character alphanumeric country code.
+     *
+     */
+    @Override
+    public void setOverrideCountryCode(@NonNull String countryCode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (!WifiCountryCode.isValid(countryCode)) {
+            throw new IllegalArgumentException("Country code must be a 2-Character alphanumeric"
+                    + " code. But got countryCode " + countryCode
+                    + " instead");
+        }
+        if (mVerboseLoggingEnabled) {
+            mLog.info("setOverrideCountryCode uid=% countryCode=%")
+                    .c(Binder.getCallingUid()).c(countryCode).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.setOverrideCountryCode(countryCode));
+    }
+
+    /**
+     * Clear the country code previously set through setOverrideCountryCode method.
+     *
+     */
+    @Override
+    public void clearOverrideCountryCode() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (mVerboseLoggingEnabled) {
+            mLog.info("clearCountryCode uid=%").c(Binder.getCallingUid()).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.clearOverrideCountryCode());
+    }
+
+    /**
+     * Change the default country code previously set from ro.boot.wificountrycode.
+     * @param countryCode A 2-Character alphanumeric country code.
+     *
+     */
+    @Override
+    public void setDefaultCountryCode(@NonNull String countryCode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mContext.enforceCallingOrSelfPermission(
+                Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
+        if (!WifiCountryCode.isValid(countryCode)) {
+            throw new IllegalArgumentException("Country code must be a 2-Character alphanumeric"
+                    + " code. But got countryCode " + countryCode
+                    + " instead");
+        }
+        if (mVerboseLoggingEnabled) {
+            mLog.info("setDefaultCountryCode uid=% countryCode=%")
+                    .c(Binder.getCallingUid()).c(countryCode).flush();
+        }
+        // Post operation to handler thread
+        mWifiThreadRunner.post(() -> mCountryCode.setDefaultCountryCode(countryCode));
+    }
+
     @Override
     public boolean is24GHzBandSupported() {
         if (mVerboseLoggingEnabled) {
@@ -4294,7 +4362,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     + "(uid = " + uid + ")");
         }
         String result = mWifiThreadRunner.call(
-                mActiveModeWarden.getPrimaryClientModeManager()::getFactoryMacAddress, null);
+                () -> mActiveModeWarden.getPrimaryClientModeManager().getFactoryMacAddress(),
+                null);
         // result can be empty array if either: WifiThreadRunner.call() timed out, or
         // ClientModeImpl.getFactoryMacAddress() returned null.
         // In this particular instance, we don't differentiate the two types of nulls.
@@ -4623,13 +4692,21 @@ public class WifiServiceImpl extends BaseWifiService {
                 return;
             }
             if (configuration.enterpriseConfig != null
-                    && configuration.enterpriseConfig.isAuthenticationSimBased()
-                    && !mWifiCarrierInfoManager.isSimPresent(mWifiCarrierInfoManager
-                    .getBestMatchSubscriptionId(configuration))) {
-                Log.e(TAG, "connect to SIM-based config=" + configuration
-                        + "while SIM is absent");
-                wrapper.sendFailure(WifiManager.ERROR);
-                return;
+                    && configuration.enterpriseConfig.isAuthenticationSimBased()) {
+                int subId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(configuration);
+                if (!mWifiCarrierInfoManager.isSimPresent(subId)) {
+                    Log.e(TAG, "connect to SIM-based config=" + configuration
+                            + "while SIM is absent");
+                    wrapper.sendFailure(WifiManager.ERROR);
+                    return;
+                }
+                if (mWifiCarrierInfoManager.requiresImsiEncryption(subId)
+                        && !mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(subId)) {
+                    Log.e(TAG, "Imsi protection required but not available for Network="
+                            + configuration);
+                    wrapper.sendFailure(WifiManager.ERROR);
+                    return;
+                }
             }
             mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
                     mConnectHelper.connectToNetwork(result, wrapper, uid));

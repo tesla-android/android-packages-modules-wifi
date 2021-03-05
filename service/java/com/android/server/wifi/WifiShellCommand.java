@@ -104,6 +104,7 @@ import java.util.concurrent.TimeUnit;
 public class WifiShellCommand extends BasicShellCommandHandler {
     @VisibleForTesting
     public static String SHELL_PACKAGE_NAME = "com.android.shell";
+
     // These don't require root access.
     // However, these do perform permission checks in the corresponding WifiService methods.
     private static final String[] NON_PRIVILEGED_COMMANDS = {
@@ -456,16 +457,16 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
                     if (enabled) {
                         String countryCode = getNextArgRequired();
-                        if (!(countryCode.length() == 2
-                                && countryCode.chars().allMatch(Character::isLetter))) {
-                            pw.println("Invalid argument to 'force-country-code enabled' "
-                                    + "- must be a two-letter string");
+                        if (!WifiCountryCode.isValid(countryCode)) {
+                            pw.println("Invalid argument: Country code must be a 2-Character"
+                                    + " alphanumeric code. But got countryCode " + countryCode
+                                    + " instead");
                             return -1;
                         }
-                        mWifiCountryCode.enableForceCountryCode(countryCode);
+                        mWifiService.setOverrideCountryCode(countryCode);
                         return 0;
                     } else {
-                        mWifiCountryCode.disableForceCountryCode();
+                        mWifiService.clearOverrideCountryCode();
                         return 0;
                     }
                 }

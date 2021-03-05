@@ -258,6 +258,21 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public void setOverrideCountryCode(@NonNull String countryCode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clearOverrideCountryCode() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setDefaultCountryCode(@NonNull String countryCode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean is24GHzBandSupported() {
         throw new UnsupportedOperationException();
     }
