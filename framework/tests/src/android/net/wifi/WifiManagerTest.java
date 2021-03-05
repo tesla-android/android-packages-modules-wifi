@@ -3167,4 +3167,13 @@ public class WifiManagerTest {
         mWifiManager.setDefaultCountryCode(TEST_COUNTRY_CODE);
         verify(mWifiService).setDefaultCountryCode(eq(TEST_COUNTRY_CODE));
     }
+
+    /**
+     * Test behavior of flushPasspointAnqpCache
+     */
+    @Test
+    public void testFlushPasspointAnqpCache() throws Exception {
+        mWifiManager.flushPasspointAnqpCache();
+        verify(mWifiService).flushPasspointAnqpCache(anyString());
+    }
 }

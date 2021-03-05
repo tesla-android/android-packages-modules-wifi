@@ -5072,4 +5072,17 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiNetworkSuggestionsManager.resetNotification();
         mWifiInjector.getWakeupController().resetNotification();
     }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#flushPasspointAnqpCache()}.
+     */
+    @Override
+    public void flushPasspointAnqpCache(@NonNull String packageName) {
+        if (!isDeviceOrProfileOwner(Binder.getCallingUid(), packageName)) {
+            enforceAnyPermissionOf(android.Manifest.permission.NETWORK_SETTINGS,
+                    android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
+                    android.Manifest.permission.NETWORK_CARRIER_PROVISIONING);
+        }
+        mWifiThreadRunner.post(mPasspointManager::clearAnqpRequestsAndFlushCache);
+    }
 }

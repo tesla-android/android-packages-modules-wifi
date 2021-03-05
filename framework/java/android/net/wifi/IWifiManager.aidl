@@ -328,4 +328,6 @@ interface IWifiManager
     void removeAppState(int targetAppUid, String targetApppackageName);
 
     boolean setWifiScoringEnabled(boolean enabled);
+
+    void flushPasspointAnqpCache(String packageName);
 }
