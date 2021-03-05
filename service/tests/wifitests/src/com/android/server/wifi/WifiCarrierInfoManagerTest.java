@@ -26,6 +26,7 @@ import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_D
 import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_DISMISSED_INTENT_ACTION;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.app.AlertDialog;
@@ -1829,6 +1830,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
     @Test
     public void testSetAndGetMergedCarrierNetworkOffload() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mDataTelephonyManager.isDataEnabled()).thenReturn(true);
         ArgumentCaptor<WifiCarrierInfoManager.UserDataEnabledChangedListener> listenerCaptor =
                 ArgumentCaptor.forClass(
@@ -2011,7 +2013,9 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         mWifiCarrierInfoManager.clear();
 
         verify(mWifiNotificationManager).cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
-        verify(mDataTelephonyManager).unregisterPhoneStateListener(any());
+        if (SdkLevel.isAtLeastS()) {
+            verify(mDataTelephonyManager).unregisterPhoneStateListener(any());
+        }
 
         // Verify restore to default value.
         assertFalse(mWifiCarrierInfoManager
@@ -2022,6 +2026,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
     @Test
     public void testOnCarrierOffloadDisabledListener() {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiCarrierInfoManager.addOnCarrierOffloadDisabledListener(
                 mOnCarrierOffloadDisabledListener);
         mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true);
