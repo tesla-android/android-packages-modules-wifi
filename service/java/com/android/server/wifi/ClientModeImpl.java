@@ -22,6 +22,7 @@ import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA256;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
 
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_STA_FACTORY_MAC_ADDRESS;
@@ -4660,8 +4661,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // ConnectivityService of that fact so the system can treat it appropriately.
             final WifiConfiguration config = getConnectedWifiConfigurationInternal();
 
-            boolean explicitlySelected = false;
-            if (isRecentlySelectedByTheUser(config)) {
+            final boolean explicitlySelected;
+            // Non primary CMMs is never user selected. This prevents triggering the No Internet
+            // dialog for those networks, which is difficult to handle.
+            if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY
+                    && isRecentlySelectedByTheUser(config)) {
                 // If explicitlySelected is true, the network was selected by the user via Settings
                 // or QuickSettings. If this network has Internet access, switch to it. Otherwise,
                 // switch to it only if the user confirms that they really want to switch, or has
@@ -4672,6 +4676,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     log("Network selected by UID " + config.lastConnectUid + " explicitlySelected="
                             + explicitlySelected);
                 }
+            } else {
+                explicitlySelected = false;
             }
 
             if (mVerboseLoggingEnabled) {
