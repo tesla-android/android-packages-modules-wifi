@@ -26,6 +26,7 @@ import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_D
 import static com.android.server.wifi.WifiCarrierInfoManager.NOTIFICATION_USER_DISMISSED_INTENT_ACTION;
 
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.app.AlertDialog;
@@ -1829,13 +1830,14 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
     @Test
     public void testSetAndGetMergedCarrierNetworkOffload() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mDataTelephonyManager.isDataEnabled()).thenReturn(true);
         ArgumentCaptor<WifiCarrierInfoManager.UserDataEnabledChangedListener> listenerCaptor =
                 ArgumentCaptor.forClass(
                         WifiCarrierInfoManager.UserDataEnabledChangedListener.class);
         // Check default value and verify listen is registered.
         assertTrue(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
-        verify(mDataTelephonyManager).registerPhoneStateListener(any(), listenerCaptor.capture());
+        verify(mDataTelephonyManager).registerTelephonyCallback(any(), listenerCaptor.capture());
 
         // Verify result will change with state changes
         listenerCaptor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_USER);
@@ -2011,7 +2013,9 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         mWifiCarrierInfoManager.clear();
 
         verify(mWifiNotificationManager).cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
-        verify(mDataTelephonyManager).unregisterPhoneStateListener(any());
+        if (SdkLevel.isAtLeastS()) {
+            verify(mDataTelephonyManager).unregisterTelephonyCallback(any());
+        }
 
         // Verify restore to default value.
         assertFalse(mWifiCarrierInfoManager
@@ -2022,13 +2026,14 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
     @Test
     public void testOnCarrierOffloadDisabledListener() {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiCarrierInfoManager.addOnCarrierOffloadDisabledListener(
                 mOnCarrierOffloadDisabledListener);
         mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true);
         ArgumentCaptor<WifiCarrierInfoManager.UserDataEnabledChangedListener> captor =
                 ArgumentCaptor.forClass(WifiCarrierInfoManager.UserDataEnabledChangedListener
                         .class);
-        verify(mDataTelephonyManager).registerPhoneStateListener(any(), captor.capture());
+        verify(mDataTelephonyManager).registerTelephonyCallback(any(), captor.capture());
 
         mWifiCarrierInfoManager.setCarrierNetworkOffloadEnabled(DATA_SUBID, true, false);
         verify(mOnCarrierOffloadDisabledListener).onCarrierOffloadDisabled(DATA_SUBID, true);

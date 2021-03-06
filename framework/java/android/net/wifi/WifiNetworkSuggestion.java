@@ -518,12 +518,22 @@ public final class WifiNetworkSuggestion implements Parcelable {
         }
 
         /**
-         * By default all Suggestions are considered for connection. A suggesting application may
-         * provide priorities for Suggestions. Only the currently visible Suggestions with the
-         * highest priority (0 being the lowest) are considered for connection. A suggesting
-         * application may further assign a group number for a Suggestion - only the currently
-         * visible Suggestions with the highest priority within a priority group are considered for
-         * connection.
+         * Suggested networks are considered as part of a pool of all suggested networks and other
+         * networks (e.g. saved networks) - one of which will be selected.
+         * <ul>
+         * <li> Any app can suggest any number of networks. </li>
+         * <li> Priority: only the highest priority (0 being the lowest) currently visible suggested
+         * network or networks (multiple suggested networks may have the same priority) are added to
+         * the network selection pool.</li>
+         * </ul>
+         * <p>
+         * However, this restricts a suggesting app to have a single group of networks which can be
+         * prioritized. In some circumstances multiple groups are useful: for instance, suggesting
+         * networks for 2 different SIMs - each of which may have its own priority order.
+         * <p>
+         * Priority group: creates a separate priority group. Only the highest priority, currently
+         * visible suggested network or networks, within each priority group are included in the
+         * network selection pool.
          * <p>
          * Specify an arbitrary integer only used as the priority group. Use with
          * {@link #setPriority(int)}.
@@ -531,7 +541,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * @param priorityGroup priority group id, if not set default is 0.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
-        public @NonNull Builder setPriorityGroup(int priorityGroup) {
+        public @NonNull Builder setPriorityGroup(@IntRange(from = 0) int priorityGroup) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
@@ -597,7 +607,8 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * @param macRandomizationSetting - one of {@code RANDOMIZATION_*} values
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
-        public @NonNull Builder setMacRandomizationSetting(int macRandomizationSetting) {
+        public @NonNull Builder setMacRandomizationSetting(
+                @MacRandomizationSetting int macRandomizationSetting) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
@@ -647,13 +658,6 @@ public final class WifiNetworkSuggestion implements Parcelable {
         }
 
         /**
-         * By default all Suggestions are considered for connection. A suggesting application may
-         * provide priorities for Suggestions. Only the currently visible Suggestions with the
-         * highest priority (0 being the lowest) are considered for connection. A suggesting
-         * application may further assign a group number for a Suggestion - only the currently
-         * visible Suggestions with the highest priority within a priority group are considered for
-         * connection.
-         * <p>
          * Specify the priority of this network among other network suggestions provided by the same
          * app and within the same priority group, see {@link #setPriorityGroup(int)}. Priorities
          * have no impact on suggestions by other apps or suggestions from the same app using a
@@ -1449,6 +1453,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
     /**
      * @see Builder#setPriorityGroup(int)
      */
+    @IntRange(from = 0)
     public int getPriorityGroup() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();

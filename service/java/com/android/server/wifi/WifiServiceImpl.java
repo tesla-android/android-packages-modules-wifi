@@ -463,7 +463,12 @@ public class WifiServiceImpl extends BaseWifiService {
                 cmm.resetSimAuthNetworks(resetReason);
             }
             mWifiNetworkSuggestionsManager.resetCarrierPrivilegedApps();
-            if (resetReason != RESET_SIM_REASON_SIM_INSERTED) {
+            if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
+                // clear the blocklists in case any SIM based network were disabled due to the SIM
+                // not being available.
+                mWifiConfigManager.enableTemporaryDisabledNetworks();
+                mWifiConnectivityManager.forceConnectivityScan(ClientModeImpl.WIFI_WORK_SOURCE);
+            } else {
                 // Remove all ephemeral carrier networks keep subscriptionId update with SIM changes
                 mWifiConfigManager.removeEphemeralCarrierNetworks();
             }
@@ -5071,5 +5076,18 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiCarrierInfoManager.resetNotification();
         mWifiNetworkSuggestionsManager.resetNotification();
         mWifiInjector.getWakeupController().resetNotification();
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#flushPasspointAnqpCache()}.
+     */
+    @Override
+    public void flushPasspointAnqpCache(@NonNull String packageName) {
+        if (!isDeviceOrProfileOwner(Binder.getCallingUid(), packageName)) {
+            enforceAnyPermissionOf(android.Manifest.permission.NETWORK_SETTINGS,
+                    android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
+                    android.Manifest.permission.NETWORK_CARRIER_PROVISIONING);
+        }
+        mWifiThreadRunner.post(mPasspointManager::clearAnqpRequestsAndFlushCache);
     }
 }

@@ -3228,7 +3228,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // Remove any ephemeral or Passpoint networks, flush ANQP cache
         mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks();
         mWifiConfigManager.clearUserTemporarilyDisabledList();
-        mPasspointManager.clearAnqpRequestsAndFlushCache();
+
+        // Flush ANQP cache if configured to do so
+        if (mWifiGlobals.flushAnqpCacheOnWifiToggleOffEvent()) {
+            mPasspointManager.clearAnqpRequestsAndFlushCache();
+        }
     }
 
     /**

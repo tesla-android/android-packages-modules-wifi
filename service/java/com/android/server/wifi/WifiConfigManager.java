@@ -1694,7 +1694,7 @@ public class WifiConfigManager {
                 mConfiguredNetworks.valuesForAllUsers().toArray(new WifiConfiguration[0]);
         for (WifiConfiguration config : copiedConfigs) {
             if (config.creatorUid != callerUid) {
-                Log.d(TAG, "Removing non-caller network config " + config.getProfileKey());
+                Log.d(TAG, "Removing non-caller network config " + config.getProfileKeyInternal());
                 removeNetwork(config.networkId, config.creatorUid, config.creatorName);
                 didRemove = true;
             }
@@ -1796,6 +1796,7 @@ public class WifiConfigManager {
      * Re-enable all temporary disabled configured networks.
      */
     public void enableTemporaryDisabledNetworks() {
+        mWifiBlocklistMonitor.clearBssidBlocklist();
         for (WifiConfiguration config : getInternalConfiguredNetworks()) {
             if (config.getNetworkSelectionStatus().isNetworkTemporaryDisabled()) {
                 updateNetworkSelectionStatus(config,

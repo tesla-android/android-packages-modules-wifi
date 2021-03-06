@@ -3039,17 +3039,16 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     }
 
     /**
-     *  Verify that BSSID blocklist gets cleared when exiting Wifi client mode.
+     *  Verify that temporarily disabled networks are re-enabled when exiting Wifi client mode.
      */
     @Test
-    public void clearBssidBlocklistWhenExitingWifiClientMode() {
+    public void clearEnableTemporarilyDisabledNetworksWhenExitingWifiClientMode() {
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
         // Exit Wifi client mode.
         setWifiEnabled(false);
 
-        // Verify the BSSID blocklist is cleared again.
-        verify(mWifiBlocklistMonitor).clearBssidBlocklist();
+        // Verify the blocklist is cleared again.
         verify(mWifiConfigManager).enableTemporaryDisabledNetworks();
         verify(mWifiConfigManager).stopTemporarilyDisablingAllNonCarrierMergedWifi();
         // Verify WifiNetworkSelector is informed of the disable.

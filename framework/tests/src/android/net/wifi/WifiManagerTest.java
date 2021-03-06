@@ -274,12 +274,14 @@ public class WifiManagerTest {
                 mRunnable.run();
             }
         };
-        mCoexCallback = new CoexCallback() {
-            @Override
-            public void onCoexUnsafeChannelsChanged() {
-                mRunnable.run();
-            }
-        };
+        if (SdkLevel.isAtLeastS()) {
+            mCoexCallback = new CoexCallback() {
+                @Override
+                public void onCoexUnsafeChannelsChanged() {
+                    mRunnable.run();
+                }
+            };
+        }
         mRestartCallback = new SubsystemRestartTrackingCallback() {
             @Override
             public void onSubsystemRestarting() {
@@ -304,6 +306,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsGoesToWifiServiceImpl() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
         int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
                 | COEX_RESTRICTION_WIFI_AWARE;
@@ -318,6 +321,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsThrowsIllegalArgumentExceptionOnNullUnsafeChannels() {
+        assumeTrue(SdkLevel.isAtLeastS());
         try {
             mWifiManager.setCoexUnsafeChannels(null, 0);
             fail("expected IllegalArgumentException");
@@ -331,6 +335,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testGetCoexUnsafeChannelsGoesToWifiServiceImpl() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
         when(mWifiService.getCoexUnsafeChannels()).thenReturn(new ArrayList<>(unsafeChannels));
@@ -344,6 +349,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testGetCoexRestrictionsGoesToWifiServiceImpl() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
                 | COEX_RESTRICTION_WIFI_AWARE;
         when(mWifiService.getCoexRestrictions()).thenReturn(restrictions);
@@ -357,6 +363,7 @@ public class WifiManagerTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testRegisterCoexCallbackWithNullCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.registerCoexCallback(mExecutor, null);
     }
 
@@ -365,6 +372,7 @@ public class WifiManagerTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testRegisterCoexCallbackWithNullExecutor() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.registerCoexCallback(null, mCoexCallback);
     }
 
@@ -373,6 +381,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testAddCoexCallbackAndReceiveEvent() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<ICoexCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ICoexCallback.Stub.class);
         mWifiManager.registerCoexCallback(new SynchronousExecutor(), mCoexCallback);
@@ -386,6 +395,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRegisterCoexCallbackWithTheTargetExecutor() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<ICoexCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ICoexCallback.Stub.class);
         mWifiManager.registerCoexCallback(mExecutor, mCoexCallback);
@@ -401,6 +411,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRegisterUnregisterThenRegisterAgainWithCoexCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<ICoexCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ICoexCallback.Stub.class);
         mWifiManager.registerCoexCallback(new SynchronousExecutor(), mCoexCallback);
@@ -418,6 +429,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testUnregisterCoexCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.unregisterCoexCallback(mCoexCallback);
         verify(mWifiService).unregisterCoexCallback(any());
     }
@@ -427,6 +439,7 @@ public class WifiManagerTest {
      */
     @Test(expected = IllegalArgumentException.class)
     public void testUnregisterCoexCallbackWithNullCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.unregisterCoexCallback(null);
     }
 
@@ -3153,5 +3166,14 @@ public class WifiManagerTest {
         assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setDefaultCountryCode(TEST_COUNTRY_CODE);
         verify(mWifiService).setDefaultCountryCode(eq(TEST_COUNTRY_CODE));
+    }
+
+    /**
+     * Test behavior of flushPasspointAnqpCache
+     */
+    @Test
+    public void testFlushPasspointAnqpCache() throws Exception {
+        mWifiManager.flushPasspointAnqpCache();
+        verify(mWifiService).flushPasspointAnqpCache(anyString());
     }
 }

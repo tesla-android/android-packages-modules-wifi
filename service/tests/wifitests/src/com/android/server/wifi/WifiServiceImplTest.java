@@ -1449,6 +1449,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsDefaultAlgorithmDisabled() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mResources.getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled))
                 .thenReturn(false);
         List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
@@ -1467,6 +1468,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsDefaultAlgorithmEnabled() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mResources.getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled))
                 .thenReturn(true);
         List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
@@ -1484,6 +1486,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsNullSet() {
+        assumeTrue(SdkLevel.isAtLeastS());
         try {
             mWifiServiceImpl.setCoexUnsafeChannels(null, 0);
             fail("Expected IllegalArgumentException");
@@ -1497,6 +1500,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testGetCoexUnsafeChannelsReturnsValueFromCoexManager() {
+        assumeTrue(SdkLevel.isAtLeastS());
         List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36));
@@ -1515,6 +1519,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testGetCoexRestrictionsReturnsValueFromCoexManager() {
+        assumeTrue(SdkLevel.isAtLeastS());
         final int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
                 | COEX_RESTRICTION_WIFI_AWARE;
         when(mCoexManager.getCoexRestrictions()).thenReturn(restrictions);
@@ -1530,6 +1535,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRegisterUnregisterCoexCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mCoexCallback.asBinder()).thenReturn(mAppBinder);
         mWifiServiceImpl.registerCoexCallback(mCoexCallback);
         mLooper.dispatchAll();
@@ -1545,6 +1551,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetCoexUnsafeChannelsThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(WIFI_UPDATE_COEX_UNSAFE_CHANNELS),
                         eq("WifiService"));
@@ -1560,6 +1567,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testGetCoexUnsafeChannelsThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
                         eq("WifiService"));
@@ -1575,6 +1583,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testGetCoexRestrictionsThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
                         eq("WifiService"));
@@ -1590,6 +1599,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRegisterCoexCallbackThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
                         eq("WifiService"));
@@ -1605,6 +1615,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testUnregisterCoexCallbackThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
                         eq("WifiService"));
@@ -5270,6 +5281,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mSimRequiredNotifier).dismissSimRequiredNotification();
         verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
         verify(mWifiConfigManager, never()).removeAllEphemeralOrPasspointConfiguredNetworks();
+        verify(mWifiConfigManager).enableTemporaryDisabledNetworks();
+        verify(mWifiConnectivityManager).forceConnectivityScan(any());
     }
 
     @Test
@@ -7645,5 +7658,68 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.setDefaultCountryCode(TEST_COUNTRY_CODE);
         mLooper.dispatchAll();
         verify(mWifiCountryCode).setDefaultCountryCode(TEST_COUNTRY_CODE);
+    }
+
+    /**
+     * Verify that a call to flushPasspointAnqpCache throws a SecurityException if the
+     * caller does not have any permission.
+     */
+    @Test (expected = SecurityException.class)
+    public void testFlushPasspointAnqpCacheThrowsSecurityExceptionOnMissingPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), anyString())).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(), anyString())).thenReturn(false);
+
+        mWifiServiceImpl.flushPasspointAnqpCache(mContext.getPackageName());
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache with DO permission calls Passpoint
+     * manager to flush the ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCacheWithDoPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(true);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(),
+                eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache with PO permission calls Passpoint
+     * manager to flush the ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCacheWithPoPermissions() {
+        when(mContext.checkCallingOrSelfPermission(anyString()))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(true);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
+
+    /**
+     * Verifies that the call to testFlushPasspointAnqpCache calls Passpoint manager to flush the
+     * ANQP cache and clear all pending requests.
+     */
+    @Test
+    public void testFlushPasspointAnqpCache() {
+        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
+                .thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        when(mWifiPermissionsUtil.isProfileOwner(anyInt(),
+                eq(TEST_PACKAGE_NAME))).thenReturn(false);
+        mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
+        mLooper.dispatchAll();
+        verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
     }
 }

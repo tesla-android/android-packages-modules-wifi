@@ -42,9 +42,19 @@ public final class AwareResources implements Parcelable {
     private int mNumOfAvailableSubscribeSessions;
 
     /**
-     * @hide : should not be created by apps
+     * Construct a {@link AwareResources} object, which represents the currently available Aware
+     * resources.
+     *
+     * @param availableDataPathsCount Number of available Aware data-path.
+     * @param availablePublishSessionsCount Number of available Aware publish sessions.
+     * @param availableSubscribeSessionsCount Number of available Aware subscribe sessions.
      */
-    public AwareResources() {
+    public AwareResources(@IntRange(from = 0) int availableDataPathsCount,
+            @IntRange(from = 0) int availablePublishSessionsCount,
+            @IntRange(from = 0) int availableSubscribeSessionsCount) {
+        mNumOfAvailableNdps = availableDataPathsCount;
+        mNumOfAvailablePublishSessions = availablePublishSessionsCount;
+        mNumOfAvailableSubscribeSessions = availableSubscribeSessionsCount;
     }
 
     /**
@@ -135,11 +145,7 @@ public final class AwareResources implements Parcelable {
             new Creator<AwareResources>() {
                 @Override
                 public AwareResources createFromParcel(Parcel in) {
-                    AwareResources awareResources = new AwareResources();
-                    awareResources.setNumOfAvailableDataPaths(in.readInt());
-                    awareResources.setNumOfAvailablePublishSessions(in.readInt());
-                    awareResources.setNumOfAvailableSubscribeSessions(in.readInt());
-                    return awareResources;
+                    return new AwareResources(in.readInt(), in.readInt(), in.readInt());
                 }
 
                 @Override

@@ -182,6 +182,7 @@
           <item type="integer" name="config_wifiTrafficPollerTxPacketThreshold"/>
           <item type="integer" name="config_wifiTrafficPollerRxPacketThreshold"/>
           <item type="integer" name="config_wifiLinkBandwidthUpdateThresholdPercent" />
+          <item type="bool" name="config_wifiFlushAnqpCacheOnWifiToggleOffEvent" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

@@ -53,6 +53,7 @@ public class WifiGlobals {
     private final boolean mIsOweUpgradeEnabled;
     // This is read from the overlay, cache it after boot up.
     private final boolean mIsWpa3EnterpriseUpgradeEnabled;
+    private final boolean mFlushAnqpCacheOnWifiToggleOffEvent;
 
     public WifiGlobals(Context context) {
         mContext = context;
@@ -65,6 +66,8 @@ public class WifiGlobals {
                 .getBoolean(R.bool.config_wifiOweUpgradeEnabled);
         mIsWpa3EnterpriseUpgradeEnabled = mContext.getResources()
                 .getBoolean(R.bool.config_wifiWpa3EnterpriseUpgradeEnabled);
+        mFlushAnqpCacheOnWifiToggleOffEvent = mContext.getResources()
+                .getBoolean(R.bool.config_wifiFlushAnqpCacheOnWifiToggleOffEvent);
     }
 
     /** Get the interval between RSSI polls, in milliseconds. */
@@ -162,6 +165,15 @@ public class WifiGlobals {
         return mIsWpa3EnterpriseUpgradeEnabled;
     }
 
+    /**
+     * Help method to check if the setting to flush ANQP cache when Wi-Fi is toggled off.
+     *
+     * @return boolean true to flush ANQP cache on Wi-Fi toggle off event, false otherwise.
+     */
+    public boolean flushAnqpCacheOnWifiToggleOffEvent() {
+        return mFlushAnqpCacheOnWifiToggleOffEvent;
+    }
+
     /** Dump method for debugging */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of WifiGlobals");
@@ -172,5 +184,6 @@ public class WifiGlobals {
         pw.println("mIsWpa3SaeUpgradeOffloadEnabled=" + mIsWpa3SaeUpgradeOffloadEnabled);
         pw.println("mIsOweUpgradeEnabled=" + mIsOweUpgradeEnabled);
         pw.println("mIsWpa3EnterpriseUpgradeEnabled=" + mIsWpa3EnterpriseUpgradeEnabled);
+        pw.println("mFlushAnqpCacheOnWifiToggleOffEvent=" + mFlushAnqpCacheOnWifiToggleOffEvent);
     }
 }

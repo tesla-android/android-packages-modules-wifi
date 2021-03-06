@@ -541,7 +541,7 @@ package android.net.wifi {
     method @Nullable public String getPassphrase();
     method @Nullable public android.net.wifi.hotspot2.PasspointConfiguration getPasspointConfig();
     method @IntRange(from=0) public int getPriority();
-    method public int getPriorityGroup();
+    method @IntRange(from=0) public int getPriorityGroup();
     method @Nullable public String getSsid();
     method public int getSubscriptionId();
     method public boolean isAppInteractionRequired();
@@ -574,7 +574,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setMacRandomizationSetting(int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPasspointConfig(@NonNull android.net.wifi.hotspot2.PasspointConfiguration);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriority(@IntRange(from=0) int);
-    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriorityGroup(int);
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriorityGroup(@IntRange(from=0) int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setSsid(@NonNull String);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setSubscriptionId(int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setUntrusted(boolean);
@@ -615,6 +615,7 @@ package android.net.wifi.aware {
   }
 
   public final class AwareResources implements android.os.Parcelable {
+    ctor public AwareResources(@IntRange(from=0) int, @IntRange(from=0) int, @IntRange(from=0) int);
     method public int describeContents();
     method @IntRange(from=0) public int getAvailableDataPathsCount();
     method @IntRange(from=0) public int getAvailablePublishSessionsCount();
