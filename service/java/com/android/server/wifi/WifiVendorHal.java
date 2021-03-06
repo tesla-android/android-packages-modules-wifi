@@ -652,8 +652,9 @@ public class WifiVendorHal {
                     hidlUnsafeChannel.band = WifiBand.BAND_60GHZ;
                     break;
                 default:
-                    mLog.err("Tried to set unsafe channel with unknown band: "
-                            + frameworkUnsafeChannel.getBand()).flush();
+                    mLog.err("Tried to set unsafe channel with unknown band: %")
+                            .c(frameworkUnsafeChannel.getBand())
+                            .flush();
                     continue;
             }
             hidlUnsafeChannel.channel = frameworkUnsafeChannel.getChannel();
