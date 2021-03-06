@@ -584,6 +584,8 @@
     <!-- A value to indicate the duration (in ms) to disable a network from auto-connect based on
     Carrier requirement. -1 represents disabling a network permanently -->
     <integer translatable="false" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificDurationMs">-1</integer>
+    <!-- Flush ANQP cache on Wi-Fi toggle off event -->
+    <bool translatable="false" name="config_wifiFlushAnqpCacheOnWifiToggleOffEvent">true</bool>
 
     <!-- Enable Aware NDP interface selection on interface that already has network set up.
      Note: the default AOSP Android does not support multiple networks on the same Aware NDI.
