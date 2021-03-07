@@ -2793,6 +2793,29 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that when a network is explicitly selected, has role SECONDARY_TRANSIENT, but
+     * noInternetAccessExpected is false, the {@link NetworkAgentConfig} contains the right values
+     * of explicitlySelected, acceptUnvalidated and acceptPartialConnectivity.
+     */
+    @Test
+    public void testExplicitlySelected_secondaryTransient_expectNotExplicitlySelected()
+            throws Exception {
+        // Network is explicitly selected.
+        WifiConfiguration config = makeLastSelectedWifiConfiguration(FRAMEWORK_NETWORK_ID,
+                ClientModeImpl.LAST_SELECTED_NETWORK_EXPIRATION_AGE_MILLIS - 1);
+        mConnectedNetwork.noInternetAccessExpected = false;
+
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> {
+            assertFalse(agentConfig.explicitlySelected);
+            assertFalse(agentConfig.acceptUnvalidated);
+            assertFalse(agentConfig.acceptPartialConnectivity);
+        }, (cap) -> { });
+    }
+
+    /**
      * Verify that when a network is not explicitly selected, but noInternetAccessExpected is true,
      * the {@link NetworkAgentConfig} contains the right values of explicitlySelected,
      * acceptUnvalidated and acceptPartialConnectivity.
