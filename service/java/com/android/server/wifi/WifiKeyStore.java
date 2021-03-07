@@ -17,14 +17,17 @@
 package com.android.server.wifi;
 
 import android.annotation.Nullable;
+import android.content.Context;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.os.UserHandle;
 import android.security.KeyChain;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.util.Preconditions;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ArrayUtils;
 
 import java.security.Key;
@@ -52,12 +55,16 @@ public class WifiKeyStore {
     private boolean mVerboseLoggingEnabled = false;
 
     @Nullable private final KeyStore mKeyStore;
+    private final Context mContext;
+    private final FrameworkFacade mFrameworkFacade;
 
-    WifiKeyStore(@Nullable KeyStore keyStore) {
+    WifiKeyStore(Context context, @Nullable KeyStore keyStore, FrameworkFacade frameworkFacade) {
         mKeyStore = keyStore;
         if (mKeyStore == null) {
             Log.e(TAG, "Unable to retrieve keystore, all key operations will fail");
         }
+        mContext = context;
+        mFrameworkFacade = frameworkFacade;
     }
 
     /**
@@ -266,6 +273,23 @@ public class WifiKeyStore {
             existingEnterpriseConfig = existingConfig.enterpriseConfig;
             existingKeyId = existingConfig.getKeyIdForCredentials(existingConfig);
         }
+
+        if (SdkLevel.isAtLeastS()) {
+            // If client key is in KeyChain, convert KeyChain alias into a grant string that can be
+            // used by the supplicant like a normal alias.
+            final String keyChainAlias = enterpriseConfig.getClientKeyPairAliasInternal();
+            if (keyChainAlias != null) {
+                final String grantString = mFrameworkFacade.getWifiKeyGrantAsUser(
+                        mContext, UserHandle.getUserHandleForUid(config.creatorUid), keyChainAlias);
+                if (grantString == null) {
+                    // The key is not granted to Wifi uid or the alias is invalid.
+                    Log.e(TAG, "Unable to get key grant");
+                    return false;
+                }
+                enterpriseConfig.setClientCertificateAlias(grantString);
+            }
+        }
+
         if (!needsKeyStore(enterpriseConfig)) {
             return true;
         }
@@ -408,5 +432,25 @@ public class WifiKeyStore {
         Log.e(TAG, "Invalid certificate type for Suite-B: " + sigAlgOid + " or insufficient"
                 + " bit length: " + bitLength);
         return -1;
+    }
+
+    /**
+     * Requests a grant from KeyChain and populates client certificate alias with it.
+     *
+     * @return true if no problems encountered.
+     */
+    public boolean validateKeyChainAlias(String alias, int uid) {
+        if (TextUtils.isEmpty(alias)) {
+            Log.e(TAG, "Alias cannot be empty");
+            return false;
+        }
+
+        if (!SdkLevel.isAtLeastS()) {
+            Log.w(TAG, "Attempt to use a KeyChain key on pre-S device");
+            return false;
+        }
+
+        return mFrameworkFacade.hasWifiKeyGrantAsUser(
+                mContext, UserHandle.getUserHandleForUid(uid), alias);
     }
 }

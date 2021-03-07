@@ -37,6 +37,8 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.SparseIntArray;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
@@ -1253,6 +1255,7 @@ public class XmlUtil {
         public static final String XML_TAG_WAPI_CERT_SUITE = "WapiCertSuite";
         public static final String XML_TAG_APP_INSTALLED_ROOT_CA_CERT = "AppInstalledRootCaCert";
         public static final String XML_TAG_APP_INSTALLED_PRIVATE_KEY = "AppInstalledPrivateKey";
+        public static final String XML_TAG_KEYCHAIN_KEY_ALIAS = "KeyChainAlias";
 
         /**
          * Write password key to the XML stream.
@@ -1330,6 +1333,8 @@ public class XmlUtil {
                     enterpriseConfig.isAppInstalledCaCert());
             XmlUtil.writeNextValue(out, XML_TAG_APP_INSTALLED_PRIVATE_KEY,
                     enterpriseConfig.isAppInstalledDeviceKeyAndCert());
+            XmlUtil.writeNextValue(out, XML_TAG_KEYCHAIN_KEY_ALIAS,
+                    enterpriseConfig.getClientKeyPairAliasInternal());
         }
 
         /**
@@ -1435,6 +1440,11 @@ public class XmlUtil {
                             break;
                         case XML_TAG_APP_INSTALLED_PRIVATE_KEY:
                             enterpriseConfig.initIsAppInstalledDeviceKeyAndCert((boolean) value);
+                            break;
+                        case XML_TAG_KEYCHAIN_KEY_ALIAS:
+                            if (SdkLevel.isAtLeastS()) {
+                                enterpriseConfig.setClientKeyPairAlias((String) value);
+                            }
                             break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);

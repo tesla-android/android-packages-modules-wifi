@@ -29,6 +29,7 @@ import android.util.Xml;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 import com.android.server.wifi.WifiBaseTest;
 import com.android.server.wifi.WifiConfigurationTestUtil;
@@ -74,6 +75,7 @@ public class XmlUtilTest extends WifiBaseTest {
     private static final String TEST_ALTSUBJECT_MATCH = "XmlUtilTestAltSubjectMatch";
     private static final String TEST_DOM_SUFFIX_MATCH = "XmlUtilTestDomSuffixMatch";
     private static final String TEST_CA_PATH = "XmlUtilTestCaPath";
+    private static final String TEST_KEYCHAIN_ALIAS = "XmlUtilTestKeyChainAlias";
     private static final int TEST_EAP_METHOD = WifiEnterpriseConfig.Eap.PEAP;
     private static final int TEST_PHASE2_METHOD = WifiEnterpriseConfig.Phase2.MSCHAPV2;
     private final String mXmlDocHeader = "XmlUtilTest";
@@ -403,23 +405,7 @@ public class XmlUtilTest extends WifiBaseTest {
     @Test
     public void testWifiEnterpriseConfigSerializeDeserialize()
             throws IOException, XmlPullParserException {
-        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
-        config.setFieldValue(WifiEnterpriseConfig.IDENTITY_KEY, TEST_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.ANON_IDENTITY_KEY, TEST_ANON_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.PASSWORD_KEY, TEST_PASSWORD);
-        config.setFieldValue(WifiEnterpriseConfig.CLIENT_CERT_KEY, TEST_CLIENT_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.CA_CERT_KEY, TEST_CA_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.SUBJECT_MATCH_KEY, TEST_SUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_KEY, TEST_ENGINE);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_ID_KEY, TEST_ENGINE_ID);
-        config.setFieldValue(WifiEnterpriseConfig.PRIVATE_KEY_ID_KEY, TEST_PRIVATE_KEY_ID);
-        config.setFieldValue(WifiEnterpriseConfig.ALTSUBJECT_MATCH_KEY, TEST_ALTSUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.DOM_SUFFIX_MATCH_KEY, TEST_DOM_SUFFIX_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.CA_PATH_KEY, TEST_CA_PATH);
-        config.setEapMethod(TEST_EAP_METHOD);
-        config.setPhase2Method(TEST_PHASE2_METHOD);
-        config.initIsAppInstalledDeviceKeyAndCert(true);
-        config.initIsAppInstalledCaCert(true);
+        WifiEnterpriseConfig config = makeTestWifiEnterpriseConfig();
 
         serializeDeserializeWifiEnterpriseConfig(config);
     }
@@ -430,23 +416,7 @@ public class XmlUtilTest extends WifiBaseTest {
     @Test
     public void testWifiEnterpriseConfigSerializeDeserializeWithEncryption()
             throws IOException, XmlPullParserException {
-        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
-        config.setFieldValue(WifiEnterpriseConfig.IDENTITY_KEY, TEST_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.ANON_IDENTITY_KEY, TEST_ANON_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.PASSWORD_KEY, TEST_PASSWORD);
-        config.setFieldValue(WifiEnterpriseConfig.CLIENT_CERT_KEY, TEST_CLIENT_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.CA_CERT_KEY, TEST_CA_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.SUBJECT_MATCH_KEY, TEST_SUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_KEY, TEST_ENGINE);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_ID_KEY, TEST_ENGINE_ID);
-        config.setFieldValue(WifiEnterpriseConfig.PRIVATE_KEY_ID_KEY, TEST_PRIVATE_KEY_ID);
-        config.setFieldValue(WifiEnterpriseConfig.ALTSUBJECT_MATCH_KEY, TEST_ALTSUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.DOM_SUFFIX_MATCH_KEY, TEST_DOM_SUFFIX_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.CA_PATH_KEY, TEST_CA_PATH);
-        config.setEapMethod(TEST_EAP_METHOD);
-        config.setPhase2Method(TEST_PHASE2_METHOD);
-        config.initIsAppInstalledDeviceKeyAndCert(true);
-        config.initIsAppInstalledCaCert(true);
+        WifiEnterpriseConfig config = makeTestWifiEnterpriseConfig();
 
         mWifiConfigStoreEncryptionUtil = mock(WifiConfigStoreEncryptionUtil.class);
         EncryptedData encryptedData = new EncryptedData(new byte[0], new byte[0]);
@@ -466,23 +436,7 @@ public class XmlUtilTest extends WifiBaseTest {
     @Test(expected = IllegalArgumentException.class)
     public void testWifiEnterpriseConfigSerializeDeserializeThrowsIllegalArgException()
             throws Exception {
-        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
-        config.setFieldValue(WifiEnterpriseConfig.IDENTITY_KEY, TEST_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.ANON_IDENTITY_KEY, TEST_ANON_IDENTITY);
-        config.setFieldValue(WifiEnterpriseConfig.PASSWORD_KEY, TEST_PASSWORD);
-        config.setFieldValue(WifiEnterpriseConfig.CLIENT_CERT_KEY, TEST_CLIENT_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.CA_CERT_KEY, TEST_CA_CERT);
-        config.setFieldValue(WifiEnterpriseConfig.SUBJECT_MATCH_KEY, TEST_SUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_KEY, TEST_ENGINE);
-        config.setFieldValue(WifiEnterpriseConfig.ENGINE_ID_KEY, TEST_ENGINE_ID);
-        config.setFieldValue(WifiEnterpriseConfig.PRIVATE_KEY_ID_KEY, TEST_PRIVATE_KEY_ID);
-        config.setFieldValue(WifiEnterpriseConfig.ALTSUBJECT_MATCH_KEY, TEST_ALTSUBJECT_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.DOM_SUFFIX_MATCH_KEY, TEST_DOM_SUFFIX_MATCH);
-        config.setFieldValue(WifiEnterpriseConfig.CA_PATH_KEY, TEST_CA_PATH);
-        config.setEapMethod(TEST_EAP_METHOD);
-        config.setPhase2Method(TEST_PHASE2_METHOD);
-        config.initIsAppInstalledDeviceKeyAndCert(true);
-        config.initIsAppInstalledCaCert(true);
+        WifiEnterpriseConfig config = makeTestWifiEnterpriseConfig();
         String xmlString = new String(serializeWifiEnterpriseConfig(config));
         // Manipulate the XML data to set the EAP method to None, this should raise an Illegal
         // argument exception in WifiEnterpriseConfig.setEapMethod().
@@ -613,6 +567,30 @@ public class XmlUtilTest extends WifiBaseTest {
         // Verify that macRandomizationSetting is still RANDOMIZATION_PERSISTENT.
         assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
                 retrieved.second.macRandomizationSetting);
+    }
+
+    private WifiEnterpriseConfig makeTestWifiEnterpriseConfig() {
+        final WifiEnterpriseConfig config = new WifiEnterpriseConfig();
+        config.setFieldValue(WifiEnterpriseConfig.IDENTITY_KEY, TEST_IDENTITY);
+        config.setFieldValue(WifiEnterpriseConfig.ANON_IDENTITY_KEY, TEST_ANON_IDENTITY);
+        config.setFieldValue(WifiEnterpriseConfig.PASSWORD_KEY, TEST_PASSWORD);
+        config.setFieldValue(WifiEnterpriseConfig.CLIENT_CERT_KEY, TEST_CLIENT_CERT);
+        config.setFieldValue(WifiEnterpriseConfig.CA_CERT_KEY, TEST_CA_CERT);
+        config.setFieldValue(WifiEnterpriseConfig.SUBJECT_MATCH_KEY, TEST_SUBJECT_MATCH);
+        config.setFieldValue(WifiEnterpriseConfig.ENGINE_KEY, TEST_ENGINE);
+        config.setFieldValue(WifiEnterpriseConfig.ENGINE_ID_KEY, TEST_ENGINE_ID);
+        config.setFieldValue(WifiEnterpriseConfig.PRIVATE_KEY_ID_KEY, TEST_PRIVATE_KEY_ID);
+        config.setFieldValue(WifiEnterpriseConfig.ALTSUBJECT_MATCH_KEY, TEST_ALTSUBJECT_MATCH);
+        config.setFieldValue(WifiEnterpriseConfig.DOM_SUFFIX_MATCH_KEY, TEST_DOM_SUFFIX_MATCH);
+        config.setFieldValue(WifiEnterpriseConfig.CA_PATH_KEY, TEST_CA_PATH);
+        config.setEapMethod(TEST_EAP_METHOD);
+        config.setPhase2Method(TEST_PHASE2_METHOD);
+        config.initIsAppInstalledDeviceKeyAndCert(true);
+        config.initIsAppInstalledCaCert(true);
+        if (SdkLevel.isAtLeastS()) {
+            config.setClientKeyPairAlias(TEST_KEYCHAIN_ALIAS);
+        }
+        return config;
     }
 
     private byte[] serializeWifiConfigurationForBackup(WifiConfiguration configuration)
