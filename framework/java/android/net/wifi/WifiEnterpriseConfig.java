@@ -1479,7 +1479,7 @@ public class WifiEnterpriseConfig implements Parcelable {
      * to validate the authentication server i.e. PEAP, TLS, or TTLS.
      * @return True if configuration requires a CA certification, false otherwise.
      */
-    public boolean doesEapMethodUseServerCert() {
+    public boolean isEapMethodServerCertUsed() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
@@ -1497,7 +1497,7 @@ public class WifiEnterpriseConfig implements Parcelable {
     /**
      * Determines whether an Enterprise configuration enables server certificate validation.
      * <p>
-     * The caller can determine, along with {@link #doesEapMethodUseServerCert()}, if an
+     * The caller can determine, along with {@link #isEapMethodServerCertUsed()}, if an
      * Enterprise configuration enables server certificate validation, which is a mandatory
      * requirement for networks that use TLS based EAP methods. A configuration that does not
      * enable server certificate validation will be ignored and will not be considered for
@@ -1508,13 +1508,13 @@ public class WifiEnterpriseConfig implements Parcelable {
      * - Either alternative subject match or domain suffix match is set.
      * @return True for server certificate validation is enabled, false otherwise.
      * @throws IllegalStateException on configuration which doesn't use server certificate.
-     * @see #doesEapMethodUseServerCert()
+     * @see #isEapMethodServerCertUsed()
      */
     public boolean isServerCertValidationEnabled() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        if (!doesEapMethodUseServerCert()) {
+        if (!isEapMethodServerCertUsed()) {
             throw new IllegalStateException("Configuration doesn't use server certificates for "
                     + "authentication");
         }
