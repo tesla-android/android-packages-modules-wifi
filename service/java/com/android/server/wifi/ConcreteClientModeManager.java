@@ -1344,6 +1344,11 @@ public class ConcreteClientModeManager implements ClientModeManager {
     }
 
     @Override
+    public void applyCachedPacketFilter() {
+        getClientMode().applyCachedPacketFilter();
+    }
+
+    @Override
     public String toString() {
         return "ConcreteClientModeManager{id=" + getId()
                 + " iface=" + getInterfaceName()

@@ -311,6 +311,7 @@ public class ActiveModeWarden {
                         newPrimaryClientModeManager.setWifiConnectedNetworkScorer(
                                 mClientModeManagerScorer.first,
                                 mClientModeManagerScorer.second);
+                        newPrimaryClientModeManager.applyCachedPacketFilter();
                     }
                 });
     }
