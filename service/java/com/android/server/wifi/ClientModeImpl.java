@@ -6240,6 +6240,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     @Override
+    public boolean enableRoaming(boolean enabled) {
+        int status = mWifiNative.enableFirmwareRoaming(
+                mInterfaceName, enabled
+                        ? WifiNative.ENABLE_FIRMWARE_ROAMING
+                        : WifiNative.DISABLE_FIRMWARE_ROAMING);
+        return status == WifiNative.SET_FIRMWARE_ROAMING_SUCCESS;
+    }
+
+    @Override
     public boolean setCountryCode(String countryCode) {
         return mWifiNative.setStaCountryCode(mInterfaceName, countryCode);
     }

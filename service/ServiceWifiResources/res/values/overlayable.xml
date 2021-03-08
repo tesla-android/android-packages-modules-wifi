@@ -184,6 +184,7 @@
           <item type="integer" name="config_wifiLinkBandwidthUpdateThresholdPercent" />
           <item type="bool" name="config_wifiFlushAnqpCacheOnWifiToggleOffEvent" />
           <item type="bool" name="config_wifiEnableApfOnNonPrimarySta" />
+          <item type="bool" name="config_wifiUseHalApiToDisableFwRoaming" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->
