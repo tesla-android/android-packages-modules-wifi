@@ -27,6 +27,7 @@ import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.NoSuchElementException;
 
 /**
  * This class makes a subset of
@@ -335,10 +336,16 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
      * if this connection is being served using time slicing on a radio with one or more interfaces
      * (i.e MCC), then this method returns the duty cycle assigned to this interface in percent.
      * If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
+     *
+     * @return duty cycle in percent if known.
+     * @throws NoSuchElementException if the duty cylce is unknown (not provided by the HAL).
      */
     public @IntRange(from = 0, to = 100) int getTimeSliceDutyCycleInPercent() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
+        }
+        if (mTimeSliceDutyCycleInPercent == -1) {
+            throw new NoSuchElementException("Unknown value");
         }
         return mTimeSliceDutyCycleInPercent;
     }
