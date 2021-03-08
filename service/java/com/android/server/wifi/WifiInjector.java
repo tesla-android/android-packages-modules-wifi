@@ -310,7 +310,7 @@ public class WifiInjector {
             Log.wtf(TAG, "Failed to load keystore", e);
         }
         mKeyStore = keyStore;
-        mWifiKeyStore = new WifiKeyStore(mKeyStore);
+        mWifiKeyStore = new WifiKeyStore(mContext, mKeyStore, mFrameworkFacade);
         // New config store
         mWifiConfigStore = new WifiConfigStore(mContext, wifiHandler, mClock, mWifiMetrics,
                 WifiConfigStore.createSharedFiles(mFrameworkFacade.isNiapModeOn(mContext)));

@@ -134,6 +134,16 @@ public class WifiEnterpriseConfigTest {
         assertTrue(mEnterpriseConfig.getClientCertificate() == cert0);
     }
 
+    @Test
+    public void testSetGetClientKeyPairAlias() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        final String alias = "alias";
+        mEnterpriseConfig.setClientKeyPairAlias(alias);
+        assertEquals(alias, mEnterpriseConfig.getClientKeyPairAlias());
+        assertEquals(alias, mEnterpriseConfig.getClientKeyPairAliasInternal());
+    }
+
     private boolean isClientCertificateChainInvalid(X509Certificate[] clientChain) {
         boolean exceptionThrown = false;
         try {

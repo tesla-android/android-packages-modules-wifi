@@ -230,6 +230,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<string name=\"WapiCertSuite\"></string>\n"
                     + "<boolean name=\"AppInstalledRootCaCert\" value=\"false\" />\n"
                     + "<boolean name=\"AppInstalledPrivateKey\" value=\"false\" />\n"
+                    + "<null name=\"KeyChainAlias\" />\n"
                     + "</WifiEnterpriseConfiguration>\n"
                     + "</Network>\n";
 
@@ -531,7 +532,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                 networkList.get(2));
         byte[] serializedData = serializeData();
         assertEquals(new String(expectedData, StandardCharsets.UTF_8),
-                new String(serializeData(), StandardCharsets.UTF_8));
+                new String(serializedData, StandardCharsets.UTF_8));
     }
 
     /**

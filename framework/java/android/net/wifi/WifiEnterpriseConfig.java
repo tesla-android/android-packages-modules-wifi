@@ -249,6 +249,7 @@ public class WifiEnterpriseConfig implements Parcelable {
     private int mPhase2Method = Phase2.NONE;
     private boolean mIsAppInstalledDeviceKeyAndCert = false;
     private boolean mIsAppInstalledCaCert = false;
+    private String mKeyChainAlias;
 
     private static final String TAG = "WifiEnterpriseConfig";
 
@@ -289,6 +290,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         } else {
             mClientCertificateChain = null;
         }
+        mKeyChainAlias = source.mKeyChainAlias;
         mEapMethod = source.mEapMethod;
         mPhase2Method = source.mPhase2Method;
         mIsAppInstalledDeviceKeyAndCert = source.mIsAppInstalledDeviceKeyAndCert;
@@ -337,6 +339,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         ParcelUtil.writeCertificates(dest, mCaCerts);
         ParcelUtil.writePrivateKey(dest, mClientPrivateKey);
         ParcelUtil.writeCertificates(dest, mClientCertificateChain);
+        dest.writeString(mKeyChainAlias);
         dest.writeBoolean(mIsAppInstalledDeviceKeyAndCert);
         dest.writeBoolean(mIsAppInstalledCaCert);
         dest.writeInt(mOcsp);
@@ -359,6 +362,7 @@ public class WifiEnterpriseConfig implements Parcelable {
                     enterpriseConfig.mCaCerts = ParcelUtil.readCertificates(in);
                     enterpriseConfig.mClientPrivateKey = ParcelUtil.readPrivateKey(in);
                     enterpriseConfig.mClientCertificateChain = ParcelUtil.readCertificates(in);
+                    enterpriseConfig.mKeyChainAlias = in.readString();
                     enterpriseConfig.mIsAppInstalledDeviceKeyAndCert = in.readBoolean();
                     enterpriseConfig.mIsAppInstalledCaCert = in.readBoolean();
                     enterpriseConfig.mOcsp = in.readInt();
@@ -1009,6 +1013,39 @@ public class WifiEnterpriseConfig implements Parcelable {
         mClientPrivateKey = privateKey;
         mClientCertificateChain = newCerts;
         mIsAppInstalledDeviceKeyAndCert = true;
+    }
+
+    /**
+     * Specify a key pair via KeyChain alias for client authentication.
+     *
+     * The alias should refer to a key pair in KeyChain that is allowed for WiFi authentication.
+     *
+     * @param alias key pair alias
+     * @see android.app.admin.DevicePolicyManager#grantKeyPairToWifiAuth(String)
+     */
+    public void setClientKeyPairAlias(@NonNull String alias) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mKeyChainAlias = alias;
+    }
+
+    /**
+     * Get KeyChain alias to use for client authentication.
+     */
+    public @Nullable String getClientKeyPairAlias() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mKeyChainAlias;
+    }
+
+    /**
+     * Get KeyChain alias to use for client authentication without SDK check.
+     * @hide
+     */
+    public @Nullable String getClientKeyPairAliasInternal() {
+        return mKeyChainAlias;
     }
 
     /**
