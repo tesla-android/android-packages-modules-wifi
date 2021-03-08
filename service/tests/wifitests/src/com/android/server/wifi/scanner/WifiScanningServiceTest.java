@@ -694,7 +694,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         ScanResults expectedResults = resultsForImpl0;
         if (resultsForImpl1 != null) {
             expectedResults = ScanResults.merge(
-                    resultsForImpl0.getScanData().getBandsScannedInternal(),
+                    resultsForImpl0.getScanData().getScannedBandsInternal(),
                     resultsForImpl0, resultsForImpl1);
         }
         verifyScanResultsReceived(order, handler, requestId, expectedResults.getScanData());

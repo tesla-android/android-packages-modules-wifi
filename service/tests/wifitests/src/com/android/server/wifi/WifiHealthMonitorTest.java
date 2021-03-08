@@ -298,7 +298,7 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
 
         ScanData[] scanDatas = new ScanData[1];
         scanDatas[0] = mock(ScanData.class);
-        when(scanDatas[0].getBandsScannedInternal()).thenReturn(wifiBand);
+        when(scanDatas[0].getScannedBandsInternal()).thenReturn(wifiBand);
         doAnswer(new AnswerWithArguments() {
             public void answer(ScanSettings settings, ScanListener listener) throws Exception {
                 if (mScanData != null && mScanData.getResults() != null) {

@@ -1053,7 +1053,7 @@ public class WifiHealthMonitor {
                 return;
             }
 
-            if (WifiScanner.isFullBandScan(results[0].getBandsScannedInternal(), true)) {
+            if (WifiScanner.isFullBandScan(results[0].getScannedBandsInternal(), true)) {
                 handleScanResults(mScanDetails);
             }
             clearScanDetails();

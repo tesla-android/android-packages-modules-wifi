@@ -1373,7 +1373,7 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
                     WifiMetricsProto.WifiLog.SCAN_SUCCESS, mActiveScans.size());
             reportScanResults(results);
             // Cache full band (with DFS or not) scan results.
-            if (WifiScanner.isFullBandScan(results.getBandsScannedInternal(), true)) {
+            if (WifiScanner.isFullBandScan(results.getScannedBandsInternal(), true)) {
                 mCachedScanResults.clear();
                 mCachedScanResults.addAll(Arrays.asList(results.getResults()));
             }
