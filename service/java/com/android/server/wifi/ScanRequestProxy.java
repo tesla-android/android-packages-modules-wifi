@@ -147,7 +147,7 @@ public class ScanRequestProxy {
                 Log.d(TAG, "Received " + scanResults.length + " scan results");
             }
             // Only process full band scan results.
-            if (WifiScanner.isFullBandScan(scanData.getBandsScannedInternal(), false)) {
+            if (WifiScanner.isFullBandScan(scanData.getScannedBandsInternal(), false)) {
                 // Store the last scan results & send out the scan completion broadcast.
                 mLastScanResultsMap.clear();
                 Arrays.stream(scanResults).forEach(s -> mLastScanResultsMap.put(s.BSSID, s));

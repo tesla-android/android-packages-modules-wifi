@@ -68,6 +68,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
+import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1194,6 +1195,9 @@ public class WifiNetworkFactory extends NetworkFactory {
             if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
                 mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
             }
+            if (mContext.getResources().getBoolean(R.bool.config_wifiUseHalApiToDisableFwRoaming)) {
+                mClientModeManager.enableRoaming(true); // Re-enable roaming.
+            }
             mActiveModeWarden.removeClientModeManager(mClientModeManager);
             // For every connection attempt, get the appropriate client mode impl to use.
             mClientModeManager = null;
@@ -1234,6 +1238,14 @@ public class WifiNetworkFactory extends NetworkFactory {
             // collection.
             mCmiListener = new CmiListener();
             mClientModeImplMonitor.registerListener(mCmiListener);
+        }
+        // Disable roaming.
+        if (mContext.getResources().getBoolean(R.bool.config_wifiUseHalApiToDisableFwRoaming)) {
+            // Note: This is an old HAL API, but since it wasn't being exercised before, we are
+            // being extra cautious and only using it on devices running >= S.
+            if (!mClientModeManager.enableRoaming(false)) {
+                Log.w(TAG, "Failed to disable roaming");
+            }
         }
     }
 

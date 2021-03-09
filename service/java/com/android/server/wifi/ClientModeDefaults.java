@@ -183,6 +183,10 @@ public interface ClientModeDefaults extends ClientMode {
         return false;
     }
 
+    default boolean enableRoaming(boolean enabled) {
+        return false;
+    }
+
     default boolean setCountryCode(String countryCode) {
         return false;
     }
@@ -213,4 +217,7 @@ public interface ClientModeDefaults extends ClientMode {
 
     @Override
     default void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) { }
+
+    @Override
+    default void applyCachedPacketFilter() { }
 }

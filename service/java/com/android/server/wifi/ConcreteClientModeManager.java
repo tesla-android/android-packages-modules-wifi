@@ -1303,6 +1303,11 @@ public class ConcreteClientModeManager implements ClientModeManager {
     }
 
     @Override
+    public boolean enableRoaming(boolean enabled) {
+        return getClientMode().enableRoaming(enabled);
+    }
+
+    @Override
     public boolean setCountryCode(String countryCode) {
         return getClientMode().setCountryCode(countryCode);
     }
@@ -1341,6 +1346,11 @@ public class ConcreteClientModeManager implements ClientModeManager {
     public void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) {
         mShouldReduceNetworkScore = shouldReduceNetworkScore;
         getClientMode().setShouldReduceNetworkScore(shouldReduceNetworkScore);
+    }
+
+    @Override
+    public void applyCachedPacketFilter() {
+        getClientMode().applyCachedPacketFilter();
     }
 
     @Override

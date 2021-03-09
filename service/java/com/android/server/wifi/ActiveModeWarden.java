@@ -300,6 +300,10 @@ public class ActiveModeWarden {
 
         registerPrimaryClientModeManagerChangedCallback(
                 (prevPrimaryClientModeManager, newPrimaryClientModeManager) -> {
+                    // TODO (b/181363901): We can always propagate the external scorer to all
+                    // ClientModeImpl instances. WifiScoreReport already handles skipping external
+                    // scorer notification for local only & restricted STA + STA use-cases. For MBB
+                    // use-case, we may want the external scorer to be notified.
                     if (prevPrimaryClientModeManager != null) {
                         prevPrimaryClientModeManager.clearWifiConnectedNetworkScorer();
                     }
@@ -307,6 +311,7 @@ public class ActiveModeWarden {
                         newPrimaryClientModeManager.setWifiConnectedNetworkScorer(
                                 mClientModeManagerScorer.first,
                                 mClientModeManagerScorer.second);
+                        newPrimaryClientModeManager.applyCachedPacketFilter();
                     }
                 });
     }

@@ -3728,6 +3728,10 @@ public class WifiNative {
     public static final int DISABLE_FIRMWARE_ROAMING = 0;
     public static final int ENABLE_FIRMWARE_ROAMING = 1;
 
+    @IntDef({ENABLE_FIRMWARE_ROAMING, DISABLE_FIRMWARE_ROAMING})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface RoamingEnableState {}
+
     /**
      * Indicates success for enableFirmwareRoaming
      */
@@ -3743,6 +3747,10 @@ public class WifiNative {
      */
     public static final int SET_FIRMWARE_ROAMING_BUSY = 2;
 
+    @IntDef({SET_FIRMWARE_ROAMING_SUCCESS, SET_FIRMWARE_ROAMING_FAILURE, SET_FIRMWARE_ROAMING_BUSY})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface RoamingEnableStatus {}
+
     /**
      * Enable/disable firmware roaming.
      *
@@ -3750,7 +3758,8 @@ public class WifiNative {
      * @return SET_FIRMWARE_ROAMING_SUCCESS, SET_FIRMWARE_ROAMING_FAILURE,
      *         or SET_FIRMWARE_ROAMING_BUSY
      */
-    public int enableFirmwareRoaming(@NonNull String ifaceName, int state) {
+    public @RoamingEnableStatus int enableFirmwareRoaming(@NonNull String ifaceName,
+            @RoamingEnableState int state) {
         return mWifiVendorHal.enableFirmwareRoaming(ifaceName, state);
     }
 

@@ -601,4 +601,11 @@
     bandwidth. If the bandwidth change is above this value, NetworkCapabilities are updated -->
     <integer translatable="false" name="config_wifiLinkBandwidthUpdateThresholdPercent">40</integer>
 
+    <!-- Whether we should apply APF filters on non primary STA connections when STA + STA is active.
+         Defaults to false since most wifi chips cannot support concurrent APF filter set needed for STA + STA-->
+    <bool translatable="false" name="config_wifiEnableApfOnNonPrimarySta">false</bool>
+
+    <!-- Whether to use the explicit vendor HAL API: IWifiStaIface.setRoamingState for disabling fw roaming (only needed if
+         setting the bssid on the connection alone does not disable fw roaming on this chip) -->
+    <bool translatable="false" name="config_wifiUseHalApiToDisableFwRoaming">false</bool>
 </resources>
