@@ -1185,6 +1185,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, "", false);
         mWifiServiceImpl.restartWifiSubsystem(null);
         verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, null, false);
+        verify(mWifiMetrics, times(3)).logUserActionEvent(
+                eq(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM), anyInt());
     }
 
     /**
