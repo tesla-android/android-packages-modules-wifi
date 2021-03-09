@@ -62,7 +62,6 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1072,38 +1071,6 @@ public class WifiConfigManager {
         }
 
         mergeSecurityParamsListWithInternalWifiConfiguration(internalConfig, externalConfig);
-
-        // Copy over all the auth/protocol/key mgmt parameters if set.
-        if (externalConfig.allowedAuthAlgorithms != null
-                && !externalConfig.allowedAuthAlgorithms.isEmpty()) {
-            internalConfig.allowedAuthAlgorithms =
-                    (BitSet) externalConfig.allowedAuthAlgorithms.clone();
-        }
-        if (externalConfig.allowedProtocols != null
-                && !externalConfig.allowedProtocols.isEmpty()) {
-            internalConfig.allowedProtocols = (BitSet) externalConfig.allowedProtocols.clone();
-        }
-        if (externalConfig.allowedKeyManagement != null
-                && !externalConfig.allowedKeyManagement.isEmpty()) {
-            internalConfig.allowedKeyManagement =
-                    (BitSet) externalConfig.allowedKeyManagement.clone();
-        }
-        if (externalConfig.allowedPairwiseCiphers != null
-                && !externalConfig.allowedPairwiseCiphers.isEmpty()) {
-            internalConfig.allowedPairwiseCiphers =
-                    (BitSet) externalConfig.allowedPairwiseCiphers.clone();
-        }
-        if (externalConfig.allowedGroupCiphers != null
-                && !externalConfig.allowedGroupCiphers.isEmpty()) {
-            internalConfig.allowedGroupCiphers =
-                    (BitSet) externalConfig.allowedGroupCiphers.clone();
-        }
-        if (externalConfig.allowedGroupManagementCiphers != null
-                && !externalConfig.allowedGroupManagementCiphers.isEmpty()) {
-            internalConfig.allowedGroupManagementCiphers =
-                    (BitSet) externalConfig.allowedGroupManagementCiphers.clone();
-        }
-        // allowedSuiteBCiphers is set internally according to the certificate type
 
         // Copy over the |IpConfiguration| parameters if set.
         if (externalConfig.getIpConfiguration() != null) {
