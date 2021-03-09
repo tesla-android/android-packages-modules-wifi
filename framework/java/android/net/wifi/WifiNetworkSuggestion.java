@@ -218,6 +218,11 @@ public final class WifiNetworkSuggestion implements Parcelable {
         @MacRandomizationSetting
         private int mMacRandomizationSetting;
 
+        /**
+         * The SAE Hash-to-Element only mode.
+         */
+        private boolean mSaeH2eOnlyMode;
+
         public Builder() {
             mSsid = null;
             mBssid =  null;
@@ -245,6 +250,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
             mPriorityGroup = 0;
             mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
             mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+            mSaeH2eOnlyMode = false;
         }
 
         /**
@@ -873,6 +879,28 @@ public final class WifiNetworkSuggestion implements Parcelable {
             return this;
         }
 
+        /**
+         * Specifies whether the suggestion represents an SAE network which only
+         * accepts Hash-to-Element mode.
+         * If this is enabled, Hunting & Pecking mode is disabled and only Hash-to-Element
+         * mode is used for this network.
+         * This is only valid for an SAE network which is configured using the
+         * {@link #setWpa3Passphrase}.
+         * Before calling this API, the application should check Hash-to-Element support using
+         * {@link WifiManager#isWpa3SaeH2eSupported()}.
+         *
+         * @param enable Boolean indicating whether the network only accepts Hash-to-Element mode,
+         *        default is false.
+         * @return Instance of {@link Builder} to enable chaining of the builder method.
+         */
+        public @NonNull Builder enableWpa3SaeH2eOnlyMode(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mSaeH2eOnlyMode = enable;
+            return this;
+        }
+
         private void setSecurityParamsInWifiConfiguration(
                 @NonNull WifiConfiguration configuration) {
             if (!TextUtils.isEmpty(mWpa2PskPassphrase)) { // WPA-PSK network.
@@ -883,6 +911,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 configuration.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
                 // WifiConfiguration.preSharedKey needs quotes around ASCII password.
                 configuration.preSharedKey = "\"" + mWpa3SaePassphrase + "\"";
+                if (mSaeH2eOnlyMode) configuration.enableSaeH2eOnlyMode(mSaeH2eOnlyMode);
             } else if (mWpa2EnterpriseConfig != null) { // WPA-EAP network
                 configuration.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
                 configuration.enterpriseConfig = mWpa2EnterpriseConfig;
@@ -1071,6 +1100,11 @@ public final class WifiNetworkSuggestion implements Parcelable {
                         || mBssid.equals(WifiManager.ALL_ZEROS_MAC_ADDRESS))) {
                     throw new IllegalStateException("invalid bssid for suggestion");
                 }
+                if (TextUtils.isEmpty(mWpa3SaePassphrase) && mSaeH2eOnlyMode) {
+                    throw new IllegalStateException(
+                            "Hash-to-Element only mode is only allowed for the SAE network");
+                }
+
                 wifiConfiguration = buildWifiConfiguration();
                 if (wifiConfiguration.isOpenNetwork()) {
                     if (mIsSharedWithUserSet && mIsSharedWithUser) {

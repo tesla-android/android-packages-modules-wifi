@@ -2622,6 +2622,9 @@ public class WifiManager {
      */
     public static final long WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS = 0x1000000000000L;
 
+     /** @hide */
+    public static final long WIFI_FEATURE_SAE_H2E          = 0x2000000000000L; // Hash-to-Element
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6352,6 +6355,13 @@ public class WifiManager {
      */
     public boolean isPasspointTermsAndConditionsSupported() {
         return isFeatureSupported(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS);
+    }
+
+    /**
+     * @return true if this device supports WPA3 SAE Hash-to-Element.
+     */
+    public boolean isWpa3SaeH2eSupported() {
+        return isFeatureSupported(WIFI_FEATURE_SAE_H2E);
     }
 
     /**
