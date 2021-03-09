@@ -4715,7 +4715,11 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void registerSoftApCallback(@NonNull @CallbackExecutor Executor executor,
             @NonNull SoftApCallback callback) {
         if (executor == null) throw new IllegalArgumentException("executor cannot be null");
@@ -4742,7 +4746,11 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void unregisterSoftApCallback(@NonNull SoftApCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "unregisterSoftApCallback: callback=" + callback);
