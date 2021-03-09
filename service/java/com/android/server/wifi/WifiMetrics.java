@@ -79,6 +79,7 @@ import com.android.server.wifi.p2p.WifiP2pMetrics;
 import com.android.server.wifi.proto.WifiStatsLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.ConnectToNetworkNotificationAndActionCount;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.ContentionTimeStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.DeviceMobilityStatePnoScanStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.ExperimentValues;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.FirstConnectAfterBootStats;
@@ -219,6 +220,8 @@ public class WifiMetrics {
 
     private static final int WIFI_RECONNECT_DURATION_SHORT_MILLIS = 10 * 1000;
     private static final int WIFI_RECONNECT_DURATION_MEDIUM_MILLIS = 60 * 1000;
+    // Number of WME Access Categories
+    private static final int NUM_WME_ACCESS_CATEGORIES = 4;
 
     private Clock mClock;
     private boolean mScreenOn;
@@ -5892,6 +5895,64 @@ public class WifiMetrics {
             wifiUsabilityStatsEntry.isSameBssidAndFreq = isSameBssidAndFreq;
             wifiUsabilityStatsEntry.seqNumInsideFramework = mSeqNumInsideFramework;
             wifiUsabilityStatsEntry.deviceMobilityState = mCurrentDeviceMobilityState;
+            wifiUsabilityStatsEntry.contentionTimeStats =
+                    new ContentionTimeStats[NUM_WME_ACCESS_CATEGORIES];
+            for (int ac = 0; ac < NUM_WME_ACCESS_CATEGORIES; ac++) {
+                ContentionTimeStats contentionTimeStats = new ContentionTimeStats();
+                switch (ac) {
+                    case ContentionTimeStats.WME_ACCESS_CATEGORY_BE:
+                        contentionTimeStats.accessCategory =
+                                ContentionTimeStats.WME_ACCESS_CATEGORY_BE;
+                        contentionTimeStats.contentionTimeMinMicros =
+                                stats.contentionTimeMinBeInUsec;
+                        contentionTimeStats.contentionTimeMaxMicros =
+                                stats.contentionTimeMaxBeInUsec;
+                        contentionTimeStats.contentionTimeAvgMicros =
+                                stats.contentionTimeAvgBeInUsec;
+                        contentionTimeStats.contentionNumSamples =
+                                stats.contentionNumSamplesBe;
+                        break;
+                    case ContentionTimeStats.WME_ACCESS_CATEGORY_BK:
+                        contentionTimeStats.accessCategory =
+                                ContentionTimeStats.WME_ACCESS_CATEGORY_BK;
+                        contentionTimeStats.contentionTimeMinMicros =
+                                stats.contentionTimeMinBkInUsec;
+                        contentionTimeStats.contentionTimeMaxMicros =
+                                stats.contentionTimeMaxBkInUsec;
+                        contentionTimeStats.contentionTimeAvgMicros =
+                                stats.contentionTimeAvgBkInUsec;
+                        contentionTimeStats.contentionNumSamples =
+                                stats.contentionNumSamplesBk;
+                        break;
+                    case ContentionTimeStats.WME_ACCESS_CATEGORY_VI:
+                        contentionTimeStats.accessCategory =
+                                ContentionTimeStats.WME_ACCESS_CATEGORY_VI;
+                        contentionTimeStats.contentionTimeMinMicros =
+                                stats.contentionTimeMinViInUsec;
+                        contentionTimeStats.contentionTimeMaxMicros =
+                                stats.contentionTimeMaxViInUsec;
+                        contentionTimeStats.contentionTimeAvgMicros =
+                                stats.contentionTimeAvgViInUsec;
+                        contentionTimeStats.contentionNumSamples =
+                                stats.contentionNumSamplesVi;
+                        break;
+                    case ContentionTimeStats.WME_ACCESS_CATEGORY_VO:
+                        contentionTimeStats.accessCategory =
+                                ContentionTimeStats.WME_ACCESS_CATEGORY_VO;
+                        contentionTimeStats.contentionTimeMinMicros =
+                                stats.contentionTimeMinVoInUsec;
+                        contentionTimeStats.contentionTimeMaxMicros =
+                                stats.contentionTimeMaxVoInUsec;
+                        contentionTimeStats.contentionTimeAvgMicros =
+                                stats.contentionTimeAvgVoInUsec;
+                        contentionTimeStats.contentionNumSamples =
+                                stats.contentionNumSamplesVo;
+                        break;
+                    default:
+                        Log.e(TAG, "Unknown WME Access Category: " + ac);
+                }
+                wifiUsabilityStatsEntry.contentionTimeStats[ac] = contentionTimeStats;
+            }
 
             mWifiUsabilityStatsEntriesList.add(wifiUsabilityStatsEntry);
             mWifiUsabilityStatsCounter++;
@@ -5959,6 +6020,10 @@ public class WifiMetrics {
                 probeStatus = android.net.wifi.WifiUsabilityStatsEntry.PROBE_STATUS_UNKNOWN;
                 Log.e(TAG, "Unknown link probe status: " + s.probeStatusSinceLastUpdate);
         }
+        android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats[] contentionTimeStats =
+                new android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats[
+                        android.net.wifi.WifiUsabilityStatsEntry.NUM_WME_ACCESS_CATEGORIES];
+        createNewContentionTimeStatsParcelable(contentionTimeStats, s.contentionTimeStats);
         // TODO: remove the following hardcoded values once if they are removed from public API
         return new android.net.wifi.WifiUsabilityStatsEntry(s.timeStampMs, s.rssi,
                 s.linkSpeedMbps, s.totalTxSuccess, s.totalTxRetries,
@@ -5968,8 +6033,48 @@ public class WifiMetrics {
                 s.totalPnoScanTimeMs, s.totalHotspot2ScanTimeMs, s.totalCcaBusyFreqTimeMs,
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
-                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, 0, 0, 0, false
+                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, contentionTimeStats,
+                0, 0, 0, false
         );
+    }
+
+    private void createNewContentionTimeStatsParcelable(
+            android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats[] statsParcelable,
+                    ContentionTimeStats[] stats) {
+        if (statsParcelable.length != stats.length || stats.length != NUM_WME_ACCESS_CATEGORIES) {
+            Log.e(TAG, "The two ContentionTimeStats do not match in length: "
+                    + " in proto: " + stats.length
+                    + " in system API: " + statsParcelable.length);
+            return;
+        }
+        for (int ac = 0; ac < NUM_WME_ACCESS_CATEGORIES; ac++) {
+            android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats stat =
+                    new android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats(
+                            stats[ac].contentionTimeMinMicros,
+                            stats[ac].contentionTimeMaxMicros,
+                            stats[ac].contentionTimeAvgMicros,
+                            stats[ac].contentionNumSamples);
+            switch (ac) {
+                case ContentionTimeStats.WME_ACCESS_CATEGORY_BE:
+                    statsParcelable[
+                            android.net.wifi.WifiUsabilityStatsEntry.WME_ACCESS_CATEGORY_BE] = stat;
+                    break;
+                case ContentionTimeStats.WME_ACCESS_CATEGORY_BK:
+                    statsParcelable[
+                            android.net.wifi.WifiUsabilityStatsEntry.WME_ACCESS_CATEGORY_BK] = stat;
+                    break;
+                case ContentionTimeStats.WME_ACCESS_CATEGORY_VI:
+                    statsParcelable[
+                            android.net.wifi.WifiUsabilityStatsEntry.WME_ACCESS_CATEGORY_VI] = stat;
+                    break;
+                case ContentionTimeStats.WME_ACCESS_CATEGORY_VO:
+                    statsParcelable[
+                            android.net.wifi.WifiUsabilityStatsEntry.WME_ACCESS_CATEGORY_VO] = stat;
+                    break;
+                default:
+                    Log.e(TAG, "Unknown WME Access Category: " + ac);
+            }
+        }
     }
 
     private WifiUsabilityStatsEntry createNewWifiUsabilityStatsEntry(WifiUsabilityStatsEntry s) {
@@ -6005,6 +6110,7 @@ public class WifiMetrics {
         out.seqNumInsideFramework = s.seqNumInsideFramework;
         out.deviceMobilityState = s.deviceMobilityState;
         out.timeSliceDutyCycleInPercent = s.timeSliceDutyCycleInPercent;
+        out.contentionTimeStats = s.contentionTimeStats;
         return out;
     }
 

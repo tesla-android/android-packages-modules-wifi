@@ -860,6 +860,7 @@ package android.net.wifi {
     method public int getCellularDataNetworkType();
     method public int getCellularSignalStrengthDb();
     method public int getCellularSignalStrengthDbm();
+    method @NonNull public android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats getContentionTimeStats(int);
     method public int getLinkSpeedMbps();
     method public int getProbeElapsedTimeSinceLastUpdateMillis();
     method public int getProbeMcsRateSinceLastUpdate();
@@ -887,10 +888,26 @@ package android.net.wifi {
     method public boolean isSameRegisteredCell();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry> CREATOR;
+    field public static final int NUM_WME_ACCESS_CATEGORIES = 4; // 0x4
     field public static final int PROBE_STATUS_FAILURE = 3; // 0x3
     field public static final int PROBE_STATUS_NO_PROBE = 1; // 0x1
     field public static final int PROBE_STATUS_SUCCESS = 2; // 0x2
     field public static final int PROBE_STATUS_UNKNOWN = 0; // 0x0
+    field public static final int WME_ACCESS_CATEGORY_BE = 0; // 0x0
+    field public static final int WME_ACCESS_CATEGORY_BK = 1; // 0x1
+    field public static final int WME_ACCESS_CATEGORY_VI = 2; // 0x2
+    field public static final int WME_ACCESS_CATEGORY_VO = 3; // 0x3
+  }
+
+  public static final class WifiUsabilityStatsEntry.ContentionTimeStats implements android.os.Parcelable {
+    ctor public WifiUsabilityStatsEntry.ContentionTimeStats(int, int, int, int);
+    method public int describeContents();
+    method public int getContentionNumSamples();
+    method public int getContentionTimeAvgMicros();
+    method public int getContentionTimeMaxMicros();
+    method public int getContentionTimeMinMicros();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats> CREATOR;
   }
 
 }
