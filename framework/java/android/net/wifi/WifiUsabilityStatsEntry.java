@@ -23,8 +23,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.telephony.Annotation.NetworkType;
 
-import com.android.modules.utils.build.SdkLevel;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.NoSuchElementException;
@@ -341,9 +339,6 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
      * @throws NoSuchElementException if the duty cylce is unknown (not provided by the HAL).
      */
     public @IntRange(from = 0, to = 100) int getTimeSliceDutyCycleInPercent() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (mTimeSliceDutyCycleInPercent == -1) {
             throw new NoSuchElementException("Unknown value");
         }
