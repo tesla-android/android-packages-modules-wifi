@@ -2060,77 +2060,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedKeyManagement| is
-     * updated.
+     * Verifies that hasEverConnected is cleared when the security type of a network config
+     * is updated.
      */
     @Test
-    public void testUpdateAllowedKeyManagementClearsHasEverConnected() {
+    public void testUpdateSecurityTypeClearsHasEverConnected() {
         WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
         verifyAddNetworkHasEverConnectedFalse(pskNetwork);
         verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
 
         pskNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
-        pskNetwork.requirePmf = true;
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedProtocol| is
-     * updated.
-     */
-    @Test
-    public void testUpdateProtocolsClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedProtocols.get(WifiConfiguration.Protocol.OSEN));
-        pskNetwork.allowedProtocols.set(WifiConfiguration.Protocol.OSEN);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedAuthAlgorithms| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedAuthAlgorithmsClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedAuthAlgorithms.get(WifiConfiguration.AuthAlgorithm.LEAP));
-        pskNetwork.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.LEAP);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedPairwiseCiphers| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedPairwiseCiphersClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedPairwiseCiphers.get(WifiConfiguration.PairwiseCipher.NONE));
-        pskNetwork.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.NONE);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedGroup| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedGroupCiphersClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertTrue(pskNetwork.allowedGroupCiphers.get(WifiConfiguration.GroupCipher.WEP104));
-        pskNetwork.allowedGroupCiphers.clear(WifiConfiguration.GroupCipher.WEP104);
         verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
     }
 
@@ -5235,15 +5174,17 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     private boolean isNetworkInConfigStoreData(
             WifiConfiguration configuration, List<WifiConfiguration> networkList) {
-        boolean foundNetworkInStoreData = false;
         for (WifiConfiguration retrievedConfig : networkList) {
-            if (retrievedConfig.getProfileKeyInternal().equals(
-                    configuration.getProfileKeyInternal())) {
-                foundNetworkInStoreData = true;
-                break;
+            for (SecurityParams p: retrievedConfig.getSecurityParamsList()) {
+                WifiConfiguration tmpConfig = new WifiConfiguration(retrievedConfig);
+                tmpConfig.setSecurityParams(p);
+                if (tmpConfig.getProfileKeyInternal().equals(
+                        configuration.getProfileKeyInternal())) {
+                    return true;
+                }
             }
         }
-        return foundNetworkInStoreData;
+        return false;
     }
 
     /**
@@ -6632,5 +6573,97 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
                 Arrays.asList(callerNetwork0, callerNetwork1),
                 mWifiConfigManager.getConfiguredNetworksWithPasswords());
+    }
+
+    private void verifyAddUpgradableTypeNetwork(
+            WifiConfiguration baseConfig, WifiConfiguration newConfig,
+            boolean isNewConfigUpgradableType) {
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        int baseConfigId = result.getNetworkId();
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        assertTrue(result.isNewNetwork());
+
+        result = addNetworkToWifiConfigManager(newConfig);
+        assertEquals(baseConfigId, result.getNetworkId());
+        assertFalse(result.isNewNetwork());
+
+        List<WifiConfiguration> retrievedSavedNetworks = mWifiConfigManager.getSavedNetworks(
+                Process.WIFI_UID);
+        assertEquals(1, retrievedSavedNetworks.size());
+        if (isNewConfigUpgradableType) {
+            assertEquals(baseConfig.getProfileKeyInternal(),
+                    retrievedSavedNetworks.get(0).getProfileKeyInternal());
+        } else {
+            assertEquals(newConfig.getProfileKeyInternal(),
+                    retrievedSavedNetworks.get(0).getProfileKeyInternal());
+        }
+    }
+
+    /**
+     * Verifies the new SAE network is merged to existing PSK network correctly.
+     */
+    @Test
+    public void testMergeSaeToPskNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createPskNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createSaeNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new PSK network is merged to existing SAE network correctly.
+     */
+    @Test
+    public void testMergePskToSaeNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createSaeNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createPskNetwork(TEST_SSID),
+                false);
+    }
+
+    /**
+     * Verifies the new OWE network is merged to existing Open network correctly.
+     */
+    @Test
+    public void testMergeOweToOpenNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createOweNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new Open network is merged to existing OWE network correctly.
+     */
+    @Test
+    public void testMergeOpenToOweNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createOweNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID),
+                false);
+    }
+
+    /**
+     * Verifies the new WPA3 Enterprise network is merged
+     * to existing WPA2 Enterprise network correctly.
+     */
+    @Test
+    public void testMergeWpa3EnterpriseToWpa2EnterprsieNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createEapNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new WPA2 Enterprise network is merged
+     * to existing WPA3 Enterprise network correctly.
+     */
+    @Test
+    public void testMergeWpa2EnterpriseToWpa3EnterpriseNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createEapNetwork(TEST_SSID),
+                false);
     }
 }

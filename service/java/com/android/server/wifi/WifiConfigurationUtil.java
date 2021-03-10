@@ -327,6 +327,9 @@ public class WifiConfigurationUtil {
                 newConfig.allowedSuiteBCiphers)) {
             return true;
         }
+        if (!existingConfig.getSecurityParamsList().equals(newConfig.getSecurityParamsList())) {
+            return true;
+        }
         if (!Objects.equals(existingConfig.preSharedKey, newConfig.preSharedKey)) {
             return true;
         }
