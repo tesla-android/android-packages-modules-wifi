@@ -463,10 +463,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                                     + " instead");
                             return -1;
                         }
-                        mWifiService.setOverrideCountryCode(countryCode);
+                        mWifiCountryCode.setOverrideCountryCode(countryCode);
                         return 0;
                     } else {
-                        mWifiService.clearOverrideCountryCode();
+                        mWifiCountryCode.clearOverrideCountryCode();
                         return 0;
                     }
                 }
