@@ -50,6 +50,9 @@ public class WifiNetworkAgent extends NetworkAgent {
 
     private final Callback mCallback;
 
+    /** Cache the latest NetworkCapabilities update */
+    @NonNull private NetworkCapabilities mCurrentNetworkCapabilities;
+
     /**
      * Create a new network agent.
      *
@@ -74,6 +77,7 @@ public class WifiNetworkAgent extends NetworkAgent {
             @Nullable NetworkProvider provider,
             @NonNull Callback wifiNetworkAgentCallback) {
         super(context, looper, TAG, nc, lp, score, config, provider);
+        mCurrentNetworkCapabilities = nc;
         mCallback = wifiNetworkAgentCallback;
         register();
     }
@@ -124,7 +128,19 @@ public class WifiNetworkAgent extends NetworkAgent {
         mCallback.onAutomaticReconnectDisabled();
     }
 
+    @NonNull
     public Callback getCallback() {
         return mCallback;
+    }
+
+    /** sendNetworkCapabilities is final in NetworkAgent, so can't override that method directly */
+    public void sendNetworkCapabilitiesAndCache(@NonNull NetworkCapabilities nc) {
+        mCurrentNetworkCapabilities = nc;
+        super.sendNetworkCapabilities(nc);
+    }
+
+    @NonNull
+    public NetworkCapabilities getCurrentNetworkCapabilities() {
+        return mCurrentNetworkCapabilities;
     }
 }

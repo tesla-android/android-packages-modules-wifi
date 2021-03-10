@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 import android.content.Context;
 import android.content.res.Resources;
 import android.net.Network;
-import android.net.NetworkAgent;
+import android.net.NetworkCapabilities;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiInfo;
@@ -89,7 +89,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     WifiScoreReport mWifiScoreReport;
     ExtendedWifiInfo mWifiInfo;
     ScoringParams mScoringParams;
-    @Mock NetworkAgent mNetworkAgent;
+    @Mock WifiNetworkAgent mNetworkAgent;
     WifiThreadRunner mWifiThreadRunner;
     @Mock Context mContext;
     @Mock Resources mResources;
@@ -192,6 +192,11 @@ public class WifiScoreReportTest extends WifiBaseTest {
         when(mContext.getResources()).thenReturn(mResources);
         when(mNetwork.getNetId()).thenReturn(0);
         when(mNetworkAgent.getNetwork()).thenReturn(mNetwork);
+        when(mNetworkAgent.getCurrentNetworkCapabilities()).thenReturn(
+                new NetworkCapabilities.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build());
         mClock = new FakeClock();
         mScoringParams = new ScoringParams();
         mWifiThreadRunner = new WifiThreadRunner(new Handler(mLooper.getLooper()));
@@ -1315,5 +1320,60 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(any(), any(),
                 eq(WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE), anyInt());
+    }
+
+    @Test
+    public void testClientNotNotifiedForLocalOnlyConnection() throws Exception {
+        when(mNetworkAgent.getCurrentNetworkCapabilities()).thenReturn(
+                new NetworkCapabilities.Builder()
+                        // no internet
+                        .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build());
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID);
+        verify(mWifiConnectedNetworkScorer, never()).onStart(TEST_SESSION_ID);
+    }
+
+    @Test
+    public void testClientNotNotifiedForOemPaidConnection() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mNetworkAgent.getCurrentNetworkCapabilities()).thenReturn(
+                new NetworkCapabilities.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        // oem paid
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build());
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID);
+        verify(mWifiConnectedNetworkScorer, never()).onStart(TEST_SESSION_ID);
+    }
+
+    @Test
+    public void testClientNotNotifiedForOemPrivateConnection() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mNetworkAgent.getCurrentNetworkCapabilities()).thenReturn(
+                new NetworkCapabilities.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        // oem private
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE)
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build());
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID);
+        verify(mWifiConnectedNetworkScorer, never()).onStart(TEST_SESSION_ID);
     }
 }

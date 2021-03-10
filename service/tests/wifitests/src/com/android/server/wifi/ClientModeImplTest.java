@@ -2768,7 +2768,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         ArgumentCaptor<NetworkCapabilities> captor = ArgumentCaptor.forClass(
                 NetworkCapabilities.class);
         mLooper.dispatchAll();
-        verify(mWifiNetworkAgent).sendNetworkCapabilities(captor.capture());
+        verify(mWifiNetworkAgent).sendNetworkCapabilitiesAndCache(captor.capture());
         networkCapabilitiesChecker.accept(captor.getValue());
     }
 
@@ -2945,7 +2945,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(40_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
         assertEquals(50_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
         verify(mCmi.mNetworkAgent, times(2))
-                .sendNetworkCapabilities(networkCapabilitiesCaptor.capture());
+                .sendNetworkCapabilitiesAndCache(networkCapabilitiesCaptor.capture());
 
         // Enable RSSI polling
         final long startMillis = 1_500_000_000_100L;
@@ -2964,7 +2964,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         // NetworkCapabilities should be updated after a big change of bandwidth
         verify(mCmi.mNetworkAgent, times(3))
-                .sendNetworkCapabilities(networkCapabilitiesCaptor.capture());
+                .sendNetworkCapabilitiesAndCache(networkCapabilitiesCaptor.capture());
         networkCapabilities = networkCapabilitiesCaptor.getValue();
         assertEquals(82_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
         assertEquals(92_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
@@ -2975,7 +2975,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mClock.getWallClockMillis()).thenReturn(startMillis + 3333);
         mLooper.dispatchAll();
         verify(mCmi.mNetworkAgent, times(3))
-                .sendNetworkCapabilities(networkCapabilitiesCaptor.capture());
+                .sendNetworkCapabilitiesAndCache(networkCapabilitiesCaptor.capture());
         networkCapabilities = networkCapabilitiesCaptor.getValue();
         assertEquals(82_000, networkCapabilities.getLinkUpstreamBandwidthKbps());
         assertEquals(92_000, networkCapabilities.getLinkDownstreamBandwidthKbps());
