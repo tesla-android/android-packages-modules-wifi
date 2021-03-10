@@ -46,6 +46,7 @@ import android.net.wifi.WifiManager.DeviceMobilityState;
 import android.net.wifi.WifiUsabilityStatsEntry.ProbeStatus;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.ProvisioningCallback;
+import android.net.wifi.hotspot2.ProvisioningCallback.OsuFailure;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.Handler;
 import android.os.Looper;
@@ -6702,7 +6703,7 @@ public class WifiMetrics {
      * Increment number of passpoint provision failure
      * @param failureCode indicates error condition
      */
-    public void incrementPasspointProvisionFailure(int failureCode) {
+    public void incrementPasspointProvisionFailure(@OsuFailure int failureCode) {
         int provisionFailureCode;
         synchronized (mLock) {
             switch (failureCode) {
