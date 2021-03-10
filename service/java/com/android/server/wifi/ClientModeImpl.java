@@ -252,6 +252,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private int mLastSubId;
     private String mLastSimBasedConnectionCarrierName;
     private URL mTermsAndConditionsUrl; // Indicates that the Passpoint network is captive
+    @Nullable
+    private byte[] mCachedPacketFilter;
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -3676,13 +3678,28 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     break;
                 }
                 case CMD_INSTALL_PACKET_FILTER: {
-                    mWifiNative.installPacketFilter(mInterfaceName, (byte[]) message.obj);
+                    mCachedPacketFilter = (byte[]) message.obj;
+                    if (mContext.getResources().getBoolean(
+                            R.bool.config_wifiEnableApfOnNonPrimarySta)
+                            || mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+                        mWifiNative.installPacketFilter(mInterfaceName, mCachedPacketFilter);
+                    } else {
+                        Log.v(TAG, "Not applying packet filter on non primary CMM");
+                    }
                     break;
                 }
                 case CMD_READ_PACKET_FILTER: {
-                    byte[] data = mWifiNative.readPacketFilter(mInterfaceName);
+                    final byte[] packetFilter;
+                    if (mContext.getResources().getBoolean(
+                            R.bool.config_wifiEnableApfOnNonPrimarySta)
+                            || mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+                        packetFilter = mWifiNative.readPacketFilter(mInterfaceName);
+                    } else {
+                        Log.v(TAG, "Retrieving cached packet filter on non primary CMM");
+                        packetFilter = mCachedPacketFilter;
+                    }
                     if (mIpClient != null) {
-                        mIpClient.readPacketFilterComplete(data);
+                        mIpClient.readPacketFilterComplete(packetFilter);
                     }
                     break;
                 }
@@ -6240,6 +6257,19 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     @Override
     public void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) {
         mWifiScoreReport.setShouldReduceNetworkScore(shouldReduceNetworkScore);
+    }
+
+    @Override
+    public void applyCachedPacketFilter() {
+        // If packet filter is supported on both connections, ignore since we would have already
+        // applied the filter.
+        if (mContext.getResources().getBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta)) return;
+        if (mCachedPacketFilter == null) {
+            Log.w(TAG, "No cached packet filter to apply");
+            return;
+        }
+        Log.i(TAG, "Applying cached packet filter");
+        mWifiNative.installPacketFilter(mInterfaceName, mCachedPacketFilter);
     }
 
     private void addPasspointInfoToLinkProperties(LinkProperties linkProperties) {

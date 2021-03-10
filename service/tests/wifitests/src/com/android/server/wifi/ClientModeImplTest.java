@@ -174,6 +174,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
@@ -6141,5 +6142,76 @@ public class ClientModeImplTest extends WifiBaseTest {
         testWifiInfoCleanedUpEnteringExitingConnectableState();
         verify(mPasspointManager, times(1))
                 .clearAnqpRequestsAndFlushCache();
+    }
+
+    @Test
+    public void testPacketFilter() throws Exception {
+        connect();
+
+        byte[] filter = new byte[20];
+        new Random().nextBytes(filter);
+        mIpClientCallback.installPacketFilter(filter);
+        mLooper.dispatchAll();
+
+        verify(mWifiNative).installPacketFilter(WIFI_IFACE_NAME, filter);
+
+        when(mWifiNative.readPacketFilter(WIFI_IFACE_NAME)).thenReturn(filter);
+        mIpClientCallback.startReadPacketFilter();
+        mLooper.dispatchAll();
+        verify(mIpClient).readPacketFilterComplete(filter);
+        verify(mWifiNative).readPacketFilter(WIFI_IFACE_NAME);
+    }
+
+    @Test
+    public void testPacketFilterOnSecondaryCmm() throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        connect();
+
+        byte[] filter = new byte[20];
+        new Random().nextBytes(filter);
+        mIpClientCallback.installPacketFilter(filter);
+        mLooper.dispatchAll();
+
+        // just cache the data.
+        verify(mWifiNative, never()).installPacketFilter(WIFI_IFACE_NAME, filter);
+
+        when(mWifiNative.readPacketFilter(WIFI_IFACE_NAME)).thenReturn(filter);
+        mIpClientCallback.startReadPacketFilter();
+        mLooper.dispatchAll();
+        verify(mIpClient).readPacketFilterComplete(filter);
+        // return the cached the data.
+        verify(mWifiNative, never()).readPacketFilter(WIFI_IFACE_NAME);
+
+        // Now invoke apply
+        mCmi.applyCachedPacketFilter();
+        verify(mWifiNative).installPacketFilter(WIFI_IFACE_NAME, filter);
+    }
+
+
+    @Test
+    public void testPacketFilterOnSecondaryCmmWithSupportForNonPrimaryApf() throws Exception {
+        mResources.setBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta, true);
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        connect();
+
+        byte[] filter = new byte[20];
+        new Random().nextBytes(filter);
+        mIpClientCallback.installPacketFilter(filter);
+        mLooper.dispatchAll();
+
+        // apply the data.
+        verify(mWifiNative).installPacketFilter(WIFI_IFACE_NAME, filter);
+
+        when(mWifiNative.readPacketFilter(WIFI_IFACE_NAME)).thenReturn(filter);
+        mIpClientCallback.startReadPacketFilter();
+        mLooper.dispatchAll();
+        verify(mIpClient).readPacketFilterComplete(filter);
+        // return the applied data.
+        verify(mWifiNative).readPacketFilter(WIFI_IFACE_NAME);
+
+        // Now invoke apply
+        mCmi.applyCachedPacketFilter();
+        // ignore (since it was already applied)
+        verify(mWifiNative, times(1)).installPacketFilter(WIFI_IFACE_NAME, filter);
     }
 }
