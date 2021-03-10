@@ -941,6 +941,9 @@ public class WifiMetrics {
                 case UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK:
                     eventType = "EVENT_ADD_OR_UPDATE_NETWORK";
                     break;
+                case UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM:
+                    eventType = "EVENT_RESTART_WIFI_SUB_SYSTEM";
+                    break;
             }
             sb.append(" eventType=").append(eventType);
             sb.append(" startTimeMillis=").append(mUserActionEvent.startTimeMillis);

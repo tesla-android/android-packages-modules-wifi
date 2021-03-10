@@ -3268,6 +3268,8 @@ message UserActionEvent {
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_ON = 14;
     // User sets the adaptive connectivity to off
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_OFF = 15;
+    // User restarts wifi subsystem
+    EVENT_RESTART_WIFI_SUB_SYSTEM = 16;
   }
 
   // The type of user action
