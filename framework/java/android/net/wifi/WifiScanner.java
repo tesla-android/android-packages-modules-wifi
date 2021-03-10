@@ -626,7 +626,7 @@ public class WifiScanner {
          * any of the bands.
          * {@hide}
          */
-        private int mBandsScanned;
+        private int mScannedBands;
         /** all scan results discovered in this scan, sorted by timestamp in ascending order */
         private final List<ScanResult> mResults;
 
@@ -652,7 +652,7 @@ public class WifiScanner {
             mId = id;
             mFlags = flags;
             mBucketsScanned = bucketsScanned;
-            mBandsScanned = bandsScanned;
+            mScannedBands = bandsScanned;
             mResults = results;
         }
 
@@ -660,7 +660,7 @@ public class WifiScanner {
             mId = s.mId;
             mFlags = s.mFlags;
             mBucketsScanned = s.mBucketsScanned;
-            mBandsScanned = s.mBandsScanned;
+            mScannedBands = s.mScannedBands;
             mResults = new ArrayList<>();
             for (ScanResult scanResult : s.mResults) {
                 mResults.add(new ScanResult(scanResult));
@@ -681,27 +681,39 @@ public class WifiScanner {
         }
 
         /**
-         * Retrieve the bands scanned for this ScanData instance.
+         * Retrieve the bands that were fully scanned for this ScanData instance. "fully" here
+         * refers to all the channels available in the band based on the current regulatory
+         * domain.
          *
-         * @return Bistmask of {@link #WIFI_BAND_24_GHZ}, {@link #WIFI_BAND_5_GHZ},
+         * @return Bitmask of {@link #WIFI_BAND_24_GHZ}, {@link #WIFI_BAND_5_GHZ},
          * {@link #WIFI_BAND_5_GHZ_DFS_ONLY}, {@link #WIFI_BAND_6_GHZ} & {@link #WIFI_BAND_60_GHZ}
-         * values. Will be {@link #WIFI_BAND_UNSPECIFIED} if the list of channels do not fully cover
+         * values. Each bit is set only if all the channels in the corresponding band is scanned.
+         * Will be {@link #WIFI_BAND_UNSPECIFIED} if the list of channels do not fully cover
          * any of the bands.
+         * <p>
+         * For ex:
+         * <li> Scenario 1:  Fully scanned 2.4Ghz band, partially scanned 5Ghz band
+         *      - Returns {@link #WIFI_BAND_24_GHZ}
+         * </li>
+         * <li> Scenario 2:  Partially scanned 2.4Ghz band and 5Ghz band
+         *      - Returns {@link #WIFI_BAND_UNSPECIFIED}
+         * </li>
+         * </p>
          */
-        public @WifiBand int getBandsScanned() {
+        public @WifiBand int getScannedBands() {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }
-            return getBandsScannedInternal();
+            return getScannedBandsInternal();
         }
 
         /**
-         * Same as {@link #getBandsScanned()}. For use in the wifi stack without version check.
+         * Same as {@link #getScannedBands()}. For use in the wifi stack without version check.
          *
          * {@hide}
          */
-        public @WifiBand int getBandsScannedInternal() {
-            return mBandsScanned;
+        public @WifiBand int getScannedBandsInternal() {
+            return mScannedBands;
         }
 
         public ScanResult[] getResults() {
@@ -717,15 +729,15 @@ public class WifiScanner {
 
         /** {@hide} */
         public void addResults(@NonNull ScanData s) {
-            mBandsScanned |= s.mBandsScanned;
+            mScannedBands |= s.mScannedBands;
             mFlags |= s.mFlags;
             addResults(s.getResults());
         }
 
         /** {@hide} */
         public boolean isFullBandScanResults() {
-            return (mBandsScanned & WifiScanner.WIFI_BAND_24_GHZ) != 0
-                && (mBandsScanned & WifiScanner.WIFI_BAND_5_GHZ) != 0;
+            return (mScannedBands & WifiScanner.WIFI_BAND_24_GHZ) != 0
+                && (mScannedBands & WifiScanner.WIFI_BAND_5_GHZ) != 0;
         }
 
         /** Implement the Parcelable interface {@hide} */
@@ -738,7 +750,7 @@ public class WifiScanner {
             dest.writeInt(mId);
             dest.writeInt(mFlags);
             dest.writeInt(mBucketsScanned);
-            dest.writeInt(mBandsScanned);
+            dest.writeInt(mScannedBands);
             dest.writeParcelableList(mResults, 0);
         }
 

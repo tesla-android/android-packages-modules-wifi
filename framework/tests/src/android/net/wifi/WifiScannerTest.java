@@ -230,8 +230,8 @@ public class WifiScannerTest {
         assertEquals(writeScanData.getId(), readScanData.getId());
         assertEquals(writeScanData.getFlags(), readScanData.getFlags());
         assertEquals(writeScanData.getBucketsScanned(), readScanData.getBucketsScanned());
-        assertEquals(writeScanData.getBandsScannedInternal(),
-                readScanData.getBandsScannedInternal());
+        assertEquals(writeScanData.getScannedBandsInternal(),
+                readScanData.getScannedBandsInternal());
         assertArrayEquals(writeScanData.getResults(), readScanData.getResults());
     }
 

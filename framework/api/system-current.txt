@@ -803,10 +803,10 @@ package android.net.wifi {
   public static class WifiScanner.ScanData implements android.os.Parcelable {
     ctor public WifiScanner.ScanData(int, int, android.net.wifi.ScanResult[]);
     ctor public WifiScanner.ScanData(android.net.wifi.WifiScanner.ScanData);
-    method public int getBandsScanned();
     method public int getFlags();
     method public int getId();
     method public android.net.wifi.ScanResult[] getResults();
+    method public int getScannedBands();
   }
 
   public static interface WifiScanner.ScanListener extends android.net.wifi.WifiScanner.ActionListener {
