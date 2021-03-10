@@ -2622,6 +2622,9 @@ public class WifiManager {
      */
     public static final long WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS = 0x1000000000000L;
 
+     /** @hide */
+    public static final long WIFI_FEATURE_SAE_H2E          = 0x2000000000000L; // Hash-to-Element
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -4715,7 +4718,11 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void registerSoftApCallback(@NonNull @CallbackExecutor Executor executor,
             @NonNull SoftApCallback callback) {
         if (executor == null) throw new IllegalArgumentException("executor cannot be null");
@@ -4742,7 +4749,11 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void unregisterSoftApCallback(@NonNull SoftApCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "unregisterSoftApCallback: callback=" + callback);
@@ -6344,6 +6355,13 @@ public class WifiManager {
      */
     public boolean isPasspointTermsAndConditionsSupported() {
         return isFeatureSupported(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS);
+    }
+
+    /**
+     * @return true if this device supports WPA3 SAE Hash-to-Element.
+     */
+    public boolean isWpa3SaeH2eSupported() {
+        return isFeatureSupported(WIFI_FEATURE_SAE_H2E);
     }
 
     /**

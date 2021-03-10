@@ -436,10 +436,30 @@ public class SupplicantStaNetworkHal {
                 return false;
             }
             /** SAE configuration */
-            if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
-                /** Hash-to-Element preference */
-                if (getV1_4StaNetwork() != null
-                        && !setSaeH2eOnlyMode(securityParams.isSaeH2eOnlyMode())) {
+            if (securityParams.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)
+                    && getV1_4StaNetwork() != null) {
+                /**
+                 * Hash-to-Element preference.
+                 * For devices that don't support H2E, H2E mode will be permanently disabled.
+                 * Devices that support H2E will enable both legacy and H2E mode by default,
+                 * and will connect to SAE networks with H2E if possible, unless H2E only
+                 * mode is enabled, and then the device will not connect to SAE networks in
+                 * legacy mode.
+                 */
+                if (!mWifiGlobals.isWpa3SaeH2eSupported() && securityParams.isSaeH2eOnlyMode()) {
+                    Log.e(TAG, "This device does not support SAE H2E.");
+                    return false;
+                }
+                byte mode = mWifiGlobals.isWpa3SaeH2eSupported()
+                        ? android.hardware.wifi.supplicant.V1_4
+                                .ISupplicantStaNetwork.SaeH2eMode.H2E_OPTIONAL
+                        : android.hardware.wifi.supplicant.V1_4
+                                .ISupplicantStaNetwork.SaeH2eMode.DISABLED;
+                if (securityParams.isSaeH2eOnlyMode()) {
+                    mode = android.hardware.wifi.supplicant.V1_4
+                            .ISupplicantStaNetwork.SaeH2eMode.H2E_MANDATORY;
+                }
+                if (!setSaeH2eMode(mode)) {
                     Log.e(TAG, "failed to set H2E preference.");
                     return false;
                 }
@@ -3550,9 +3570,9 @@ public class SupplicantStaNetworkHal {
     }
 
     /** See ISupplicantStaNetwork.hal for documentation */
-    private boolean setSaeH2eOnlyMode(boolean enable) {
+    private boolean setSaeH2eMode(byte mode) {
         synchronized (mLock) {
-            final String methodStr = "setSaeH2eOnlyMode";
+            final String methodStr = "setSaeH2eMode";
             if (!checkISupplicantStaNetworkAndLogFailure(methodStr)) return false;
 
             try {
@@ -3560,7 +3580,7 @@ public class SupplicantStaNetworkHal {
                         iSupplicantStaNetworkV14 = getV1_4StaNetwork();
                 if (iSupplicantStaNetworkV14 != null) {
                     android.hardware.wifi.supplicant.V1_4.SupplicantStatus status =
-                            iSupplicantStaNetworkV14.enableSaeH2eOnlyMode(enable);
+                            iSupplicantStaNetworkV14.setSaeH2eMode(mode);
                     return checkStatusAndLogFailure(status, methodStr);
                 } else {
                     Log.e(TAG, "Cannot get ISupplicantStaNetwork V1.4");

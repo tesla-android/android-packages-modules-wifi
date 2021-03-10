@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyByte;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
@@ -1228,9 +1229,10 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         assertNull(mSupplicantVariables.serializedPmkCache);
     }
 
-    /** Verifies that enableSaeH2eOnlyMode works on HAL 1.4 or newer */
+    /** Verifies that setSaeH2eMode works on HAL 1.4 or newer */
     @Test
     public void testEnableSaeH2eOnlyMode() throws Exception {
+        when(mWifiGlobals.isWpa3SaeH2eSupported()).thenReturn(true);
         // Now expose the V1.4 ISupplicantStaNetwork
         createSupplicantStaNetwork(SupplicantStaNetworkVersion.V1_4);
 
@@ -1240,12 +1242,15 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 config.getDefaultSecurityParams());
         assertTrue(mSupplicantNetwork.saveWifiConfiguration(config));
-        verify(mISupplicantStaNetworkV14).enableSaeH2eOnlyMode(eq(true));
+        verify(mISupplicantStaNetworkV14).setSaeH2eMode(
+                eq(android.hardware.wifi.supplicant.V1_4
+                        .ISupplicantStaNetwork.SaeH2eMode.H2E_MANDATORY));
     }
 
-    /** Verifies that enableSaeH2eOnlyMode works on HAL 1.4 or newer */
+    /** Verifies that setSaeH2eMode works on HAL 1.4 or newer */
     @Test
     public void testDisableSaeH2eOnlyMode() throws Exception {
+        when(mWifiGlobals.isWpa3SaeH2eSupported()).thenReturn(true);
         // Now expose the V1.4 ISupplicantStaNetwork
         createSupplicantStaNetwork(SupplicantStaNetworkVersion.V1_4);
 
@@ -1255,12 +1260,33 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 config.getDefaultSecurityParams());
         assertTrue(mSupplicantNetwork.saveWifiConfiguration(config));
-        verify(mISupplicantStaNetworkV14).enableSaeH2eOnlyMode(eq(false));
+        verify(mISupplicantStaNetworkV14).setSaeH2eMode(
+                eq(android.hardware.wifi.supplicant.V1_4
+                        .ISupplicantStaNetwork.SaeH2eMode.H2E_OPTIONAL));
     }
 
-    /** Verifies that enableSaeH2eOnlyMode won't break 1.3 or older HAL. */
+    /** Verifies that setSaeH2eMode works on HAL 1.4 or newer */
+    @Test
+    public void testDisableSaeH2eOnlyModeWhenH2eNotSupported() throws Exception {
+        when(mWifiGlobals.isWpa3SaeH2eSupported()).thenReturn(false);
+        // Now expose the V1.4 ISupplicantStaNetwork
+        createSupplicantStaNetwork(SupplicantStaNetworkVersion.V1_4);
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createSaeNetwork();
+        config.enableSaeH2eOnlyMode(false);
+        // Assume that the default params is used for this test.
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                config.getDefaultSecurityParams());
+        assertTrue(mSupplicantNetwork.saveWifiConfiguration(config));
+        verify(mISupplicantStaNetworkV14).setSaeH2eMode(
+                eq(android.hardware.wifi.supplicant.V1_4
+                        .ISupplicantStaNetwork.SaeH2eMode.DISABLED));
+    }
+
+    /** Verifies that setSaeH2eMode won't break 1.3 or older HAL. */
     @Test
     public void testSaeH2eOnlyModeWithHal1_3OrLower() throws Exception {
+        when(mWifiGlobals.isWpa3SaeH2eSupported()).thenReturn(true);
         // Now expose the V1.3 ISupplicantStaNetwork
         createSupplicantStaNetwork(SupplicantStaNetworkVersion.V1_3);
 
@@ -1270,7 +1296,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 config.getDefaultSecurityParams());
         assertTrue(mSupplicantNetwork.saveWifiConfiguration(config));
-        verify(mISupplicantStaNetworkV14, never()).enableSaeH2eOnlyMode(anyBoolean());
+        verify(mISupplicantStaNetworkV14, never()).setSaeH2eMode(anyByte());
     }
 
     /**
@@ -2205,14 +2231,14 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
             }
         }).when(mISupplicantStaNetworkV13).setEapErp(any(boolean.class));
 
-        /** enableSaeH2eOnlyMode */
+        /** setSaeH2eMode */
         doAnswer(new AnswerWithArguments() {
             public android.hardware.wifi.supplicant.V1_4.SupplicantStatus
-                    answer(boolean enable) throws RemoteException {
-                mSupplicantVariables.isSaeH2eOnlyMode = enable;
+                    answer(byte mode) throws RemoteException {
+                mSupplicantVariables.saeH2eMode = mode;
                 return mStatusSuccessV14;
             }
-        }).when(mISupplicantStaNetworkV14).enableSaeH2eOnlyMode(any(boolean.class));
+        }).when(mISupplicantStaNetworkV14).setSaeH2eMode(any(byte.class));
     }
 
     private SupplicantStatus createSupplicantStatus(int code) {
@@ -2296,6 +2322,6 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         public ArrayList<Byte> serializedPmkCache;
         public String wapiCertSuite;
         public boolean eapErp;
-        public boolean isSaeH2eOnlyMode;
+        public byte saeH2eMode;
     }
 }

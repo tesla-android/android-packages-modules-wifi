@@ -909,6 +909,8 @@ public class WifiConfiguration implements Parcelable {
 
     /**
      * Set SAE Hash-toElement only mode enabled.
+     * Before calling this API, call {@link WifiManager#isWpa3SaeH2eSupported()
+     * to know whether WPA3 SAE Hash-toElement is supported or not.
      *
      * @param enable true if enabled; false otherwise.
      * @hide

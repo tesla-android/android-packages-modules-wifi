@@ -18,12 +18,12 @@ package android.net.wifi;
 
 import android.annotation.IntDef;
 import android.annotation.IntRange;
+import android.annotation.NonNull;
 import android.annotation.SystemApi;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.telephony.Annotation.NetworkType;
-
-import com.android.modules.utils.build.SdkLevel;
+import android.util.Log;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -37,6 +37,8 @@ import java.util.NoSuchElementException;
  */
 @SystemApi
 public final class WifiUsabilityStatsEntry implements Parcelable {
+    private static final String TAG = "WifiUsabilityStatsEntry";
+
     /** {@hide} */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"PROBE_STATUS_"}, value = {
@@ -105,6 +107,105 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     private final int mRxLinkSpeedMbps;
     /** @see #getTimeSliceDutyCycleInPercent() */
     private final int mTimeSliceDutyCycleInPercent;
+
+    /** {@hide} */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WME_ACCESS_CATEGORY_"}, value = {
+        WME_ACCESS_CATEGORY_BE,
+        WME_ACCESS_CATEGORY_BK,
+        WME_ACCESS_CATEGORY_VI,
+        WME_ACCESS_CATEGORY_VO})
+    public @interface WmeAccessCategory {}
+
+    /** WME Best Effort Access Category */
+    public static final int WME_ACCESS_CATEGORY_BE = 0;
+    /** WME Background Access Category */
+    public static final int WME_ACCESS_CATEGORY_BK = 1;
+    /** WME Video Access Category */
+    public static final int WME_ACCESS_CATEGORY_VI = 2;
+    /** WME Voice Access Category */
+    public static final int WME_ACCESS_CATEGORY_VO = 3;
+    /** Number of WME Access Categories */
+    public static final int NUM_WME_ACCESS_CATEGORIES = 4;
+
+    /**
+     * Data packet contention time statistics.
+     */
+    public static final class ContentionTimeStats implements Parcelable {
+        private int mContentionTimeMinMicros;
+        private int mContentionTimeMaxMicros;
+        private int mContentionTimeAvgMicros;
+        private int mContentionNumSamples;
+
+        /** @hide */
+        public ContentionTimeStats() {
+        }
+
+        /**
+         * Constructor function
+         * @param timeMin The minimum data packet contention time
+         * @param timeMax The maximum data packet contention time
+         * @param timeAvg The average data packet contention time
+         * @param numSamples The number of samples used to get the reported statistics
+         */
+        public ContentionTimeStats(int timeMin, int timeMax, int timeAvg, int numSamples) {
+            this.mContentionTimeMinMicros = timeMin;
+            this.mContentionTimeMaxMicros = timeMax;
+            this.mContentionTimeAvgMicros = timeAvg;
+            this.mContentionNumSamples = numSamples;
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            dest.writeInt(mContentionTimeMinMicros);
+            dest.writeInt(mContentionTimeMaxMicros);
+            dest.writeInt(mContentionTimeAvgMicros);
+            dest.writeInt(mContentionNumSamples);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @android.annotation.NonNull Creator<ContentionTimeStats> CREATOR =
+                new Creator<ContentionTimeStats>() {
+            public ContentionTimeStats createFromParcel(Parcel in) {
+                ContentionTimeStats stats = new ContentionTimeStats();
+                stats.mContentionTimeMinMicros = in.readInt();
+                stats.mContentionTimeMaxMicros = in.readInt();
+                stats.mContentionTimeAvgMicros = in.readInt();
+                stats.mContentionNumSamples = in.readInt();
+                return stats;
+            }
+            public ContentionTimeStats[] newArray(int size) {
+                return new ContentionTimeStats[size];
+            }
+        };
+
+        /** Data packet min contention time in microseconds */
+        public int getContentionTimeMinMicros() {
+            return mContentionTimeMinMicros;
+        }
+
+        /** Data packet max contention time in microseconds */
+        public int getContentionTimeMaxMicros() {
+            return mContentionTimeMaxMicros;
+        }
+
+        /** Data packet average contention time in microseconds */
+        public int getContentionTimeAvgMicros() {
+            return mContentionTimeAvgMicros;
+        }
+
+        /** Number of data packets used for contention statistics */
+        public int getContentionNumSamples() {
+            return mContentionNumSamples;
+        }
+    }
+    private final ContentionTimeStats[] mContentionTimeStats;
+
     private final @NetworkType int mCellularDataNetworkType;
     private final int mCellularSignalStrengthDbm;
     private final int mCellularSignalStrengthDb;
@@ -121,7 +222,8 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             long totalCcaBusyFreqTimeMillis, long totalRadioOnFreqTimeMillis, long totalBeaconRx,
             @ProbeStatus int probeStatusSinceLastUpdate, int probeElapsedTimeSinceLastUpdateMillis,
             int probeMcsRateSinceLastUpdate, int rxLinkSpeedMbps,
-            int timeSliceDutyCycleInPercent, @NetworkType int cellularDataNetworkType,
+            int timeSliceDutyCycleInPercent, ContentionTimeStats[] contentionTimeStats,
+            @NetworkType int cellularDataNetworkType,
             int cellularSignalStrengthDbm, int cellularSignalStrengthDb,
             boolean isSameRegisteredCell) {
         mTimeStampMillis = timeStampMillis;
@@ -148,6 +250,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         mProbeMcsRateSinceLastUpdate = probeMcsRateSinceLastUpdate;
         mRxLinkSpeedMbps = rxLinkSpeedMbps;
         mTimeSliceDutyCycleInPercent = timeSliceDutyCycleInPercent;
+        mContentionTimeStats = contentionTimeStats;
         mCellularDataNetworkType = cellularDataNetworkType;
         mCellularSignalStrengthDbm = cellularSignalStrengthDbm;
         mCellularSignalStrengthDb = cellularSignalStrengthDb;
@@ -185,6 +288,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         dest.writeInt(mProbeMcsRateSinceLastUpdate);
         dest.writeInt(mRxLinkSpeedMbps);
         dest.writeInt(mTimeSliceDutyCycleInPercent);
+        dest.writeTypedArray(mContentionTimeStats, flags);
         dest.writeInt(mCellularDataNetworkType);
         dest.writeInt(mCellularSignalStrengthDbm);
         dest.writeInt(mCellularSignalStrengthDb);
@@ -204,7 +308,8 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
                     in.readLong(), in.readLong(), in.readLong(),
                     in.readLong(), in.readLong(), in.readInt(),
                     in.readInt(), in.readInt(), in.readInt(),
-                    in.readInt(), in.readInt(), in.readInt(), in.readInt(),
+                    in.readInt(), in.createTypedArray(ContentionTimeStats.CREATOR),
+                    in.readInt(), in.readInt(), in.readInt(),
                     in.readBoolean()
             );
         }
@@ -341,13 +446,25 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
      * @throws NoSuchElementException if the duty cylce is unknown (not provided by the HAL).
      */
     public @IntRange(from = 0, to = 100) int getTimeSliceDutyCycleInPercent() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (mTimeSliceDutyCycleInPercent == -1) {
             throw new NoSuchElementException("Unknown value");
         }
         return mTimeSliceDutyCycleInPercent;
+    }
+
+    /**
+     * Data packet contention time statistics for Access Category.
+     * @param ac The access category, see {@link WmeAccessCategory}.
+     * @return The contention time statistics, see {@link ContentionTimeStats}
+     */
+    @NonNull
+    public ContentionTimeStats getContentionTimeStats(@WmeAccessCategory int ac) {
+        if (mContentionTimeStats != null
+                && mContentionTimeStats.length == NUM_WME_ACCESS_CATEGORIES) {
+            return mContentionTimeStats[ac];
+        }
+        Log.e(TAG, "The ContentionTimeStats is not filled out correctly: " + mContentionTimeStats);
+        return new ContentionTimeStats();
     }
 
     /** Cellular data network type currently in use on the device for data transmission */

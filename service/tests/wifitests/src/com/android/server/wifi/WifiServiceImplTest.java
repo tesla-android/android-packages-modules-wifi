@@ -1185,6 +1185,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, "", false);
         mWifiServiceImpl.restartWifiSubsystem(null);
         verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, null, false);
+        verify(mWifiMetrics, times(3)).logUserActionEvent(
+                eq(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM), anyInt());
     }
 
     /**
@@ -3352,10 +3354,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test(expected = SecurityException.class)
     public void registerSoftApCallbackThrowsSecurityExceptionOnMissingPermissions() {
-        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
-                .thenReturn(PackageManager.PERMISSION_DENIED);
-        when(mContext.checkCallingOrSelfPermission(NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK))
-                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkPermission(eq(NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt())).thenReturn(false);
         mWifiServiceImpl.registerSoftApCallback(mClientSoftApCallback);
     }
 
@@ -3378,10 +3381,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test(expected = SecurityException.class)
     public void unregisterSoftApCallbackThrowsSecurityExceptionOnMissingPermissions() {
-        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
-                .thenReturn(PackageManager.PERMISSION_DENIED);
-        when(mContext.checkCallingOrSelfPermission(NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK))
-                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkPermission(eq(NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt())).thenReturn(false);
         mWifiServiceImpl.unregisterSoftApCallback(mClientSoftApCallback);
     }
 

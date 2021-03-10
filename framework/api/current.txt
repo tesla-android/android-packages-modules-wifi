@@ -373,6 +373,7 @@ package android.net.wifi {
     method public boolean isWapiSupported();
     method public boolean isWifiEnabled();
     method public boolean isWifiStandardSupported(int);
+    method public boolean isWpa3SaeH2eSupported();
     method public boolean isWpa3SaePublicKeySupported();
     method public boolean isWpa3SaeSupported();
     method public boolean isWpa3SuiteBSupported();
@@ -564,6 +565,7 @@ package android.net.wifi {
   public static final class WifiNetworkSuggestion.Builder {
     ctor public WifiNetworkSuggestion.Builder();
     method @NonNull public android.net.wifi.WifiNetworkSuggestion build();
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder enableWpa3SaeH2eOnlyMode(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setBssid(@NonNull android.net.MacAddress);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierMerged(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCredentialSharedWithUser(boolean);

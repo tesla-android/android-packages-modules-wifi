@@ -2509,6 +2509,40 @@ message WifiUsabilityStatsEntry {
   // (i.e MCC), then this field contains the duty cycle assigned to this interface in percent.
   // If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
   optional int32 time_slice_duty_cycle_in_percent = 35;
+
+  // WME data packet contention time statistics for all four categories: BE, BK, VI, VO
+  repeated ContentionTimeStats contention_time_stats = 36;
+}
+
+message ContentionTimeStats {
+  enum AccessCategory {
+    // WME Best Effort Access Category
+    WME_ACCESS_CATEGORY_BE = 0;
+
+    // WME Background Access Category
+    WME_ACCESS_CATEGORY_BK = 1;
+
+    // WME Video Access Category
+    WME_ACCESS_CATEGORY_VI = 2;
+
+    // WME Voice Access Category
+    WME_ACCESS_CATEGORY_VO = 3;
+  }
+
+  // WME access category
+  optional AccessCategory access_category = 1;
+
+  // Data packet min contention time in microseconds
+  optional int32 contention_time_min_micros = 2;
+
+  // Data packet max contention time in microseconds
+  optional int32 contention_time_max_micros = 3;
+
+  // Data packet average contention time in microseconds
+  optional int32 contention_time_avg_micros = 4;
+
+  // Number of data packets used for contention statistics
+  optional int32 contention_num_samples = 5;
 }
 
 message WifiUsabilityStats {
@@ -3234,6 +3268,8 @@ message UserActionEvent {
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_ON = 14;
     // User sets the adaptive connectivity to off
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_OFF = 15;
+    // User restarts wifi subsystem
+    EVENT_RESTART_WIFI_SUB_SYSTEM = 16;
   }
 
   // The type of user action

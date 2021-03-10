@@ -20,6 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static junit.framework.Assert.assertEquals;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -87,5 +89,17 @@ public class WifiGlobalsTest extends WifiBaseTest {
 
         mWifiGlobals.setBluetoothConnected(true);
         assertThat(mWifiGlobals.isBluetoothConnected()).isTrue();
+    }
+
+    /** Verify SAE Hash-to-Element overlay. */
+    @Test
+    public void testSaeH2eSupportOverlay() {
+        mResources.setBoolean(R.bool.config_wifiSaeH2eSupported, false);
+        mWifiGlobals = new WifiGlobals(mContext);
+        assertFalse(mWifiGlobals.isWpa3SaeH2eSupported());
+
+        mResources.setBoolean(R.bool.config_wifiSaeH2eSupported, true);
+        mWifiGlobals = new WifiGlobals(mContext);
+        assertTrue(mWifiGlobals.isWpa3SaeH2eSupported());
     }
 }
