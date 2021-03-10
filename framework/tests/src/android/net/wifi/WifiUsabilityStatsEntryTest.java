@@ -17,6 +17,7 @@
 package android.net.wifi;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.validateMockitoUsage;
 
 import android.os.Parcel;
@@ -29,6 +30,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
+
+import java.util.NoSuchElementException;
 
 
 /**
@@ -61,6 +64,28 @@ public class WifiUsabilityStatsEntryTest {
         WifiUsabilityStatsEntry writeResult = createResult();
         WifiUsabilityStatsEntry readResult = parcelWriteRead(writeResult);
         assertWifiUsabilityStatsEntryEquals(writeResult, readResult);
+    }
+
+    /**
+     * Verify parcel read/write for Wifi usability stats result.
+     */
+    @Test
+    public void getTimeSliceDutyCycleInPercent() throws Exception {
+        WifiUsabilityStatsEntry usabilityStatsEntry = new WifiUsabilityStatsEntry(
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                14, 15, 16, 17, 18, 19, 20, 21, 22, 32, 23, 24, 25, true);
+        assertEquals(32, usabilityStatsEntry.getTimeSliceDutyCycleInPercent());
+
+        WifiUsabilityStatsEntry usabilityStatsEntryWithInvalidDutyCycleValue =
+                new WifiUsabilityStatsEntry(
+                        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                        21, 22, -1, 23, 24, 25, true);
+        try {
+            usabilityStatsEntryWithInvalidDutyCycleValue.getTimeSliceDutyCycleInPercent();
+            fail();
+        } catch (NoSuchElementException e) {
+            // pass
+        }
     }
 
     /**
