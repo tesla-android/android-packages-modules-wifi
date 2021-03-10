@@ -3721,6 +3721,38 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(stats.on_time_hs20_scan, usabilityStats.totalHotspot2ScanTimeMs);
         assertEquals(stats.beacon_rx, usabilityStats.totalBeaconRx);
         assertEquals(stats.timeSliceDutyCycleInPercent, usabilityStats.timeSliceDutyCycleInPercent);
+        assertEquals(stats.contentionTimeMinBeInUsec,
+                usabilityStats.contentionTimeStats[0].contentionTimeMinMicros);
+        assertEquals(stats.contentionTimeMaxBeInUsec,
+                usabilityStats.contentionTimeStats[0].contentionTimeMaxMicros);
+        assertEquals(stats.contentionTimeAvgBeInUsec,
+                usabilityStats.contentionTimeStats[0].contentionTimeAvgMicros);
+        assertEquals(stats.contentionNumSamplesBe,
+                usabilityStats.contentionTimeStats[0].contentionNumSamples);
+        assertEquals(stats.contentionTimeMinBkInUsec,
+                usabilityStats.contentionTimeStats[1].contentionTimeMinMicros);
+        assertEquals(stats.contentionTimeMaxBkInUsec,
+                usabilityStats.contentionTimeStats[1].contentionTimeMaxMicros);
+        assertEquals(stats.contentionTimeAvgBkInUsec,
+                usabilityStats.contentionTimeStats[1].contentionTimeAvgMicros);
+        assertEquals(stats.contentionNumSamplesBk,
+                usabilityStats.contentionTimeStats[1].contentionNumSamples);
+        assertEquals(stats.contentionTimeMinViInUsec,
+                usabilityStats.contentionTimeStats[2].contentionTimeMinMicros);
+        assertEquals(stats.contentionTimeMaxViInUsec,
+                usabilityStats.contentionTimeStats[2].contentionTimeMaxMicros);
+        assertEquals(stats.contentionTimeAvgViInUsec,
+                usabilityStats.contentionTimeStats[2].contentionTimeAvgMicros);
+        assertEquals(stats.contentionNumSamplesVi,
+                usabilityStats.contentionTimeStats[2].contentionNumSamples);
+        assertEquals(stats.contentionTimeMinVoInUsec,
+                usabilityStats.contentionTimeStats[3].contentionTimeMinMicros);
+        assertEquals(stats.contentionTimeMaxVoInUsec,
+                usabilityStats.contentionTimeStats[3].contentionTimeMaxMicros);
+        assertEquals(stats.contentionTimeAvgVoInUsec,
+                usabilityStats.contentionTimeStats[3].contentionTimeAvgMicros);
+        assertEquals(stats.contentionNumSamplesVo,
+                usabilityStats.contentionTimeStats[3].contentionNumSamples);
     }
 
     // Simulate adding a LABEL_GOOD WifiUsabilityStats
