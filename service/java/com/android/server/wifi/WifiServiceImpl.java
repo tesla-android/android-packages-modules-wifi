@@ -685,6 +685,11 @@ public class WifiServiceImpl extends BaseWifiService {
                 == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean checkMainlineNetworkStackPermission(int pid, int uid) {
+        return mContext.checkPermission(NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK, pid, uid)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
     private boolean checkNetworkStackPermission(int pid, int uid) {
         return mContext.checkPermission(android.Manifest.permission.NETWORK_STACK, pid, uid)
                 == PackageManager.PERMISSION_GRANTED;
@@ -740,12 +745,6 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException("Requires one of the following permissions: "
                     + String.join(", ", permissions) + ".");
         }
-    }
-
-    private void enforceNetworkStackOrSettingsPermission() {
-        enforceAnyPermissionOf(
-                android.Manifest.permission.NETWORK_SETTINGS,
-                NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK);
     }
 
     private void enforceNetworkStackPermission() {
@@ -1874,7 +1873,15 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new IllegalArgumentException("Callback must not be null");
         }
 
-        enforceNetworkStackOrSettingsPermission();
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        if (!mWifiPermissionsUtil.checkConfigOverridePermission(uid)
+                && !checkNetworkSettingsPermission(pid, uid)
+                && !checkMainlineNetworkStackPermission(pid, uid)) {
+            // random apps should not be allowed to read the user specified config
+            throw new SecurityException("App not allowed to read  WiFi Ap information "
+                    + "(uid/pid = " + uid + "/" + pid + ")");
+        }
 
         if (mVerboseLoggingEnabled) {
             mLog.info("registerSoftApCallback uid=%").c(Binder.getCallingUid()).flush();
@@ -1908,7 +1915,15 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public void unregisterSoftApCallback(ISoftApCallback callback) {
-        enforceNetworkStackOrSettingsPermission();
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        if (!mWifiPermissionsUtil.checkConfigOverridePermission(uid)
+                && !checkNetworkSettingsPermission(pid, uid)
+                && !checkMainlineNetworkStackPermission(pid, uid)) {
+            // random apps should not be allowed to read the user specified config
+            throw new SecurityException("App not allowed to read  WiFi Ap information "
+                    + "(uid/pid = " + uid + "/" + pid + ")");
+        }
 
         if (mVerboseLoggingEnabled) {
             mLog.info("unregisterSoftApCallback uid=%").c(Binder.getCallingUid()).flush();
