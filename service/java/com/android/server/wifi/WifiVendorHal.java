@@ -262,6 +262,7 @@ public class WifiVendorHal {
     private HashMap<String, IWifiApIface> mIWifiApIfaces = new HashMap<>();
     private final Context mContext;
     private final HalDeviceManager mHalDeviceManager;
+    private final WifiGlobals mWifiGlobals;
     private final HalDeviceManagerStatusListener mHalDeviceManagerStatusCallbacks;
     private final IWifiStaIfaceEventCallback mIWifiStaIfaceEventCallback;
     private final ChipEventCallback mIWifiChipEventCallback;
@@ -275,10 +276,12 @@ public class WifiVendorHal {
     // https://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5
     private final Handler mHalEventHandler;
 
-    public WifiVendorHal(Context context, HalDeviceManager halDeviceManager, Handler handler) {
+    public WifiVendorHal(Context context, HalDeviceManager halDeviceManager, Handler handler,
+            WifiGlobals wifiGlobals) {
         mContext = context;
         mHalDeviceManager = halDeviceManager;
         mHalEventHandler = handler;
+        mWifiGlobals = wifiGlobals;
         mHalDeviceManagerStatusCallbacks = new HalDeviceManagerStatusListener();
         mIWifiStaIfaceEventCallback = new StaIfaceEventCallback();
         mIWifiChipEventCallback = new ChipEventCallback();
@@ -1577,6 +1580,10 @@ public class WifiVendorHal {
         } catch (RemoteException e) {
             handleRemoteException(e);
             return 0;
+        }
+
+        if (mWifiGlobals.isWpa3SaeH2eSupported()) {
+            featureSet |= WifiManager.WIFI_FEATURE_SAE_H2E;
         }
 
         Set<Integer> supportedIfaceTypes = mHalDeviceManager.getSupportedIfaceTypes();

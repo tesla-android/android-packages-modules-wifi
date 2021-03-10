@@ -1577,4 +1577,36 @@ public class WifiNetworkSuggestionTest {
 
         assertEquals(TEST_CARRIER_ID, suggestion.getCarrierId());
     }
+
+    /**
+     * Test set and get SAE Hash-to-Element only mode for WPA3 SAE network.
+     */
+    @Test
+    public void testSetSaeH2eOnlyModeForWpa3Sae() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa3Passphrase(TEST_PRESHARED_KEY)
+                .enableWpa3SaeH2eOnlyMode(true)
+                .build();
+        assertTrue(suggestion.getWifiConfiguration().getSecurityParamsList()
+                .stream().anyMatch(param -> param.isSaeH2eOnlyMode()));
+    }
+
+    /**
+     * Test set and get SAE Hash-to-Element only mode for WPA2 PSK network.
+     * For non-WPA3 SAE network, enabling H2E only mode should raise
+     * IllegalStateException.
+     */
+    @Test(expected = IllegalStateException.class)
+    public void testSetSaeH2eOnlyModeForWpa2Psk() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .enableWpa3SaeH2eOnlyMode(true)
+                .build();
+    }
 }
