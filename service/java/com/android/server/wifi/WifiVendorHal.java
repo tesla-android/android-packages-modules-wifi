@@ -2602,7 +2602,8 @@ public class WifiVendorHal {
      * @return SET_FIRMWARE_ROAMING_SUCCESS, SET_FIRMWARE_ROAMING_FAILURE,
      *         or SET_FIRMWARE_ROAMING_BUSY
      */
-    public int enableFirmwareRoaming(@NonNull String ifaceName, int state) {
+    public @WifiNative.RoamingEnableStatus int enableFirmwareRoaming(@NonNull String ifaceName,
+            @WifiNative.RoamingEnableState int state) {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
             if (iface == null) return WifiNative.SET_FIRMWARE_ROAMING_FAILURE;

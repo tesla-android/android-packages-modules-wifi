@@ -211,6 +211,9 @@ public interface ClientMode {
     /** Set firmware roaming configurations. */
     boolean configureRoaming(WifiNative.RoamingConfig config);
 
+    /** Enable/Disable firmware roaming. */
+    boolean enableRoaming(boolean enabled);
+
     /**
      * Set country code.
      *

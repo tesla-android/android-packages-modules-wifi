@@ -43,6 +43,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.net.ConnectivityManager;
 import android.net.MacAddress;
 import android.net.NetworkCapabilities;
@@ -79,6 +80,7 @@ import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
+import com.android.wifi.resources.R;
 
 import org.junit.After;
 import org.junit.Before;
@@ -130,6 +132,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     private static final String TEST_WPA_PRESHARED_KEY = "\"password123\"";
 
     @Mock Context mContext;
+    @Mock Resources mResources;
     @Mock ActivityManager mActivityManager;
     @Mock AlarmManager mAlarmManager;
     @Mock AppOpsManager mAppOpsManager;
@@ -206,6 +209,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkCapabilities.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         mTestScanDatas = ScanTestUtil.createScanDatas(new int[][]{ { 2417, 2427, 5180, 5170 } });
 
+        when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getSystemService(eq(Context.CONNECTIVITY_SERVICE)))
                 .thenReturn(mConnectivityManager);
@@ -214,6 +218,9 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         when(mContext.getSystemService(CompanionDeviceManager.class))
                 .thenReturn(mCompanionDeviceManager);
         when(mContext.getSystemService(PowerManager.class)).thenReturn(mPowerManager);
+        when(mResources.getBoolean(
+                eq(R.bool.config_wifiUseHalApiToDisableFwRoaming)))
+                .thenReturn(true);
         when(mPackageManager.getNameForUid(TEST_UID_1)).thenReturn(TEST_PACKAGE_NAME_1);
         when(mPackageManager.getNameForUid(TEST_UID_2)).thenReturn(TEST_PACKAGE_NAME_2);
         when(mPackageManager.getApplicationInfoAsUser(any(), anyInt(), any()))
@@ -1825,6 +1832,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 argThat(new WifiConfigMatcher(mSelectedNetwork)));
         // verify we canceled the timeout alarm.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        // Verify we disabled fw roaming.
+        verify(mClientModeManager).enableRoaming(false);
 
         // Now release the active network request.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
@@ -1833,6 +1842,41 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Ensure that we toggle auto-join state.
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(true);
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
+        verify(mClientModeManager).enableRoaming(true);
+    }
+
+    /**
+     * Verify handling of connection success.
+     */
+    @Test
+    public void testNetworkSpecifierHandleConnectionSuccessWhenUseHalApiIsDisabled()
+            throws Exception {
+        when(mResources.getBoolean(
+                eq(R.bool.config_wifiUseHalApiToDisableFwRoaming)))
+                .thenReturn(false);
+        sendNetworkRequestAndSetupForConnectionStatus();
+
+        // Send network connection success indication.
+        assertNotNull(mSelectedNetwork);
+        mWifiNetworkFactory.handleConnectionAttemptEnded(
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
+
+        // Verify that we sent the connection success callback.
+        verify(mNetworkRequestMatchCallback).onUserSelectionConnectSuccess(
+                argThat(new WifiConfigMatcher(mSelectedNetwork)));
+        // verify we canceled the timeout alarm.
+        verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        // Verify we disabled fw roaming.
+        verify(mClientModeManager, never()).enableRoaming(false);
+
+        // Now release the active network request.
+        mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
+
+        verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnPrimaryIface();
+        // Ensure that we toggle auto-join state.
+        verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(true);
+        verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
+        verify(mClientModeManager, never()).enableRoaming(true);
     }
 
     /**
@@ -1854,6 +1898,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 argThat(new WifiConfigMatcher(mSelectedNetwork)));
         // verify we canceled the timeout alarm.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        // Verify we disabled fw roaming.
+        verify(mClientModeManager).enableRoaming(false);
 
         // Now release the active network request.
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
@@ -1861,6 +1907,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
         // Don't toggle auto-join state.
         verify(mWifiConnectivityManager, never()).setSpecificNetworkRequestInProgress(anyBoolean());
+        verify(mClientModeManager).enableRoaming(true);
     }
 
     /**
@@ -2430,6 +2477,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
         // Cancel the connection timeout.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        verify(mClientModeManager).enableRoaming(false);
 
         NetworkRequest oldRequest = new NetworkRequest(mNetworkRequest);
         // Send second request.
@@ -2459,6 +2507,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         verify(mClientModeManager, times(3)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
+        verify(mClientModeManager).enableRoaming(true);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
         verifyNoMoreInteractions(mWifiConnectivityManager, mWifiScanner, mClientModeManager,
@@ -2504,6 +2553,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_1);
         // Cancel the connection timeout.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
+        verify(mClientModeManager).enableRoaming(false);
 
         // Send second request & we simulate the user selecting the request & connecting to it.
         reset(mNetworkRequestMatchCallback, mWifiScanner, mAlarmManager);
@@ -2513,6 +2563,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         assertNotNull(mSelectedNetwork);
         mWifiNetworkFactory.handleConnectionAttemptEnded(
                 WifiMetrics.ConnectionEvent.FAILURE_NONE, mSelectedNetwork, TEST_BSSID_2);
+        verify(mClientModeManager, times(2)).enableRoaming(false);
         // Cancel the connection timeout.
         verify(mAlarmManager).cancel(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
 
@@ -2535,6 +2586,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         verify(mClientModeManager, times(3)).disconnect();
         verify(mClientModeManager, times(6)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
+        verify(mClientModeManager).enableRoaming(true);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
         verifyNoMoreInteractions(mWifiConnectivityManager, mWifiScanner, mClientModeManager,
@@ -2567,6 +2619,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mLooper.dispatchAll();
         // cancel periodic scans.
         verify(mAlarmManager).cancel(mPeriodicScanListenerArgumentCaptor.getValue());
+        // Verify we disabled fw roaming.
+        verify(mClientModeManager).enableRoaming(false);
 
         // we shouldn't disconnect/re-enable auto-join until the connected request is released.
         verify(mWifiConnectivityManager, never()).setSpecificNetworkRequestInProgress(false);
@@ -2578,6 +2632,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         verify(mClientModeManager, times(2)).disconnect();
         verify(mClientModeManager, times(3)).getRole();
         verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
+        verify(mClientModeManager).enableRoaming(true);
         verify(mActiveModeWarden).removeClientModeManager(any());
 
         verifyNoMoreInteractions(mWifiConnectivityManager, mWifiScanner, mClientModeManager,
