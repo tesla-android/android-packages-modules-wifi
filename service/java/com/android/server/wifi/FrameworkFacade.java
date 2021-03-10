@@ -41,6 +41,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.os.WorkSource;
 import android.provider.Settings;
+import android.security.KeyChain;
 import android.telephony.CarrierConfigManager;
 import android.util.Log;
 import android.widget.Toast;
@@ -339,5 +340,19 @@ public class FrameworkFacade {
         String settingsPackageName = getSettingsPackageName(context);
         if (settingsPackageName == null) return new WorkSource(Process.SYSTEM_UID);
         return new WorkSource(Process.SYSTEM_UID, settingsPackageName);
+    }
+
+    /**
+     * Returns whether a KeyChain key is granted to the WiFi stack.
+     */
+    public boolean hasWifiKeyGrantAsUser(Context context, UserHandle user, String alias) {
+        return KeyChain.hasWifiKeyGrantAsUser(context, user, alias);
+    }
+
+    /**
+     * Returns grant string for a given KeyChain alias or null if key not granted.
+     */
+    public String getWifiKeyGrantAsUser(Context context, UserHandle user, String alias) {
+        return KeyChain.getWifiKeyGrantAsUser(context, user, alias);
     }
 }

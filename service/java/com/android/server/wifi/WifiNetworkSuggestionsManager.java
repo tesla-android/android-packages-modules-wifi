@@ -42,6 +42,7 @@ import android.net.wifi.ISuggestionConnectionStatusListener;
 import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
@@ -901,7 +902,7 @@ public class WifiNetworkSuggestionsManager {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Adding " + networkSuggestions.size() + " networks from " + packageName);
         }
-        if (!validateNetworkSuggestions(networkSuggestions, packageName)) {
+        if (!validateNetworkSuggestions(networkSuggestions, packageName, uid)) {
             Log.e(TAG, "Invalid suggestion add from app: " + packageName);
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID;
         }
@@ -1051,23 +1052,39 @@ public class WifiNetworkSuggestionsManager {
         }
     }
 
-    private boolean validateNetworkSuggestions(List<WifiNetworkSuggestion> networkSuggestions,
-            String packageName) {
+    private boolean checkNetworkSuggestionsNoNulls(List<WifiNetworkSuggestion> networkSuggestions) {
         for (WifiNetworkSuggestion wns : networkSuggestions) {
             if (wns == null || wns.wifiConfiguration == null) {
                 return false;
             }
+        }
+        return true;
+    }
+
+    private boolean validateNetworkSuggestions(
+            List<WifiNetworkSuggestion> networkSuggestions, String packageName, int uid) {
+        if (!checkNetworkSuggestionsNoNulls(networkSuggestions)) {
+            return false;
+        }
+        for (WifiNetworkSuggestion wns : networkSuggestions) {
             if (wns.passpointConfiguration == null) {
                 WifiConfiguration config = wns.wifiConfiguration;
                 if (!WifiConfigurationUtil.validate(config,
                         WifiConfigurationUtil.VALIDATE_FOR_ADD)) {
                     return false;
                 }
-                if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
-                        && !config.enterpriseConfig
-                        .isMandatoryParameterSetForServerCertValidation()) {
-                    Log.e(TAG, "Insecure enterprise suggestion is invalid.");
-                    return false;
+                if (config.isEnterprise()) {
+                    final WifiEnterpriseConfig enterpriseConfig = config.enterpriseConfig;
+                    if (enterpriseConfig.isTlsBasedEapMethod()
+                            && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
+                        Log.e(TAG, "Insecure enterprise suggestion is invalid.");
+                        return false;
+                    }
+                    final String alias = enterpriseConfig.getClientKeyPairAliasInternal();
+                    if (alias != null && !mWifiKeyStore.validateKeyChainAlias(alias, uid)) {
+                        Log.e(TAG, "Invalid client key pair KeyChain alias: " + alias);
+                        return false;
+                    }
                 }
 
             } else {
@@ -1280,9 +1297,8 @@ public class WifiNetworkSuggestionsManager {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Removing " + networkSuggestions.size() + " networks from " + packageName);
         }
-
-        if (!validateNetworkSuggestions(networkSuggestions, packageName)) {
-            Log.e(TAG, "Invalid suggestion remove from app: " + packageName);
+        if (!checkNetworkSuggestionsNoNulls(networkSuggestions)) {
+            Log.e(TAG, "Null in suggestion remove from app: " + packageName);
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID;
         }
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);

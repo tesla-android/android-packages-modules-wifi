@@ -485,6 +485,48 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     }
 
     @Test
+    public void testAddNetworkSuggestionWithInvalidKeyChainKeyAlias() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        final WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setClientKeyPairAlias("some-alias");
+        final WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
+                config, null, false, false, true, true, DEFAULT_PRIORITY_GROUP);
+        final List<WifiNetworkSuggestion> networkSuggestionList =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion1);
+                }};
+        when(mWifiKeyStore.updateNetworkKeys(eq(networkSuggestion1.wifiConfiguration), any()))
+                .thenReturn(true);
+        when(mWifiKeyStore.validateKeyChainAlias(any(String.class), anyInt())).thenReturn(false);
+
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+    }
+
+    @Test
+    public void testAddNetworkSuggestionWithValidKeyChainKeyAlias() {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        final WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setClientKeyPairAlias("some-alias");
+        final WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
+                config, null, false, false, true, true, DEFAULT_PRIORITY_GROUP);
+        final List<WifiNetworkSuggestion> networkSuggestionList =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion1);
+                }};
+        when(mWifiKeyStore.updateNetworkKeys(eq(networkSuggestion1.wifiConfiguration), any()))
+                .thenReturn(true);
+        when(mWifiKeyStore.validateKeyChainAlias(any(String.class), anyInt())).thenReturn(true);
+
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+    }
+
+    @Test
     public void testAddInsecureEnterpriseNetworkSuggestion() {
         WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createEapNetwork(), null, false, false, true, true,

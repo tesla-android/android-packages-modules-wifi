@@ -31,6 +31,8 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiSsid;
 import android.text.TextUtils;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.net.InetAddress;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -848,6 +850,9 @@ public class WifiConfigurationTestUtil {
                 actual.getFieldValue(WifiEnterpriseConfig.PLMN_KEY));
         assertEquals(expected.getEapMethod(), actual.getEapMethod());
         assertEquals(expected.getPhase2Method(), actual.getPhase2Method());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(expected.getClientKeyPairAlias(), actual.getClientKeyPairAlias());
+        }
     }
 
     /**
