@@ -370,8 +370,15 @@ package android.net.wifi {
     field @Deprecated public static final int RANDOMIZATION_PERSISTENT = 1; // 0x1
     field @Deprecated public static final int RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA = 17; // 0x11
     field @Deprecated public static final int RECENT_FAILURE_DISCONNECTION_AP_BUSY = 1004; // 0x3ec
+    field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED = 1007; // 0x3ef
+    field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED = 1008; // 0x3f0
+    field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI = 1009; // 0x3f1
+    field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED = 1006; // 0x3ee
+    field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED = 1005; // 0x3ed
     field @Deprecated public static final int RECENT_FAILURE_MBO_OCE_DISCONNECT = 1001; // 0x3e9
+    field @Deprecated public static final int RECENT_FAILURE_NETWORK_NOT_FOUND = 1011; // 0x3f3
     field @Deprecated public static final int RECENT_FAILURE_NONE = 0; // 0x0
+    field @Deprecated public static final int RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION = 1010; // 0x3f2
     field @Deprecated public static final int RECENT_FAILURE_POOR_CHANNEL_CONDITIONS = 1003; // 0x3eb
     field @Deprecated public static final int RECENT_FAILURE_REFUSED_TEMPORARILY = 1002; // 0x3ea
     field @Deprecated public boolean allowAutojoin;
