@@ -191,6 +191,72 @@ public class WifiLinkLayerStats {
      */
     public int numRadios;
 
+    /**
+     * Per rate information and statistics.
+     */
+    public static class RateStat {
+        /**
+         * Preamble information. 0: OFDM, 1:CCK, 2:HT 3:VHT 4:HE 5..7 reserved.
+         */
+        public int preamble;
+        /**
+         * Number of spatial streams. 0:1x1, 1:2x2, 3:3x3, 4:4x4.
+         */
+        public int nss;
+        /**
+         * Bandwidth information. 0:20MHz, 1:40Mhz, 2:80Mhz, 3:160Mhz.
+         */
+        public int bw;
+        /**
+         * MCS index. OFDM/CCK rate code would be as per IEEE std in the units of 0.5Mbps.
+         * HT/VHT/HE: it would be MCS index.
+         */
+        public int rateMcsIdx;
+        /**
+         * Bitrate in units of 100 Kbps.
+         */
+        public int bitRateInKbps;
+        /**
+         * Number of successfully transmitted data packets (ACK received).
+         */
+        public int txMpdu;
+        /**
+         * Number of received data packets.
+         */
+        public int rxMpdu;
+        /**
+         * Number of data packet losses (no ACK).
+         */
+        public int mpduLost;
+        /**
+         * Number of data packet retries.
+         */
+        public int retries;
+    }
+
+    /**
+     * Per peer statistics.
+     */
+    public static class PeerInfo {
+        /**
+         * Station count.
+         */
+        public short staCount;
+        /**
+         * Channel utilization.
+         */
+        public short chanUtil;
+        /**
+         * Per rate statistics.
+         */
+        public RateStat[] rateStats;
+    }
+
+    /**
+     * Peer statistics.
+     */
+    public PeerInfo[] peerInfo;
+
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
@@ -272,6 +338,26 @@ public class WifiLinkLayerStats {
         }
         sbuf.append(" ts=" + timeStampInMs);
         sbuf.append(" numRadios=" + numRadios);
+        int numPeers = this.peerInfo == null ? 0 : this.peerInfo.length;
+        sbuf.append(" Number of peers=").append(numPeers).append('\n');
+        for (int i = 0; i < numPeers; i++) {
+            PeerInfo peer = this.peerInfo[i];
+            sbuf.append(" staCount=").append(peer.staCount)
+                    .append(" chanUtil=").append(peer.chanUtil).append('\n');
+            int numRateStats = peer.rateStats == null ? 0 : peer.rateStats.length;
+            for (int j = 0; j < numRateStats; j++) {
+                RateStat rateStat = peer.rateStats[j];
+                sbuf.append(" preamble=").append(rateStat.preamble)
+                        .append(" nss=").append(rateStat.nss)
+                        .append(" bw=").append(rateStat.bw)
+                        .append(" rateMcsIdx=").append(rateStat.rateMcsIdx)
+                        .append(" bitRateInKbps=").append(rateStat.bitRateInKbps).append('\n')
+                        .append(" txMpdu=").append(rateStat.txMpdu)
+                        .append(" rxMpdu=").append(rateStat.rxMpdu)
+                        .append(" mpduLost=").append(rateStat.mpduLost)
+                        .append(" retries=").append(rateStat.retries).append('\n');
+            }
+        }
         return sbuf.toString();
     }
 

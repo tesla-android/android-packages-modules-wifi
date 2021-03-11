@@ -50,6 +50,8 @@ import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_2.IWifiChipEventCallback.IfaceInfo;
 import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
+import android.hardware.wifi.V1_5.StaPeerInfo;
+import android.hardware.wifi.V1_5.StaRateStat;
 import android.hardware.wifi.V1_5.WifiBand;
 import android.net.MacAddress;
 import android.net.apf.ApfCapabilities;
@@ -70,6 +72,8 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
+import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
+import com.android.server.wifi.WifiLinkLayerStats.RateStat;
 import com.android.server.wifi.WifiNative.RxFateReport;
 import com.android.server.wifi.WifiNative.TxFateReport;
 import com.android.server.wifi.util.BitMask;
@@ -1262,6 +1266,30 @@ public class WifiVendorHal {
         stats.contentionTimeMaxVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeMaxInUsec;
         stats.contentionTimeAvgVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeAvgInUsec;
         stats.contentionNumSamplesVo = iface.wmeVoContentionTimeStats.contentionNumSamples;
+        // Peer information statistics
+        stats.peerInfo = new PeerInfo[iface.peers.size()];
+        for (int i = 0; i < stats.peerInfo.length; i++) {
+            PeerInfo peer = new PeerInfo();
+            StaPeerInfo staPeerInfo = iface.peers.get(i);
+            peer.staCount = staPeerInfo.staCount;
+            peer.chanUtil = staPeerInfo.chanUtil;
+            RateStat[] rateStats = new RateStat[staPeerInfo.rateStats.size()];
+            for (int j = 0; j < staPeerInfo.rateStats.size(); j++) {
+                rateStats[j] = new RateStat();
+                StaRateStat staRateStat = staPeerInfo.rateStats.get(j);
+                rateStats[j].preamble = staRateStat.rateInfo.preamble;
+                rateStats[j].nss = staRateStat.rateInfo.nss;
+                rateStats[j].bw = staRateStat.rateInfo.bw;
+                rateStats[j].rateMcsIdx = staRateStat.rateInfo.rateMcsIdx;
+                rateStats[j].bitRateInKbps = staRateStat.rateInfo.bitRateInKbps;
+                rateStats[j].txMpdu = staRateStat.txMpdu;
+                rateStats[j].rxMpdu = staRateStat.rxMpdu;
+                rateStats[j].mpduLost = staRateStat.mpduLost;
+                rateStats[j].retries = staRateStat.retries;
+            }
+            peer.rateStats = rateStats;
+            stats.peerInfo[i] = peer;
+        }
     }
 
     private static void setRadioStats(WifiLinkLayerStats stats,

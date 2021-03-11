@@ -86,6 +86,8 @@ import android.hardware.wifi.V1_2.IWifiChipEventCallback.RadioModeInfo;
 import android.hardware.wifi.V1_3.WifiChannelStats;
 import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
 import android.hardware.wifi.V1_5.StaLinkLayerIfaceContentionTimeStats;
+import android.hardware.wifi.V1_5.StaPeerInfo;
+import android.hardware.wifi.V1_5.StaRateStat;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.MacAddress;
@@ -1184,6 +1186,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         randomizeContentionTimeStats(r, stats.iface.wmeBkContentionTimeStats);
         randomizeContentionTimeStats(r, stats.iface.wmeViContentionTimeStats);
         randomizeContentionTimeStats(r, stats.iface.wmeVoContentionTimeStats);
+        randomizePeerInfoStats(r, stats.iface.peers);
 
         WifiLinkLayerStats converted = WifiVendorHal.frameworkFromHalLinkLayerStats_1_5(stats);
 
@@ -1300,6 +1303,31 @@ public class WifiVendorHalTest extends WifiBaseTest {
                 wifiLinkLayerStats.contentionTimeAvgVoInUsec);
         assertEquals(iface.wmeVoContentionTimeStats.contentionNumSamples,
                 wifiLinkLayerStats.contentionNumSamplesVo);
+
+        for (int i = 0; i < iface.peers.size(); i++) {
+            assertEquals(iface.peers.get(i).staCount, wifiLinkLayerStats.peerInfo[i].staCount);
+            assertEquals(iface.peers.get(i).chanUtil, wifiLinkLayerStats.peerInfo[i].chanUtil);
+            for (int j = 0; j < iface.peers.get(i).rateStats.size(); j++) {
+                assertEquals(iface.peers.get(i).rateStats.get(j).rateInfo.preamble,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].preamble);
+                assertEquals(iface.peers.get(i).rateStats.get(j).rateInfo.nss,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].nss);
+                assertEquals(iface.peers.get(i).rateStats.get(j).rateInfo.bw,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].bw);
+                assertEquals(iface.peers.get(i).rateStats.get(j).rateInfo.rateMcsIdx,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].rateMcsIdx);
+                assertEquals(iface.peers.get(i).rateStats.get(j).rateInfo.bitRateInKbps,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].bitRateInKbps);
+                assertEquals(iface.peers.get(i).rateStats.get(j).txMpdu,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].txMpdu);
+                assertEquals(iface.peers.get(i).rateStats.get(j).rxMpdu,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].rxMpdu);
+                assertEquals(iface.peers.get(i).rateStats.get(j).mpduLost,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].mpduLost);
+                assertEquals(iface.peers.get(i).rateStats.get(j).retries,
+                        wifiLinkLayerStats.peerInfo[i].rateStats[j].retries);
+            }
+        }
     }
 
     private void verifyRadioStats(List<StaLinkLayerRadioStats> radios,
@@ -1419,6 +1447,28 @@ public class WifiVendorHalTest extends WifiBaseTest {
         cstats.contentionTimeMaxInUsec = r.nextInt() & 0x7FFFFFFF;
         cstats.contentionTimeAvgInUsec = r.nextInt() & 0x7FFFFFFF;
         cstats.contentionNumSamples = r.nextInt() & 0x7FFFFFFF;
+    }
+
+    /**
+     * Populate peer info stats with non-negative random values
+     */
+    private static void randomizePeerInfoStats(Random r, ArrayList<StaPeerInfo> pstats) {
+        StaPeerInfo pstat = new StaPeerInfo();
+        pstat.staCount = 2;
+        pstat.chanUtil = 90;
+        pstat.rateStats = new ArrayList<StaRateStat>();
+        StaRateStat rateStat = new StaRateStat();
+        rateStat.rateInfo.preamble = r.nextInt() & 0x7FFFFFFF;
+        rateStat.rateInfo.nss = r.nextInt() & 0x7FFFFFFF;
+        rateStat.rateInfo.bw = r.nextInt() & 0x7FFFFFFF;
+        rateStat.rateInfo.rateMcsIdx = 9;
+        rateStat.rateInfo.bitRateInKbps = 101;
+        rateStat.txMpdu = r.nextInt() & 0x7FFFFFFF;
+        rateStat.rxMpdu = r.nextInt() & 0x7FFFFFFF;
+        rateStat.mpduLost = r.nextInt() & 0x7FFFFFFF;
+        rateStat.retries = r.nextInt() & 0x7FFFFFFF;
+        pstat.rateStats.add(rateStat);
+        pstats.add(pstat);
     }
 
     /**
