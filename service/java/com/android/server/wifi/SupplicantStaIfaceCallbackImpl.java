@@ -176,6 +176,12 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
                 // cache to track the state before the disconnect.
                 mStateBeforeDisconnect = newState;
             }
+
+            if (newState == State.ASSOCIATING || newState == State.ASSOCIATED
+                    || newState == State.COMPLETED) {
+                mStaIfaceHal.updateOnLinkedNetworkRoaming(mIfaceName, id);
+            }
+
             if (newState == State.COMPLETED) {
                 mWifiMonitor.broadcastNetworkConnectionEvent(
                         mIfaceName, mStaIfaceHal.getCurrentNetworkId(mIfaceName), filsHlpSent,

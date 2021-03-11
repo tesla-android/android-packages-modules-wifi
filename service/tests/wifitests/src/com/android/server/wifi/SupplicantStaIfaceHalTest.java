@@ -180,7 +180,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
 
     private TestLooper mLooper = new TestLooper();
     private Handler mHandler = null;
-    private SupplicantStaIfaceHal mDut;
+    private SupplicantStaIfaceHalSpy mDut;
     private ArgumentCaptor<IHwBinder.DeathRecipient> mServiceManagerDeathCaptor =
             ArgumentCaptor.forClass(IHwBinder.DeathRecipient.class);
     private ArgumentCaptor<IHwBinder.DeathRecipient> mSupplicantDeathCaptor =
@@ -193,9 +193,12 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     private InOrder mInOrder;
 
     private class SupplicantStaIfaceHalSpy extends SupplicantStaIfaceHal {
+        SupplicantStaNetworkHal mStaNetwork;
+
         SupplicantStaIfaceHalSpy() {
             super(mContext, mWifiMonitor, mFrameworkFacade,
                     mHandler, mClock, mWifiMetrics, mWifiGlobals);
+            mStaNetwork = mSupplicantStaNetworkMock;
         }
 
         @Override
@@ -251,7 +254,11 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         protected SupplicantStaNetworkHal getStaNetworkMockable(
                 @NonNull String ifaceName,
                 ISupplicantStaNetwork iSupplicantStaNetwork) {
-            return mSupplicantStaNetworkMock;
+            return mStaNetwork;
+        }
+
+        private void setStaNetworkMockable(SupplicantStaNetworkHal network) {
+            mStaNetwork = network;
         }
     }
 
@@ -625,7 +632,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     @Test
     public void testRoamToSameNetwork() throws Exception {
         executeAndValidateInitializationSequence();
-        executeAndValidateRoamSequence(true);
+        executeAndValidateRoamSequence(true, false);
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, createTestWifiConfiguration()));
     }
 
@@ -635,7 +642,16 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     @Test
     public void testRoamToDifferentNetwork() throws Exception {
         executeAndValidateInitializationSequence();
-        executeAndValidateRoamSequence(false);
+        executeAndValidateRoamSequence(false, false);
+    }
+
+    /**
+     * Tests roaming to a linked network.
+     */
+    @Test
+    public void testRoamToLinkedNetwork() throws Exception {
+        executeAndValidateInitializationSequence();
+        executeAndValidateRoamSequence(false, true);
     }
 
     /**
@@ -2903,8 +2919,10 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
      * Helper function to execute all the actions to perform roaming to the network.
      *
      * @param sameNetwork Roam to the same network or not.
+     * @param linkedNetwork Roam to linked network or not.
      */
-    private void executeAndValidateRoamSequence(boolean sameNetwork) throws Exception {
+    private void executeAndValidateRoamSequence(boolean sameNetwork, boolean linkedNetwork)
+            throws Exception {
         int connectedNetworkId = ROAM_NETWORK_ID;
         String roamBssid = BSSID;
         int roamNetworkId;
@@ -2919,15 +2937,36 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         WifiConfiguration roamingConfig = new WifiConfiguration();
         roamingConfig.networkId = roamNetworkId;
         roamingConfig.getNetworkSelectionStatus().setNetworkSelectionBSSID(roamBssid);
+        SupplicantStaNetworkHal linkedNetworkHandle = mock(SupplicantStaNetworkHal.class);
+        if (linkedNetwork) {
+            when(linkedNetworkHandle.getNetworkId()).thenReturn(roamNetworkId);
+            when(linkedNetworkHandle.saveWifiConfiguration(any())).thenReturn(true);
+            when(linkedNetworkHandle.select()).thenReturn(true);
+            mDut.setStaNetworkMockable(linkedNetworkHandle);
+            final HashMap<String, WifiConfiguration> linkedNetworks = new HashMap<>();
+            linkedNetworks.put(roamingConfig.getProfileKey(), roamingConfig);
+            assertTrue(mDut.updateLinkedNetworks(
+                    WLAN0_IFACE_NAME, connectedNetworkId, linkedNetworks));
+        }
         assertTrue(mDut.roamToNetwork(WLAN0_IFACE_NAME, roamingConfig));
 
-        if (!sameNetwork) {
-            validateConnectSequence(false, 2);
+        if (sameNetwork) {
+            verify(mSupplicantStaNetworkMock).setBssid(eq(roamBssid));
+            verify(mISupplicantStaIfaceMock).reassociate();
+        } else if (linkedNetwork) {
+            verify(mISupplicantStaIfaceMock, never()).removeNetwork(anyInt());
+            verify(mISupplicantStaIfaceMock, times(2))
+                    .addNetwork(any(ISupplicantStaIface.addNetworkCallback.class));
+            verify(mSupplicantStaNetworkMock).saveWifiConfiguration(any(WifiConfiguration.class));
+            verify(mSupplicantStaNetworkMock).select();
+            verify(linkedNetworkHandle).saveWifiConfiguration(any(WifiConfiguration.class));
+            verify(linkedNetworkHandle).select();
             verify(mSupplicantStaNetworkMock, never()).setBssid(anyString());
             verify(mISupplicantStaIfaceMock, never()).reassociate();
         } else {
-            verify(mSupplicantStaNetworkMock).setBssid(eq(roamBssid));
-            verify(mISupplicantStaIfaceMock).reassociate();
+            validateConnectSequence(false, 2);
+            verify(mSupplicantStaNetworkMock, never()).setBssid(anyString());
+            verify(mISupplicantStaIfaceMock, never()).reassociate();
         }
     }
 
