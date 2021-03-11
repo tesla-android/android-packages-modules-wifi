@@ -665,6 +665,18 @@ public final class ScanResult implements Parcelable {
      * @hide
      */
     public static final int BAND_6_GHZ_END_FREQ_MHZ = 7115;
+    /**
+     * The center frequency of the first 6Ghz preferred scanning channel, as defined by
+     * IEEE802.11ax draft 7.0 section 26.17.2.3.3.
+     * @hide
+     */
+    public static final int BAND_6_GHZ_PSC_START_MHZ = 5975;
+    /**
+     * The number of MHz to increment in order to get the next 6Ghz preferred scanning channel
+     * as defined by IEEE802.11ax draft 7.0 section 26.17.2.3.3.
+     * @hide
+     */
+    public static final int BAND_6_GHZ_PSC_STEP_SIZE_MHZ = 80;
 
     /**
      * 6 GHz band operating class 136 channel 2 center frequency in MHz
