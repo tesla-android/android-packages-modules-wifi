@@ -537,6 +537,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mResources.setIntArray(R.array.config_wifiRssiLevelThresholds,
                 RssiUtilTest.RSSI_THRESHOLDS);
         mResources.setInteger(R.integer.config_wifiLinkBandwidthUpdateThresholdPercent, 25);
+        mResources.setBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming, true);
         when(mContext.getResources()).thenReturn(mResources);
 
         when(mWifiGlobals.getPollRssiIntervalMillis()).thenReturn(3000);
@@ -5564,6 +5565,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertTrue(networkInfo.isConnected());
 
         reset(mContext);
+        when(mContext.getResources()).thenReturn(mResources);
 
         // send roam event
         mCmi.sendMessage(WifiMonitor.ASSOCIATED_BSSID_EVENT, 0, 0, TEST_BSSID_STR1);

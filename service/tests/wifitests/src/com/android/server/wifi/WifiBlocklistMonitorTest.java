@@ -47,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 @SmallTest
 public class WifiBlocklistMonitorTest {
     private static final int TEST_NUM_MAX_FIRMWARE_SUPPORT_BSSIDS = 3;
+    private static final int TEST_NUM_MAX_FIRMWARE_SUPPORT_SSIDS = 3;
     private static final String TEST_SSID_1 = "TestSSID1";
     private static final String TEST_SSID_2 = "TestSSID2";
     private static final String TEST_SSID_3 = "TestSSID3";
@@ -106,6 +107,8 @@ public class WifiBlocklistMonitorTest {
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
         when(mWifiConnectivityHelper.getMaxNumBlocklistBssid())
                 .thenReturn(TEST_NUM_MAX_FIRMWARE_SUPPORT_BSSIDS);
+        when(mWifiConnectivityHelper.getMaxNumAllowlistSsid())
+                .thenReturn(TEST_NUM_MAX_FIRMWARE_SUPPORT_SSIDS);
         when(mScoringParams.getSufficientRssi(anyInt())).thenReturn(TEST_SUFFICIENT_RSSI);
         mResources = new MockResources();
         mResources.setInteger(R.integer.config_wifiBssidBlocklistMonitorBaseBlockDurationMs,

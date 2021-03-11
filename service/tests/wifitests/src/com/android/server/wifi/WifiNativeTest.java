@@ -1179,4 +1179,15 @@ public class WifiNativeTest extends WifiBaseTest {
         verify(mWifiVendorHal).replaceStaIfaceRequestorWs(
                 eq(WIFI_IFACE_NAME), same(TEST_WORKSOURCE2));
     }
+
+    /**
+     * Verifies that updateLinkedNetworks() calls underlying SupplicantStaIfaceHal.
+     */
+    @Test
+    public void testUpdateLinkedNetworks() {
+        when(mStaIfaceHal.updateLinkedNetworks(any(), anyInt(), any())).thenReturn(true);
+
+        assertTrue(mWifiNative.updateLinkedNetworks(WIFI_IFACE_NAME, 0, null));
+        verify(mStaIfaceHal).updateLinkedNetworks(WIFI_IFACE_NAME, 0, null);
+    }
 }

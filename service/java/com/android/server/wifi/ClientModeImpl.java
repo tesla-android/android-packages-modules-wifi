@@ -54,6 +54,7 @@ import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkInfo.DetailedState;
+import android.net.RouteInfo;
 import android.net.SocketKeepalive;
 import android.net.StaticIpConfiguration;
 import android.net.TcpKeepalivePacketData;
@@ -148,8 +149,10 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -317,6 +320,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // Indicates that framework is attempting to roam, set true on CMD_START_ROAM, set false when
     // wifi connects or fails to connect
     private boolean mIsAutoRoaming = false;
+
+    // Indicates that driver is attempting to allowlist roaming, set true on allowlist roam BSSID
+    // associated, set false when wifi connects or fails to connect
+    private boolean mIsLinkedNetworkRoaming = false;
 
     // Roaming failure count
     private int mRoamFailCount = 0;
@@ -987,6 +994,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (config.networkId == mTargetNetworkId || config.networkId == mLastNetworkId) {
                 // Disconnect and let autojoin reselect a new network
                 sendMessage(CMD_DISCONNECT);
+            } else {
+                WifiConfiguration currentConfig = getConnectedWifiConfiguration();
+                if (currentConfig != null && currentConfig.isLinked(config)) {
+                    logi("current network linked config removed, update allowlist networks");
+                    updateLinkedNetworks(currentConfig);
+                }
             }
             mWifiNative.removeNetworkCachedData(config.networkId);
         }
@@ -3509,6 +3522,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mLastScanRssi = mWifiConfigManager.findScanRssi(netId,
                             mWifiHealthMonitor.getScanRssiValidTimeMs());
                     mWifiScoreCard.noteConnectionAttempt(mWifiInfo, mLastScanRssi, config.SSID);
+                    mWifiBlocklistMonitor.setAllowlistSsids(config.SSID, Collections.emptyList());
                     mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.of(config.SSID));
 
                     updateWifiConfigOnStartConnection(config, bssid);
@@ -3601,6 +3615,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         logi("CMD_SAVE_NETWORK credential changed for nid="
                                 + netId + " while disconnected. Connecting.");
                         startConnectToNetwork(netId, message.sendingUid, SUPPLICANT_BSSID_ANY);
+                    } else if (result.hasCredentialChanged()) {
+                        WifiConfiguration currentConfig =
+                                getConnectedWifiConfigurationInternal();
+                        WifiConfiguration updatedConfig =
+                                mWifiConfigManager.getConfiguredNetwork(netId);
+                        if (currentConfig != null && currentConfig.isLinked(updatedConfig)) {
+                            logi("current network linked config saved, update linked networks");
+                            updateLinkedNetworks(currentConfig);
+                        }
                     }
                     cnm.listener.sendSuccess();
                     break;
@@ -4751,8 +4774,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // too many places to record connection failure with too many failure reasons.
             // So only record success here.
             mWifiMetrics.noteFirstL2ConnectionAfterBoot(true);
-
             mCmiMonitor.onL2Connected(mClientModeManager);
+            mIsLinkedNetworkRoaming = false;
         }
 
         @Override
@@ -4873,6 +4896,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         mLastBssid = (String) message.obj;
                         sendNetworkChangeBroadcastWithCurrentState();
                     }
+                    if (mIsLinkedNetworkRoaming) {
+                        mIsLinkedNetworkRoaming = false;
+                        mTargetNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
+                        mTargetWifiConfiguration = null;
+                        clearTargetBssid("AllowlistRoamingCompleted");
+                        sendNetworkChangeBroadcast(DetailedState.CONNECTED);
+                    }
                     break;
                 }
                 case CMD_ONESHOT_RSSI_POLL: {
@@ -4922,6 +4952,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         break;
                     }
                     mLastBssid = (String) message.obj;
+                    if (checkAndHandleLinkedNetworkRoaming(mLastBssid)) {
+                        Log.i(TAG, "Driver initiated allowlist SSID roaming");
+                        break;
+                    }
                     if (mLastBssid != null && (mWifiInfo.getBSSID() == null
                             || !mLastBssid.equals(mWifiInfo.getBSSID()))) {
                         mWifiInfo.setBSSID(mLastBssid);
@@ -5455,6 +5489,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 LinkProperties newLp = new LinkProperties(mLinkProperties);
                                 addPasspointInfoToLinkProperties(newLp);
                                 sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
+                            }
+                            if (retrieveConnectedNetworkDefaultGateway()) {
+                                updateLinkedNetworks(config);
                             }
                         }
                         mCmiMonitor.onInternetValidated(mClientModeManager);
@@ -6347,5 +6384,106 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             Log.i(getTag(), "VCN policy changed, updating NetworkCapabilities.");
             updateCapabilities();
         }
+    }
+
+    /**
+     * Updates the default gateway mac address of the connected network config and updates the
+     * linked networks resulting from the new default gateway.
+     */
+    private boolean retrieveConnectedNetworkDefaultGateway() {
+        WifiConfiguration currentConfig = getConnectedWifiConfiguration();
+        if (currentConfig == null) {
+            logi("can't fetch config of current network id " + mLastNetworkId);
+            return false;
+        }
+
+        // Find IPv4 default gateway.
+        if (mLinkProperties == null) {
+            logi("cannot retrieve default gateway from null link properties");
+            return false;
+        }
+        String gatewayIPv4 = null;
+        for (RouteInfo routeInfo : mLinkProperties.getRoutes()) {
+            if (routeInfo.isDefaultRoute()
+                    && routeInfo.getDestination().getAddress() instanceof Inet4Address
+                    && routeInfo.hasGateway()) {
+                gatewayIPv4 = routeInfo.getGateway().getHostAddress();
+                break;
+            }
+        }
+
+        if (TextUtils.isEmpty(gatewayIPv4)) {
+            logi("default gateway ipv4 is null");
+            return false;
+        }
+
+        String gatewayMac = macAddressFromRoute(gatewayIPv4);
+        if (TextUtils.isEmpty(gatewayMac)) {
+            logi("default gateway mac fetch failed for ipv4 addr = " + gatewayIPv4);
+            return false;
+        }
+
+        logi("Default Gateway MAC address of " + mLastBssid + " from routes is : " + gatewayMac);
+        if (!mWifiConfigManager.setNetworkDefaultGwMacAddress(mLastNetworkId, gatewayMac)) {
+            logi("default gateway mac set failed for " + currentConfig.getKey() + " network");
+            return false;
+        }
+
+        return mWifiConfigManager.saveToStore(true);
+    }
+
+    /**
+     * Links the supplied config to all matching saved configs and updates the WifiBlocklistMonitor
+     * SSID allowlist with the linked networks.
+     */
+    private void updateLinkedNetworks(@NonNull WifiConfiguration config) {
+        if (!mContext.getResources().getBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming)
+                || !config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)) {
+            return;
+        }
+
+        mWifiConfigManager.updateLinkedNetworks(config.networkId);
+        Map<String, WifiConfiguration> linkedNetworks = mWifiConfigManager
+                .getLinkedNetworksWithoutMasking(config.networkId);
+        if (!mWifiNative.updateLinkedNetworks(mInterfaceName, config.networkId, linkedNetworks)) {
+            return;
+        }
+
+        List<String> allowlistSsids = new ArrayList<>(linkedNetworks.values().stream()
+                .map(linkedConfig -> linkedConfig.SSID)
+                .collect(Collectors.toList()));
+        if (linkedNetworks.size() > 0) {
+            allowlistSsids.add(config.SSID);
+        }
+        mWifiBlocklistMonitor.setAllowlistSsids(config.SSID, allowlistSsids);
+        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.copyOf(allowlistSsids));
+    }
+
+    private boolean checkAndHandleLinkedNetworkRoaming(String associatedBssid) {
+        if (!mContext.getResources().getBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming)) {
+            return false;
+        }
+
+        ScanResult scanResult = mScanRequestProxy.getScanResult(associatedBssid);
+        if (scanResult == null) {
+            return false;
+        }
+
+        WifiConfiguration config = mWifiConfigManager
+                .getSavedNetworkForScanResult(scanResult);
+        if (config == null || !config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)
+                || mLastNetworkId == config.networkId) {
+            return false;
+        }
+
+        mIsLinkedNetworkRoaming = true;
+        setTargetBssid(config, associatedBssid);
+        mTargetNetworkId = config.networkId;
+        mTargetWifiConfiguration = config;
+        mLastNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
+        sendNetworkChangeBroadcast(DetailedState.CONNECTING);
+        mWifiInfo.setFrequency(scanResult.frequency);
+        mWifiInfo.setBSSID(associatedBssid);
+        return true;
     }
 }

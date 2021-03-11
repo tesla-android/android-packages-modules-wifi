@@ -3868,4 +3868,16 @@ public class WifiNative {
     public boolean setScanMode(String ifaceName, boolean enable) {
         return mWifiVendorHal.setScanMode(ifaceName, enable);
     }
+
+    /** updates linked networks of the |networkId| in supplicant if it's the current network,
+     * if the current configured network matches |networkId|.
+     *
+     * @param ifaceName Name of the interface.
+     * @param networkId network id of the network to be updated from supplicant.
+     * @param linkedNetworks Map of config profile key and config for linking.
+     */
+    public boolean updateLinkedNetworks(@NonNull String ifaceName, int networkId,
+            Map<String, WifiConfiguration> linkedNetworks) {
+        return mSupplicantStaIfaceHal.updateLinkedNetworks(ifaceName, networkId, linkedNetworks);
+    }
 }
