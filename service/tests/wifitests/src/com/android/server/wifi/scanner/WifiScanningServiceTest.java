@@ -128,7 +128,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
     private static final String TEST_FEATURE_ID = "test.feature";
     private static final String TEST_IFACE_NAME_0 = "wlan0";
     private static final String TEST_IFACE_NAME_1 = "wlan1";
-    private static final int TEST_PSC_CHANNEL = ScanResult.BAND_6_GHZ_START_FREQ_MHZ;
+    private static final int TEST_PSC_CHANNEL = ScanResult.BAND_6_GHZ_PSC_START_MHZ;
     private static final int TEST_NON_PSC_CHANNEL = 5985;
     private static final WifiScanner.ScanData PLACEHOLDER_SCAN_DATA =
             new WifiScanner.ScanData(0, 0, new ScanResult[0]);

@@ -62,8 +62,6 @@ public class KnownBandsChannelHelper extends ChannelHelper {
     public static final int BAND_6_GHZ_MID_END_FREQ = 6875;
     // 6G high includes UNII-8
     public static final int BAND_6_GHZ_HIGH_END_FREQ = ScanResult.BAND_6_GHZ_END_FREQ_MHZ;
-    private static final int BAND_6_GHZ_PSC_START_FREQ = ScanResult.BAND_6_GHZ_START_FREQ_MHZ;
-    private static final int BAND_6_GHZ_PSC_STEP_SIZE = 80;
 
     private WifiScanner.ChannelSpec[][] mBandsToChannels;
 
@@ -410,7 +408,8 @@ public class KnownBandsChannelHelper extends ChannelHelper {
                 return;
             }
             for (int freq : missingChannels) {
-                if ((freq - BAND_6_GHZ_PSC_START_FREQ) % BAND_6_GHZ_PSC_STEP_SIZE == 0) {
+                if ((freq - ScanResult.BAND_6_GHZ_PSC_START_MHZ)
+                        % ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ == 0) {
                     mChannels.add(freq);
                     mAllBands |= WIFI_BAND_6_GHZ;
                 }
