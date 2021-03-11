@@ -2034,9 +2034,6 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         try {
             mService.removeAppState(targetAppUid, targetAppPackageName);
         } catch (RemoteException e) {

@@ -3123,8 +3123,6 @@ public class WifiManagerTest {
 
     @Test
     public void testRemoveAppState() throws Exception {
-        // removeAppState is new in S, cannot be called on R
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.removeAppState(TEST_UID, TEST_PACKAGE_NAME);
         verify(mWifiService).removeAppState(TEST_UID, TEST_PACKAGE_NAME);
     }
