@@ -2625,7 +2625,15 @@ public class WifiConfiguration implements Parcelable {
             RECENT_FAILURE_MBO_OCE_DISCONNECT,
             RECENT_FAILURE_REFUSED_TEMPORARILY,
             RECENT_FAILURE_POOR_CHANNEL_CONDITIONS,
-            RECENT_FAILURE_DISCONNECTION_AP_BUSY
+            RECENT_FAILURE_DISCONNECTION_AP_BUSY,
+            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED,
+            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED,
+            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED,
+            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED,
+            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI,
+            RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION,
+            RECENT_FAILURE_NETWORK_NOT_FOUND
+
     })
     public @interface RecentFailureReason {}
 
@@ -2675,6 +2683,68 @@ public class WifiConfiguration implements Parcelable {
     public static final int RECENT_FAILURE_DISCONNECTION_AP_BUSY = 1004;
 
     /**
+     * Failed to connect because the association is rejected by the AP with
+     * MBO association disallowed Reason code: 1 - Unspecified or 0/6-255 - Reserved.
+     * Details in MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED = 1005;
+
+    /**
+     * Failed to connect because the association is rejected by the AP with
+     * MBO association disallowed Reason code: 2 - Maximum number of associated stations reached.
+     * Details in MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED = 1006;
+
+    /**
+     * Failed to connect because the association is rejected by the AP with
+     * MBO association disallowed Reason code: 3 - Air interface is overloaded.
+     * Details in MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED = 1007;
+
+    /**
+     * Failed to connect because the association is rejected by the AP with
+     * MBO association disallowed Reason code: 4 - Authentication server overloaded.
+     * Details in MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED = 1008;
+
+    /**
+     * Failed to connect because the association is rejected by the AP with
+     * MBO association disallowed Reason code: 5 - Insufficient RSSI.
+     * Details in MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI = 1009;
+
+    /**
+     * Failed to connect because the association is rejected by the AP with
+     * OCE rssi based association rejection attribute.
+     * Details in OCE spec v1.0, 3.14 Presence of OCE rssi based association rejection attribute.
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION = 1010;
+
+    /**
+     * Failed to connect because supplicant failed to find a network in scan result which
+     * matches the network requested by framework for connection (including network capabilities).
+     * @hide
+     */
+    @SystemApi
+    public static final int RECENT_FAILURE_NETWORK_NOT_FOUND = 1011;
+
+    /**
      * Get the failure reason for the most recent connection attempt, or
      * {@link #RECENT_FAILURE_NONE} if there was no failure.
      *
@@ -2684,6 +2754,13 @@ public class WifiConfiguration implements Parcelable {
      * {@link #RECENT_FAILURE_REFUSED_TEMPORARILY}
      * {@link #RECENT_FAILURE_POOR_CHANNEL_CONDITIONS}
      * {@link #RECENT_FAILURE_DISCONNECTION_AP_BUSY}
+     * {@link #RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED}
+     * {@link #RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED}
+     * {@link #RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED}
+     * {@link #RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED}
+     * {@link #RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI}
+     * {@link #RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION}
+     * {@link #RECENT_FAILURE_NETWORK_NOT_FOUND}
      * @hide
      */
     @RecentFailureReason

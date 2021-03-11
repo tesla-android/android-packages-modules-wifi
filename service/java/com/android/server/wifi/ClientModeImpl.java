@@ -4407,11 +4407,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             && mTargetWifiConfiguration != null
                             && mTargetWifiConfiguration.SSID != null
                             && mTargetWifiConfiguration.SSID.equals(networkName)) {
+                        stopIpClient();
                         mWifiConfigManager.updateNetworkSelectionStatus(
                                 mTargetWifiConfiguration.networkId,
                                 WifiConfiguration.NetworkSelectionStatus
                                         .DISABLED_NETWORK_NOT_FOUND);
-                        stopIpClient();
+                        mWifiConfigManager.setRecentFailureAssociationStatus(
+                                mTargetWifiConfiguration.networkId,
+                                WifiConfiguration.RECENT_FAILURE_NETWORK_NOT_FOUND);
                         reportConnectionAttemptEnd(
                                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND,
                                 WifiMetricsProto.ConnectionEvent.HLF_NONE,
@@ -4444,23 +4447,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mWifiConfigManager.updateNetworkSelectionStatus(mTargetNetworkId,
                             WifiConfiguration.NetworkSelectionStatus
                                     .DISABLED_ASSOCIATION_REJECTION);
-                    switch (statusCode) {
-                        case StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA:
-                            mWifiConfigManager.setRecentFailureAssociationStatus(mTargetNetworkId,
-                                    WifiConfiguration.RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA);
-                            break;
-                        case StatusCode.ASSOC_REJECTED_TEMPORARILY:
-                            mWifiConfigManager.setRecentFailureAssociationStatus(mTargetNetworkId,
-                                    WifiConfiguration.RECENT_FAILURE_REFUSED_TEMPORARILY);
-                            break;
-                        case StatusCode.DENIED_POOR_CHANNEL_CONDITIONS:
-                            mWifiConfigManager.setRecentFailureAssociationStatus(mTargetNetworkId,
-                                    WifiConfiguration.RECENT_FAILURE_POOR_CHANNEL_CONDITIONS);
-                            break;
-                        default:
-                            // do nothing
-                    }
-
+                    setAssociationRejectionStatusInConfig(mTargetNetworkId, assocRejectEventInfo);
                     int level2FailureReason =
                             WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN;
                     if (statusCode == StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA
@@ -6485,5 +6472,62 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiInfo.setFrequency(scanResult.frequency);
         mWifiInfo.setBSSID(associatedBssid);
         return true;
+    }
+
+    private @WifiConfiguration.RecentFailureReason int
+            mboAssocDisallowedReasonCodeToWifiConfigurationRecentFailureReason(
+            @MboOceConstants.MboAssocDisallowedReasonCode int reasonCode) {
+        switch (reasonCode) {
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_MAX_NUM_STA_ASSOCIATED:
+                return WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED;
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_AIR_INTERFACE_OVERLOADED:
+                return WifiConfiguration
+                        .RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED;
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_AUTH_SERVER_OVERLOADED:
+                return WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED;
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_INSUFFICIENT_RSSI:
+                return WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI;
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_UNSPECIFIED:
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_RESERVED_0:
+            case MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_RESERVED:
+            default:
+                return WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED;
+        }
+    }
+
+    /**
+     * To set association rejection status in wifi config.
+     * @param netId The network ID.
+     * @param assocRejectEventInfo Association rejection information.
+     */
+    private void setAssociationRejectionStatusInConfig(int netId,
+            AssocRejectEventInfo assocRejectEventInfo) {
+        int statusCode = assocRejectEventInfo.statusCode;
+        @WifiConfiguration.RecentFailureReason int reason;
+
+        switch (statusCode) {
+            case StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA:
+                reason = WifiConfiguration.RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA;
+                break;
+            case StatusCode.ASSOC_REJECTED_TEMPORARILY:
+                reason = WifiConfiguration.RECENT_FAILURE_REFUSED_TEMPORARILY;
+                break;
+            case StatusCode.DENIED_POOR_CHANNEL_CONDITIONS:
+                reason = WifiConfiguration.RECENT_FAILURE_POOR_CHANNEL_CONDITIONS;
+                break;
+            default:
+                // do nothing
+                return;
+        }
+
+        if (assocRejectEventInfo.mboAssocDisallowedInfo != null) {
+            reason = mboAssocDisallowedReasonCodeToWifiConfigurationRecentFailureReason(
+                    assocRejectEventInfo.mboAssocDisallowedInfo.mReasonCode);
+        } else if (assocRejectEventInfo.oceRssiBasedAssocRejectInfo != null) {
+            reason = WifiConfiguration.RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION;
+        }
+
+        mWifiConfigManager.setRecentFailureAssociationStatus(netId, reason);
+
     }
 }
