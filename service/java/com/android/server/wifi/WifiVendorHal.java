@@ -75,6 +75,7 @@ import com.android.server.wifi.WifiNative.TxFateReport;
 import com.android.server.wifi.util.BitMask;
 import com.android.server.wifi.util.GeneralUtil.Mutable;
 import com.android.server.wifi.util.NativeUtil;
+import com.android.wifi.resources.R;
 
 import com.google.errorprone.annotations.CompileTimeConstant;
 
@@ -260,7 +261,7 @@ public class WifiVendorHal {
     private IWifiChip mIWifiChip;
     private HashMap<String, IWifiStaIface> mIWifiStaIfaces = new HashMap<>();
     private HashMap<String, IWifiApIface> mIWifiApIfaces = new HashMap<>();
-    private final Context mContext;
+    private static Context sContext;
     private final HalDeviceManager mHalDeviceManager;
     private final WifiGlobals mWifiGlobals;
     private final HalDeviceManagerStatusListener mHalDeviceManagerStatusCallbacks;
@@ -278,7 +279,7 @@ public class WifiVendorHal {
 
     public WifiVendorHal(Context context, HalDeviceManager halDeviceManager, Handler handler,
             WifiGlobals wifiGlobals) {
-        mContext = context;
+        sContext = context;
         mHalDeviceManager = halDeviceManager;
         mHalEventHandler = handler;
         mWifiGlobals = wifiGlobals;
@@ -1318,8 +1319,13 @@ public class WifiVendorHal {
                 channelStatsEntry.radioOnTimeMs += channelStats.onTimeInMs;
                 channelStatsEntry.ccaBusyTimeMs += channelStats.ccaBusyTimeInMs;
             }
+            stats.numRadios++;
+            if (!sContext.getResources()
+                    .getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled)) {
+                // Return stats from radio 0 only.
+                break;
+            }
         }
-        stats.numRadios = radios.size();
     }
 
     private static void setTimeStamp(WifiLinkLayerStats stats, long timeStampInMs) {
@@ -1523,7 +1529,7 @@ public class WifiVendorHal {
      */
     private long getSupportedFeatureSetFromPackageManager() {
         long featureSet = 0;
-        final PackageManager pm = mContext.getPackageManager();
+        final PackageManager pm = sContext.getPackageManager();
         for (Pair pair: sSystemFeatureCapabilityTranslation) {
             if (pm.hasSystemFeature((String) pair.second)) {
                 featureSet |= (long) pair.first;
