@@ -48,6 +48,7 @@ import static org.mockito.Mockito.when;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.hardware.wifi.V1_0.IWifiApIface;
 import android.hardware.wifi.V1_0.IWifiChip;
 import android.hardware.wifi.V1_0.IWifiChipEventCallback;
@@ -112,6 +113,7 @@ import com.android.server.wifi.WifiNative.RoamingCapabilities;
 import com.android.server.wifi.WifiNative.RxFateReport;
 import com.android.server.wifi.WifiNative.TxFateReport;
 import com.android.server.wifi.util.NativeUtil;
+import com.android.wifi.resources.R;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -149,6 +151,8 @@ public class WifiVendorHalTest extends WifiBaseTest {
     private WifiLog mWifiLog;
     private TestLooper mLooper;
     private Handler mHandler;
+    @Mock
+    private Resources mResources;
     @Mock
     private Context mContext;
     @Mock
@@ -425,6 +429,9 @@ public class WifiVendorHalTest extends WifiBaseTest {
             }
         }).when(mIWifiApIface).getName(any(IWifiIface.getNameCallback.class));
 
+        when(mContext.getResources()).thenReturn(mResources);
+        when(mResources.getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled))
+                .thenReturn(false);
         // Create the vendor HAL object under test.
         mWifiVendorHal = new WifiVendorHal(mContext, mHalDeviceManager, mHandler, mWifiGlobals);
 
@@ -1197,6 +1204,8 @@ public class WifiVendorHalTest extends WifiBaseTest {
      */
     @Test
     public void testTwoRadioStatsAggregation() throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled))
+                .thenReturn(true);
         Random r = new Random(245786856);
         android.hardware.wifi.V1_3.StaLinkLayerStats stats =
                 new android.hardware.wifi.V1_3.StaLinkLayerStats();
@@ -1205,6 +1214,27 @@ public class WifiVendorHalTest extends WifiBaseTest {
         WifiLinkLayerStats converted = WifiVendorHal.frameworkFromHalLinkLayerStats_1_3(stats);
         verifyTwoRadioStatsAggregation(stats.radios, converted);
         assertEquals(2, converted.numRadios);
+    }
+
+    /**
+     * Test that the link layer stats V1_3 fields are not aggregated on setting
+     * config_wifiLinkLayerAllRadiosStatsAggregationEnabled to false(Default value).
+     *
+     * This is done by filling multiple Hal LinkLayerStats (V1_3) with random values,
+     * converting it to WifiLinkLayerStats and then asserting the values from radio 0
+     * are equal to the values in the converted structure.
+     */
+    @Test
+    public void testRadioStatsAggregationDisabled() throws Exception {
+        Random r = new Random(245786856);
+        android.hardware.wifi.V1_3.StaLinkLayerStats stats =
+                new android.hardware.wifi.V1_3.StaLinkLayerStats();
+        // Fill stats in two radios
+        randomizeRadioStats_1_3(2, r, stats.radios);
+
+        WifiLinkLayerStats converted = WifiVendorHal.frameworkFromHalLinkLayerStats_1_3(stats);
+        verifyRadioStats_1_3(stats.radios, converted);
+        assertEquals(1, converted.numRadios);
     }
 
     private void verifyIFaceStats(StaLinkLayerIfaceStats iface,
