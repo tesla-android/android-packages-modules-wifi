@@ -78,6 +78,8 @@
           <item type="integer" name="config_wifiInitialPartialScanChannelMaxCount" />
           <item type="integer" name="config_wifiInitialPartialScanChannelCacheAgeMins" />
           <item type="bool" name="config_wifi_framework_use_single_radio_chain_scan_results_network_selection" />
+          <item type="bool" name="config_wifiAllowLinkingUnknownDefaultGatewayConfigurations" />
+          <item type="bool" name="config_wifiEnableLinkedNetworkRoaming" />
           <item type="bool" name="config_wifi_only_link_same_credential_configurations" />
           <item type="bool" name="config_wifiSoftapPassphraseAsciiEncodableCheck" />
           <item type="bool" name="config_wifiSofapClientForceDisconnectSupported" />
@@ -186,6 +188,7 @@
           <item type="bool" name="config_wifiEnableApfOnNonPrimarySta" />
           <item type="bool" name="config_wifiUseHalApiToDisableFwRoaming" />
           <item type="bool" name="config_wifiSaeH2eSupported" />
+          <item type="bool" name="config_wifiLinkLayerAllRadiosStatsAggregationEnabled" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

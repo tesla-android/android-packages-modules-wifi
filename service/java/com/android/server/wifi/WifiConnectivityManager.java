@@ -1159,7 +1159,10 @@ public class WifiConnectivityManager {
                 clientModeManager.getConnectedWifiConfiguration());
         boolean connectingOrConnectedToTarget =
                 connectedOrConnectingWifiConfiguration != null
-                        && targetNetworkId == connectedOrConnectingWifiConfiguration.networkId;
+                        && (targetNetworkId == connectedOrConnectingWifiConfiguration.networkId
+                        || (mContext.getResources().getBoolean(
+                                R.bool.config_wifiEnableLinkedNetworkRoaming)
+                        && connectedOrConnectingWifiConfiguration.isLinked(candidate)));
 
         // Is Firmware roaming control is supported?
         //   - Yes, framework does nothing, firmware will roam if necessary.
@@ -1354,8 +1357,8 @@ public class WifiConnectivityManager {
         // isClientModeManagerConnectedOrConnectingToCandidate()).
         if (currentNetwork != null
                 && (currentNetwork.networkId == targetNetwork.networkId
-                //TODO(b/36788683): re-enable linked configuration check
-                /* || currentNetwork.isLinked(candidate) */)) {
+                || (mContext.getResources().getBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming)
+                && currentNetwork.isLinked(targetNetwork)))) {
             localLog("connectToNetwork(" + clientModeManager + "): Roam to " + targetAssociationId
                     + " from " + currentAssociationId);
             connectHandler.triggerRoamWhenConnected(currentNetwork, targetNetwork, targetBssid);

@@ -2279,10 +2279,6 @@ public class WifiConfigManager {
 
         // Add the scan detail to this network's scan detail cache.
         scanDetailCache.put(scanDetail);
-
-        // Since we added a scan result to this configuration, re-attempt linking.
-        // TODO: Do we really need to do this after every scan result?
-        attemptNetworkLinking(config);
     }
 
     /**
@@ -2298,6 +2294,17 @@ public class WifiConfigManager {
             Log.e(TAG, "No scan result found in scan detail");
             return null;
         }
+        return getSavedNetworkForScanResult(scanResult);
+    }
+
+    /**
+     * Retrieves a configured network corresponding to the provided scan result if one exists.
+     *
+     * @param scanResult ScanResult instance to use for looking up the network.
+     * @return WifiConfiguration object representing the network corresponding to the scanResult,
+     * null if none exists.
+     */
+    public WifiConfiguration getSavedNetworkForScanResult(@NonNull ScanResult scanResult) {
         WifiConfiguration config = null;
         try {
             config = mConfiguredNetworks.getByScanResultForCurrentUser(scanResult);
@@ -2306,7 +2313,7 @@ public class WifiConfigManager {
         }
         if (config != null) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "getSavedNetworkFromScanDetail Found " + config.getProfileKeyInternal()
+                Log.v(TAG, "getSavedNetworkFromScanResult Found " + config.getProfileKeyInternal()
                         + " for " + scanResult.SSID + "[" + scanResult.capabilities + "]");
             }
         }
@@ -2423,17 +2430,19 @@ public class WifiConfigManager {
     private boolean shouldNetworksBeLinked(
             WifiConfiguration network1, WifiConfiguration network2,
             ScanDetailCache scanDetailCache1, ScanDetailCache scanDetailCache2) {
-        // TODO (b/30706406): Link networks only with same passwords if the
-        // |mOnlyLinkSameCredentialConfigurations| flag is set.
+        // Check if networks should be linked due to credential match
+        if (TextUtils.equals(network1.preSharedKey, network2.preSharedKey)) {
+            return true;
+        }
         if (mContext.getResources().getBoolean(
                 R.bool.config_wifi_only_link_same_credential_configurations)) {
-            if (!TextUtils.equals(network1.preSharedKey, network2.preSharedKey)) {
-                if (mVerboseLoggingEnabled) {
-                    Log.v(TAG, "shouldNetworksBeLinked unlink due to password mismatch");
-                }
-                return false;
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "shouldNetworksBeLinked unlink due to password mismatch");
             }
+            return false;
         }
+
+        // Check if networks should be linked due to default gateway match
         if (network1.defaultGwMacAddress != null && network2.defaultGwMacAddress != null) {
             // If both default GW are known, link only if they are equal
             if (network1.defaultGwMacAddress.equals(network2.defaultGwMacAddress)) {
@@ -2443,25 +2452,30 @@ public class WifiConfigManager {
                 }
                 return true;
             }
-        } else {
-            // We do not know BOTH default gateways hence we will try to link
-            // hoping that WifiConfigurations are indeed behind the same gateway.
-            // once both WifiConfiguration have been tried and thus once both default gateways
-            // are known we will revisit the choice of linking them.
-            if (scanDetailCache1 != null && scanDetailCache2 != null) {
-                for (String abssid : scanDetailCache1.keySet()) {
-                    for (String bbssid : scanDetailCache2.keySet()) {
-                        if (abssid.regionMatches(
-                                true, 0, bbssid, 0, LINK_CONFIGURATION_BSSID_MATCH_LENGTH)) {
-                            // If first 16 ASCII characters of BSSID matches,
-                            // we assume this is a DBDC.
-                            if (mVerboseLoggingEnabled) {
-                                Log.v(TAG, "shouldNetworksBeLinked link due to DBDC BSSID match "
-                                        + network2.SSID + " and " + network1.SSID
-                                        + " bssida " + abssid + " bssidb " + bbssid);
-                            }
-                            return true;
+            return false;
+        }
+
+        // We do not know BOTH default gateways hence we will try to link
+        // hoping that WifiConfigurations are indeed behind the same gateway.
+        // once both WifiConfiguration have been tried and thus once both default gateways
+        // are known we will revisit the choice of linking them.
+        if (!mContext.getResources().getBoolean(
+                R.bool.config_wifiAllowLinkingUnknownDefaultGatewayConfigurations)) {
+            return false;
+        }
+        if (scanDetailCache1 != null && scanDetailCache2 != null) {
+            for (String abssid : scanDetailCache1.keySet()) {
+                for (String bbssid : scanDetailCache2.keySet()) {
+                    if (abssid.regionMatches(
+                            true, 0, bbssid, 0, LINK_CONFIGURATION_BSSID_MATCH_LENGTH)) {
+                        // If first 16 ASCII characters of BSSID matches,
+                        // we assume this is a DBDC.
+                        if (mVerboseLoggingEnabled) {
+                            Log.v(TAG, "shouldNetworksBeLinked link due to DBDC BSSID match "
+                                    + network2.SSID + " and " + network1.SSID
+                                    + " bssida " + abssid + " bssidb " + bbssid);
                         }
+                        return true;
                     }
                 }
             }
@@ -2540,6 +2554,9 @@ public class WifiConfigManager {
                 continue;
             }
             if (linkConfig.ephemeral) {
+                continue;
+            }
+            if (!linkConfig.getNetworkSelectionStatus().isNetworkEnabled()) {
                 continue;
             }
             // Network Selector will be allowed to dynamically jump from a linked configuration
@@ -3548,5 +3565,60 @@ public class WifiConfigManager {
             config.setSecurityParamsEnabled(WifiConfiguration.SECURITY_TYPE_OPEN, false);
         }
         return true;
+    }
+
+    /**
+     * Retrieves the configured network corresponding to the provided configKey
+     * without any masking.
+     *
+     * WARNING: Don't use this to pass network configurations except in the wifi stack, when
+     * there is a need for passwords and randomized MAC address.
+     *
+     * @param configKey configKey of the requested network.
+     * @return Copy of WifiConfiguration object if found, null otherwise.
+     */
+    private WifiConfiguration getConfiguredNetworkWithoutMasking(String configKey) {
+        WifiConfiguration config = getInternalConfiguredNetwork(configKey);
+        if (config == null) {
+            return null;
+        }
+        return new WifiConfiguration(config);
+    }
+
+    /**
+     * This method links the config of the provided network id to every linkable saved network.
+     *
+     * @param networkId networkId corresponding to the network to be potentially linked.
+     */
+    public void updateLinkedNetworks(int networkId) {
+        WifiConfiguration internalConfig = getInternalConfiguredNetwork(networkId);
+        if (internalConfig == null) {
+            return;
+        }
+        internalConfig.linkedConfigurations = new HashMap<>();
+        attemptNetworkLinking(internalConfig);
+    }
+
+    /**
+     * This method returns a map containing each config key and unmasked WifiConfiguration of every
+     * network linked to the provided network id.
+     * @param networkId networkId to get the linked configs of.
+     * @return HashMap of config key to unmasked WifiConfiguration
+     */
+    public Map<String, WifiConfiguration> getLinkedNetworksWithoutMasking(int networkId) {
+        WifiConfiguration internalConfig = getInternalConfiguredNetwork(networkId);
+        if (internalConfig == null) {
+            return null;
+        }
+
+        Map<String, WifiConfiguration> linkedNetworks = new HashMap<>();
+        Map<String, Integer> linkedConfigurations = internalConfig.linkedConfigurations;
+        if (linkedConfigurations == null) {
+            return null;
+        }
+        for (String configKey : linkedConfigurations.keySet()) {
+            linkedNetworks.put(configKey, getConfiguredNetworkWithoutMasking(configKey));
+        }
+        return linkedNetworks;
     }
 }

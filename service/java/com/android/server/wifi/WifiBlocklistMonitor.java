@@ -133,10 +133,15 @@ public class WifiBlocklistMonitor {
     // Internal logger to make sure imporatant logs do not get lost.
     private BssidBlocklistMonitorLogger mBssidBlocklistMonitorLogger =
             new BssidBlocklistMonitorLogger(60);
+
+    // Map of ssid to Allowlist SSIDs
+    private Map<String, List<String>> mSsidAllowlistMap = new ArrayMap<>();
+
     /**
      * Verbose logging flag. Toggled by developer options.
      */
     private boolean mVerboseLoggingEnabled = false;
+
 
     private Map<Integer, BssidDisableReason> buildBssidDisableReasons() {
         Map<Integer, BssidDisableReason> result = new ArrayMap<>();
@@ -711,6 +716,28 @@ public class WifiBlocklistMonitor {
             bssidBlocklist = new ArrayList<String>(bssidBlocklist.subList(0,
                     fwMaxBlocklistSize));
         }
+
+        int maxAllowlistSize = mConnectivityHelper.getMaxNumAllowlistSsid();
+        if (maxAllowlistSize <= 0) {
+            Log.wtf(TAG, "Invalid max SSID allowlist size:  " + maxAllowlistSize);
+            return;
+        }
+
+        int allowlistSize;
+        ArrayList<String> ssidAllowlist = new ArrayList<String>();
+        for (String ssid : ssids) {
+            if (mSsidAllowlistMap.get(ssid) != null) {
+                ssidAllowlist.addAll(mSsidAllowlistMap.get(ssid));
+            }
+        }
+
+        allowlistSize = ssidAllowlist.size();
+        if (allowlistSize > maxAllowlistSize) {
+            ssidAllowlist = new ArrayList<>(ssidAllowlist.subList(0, maxAllowlistSize));
+            localLog("Trim down SSID allowlist size from " + allowlistSize + " to "
+                    + ssidAllowlist.size());
+        }
+
         // plumb down to HAL
         String message = "set firmware roaming configurations. "
                 + "bssidBlocklist=";
@@ -719,8 +746,7 @@ public class WifiBlocklistMonitor {
         } else {
             message += String.join(", ", bssidBlocklist);
         }
-        if (!mConnectivityHelper.setFirmwareRoamingConfiguration(bssidBlocklist,
-                new ArrayList<String>())) {  // TODO(b/36488259): SSID whitelist management.
+        if (!mConnectivityHelper.setFirmwareRoamingConfiguration(bssidBlocklist, ssidAllowlist)) {
             Log.e(TAG, "Failed to " + message);
             mBssidBlocklistMonitorLogger.log("Failed to " + message);
         } else {
@@ -1102,5 +1128,12 @@ public class WifiBlocklistMonitor {
         } else {
             return info.mDisableTimeoutMillis;
         }
+    }
+
+    /**
+     * Sets the allowlist ssids for the given ssid
+     */
+    public void setAllowlistSsids(@NonNull String ssid, @NonNull List<String> ssidAllowlist) {
+        mSsidAllowlistMap.put(ssid, ssidAllowlist);
     }
 }

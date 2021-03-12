@@ -50,6 +50,8 @@ import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_2.IWifiChipEventCallback.IfaceInfo;
 import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
+import android.hardware.wifi.V1_5.StaPeerInfo;
+import android.hardware.wifi.V1_5.StaRateStat;
 import android.hardware.wifi.V1_5.WifiBand;
 import android.net.MacAddress;
 import android.net.apf.ApfCapabilities;
@@ -70,11 +72,14 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
+import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
+import com.android.server.wifi.WifiLinkLayerStats.RateStat;
 import com.android.server.wifi.WifiNative.RxFateReport;
 import com.android.server.wifi.WifiNative.TxFateReport;
 import com.android.server.wifi.util.BitMask;
 import com.android.server.wifi.util.GeneralUtil.Mutable;
 import com.android.server.wifi.util.NativeUtil;
+import com.android.wifi.resources.R;
 
 import com.google.errorprone.annotations.CompileTimeConstant;
 
@@ -260,7 +265,7 @@ public class WifiVendorHal {
     private IWifiChip mIWifiChip;
     private HashMap<String, IWifiStaIface> mIWifiStaIfaces = new HashMap<>();
     private HashMap<String, IWifiApIface> mIWifiApIfaces = new HashMap<>();
-    private final Context mContext;
+    private static Context sContext;
     private final HalDeviceManager mHalDeviceManager;
     private final WifiGlobals mWifiGlobals;
     private final HalDeviceManagerStatusListener mHalDeviceManagerStatusCallbacks;
@@ -278,7 +283,7 @@ public class WifiVendorHal {
 
     public WifiVendorHal(Context context, HalDeviceManager halDeviceManager, Handler handler,
             WifiGlobals wifiGlobals) {
-        mContext = context;
+        sContext = context;
         mHalDeviceManager = halDeviceManager;
         mHalEventHandler = handler;
         mWifiGlobals = wifiGlobals;
@@ -1261,6 +1266,30 @@ public class WifiVendorHal {
         stats.contentionTimeMaxVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeMaxInUsec;
         stats.contentionTimeAvgVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeAvgInUsec;
         stats.contentionNumSamplesVo = iface.wmeVoContentionTimeStats.contentionNumSamples;
+        // Peer information statistics
+        stats.peerInfo = new PeerInfo[iface.peers.size()];
+        for (int i = 0; i < stats.peerInfo.length; i++) {
+            PeerInfo peer = new PeerInfo();
+            StaPeerInfo staPeerInfo = iface.peers.get(i);
+            peer.staCount = staPeerInfo.staCount;
+            peer.chanUtil = staPeerInfo.chanUtil;
+            RateStat[] rateStats = new RateStat[staPeerInfo.rateStats.size()];
+            for (int j = 0; j < staPeerInfo.rateStats.size(); j++) {
+                rateStats[j] = new RateStat();
+                StaRateStat staRateStat = staPeerInfo.rateStats.get(j);
+                rateStats[j].preamble = staRateStat.rateInfo.preamble;
+                rateStats[j].nss = staRateStat.rateInfo.nss;
+                rateStats[j].bw = staRateStat.rateInfo.bw;
+                rateStats[j].rateMcsIdx = staRateStat.rateInfo.rateMcsIdx;
+                rateStats[j].bitRateInKbps = staRateStat.rateInfo.bitRateInKbps;
+                rateStats[j].txMpdu = staRateStat.txMpdu;
+                rateStats[j].rxMpdu = staRateStat.rxMpdu;
+                rateStats[j].mpduLost = staRateStat.mpduLost;
+                rateStats[j].retries = staRateStat.retries;
+            }
+            peer.rateStats = rateStats;
+            stats.peerInfo[i] = peer;
+        }
     }
 
     private static void setRadioStats(WifiLinkLayerStats stats,
@@ -1318,8 +1347,13 @@ public class WifiVendorHal {
                 channelStatsEntry.radioOnTimeMs += channelStats.onTimeInMs;
                 channelStatsEntry.ccaBusyTimeMs += channelStats.ccaBusyTimeInMs;
             }
+            stats.numRadios++;
+            if (!sContext.getResources()
+                    .getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled)) {
+                // Return stats from radio 0 only.
+                break;
+            }
         }
-        stats.numRadios = radios.size();
     }
 
     private static void setTimeStamp(WifiLinkLayerStats stats, long timeStampInMs) {
@@ -1523,7 +1557,7 @@ public class WifiVendorHal {
      */
     private long getSupportedFeatureSetFromPackageManager() {
         long featureSet = 0;
-        final PackageManager pm = mContext.getPackageManager();
+        final PackageManager pm = sContext.getPackageManager();
         for (Pair pair: sSystemFeatureCapabilityTranslation) {
             if (pm.hasSystemFeature((String) pair.second)) {
                 featureSet |= (long) pair.first;

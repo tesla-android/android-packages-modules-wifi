@@ -69,6 +69,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -108,13 +109,15 @@ public class SupplicantStaIfaceHal {
     // Supplicant HAL interface objects
     private IServiceManager mIServiceManager = null;
     private ISupplicant mISupplicant;
-    private HashMap<String, ISupplicantStaIface> mISupplicantStaIfaces = new HashMap<>();
-    private HashMap<String, ISupplicantStaIfaceCallback> mISupplicantStaIfaceCallbacks =
+    private Map<String, ISupplicantStaIface> mISupplicantStaIfaces = new HashMap<>();
+    private Map<String, ISupplicantStaIfaceCallback> mISupplicantStaIfaceCallbacks =
             new HashMap<>();
-    private HashMap<String, SupplicantStaNetworkHal> mCurrentNetworkRemoteHandles = new HashMap<>();
-    private HashMap<String, WifiConfiguration> mCurrentNetworkLocalConfigs = new HashMap<>();
+    private Map<String, SupplicantStaNetworkHal> mCurrentNetworkRemoteHandles = new HashMap<>();
+    private Map<String, WifiConfiguration> mCurrentNetworkLocalConfigs = new HashMap<>();
+    private Map<String, List<Pair<SupplicantStaNetworkHal, WifiConfiguration>>>
+            mLinkedNetworkLocalAndRemoteConfigs = new HashMap<>();
     @VisibleForTesting
-    HashMap<Integer, PmkCacheStoreData> mPmkCacheEntries = new HashMap<>();
+    Map<Integer, PmkCacheStoreData> mPmkCacheEntries = new HashMap<>();
     private SupplicantDeathEventHandler mDeathEventHandler;
     private ServiceManagerDeathRecipient mServiceManagerDeathRecipient;
     private SupplicantDeathRecipient mSupplicantDeathRecipient;
@@ -646,6 +649,7 @@ public class SupplicantStaIfaceHal {
             mISupplicantStaIfaces.clear();
             mCurrentNetworkLocalConfigs.clear();
             mCurrentNetworkRemoteHandles.clear();
+            mLinkedNetworkLocalAndRemoteConfigs.clear();
         }
     }
 
@@ -932,7 +936,7 @@ public class SupplicantStaIfaceHal {
     }
 
     /**
-     * Helper method to look up the network config or the specified iface.
+     * Helper method to look up the network config for the specified iface.
      */
     protected WifiConfiguration getCurrentNetworkLocalConfig(@NonNull String ifaceName) {
         return mCurrentNetworkLocalConfigs.get(ifaceName);
@@ -1010,6 +1014,7 @@ public class SupplicantStaIfaceHal {
             } else {
                 mCurrentNetworkRemoteHandles.remove(ifaceName);
                 mCurrentNetworkLocalConfigs.remove(ifaceName);
+                mLinkedNetworkLocalAndRemoteConfigs.remove(ifaceName);
                 if (!removeAllNetworks(ifaceName)) {
                     loge("Failed to remove existing networks");
                     return false;
@@ -1054,10 +1059,11 @@ public class SupplicantStaIfaceHal {
      * Initiates roaming to the already configured network in wpa_supplicant. If the network
      * configuration provided does not match the already configured network, then this triggers
      * a new connection attempt (instead of roam).
-     * 1. First check if we're attempting to connect to the same network as we currently have
-     * configured.
-     * 2. Set the new bssid for the network in wpa_supplicant.
-     * 3. Trigger reassociate command to wpa_supplicant.
+     * 1. First check if we're attempting to connect to a linked network, and select the existing
+     *    supplicant network if there is one.
+     * 2.
+     * 3. Set the new bssid for the network in wpa_supplicant.
+     * 4. Trigger reassociate command to wpa_supplicant.
      *
      * @param ifaceName Name of the interface.
      * @param config WifiConfiguration parameters for the provided network.
@@ -1065,6 +1071,15 @@ public class SupplicantStaIfaceHal {
      */
     public boolean roamToNetwork(@NonNull String ifaceName, WifiConfiguration config) {
         synchronized (mLock) {
+            if (updateOnLinkedNetworkRoaming(ifaceName, config.networkId)) {
+                SupplicantStaNetworkHal networkHandle = getCurrentNetworkRemoteHandle(ifaceName);
+                if (networkHandle == null) {
+                    loge("Roaming config matches a linked config, but a linked network handle was"
+                            + " not found.");
+                    return false;
+                }
+                return networkHandle.select();
+            }
             if (getCurrentNetworkId(ifaceName) != config.networkId) {
                 Log.w(TAG, "Cannot roam to a different network, initiate new connection. "
                         + "Current network ID: " + getCurrentNetworkId(ifaceName));
@@ -1139,6 +1154,7 @@ public class SupplicantStaIfaceHal {
             // current network on receiving disconnection event from supplicant (b/32898136).
             mCurrentNetworkRemoteHandles.remove(ifaceName);
             mCurrentNetworkLocalConfigs.remove(ifaceName);
+            mLinkedNetworkLocalAndRemoteConfigs.remove(ifaceName);
             return true;
         }
     }
@@ -3654,7 +3670,7 @@ public class SupplicantStaIfaceHal {
         return mDppCallback;
     }
 
-   /**
+    /**
      * Set MBO cellular data availability.
      *
      * @param ifaceName Name of the interface.
@@ -3693,4 +3709,116 @@ public class SupplicantStaIfaceHal {
         return false;
     }
 
+    /**
+     * Check if we've roamed to a linked network and make the linked network the current network
+     * if we have.
+     *
+     * @param ifaceName Name of the interface.
+     * @param newNetworkId network id of the network we've roamed to.
+     * @return true if we've roamed to a linked network, false if not.
+     */
+    public boolean updateOnLinkedNetworkRoaming(@NonNull String ifaceName, int newNetworkId) {
+        synchronized (mLock) {
+            SupplicantStaNetworkHal networkHal = getCurrentNetworkRemoteHandle(ifaceName);
+            List<Pair<SupplicantStaNetworkHal, WifiConfiguration>> linkedNetworkHandles =
+                    mLinkedNetworkLocalAndRemoteConfigs.get(ifaceName);
+            if (linkedNetworkHandles == null || networkHal == null
+                    || networkHal.getNetworkId() == newNetworkId) {
+                return false;
+            }
+            for (Pair<SupplicantStaNetworkHal, WifiConfiguration> pair : linkedNetworkHandles) {
+                if (pair.first.getNetworkId() != newNetworkId) {
+                    continue;
+                }
+                Log.i(TAG, "Roamed to linked network, make linked network as current network");
+                mCurrentNetworkRemoteHandles.put(ifaceName, pair.first);
+                mCurrentNetworkLocalConfigs.put(ifaceName, pair.second);
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Updates the linked networks for the current network and sends them to the supplicant.
+     *
+     * @param ifaceName Name of the interface.
+     * @param networkId network id of the network to link the configurations to.
+     * @param linkedConfigurations Map of config profile key to config for linking.
+     * @return true if networks were successfully linked, false otherwise.
+     */
+    public boolean updateLinkedNetworks(@NonNull String ifaceName, int networkId,
+                           Map<String, WifiConfiguration> linkedConfigurations) {
+        synchronized (mLock) {
+            WifiConfiguration currentConfig = getCurrentNetworkLocalConfig(ifaceName);
+            SupplicantStaNetworkHal currentHandle = getCurrentNetworkRemoteHandle(ifaceName);
+
+            if (currentConfig == null || currentHandle == null) {
+                Log.e(TAG, "current network not configured yet.");
+                return false;
+            }
+
+            if (networkId != currentConfig.networkId) {
+                Log.e(TAG, "current network id is not matching");
+                return false;
+            }
+
+            if (!removeAllNetworksExcept(ifaceName, networkId)) {
+                Log.e(TAG, "couldn't remove non-current supplicant networks");
+                return false;
+            }
+
+            mLinkedNetworkLocalAndRemoteConfigs.remove(ifaceName);
+
+            if (linkedConfigurations == null || linkedConfigurations.size() == 0) {
+                Log.i(TAG, "cleared linked networks");
+                return true;
+            }
+
+            List<Pair<SupplicantStaNetworkHal, WifiConfiguration>> linkedNetworkHandles =
+                    new ArrayList<>();
+            linkedNetworkHandles.add(new Pair(currentHandle, currentConfig));
+            for (String linkedNetwork : linkedConfigurations.keySet()) {
+                Log.i(TAG, "add linked network: " + linkedNetwork);
+                Pair<SupplicantStaNetworkHal, WifiConfiguration> pair =
+                        addNetworkAndSaveConfig(ifaceName, linkedConfigurations.get(linkedNetwork));
+                if (pair == null) {
+                    Log.e(TAG, "failed to add/save linked network: " + linkedNetwork);
+                    return false;
+                }
+                pair.first.enable(true);
+                linkedNetworkHandles.add(pair);
+            }
+
+            mLinkedNetworkLocalAndRemoteConfigs.put(ifaceName, linkedNetworkHandles);
+
+            return true;
+        }
+    }
+
+    /**
+     * Remove all networks except the supplied network ID from supplicant
+     *
+     * @param ifaceName Name of the interface
+     * @param networkId network id to keep
+     */
+    private boolean removeAllNetworksExcept(@NonNull String ifaceName, int networkId) {
+        synchronized (mLock) {
+            List<Integer> networks = listNetworks(ifaceName);
+            if (networks == null) {
+                Log.e(TAG, "removeAllNetworksExcept failed, got null networks");
+                return false;
+            }
+            for (int id : networks) {
+                if (networkId == id) {
+                    continue;
+                }
+                if (!removeNetwork(ifaceName, id)) {
+                    Log.e(TAG, "removeAllNetworksExcept failed to remove network: " + id);
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
 }
