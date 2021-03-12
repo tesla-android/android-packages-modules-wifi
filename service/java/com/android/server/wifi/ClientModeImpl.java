@@ -5954,8 +5954,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // Blocklist the current BSS
             mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, ssid, duration,
                     WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_MBO_OCE, 0);
-            mWifiConfigManager.setRecentFailureAssociationStatus(mWifiInfo.getNetworkId(),
-                    WifiConfiguration.RECENT_FAILURE_MBO_OCE_DISCONNECT);
         }
 
         if (frameData.mStatus != MboOceConstants.BTM_RESPONSE_STATUS_ACCEPT) {
