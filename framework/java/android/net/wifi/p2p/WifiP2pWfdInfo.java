@@ -24,6 +24,8 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Locale;
@@ -32,6 +34,7 @@ import java.util.Locale;
  * A class representing Wifi Display information for a device.
  *
  * See Wifi Display technical specification v1.0.0, section 5.1.2.
+ * See Wifi Display technical specification v2.0.0, section 5.1.12 for Wi-Fi Display R2.
  */
 public final class WifiP2pWfdInfo implements Parcelable {
 
@@ -39,6 +42,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
 
     /** Device information bitmap */
     private int mDeviceInfo;
+
+    /** R2 Device information bitmap */
+    private int mR2DeviceInfo = -1;
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
@@ -90,11 +96,17 @@ public final class WifiP2pWfdInfo implements Parcelable {
         mDeviceInfo = devInfo;
         mCtrlPort = ctrlPort;
         mMaxThroughput = maxTput;
+        mR2DeviceInfo = -1;
     }
 
     /** Returns true is Wifi Display is enabled, false otherwise. */
     public boolean isEnabled() {
         return mEnabled;
+    }
+
+    /** Returns true is Wifi Display R2 is enabled, false otherwise. */
+    public boolean isR2Enabled() {
+        return mR2DeviceInfo >= 0;
     }
 
     /**
@@ -104,6 +116,23 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     public void setEnabled(boolean enabled) {
         mEnabled = enabled;
+    }
+
+    /**
+     * Sets Wi-Fi Display R2 device info.
+     * Before calling this API, call {@link WifiManager#isWifiDisplayR2Supported()
+     * to know whether Wi-Fi Display R2 is supported or not.
+     * If R2 info was filled without Wi-Fi Display R2 support,
+     * {@link WifiP2pManager#setWfdInfo(Channel, WifiP2pWfdInfo, ActionListener)
+     * would fail.
+     *
+     * @param r2DeviceInfo WFD R2 device info
+     */
+    public void setWfdR2Device(int r2DeviceInfo) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mR2DeviceInfo = r2DeviceInfo;
     }
 
     /**
@@ -242,6 +271,11 @@ public final class WifiP2pWfdInfo implements Parcelable {
                 Locale.US, "%04x%04x%04x", mDeviceInfo, mCtrlPort, mMaxThroughput);
     }
 
+    /** @hide */
+    public String getR2DeviceInfoHex() {
+        return String.format(Locale.US, "%04x%04x", 2, mR2DeviceInfo);
+    }
+
     @Override
     public String toString() {
         StringBuffer sbuf = new StringBuffer();
@@ -249,6 +283,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
         sbuf.append("WFD DeviceInfo: ").append(mDeviceInfo);
         sbuf.append("\n WFD CtrlPort: ").append(mCtrlPort);
         sbuf.append("\n WFD MaxThroughput: ").append(mMaxThroughput);
+        sbuf.append("\n WFD R2 DeviceInfo: ").append(mR2DeviceInfo);
         return sbuf.toString();
     }
 
@@ -264,6 +299,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
             mDeviceInfo = source.mDeviceInfo;
             mCtrlPort = source.mCtrlPort;
             mMaxThroughput = source.mMaxThroughput;
+            mR2DeviceInfo = source.mR2DeviceInfo;
         }
     }
 
@@ -274,6 +310,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
         dest.writeInt(mDeviceInfo);
         dest.writeInt(mCtrlPort);
         dest.writeInt(mMaxThroughput);
+        dest.writeInt(mR2DeviceInfo);
     }
 
     private void readFromParcel(Parcel in) {
@@ -281,6 +318,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
         mDeviceInfo = in.readInt();
         mCtrlPort = in.readInt();
         mMaxThroughput = in.readInt();
+        mR2DeviceInfo = in.readInt();
     }
 
     /** Implement the Parcelable interface */

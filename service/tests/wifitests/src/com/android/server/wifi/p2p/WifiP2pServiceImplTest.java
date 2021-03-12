@@ -4216,4 +4216,72 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // The second one is what we sent.
         assertEquals(0, capturedUnsafeChannelsList.get(1).size());
     }
+
+    /**
+     * Verify the caller sends WifiP2pManager.SET_WFD_INFO with wfd enabled
+     * and WFD R2 device info.
+     */
+    @Test
+    public void testSetWfdR2InfoSuccessWithWfdEnabled() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        // Move to enabled state
+        forceP2pEnabled(mClient1);
+        mTestThisDevice.status = mTestThisDevice.AVAILABLE;
+
+        mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
+        mTestThisDevice.wfdInfo.setEnabled(true);
+        mTestThisDevice.wfdInfo.setWfdR2Device(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
+        when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
+        when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
+                .thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiNative.setWfdEnable(anyBoolean())).thenReturn(true);
+        when(mWifiNative.setWfdDeviceInfo(anyString())).thenReturn(true);
+        when(mWifiNative.setWfdR2DeviceInfo(anyString())).thenReturn(true);
+        sendSetWfdInfoMsg(mClientMessenger, mTestThisDevice.wfdInfo);
+
+        verify(mWifiInjector).getWifiPermissionsWrapper();
+        verify(mWifiPermissionsWrapper).getUidPermission(
+                eq(android.Manifest.permission.CONFIGURE_WIFI_DISPLAY), anyInt());
+        verify(mWifiNative).setWfdEnable(eq(true));
+        verify(mWifiNative).setWfdDeviceInfo(eq(mTestThisDevice.wfdInfo.getDeviceInfoHex()));
+        verify(mWifiNative).setWfdR2DeviceInfo(eq(mTestThisDevice.wfdInfo.getR2DeviceInfoHex()));
+        checkSendThisDeviceChangedBroadcast();
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        assertEquals(WifiP2pManager.SET_WFD_INFO_SUCCEEDED, message.what);
+    }
+
+    /**
+     * Verify WifiP2pManager.SET_WFD_INFO_FAILED is returned when wfd is enabled,
+     * WFD R2 device, and native call "setWfdR2DeviceInfo" failure.
+     */
+    @Test
+    public void testSetWfdR2InfoFailureWithWfdEnabledWhenNativeCallFailure2() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        // Move to enabled state
+        forceP2pEnabled(mClient1);
+        mTestThisDevice.status = mTestThisDevice.AVAILABLE;
+
+        mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
+        mTestThisDevice.wfdInfo.setEnabled(true);
+        mTestThisDevice.wfdInfo.setWfdR2Device(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
+        when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
+        when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
+                .thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiNative.setWfdEnable(anyBoolean())).thenReturn(true);
+        when(mWifiNative.setWfdDeviceInfo(anyString())).thenReturn(true);
+        when(mWifiNative.setWfdR2DeviceInfo(anyString())).thenReturn(false);
+        sendSetWfdInfoMsg(mClientMessenger, mTestThisDevice.wfdInfo);
+
+        verify(mWifiInjector).getWifiPermissionsWrapper();
+        verify(mWifiPermissionsWrapper).getUidPermission(
+                eq(android.Manifest.permission.CONFIGURE_WIFI_DISPLAY), anyInt());
+        verify(mWifiNative).setWfdEnable(eq(true));
+        verify(mWifiNative).setWfdDeviceInfo(eq(mTestThisDevice.wfdInfo.getDeviceInfoHex()));
+        verify(mWifiNative).setWfdR2DeviceInfo(eq(mTestThisDevice.wfdInfo.getR2DeviceInfoHex()));
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        assertEquals(WifiP2pManager.SET_WFD_INFO_FAILED, message.what);
+        assertEquals(WifiP2pManager.ERROR, message.arg1);
+    }
 }
