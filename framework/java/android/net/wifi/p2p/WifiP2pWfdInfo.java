@@ -172,6 +172,50 @@ public final class WifiP2pWfdInfo implements Parcelable {
         }
     }
 
+    /**
+     * Returns true if Coupled Sink is supported by WFD Source.
+     * See Wifi Display technical specification v1.0.0, section 4.9.
+     */
+    public boolean isCoupledSinkSupportedAtSource() {
+        return (mDeviceInfo & COUPLED_SINK_SUPPORT_AT_SOURCE) != 0;
+    }
+
+    /**
+     * Sets whether Coupled Sink feature is supported by WFD Source.
+     * See Wifi Display technical specification v1.0.0, section 4.9.
+     *
+     * @param enabled true to indicate support for coupled sink, false otherwise.
+     */
+    public void setCoupledSinkSupportAtSource(boolean enabled) {
+        if (enabled) {
+            mDeviceInfo |= COUPLED_SINK_SUPPORT_AT_SOURCE;
+        } else {
+            mDeviceInfo &= ~COUPLED_SINK_SUPPORT_AT_SOURCE;
+        }
+    }
+
+    /**
+     * Returns true if Coupled Sink is supported by WFD Sink.
+     * See Wifi Display technical specification v1.0.0, section 4.9.
+     */
+    public boolean isCoupledSinkSupportedAtSink() {
+        return (mDeviceInfo & COUPLED_SINK_SUPPORT_AT_SINK) != 0;
+    }
+
+    /**
+     * Sets whether Coupled Sink feature is supported by WFD Sink.
+     * See Wifi Display technical specification v1.0.0, section 4.9.
+     *
+     * @param enabled true to indicate support for coupled sink, false otherwise.
+     */
+    public void setCoupledSinkSupportAtSink(boolean enabled) {
+        if (enabled) {
+            mDeviceInfo |= COUPLED_SINK_SUPPORT_AT_SINK;
+        } else {
+            mDeviceInfo &= ~COUPLED_SINK_SUPPORT_AT_SINK;
+        }
+    }
+
     /** Returns the TCP port at which the WFD Device listens for RTSP messages. */
     public int getControlPort() {
         return mCtrlPort;
