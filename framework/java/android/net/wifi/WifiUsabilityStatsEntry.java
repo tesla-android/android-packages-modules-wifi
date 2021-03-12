@@ -205,7 +205,10 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
     }
     private final ContentionTimeStats[] mContentionTimeStats;
-
+    private final int mChannelUtilizationRatio;
+    private final boolean mIsThroughputSufficient;
+    private final boolean mIsWifiScoringEnabled;
+    private final boolean mIsCellularDataAvailable;
     private final @NetworkType int mCellularDataNetworkType;
     private final int mCellularSignalStrengthDbm;
     private final int mCellularSignalStrengthDb;
@@ -223,9 +226,10 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             @ProbeStatus int probeStatusSinceLastUpdate, int probeElapsedTimeSinceLastUpdateMillis,
             int probeMcsRateSinceLastUpdate, int rxLinkSpeedMbps,
             int timeSliceDutyCycleInPercent, ContentionTimeStats[] contentionTimeStats,
-            @NetworkType int cellularDataNetworkType,
-            int cellularSignalStrengthDbm, int cellularSignalStrengthDb,
-            boolean isSameRegisteredCell) {
+            int channelUtilizationRatio, boolean isThroughputSufficient,
+            boolean isWifiScoringEnabled, boolean isCellularDataAvailable,
+            @NetworkType int cellularDataNetworkType, int cellularSignalStrengthDbm,
+            int cellularSignalStrengthDb, boolean isSameRegisteredCell) {
         mTimeStampMillis = timeStampMillis;
         mRssi = rssi;
         mLinkSpeedMbps = linkSpeedMbps;
@@ -251,6 +255,10 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         mRxLinkSpeedMbps = rxLinkSpeedMbps;
         mTimeSliceDutyCycleInPercent = timeSliceDutyCycleInPercent;
         mContentionTimeStats = contentionTimeStats;
+        mChannelUtilizationRatio = channelUtilizationRatio;
+        mIsThroughputSufficient = isThroughputSufficient;
+        mIsWifiScoringEnabled = isWifiScoringEnabled;
+        mIsCellularDataAvailable = isCellularDataAvailable;
         mCellularDataNetworkType = cellularDataNetworkType;
         mCellularSignalStrengthDbm = cellularSignalStrengthDbm;
         mCellularSignalStrengthDb = cellularSignalStrengthDb;
@@ -289,6 +297,10 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         dest.writeInt(mRxLinkSpeedMbps);
         dest.writeInt(mTimeSliceDutyCycleInPercent);
         dest.writeTypedArray(mContentionTimeStats, flags);
+        dest.writeInt(mChannelUtilizationRatio);
+        dest.writeBoolean(mIsThroughputSufficient);
+        dest.writeBoolean(mIsWifiScoringEnabled);
+        dest.writeBoolean(mIsCellularDataAvailable);
         dest.writeInt(mCellularDataNetworkType);
         dest.writeInt(mCellularSignalStrengthDbm);
         dest.writeInt(mCellularSignalStrengthDb);
@@ -309,8 +321,9 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
                     in.readLong(), in.readLong(), in.readInt(),
                     in.readInt(), in.readInt(), in.readInt(),
                     in.readInt(), in.createTypedArray(ContentionTimeStats.CREATOR),
-                    in.readInt(), in.readInt(), in.readInt(),
-                    in.readBoolean()
+                    in.readInt(), in.readBoolean(), in.readBoolean(),
+                    in.readBoolean(), in.readInt(), in.readInt(),
+                    in.readInt(), in.readBoolean()
             );
         }
 
@@ -465,6 +478,48 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
         Log.e(TAG, "The ContentionTimeStats is not filled out correctly: " + mContentionTimeStats);
         return new ContentionTimeStats();
+    }
+
+    /**
+     * Channel utilization ratio on the current channel.
+     *
+     * @return The channel utilization ratio (value) in the range of [0, 255], where
+     *         x corresponds to (x * 100 / 255)%.
+     */
+    public @IntRange(from = 0, to = 255) int getChannelUtilizationRatio() {
+        return mChannelUtilizationRatio;
+    }
+
+    /**
+     * Indicate whether current link layer (L2) throughput is sufficient.  L2 throughput is
+     * sufficient when one of the following conditions is met: 1) L3 throughput is low and L2
+     * throughput is above its low threshold; 2) L3 throughput is not low and L2 throughput over L3
+     * throughput ratio is above a threshold; 3) L3 throughput is not low and L2 throughput is
+     * above its high threshold.
+     *
+     * @return true if it is sufficient or false if it is insufficient.
+     */
+    public boolean isThroughputSufficient() {
+        return mIsThroughputSufficient;
+    }
+
+    /**
+     * Indicate whether Wi-Fi scoring is enabled by the user,
+     * see {@link WifiManager#setWifiScoringEnabled(boolean)}.
+     *
+     * @return true if it is enabled.
+     */
+    public boolean isWifiScoringEnabled() {
+        return mIsWifiScoringEnabled;
+    }
+
+    /**
+     * Indicate whether Cellular data is available.
+     *
+     * @return true if it is available and false otherwise.
+     */
+    public boolean isCellularDataAvailable() {
+        return mIsCellularDataAvailable;
     }
 
     /** Cellular data network type currently in use on the device for data transmission */
