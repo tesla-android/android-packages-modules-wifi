@@ -349,7 +349,7 @@ public final class ScanResult implements Parcelable {
     public static final int WIFI_STANDARD_11AX = 6;
 
     /**
-     * Wi-Fi 802.11ad/ay
+     * Wi-Fi 802.11ad
      */
     public static final int WIFI_STANDARD_11AD = 7;
 
