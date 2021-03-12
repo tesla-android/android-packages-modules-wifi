@@ -178,6 +178,8 @@ public class WifiMetricsTest extends WifiBaseTest {
     @Mock WifiNetworkSelector mWns;
     @Mock WifiPowerMetrics mWifiPowerMetrics;
     @Mock WifiDataStall mWifiDataStall;
+    @Mock WifiChannelUtilization mWifiChannelUtilization;
+    @Mock WifiSettingsStore mWifiSettingsStore;
     @Mock WifiHealthMonitor mWifiHealthMonitor;
     @Mock IBinder mAppBinder;
     @Mock IOnWifiUsabilityStatsListener mOnWifiUsabilityStatsListener;
@@ -211,6 +213,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.setScoringParams(mScoringParams);
         mWifiMetrics.setWifiNetworkSelector(mWns);
         mWifiMetrics.setWifiDataStall(mWifiDataStall);
+        mWifiMetrics.setWifiChannelUtilization(mWifiChannelUtilization);
+        mWifiMetrics.setWifiSettingsStore(mWifiSettingsStore);
         mWifiMetrics.setWifiHealthMonitor(mWifiHealthMonitor);
         mWifiMetrics.setWifiScoreCard(mWifiScoreCard);
         when(mOnWifiUsabilityStatsListener.asBinder()).thenReturn(mAppBinder);
@@ -3798,6 +3802,10 @@ public class WifiMetricsTest extends WifiBaseTest {
         when(info.getRxLinkSpeedMbps()).thenReturn(nextRandInt());
         when(info.getBSSID()).thenReturn("Wifi");
         when(info.getFrequency()).thenReturn(5745);
+        when(mWifiDataStall.isCellularDataAvailable()).thenReturn(true);
+        when(mWifiDataStall.isThroughputSufficient()).thenReturn(false);
+        when(mWifiChannelUtilization.getUtilizationRatio(anyInt())).thenReturn(150);
+        when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(true);
 
         WifiLinkLayerStats stats1 = nextRandomStats(new WifiLinkLayerStats());
         WifiLinkLayerStats stats2 = nextRandomStats(stats1);
@@ -3855,6 +3863,13 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(DEVICE_MOBILITY_STATE_HIGH_MVMT, mDecodedProto.wifiUsabilityStatsList[1]
                 .stats[mDecodedProto.wifiUsabilityStatsList[1].stats.length - 1]
                 .deviceMobilityState);
+        assertEquals(true, mDecodedProto.wifiUsabilityStatsList[0].stats[0].isWifiScoringEnabled);
+        assertEquals(true,
+                mDecodedProto.wifiUsabilityStatsList[1].stats[0].isCellularDataAvailable);
+        assertEquals(false,
+                mDecodedProto.wifiUsabilityStatsList[1].stats[1].isThroughputSufficient);
+        assertEquals(150,
+                mDecodedProto.wifiUsabilityStatsList[0].stats[0].channelUtilizationRatio);
     }
 
     /**
