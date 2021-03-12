@@ -136,15 +136,16 @@ public class WifiP2pDevice implements Parcelable {
      *  dev_capab=0x21 group_capab=0x9
      */
     private static final Pattern detailedDevicePattern = Pattern.compile(
-        "((?:[0-9a-f]{2}:){5}[0-9a-f]{2}) " +
-        "(\\d+ )?" +
-        "p2p_dev_addr=((?:[0-9a-f]{2}:){5}[0-9a-f]{2}) " +
-        "pri_dev_type=(\\d+-[0-9a-fA-F]+-\\d+) " +
-        "name='(.*)' " +
-        "config_methods=(0x[0-9a-fA-F]+) " +
-        "dev_capab=(0x[0-9a-fA-F]+) " +
-        "group_capab=(0x[0-9a-fA-F]+)" +
-        "( wfd_dev_info=0x([0-9a-fA-F]{12}))?"
+            "((?:[0-9a-f]{2}:){5}[0-9a-f]{2}) "
+            + "(\\d+ )?"
+            + "p2p_dev_addr=((?:[0-9a-f]{2}:){5}[0-9a-f]{2}) "
+            + "pri_dev_type=(\\d+-[0-9a-fA-F]+-\\d+) "
+            + "name='(.*)' "
+            + "config_methods=(0x[0-9a-fA-F]+) "
+            + "dev_capab=(0x[0-9a-fA-F]+) "
+            + "group_capab=(0x[0-9a-fA-F]+)"
+            + "( wfd_dev_info=0x([0-9a-fA-F]{12}))?"
+            + "( wfd_r2_dev_info=0x([0-9a-fA-F]{4}))?"
     );
 
     /** 2 token device address pattern
@@ -228,9 +229,15 @@ public class WifiP2pDevice implements Parcelable {
                 groupCapability = parseHex(match.group(8));
                 if (match.group(9) != null) {
                     String str = match.group(10);
+                    if (null == str) break;
                     wfdInfo = new WifiP2pWfdInfo(parseHex(str.substring(0,4)),
                             parseHex(str.substring(4,8)),
                             parseHex(str.substring(8,12)));
+                    if (match.group(11) != null) {
+                        String r2str = match.group(12);
+                        if (null == r2str) break;
+                        wfdInfo.setWfdR2Device(parseHex(r2str.substring(0, 4)));
+                    }
                 }
                 break;
         }

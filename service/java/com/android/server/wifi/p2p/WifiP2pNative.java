@@ -842,4 +842,15 @@ public class WifiP2pNative {
     public long getSupportedFeatureSet(@NonNull String ifaceName) {
         return mWifiVendorHal.getSupportedFeatureSet(ifaceName);
     }
+
+    /**
+     * Set Wifi Display R2 device info.
+     *
+     * @param hex WFD device info as described in section 5.1.12 of WFD technical
+     *        specification v2.1.0.
+     * @return true, if operation was successful.
+     */
+    public boolean setWfdR2DeviceInfo(String hex) {
+        return mSupplicantP2pIfaceHal.setWfdR2DeviceInfo(hex);
+    }
 }

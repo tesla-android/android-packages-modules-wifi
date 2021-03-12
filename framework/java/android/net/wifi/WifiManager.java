@@ -2622,6 +2622,9 @@ public class WifiManager {
      /** @hide */
     public static final long WIFI_FEATURE_SAE_H2E          = 0x2000000000000L; // Hash-to-Element
 
+     /** @hide */
+    public static final long WIFI_FEATURE_WFD_R2           = 0x4000000000000L; // Wi-Fi Display R2
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6359,6 +6362,13 @@ public class WifiManager {
      */
     public boolean isWpa3SaeH2eSupported() {
         return isFeatureSupported(WIFI_FEATURE_SAE_H2E);
+    }
+
+    /**
+     * @return true if this device supports Wi-Fi Display R2.
+     */
+    public boolean isWifiDisplayR2Supported() {
+        return isFeatureSupported(WIFI_FEATURE_WFD_R2);
     }
 
     /**
