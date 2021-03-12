@@ -996,7 +996,6 @@ public class WifiServiceImpl extends BaseWifiService {
         // NETWORK_STACK is a signature only permission.
         enforceNetworkStackPermission();
         mLog.info("updateInterfaceIpState uid=%").c(Binder.getCallingUid()).flush();
-
         // hand off the work to our handler thread
         mWifiThreadRunner.post(() -> mLohsSoftApTracker.updateInterfaceIpState(ifaceName, mode));
     }
@@ -1701,7 +1700,10 @@ public class WifiServiceImpl extends BaseWifiService {
 
                 // At this point, the request is accepted.
                 if (mLocalOnlyHotspotRequests.isEmpty()) {
-                    startForFirstRequestLocked(request);
+                    mWifiThreadRunner.post(() -> {
+                        startForFirstRequestLocked(request);
+                    });
+
                 } else if (mLohsInterfaceMode == WifiManager.IFACE_IP_MODE_LOCAL_ONLY) {
                     // LOHS has already started up for an earlier request, so we can send the
                     // current config to the incoming request right away.
@@ -1733,8 +1735,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     band = SoftApConfiguration.BAND_5GHZ;
                 }
             }
-
-            SoftApConfiguration softApConfig = WifiApConfigStore.generateLocalOnlyHotspotConfig(
+            SoftApConfiguration softApConfig = mWifiApConfigStore.generateLocalOnlyHotspotConfig(
                     mContext, band, request.getCustomConfig());
 
             mActiveConfig = new SoftApModeConfiguration(
