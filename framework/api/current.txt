@@ -1106,10 +1106,14 @@ package android.net.wifi.p2p {
     method public int getDeviceType();
     method public int getMaxThroughput();
     method public boolean isContentProtectionSupported();
+    method public boolean isCoupledSinkSupportedAtSink();
+    method public boolean isCoupledSinkSupportedAtSource();
     method public boolean isEnabled();
     method public boolean isSessionAvailable();
     method public void setContentProtectionSupported(boolean);
     method public void setControlPort(@IntRange(from=0) int);
+    method public void setCoupledSinkSupportAtSink(boolean);
+    method public void setCoupledSinkSupportAtSource(boolean);
     method public boolean setDeviceType(int);
     method public void setEnabled(boolean);
     method public void setMaxThroughput(@IntRange(from=0) int);
