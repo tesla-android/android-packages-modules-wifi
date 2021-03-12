@@ -509,8 +509,9 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
      * context.
      */
     @Test
-    public void generateLocalOnlyHotspotConfigIsValid() {
-        SoftApConfiguration config = WifiApConfigStore
+    public void generateLocalOnlyHotspotConfigIsValid() throws Exception {
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = store
                 .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_2GHZ, null);
         verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
                 SoftApConfiguration.BAND_2GHZ);
@@ -523,8 +524,9 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
      * Verify a proper local only hotspot config is generated for 5Ghz band.
      */
     @Test
-    public void generateLocalOnlyHotspotConfigIsValid5G() {
-        SoftApConfiguration config = WifiApConfigStore
+    public void generateLocalOnlyHotspotConfigIsValid5G() throws Exception {
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = store
                 .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_5GHZ, null);
         verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
                 SoftApConfiguration.BAND_5GHZ);
@@ -534,11 +536,12 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     }
 
     @Test
-    public void generateLohsConfig_forwardsCustomMac() {
+    public void generateLohsConfig_forwardsCustomMac() throws Exception {
+        WifiApConfigStore store = createWifiApConfigStore();
         SoftApConfiguration customConfig = new SoftApConfiguration.Builder()
                 .setBssid(TEST_SAP_BSSID_MAC)
                 .build();
-        SoftApConfiguration softApConfig = WifiApConfigStore.generateLocalOnlyHotspotConfig(
+        SoftApConfiguration softApConfig = store.generateLocalOnlyHotspotConfig(
                 mContext, SoftApConfiguration.BAND_2GHZ, customConfig);
         assertThat(softApConfig.getBssid().toString()).isNotEmpty();
         assertThat(softApConfig.getBssid()).isEqualTo(TEST_SAP_BSSID_MAC);
@@ -751,9 +754,11 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
      * Verify the LOHS default configuration security when SAE support.
      */
     @Test
-    public void testLohsDefaultConfigurationSecurityTypeIsWpa3SaeTransitionWhenSupport() {
+    public void testLohsDefaultConfigurationSecurityTypeIsWpa3SaeTransitionWhenSupport()
+            throws Exception {
         mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
-        SoftApConfiguration config = WifiApConfigStore
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = store
                 .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_5GHZ, null);
         verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
                 SoftApConfiguration.BAND_5GHZ, true);
@@ -767,10 +772,11 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
      * Verify the LOHS default configuration when MAC randomization support.
      */
     @Test
-    public void testLohsDefaultConfigurationWhenMacRandomizationSupport() {
+    public void testLohsDefaultConfigurationWhenMacRandomizationSupport() throws Exception {
         mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
-        SoftApConfiguration config = WifiApConfigStore
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = store
                 .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_5GHZ, null);
         verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
                 SoftApConfiguration.BAND_5GHZ, true, true);
@@ -778,6 +784,48 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         // verify that the config passes the validateApWifiConfiguration check
         assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
     }
+
+    /**
+     * Verify the LOHS default configuration when MAC randomization doesn't support.
+     */
+    @Test
+    public void testLohsDefaultConfigurationWhenMacRandomizationDoesntSupport()
+            throws Exception {
+        mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
+        mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, false);
+        WifiApConfigStore store = createWifiApConfigStore();
+        SoftApConfiguration config = store
+                .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_5GHZ, null);
+        verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
+                SoftApConfiguration.BAND_5GHZ, true, false);
+
+        // verify that the config passes the validateApWifiConfiguration check
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+    }
+
+    /**
+     * Verify the LOHS default configuration when MAC randomization support but it was disabled in
+     * tethered configuration.
+     */
+    @Test
+    public void testLohsDefaultConfigurationWhenMacRandomizationDisabledInTetheredCongig()
+            throws Exception {
+        mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
+        mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
+        WifiApConfigStore storeMacRandomizationSupported = createWifiApConfigStore();
+        SoftApConfiguration disableMacRandomizationConfig = new SoftApConfiguration
+                .Builder(storeMacRandomizationSupported.getApConfiguration())
+                .setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE).build();
+        storeMacRandomizationSupported.setApConfiguration(disableMacRandomizationConfig);
+        SoftApConfiguration config = storeMacRandomizationSupported
+                .generateLocalOnlyHotspotConfig(mContext, SoftApConfiguration.BAND_5GHZ, null);
+        verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
+                SoftApConfiguration.BAND_5GHZ, true, false);
+
+        // verify that the config passes the validateApWifiConfiguration check
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+    }
+
 
     /**
      * Verify the default configuration when MAC randomization support.

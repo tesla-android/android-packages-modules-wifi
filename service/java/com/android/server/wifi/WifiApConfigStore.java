@@ -364,7 +364,7 @@ public class WifiApConfigStore {
      * Generate a temporary WPA2 based configuration for use by the local only hotspot.
      * This config is not persisted and will not be stored by the WifiApConfigStore.
      */
-    public static SoftApConfiguration generateLocalOnlyHotspotConfig(Context context, int apBand,
+    public SoftApConfiguration generateLocalOnlyHotspotConfig(Context context, int apBand,
             @Nullable SoftApConfiguration customConfig) {
         SoftApConfiguration.Builder configBuilder;
         if (customConfig != null) {
@@ -390,8 +390,11 @@ public class WifiApConfigStore {
             }
         }
 
-        // Update default MAC randomization setting to NONE when feature doesn't support it.
-        if (!ApConfigUtil.isApMacRandomizationSupported(context)) {
+        // Update default MAC randomization setting to NONE when feature doesn't support it or
+        // It was disabled in tethered mode.
+        if (!ApConfigUtil.isApMacRandomizationSupported(context) || (mPersistentWifiApConfig != null
+                && mPersistentWifiApConfig.getMacRandomizationSettingInternal()
+                == SoftApConfiguration.RANDOMIZATION_NONE)) {
             if (SdkLevel.isAtLeastS()) {
                 configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
             }
