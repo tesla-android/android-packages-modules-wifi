@@ -393,8 +393,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private final WifiNetworkFactory mNetworkFactory;
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
-    private final OemPaidWifiNetworkFactory mOemPaidWifiNetworkFactory;
-    @Nullable private final OemPrivateWifiNetworkFactory mOemPrivateWifiNetworkFactory;
+    private final OemWifiNetworkFactory mOemWifiNetworkFactory;
 
     @VisibleForTesting
     @Nullable
@@ -649,8 +648,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull NetworkCapabilities networkCapabilitiesFilter,
             @NonNull WifiNetworkFactory networkFactory,
             @NonNull UntrustedWifiNetworkFactory untrustedWifiNetworkFactory,
-            @NonNull OemPaidWifiNetworkFactory oemPaidWifiNetworkFactory,
-            @Nullable OemPrivateWifiNetworkFactory oemPrivateWifiNetworkFactory,
+            @NonNull OemWifiNetworkFactory oemPaidWifiNetworkFactory,
             @NonNull WifiLastResortWatchdog wifiLastResortWatchdog,
             @NonNull WakeupController wakeupController,
             @NonNull WifiLockManager wifiLockManager,
@@ -736,8 +734,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mNetworkFactory = networkFactory;
 
         mUntrustedNetworkFactory = untrustedWifiNetworkFactory;
-        mOemPaidWifiNetworkFactory = oemPaidWifiNetworkFactory;
-        mOemPrivateWifiNetworkFactory = oemPrivateWifiNetworkFactory;
+        mOemWifiNetworkFactory = oemPaidWifiNetworkFactory;
 
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
         mWakeupController = wakeupController;
@@ -5819,9 +5816,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private boolean hasConnectionRequests() {
         return mNetworkFactory.hasConnectionRequests()
                 || mUntrustedNetworkFactory.hasConnectionRequests()
-                || mOemPaidWifiNetworkFactory.hasConnectionRequests()
-                || (mOemPrivateWifiNetworkFactory != null
-                    && mOemPrivateWifiNetworkFactory.hasConnectionRequests());
+                || mOemWifiNetworkFactory.hasConnectionRequests();
     }
 
     /**

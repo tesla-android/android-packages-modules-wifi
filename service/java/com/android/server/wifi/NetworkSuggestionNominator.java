@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.WifiNetworkSelector.toNetworkString;
+
 import android.annotation.NonNull;
 import android.net.wifi.WifiConfiguration;
 import android.telephony.TelephonyManager;
@@ -134,7 +136,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
             if (!currentWCmConfiguredNetwork.getNetworkSelectionStatus().isNetworkEnabled()
                     && !mWifiConfigManager.tryEnableNetwork(wCmConfiguredNetwork.networkId)) {
                 mLocalLog.log("Ignoring blocked network: "
-                        + WifiNetworkSelector.toNetworkString(wCmConfiguredNetwork));
+                        + toNetworkString(wCmConfiguredNetwork));
             }
         }
     }
@@ -229,7 +231,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                 if (!wCmConfiguredNetwork.getNetworkSelectionStatus().isNetworkEnabled()
                         && !mWifiConfigManager.tryEnableNetwork(wCmConfiguredNetwork.networkId)) {
                     mLocalLog.log("Ignoring blocklisted network: "
-                            + WifiNetworkSelector.toNetworkString(wCmConfiguredNetwork));
+                            + toNetworkString(wCmConfiguredNetwork));
                     continue;
                 }
                 if (!isNetworkAvailableToAutoConnect(wCmConfiguredNetwork, untrustedNetworkAllowed,
@@ -255,7 +257,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
         if (shouldIgnoreBasedOnChecksForTrustedOrOemPaidOrOemPrivate(config,
                 untrustedNetworkAllowed, oemPaidNetworkAllowed, oemPrivateNetworkAllowed)) {
             mLocalLog.log("Ignoring network since it needs corresponding NetworkRequest: "
-                    + config);
+                    + toNetworkString(config));
             return false;
         }
         if (!isCarrierNetworkAvailableToAutoConnect(config)) {
@@ -284,7 +286,8 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
         }
         if (WifiConfiguration.isMetered(config, null)
                 && mWifiCarrierInfoManager.isCarrierNetworkFromNonDefaultDataSim(config)) {
-            mLocalLog.log("Ignoring carrier network from non default data SIM, network: " + config);
+            mLocalLog.log("Ignoring carrier network from non default data SIM, network: "
+                    + toNetworkString(config));
             return false;
         }
         if (!mWifiCarrierInfoManager
@@ -415,8 +418,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                         mAppInfos.valueAt(i).getHighestPriorityNetworks();
                 for (PerNetworkSuggestionMatchMetaInfo matchedNetworkInfo : matchedNetworkInfos) {
                     mLocalLog.log(String.format("network suggestion candidate %s nominated",
-                                WifiNetworkSelector.toNetworkString(
-                                        matchedNetworkInfo.wCmConfiguredNetwork)));
+                                toNetworkString(matchedNetworkInfo.wCmConfiguredNetwork)));
 
                     onConnectableListener.onConnectable(
                             matchedNetworkInfo.matchingScanDetail,
