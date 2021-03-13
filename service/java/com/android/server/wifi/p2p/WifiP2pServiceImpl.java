@@ -94,6 +94,7 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiLog;
@@ -3862,24 +3863,32 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private boolean setWfdInfo(WifiP2pWfdInfo wfdInfo) {
+            final boolean enabled = wfdInfo.isEnabled();
             boolean success;
-
-            if (!wfdInfo.isEnabled()) {
-                success = mWifiNative.setWfdEnable(false);
-            } else {
-                success =
-                    mWifiNative.setWfdEnable(true)
-                    && mWifiNative.setWfdDeviceInfo(wfdInfo.getDeviceInfoHex());
-            }
-
-            if (!success) {
-                loge("Failed to set wfd properties");
+            if (!mWifiNative.setWfdEnable(enabled)) {
+                loge("Failed to set wfd enable: " + enabled);
                 return false;
             }
 
+            if (enabled) {
+                if (!mWifiNative.setWfdDeviceInfo(wfdInfo.getDeviceInfoHex())) {
+                    loge("Failed to set wfd properties");
+                    return false;
+                }
+                if (!setWfdR2InfoIfNecessary(wfdInfo)) {
+                    loge("Failed to set wfd r2 properties");
+                    return false;
+                }
+            }
             mThisDevice.wfdInfo = wfdInfo;
             sendThisDeviceChangedBroadcast();
             return true;
+        }
+
+        private boolean setWfdR2InfoIfNecessary(WifiP2pWfdInfo wfdInfo) {
+            if (!SdkLevel.isAtLeastS()) return true;
+            if (!wfdInfo.isR2Enabled()) return true;
+            return mWifiNative.setWfdR2DeviceInfo(wfdInfo.getR2DeviceInfoHex());
         }
 
         private void initializeP2pSettings() {

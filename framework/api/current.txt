@@ -371,6 +371,7 @@ package android.net.wifi {
     method public boolean isStaConcurrencyForLocalOnlyConnectionsSupported();
     method public boolean isTdlsSupported();
     method public boolean isWapiSupported();
+    method public boolean isWifiDisplayR2Supported();
     method public boolean isWifiEnabled();
     method public boolean isWifiStandardSupported(int);
     method public boolean isWpa3SaeH2eSupported();
@@ -1106,14 +1107,20 @@ package android.net.wifi.p2p {
     method public int getDeviceType();
     method public int getMaxThroughput();
     method public boolean isContentProtectionSupported();
+    method public boolean isCoupledSinkSupportedAtSink();
+    method public boolean isCoupledSinkSupportedAtSource();
     method public boolean isEnabled();
+    method public boolean isR2Enabled();
     method public boolean isSessionAvailable();
     method public void setContentProtectionSupported(boolean);
     method public void setControlPort(@IntRange(from=0) int);
+    method public void setCoupledSinkSupportAtSink(boolean);
+    method public void setCoupledSinkSupportAtSource(boolean);
     method public boolean setDeviceType(int);
     method public void setEnabled(boolean);
     method public void setMaxThroughput(@IntRange(from=0) int);
     method public void setSessionAvailable(boolean);
+    method public void setWfdR2Device(int);
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.p2p.WifiP2pWfdInfo> CREATOR;
     field public static final int DEVICE_TYPE_PRIMARY_SINK = 1; // 0x1

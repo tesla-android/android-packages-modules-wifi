@@ -271,6 +271,8 @@ public class WifiMetrics {
     private int mLastScore = -1;
     private boolean mAdaptiveConnectivityEnabled = true;
     private ScanMetrics mScanMetrics;
+    private WifiChannelUtilization mWifiChannelUtilization;
+    private WifiSettingsStore mWifiSettingsStore;
 
     /**
      * Metrics are stored within an instance of the WifiLog proto during runtime,
@@ -1519,6 +1521,16 @@ public class WifiMetrics {
     /** Sets internal WifiScoreCard member */
     public void setWifiScoreCard(WifiScoreCard wifiScoreCard) {
         mWifiScoreCard = wifiScoreCard;
+    }
+
+    /** Sets internal WifiChannelUtilization member */
+    public void setWifiChannelUtilization(WifiChannelUtilization wifiChannelUtilization) {
+        mWifiChannelUtilization = wifiChannelUtilization;
+    }
+
+    /** Sets internal WifiSettingsStore member */
+    public void setWifiSettingsStore(WifiSettingsStore wifiSettingsStore) {
+        mWifiSettingsStore = wifiSettingsStore;
     }
 
     /**
@@ -4096,6 +4108,10 @@ public class WifiMetrics {
         line.append(",is_same_bssid_and_freq=" + entry.isSameBssidAndFreq);
         line.append(",device_mobility_state=" + entry.deviceMobilityState);
         line.append(",time_slice_duty_cycle_in_percent=" + entry.timeSliceDutyCycleInPercent);
+        line.append(",channel_utilization_ratio=" + entry.channelUtilizationRatio);
+        line.append(",is_throughput_sufficient=" + entry.isThroughputSufficient);
+        line.append(",is_wifi_scoring_enabled=" + entry.isWifiScoringEnabled);
+        line.append(",is_cellular_data_available=" + entry.isCellularDataAvailable);
         pw.println(line.toString());
     }
 
@@ -5956,6 +5972,20 @@ public class WifiMetrics {
                 }
                 wifiUsabilityStatsEntry.contentionTimeStats[ac] = contentionTimeStats;
             }
+            if (mWifiChannelUtilization != null) {
+                wifiUsabilityStatsEntry.channelUtilizationRatio =
+                        mWifiChannelUtilization.getUtilizationRatio(mLastFrequency);
+            }
+            if (mWifiDataStall != null) {
+                wifiUsabilityStatsEntry.isThroughputSufficient =
+                        mWifiDataStall.isThroughputSufficient();
+                wifiUsabilityStatsEntry.isCellularDataAvailable =
+                        mWifiDataStall.isCellularDataAvailable();
+            }
+            if (mWifiSettingsStore != null) {
+                wifiUsabilityStatsEntry.isWifiScoringEnabled =
+                        mWifiSettingsStore.isWifiScoringEnabled();
+            }
 
             mWifiUsabilityStatsEntriesList.add(wifiUsabilityStatsEntry);
             mWifiUsabilityStatsCounter++;
@@ -6037,7 +6067,8 @@ public class WifiMetrics {
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
                 s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, contentionTimeStats,
-                0, 0, 0, false
+                s.channelUtilizationRatio, s.isThroughputSufficient, s.isWifiScoringEnabled,
+                s.isCellularDataAvailable, 0, 0, 0, false
         );
     }
 
@@ -6114,6 +6145,10 @@ public class WifiMetrics {
         out.deviceMobilityState = s.deviceMobilityState;
         out.timeSliceDutyCycleInPercent = s.timeSliceDutyCycleInPercent;
         out.contentionTimeStats = s.contentionTimeStats;
+        out.channelUtilizationRatio = s.channelUtilizationRatio;
+        out.isThroughputSufficient = s.isThroughputSufficient;
+        out.isWifiScoringEnabled = s.isWifiScoringEnabled;
+        out.isCellularDataAvailable = s.isCellularDataAvailable;
         return out;
     }
 

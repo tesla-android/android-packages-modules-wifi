@@ -610,7 +610,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private StateMachineObituary mObituary = null;
 
     @Nullable
-    private WifiVcnNetworkPolicyListener mVcnPolicyListener;
+    private WifiVcnNetworkPolicyChangeListener mVcnPolicyChangeListener;
 
     /**
      * Whether this ClientModeImpl is in lingering mode. When in lingering mode, the ClientModeImpl
@@ -1409,9 +1409,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiConfigManager.removeOnNetworkUpdateListener(mOnNetworkUpdateListener);
         mWifiCarrierInfoManager
                 .removeOnCarrierOffloadDisabledListener(mOnCarrierOffloadDisabledListener);
-        if (mVcnPolicyListener != null) {
-            mVcnManager.removeVcnNetworkPolicyListener(mVcnPolicyListener);
-            mVcnPolicyListener = null;
+        if (mVcnPolicyChangeListener != null) {
+            mVcnManager.removeVcnNetworkPolicyChangeListener(mVcnPolicyChangeListener);
+            mVcnPolicyChangeListener = null;
         }
     }
 
@@ -4734,9 +4734,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mVcnManager = mContext.getSystemService(VcnManager.class);
             }
             if (mVcnManager != null) {
-                mVcnPolicyListener = new WifiVcnNetworkPolicyListener();
-                mVcnManager.addVcnNetworkPolicyListener(new HandlerExecutor(getHandler()),
-                        mVcnPolicyListener);
+                mVcnPolicyChangeListener = new WifiVcnNetworkPolicyChangeListener();
+                mVcnManager.addVcnNetworkPolicyChangeListener(new HandlerExecutor(getHandler()),
+                        mVcnPolicyChangeListener);
             }
             final NetworkAgentConfig naConfig = naConfigBuilder.build();
             final NetworkCapabilities nc = getCapabilities(
@@ -5954,8 +5954,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // Blocklist the current BSS
             mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, ssid, duration,
                     WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_MBO_OCE, 0);
-            mWifiConfigManager.setRecentFailureAssociationStatus(mWifiInfo.getNetworkId(),
-                    WifiConfiguration.RECENT_FAILURE_MBO_OCE_DISCONNECT);
         }
 
         if (frameData.mStatus != MboOceConstants.BTM_RESPONSE_STATUS_ACCEPT) {
@@ -6355,12 +6353,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /**
-     * WifiVcnNetworkPolicyListener tracks VCN-defined Network policies for a
+     * WifiVcnNetworkPolicyChangeListener tracks VCN-defined Network policies for a
      * WifiNetworkAgent. These policies are used to restart Networks or update their
      * NetworkCapabilities.
      */
-    private class WifiVcnNetworkPolicyListener
-            implements VcnManager.VcnNetworkPolicyListener {
+    private class WifiVcnNetworkPolicyChangeListener
+            implements VcnManager.VcnNetworkPolicyChangeListener {
         @Override
         public void onPolicyChanged() {
             if (mNetworkAgent == null) {

@@ -2164,7 +2164,7 @@ public class WifiManagerTest {
         callbackCaptor.getValue().onWifiUsabilityStats(1, true,
                 new WifiUsabilityStatsEntry(System.currentTimeMillis(), -50, 100, 10, 0, 5, 5, 100,
                         100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 100, 10, 100, 27,
-                        contentionTimeStats, 0, 10, 10, true));
+                        contentionTimeStats, 101, true, true, true, 0, 10, 10, true));
         verify(mOnWifiUsabilityStatsListener).onWifiUsabilityStats(anyInt(), anyBoolean(),
                 any(WifiUsabilityStatsEntry.class));
     }

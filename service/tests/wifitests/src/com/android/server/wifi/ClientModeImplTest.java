@@ -4882,8 +4882,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiMetrics, times(1)).incrementSteeringRequestCountIncludingMboAssocRetryDelay();
         verify(mWifiBlocklistMonitor).blockBssidForDurationMs(eq(TEST_BSSID_STR), eq(TEST_SSID),
                 eq(btmFrmData.mBlockListDurationMs), anyInt(), anyInt());
-        verify(mWifiConfigManager).setRecentFailureAssociationStatus(anyInt(),
-                eq(WifiConfiguration.RECENT_FAILURE_MBO_OCE_DISCONNECT));
     }
 
     /**
@@ -6059,8 +6057,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         VcnManager vcnManager = mock(VcnManager.class);
         VcnNetworkPolicyResult vcnUnderlyingNetworkPolicy = mock(VcnNetworkPolicyResult.class);
         when(mContext.getSystemService(VcnManager.class)).thenReturn(vcnManager);
-        ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> policyListenerCaptor =
-                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
+        ArgumentCaptor<VcnManager.VcnNetworkPolicyChangeListener> policyChangeListenerCaptor =
+                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyChangeListener.class);
         InOrder inOrder = inOrder(vcnManager, vcnUnderlyingNetworkPolicy);
         doAnswer(new AnswerWithArguments() {
             public VcnNetworkPolicyResult answer(NetworkCapabilities networkCapabilities,
@@ -6085,9 +6083,9 @@ public class ClientModeImplTest extends WifiBaseTest {
                 assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
             });
         // Verify VCN policy listener is registered
-        inOrder.verify(vcnManager).addVcnNetworkPolicyListener(any(),
-                    policyListenerCaptor.capture());
-        assertNotNull(policyListenerCaptor.getValue());
+        inOrder.verify(vcnManager).addVcnNetworkPolicyChangeListener(any(),
+                    policyChangeListenerCaptor.capture());
+        assertNotNull(policyChangeListenerCaptor.getValue());
 
         // Verify getting new capability from VcnManager
         inOrder.verify(vcnManager).applyVcnNetworkPolicy(any(NetworkCapabilities.class),
@@ -6097,7 +6095,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         // Update policy with tear down request.
         when(vcnUnderlyingNetworkPolicy.isTeardownRequested()).thenReturn(true);
-        policyListenerCaptor.getValue().onPolicyChanged();
+        policyChangeListenerCaptor.getValue().onPolicyChanged();
         mLooper.dispatchAll();
 
         // The merged carrier network should be disconnected.
@@ -6114,7 +6112,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         // In DisconnectedState, policy update should result no capability update.
         reset(mWifiConfigManager, vcnManager);
-        policyListenerCaptor.getValue().onPolicyChanged();
+        policyChangeListenerCaptor.getValue().onPolicyChanged();
         verifyNoMoreInteractions(mWifiConfigManager, vcnManager);
     }
 
@@ -6127,8 +6125,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         VcnManager vcnManager = mock(VcnManager.class);
         when(mContext.getSystemService(VcnManager.class)).thenReturn(vcnManager);
         VcnNetworkPolicyResult vcnUnderlyingNetworkPolicy = mock(VcnNetworkPolicyResult.class);
-        ArgumentCaptor<VcnManager.VcnNetworkPolicyListener> policyListenerCaptor =
-                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyListener.class);
+        ArgumentCaptor<VcnManager.VcnNetworkPolicyChangeListener> policyChangeListenerCaptor =
+                ArgumentCaptor.forClass(VcnManager.VcnNetworkPolicyChangeListener.class);
         doAnswer(new AnswerWithArguments() {
             public VcnNetworkPolicyResult answer(NetworkCapabilities networkCapabilities,
                     LinkProperties linkProperties) throws Exception {
@@ -6152,11 +6150,11 @@ public class ClientModeImplTest extends WifiBaseTest {
             });
 
         // Verify VCN policy listener is registered
-        verify(vcnManager, atLeastOnce()).addVcnNetworkPolicyListener(any(),
-                policyListenerCaptor.capture());
-        assertNotNull(policyListenerCaptor.getValue());
+        verify(vcnManager, atLeastOnce()).addVcnNetworkPolicyChangeListener(any(),
+                policyChangeListenerCaptor.capture());
+        assertNotNull(policyChangeListenerCaptor.getValue());
 
-        policyListenerCaptor.getValue().onPolicyChanged();
+        policyChangeListenerCaptor.getValue().onPolicyChanged();
         mLooper.dispatchAll();
 
         verifyNoMoreInteractions(vcnManager, vcnUnderlyingNetworkPolicy);

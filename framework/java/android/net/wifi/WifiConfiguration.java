@@ -2590,7 +2590,6 @@ public class WifiConfiguration implements Parcelable {
         /**
          * Get the recent failure code. One of {@link #RECENT_FAILURE_NONE},
          * {@link #RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA},
-         * {@link #RECENT_FAILURE_MBO_OCE_DISCONNECT},
          * {@link #RECENT_FAILURE_REFUSED_TEMPORARILY},
          * {@link #RECENT_FAILURE_POOR_CHANNEL_CONDITIONS}.
          * {@link #RECENT_FAILURE_DISCONNECTION_AP_BUSY}
@@ -2622,7 +2621,6 @@ public class WifiConfiguration implements Parcelable {
     @IntDef(prefix = "RECENT_FAILURE_", value = {
             RECENT_FAILURE_NONE,
             RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA,
-            RECENT_FAILURE_MBO_OCE_DISCONNECT,
             RECENT_FAILURE_REFUSED_TEMPORARILY,
             RECENT_FAILURE_POOR_CHANNEL_CONDITIONS,
             RECENT_FAILURE_DISCONNECTION_AP_BUSY,
@@ -2650,13 +2648,6 @@ public class WifiConfiguration implements Parcelable {
      */
     @SystemApi
     public static final int RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA = 17;
-
-    /**
-     * This network recently disconnected as a result of MBO/OCE.
-     * @hide
-     */
-    @SystemApi
-    public static final int RECENT_FAILURE_MBO_OCE_DISCONNECT = 1001;
 
     /**
      * Failed to connect because the association is rejected by the AP.
@@ -2750,7 +2741,6 @@ public class WifiConfiguration implements Parcelable {
      *
      * Failure reasons include:
      * {@link #RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA}
-     * {@link #RECENT_FAILURE_MBO_OCE_DISCONNECT}
      * {@link #RECENT_FAILURE_REFUSED_TEMPORARILY}
      * {@link #RECENT_FAILURE_POOR_CHANNEL_CONDITIONS}
      * {@link #RECENT_FAILURE_DISCONNECTION_AP_BUSY}

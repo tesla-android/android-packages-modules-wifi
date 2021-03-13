@@ -2512,6 +2512,21 @@ message WifiUsabilityStatsEntry {
 
   // WME data packet contention time statistics for all four categories: BE, BK, VI, VO
   repeated ContentionTimeStats contention_time_stats = 36;
+
+  // The channel utilization ratio (value) in the range of
+  // [BssLoad.MIN_CHANNEL_UTILIZATION, BssLoad.MAX_CHANNEL_UTILIZATION], where MIN_CHANNEL_UTILIZATION
+  // corresponds to ratio 0%, MAX_CHANNEL_UTILIZATION corresponds to ratio 100%,
+  // see {@link com.android.server.wifi.util.InformationElementUtil}
+  optional int32 channel_utilization_ratio = 37;
+
+  // Indicate whether current link layer throughput is sufficient, see {@link WifiDataStall#isThroughputSufficient()}.
+  optional bool is_throughput_sufficient = 38;
+
+  // Indicate whether Wi-Fi scoring is enabled by the user, see {@link WifiManager#setWifiScoringEnabled(boolean)}.
+  optional bool is_wifi_scoring_enabled = 39;
+
+  // Indicate whether Cellular data is available, see {@link WifiDataStall#isCellularDataAvailable()}.
+  optional bool is_cellular_data_available = 40;
 }
 
 message ContentionTimeStats {

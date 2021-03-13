@@ -25,6 +25,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_SAE_PK;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WAPI;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_WFD_R2;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SUITE_B;
 
@@ -3183,6 +3184,14 @@ public class SupplicantStaIfaceHal {
             featureSet |= WIFI_FEATURE_SAE_PK;
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, methodStr + ": SAE-PK supported");
+            }
+        }
+
+        if ((drvCapabilitiesMask.value
+                & android.hardware.wifi.supplicant.V1_4.WpaDriverCapabilitiesMask.WFD_R2) != 0) {
+            featureSet |= WIFI_FEATURE_WFD_R2;
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, methodStr + ": WFD-R2 supported");
             }
         }
 

@@ -375,7 +375,6 @@ package android.net.wifi {
     field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI = 1009; // 0x3f1
     field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED = 1006; // 0x3ee
     field @Deprecated public static final int RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED = 1005; // 0x3ed
-    field @Deprecated public static final int RECENT_FAILURE_MBO_OCE_DISCONNECT = 1001; // 0x3e9
     field @Deprecated public static final int RECENT_FAILURE_NETWORK_NOT_FOUND = 1011; // 0x3f3
     field @Deprecated public static final int RECENT_FAILURE_NONE = 0; // 0x0
     field @Deprecated public static final int RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION = 1010; // 0x3f2
@@ -867,6 +866,7 @@ package android.net.wifi {
     method public int getCellularDataNetworkType();
     method public int getCellularSignalStrengthDb();
     method public int getCellularSignalStrengthDbm();
+    method @IntRange(from=0, to=255) public int getChannelUtilizationRatio();
     method @NonNull public android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats getContentionTimeStats(int);
     method public int getLinkSpeedMbps();
     method public int getProbeElapsedTimeSinceLastUpdateMillis();
@@ -892,7 +892,10 @@ package android.net.wifi {
     method public long getTotalTxBad();
     method public long getTotalTxRetries();
     method public long getTotalTxSuccess();
+    method public boolean isCellularDataAvailable();
     method public boolean isSameRegisteredCell();
+    method public boolean isThroughputSufficient();
+    method public boolean isWifiScoringEnabled();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry> CREATOR;
     field public static final int NUM_WME_ACCESS_CATEGORIES = 4; // 0x4
