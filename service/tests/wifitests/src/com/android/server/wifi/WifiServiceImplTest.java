@@ -358,8 +358,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock IActionListener mActionListener;
     @Mock WifiNetworkFactory mWifiNetworkFactory;
     @Mock UntrustedWifiNetworkFactory mUntrustedWifiNetworkFactory;
-    @Mock OemPaidWifiNetworkFactory mOemPaidWifiNetworkFactory;
-    @Mock OemPrivateWifiNetworkFactory mOemPrivateWifiNetworkFactory;
+    @Mock OemWifiNetworkFactory mOemWifiNetworkFactory;
     @Mock WifiDiagnostics mWifiDiagnostics;
     @Mock WifiP2pConnection mWifiP2pConnection;
     @Mock SimRequiredNotifier mSimRequiredNotifier;
@@ -395,10 +394,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiNetworkFactory()).thenReturn(mWifiNetworkFactory);
         when(mWifiInjector.getUntrustedWifiNetworkFactory())
                 .thenReturn(mUntrustedWifiNetworkFactory);
-        when(mWifiInjector.getOemPaidWifiNetworkFactory())
-                .thenReturn(mOemPaidWifiNetworkFactory);
-        when(mWifiInjector.getOemPrivateWifiNetworkFactory())
-                .thenReturn(mOemPrivateWifiNetworkFactory);
+        when(mWifiInjector.getOemWifiNetworkFactory()).thenReturn(mOemWifiNetworkFactory);
         when(mWifiInjector.getWifiDiagnostics()).thenReturn(mWifiDiagnostics);
         when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
         when(mWifiInjector.getWifiHandlerThread()).thenReturn(mHandlerThread);
