@@ -28,17 +28,18 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
 /**
- * Network factory to handle oem private wifi network requests.
+ * Network factory to handle oem paid/private wifi network requests.
  */
-public class OemPrivateWifiNetworkFactory extends NetworkFactory {
-    private static final String TAG = "OemPrivateWifiNetworkFactory";
+public class OemWifiNetworkFactory extends NetworkFactory {
+    private static final String TAG = "OemPaidWifiNetworkFactory";
     private static final int SCORE_FILTER = Integer.MAX_VALUE;
 
     private final WifiConnectivityManager mWifiConnectivityManager;
-    private int mConnectionReqCount = 0;
+    private int mOemPaidConnectionReqCount = 0;
+    private int mOemPrivateConnectionReqCount = 0;
 
-    public OemPrivateWifiNetworkFactory(Looper l, Context c, NetworkCapabilities f,
-                                       WifiConnectivityManager connectivityManager) {
+    public OemWifiNetworkFactory(Looper l, Context c, NetworkCapabilities f,
+            WifiConnectivityManager connectivityManager) {
         super(l, c, TAG, f);
         mWifiConnectivityManager = connectivityManager;
 
@@ -47,23 +48,43 @@ public class OemPrivateWifiNetworkFactory extends NetworkFactory {
 
     @Override
     protected void needNetworkFor(NetworkRequest networkRequest) {
+        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID)) {
+            mOemPaidConnectionReqCount++;
+            if (mOemPaidConnectionReqCount == 1) {
+                mWifiConnectivityManager.setOemPaidConnectionAllowed(
+                        true, new WorkSource(networkRequest.getRequestorUid(),
+                                networkRequest.getRequestorPackageName()));
+            }
+        }
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE)) {
-            if (++mConnectionReqCount == 1) {
+            mOemPrivateConnectionReqCount++;
+            if (mOemPrivateConnectionReqCount == 1) {
                 mWifiConnectivityManager.setOemPrivateConnectionAllowed(
                         true, new WorkSource(networkRequest.getRequestorUid(),
-                        networkRequest.getRequestorPackageName()));
+                                networkRequest.getRequestorPackageName()));
             }
         }
     }
 
     @Override
     protected void releaseNetworkFor(NetworkRequest networkRequest) {
-        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE)) {
-            if (mConnectionReqCount == 0) {
+        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID)) {
+            if (mOemPaidConnectionReqCount == 0) {
                 Log.e(TAG, "No valid network request to release");
                 return;
             }
-            if (--mConnectionReqCount == 0) {
+            mOemPaidConnectionReqCount--;
+            if (mOemPaidConnectionReqCount == 0) {
+                mWifiConnectivityManager.setOemPaidConnectionAllowed(false, null);
+            }
+        }
+        if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE)) {
+            if (mOemPrivateConnectionReqCount == 0) {
+                Log.e(TAG, "No valid network request to release");
+                return;
+            }
+            mOemPrivateConnectionReqCount--;
+            if (mOemPrivateConnectionReqCount == 0) {
                 mWifiConnectivityManager.setOemPrivateConnectionAllowed(false, null);
             }
         }
@@ -72,14 +93,15 @@ public class OemPrivateWifiNetworkFactory extends NetworkFactory {
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         super.dump(fd, pw, args);
-        pw.println(TAG + ": mConnectionReqCount " + mConnectionReqCount);
+        pw.println(TAG + ": mOemPaidConnectionReqCount " + mOemPaidConnectionReqCount);
+        pw.println(TAG + ": mOemPrivateConnectionReqCount " + mOemPrivateConnectionReqCount);
     }
 
     /**
      * Check if there is at-least one connection request.
      */
     public boolean hasConnectionRequests() {
-        return mConnectionReqCount > 0;
+        return mOemPaidConnectionReqCount > 0 || mOemPrivateConnectionReqCount > 0;
     }
 }
 
