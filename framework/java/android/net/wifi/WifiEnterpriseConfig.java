@@ -100,6 +100,8 @@ public class WifiEnterpriseConfig implements Parcelable {
     public static final String EAP_ERP             = "eap_erp";
     /** @hide */
     public static final String OCSP                = "ocsp";
+    /** @hide */
+    public static final String DECORATED_IDENTITY_PREFIX_KEY = "decorated_username_prefix";
 
     /**
      * String representing the keystore OpenSSL ENGINE's ID.
@@ -1586,5 +1588,40 @@ public class WifiEnterpriseConfig implements Parcelable {
             }
         }
         return false;
+    }
+
+    /**
+     * Set a prefix for a decorated identity as per RFC 7542.
+     * This prefix must contain a list of realms (could be a list of 1) delimited by a '!'
+     * character. e.g. homerealm.example.org! or proxyrealm.example.net!homerealm.example.org!
+     * A prefix of "homerealm.example.org!" will generate a decorated identity that
+     * looks like: homerealm.example.org!user@otherrealm.example.net
+     * Calling with a null parameter will clear the decorated prefix.
+     * Note: Caller must verify that the device supports this feature by calling
+     * {@link WifiManager#isDecoratedIdentitySupported()}
+     *
+     * @param decoratedIdentityPrefix The prefix to add to the outer/anonymous identity
+     */
+    public void setDecoratedIdentityPrefix(@Nullable String decoratedIdentityPrefix) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        if (!TextUtils.isEmpty(decoratedIdentityPrefix) && !decoratedIdentityPrefix.endsWith("!")) {
+            throw new IllegalArgumentException(
+                    "Decorated identity prefix must be delimited by '!'");
+        }
+        setFieldValue(DECORATED_IDENTITY_PREFIX_KEY, decoratedIdentityPrefix);
+    }
+
+    /**
+     * Get the decorated identity prefix.
+     *
+     * @return The decorated identity prefix
+     */
+    public @NonNull String getDecoratedIdentityPrefix() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return getFieldValue(DECORATED_IDENTITY_PREFIX_KEY);
     }
 }

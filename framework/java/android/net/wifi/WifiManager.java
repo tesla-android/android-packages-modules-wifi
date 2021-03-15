@@ -2625,6 +2625,11 @@ public class WifiManager {
      /** @hide */
     public static final long WIFI_FEATURE_WFD_R2           = 0x4000000000000L; // Wi-Fi Display R2
 
+    /**
+     * RFC 7542 decorated identity support
+     * @hide */
+    public static final long WIFI_FEATURE_DECORATED_IDENTITY = 0x8000000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6369,6 +6374,13 @@ public class WifiManager {
      */
     public boolean isWifiDisplayR2Supported() {
         return isFeatureSupported(WIFI_FEATURE_WFD_R2);
+    }
+
+    /**
+     * @return true if this device supports RFC 7542 decorated identity.
+     */
+    public boolean isDecoratedIdentitySupported() {
+        return isFeatureSupported(WIFI_FEATURE_DECORATED_IDENTITY);
     }
 
     /**

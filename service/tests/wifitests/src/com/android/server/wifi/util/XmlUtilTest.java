@@ -79,7 +79,8 @@ public class XmlUtilTest extends WifiBaseTest {
     private static final int TEST_EAP_METHOD = WifiEnterpriseConfig.Eap.PEAP;
     private static final int TEST_PHASE2_METHOD = WifiEnterpriseConfig.Phase2.MSCHAPV2;
     private final String mXmlDocHeader = "XmlUtilTest";
-
+    private static final String TEST_DECORATED_IDENTITY_PREFIX = "androidwifi.dev!";
+    private static final String ANONYMOUS_IDENTITY = "aaa@bbb.cc.ddd";
     private WifiConfigStoreEncryptionUtil mWifiConfigStoreEncryptionUtil = null;
 
     @Before
@@ -155,8 +156,10 @@ public class XmlUtilTest extends WifiBaseTest {
     @Test
     public void testEapWifiConfigurationSerializeDeserialize()
             throws IOException, XmlPullParserException {
-        serializeDeserializeWifiConfigurationForConfigStore(
-                WifiConfigurationTestUtil.createEapNetwork());
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setAnonymousIdentity(ANONYMOUS_IDENTITY);
+        config.enterpriseConfig.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        serializeDeserializeWifiConfigurationForConfigStore(config);
     }
 
     /**

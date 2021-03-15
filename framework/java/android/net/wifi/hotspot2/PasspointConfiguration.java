@@ -23,6 +23,7 @@ import android.annotation.CurrentTimeMillisLong;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.net.wifi.hotspot2.pps.HomeSp;
 import android.net.wifi.hotspot2.pps.Policy;
@@ -35,6 +36,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -507,6 +510,8 @@ public final class PasspointConfiguration implements Parcelable {
      */
     private int mMeteredOverride = METERED_OVERRIDE_NONE;
 
+    private String mDecoratedIdentityPrefix;
+
     /**
      * Configures the auto-association status of this Passpoint configuration. A value of true
      * indicates that the configuration will be considered for auto-connection, a value of false
@@ -707,6 +712,7 @@ public final class PasspointConfiguration implements Parcelable {
         mIsCarrierMerged = source.mIsCarrierMerged;
         mIsOemPaid = source.mIsOemPaid;
         mIsOemPrivate = source.mIsOemPrivate;
+        mDecoratedIdentityPrefix = source.mDecoratedIdentityPrefix;
     }
 
     @Override
@@ -744,6 +750,7 @@ public final class PasspointConfiguration implements Parcelable {
         dest.writeBoolean(mIsCarrierMerged);
         dest.writeBoolean(mIsOemPaid);
         dest.writeBoolean(mIsOemPrivate);
+        dest.writeString(mDecoratedIdentityPrefix);
     }
 
     @Override
@@ -783,7 +790,8 @@ public final class PasspointConfiguration implements Parcelable {
                 && mIsEnhancedMacRandomizationEnabled == that.mIsEnhancedMacRandomizationEnabled
                 && mMeteredOverride == that.mMeteredOverride
                 && (mServiceFriendlyNames == null ? that.mServiceFriendlyNames == null
-                : mServiceFriendlyNames.equals(that.mServiceFriendlyNames));
+                : mServiceFriendlyNames.equals(that.mServiceFriendlyNames))
+                && Objects.equals(mDecoratedIdentityPrefix, that.mDecoratedIdentityPrefix);
     }
 
     @Override
@@ -794,7 +802,7 @@ public final class PasspointConfiguration implements Parcelable {
                 mUsageLimitStartTimeInMillis, mUsageLimitDataLimit, mUsageLimitTimeLimitInMinutes,
                 mServiceFriendlyNames, mCarrierId, mIsAutojoinEnabled, mIsMacRandomizationEnabled,
                 mIsEnhancedMacRandomizationEnabled, mMeteredOverride, mSubscriptionId,
-                mIsCarrierMerged, mIsOemPaid, mIsOemPrivate);
+                mIsCarrierMerged, mIsOemPaid, mIsOemPrivate, mDecoratedIdentityPrefix);
     }
 
     @Override
@@ -855,7 +863,8 @@ public final class PasspointConfiguration implements Parcelable {
         builder.append("mMeteredOverride:" + mMeteredOverride);
         builder.append("mIsCarrierMerged:" + mIsCarrierMerged);
         builder.append("mIsOemPaid:" + mIsOemPaid);
-        builder.append("mIsOemPrivate" + mIsOemPrivate);
+        builder.append("mIsOemPrivate:" + mIsOemPrivate);
+        builder.append("mDecoratedUsernamePrefix:" + mDecoratedIdentityPrefix);
         return builder.toString();
     }
 
@@ -969,6 +978,7 @@ public final class PasspointConfiguration implements Parcelable {
                 config.mIsCarrierMerged = in.readBoolean();
                 config.mIsOemPaid = in.readBoolean();
                 config.mIsOemPrivate = in.readBoolean();
+                config.mDecoratedIdentityPrefix = in.readString();
 
                 return config;
             }
@@ -1071,5 +1081,40 @@ public final class PasspointConfiguration implements Parcelable {
         sb.append(String.format("%s_%x%x", mHomeSp.getFqdn(), mHomeSp.getUniqueId(),
                 mCredential.getUniqueId()));
         return sb.toString();
+    }
+
+    /**
+     * Set a prefix for a decorated identity as per RFC 7542.
+     * This prefix must contain a list of realms (could be a list of 1) delimited by a '!'
+     * character. e.g. homerealm.example.org! or proxyrealm.example.net!homerealm.example.org!
+     * A prefix of "homerealm.example.org!" will generate a decorated identity that
+     * looks like: homerealm.example.org!user@otherrealm.example.net
+     * Calling with a null parameter will clear the decorated prefix.
+     * Note: Caller must verify that the device supports this feature by calling
+     * {@link WifiManager#isDecoratedIdentitySupported()}
+     *
+     * @param decoratedIdentityPrefix The prefix to add to the outer/anonymous identity
+     */
+    public void setDecoratedIdentityPrefix(@Nullable String decoratedIdentityPrefix) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        if (!TextUtils.isEmpty(decoratedIdentityPrefix) && !decoratedIdentityPrefix.endsWith("!")) {
+            throw new IllegalArgumentException(
+                    "Decorated identity prefix must be delimited by '!'");
+        }
+        mDecoratedIdentityPrefix = decoratedIdentityPrefix;
+    }
+
+    /**
+     * Get the decorated identity prefix.
+     *
+     * @return The decorated identity prefix
+     */
+    public @Nullable String getDecoratedIdentityPrefix() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mDecoratedIdentityPrefix;
     }
 }

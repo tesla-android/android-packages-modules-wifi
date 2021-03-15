@@ -697,10 +697,19 @@ public class SupplicantStaNetworkHal {
             }
             /** EAP Anonymous Identity */
             eapParam = eapConfig.getFieldValue(WifiEnterpriseConfig.ANON_IDENTITY_KEY);
-            if (!TextUtils.isEmpty(eapParam)
-                    && !setEapAnonymousIdentity(NativeUtil.stringToByteArrayList(eapParam))) {
-                Log.e(TAG, ssid + ": failed to set eap anonymous identity: " + eapParam);
-                return false;
+            if (!TextUtils.isEmpty(eapParam)) {
+                if (null != getV1_4StaNetwork()) {
+                    String decoratedUsernamePrefix =
+                            eapConfig.getFieldValue(
+                                    WifiEnterpriseConfig.DECORATED_IDENTITY_PREFIX_KEY);
+                    if (!TextUtils.isEmpty(decoratedUsernamePrefix)) {
+                        eapParam = decoratedUsernamePrefix + eapParam;
+                    }
+                }
+                if (!setEapAnonymousIdentity(NativeUtil.stringToByteArrayList(eapParam))) {
+                    Log.e(TAG, ssid + ": failed to set eap anonymous identity: " + eapParam);
+                    return false;
+                }
             }
             /** EAP Password */
             eapParam = eapConfig.getFieldValue(WifiEnterpriseConfig.PASSWORD_KEY);

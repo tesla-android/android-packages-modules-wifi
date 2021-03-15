@@ -2277,7 +2277,26 @@ public class WifiNative {
      * @return anonymous identity string if succeeds, null otherwise.
      */
     public String getEapAnonymousIdentity(@NonNull String ifaceName) {
-        return mSupplicantStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(ifaceName);
+        String anonymousIdentity = mSupplicantStaIfaceHal
+                .getCurrentNetworkEapAnonymousIdentity(ifaceName);
+
+        if (TextUtils.isEmpty(anonymousIdentity)) {
+            return anonymousIdentity;
+        }
+
+        int indexOfDecoration = anonymousIdentity.lastIndexOf('!');
+        if (indexOfDecoration >= 0) {
+            if (anonymousIdentity.substring(indexOfDecoration).length() < 2) {
+                // Invalid identity, shouldn't happen
+                Log.e(TAG, "Unexpected anonymous identity: " + anonymousIdentity);
+                return null;
+            }
+            // Truncate RFC 7542 decorated prefix, if exists. Keep only the anonymous identity or
+            // pseudonym.
+            anonymousIdentity = anonymousIdentity.substring(indexOfDecoration + 1);
+        }
+
+        return anonymousIdentity;
     }
 
     /**

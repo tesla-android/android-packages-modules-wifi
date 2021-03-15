@@ -124,6 +124,7 @@ public class PasspointProviderTest extends WifiBaseTest {
     private static final String TEST_ANONYMOUS_IDENTITY = "AnonymousIdentity";
     private static final String USER_CONNECT_CHOICE = "SomeNetworkProfileId";
     private static final int TEST_RSSI = -50;
+    private static final String TEST_DECORATED_IDENTITY_PREFIX = "androidwifi.dev!";
 
     private enum CredentialType {
         USER,
@@ -1932,5 +1933,24 @@ public class PasspointProviderTest extends WifiBaseTest {
         assertEquals(USER_CONNECT_CHOICE,
                 configuration.getNetworkSelectionStatus().getConnectChoice());
         assertEquals(TEST_RSSI, configuration.getNetworkSelectionStatus().getConnectChoiceRssi());
+    }
+
+
+    /**
+     * Verify that an expected decorated identity prefix is received from getWifiConfig()
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSetDecoratedIdentityPrefix() throws Exception {
+        // Create provider for R2.
+        PasspointConfiguration config = generateTestPasspointConfiguration(
+                CredentialType.USER, false);
+        config.getCredential().setCaCertificates(null);
+        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        mProvider = createProvider(config);
+
+        assertEquals(TEST_DECORATED_IDENTITY_PREFIX,
+                mProvider.getWifiConfig().enterpriseConfig.getDecoratedIdentityPrefix());
     }
 }

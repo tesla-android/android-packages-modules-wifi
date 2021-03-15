@@ -555,6 +555,7 @@ public class PasspointProvider {
                     String.join(";", mConfig.getAaaServerTrustedNames()));
             enterpriseConfig.setCaPath(SYSTEM_CA_STORE_PATH);
         }
+        enterpriseConfig.setDecoratedIdentityPrefix(mConfig.getDecoratedIdentityPrefix());
         wifiConfig.enterpriseConfig = enterpriseConfig;
         // PPS MO Credential/CheckAAAServerCertStatus node contains a flag which indicates
         // if the mobile device needs to check the AAA server certificate's revocation status

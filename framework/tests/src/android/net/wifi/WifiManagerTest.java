@@ -40,6 +40,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONL
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_AP_STA;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DECORATED_IDENTITY;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
@@ -3179,5 +3180,18 @@ public class WifiManagerTest {
     public void testFlushPasspointAnqpCache() throws Exception {
         mWifiManager.flushPasspointAnqpCache();
         verify(mWifiService).flushPasspointAnqpCache(anyString());
+    }
+
+    /**
+     * Test behavior of isDecoratedIdentitySupported
+     */
+    @Test
+    public void testIsDecoratedIdentitySupported() throws Exception {
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(WIFI_FEATURE_DECORATED_IDENTITY));
+        assertTrue(mWifiManager.isDecoratedIdentitySupported());
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(~WIFI_FEATURE_DECORATED_IDENTITY));
+        assertFalse(mWifiManager.isDecoratedIdentitySupported());
     }
 }
