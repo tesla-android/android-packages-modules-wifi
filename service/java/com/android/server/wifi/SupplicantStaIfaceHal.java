@@ -15,6 +15,7 @@
  */
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DECORATED_IDENTITY;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA256;
@@ -2967,9 +2968,11 @@ public class SupplicantStaIfaceHal {
         }
 
         if (isV1_4()) {
-            advancedCapabilities |= WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
+            advancedCapabilities |= WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS
+                    | WIFI_FEATURE_DECORATED_IDENTITY;
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, methodStr + ": Passpoint T&C supported");
+                Log.v(TAG, methodStr + ": RFC 7542 decorated identity supported");
             }
         }
 

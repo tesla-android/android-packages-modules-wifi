@@ -135,9 +135,6 @@ public class PpsMoParserTest {
         homeSp.setOtherHomePartners(new String[] {"other.fqdn.com"});
         config.setHomeSp(homeSp);
 
-        config.setAaaServerTrustedNames(
-                new String[] {"trusted.fqdn.com", "another-trusted.fqdn.com"});
-
         // Credential configuration.
         Credential credential = new Credential();
         credential.setCreationTimeInMillis(format.parse("2016-01-01T10:00:00Z").getTime());
@@ -199,6 +196,14 @@ public class PpsMoParserTest {
         policyUpdate.setTrustRootCertSha256Fingerprint(certFingerprint);
         policy.setPolicyUpdate(policyUpdate);
         config.setPolicy(policy);
+
+        // Extensions
+        // Android
+        config.setAaaServerTrustedNames(
+                new String[] {"trusted.fqdn.com", "another-trusted.fqdn.com"});
+
+        // WBA
+        config.setDecoratedIdentityPrefix("androidwifi.dev!");
         return config;
     }
 
