@@ -275,7 +275,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
 
         verify(mNetworkScoreManager, never()).requestScores(anyCollection());
         verify(mWifiPermissionsUtil).enforceCanAccessScanResults(
-                eq(TEST_PACKAGE_NAME), eq(null), eq(TEST_UID), nullable(String.class));
+                eq(TEST_PACKAGE_NAME), any(), eq(TEST_UID), nullable(String.class));
     }
 
     @Test
@@ -298,7 +298,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
 
         verify(mNetworkScoreManager, never()).requestScores(anyCollection());
         verify(mWifiPermissionsUtil).enforceCanAccessScanResults(
-                eq(TEST_PACKAGE_NAME), eq(null), eq(TEST_UID), nullable(String.class));
+                eq(TEST_PACKAGE_NAME), any(), eq(TEST_UID), nullable(String.class));
     }
 
     /**
