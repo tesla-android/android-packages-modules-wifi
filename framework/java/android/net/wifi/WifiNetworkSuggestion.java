@@ -856,6 +856,10 @@ public final class WifiNetworkSuggestion implements Parcelable {
          * Wi-Fi network is treated as part of the mobile carrier network. Such configuration may
          * impact the user interface and data usage accounting.
          * <p>
+         * Only carriers with the
+         * {@link android.telephony.CarrierConfigManager#KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL}
+         * flag set to {@code true} may use this API.
+         * <p>
          * <li>A suggestion marked as carrier merged must be metered enterprise network with a valid
          * subscription Id set.
          * @see #setIsMetered(boolean)

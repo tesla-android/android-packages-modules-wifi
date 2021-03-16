@@ -1158,15 +1158,23 @@ public class WifiNetworkSuggestionsManager {
 
     private boolean validateCarrierNetworkSuggestions(
             List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName) {
-        boolean isCrossCarrierProvisioner = mWifiPermissionsUtil
-                .checkNetworkCarrierProvisioningPermission(uid)
-                || isAppWorkingAsCrossCarrierProvider(packageName);
+        boolean isAppWorkingAsCrossCarrierProvider = isAppWorkingAsCrossCarrierProvider(
+                packageName);
+        boolean isCrossCarrierProvisioner =
+                mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)
+                        || isAppWorkingAsCrossCarrierProvider;
         int provisionerCarrierId = mWifiCarrierInfoManager
                 .getCarrierIdForPackageWithCarrierPrivileges(packageName);
 
         for (WifiNetworkSuggestion suggestion : networkSuggestions) {
             WifiConfiguration wifiConfiguration = suggestion.wifiConfiguration;
             PasspointConfiguration passpointConfiguration = suggestion.passpointConfiguration;
+            if (!isAppWorkingAsCrossCarrierProvider && wifiConfiguration.carrierMerged
+                    && !mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(
+                    wifiConfiguration.subscriptionId)) {
+                // Carrier must be explicitly configured as merged carrier offload enabled
+                return false;
+            }
             if (!isCrossCarrierProvisioner && provisionerCarrierId
                     ==  TelephonyManager.UNKNOWN_CARRIER_ID) {
                 // If an app doesn't have carrier privileges or carrier provisioning permission,
