@@ -1115,6 +1115,65 @@ public class WifiManagerTest {
     }
 
     /**
+     * Verify an IllegalArgumentException is thrown if a callback or executor is not provided.
+     */
+    @Test
+    public void testAddWifiVerboseLoggingStatusCallbackIllegalArguments() throws Exception {
+        try {
+            mWifiManager.registerWifiVerboseLoggingStatusCallback(
+                    new HandlerExecutor(mHandler), null);
+            fail("expected IllegalArgumentException - null callback");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            WifiManager.WifiVerboseLoggingStatusCallback verboseLoggingStatusCallback =
+                    new WifiManager.WifiVerboseLoggingStatusCallback() {
+                @Override
+                public void onStatusChanged(boolean enabled) {
+
+                }
+            };
+            mWifiManager.registerWifiVerboseLoggingStatusCallback(
+                    null, verboseLoggingStatusCallback);
+            fail("expected IllegalArgumentException - null executor");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify the call to registerWifiVerboseLoggingStatusCallback and
+     * unregisterWifiVerboseLoggingStatusCallback goes to WifiServiceImpl.
+     */
+    @Test
+    public void testWifiVerboseLoggingStatusCallbackGoesToWifiServiceImpl() throws Exception {
+        WifiManager.WifiVerboseLoggingStatusCallback verboseLoggingStatusCallback =
+                new WifiManager.WifiVerboseLoggingStatusCallback() {
+                    @Override
+                    public void onStatusChanged(boolean enabled) {
+                    }
+                };
+        mWifiManager.registerWifiVerboseLoggingStatusCallback(new HandlerExecutor(mHandler),
+                verboseLoggingStatusCallback);
+        verify(mWifiService).registerWifiVerboseLoggingStatusCallback(
+                any(IWifiVerboseLoggingStatusCallback.Stub.class));
+        mWifiManager.unregisterWifiVerboseLoggingStatusCallback(verboseLoggingStatusCallback);
+        verify(mWifiService).unregisterWifiVerboseLoggingStatusCallback(
+                any(IWifiVerboseLoggingStatusCallback.Stub.class));
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if a callback is not provided.
+     */
+    @Test
+    public void testRemoveWifiVerboseLoggingStatusCallbackIllegalArguments() throws Exception {
+        try {
+            mWifiManager.unregisterWifiVerboseLoggingStatusCallback(null);
+            fail("expected IllegalArgumentException - null callback");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
      * Verify an IllegalArgumentException is thrown if callback is not provided.
      */
     @Test
