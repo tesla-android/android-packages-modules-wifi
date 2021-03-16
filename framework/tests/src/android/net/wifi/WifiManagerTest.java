@@ -67,6 +67,7 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
@@ -2959,10 +2960,14 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(IWifiConnectedNetworkScorer.Stub.class);
         verify(mWifiService).setWifiConnectedNetworkScorer(any(IBinder.class),
                 callbackCaptor.capture());
-        callbackCaptor.getValue().onStart(0);
+        callbackCaptor.getValue().onStart(new WifiConnectedSessionInfo.Builder(10)
+                .setUserSelected(true)
+                .build());
         callbackCaptor.getValue().onStop(10);
         mLooper.dispatchAll();
-        verify(mWifiConnectedNetworkScorer).onStart(0);
+        verify(mWifiConnectedNetworkScorer).onStart(
+                argThat(sessionInfo -> sessionInfo.getSessionId() == 10
+                        && sessionInfo.isUserSelected()));
         verify(mWifiConnectedNetworkScorer).onStop(10);
     }
 

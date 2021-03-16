@@ -443,6 +443,20 @@ package android.net.wifi {
     method @Deprecated @NonNull public android.net.wifi.WifiConfiguration.NetworkSelectionStatus.Builder setNetworkSelectionStatus(int);
   }
 
+  public final class WifiConnectedSessionInfo implements android.os.Parcelable {
+    method public int describeContents();
+    method public int getSessionId();
+    method public boolean isUserSelected();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiConnectedSessionInfo> CREATOR;
+  }
+
+  public static final class WifiConnectedSessionInfo.Builder {
+    ctor public WifiConnectedSessionInfo.Builder(int);
+    method @NonNull public android.net.wifi.WifiConnectedSessionInfo build();
+    method @NonNull public android.net.wifi.WifiConnectedSessionInfo.Builder setUserSelected(boolean);
+  }
+
   public class WifiEnterpriseConfig implements android.os.Parcelable {
     method @Nullable public String[] getCaCertificateAliases();
     method @NonNull public String getCaPath();
@@ -687,7 +701,8 @@ package android.net.wifi {
 
   public static interface WifiManager.WifiConnectedNetworkScorer {
     method public void onSetScoreUpdateObserver(@NonNull android.net.wifi.WifiManager.ScoreUpdateObserver);
-    method public void onStart(int);
+    method @Deprecated public default void onStart(int);
+    method public default void onStart(@NonNull android.net.wifi.WifiConnectedSessionInfo);
     method public void onStop(int);
   }
 
