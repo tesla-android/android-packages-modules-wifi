@@ -529,6 +529,26 @@ public class WifiCarrierInfoManager {
     }
 
     /**
+     * Checks whether merged carrier WiFi networks are permitted for the carrier based on a flag
+     * in the CarrierConfigManager.
+     *
+     * @param subId the best match subscriptionId for this network suggestion.
+     */
+    public boolean areMergedCarrierWifiNetworksAllowed(int subId) {
+        if (!SdkLevel.isAtLeastS()) {
+            return false;
+        }
+        PersistableBundle carrierConfig = getCarrierConfigForSubId(
+                mContext.getSystemService(CarrierConfigManager.class), subId);
+        if (carrierConfig == null) {
+            return false;
+        }
+
+        return carrierConfig.getBoolean(
+                CarrierConfigManager.KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL, false);
+    }
+
+    /**
      * Updates the IMSI encryption information and clears cached CarrierConfig data.
      */
     private void onCarrierConfigChanged(Context context) {

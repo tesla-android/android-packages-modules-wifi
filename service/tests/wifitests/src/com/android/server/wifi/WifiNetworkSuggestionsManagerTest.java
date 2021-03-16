@@ -278,6 +278,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         when(mWifiCarrierInfoManager.isSimPresent(SubscriptionManager.INVALID_SUBSCRIPTION_ID))
                 .thenReturn(false);
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(anyInt())).thenReturn(
+                false);
 
         when(mWifiKeyStore.updateNetworkKeys(any(), any())).thenReturn(true);
 
@@ -4662,8 +4664,19 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
 
+        // Adding a carrier merged network when the carrier configuration doesn't indicate it will
+        // provision such networks is not allowed
         when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
                 .thenReturn(true);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED,
+                mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID)).thenReturn(
+                true);
+        eapSimConfig.carrierId = VALID_CARRIER_ID;
+        networkSuggestion = createWifiNetworkSuggestion(
+                eapSimConfig, null, false, false, true, true, DEFAULT_PRIORITY_GROUP);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
