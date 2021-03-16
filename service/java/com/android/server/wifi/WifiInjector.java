@@ -189,6 +189,7 @@ public class WifiInjector {
     private final SelfRecovery mSelfRecovery;
     private final WakeupController mWakeupController;
     private final ScanRequestProxy mScanRequestProxy;
+    private final SarManager mSarManager;
     private final WifiDiagnostics mWifiDiagnostics;
     private final WifiDataStall mWifiDataStall;
     private final WifiScoreCard mWifiScoreCard;
@@ -371,6 +372,8 @@ public class WifiInjector {
                 mContext.getSystemService(ActivityManager.class),
                 this, mWifiConfigManager,
                 mWifiPermissionsUtil, mWifiMetrics, mClock, wifiHandler, mSettingsConfigStore);
+        mSarManager = new SarManager(mContext, makeTelephonyManager(), wifiLooper,
+                mWifiNative);
         mWifiNetworkSelector = new WifiNetworkSelector(mContext, mWifiScoreCard, mScoringParams,
                 mWifiConfigManager, mClock, mConnectivityLocalLog, mWifiMetrics, this,
                 mThroughputPredictor, mWifiChannelUtilizationScan, mWifiGlobals,
@@ -597,6 +600,10 @@ public class WifiInjector {
         return mWifiApConfigStore;
     }
 
+    public SarManager getSarManager() {
+        return mSarManager;
+    }
+
     public ActiveModeWarden getActiveModeWarden() {
         return mActiveModeWarden;
     }
@@ -676,10 +683,10 @@ public class WifiInjector {
             boolean verboseLoggingEnabled) {
         return new SoftApManager(mContext, mWifiHandlerThread.getLooper(),
                 mFrameworkFacade, mWifiNative, mCoexManager, mCountryCode.getCountryCode(),
-                listener, callback, mWifiApConfigStore, config, mWifiMetrics, mWifiDiagnostics,
-                new SoftApNotifier(mContext, mFrameworkFacade, mWifiNotificationManager),
-                mCmiMonitor, mActiveModeWarden, mClock.getElapsedSinceBootMillis(),
-                requestorWs, role, verboseLoggingEnabled);
+                listener, callback, mWifiApConfigStore, config, mWifiMetrics, mSarManager,
+                mWifiDiagnostics, new SoftApNotifier(mContext, mFrameworkFacade,
+                mWifiNotificationManager), mCmiMonitor, mActiveModeWarden,
+                mClock.getElapsedSinceBootMillis(), requestorWs, role, verboseLoggingEnabled);
     }
 
     /**

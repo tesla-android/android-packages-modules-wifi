@@ -368,6 +368,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
     @Mock OpenNetworkNotifier mOpenNetworkNotifier;
     @Mock WifiNotificationManager mWifiNotificationManager;
+    @Mock SarManager mSarManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -490,6 +491,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
         when(mClientSoftApCallback.asBinder()).thenReturn(mAppBinder);
         when(mAnotherSoftApCallback.asBinder()).thenReturn(mAnotherAppBinder);
+        when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
 
