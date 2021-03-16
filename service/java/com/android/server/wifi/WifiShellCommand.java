@@ -47,6 +47,7 @@ import android.net.wifi.SoftApInfo;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiConnectedSessionInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
@@ -167,8 +168,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         }
 
         @Override
-        public void onStart(int sessionId) {
-            mSessionId = sessionId;
+        public void onStart(WifiConnectedSessionInfo sessionInfo) {
+            mSessionId = sessionInfo.getSessionId();
             mCountDownLatch.countDown();
         }
         @Override

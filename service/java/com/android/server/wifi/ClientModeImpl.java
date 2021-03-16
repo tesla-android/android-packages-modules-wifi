@@ -5377,7 +5377,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiStateTracker.updateState(WifiStateTracker.CONNECTED);
             // Inform WifiLockManager
             mWifiLockManager.updateWifiClientConnected(mClientModeManager, true);
-            mWifiScoreReport.startConnectedNetworkScorer(mNetworkAgent.getNetwork().getNetId());
+            WifiConfiguration config = getConnectedWifiConfigurationInternal();
+            mWifiScoreReport.startConnectedNetworkScorer(
+                    mNetworkAgent.getNetwork().getNetId(), isRecentlySelectedByTheUser(config));
             updateLinkLayerStatsRssiAndScoreReport();
             mWifiScoreCard.noteIpConfiguration(mWifiInfo);
             // too many places to record L3 failure with too many failure reasons.

@@ -7336,8 +7336,20 @@ public class WifiManager {
         /**
          * Called by framework to indicate the start of a network connection.
          * @param sessionId The ID to indicate current Wi-Fi network connection.
+         * @deprecated This API is deprecated.  Please use
+         *             {@link WifiConnectedNetworkScorer#onStart(WifiConnectedSessionInfo)}.
          */
-        void onStart(int sessionId);
+        @Deprecated
+        default void onStart(int sessionId) {}
+
+        /**
+         * Called by framework to indicate the start of a network connection.
+         * @param sessionInfo The session information to indicate current Wi-Fi network connection.
+         *                    See {@link WifiConnectedSessionInfo}.
+         */
+        default void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
+            onStart(sessionInfo.getSessionId());
+        }
 
         /**
          * Called by framework to indicate the end of a network connection.
@@ -7369,12 +7381,12 @@ public class WifiManager {
         }
 
         @Override
-        public void onStart(int sessionId) {
+        public void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionId=" + sessionId);
+                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionInfo=" + sessionInfo);
             }
             Binder.clearCallingIdentity();
-            mExecutor.execute(() -> mScorer.onStart(sessionId));
+            mExecutor.execute(() -> mScorer.onStart(sessionInfo));
         }
 
         @Override
