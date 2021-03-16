@@ -166,6 +166,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Mock ActiveModeManager.Listener<SoftApManager> mListener;
     @Mock FrameworkFacade mFrameworkFacade;
     @Mock WifiApConfigStore mWifiApConfigStore;
+    @Mock SarManager mSarManager;
     @Mock WifiMetrics mWifiMetrics;
     @Mock WifiDiagnostics mWifiDiagnostics;
     @Mock WifiNotificationManager mWifiNotificationManager;
@@ -328,6 +329,7 @@ public class SoftApManagerTest extends WifiBaseTest {
                 mWifiApConfigStore,
                 config,
                 mWifiMetrics,
+                mSarManager,
                 mWifiDiagnostics,
                 mFakeSoftApNotifier,
                 mCmiMonitor,
@@ -693,6 +695,7 @@ public class SoftApManagerTest extends WifiBaseTest {
                 softApModeConfig.getTargetMode());
 
         order.verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_DISABLED, 0);
+        verify(mSarManager).setSapWifiState(WifiManager.WIFI_AP_STATE_DISABLED);
         verify(mWifiDiagnostics).stopLogging(TEST_INTERFACE_NAME);
         order.verify(mContext).sendStickyBroadcastAsUser(intentCaptor.capture(),
                 eq(UserHandle.ALL));
@@ -1899,6 +1902,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         order.verify(mCallback).onStateChanged(WifiManager.WIFI_AP_STATE_ENABLED, 0);
         order.verify(mCallback).onConnectedClientsOrInfoChanged(eq(mTestSoftApInfoMap),
                   eq(mTestWifiClientsMap), eq(expectedConfig.getBands().length > 1));
+        verify(mSarManager).setSapWifiState(WifiManager.WIFI_AP_STATE_ENABLED);
         verify(mWifiDiagnostics).startLogging(TEST_INTERFACE_NAME);
         verify(mContext, times(2)).sendStickyBroadcastAsUser(intentCaptor.capture(),
                 eq(UserHandle.ALL));

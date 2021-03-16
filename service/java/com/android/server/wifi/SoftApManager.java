@@ -134,6 +134,8 @@ public class SoftApManager implements ActiveModeManager {
     private boolean mTimeoutEnabled = false;
     private boolean mBridgedModeOpportunisticsShutdownTimeoutEnabled = false;
 
+    private final SarManager mSarManager;
+
     private String mStartTimestamp;
 
     private long mDefaultShutdownTimeoutMillis;
@@ -255,6 +257,7 @@ public class SoftApManager implements ActiveModeManager {
             @NonNull WifiApConfigStore wifiApConfigStore,
             @NonNull SoftApModeConfiguration apConfig,
             @NonNull WifiMetrics wifiMetrics,
+            @NonNull SarManager sarManager,
             @NonNull WifiDiagnostics wifiDiagnostics,
             @NonNull SoftApNotifier softApNotifier,
             @NonNull ClientModeImplMonitor cmiMonitor,
@@ -289,6 +292,7 @@ public class SoftApManager implements ActiveModeManager {
         mApConfig = new SoftApModeConfiguration(apConfig.getTargetMode(),
                 softApConfig, mCurrentSoftApCapability);
         mWifiMetrics = wifiMetrics;
+        mSarManager = sarManager;
         mWifiDiagnostics = wifiDiagnostics;
         mStateMachine = new SoftApStateMachine(looper);
         if (softApConfig != null) {
@@ -1186,6 +1190,7 @@ public class SoftApManager implements ActiveModeManager {
                         SoftApStateMachine.CMD_NO_ASSOCIATED_STATIONS_TIMEOUT_ON_ONE_INSTANCE);
 
                 mCoexManager.registerCoexListener(mCoexListener);
+                mSarManager.setSapWifiState(WifiManager.WIFI_AP_STATE_ENABLED);
                 Log.d(getTag(), "Resetting connected clients on start");
                 mConnectedClientWithApInfoMap.clear();
                 mPendingDisconnectClients.clear();
@@ -1220,6 +1225,8 @@ public class SoftApManager implements ActiveModeManager {
                         mDefaultShutdownTimeoutMillis);
                 updateApState(WifiManager.WIFI_AP_STATE_DISABLED,
                         WifiManager.WIFI_AP_STATE_DISABLING, 0);
+
+                mSarManager.setSapWifiState(WifiManager.WIFI_AP_STATE_DISABLED);
 
                 mApInterfaceName = null;
                 mIfaceIsUp = false;

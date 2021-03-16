@@ -529,6 +529,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getOemWifiNetworkFactory().register();
             mWifiInjector.getWifiP2pConnection().handleBootCompleted();
             mTetheredSoftApTracker.handleBootCompleted();
+            mWifiInjector.getSarManager().handleBootCompleted();
         });
     }
 
@@ -3783,6 +3784,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getWifiLastResortWatchdog().dump(fd, pw, args);
             mWifiInjector.getAdaptiveConnectivityEnabledSettingObserver().dump(fd, pw, args);
             mWifiInjector.getWifiGlobals().dump(fd, pw, args);
+            mWifiInjector.getSarManager().dump(fd, pw, args);
             pw.println();
         }
     }
@@ -3882,6 +3884,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiLockManager.enableVerboseLogging(verbose);
         mWifiMulticastLockManager.enableVerboseLogging(verbose);
         mWifiInjector.enableVerboseLogging(verbose);
+        mWifiInjector.getSarManager().enableVerboseLogging(verbose);
     }
 
     @Override
