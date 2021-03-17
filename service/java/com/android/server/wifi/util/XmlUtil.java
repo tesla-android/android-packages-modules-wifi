@@ -1336,8 +1336,10 @@ public class XmlUtil {
                     enterpriseConfig.isAppInstalledDeviceKeyAndCert());
             XmlUtil.writeNextValue(out, XML_TAG_KEYCHAIN_KEY_ALIAS,
                     enterpriseConfig.getClientKeyPairAliasInternal());
-            XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
-                    enterpriseConfig.getDecoratedIdentityPrefix());
+            if (SdkLevel.isAtLeastS()) {
+                XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
+                        enterpriseConfig.getDecoratedIdentityPrefix());
+            }
         }
 
         /**
