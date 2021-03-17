@@ -791,6 +791,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void testLohsDefaultConfigurationWhenMacRandomizationDoesntSupport()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, false);
         WifiApConfigStore store = createWifiApConfigStore();
@@ -810,6 +811,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void testLohsDefaultConfigurationWhenMacRandomizationDisabledInTetheredCongig()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mResources.setBoolean(R.bool.config_wifi_softap_sae_supported, true);
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
         WifiApConfigStore storeMacRandomizationSupported = createWifiApConfigStore();
