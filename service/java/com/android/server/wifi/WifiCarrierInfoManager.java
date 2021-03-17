@@ -188,12 +188,39 @@ public class WifiCarrierInfoManager {
             new ArrayList<>();
     private final List<OnCarrierOffloadDisabledListener> mOnCarrierOffloadDisabledListeners =
             new ArrayList<>();
+    private final SparseArray<SimInfo> mSubIdToSimInfoSparseArray = new SparseArray<>();
+
+    private List<SubscriptionInfo> mActiveSubInfos = null;
 
     private boolean mUserApprovalUiActive = false;
     private boolean mHasNewUserDataToSerialize = false;
     private boolean mHasNewSharedDataToSerialize = false;
     private boolean mUserDataLoaded = false;
     private boolean mIsLastUserApprovalUiDialog = false;
+
+    private static class SimInfo {
+        public final String imsi;
+        public final String mccMnc;
+        public final int carrierIdFromSimMccMnc;
+        public final int simCarrierId;
+
+        SimInfo(String imsi, String mccMnc, int carrierIdFromSimMccMnc, int simCarrierId) {
+            this.imsi = imsi;
+            this.mccMnc = mccMnc;
+            this.carrierIdFromSimMccMnc = carrierIdFromSimMccMnc;
+            this.simCarrierId = simCarrierId;
+        }
+
+        /**
+         * Get the carrier type of current SIM.
+         */
+        public int getCarrierType() {
+            if (carrierIdFromSimMccMnc == simCarrierId) {
+                return CARRIER_MNO_TYPE;
+            }
+            return CARRIER_MVNO_TYPE;
+        }
+    }
 
     /**
      * Implement of {@link TelephonyCallback.DataEnabledListener}
@@ -391,6 +418,14 @@ public class WifiCarrierInfoManager {
                 ACTION_USER_DISALLOWED_CARRIER, mIsLastUserApprovalUiDialog);
     }
 
+    private class SubscriptionChangeListener extends
+            SubscriptionManager.OnSubscriptionsChangedListener {
+        @Override
+        public void onSubscriptionsChanged() {
+            mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
+        }
+    }
+
     /**
      * Gets the instance of WifiCarrierInfoManager.
      * @param telephonyManager Instance of {@link TelephonyManager}
@@ -428,6 +463,9 @@ public class WifiCarrierInfoManager {
         configStore.registerStoreData(wifiInjector.makeImsiPrivacyProtectionExemptionStoreData(
                 new ImsiProtectionExemptionDataSource()));
 
+        mSubscriptionManager.addOnSubscriptionsChangedListener(new HandlerExecutor(mHandler),
+                new SubscriptionChangeListener());
+        mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
         onCarrierConfigChanged(context);
 
         // Monitor for carrier config changes.
@@ -562,12 +600,10 @@ public class WifiCarrierInfoManager {
         mImsiEncryptionRequired.clear();
         mImsiEncryptionInfoAvailable.clear();
         mEapMethodPrefixEnable.clear();
-        List<SubscriptionInfo> activeSubInfos =
-                mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (activeSubInfos == null) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             return;
         }
-        for (SubscriptionInfo subInfo : activeSubInfos) {
+        for (SubscriptionInfo subInfo : mActiveSubInfos) {
             int subId = subInfo.getSubscriptionId();
             PersistableBundle bundle = getCarrierConfigForSubId(carrierConfigManager, subId);
             if (bundle != null) {
@@ -641,14 +677,13 @@ public class WifiCarrierInfoManager {
      * @return the matched SubscriptionId
      */
     public int getMatchingSubId(int carrierId) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfoList == null || subInfoList.isEmpty()) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }
 
         int dataSubId = SubscriptionManager.getDefaultDataSubscriptionId();
         int matchSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-        for (SubscriptionInfo subInfo : subInfoList) {
+        for (SubscriptionInfo subInfo : mActiveSubInfos) {
             if (subInfo.getCarrierId() == carrierId) {
                 matchSubId = subInfo.getSubscriptionId();
                 if (matchSubId == dataSubId) {
@@ -690,11 +725,10 @@ public class WifiCarrierInfoManager {
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             return false;
         }
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfoList == null || subInfoList.isEmpty()) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             return false;
         }
-        return subInfoList.stream()
+        return mActiveSubInfos.stream()
                 .anyMatch(info -> info.getSubscriptionId() == subId
                         && isSimStateReady(info));
     }
@@ -720,15 +754,13 @@ public class WifiCarrierInfoManager {
             return null;
         }
 
-        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-        String imsi = specifiedTm.getSubscriberId();
-        String mccMnc = "";
-
-        if (specifiedTm.getSimState() == TelephonyManager.SIM_STATE_READY) {
-            mccMnc = specifiedTm.getSimOperator();
+        SimInfo simInfo = getSimInfo(subId);
+        if (simInfo == null) {
+            return null;
         }
 
-        String identity = buildIdentity(getSimMethodForConfig(config), imsi, mccMnc, false);
+        String identity = buildIdentity(getSimMethodForConfig(config), simInfo.imsi,
+                simInfo.mccMnc, false);
         if (identity == null) {
             Log.e(TAG, "Failed to build the identity");
             return null;
@@ -737,7 +769,7 @@ public class WifiCarrierInfoManager {
         if (!requiresImsiEncryption(subId)) {
             return Pair.create(identity, "");
         }
-
+        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
         ImsiEncryptionInfo imsiEncryptionInfo;
         try {
             imsiEncryptionInfo = specifiedTm.getCarrierInfoForImsiEncryption(
@@ -771,11 +803,11 @@ public class WifiCarrierInfoManager {
      */
     public String getAnonymousIdentityWith3GppRealm(@NonNull WifiConfiguration config) {
         int subId = getBestMatchSubscriptionId(config);
-        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-        if (specifiedTm.getSimState() != TelephonyManager.SIM_STATE_READY) {
+        SimInfo simInfo = getSimInfo(subId);
+        if (simInfo == null) {
             return null;
         }
-        String mccMnc = specifiedTm.getSimOperator();
+        String mccMnc = simInfo.mccMnc;
         if (mccMnc == null || mccMnc.isEmpty()) {
             return null;
         }
@@ -1318,30 +1350,6 @@ public class WifiCarrierInfoManager {
     }
 
     /**
-     * Get the carrier type of current SIM.
-     *
-     * @param subId the subscription ID of SIM card.
-     * @return carrier type of current active sim, {{@link #CARRIER_INVALID_TYPE}} if sim is not
-     * ready.
-     */
-    private int getCarrierType(int subId) {
-        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            return CARRIER_INVALID_TYPE;
-        }
-        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-
-        if (specifiedTm.getSimState() != TelephonyManager.SIM_STATE_READY) {
-            return CARRIER_INVALID_TYPE;
-        }
-
-        // If two APIs return the same carrier ID, then is considered as MNO, otherwise MVNO
-        if (specifiedTm.getCarrierIdFromSimMccMnc() == specifiedTm.getSimCarrierId()) {
-            return CARRIER_MNO_TYPE;
-        }
-        return CARRIER_MVNO_TYPE;
-    }
-
-    /**
      * Decorates a pseudonym with the NAI realm, in case it wasn't provided by the server
      *
      * @param config The instance of WifiConfiguration
@@ -1360,18 +1368,17 @@ public class WifiCarrierInfoManager {
         }
         int subId = getBestMatchSubscriptionId(config);
 
-        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-        if (specifiedTm.getSimState() != TelephonyManager.SIM_STATE_READY) {
+        SimInfo simInfo = getSimInfo(subId);
+        if (simInfo == null) {
             return null;
         }
-        String mccMnc = specifiedTm.getSimOperator();
-        if (mccMnc == null || mccMnc.isEmpty()) {
+        if (simInfo.mccMnc == null || simInfo.mccMnc.isEmpty()) {
             return null;
         }
 
         // Extract mcc & mnc from mccMnc
-        String mcc = mccMnc.substring(0, 3);
-        String mnc = mccMnc.substring(3);
+        String mcc = simInfo.mccMnc.substring(0, 3);
+        String mnc = simInfo.mccMnc.substring(3);
 
         if (mnc.length() == 2) {
             mnc = "0" + mnc;
@@ -1418,15 +1425,16 @@ public class WifiCarrierInfoManager {
             vlogd("IMSI is not available or not full");
             return false;
         }
-        List<SubscriptionInfo> infos = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (infos == null) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             return false;
         }
         // Find the active matching SIM card with the full IMSI from passpoint profile.
-        for (SubscriptionInfo subInfo : infos) {
-            String imsi = mTelephonyManager
-                    .createForSubscriptionId(subInfo.getSubscriptionId()).getSubscriberId();
-            if (imsiParameter.matchesImsi(imsi)) {
+        for (SubscriptionInfo subInfo : mActiveSubInfos) {
+            SimInfo simInfo = getSimInfo(subInfo.getSubscriptionId());
+            if (simInfo == null) {
+                continue;
+            }
+            if (imsiParameter.matchesImsi(simInfo.imsi)) {
                 config.setCarrierId(subInfo.getCarrierId());
                 return true;
             }
@@ -1448,7 +1456,10 @@ public class WifiCarrierInfoManager {
                 vlogd("required IMSI encryption information is not available.");
                 return null;
             }
-            return mTelephonyManager.createForSubscriptionId(subId).getSubscriberId();
+            SimInfo simInfo = getSimInfo(subId);
+            if (simInfo != null) {
+                return simInfo.imsi;
+            }
         }
         vlogd("no active SIM card to match the carrier ID.");
         return null;
@@ -1468,8 +1479,7 @@ public class WifiCarrierInfoManager {
         if (imsiParameter == null) {
             return null;
         }
-        List<SubscriptionInfo> infos = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (infos == null) {
+        if (mActiveSubInfos == null) {
             return null;
         }
         int dataSubId = SubscriptionManager.getDefaultDataSubscriptionId();
@@ -1482,28 +1492,29 @@ public class WifiCarrierInfoManager {
 
         // Find the active matched SIM card with the priority order of Data MNO SIM,
         // Nondata MNO SIM, Data MVNO SIM, Nondata MVNO SIM.
-        for (SubscriptionInfo subInfo : infos) {
+        for (SubscriptionInfo subInfo : mActiveSubInfos) {
             int subId = subInfo.getSubscriptionId();
             if (requiresImsiEncryption(subId) && !isImsiEncryptionInfoAvailable(subId)) {
                 vlogd("required IMSI encryption information is not available.");
                 continue;
             }
-            TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-            String operatorNumeric = specifiedTm.getSimOperator();
-            if (operatorNumeric != null && imsiParameter.matchesMccMnc(operatorNumeric)) {
-                String curImsi = specifiedTm.getSubscriberId();
-                if (TextUtils.isEmpty(curImsi)) {
+            SimInfo simInfo = getSimInfo(subId);
+            if (simInfo == null) {
+                continue;
+            }
+            if (simInfo.mccMnc != null && imsiParameter.matchesMccMnc(simInfo.mccMnc)) {
+                if (TextUtils.isEmpty(simInfo.imsi)) {
                     continue;
                 }
-                matchedPair = new Pair<>(curImsi, subInfo.getCarrierId());
+                matchedPair = new Pair<>(simInfo.imsi, subInfo.getCarrierId());
                 if (subId == dataSubId) {
                     matchedDataPair = matchedPair;
-                    if (getCarrierType(subId) == CARRIER_MNO_TYPE) {
+                    if (simInfo.getCarrierType() == CARRIER_MNO_TYPE) {
                         vlogd("MNO data is matched via IMSI.");
                         return matchedDataPair;
                     }
                 }
-                if (getCarrierType(subId) == CARRIER_MNO_TYPE) {
+                if (simInfo.getCarrierType() == CARRIER_MNO_TYPE) {
                     matchedMnoPair = matchedPair;
                 }
             }
@@ -1546,12 +1557,11 @@ public class WifiCarrierInfoManager {
      *         by any available carrier, will return UNKNOWN_CARRIER_ID.
      */
     public int getCarrierIdForPackageWithCarrierPrivileges(String packageName) {
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfoList == null || subInfoList.isEmpty()) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             if (mVerboseLogEnabled) Log.v(TAG, "No subs for carrier privilege check");
             return TelephonyManager.UNKNOWN_CARRIER_ID;
         }
-        for (SubscriptionInfo info : subInfoList) {
+        for (SubscriptionInfo info : mActiveSubInfos) {
             TelephonyManager specifiedTm =
                     mTelephonyManager.createForSubscriptionId(info.getSubscriptionId());
             if (specifiedTm.checkCarrierPrivilegesForPackage(packageName)
@@ -1567,7 +1577,7 @@ public class WifiCarrierInfoManager {
      * @param subId Subscription id
      * @return String of carrier name.
      */
-    public String getCarrierNameforSubId(int subId) {
+    public String getCarrierNameForSubId(int subId) {
         TelephonyManager specifiedTm =
                 mTelephonyManager.createForSubscriptionId(subId);
 
@@ -1595,8 +1605,11 @@ public class WifiCarrierInfoManager {
      */
     public int getDefaultDataSimCarrierId() {
         int subId = SubscriptionManager.getDefaultDataSubscriptionId();
-        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-        return specifiedTm.getSimCarrierId();
+        SimInfo simInfo = getSimInfo(subId);
+        if (simInfo == null) {
+            return TelephonyManager.UNKNOWN_CARRIER_ID;
+        }
+        return simInfo.simCarrierId;
     }
 
     /**
@@ -1657,7 +1670,7 @@ public class WifiCarrierInfoManager {
     }
 
     private void sendImsiPrivacyNotification(int carrierId) {
-        String carrierName = getCarrierNameforSubId(getMatchingSubId(carrierId));
+        String carrierName = getCarrierNameForSubId(getMatchingSubId(carrierId));
         if (carrierName == null) {
             // If carrier name could not be retrieved, do not send notification.
             return;
@@ -1777,11 +1790,10 @@ public class WifiCarrierInfoManager {
             // connect.
             return true;
         }
-        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
-        if (subInfoList == null || subInfoList.isEmpty()) {
+        if (mActiveSubInfos == null || mActiveSubInfos.isEmpty()) {
             return false;
         }
-        for (SubscriptionInfo info : subInfoList) {
+        for (SubscriptionInfo info : mActiveSubInfos) {
             if (info.getSubscriptionId() == subId) {
                 return info.getCarrierId() == carrierId;
             }
@@ -1871,6 +1883,8 @@ public class WifiCarrierInfoManager {
         mImsiPrivacyProtectionExemptionMap.clear();
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
+        mSubIdToSimInfoSparseArray.clear();
+        mActiveSubInfos.clear();
         mUserDataEnabled.clear();
         if (SdkLevel.isAtLeastS()) {
             for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
@@ -1885,5 +1899,21 @@ public class WifiCarrierInfoManager {
     public void resetNotification() {
         mNotificationManager.cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
         mUserApprovalUiActive = false;
+    }
+
+    private SimInfo getSimInfo(int subId) {
+        SimInfo simInfo = mSubIdToSimInfoSparseArray.get(subId);
+        if (simInfo == null) {
+            TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
+            if (specifiedTm.getSimState() == TelephonyManager.SIM_STATE_READY) {
+                String imsi = specifiedTm.getSubscriberId();
+                String mccMnc = specifiedTm.getSimOperator();
+                int CarrierIdFromSimMccMnc = specifiedTm.getCarrierIdFromSimMccMnc();
+                int SimCarrierId = specifiedTm.getSimCarrierId();
+                simInfo = new SimInfo(imsi, mccMnc, CarrierIdFromSimMccMnc, SimCarrierId);
+                mSubIdToSimInfoSparseArray.put(subId, simInfo);
+            }
+        }
+        return simInfo;
     }
 }

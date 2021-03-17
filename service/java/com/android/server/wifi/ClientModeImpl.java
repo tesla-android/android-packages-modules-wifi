@@ -4253,7 +4253,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             && config.enterpriseConfig.isAuthenticationSimBased()) {
                         mLastSubId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(config);
                         mLastSimBasedConnectionCarrierName =
-                                mWifiCarrierInfoManager.getCarrierNameforSubId(mLastSubId);
+                                mWifiCarrierInfoManager.getCarrierNameForSubId(mLastSubId);
                         String anonymousIdentity =
                                 mWifiNative.getEapAnonymousIdentity(mInterfaceName);
                         if (!TextUtils.isEmpty(anonymousIdentity)
