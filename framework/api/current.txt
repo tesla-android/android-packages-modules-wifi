@@ -357,6 +357,7 @@ package android.net.wifi {
     method public boolean is6GHzBandSupported();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isAutoWakeupEnabled();
     method public boolean isBridgedApConcurrencySupported();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isCarrierNetworkOffloadEnabled(int, boolean);
     method public boolean isDecoratedIdentitySupported();
     method @Deprecated public boolean isDeviceToApRttSupported();
     method public boolean isEasyConnectEnrolleeResponderModeSupported();

@@ -7724,13 +7724,8 @@ public class WifiManager {
      * @param merged True for carrier merged network, false otherwise.
      *               See {@link WifiNetworkSuggestion.Builder#setCarrierMerged(boolean)}
      * @return True to indicate that carrier network offload is enabled, false otherwise.
-     * @see #setCarrierNetworkOffloadEnabled(int, boolean, boolean)
-     * @hide
      */
-    @SystemApi
-    @RequiresPermission(anyOf = {
-            android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public boolean isCarrierNetworkOffloadEnabled(int subscriptionId, boolean merged) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
