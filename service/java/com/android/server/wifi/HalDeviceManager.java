@@ -2594,7 +2594,7 @@ public class HalDeviceManager {
      * Dump the internal state of the class.
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("HalDeviceManager:");
+        pw.println("Dump of HalDeviceManager:");
         pw.println("  mServiceManager: " + mServiceManager);
         pw.println("  mWifi: " + mWifi);
         pw.println("  mManagerStatusListeners: " + mManagerStatusListeners);

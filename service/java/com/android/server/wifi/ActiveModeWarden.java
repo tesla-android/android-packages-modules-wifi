@@ -1149,6 +1149,7 @@ public class ActiveModeWarden {
                             R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled));
         }
         pw.println("STA + AP Concurrency Supported: " + isStaApConcurrencySupported());
+        mWifiInjector.getHalDeviceManager().dump(fd, pw, args);
     }
 
     @VisibleForTesting
