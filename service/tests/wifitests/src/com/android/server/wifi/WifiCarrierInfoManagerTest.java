@@ -1990,6 +1990,34 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     }
 
     @Test
+    public void testAllowCarrierWifiForCarrier() {
+        PersistableBundle bundle = new PersistableBundle();
+        String key = CarrierConfigManager.KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL;
+        int subId = 0; // anything
+        when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
+
+        if (SdkLevel.isAtLeastS()) {
+            // not allowed: false
+            bundle.putBoolean(key, false);
+            assertFalse(
+                    mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId));
+
+            // allowed: true
+            bundle.putBoolean(key, true);
+            assertTrue(
+                    mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId));
+
+            // no key
+            bundle.clear();
+            assertFalse(
+                    mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId));
+        } else {
+            assertFalse(
+                    mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId));
+        }
+    }
+
+    @Test
     public void testResetNotification() {
         mWifiCarrierInfoManager.resetNotification();
         verify(mWifiNotificationManager).cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);

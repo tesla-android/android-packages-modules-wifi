@@ -422,7 +422,6 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verifyConnectModeNotificationsForCleanShutdown(WIFI_STATE_ENABLED);
-
         verify(mWifiNative).setupInterfaceForClientInScanMode(
                 mInterfaceCallbackCaptor.capture(), eq(TEST_WORKSOURCE));
         verify(mWifiNative).switchClientInterfaceToScanMode(TEST_INTERFACE_NAME, TEST_WORKSOURCE);

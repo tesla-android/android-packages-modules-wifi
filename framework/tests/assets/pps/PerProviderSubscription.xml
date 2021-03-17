@@ -43,6 +43,16 @@
             </Node>
           </Node>
         </Node>
+        <Node>
+          <NodeName>WBA</NodeName>
+          <Node>
+            <NodeName>NAI</NodeName>
+            <Node>
+              <NodeName>DecoratedPrefix</NodeName>
+              <Value>androidwifi.dev!</Value>
+            </Node>
+          </Node>
+        </Node>
       </Node>
       <Node>
         <NodeName>HomeSP</NodeName>

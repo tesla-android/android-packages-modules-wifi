@@ -225,6 +225,7 @@ package android.net.wifi {
     method @Nullable public java.security.cert.X509Certificate[] getClientCertificateChain();
     method @Nullable public String getClientKeyPairAlias();
     method @Nullable public java.security.PrivateKey getClientPrivateKey();
+    method @NonNull public String getDecoratedIdentityPrefix();
     method public String getDomainSuffixMatch();
     method public int getEapMethod();
     method public String getIdentity();
@@ -243,6 +244,7 @@ package android.net.wifi {
     method public void setClientKeyEntry(java.security.PrivateKey, java.security.cert.X509Certificate);
     method public void setClientKeyEntryWithCertificateChain(java.security.PrivateKey, java.security.cert.X509Certificate[]);
     method public void setClientKeyPairAlias(@NonNull String);
+    method public void setDecoratedIdentityPrefix(@Nullable String);
     method public void setDomainSuffixMatch(String);
     method public void setEapMethod(int);
     method public void setIdentity(String);
@@ -355,6 +357,7 @@ package android.net.wifi {
     method public boolean is6GHzBandSupported();
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isAutoWakeupEnabled();
     method public boolean isBridgedApConcurrencySupported();
+    method public boolean isDecoratedIdentitySupported();
     method @Deprecated public boolean isDeviceToApRttSupported();
     method public boolean isEasyConnectEnrolleeResponderModeSupported();
     method public boolean isEasyConnectSupported();
@@ -790,11 +793,13 @@ package android.net.wifi.hotspot2 {
     ctor public PasspointConfiguration(android.net.wifi.hotspot2.PasspointConfiguration);
     method public int describeContents();
     method public android.net.wifi.hotspot2.pps.Credential getCredential();
+    method @Nullable public String getDecoratedIdentityPrefix();
     method public android.net.wifi.hotspot2.pps.HomeSp getHomeSp();
     method public long getSubscriptionExpirationTimeMillis();
     method @NonNull public String getUniqueId();
     method public boolean isOsuProvisioned();
     method public void setCredential(android.net.wifi.hotspot2.pps.Credential);
+    method public void setDecoratedIdentityPrefix(@Nullable String);
     method public void setHomeSp(android.net.wifi.hotspot2.pps.HomeSp);
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.hotspot2.PasspointConfiguration> CREATOR;

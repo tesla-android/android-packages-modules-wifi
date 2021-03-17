@@ -28,6 +28,7 @@ import static org.junit.Assume.assumeTrue;
 
 import android.net.wifi.WifiEnterpriseConfig.Eap;
 import android.net.wifi.WifiEnterpriseConfig.Phase2;
+import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.Parcel;
 import android.security.Credentials;
 
@@ -52,6 +53,7 @@ public class WifiEnterpriseConfigTest {
     public static final String KEYSTORES_URI = "keystores://";
     private static final String TEST_DOMAIN_SUFFIX_MATCH = "domainSuffixMatch";
     private static final String TEST_ALT_SUBJECT_MATCH = "DNS:server.test.com";
+    private static final String TEST_DECORATED_IDENTITY_PREFIX = "androidwifi.dev!";
 
     private WifiEnterpriseConfig mEnterpriseConfig;
 
@@ -598,6 +600,29 @@ public class WifiEnterpriseConfigTest {
     public void testIsEnterpriseConfigServerCertEnabledWithTTLS() {
         assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.TTLS);
+    }
+
+    @Test
+    public void testSetGetDecoratedIdentityPrefix() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
+
+        assertEquals("", config.getDecoratedIdentityPrefix());
+        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        assertEquals(TEST_DECORATED_IDENTITY_PREFIX, config.getDecoratedIdentityPrefix());
+    }
+
+    /**
+     * Verify that the set decorated identity prefix doesn't accept a malformed input.
+     *
+     * @throws Exception
+     */
+    @Test (expected = IllegalArgumentException.class)
+    public void testSetDecoratedIdentityPrefixWithInvalidValue() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        PasspointConfiguration config = new PasspointConfiguration();
+
+        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX.replace('!', 'a'));
     }
 
     private void testIsEnterpriseConfigServerCertEnabled(int eapMethod) {

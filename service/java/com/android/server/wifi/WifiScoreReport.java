@@ -21,6 +21,7 @@ import android.content.Context;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.wifi.IWifiConnectedNetworkScorer;
+import android.net.wifi.WifiConnectedSessionInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.nl80211.WifiNl80211Manager;
@@ -89,6 +90,8 @@ public class WifiScoreReport {
     private VelocityBasedConnectedScore mVelocityBasedConnectedScore;
     private final WifiSettingsStore mWifiSettingsStore;
     private int mSessionIdNoReset = INVALID_SESSION_ID;
+    // Indicate whether current network is selected by the user
+    private boolean mIsUserSelected = false;
 
     @Nullable
     private WifiNetworkAgent mNetworkAgent;
@@ -384,7 +387,7 @@ public class WifiScoreReport {
         /**
          * Starts a new scoring session.
          */
-        public void startSession(int sessionId) {
+        public void startSession(int sessionId, boolean isUserSelected) {
             if (sessionId == INVALID_SESSION_ID) {
                 throw new IllegalArgumentException();
             }
@@ -400,7 +403,11 @@ public class WifiScoreReport {
             mSessionId = sessionId;
             mSessionIdNoReset = sessionId;
             try {
-                mScorer.onStart(sessionId);
+                WifiConnectedSessionInfo sessionInfo =
+                        new WifiConnectedSessionInfo.Builder(sessionId)
+                                .setUserSelected(isUserSelected)
+                                .build();
+                mScorer.onStart(sessionInfo);
             } catch (RemoteException e) {
                 Log.e(TAG, "Unable to start Wifi connected network scorer " + this, e);
                 revertToDefaultConnectedScorer();
@@ -804,7 +811,7 @@ public class WifiScoreReport {
         // If there is already a connection, start a new session
         final int netId = getCurrentNetId();
         if (netId > 0 && !mShouldReduceNetworkScore) {
-            startConnectedNetworkScorer(netId);
+            startConnectedNetworkScorer(netId, mIsUserSelected);
         }
         return true;
     }
@@ -852,7 +859,8 @@ public class WifiScoreReport {
      * Start the registered Wi-Fi connected network scorer.
      * @param netId identifies the current android.net.Network
      */
-    public void startConnectedNetworkScorer(int netId) {
+    public void startConnectedNetworkScorer(int netId, boolean isUserSelected) {
+        mIsUserSelected = isUserSelected;
         final int sessionId = getCurrentSessionId();
         if (mWifiConnectedNetworkScorerHolder == null
                 || netId != getCurrentNetId()
@@ -866,7 +874,7 @@ public class WifiScoreReport {
             return;
         }
         mWifiInfo.setScore(ConnectedScore.WIFI_MAX_SCORE);
-        mWifiConnectedNetworkScorerHolder.startSession(sessionId);
+        mWifiConnectedNetworkScorerHolder.startSession(sessionId, mIsUserSelected);
         mWifiInfoNoReset.setBSSID(mWifiInfo.getBSSID());
         mWifiInfoNoReset.setSSID(mWifiInfo.getWifiSsid());
         mWifiInfoNoReset.setRssi(mWifiInfo.getRssi());

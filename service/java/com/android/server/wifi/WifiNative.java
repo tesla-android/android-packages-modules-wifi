@@ -2277,7 +2277,26 @@ public class WifiNative {
      * @return anonymous identity string if succeeds, null otherwise.
      */
     public String getEapAnonymousIdentity(@NonNull String ifaceName) {
-        return mSupplicantStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(ifaceName);
+        String anonymousIdentity = mSupplicantStaIfaceHal
+                .getCurrentNetworkEapAnonymousIdentity(ifaceName);
+
+        if (TextUtils.isEmpty(anonymousIdentity)) {
+            return anonymousIdentity;
+        }
+
+        int indexOfDecoration = anonymousIdentity.lastIndexOf('!');
+        if (indexOfDecoration >= 0) {
+            if (anonymousIdentity.substring(indexOfDecoration).length() < 2) {
+                // Invalid identity, shouldn't happen
+                Log.e(TAG, "Unexpected anonymous identity: " + anonymousIdentity);
+                return null;
+            }
+            // Truncate RFC 7542 decorated prefix, if exists. Keep only the anonymous identity or
+            // pseudonym.
+            anonymousIdentity = anonymousIdentity.substring(indexOfDecoration + 1);
+        }
+
+        return anonymousIdentity;
     }
 
     /**
@@ -3787,6 +3806,17 @@ public class WifiNative {
         // Pass in an empty RoamingConfig object which translates to zero size
         // blacklist and whitelist to reset the firmware roaming configuration.
         return mWifiVendorHal.configureRoaming(ifaceName, new RoamingConfig());
+    }
+
+    /**
+     * Select one of the pre-configured transmit power level scenarios or reset it back to normal.
+     * Primarily used for meeting SAR requirements.
+     *
+     * @param sarInfo The collection of inputs used to select the SAR scenario.
+     * @return true for success; false for failure or if the HAL version does not support this API.
+     */
+    public boolean selectTxPowerScenario(SarInfo sarInfo) {
+        return mWifiVendorHal.selectTxPowerScenario(sarInfo);
     }
 
     /**

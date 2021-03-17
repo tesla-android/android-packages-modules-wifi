@@ -1264,6 +1264,26 @@ public class ActiveModeWarden {
                 mExternalRequestListener.onAnswer(clientModeManager);
                 mExternalRequestListener = null; // reset after one shot.
             }
+
+            // Report to SarManager
+            reportWifiStateToSarManager();
+        }
+
+        private void reportWifiStateToSarManager() {
+            if (areAllClientModeManagersInScanOnlyRole()) {
+                // Inform sar manager that scan only is being enabled
+                mWifiInjector.getSarManager().setScanOnlyWifiState(WifiManager.WIFI_STATE_ENABLED);
+            } else {
+                // Inform sar manager that scan only is being disabled
+                mWifiInjector.getSarManager().setScanOnlyWifiState(WifiManager.WIFI_STATE_DISABLED);
+            }
+            if (hasAnyClientModeManagerInConnectivityRole()) {
+                // Inform sar manager that wifi is Enabled
+                mWifiInjector.getSarManager().setClientWifiState(WifiManager.WIFI_STATE_ENABLED);
+            } else {
+                // Inform sar manager that wifi is being disabled
+                mWifiInjector.getSarManager().setClientWifiState(WifiManager.WIFI_STATE_DISABLED);
+            }
         }
 
         private void onPrimaryChangedDueToStartedOrRoleChanged(
@@ -1319,6 +1339,9 @@ public class ActiveModeWarden {
             }
             // invoke "removed" callbacks after primary changed
             invokeOnRemovedCallbacks(clientModeManager);
+
+            // Report to SarManager
+            reportWifiStateToSarManager();
         }
 
         @Override

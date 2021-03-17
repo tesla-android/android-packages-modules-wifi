@@ -127,6 +127,7 @@ import android.net.wifi.ISuggestionConnectionStatusListener;
 import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
+import android.net.wifi.IWifiVerboseLoggingStatusCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApInfo;
@@ -368,6 +369,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
     @Mock OpenNetworkNotifier mOpenNetworkNotifier;
     @Mock WifiNotificationManager mWifiNotificationManager;
+    @Mock SarManager mSarManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -490,6 +492,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
         when(mClientSoftApCallback.asBinder()).thenReturn(mAppBinder);
         when(mAnotherSoftApCallback.asBinder()).thenReturn(mAnotherAppBinder);
+        when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
 
@@ -4451,16 +4454,105 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .retrieveBackupDataFromSoftApConfiguration(any(SoftApConfiguration.class));
     }
 
+    class TestWifiVerboseLoggingStatusCallback implements IWifiVerboseLoggingStatusCallback {
+        public int numStatusChangedCounts;
+        public boolean lastReceivedValue;
+        private IBinder mBinder = mock(IBinder.class);
+        @Override
+        public void onStatusChanged(boolean enabled) throws RemoteException {
+            numStatusChangedCounts++;
+            lastReceivedValue = enabled;
+        }
+
+        @Override
+        public IBinder asBinder() {
+            return mBinder;
+        }
+    }
+
+    /**
+     * Verify that a call to {@link WifiServiceImpl#enableVerboseLogging(int)} is propagated to
+     * registered {@link IWifiVerboseLoggingStatusCallback}. Then, verify that changes are no
+     * longer propagated when the listener gets unregistered.
+     */
+    @Test
+    public void testVerboseLoggingCallback() throws Exception {
+        doNothing().when(mContext)
+                .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                        eq("WifiService"));
+        // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
+        // before invocation.
+        reset(mClientModeManager);
+        TestWifiVerboseLoggingStatusCallback callback = new TestWifiVerboseLoggingStatusCallback();
+        mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(callback);
+        mLooper.dispatchAll();
+        mWifiServiceImpl.enableVerboseLogging(1);
+        verify(mWifiSettingsConfigStore).put(WIFI_VERBOSE_LOGGING_ENABLED, true);
+        verify(mActiveModeWarden).enableVerboseLogging(anyBoolean());
+        assertEquals(1, callback.numStatusChangedCounts);
+        assertTrue(callback.lastReceivedValue);
+
+        mWifiServiceImpl.enableVerboseLogging(0);
+        assertEquals(2, callback.numStatusChangedCounts);
+        assertFalse(callback.lastReceivedValue);
+
+        // unregister the callback and verify no more updates happen.
+        mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(callback);
+        mLooper.dispatchAll();
+        mWifiServiceImpl.enableVerboseLogging(1);
+        assertEquals(2, callback.numStatusChangedCounts);
+        assertFalse(callback.lastReceivedValue);
+    }
+
+    /**
+     * Verify an exception is thrown for invalid inputs to registerWifiVerboseLoggingStatusCallback
+     * and unregisterWifiVerboseLoggingStatusCallback.
+     */
+    @Test
+    public void testVerboseLoggingCallbackInvalidInput() throws Exception {
+        try {
+            mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(null);
+            fail("expected IllegalArgumentException in registerWifiVerboseLoggingStatusCallback");
+        } catch (IllegalArgumentException e) {
+        }
+        try {
+            mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(null);
+            fail("expected IllegalArgumentException in unregisterWifiVerboseLoggingStatusCallback");
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
+    /**
+     * Verify a SecurityException if the caller doesn't have sufficient permissions.
+     */
+    @Test
+    public void testVerboseLoggingCallbackNoPermission() throws Exception {
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
+                        eq("WifiService"));
+        TestWifiVerboseLoggingStatusCallback callback = new TestWifiVerboseLoggingStatusCallback();
+        try {
+            mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(callback);
+            fail("expected IllegalArgumentException in registerWifiVerboseLoggingStatusCallback");
+        } catch (SecurityException e) {
+        }
+        try {
+            mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(callback);
+            fail("expected IllegalArgumentException in unregisterWifiVerboseLoggingStatusCallback");
+        } catch (SecurityException e) {
+        }
+    }
+
     /**
      * Verify that a call to {@link WifiServiceImpl#enableVerboseLogging(int)} is allowed from
      * callers with the signature only NETWORK_SETTINGS permission.
      */
     @Test
-    public void testEnableVerboseLoggingWithNetworkSettingsPermission() {
+    public void testEnableVerboseLoggingWithNetworkSettingsPermission() throws Exception {
         doNothing().when(mContext)
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
-        // Vebose logging is enabled first in the constructor for WifiServiceImpl, so reset
+        // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
         // before invocation.
         reset(mClientModeManager);
         mWifiServiceImpl.enableVerboseLogging(1);

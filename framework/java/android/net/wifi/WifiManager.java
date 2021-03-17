@@ -2625,6 +2625,11 @@ public class WifiManager {
      /** @hide */
     public static final long WIFI_FEATURE_WFD_R2           = 0x4000000000000L; // Wi-Fi Display R2
 
+    /**
+     * RFC 7542 decorated identity support
+     * @hide */
+    public static final long WIFI_FEATURE_DECORATED_IDENTITY = 0x8000000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -6372,6 +6377,13 @@ public class WifiManager {
     }
 
     /**
+     * @return true if this device supports RFC 7542 decorated identity.
+     */
+    public boolean isDecoratedIdentitySupported() {
+        return isFeatureSupported(WIFI_FEATURE_DECORATED_IDENTITY);
+    }
+
+    /**
      * Gets the factory Wi-Fi MAC addresses.
      * @return Array of String representing Wi-Fi MAC addresses sorted lexically or an empty Array
      * if failed.
@@ -6779,6 +6791,80 @@ public class WifiManager {
     }
 
     /**
+     * Abstract callback class for applications to receive updates on Wi-Fi verbose logging status.
+     * Should be implemented by applications and set when calling
+     * {@link WifiManager#registerWifiVerboseLoggingStatusCallback(Executor,
+     * WifiVerboseLoggingStatusCallback)}.
+     *
+     * @hide
+     */
+    @SystemApi
+    public abstract static class WifiVerboseLoggingStatusCallback {
+        private final WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy mProxy;
+
+        public WifiVerboseLoggingStatusCallback() {
+            mProxy = new WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy();
+        }
+
+        /*package*/ @NonNull
+        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy getProxy() {
+            return mProxy;
+        }
+        /**
+         * Called when Wi-Fi verbose logging setting is updated.
+         *
+         * @param enabled true if verbose logging is enabled, false if verbose logging is disabled.
+         */
+        public abstract void onStatusChanged(boolean enabled);
+
+        private static class WifiVerboseLoggingStatusCallbackProxy extends
+                IWifiVerboseLoggingStatusCallback.Stub {
+            private final Object mLock = new Object();
+            @Nullable
+            @GuardedBy("mLock")
+            private Executor mExecutor;
+            @Nullable
+            @GuardedBy("mLock")
+            private WifiVerboseLoggingStatusCallback mCallback;
+
+            WifiVerboseLoggingStatusCallbackProxy() {
+                mExecutor = null;
+                mCallback = null;
+            }
+
+            /*package*/ void initProxy(@NonNull Executor executor,
+                    @NonNull WifiVerboseLoggingStatusCallback callback) {
+                synchronized (mLock) {
+                    mExecutor = executor;
+                    mCallback = callback;
+                }
+            }
+
+            /*package*/ void cleanUpProxy() {
+                synchronized (mLock) {
+                    mExecutor = null;
+                    mCallback = null;
+                }
+            }
+
+            @Override
+            public void onStatusChanged(boolean enabled) throws RemoteException {
+                Executor executor;
+                WifiVerboseLoggingStatusCallback callback;
+                synchronized (mLock) {
+                    executor = mExecutor;
+                    callback = mCallback;
+                }
+                if (executor == null || callback == null) {
+                    return;
+                }
+                Binder.clearCallingIdentity();
+                executor.execute(() -> callback.onStatusChanged(enabled));
+            }
+        }
+    }
+
+    /**
      * Adds a listener for Wi-Fi usability statistics. See {@link OnWifiUsabilityStatsListener}.
      * Multiple listeners can be added. Callers will be invoked periodically by framework to
      * inform clients about the current Wi-Fi usability statistics. Callers can remove a previously
@@ -7037,6 +7123,71 @@ public class WifiManager {
                     mListener.onConnectionStatus(wifiNetworkSuggestion, failureReason));
         }
 
+    }
+
+    /**
+     * Add a callback listening to wifi verbose logging changes.
+     * See {@link WifiVerboseLoggingStatusCallback}.
+     * Caller can remove a previously registered listener using
+     * {@link WifiManager#unregisterWifiVerboseLoggingStatusCallback(
+     * WifiVerboseLoggingStatusCallback)}
+     * Same caller can add multiple callbacks to monitor the event.
+     * <p>
+     * Applications should have {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Callers without the permission will trigger a {@link java.lang.SecurityException}.
+     * <p>
+     * @param executor The executor to execute the listener of the {@code listener} object.
+     * @param callback callback for changes in wifi verbose logging.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void registerWifiVerboseLoggingStatusCallback(
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull WifiVerboseLoggingStatusCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
+        if (executor == null) throw new IllegalArgumentException("Executor cannot be null");
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "registerWifiVerboseLoggingStatusCallback callback=" + callback
+                    + ", executor=" + executor);
+        }
+        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy proxy =
+                callback.getProxy();
+        proxy.initProxy(executor, callback);
+        try {
+            mService.registerWifiVerboseLoggingStatusCallback(proxy);
+        } catch (RemoteException e) {
+            proxy.cleanUpProxy();
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Allow callers to remove a previously registered callback.
+     * <p>
+     * Applications should have {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Callers without the permission will trigger a {@link java.lang.SecurityException}.
+     * <p>
+     * @param callback callback to remove.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void unregisterWifiVerboseLoggingStatusCallback(
+            @NonNull WifiVerboseLoggingStatusCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
+        Log.v(TAG, "unregisterWifiVerboseLoggingStatusCallback: callback=" + callback);
+        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy proxy =
+                callback.getProxy();
+        try {
+            mService.unregisterWifiVerboseLoggingStatusCallback(proxy);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        } finally {
+            proxy.cleanUpProxy();
+        }
     }
 
     /**
@@ -7324,8 +7475,20 @@ public class WifiManager {
         /**
          * Called by framework to indicate the start of a network connection.
          * @param sessionId The ID to indicate current Wi-Fi network connection.
+         * @deprecated This API is deprecated.  Please use
+         *             {@link WifiConnectedNetworkScorer#onStart(WifiConnectedSessionInfo)}.
          */
-        void onStart(int sessionId);
+        @Deprecated
+        default void onStart(int sessionId) {}
+
+        /**
+         * Called by framework to indicate the start of a network connection.
+         * @param sessionInfo The session information to indicate current Wi-Fi network connection.
+         *                    See {@link WifiConnectedSessionInfo}.
+         */
+        default void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
+            onStart(sessionInfo.getSessionId());
+        }
 
         /**
          * Called by framework to indicate the end of a network connection.
@@ -7357,12 +7520,12 @@ public class WifiManager {
         }
 
         @Override
-        public void onStart(int sessionId) {
+        public void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionId=" + sessionId);
+                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionInfo=" + sessionInfo);
             }
             Binder.clearCallingIdentity();
-            mExecutor.execute(() -> mScorer.onStart(sessionId));
+            mExecutor.execute(() -> mScorer.onStart(sessionInfo));
         }
 
         @Override

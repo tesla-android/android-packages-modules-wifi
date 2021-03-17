@@ -231,6 +231,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<boolean name=\"AppInstalledRootCaCert\" value=\"false\" />\n"
                     + "<boolean name=\"AppInstalledPrivateKey\" value=\"false\" />\n"
                     + "<null name=\"KeyChainAlias\" />\n"
+                    + "<string name=\"DecoratedIdentityPrefix\"></string>\n"
                     + "</WifiEnterpriseConfiguration>\n"
                     + "</Network>\n";
 

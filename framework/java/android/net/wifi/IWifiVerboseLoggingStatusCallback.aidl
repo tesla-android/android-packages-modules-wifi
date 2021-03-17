@@ -16,19 +16,12 @@
 
 package android.net.wifi;
 
-import android.net.wifi.IScoreUpdateObserver;
-import android.net.wifi.WifiConnectedSessionInfo;
-
 /**
- * Interface for Wi-Fi connected network scorer.
+ * Interface for wifi verbose logging status listener.
  *
  * @hide
  */
-oneway interface IWifiConnectedNetworkScorer
+oneway interface IWifiVerboseLoggingStatusCallback
 {
-    void onStart(in WifiConnectedSessionInfo sessionInfo);
-
-    void onStop(int sessionId);
-
-    void onSetScoreUpdateObserver(IScoreUpdateObserver observerImpl);
+   void onStatusChanged(in boolean enabled);
 }
