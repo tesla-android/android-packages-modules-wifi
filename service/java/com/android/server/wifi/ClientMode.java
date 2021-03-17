@@ -278,12 +278,4 @@ public interface ClientMode {
      * will be artificially reduced so that ConnectivityService will prefer any other connection.
      */
     void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore);
-
-    /**
-     * If there is any cached packet filter sent down from connectivity stack after connection,
-     * apply it now.
-     * This is used when the primary connection is switched during MBB and the device deos not
-     * support packet filter on 2 connections.
-     */
-    void applyCachedPacketFilter();
 }
