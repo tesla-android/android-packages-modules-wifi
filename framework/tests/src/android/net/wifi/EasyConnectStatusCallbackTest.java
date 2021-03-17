@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.annotation.NonNull;
+import android.net.Uri;
 import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
@@ -55,7 +56,7 @@ public class EasyConnectStatusCallbackTest {
         }
 
         @Override
-        public void onBootstrapUriGenerated(@NonNull String uri) {
+        public void onBootstrapUriGenerated(@NonNull Uri dppUri) {
 
         }
     };
