@@ -4088,7 +4088,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mWifiCarrierInfoManager.getCarrierIdForPackageWithCarrierPrivileges(TEST_PACKAGE_1))
                 .thenReturn(TEST_CARRIER_ID);
         when(mWifiCarrierInfoManager.getMatchingSubId(TEST_CARRIER_ID)).thenReturn(TEST_SUBID);
-        when(mWifiCarrierInfoManager.getCarrierNameforSubId(TEST_SUBID))
+        when(mWifiCarrierInfoManager.getCarrierNameForSubId(TEST_SUBID))
                 .thenReturn(TEST_CARRIER_NAME);
         when(mWifiCarrierInfoManager.requiresImsiEncryption(TEST_SUBID)).thenReturn(false);
         when(mWifiCarrierInfoManager.hasUserApprovedImsiPrivacyExemptionForCarrier(TEST_CARRIER_ID))

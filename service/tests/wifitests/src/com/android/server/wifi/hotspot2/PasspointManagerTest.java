@@ -222,6 +222,8 @@ public class PasspointManagerTest extends WifiBaseTest {
     WifiCarrierInfoManager mWifiCarrierInfoManager;
     ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mNetworkListenerCaptor =
             ArgumentCaptor.forClass(WifiConfigManager.OnNetworkUpdateListener.class);
+    ArgumentCaptor<SubscriptionManager.OnSubscriptionsChangedListener> mSubscriptionsCaptor =
+            ArgumentCaptor.forClass(SubscriptionManager.OnSubscriptionsChangedListener.class);
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -251,11 +253,13 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mWifiInjector.getWifiNetworkSuggestionsManager())
                 .thenReturn(mWifiNetworkSuggestionsManager);
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
-        mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
-                mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
-                mock(WifiContext.class), mWifiConfigStore, mock(Handler.class), mWifiMetrics);
         mLooper = new TestLooper();
         mHandler = new Handler(mLooper.getLooper());
+        mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
+                mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
+                mock(WifiContext.class), mWifiConfigStore, mHandler, mWifiMetrics);
+        verify(mSubscriptionManager).addOnSubscriptionsChangedListener(any(),
+                mSubscriptionsCaptor.capture());
         mManager = new PasspointManager(mContext, mWifiInjector, mHandler, mWifiNative,
                 mWifiKeyStore, mClock, mObjectFactory, mWifiConfigManager,
                 mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager, mMacAddressUtil,
@@ -803,10 +807,12 @@ public class PasspointManagerTest extends WifiBaseTest {
         TelephonyManager specifiedTm = mock(TelephonyManager.class);
         when(mTelephonyManager.createForSubscriptionId(eq(TEST_SUBID))).thenReturn(specifiedTm);
         when(specifiedTm.getSubscriberId()).thenReturn(FULL_IMSI);
+        when(specifiedTm.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         List<SubscriptionInfo> subInfoList = new ArrayList<SubscriptionInfo>() {{
                 add(subInfo);
             }};
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(subInfoList);
+        mSubscriptionsCaptor.getValue().onSubscriptionsChanged();
         when(mWifiKeyStore.putCaCertInKeyStore(any(String.class), any(Certificate.class)))
                 .thenReturn(true);
         PasspointObjectFactory spyFactory = spy(new PasspointObjectFactory());

@@ -148,6 +148,9 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     private ImsiPrivacyProtectionExemptionStoreData.DataSource mImsiDataSource;
     private ArgumentCaptor<BroadcastReceiver> mBroadcastReceiverCaptor =
             ArgumentCaptor.forClass(BroadcastReceiver.class);
+    private ArgumentCaptor<SubscriptionManager.OnSubscriptionsChangedListener>
+            mListenerArgumentCaptor = ArgumentCaptor.forClass(
+                    SubscriptionManager.OnSubscriptionsChangedListener.class);
 
     @Before
     public void setUp() throws Exception {
@@ -263,6 +266,10 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 eq(R.string.wifi_suggestion_action_disallow_imsi_privacy_exemption_confirmation)))
                 .thenReturn("blah");
         mWifiCarrierInfoManager.addImsiExemptionUserApprovalListener(mListener);
+        verify(mSubscriptionManager).addOnSubscriptionsChangedListener(any(),
+                mListenerArgumentCaptor.capture());
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
     }
 
     @After
@@ -606,7 +613,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "13214560123456789@wlan.mnc456.mcc321.3gppnetwork.org", "");
 
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214560123456789");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_UNKNOWN);
+        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn(null);
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration config =
@@ -981,6 +988,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     public void isSimPresentWithInvalidOrEmptySubscriptionIdList() {
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Collections.emptyList());
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
 
         assertFalse(mWifiCarrierInfoManager.isSimPresent(DATA_SUBID));
 
@@ -988,6 +997,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(subInfo.getSubscriptionId()).thenReturn(NON_DATA_SUBID);
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Arrays.asList(subInfo));
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
         assertFalse(mWifiCarrierInfoManager.isSimPresent(DATA_SUBID));
     }
 
@@ -1015,12 +1026,15 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
                 WifiEnterpriseConfig.Eap.AKA, WifiEnterpriseConfig.Phase2.NONE);
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(null);
-        when(mSubscriptionManager.getActiveSubscriptionIdList()).thenReturn(new int[0]);
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
 
         assertEquals(INVALID_SUBID, mWifiCarrierInfoManager.getBestMatchSubscriptionId(config));
 
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Collections.emptyList());
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
 
         assertEquals(INVALID_SUBID, mWifiCarrierInfoManager.getBestMatchSubscriptionId(config));
     }
@@ -1143,11 +1157,15 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     @Test
     public void getMatchingImsiCarrierIdWithEmptyActiveSubscriptionInfoList() {
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(null);
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
 
         assertNull(mWifiCarrierInfoManager.getMatchingImsiCarrierId(MATCH_PREFIX_IMSI));
 
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Collections.emptyList());
+        mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        mLooper.dispatchAll();
 
         assertNull(mWifiCarrierInfoManager.getMatchingImsiCarrierId(MATCH_PREFIX_IMSI));
     }
@@ -1506,12 +1524,12 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify getCarrierNameforSubId returns right value.
+     * Verify getCarrierNameForSubId returns right value.
      */
     @Test
     public void getCarrierNameFromSubId() {
-        assertEquals(CARRIER_NAME, mWifiCarrierInfoManager.getCarrierNameforSubId(DATA_SUBID));
-        assertNull(mWifiCarrierInfoManager.getCarrierNameforSubId(NON_DATA_SUBID));
+        assertEquals(CARRIER_NAME, mWifiCarrierInfoManager.getCarrierNameForSubId(DATA_SUBID));
+        assertNull(mWifiCarrierInfoManager.getCarrierNameForSubId(NON_DATA_SUBID));
     }
 
     @Test
