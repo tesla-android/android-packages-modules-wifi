@@ -5191,7 +5191,7 @@ public class WifiManager {
      * Disabled networks will get automatically re-enabled when they are out of range for a period
      * of time, or after the maximum disable duration specified in the framework.
      *
-     * Calling {@link #stopTemporarilyDisablingAllNonCarrierMergedWifi()} will immediately re-enable
+     * Calling {@link #stopRestrictingAutoJoinToSubscriptionId()} will immediately re-enable
      * autojoin on all disabled networks.
      *
      * @param subscriptionId the subscription ID of the carrier whose merged wifi networks won't be
@@ -5202,9 +5202,9 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
-    public void startTemporarilyDisablingAllNonCarrierMergedWifi(int subscriptionId) {
+    public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
         try {
-            mService.startTemporarilyDisablingAllNonCarrierMergedWifi(subscriptionId);
+            mService.startRestrictingAutoJoinToSubscriptionId(subscriptionId);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5212,16 +5212,16 @@ public class WifiManager {
 
     /**
      * Re-enable autojoin for all non carrier merged wifi networks temporarily disconnected by
-     * {@link #startTemporarilyDisablingAllNonCarrierMergedWifi(int)}.
+     * {@link #startRestrictingAutoJoinToSubscriptionId(int)}.
      * @hide
      */
     @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
-    public void stopTemporarilyDisablingAllNonCarrierMergedWifi() {
+    public void stopRestrictingAutoJoinToSubscriptionId() {
         try {
-            mService.stopTemporarilyDisablingAllNonCarrierMergedWifi();
+            mService.stopRestrictingAutoJoinToSubscriptionId();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

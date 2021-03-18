@@ -646,12 +646,12 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void startTemporarilyDisablingAllNonCarrierMergedWifi(int subId) {
+    public void startRestrictingAutoJoinToSubscriptionId(int subId) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void stopTemporarilyDisablingAllNonCarrierMergedWifi() {
+    public void stopRestrictingAutoJoinToSubscriptionId() {
         throw new UnsupportedOperationException();
     }
 

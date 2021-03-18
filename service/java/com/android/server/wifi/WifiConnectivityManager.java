@@ -2505,7 +2505,7 @@ public class WifiConnectivityManager {
         if (!enable) {
             mNetworkSelector.resetOnDisable();
             mConfigManager.enableTemporaryDisabledNetworks();
-            mConfigManager.stopTemporarilyDisablingAllNonCarrierMergedWifi();
+            mConfigManager.stopRestrictingAutoJoinToSubscriptionId();
         }
         mWifiEnabled = enable;
         updateRunningState();

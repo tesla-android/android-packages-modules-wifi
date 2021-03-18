@@ -327,7 +327,7 @@
     <integer translatable="false" name="config_wifiRecentFailureReasonExpirationMinutes">30</integer>
 
     <!-- Duration in minutes that all non-carrier-merged wifi becomes disabled when
-    WifiManager#startTemporarilyDisablingAllNonCarrierMergedWifi is called. -->
+    WifiManager#startRestrictingAutoJoinToSubscriptionId is called. -->
     <integer translatable="false" name="config_wifiAllNonCarrierMergedWifiDisableDurationMinutes">30</integer>
 
     <!-- Indicates that wifi link probing is supported on this device -->
