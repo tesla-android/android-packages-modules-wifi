@@ -14,7 +14,7 @@ package android.net.wifi {
 
   public abstract class EasyConnectStatusCallback {
     ctor public EasyConnectStatusCallback();
-    method public void onBootstrapUriGenerated(@NonNull String);
+    method public void onBootstrapUriGenerated(@NonNull android.net.Uri);
     method public abstract void onConfiguratorSuccess(int);
     method public abstract void onEnrolleeSuccess(int);
     method public void onFailure(int);
@@ -491,6 +491,7 @@ package android.net.wifi {
     method public boolean isOemPrivate();
     method public boolean isOsuAp();
     method public boolean isPasspointAp();
+    method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public boolean isPrimary();
     method public boolean isTrusted();
     method @Nullable public static String sanitizeSsid(@Nullable String);
     field public static final String DEFAULT_MAC_ADDRESS = "02:00:00:00:00:00";
@@ -516,6 +517,7 @@ package android.net.wifi {
     method @NonNull @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS) public java.util.Set<android.net.wifi.CoexUnsafeChannel> getCoexUnsafeChannels();
     method @Nullable @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public String getCountryCode();
     method @Nullable @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public android.net.Network getCurrentNetwork();
+    method public static int getEasyConnectMaxAllowedResponderDeviceInfoLength();
     method @NonNull @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public String[] getFactoryMacAddresses();
     method @NonNull @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.Map<android.net.wifi.hotspot2.OsuProvider,java.util.List<android.net.wifi.ScanResult>> getMatchingOsuProviders(@Nullable java.util.List<android.net.wifi.ScanResult>);
     method @NonNull @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.Map<android.net.wifi.hotspot2.OsuProvider,android.net.wifi.hotspot2.PasspointConfiguration> getMatchingPasspointConfigsForOsuProviders(@NonNull java.util.Set<android.net.wifi.hotspot2.OsuProvider>);
@@ -527,7 +529,6 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public int getWifiApState();
     method @NonNull @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public java.util.List<android.net.wifi.WifiConfiguration> getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(@NonNull java.util.List<android.net.wifi.ScanResult>);
     method public boolean isApMacRandomizationSupported();
-    method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_SETUP_WIZARD}) public boolean isCarrierNetworkOffloadEnabled(int, boolean);
     method public boolean isConnectedMacRandomizationSupported();
     method @Deprecated public boolean isDeviceToDeviceRttSupported();
     method public boolean isPortableHotspotSupported();
@@ -602,11 +603,9 @@ package android.net.wifi {
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1 = 3; // 0x3
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1 = 4; // 0x4
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1 = 5; // 0x5
-    field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_DEFAULT = 0; // 0x0
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1 = 0; // 0x0
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1 = 1; // 0x1
     field public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1 = 2; // 0x2
-    field public static final int EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH = 40; // 0x28
     field public static final int EASY_CONNECT_NETWORK_ROLE_AP = 1; // 0x1
     field public static final int EASY_CONNECT_NETWORK_ROLE_STA = 0; // 0x0
     field public static final String EXTRA_CHANGE_REASON = "changeReason";

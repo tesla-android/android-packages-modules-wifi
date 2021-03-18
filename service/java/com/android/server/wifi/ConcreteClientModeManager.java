@@ -757,6 +757,9 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 reset();
                 mModeListener.onRoleChanged(ConcreteClientModeManager.this);
             }
+            if (mClientModeImpl != null) {
+                mClientModeImpl.onRoleChanged();
+            }
         }
 
         private class IdleState extends State {
@@ -1350,11 +1353,6 @@ public class ConcreteClientModeManager implements ClientModeManager {
     public void setShouldReduceNetworkScore(boolean shouldReduceNetworkScore) {
         mShouldReduceNetworkScore = shouldReduceNetworkScore;
         getClientMode().setShouldReduceNetworkScore(shouldReduceNetworkScore);
-    }
-
-    @Override
-    public void applyCachedPacketFilter() {
-        getClientMode().applyCachedPacketFilter();
     }
 
     @Override

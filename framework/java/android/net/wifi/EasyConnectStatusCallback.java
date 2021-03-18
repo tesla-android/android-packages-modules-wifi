@@ -20,6 +20,7 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.net.Uri;
 import android.util.SparseArray;
 
 import java.lang.annotation.Retention;
@@ -288,9 +289,9 @@ public abstract class EasyConnectStatusCallback {
      * {@link WifiManager#startEasyConnectAsEnrolleeResponder(String, int, Executor,
      * EasyConnectStatusCallback)} .
      *
-     * @param uri DPP URI from the supplicant.
+     * @param dppUri DPP URI from the supplicant.
      * @hide
      */
     @SystemApi
-    public void onBootstrapUriGenerated(@NonNull String uri) {};
+    public void onBootstrapUriGenerated(@NonNull Uri dppUri) {};
 }

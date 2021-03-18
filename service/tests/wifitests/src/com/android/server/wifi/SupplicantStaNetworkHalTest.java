@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyByte;
 import static org.mockito.Matchers.eq;
@@ -48,6 +49,7 @@ import android.text.TextUtils;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.wifi.resources.R;
 
@@ -1515,6 +1517,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
      */
     @Test
     public void testEapNetworkSetsDecoratedIdentityPrefix() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         createSupplicantStaNetwork(SupplicantStaNetworkVersion.V1_4);
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
         config.enterpriseConfig.setAnonymousIdentity(ANONYMOUS_IDENTITY);

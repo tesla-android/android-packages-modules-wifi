@@ -42,6 +42,7 @@ import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkStack;
+import android.net.Uri;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -6496,13 +6497,8 @@ public class WifiManager {
     public @interface EasyConnectNetworkRole {
     }
 
-    /**
-     * Easy Connect Device information maximum allowed length.
-     *
-     * @hide
-     */
-    @SystemApi
-    public static final int EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH = 40;
+    /** Easy Connect Device information maximum allowed length */
+    private static final int EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH = 40;
 
     /**
      * Easy Connect Cryptography Curve name: prime256v1
@@ -6555,19 +6551,8 @@ public class WifiManager {
     @SystemApi
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1 = 5;
 
-    /**
-     * Easy Connect Cryptography Curve name: default
-     * This allows framework to choose manadatory curve prime256v1.
-     *
-     * @hide
-     */
-    @SystemApi
-    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_DEFAULT =
-            EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1;
-
     /** @hide */
     @IntDef(prefix = {"EASY_CONNECT_CRYPTOGRAPHY_CURVE_"}, value = {
-            EASY_CONNECT_CRYPTOGRAPHY_CURVE_DEFAULT,
             EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1,
             EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1,
             EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1,
@@ -6639,7 +6624,7 @@ public class WifiManager {
      * Start Easy Connect (DPP) in Enrollee-Responder role.
      * The device will:
      * 1. Generate a DPP bootstrap URI and return it using the
-     * {@link EasyConnectStatusCallback#onBootstrapUriGenerated(String)} method.
+     * {@link EasyConnectStatusCallback#onBootstrapUriGenerated(Uri)} method.
      * 2. Start DPP as a Responder, waiting for an Initiator device to start the DPP
      * authentication process.
      * The caller should use the URI provided in step #1, for instance display it as a QR code
@@ -6650,16 +6635,16 @@ public class WifiManager {
      *                        Optional - if not provided or in case of an empty string,
      *                        Info field (I:) will be skipped in the generated DPP URI.
      *                        Allowed Range of ASCII characters in deviceInfo - %x20-7E.
-     *                        semicolon and space are not allowed.
-     *                        Due to the limitation of maximum allowed characters in QR code,
-     *                        framework limits to a max of
-     *                        {@link #EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH} characters in
-     *                        deviceInfo.
-     *                        Violation of these rules will result in an exception.
+     *                        semicolon and space are not allowed. Due to the limitation of maximum
+     *                        allowed characters in QR code, framework adds a limit to maximum
+     *                        characters in deviceInfo. Users must call
+     *                        {@link WifiManager#getEasyConnectMaxAllowedResponderDeviceInfoLength()
+     *                        } method to know max allowed length. Violation of these rules will
+     *                        result in an exception.
      * @param curve           Elliptic curve cryptography used to generate DPP
      *                        public/private key pair. If application is not interested in a
-     *                        specific curve, choose default curve
-     *                        {@link #EASY_CONNECT_CRYPTOGRAPHY_CURVE_DEFAULT}.
+     *                        specific curve, use specification mandated NIST P-256 elliptic curve,
+     *                        {@link WifiManager#EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1}.
      * @param callback        Callback for status updates
      * @param executor        The Executor on which to run the callback.
      * @hide
@@ -6679,6 +6664,18 @@ public class WifiManager {
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
+    }
+
+    /**
+     * Maximum allowed length of Device specific information that can be added to the URI of
+     * Easy Connect responder device.
+     * @see #startEasyConnectAsEnrolleeResponder(String, int, Executor, EasyConnectStatusCallback)}
+     *
+     * @hide
+     */
+    @SystemApi
+    public static int getEasyConnectMaxAllowedResponderDeviceInfoLength() {
+        return EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH;
     }
 
     /**
@@ -6757,11 +6754,11 @@ public class WifiManager {
         }
 
         @Override
-        public void onBootstrapUriGenerated(String uri) {
+        public void onBootstrapUriGenerated(@NonNull String uri) {
             Log.d(TAG, "Easy Connect onBootstrapUriGenerated callback");
             Binder.clearCallingIdentity();
             mExecutor.execute(() -> {
-                mEasyConnectStatusCallback.onBootstrapUriGenerated(uri);
+                mEasyConnectStatusCallback.onBootstrapUriGenerated(Uri.parse(uri));
             });
         }
     }
@@ -7727,13 +7724,8 @@ public class WifiManager {
      * @param merged True for carrier merged network, false otherwise.
      *               See {@link WifiNetworkSuggestion.Builder#setCarrierMerged(boolean)}
      * @return True to indicate that carrier network offload is enabled, false otherwise.
-     * @see #setCarrierNetworkOffloadEnabled(int, boolean, boolean)
-     * @hide
      */
-    @SystemApi
-    @RequiresPermission(anyOf = {
-            android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public boolean isCarrierNetworkOffloadEnabled(int subscriptionId, boolean merged) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();

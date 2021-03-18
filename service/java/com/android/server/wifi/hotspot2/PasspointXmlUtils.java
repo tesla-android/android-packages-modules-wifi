@@ -22,6 +22,7 @@ import android.net.wifi.hotspot2.pps.HomeSp;
 import android.net.wifi.hotspot2.pps.Policy;
 import android.net.wifi.hotspot2.pps.UpdateParameter;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.XmlUtil;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -163,8 +164,10 @@ public class PasspointXmlUtils {
         XmlUtil.writeNextValue(out, XML_TAG_IS_CARRIER_MERGED, config.isCarrierMerged());
         XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PAID, config.isOemPaid());
         XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PRIVATE, config.isOemPrivate());
-        XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
-                config.getDecoratedIdentityPrefix());
+        if (SdkLevel.isAtLeastS()) {
+            XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
+                    config.getDecoratedIdentityPrefix());
+        }
     }
 
     /**

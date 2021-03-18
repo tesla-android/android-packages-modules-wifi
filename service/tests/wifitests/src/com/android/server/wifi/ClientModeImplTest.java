@@ -6211,7 +6211,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     @Test
-    public void testPacketFilterOnSecondaryCmm() throws Exception {
+    public void testPacketFilterOnRoleChangeOnSecondaryCmm() throws Exception {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
         connect();
 
@@ -6230,14 +6230,16 @@ public class ClientModeImplTest extends WifiBaseTest {
         // return the cached the data.
         verify(mWifiNative, never()).readPacketFilter(WIFI_IFACE_NAME);
 
-        // Now invoke apply
-        mCmi.applyCachedPacketFilter();
+        // Now invoke role change, that should apply the APF
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        mCmi.onRoleChanged();
         verify(mWifiNative).installPacketFilter(WIFI_IFACE_NAME, filter);
     }
 
 
     @Test
-    public void testPacketFilterOnSecondaryCmmWithSupportForNonPrimaryApf() throws Exception {
+    public void testPacketFilterOnRoleChangeOnSecondaryCmmWithSupportForNonPrimaryApf()
+            throws Exception {
         mResources.setBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta, true);
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
         connect();
@@ -6257,9 +6259,34 @@ public class ClientModeImplTest extends WifiBaseTest {
         // return the applied data.
         verify(mWifiNative).readPacketFilter(WIFI_IFACE_NAME);
 
-        // Now invoke apply
-        mCmi.applyCachedPacketFilter();
+        // Now invoke role change, that should not apply the APF
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        mCmi.onRoleChanged();
         // ignore (since it was already applied)
         verify(mWifiNative, times(1)).installPacketFilter(WIFI_IFACE_NAME, filter);
+    }
+
+    @Test
+    public void testWifiInfoUpdateOnRoleChange() throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        connect();
+        // Should not set WifiInfo.isPrimary
+        expectRegisterNetworkAgent((config) -> { }, (cap) -> {
+            if (SdkLevel.isAtLeastS()) {
+                WifiInfo wifiInfoFromTi = (WifiInfo) cap.getTransportInfo();
+                assertFalse(wifiInfoFromTi.isPrimary());
+            }
+        });
+        reset(mWifiNetworkAgent);
+
+        // Now invoke role change, that should set WifiInfo.isPrimary
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        mCmi.onRoleChanged();
+        expectNetworkAgentUpdateCapabilities((cap) -> {
+            if (SdkLevel.isAtLeastS()) {
+                WifiInfo wifiInfoFromTi = (WifiInfo) cap.getTransportInfo();
+                assertTrue(wifiInfoFromTi.isPrimary());
+            }
+        });
     }
 }

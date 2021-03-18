@@ -149,6 +149,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     @Mock ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     @Mock DppManager mDppManager;
     @Mock SarManager mSarManager;
+    @Mock HalDeviceManager mHalDeviceManager;
 
     ActiveModeManager.Listener<ConcreteClientModeManager> mClientListener;
     ActiveModeManager.Listener<SoftApManager> mSoftApListener;
@@ -178,6 +179,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
 
         when(mWifiInjector.getScanRequestProxy()).thenReturn(mScanRequestProxy);
         when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
+        when(mWifiInjector.getHalDeviceManager()).thenReturn(mHalDeviceManager);
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         when(mClientModeManager.getInterfaceName()).thenReturn(WIFI_IFACE_NAME);
         when(mContext.getResources()).thenReturn(mResources);

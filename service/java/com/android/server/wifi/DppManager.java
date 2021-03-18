@@ -35,6 +35,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -448,7 +449,7 @@ public class DppManager {
                 mWifiNative.generateDppBootstrapInfoForResponder(mClientIfaceName, deviceInfo,
                 convertEasyConnectCryptographyCurveToHidlDppCurve(curve));
 
-        if (bootstrapInfo.bootstrapId < 0 || bootstrapInfo.uri == null) {
+        if (bootstrapInfo.bootstrapId < 0 || TextUtils.isEmpty(bootstrapInfo.uri)) {
             Log.e(TAG, "DPP request to generate URI failed");
             onFailure(DppFailureCode.URI_GENERATION);
             return;

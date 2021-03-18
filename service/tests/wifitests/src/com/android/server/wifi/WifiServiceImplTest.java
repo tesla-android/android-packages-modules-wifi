@@ -6350,7 +6350,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         try {
             StringBuilder sb = new StringBuilder();
             sb.append(Strings.repeat("a",
-                    WifiManager.EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH + 2));
+                    WifiManager.getEasyConnectMaxAllowedResponderDeviceInfoLength() + 2));
             String deviceInfo = sb.toString();
             mWifiServiceImpl.startDppAsEnrolleeResponder(mAppBinder, deviceInfo,
                     EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);

@@ -991,7 +991,7 @@ public class HostapdHal {
                     }
                     acsChannelRange.start = start;
                     acsChannelRange.end = end;
-                } else {
+                } else if (!TextUtils.isEmpty(channelRange)) {
                     acsChannelRange.start = Integer.parseInt(channelRange.trim());
                     acsChannelRange.end = acsChannelRange.start;
                 }
@@ -1084,7 +1084,7 @@ public class HostapdHal {
                     }
                     acsFrequencyRange.start = ApConfigUtil.convertChannelToFrequency(start, band);
                     acsFrequencyRange.end = ApConfigUtil.convertChannelToFrequency(end, band);
-                } else {
+                } else if (!TextUtils.isEmpty(channelRange)) {
                     int channel = Integer.parseInt(channelRange.trim());
                     acsFrequencyRange.start = ApConfigUtil.convertChannelToFrequency(channel, band);
                     acsFrequencyRange.end = acsFrequencyRange.start;

@@ -4558,10 +4558,10 @@ public class WifiServiceImpl extends BaseWifiService {
 
         if (deviceInfo != null) {
             int deviceInfoLen = deviceInfo.length();
-            if (deviceInfoLen > WifiManager.EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH) {
+            if (deviceInfoLen > WifiManager.getEasyConnectMaxAllowedResponderDeviceInfoLength()) {
                 throw new IllegalArgumentException("Device info length: " + deviceInfoLen
                         + " must be less than "
-                        + WifiManager.EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH);
+                        + WifiManager.getEasyConnectMaxAllowedResponderDeviceInfoLength());
             }
             char c;
             for (int i = 0; i < deviceInfoLen; i++) {
@@ -5044,9 +5044,7 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public boolean isCarrierNetworkOffloadEnabled(int subId, boolean merged) {
-        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
-            throw new SecurityException(TAG + ": Permission denied");
-        }
+        enforceAccessPermission();
         if (mVerboseLoggingEnabled) {
             mLog.info("isCarrierNetworkOffload uid=%").c(Binder.getCallingUid()).flush();
         }

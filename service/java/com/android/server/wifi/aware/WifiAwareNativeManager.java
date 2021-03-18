@@ -279,6 +279,5 @@ public class WifiAwareNativeManager {
         pw.println("  mWifiNanIface: " + mWifiNanIface);
         pw.println("  mReferenceCount: " + mReferenceCount);
         mWifiAwareNativeCallback.dump(fd, pw, args);
-        mHalDeviceManager.dump(fd, pw, args);
     }
 }

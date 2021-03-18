@@ -2442,7 +2442,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setBSSID(stateChangeResult.bssid);
             mWifiInfo.setSSID(stateChangeResult.wifiSsid);
             if (state == SupplicantState.ASSOCIATED) {
-                updateWifiInfoAfterAssociation();
+                updateWifiInfoLinkParamsAfterAssociation();
             }
             mWifiInfo.setInformationElements(findMatchingInfoElements(stateChangeResult.bssid));
         } else {
@@ -2463,16 +2463,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             config = getConnectingWifiConfigurationInternal();
         }
         if (config != null && config.networkId == mWifiInfo.getNetworkId()) {
-            mWifiInfo.setEphemeral(config.ephemeral);
-            mWifiInfo.setTrusted(config.trusted);
-            mWifiInfo.setOemPaid(config.oemPaid);
-            mWifiInfo.setOemPrivate(config.oemPrivate);
-            mWifiInfo.setCarrierMerged(config.carrierMerged);
-            mWifiInfo.setSubscriptionId(config.subscriptionId);
-            mWifiInfo.setOsuAp(config.osu);
-            if (config.fromWifiNetworkSpecifier || config.fromWifiNetworkSuggestion) {
-                mWifiInfo.setRequestingPackageName(config.creatorName);
-            }
+            updateWifiInfoWhenConnected(config);
 
             // Set meteredHint if scan result says network is expensive
             ScanDetailCache scanDetailCache = mWifiConfigManager.getScanDetailCacheForNetwork(
@@ -2493,7 +2484,21 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return state;
     }
 
-    private void updateWifiInfoAfterAssociation() {
+    private void updateWifiInfoWhenConnected(@NonNull WifiConfiguration config) {
+        mWifiInfo.setEphemeral(config.ephemeral);
+        mWifiInfo.setTrusted(config.trusted);
+        mWifiInfo.setOemPaid(config.oemPaid);
+        mWifiInfo.setOemPrivate(config.oemPrivate);
+        mWifiInfo.setCarrierMerged(config.carrierMerged);
+        mWifiInfo.setSubscriptionId(config.subscriptionId);
+        mWifiInfo.setOsuAp(config.osu);
+        if (config.fromWifiNetworkSpecifier || config.fromWifiNetworkSuggestion) {
+            mWifiInfo.setRequestingPackageName(config.creatorName);
+        }
+        mWifiInfo.setIsPrimary(mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY);
+    }
+
+    private void updateWifiInfoLinkParamsAfterAssociation() {
         WifiNative.ConnectionCapabilities capabilities =
                 mWifiNative.getConnectionCapabilities(mInterfaceName);
         int maxTxLinkSpeedMbps = mThroughputPredictor.predictMaxTxThroughput(capabilities);
@@ -2942,12 +2947,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         final WifiConfiguration config = getConnectedWifiConfigurationInternal();
         if (config != null) {
-            mWifiInfo.setEphemeral(config.ephemeral);
-            mWifiInfo.setTrusted(config.trusted);
-            mWifiInfo.setOemPaid(config.oemPaid);
-            mWifiInfo.setOemPrivate(config.oemPrivate);
-            mWifiInfo.setCarrierMerged(config.carrierMerged);
-            mWifiInfo.setSubscriptionId(config.subscriptionId);
+            updateWifiInfoWhenConnected(config);
             mWifiConfigManager.updateRandomizedMacExpireTime(config, dhcpResults.leaseDuration);
             mWifiBlocklistMonitor.handleDhcpProvisioningSuccess(mLastBssid, mWifiInfo.getSSID());
         }
@@ -4253,7 +4253,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             && config.enterpriseConfig.isAuthenticationSimBased()) {
                         mLastSubId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(config);
                         mLastSimBasedConnectionCarrierName =
-                                mWifiCarrierInfoManager.getCarrierNameforSubId(mLastSubId);
+                                mWifiCarrierInfoManager.getCarrierNameForSubId(mLastSubId);
                         String anonymousIdentity =
                                 mWifiNative.getEapAnonymousIdentity(mInterfaceName);
                         if (!TextUtils.isEmpty(anonymousIdentity)
@@ -6287,8 +6287,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiScoreReport.setShouldReduceNetworkScore(shouldReduceNetworkScore);
     }
 
-    @Override
-    public void applyCachedPacketFilter() {
+    private void applyCachedPacketFilter() {
         // If packet filter is supported on both connections, ignore since we would have already
         // applied the filter.
         if (mContext.getResources().getBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta)) return;
@@ -6298,6 +6297,21 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
         Log.i(TAG, "Applying cached packet filter");
         mWifiNative.installPacketFilter(mInterfaceName, mCachedPacketFilter);
+    }
+
+    /**
+     * Invoked by parent ConcreteClientModeManager whenever a role change occurs.
+     */
+    public void onRoleChanged() {
+        if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+            applyCachedPacketFilter();
+        }
+        WifiConfiguration connectedNetwork = getConnectedWifiConfiguration();
+        if (connectedNetwork != null) {
+            updateWifiInfoWhenConnected(connectedNetwork);
+            // Update capabilities after a role change.
+            updateCapabilities(connectedNetwork);
+        }
     }
 
     private void addPasspointInfoToLinkProperties(LinkProperties linkProperties) {
