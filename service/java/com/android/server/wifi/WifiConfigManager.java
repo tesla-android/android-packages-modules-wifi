@@ -2659,8 +2659,8 @@ public class WifiConfigManager {
      * the given subscriptionId.
      * @param subscriptionId
      */
-    public void startTemporarilyDisablingAllNonCarrierMergedWifi(int subscriptionId) {
-        localLog("startTemporarilyDisablngAllNonCarrierMergedWifi: " + subscriptionId);
+    public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
+        localLog("startRestrictingAutoJoinToSubscriptionId: " + subscriptionId);
         // do a clear to make sure we start at a clean state.
         mNonCarrierMergedNetworksStatusTracker.clear();
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(subscriptionId,
@@ -2690,7 +2690,7 @@ public class WifiConfigManager {
     /**
      * Resets the effects of startTemporarilyDisablngAllNonCarrierMergedWifi.
      */
-    public void stopTemporarilyDisablingAllNonCarrierMergedWifi() {
+    public void stopRestrictingAutoJoinToSubscriptionId() {
         mNonCarrierMergedNetworksStatusTracker.clear();
     }
 

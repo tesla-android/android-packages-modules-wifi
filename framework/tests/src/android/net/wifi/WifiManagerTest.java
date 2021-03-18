@@ -2190,21 +2190,21 @@ public class WifiManagerTest {
     }
 
     /**
-     * Verify the call to startTemporarilyDisablingAllNonCarrierMergedWifi goes to WifiServiceImpl.
+     * Verify the call to startRestrictingAutoJoinToSubscriptionId goes to WifiServiceImpl.
      */
     @Test
-    public void testStartTemporarilyDisablingAllNonCarrierMergedWifi() throws Exception {
-        mWifiManager.startTemporarilyDisablingAllNonCarrierMergedWifi(1);
-        verify(mWifiService).startTemporarilyDisablingAllNonCarrierMergedWifi(1);
+    public void testStartRestrictAutoJoinToSubscriptionId() throws Exception {
+        mWifiManager.startRestrictingAutoJoinToSubscriptionId(1);
+        verify(mWifiService).startRestrictingAutoJoinToSubscriptionId(1);
     }
 
     /**
-     * Verify the call to stopTemporarilyDisablingAllNonCarrierMergedWifi goes to WifiServiceImpl.
+     * Verify the call to stopRestrictingAutoJoinToSubscriptionId goes to WifiServiceImpl.
      */
     @Test
     public void testStopTemporarilyDisablingAllNonCarrierMergedWifi() throws Exception {
-        mWifiManager.stopTemporarilyDisablingAllNonCarrierMergedWifi();
-        verify(mWifiService).stopTemporarilyDisablingAllNonCarrierMergedWifi();
+        mWifiManager.stopRestrictingAutoJoinToSubscriptionId();
+        verify(mWifiService).stopRestrictingAutoJoinToSubscriptionId();
     }
 
     /**
