@@ -570,7 +570,6 @@ package android.net.wifi {
   public static final class WifiNetworkSuggestion.Builder {
     ctor public WifiNetworkSuggestion.Builder();
     method @NonNull public android.net.wifi.WifiNetworkSuggestion build();
-    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder enableWpa3SaeH2eOnlyMode(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setBssid(@NonNull android.net.MacAddress);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCarrierMerged(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setCredentialSharedWithUser(boolean);
@@ -580,6 +579,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsInitialAutojoinEnabled(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsMetered(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsUserInteractionRequired(boolean);
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setIsWpa3SaeH2eOnlyModeEnabled(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setMacRandomizationSetting(int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPasspointConfig(@NonNull android.net.wifi.hotspot2.PasspointConfiguration);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriority(@IntRange(from=0) int);

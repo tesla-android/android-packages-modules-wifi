@@ -1588,7 +1588,7 @@ public class WifiNetworkSuggestionTest {
         WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
                 .setWpa3Passphrase(TEST_PRESHARED_KEY)
-                .enableWpa3SaeH2eOnlyMode(true)
+                .setIsWpa3SaeH2eOnlyModeEnabled(true)
                 .build();
         assertTrue(suggestion.getWifiConfiguration().getSecurityParamsList()
                 .stream().anyMatch(param -> param.isSaeH2eOnlyMode()));
@@ -1606,7 +1606,7 @@ public class WifiNetworkSuggestionTest {
         WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
                 .setWpa2Passphrase(TEST_PRESHARED_KEY)
-                .enableWpa3SaeH2eOnlyMode(true)
+                .setIsWpa3SaeH2eOnlyModeEnabled(true)
                 .build();
     }
 }
