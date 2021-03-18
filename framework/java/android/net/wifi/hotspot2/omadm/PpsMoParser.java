@@ -25,6 +25,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -1669,7 +1671,9 @@ public final class PpsMoParser {
         for (PPSNode child : node.getChildren()) {
             switch (child.getName()) {
                 case NODE_DECORATED_IDENTITY_PREFIX:
-                    config.setDecoratedIdentityPrefix(parseDecoratedIdentityPrefix(child));
+                    if (SdkLevel.isAtLeastS()) {
+                        config.setDecoratedIdentityPrefix(parseDecoratedIdentityPrefix(child));
+                    }
                     break;
                 default:
                     Log.w(TAG, "Unknown node under NAI instance: " + child.getName());
