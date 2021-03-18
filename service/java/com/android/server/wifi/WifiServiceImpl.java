@@ -5044,7 +5044,9 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public boolean isCarrierNetworkOffloadEnabled(int subId, boolean merged) {
-        enforceAccessPermission();
+        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
         if (mVerboseLoggingEnabled) {
             mLog.info("isCarrierNetworkOffload uid=%").c(Binder.getCallingUid()).flush();
         }

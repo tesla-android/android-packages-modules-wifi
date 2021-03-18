@@ -351,13 +351,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
     @Nullable
     private List<ScanResult.InformationElement> mInformationElements;
 
-    /**
-     * @see #isPrimary()
-     *
-     * TODO (b/156867433): Redact this for non-settings users.
-     */
-    private boolean mIsPrimary;
-
     /** @hide */
     @UnsupportedAppUsage
     public WifiInfo() {
@@ -404,7 +397,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
         setPasspointUniqueId(null);
         setSubscriptionId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         setInformationElements(null);
-        setIsPrimary(false);
         txBad = 0;
         txSuccess = 0;
         rxSuccess = 0;
@@ -470,7 +462,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
             if (source.mInformationElements != null) {
                 mInformationElements = new ArrayList<>(source.mInformationElements);
             }
-            mIsPrimary = source.mIsPrimary;
         }
     }
 
@@ -767,8 +758,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * {@code "02:00:00:00:00:00"}.
      * </li>
      * </p>
-     * @return MAC address of the connection or {@code "02:00:00:00:00:00"} if the caller has
-     * insufficient permission.
+     * @return MAC address of the connection.
      */
     @RequiresPermission(Manifest.permission.LOCAL_MAC_ADDRESS)
     public String getMacAddress() {
@@ -1122,8 +1112,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(", Metered hint: ").append(mMeteredHint)
                 .append(", score: ").append(Integer.toString(score))
                 .append(", CarrierMerged: ").append(mCarrierMerged)
-                .append(", SubscriptionId: ").append(mSubscriptionId)
-                .append(", IsPrimary: ").append(mIsPrimary);
+                .append(", SubscriptionId: ").append(mSubscriptionId);
         return sb.toString();
     }
 
@@ -1187,8 +1176,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
         dest.writeInt(mSubscriptionId);
         if (SdkLevel.isAtLeastS()) {
             dest.writeTypedList(mParcelLocationSenstiveFields ? mInformationElements : null);
-            // TODO (b/156867433): Redact this for non-settings users.
-            dest.writeBoolean(mIsPrimary);
         }
     }
 
@@ -1242,7 +1229,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 if (SdkLevel.isAtLeastS()) {
                     info.mInformationElements = in.createTypedArrayList(
                             ScanResult.InformationElement.CREATOR);
-                    info.mIsPrimary = in.readBoolean();
                 }
                 return info;
             }
@@ -1303,42 +1289,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return new ArrayList<>(mInformationElements);
     }
 
-    /**
-     * @see #isPrimary()
-     * @hide
-     */
-    public void setIsPrimary(boolean isPrimary) {
-        mIsPrimary = isPrimary;
-    }
-
-    /**
-     * Returns whether this is the primary wifi connection or not.
-     *
-     * Wifi service considers this connection to be the best among all Wifi connections, and this
-     * connection should be the one surfaced to the user if only one can be displayed.
-     *
-     * Note that the default route (chosen by Connectivity Service) may not correspond to the
-     * primary Wifi connection e.g. when there exists a better cellular network, or if the
-     * primary Wifi connection doesn't have internet access.
-     *
-     * @return whether this is the primary connection or not.
-     *
-     * @hide
-     */
-    @RequiresPermission(Manifest.permission.NETWORK_SETTINGS)
-    @SystemApi
-    public boolean isPrimary() {
-        if (!SdkLevel.isAtLeastS()) {
-            // Intentional - since we don't support STA + STA on older devices & hence this field
-            // is redundant. Don't allow anyone to use this.
-            throw new UnsupportedOperationException();
-        }
-        // TODO (b/156867433): Redact this for non-settings users. May need to use an |int| instead
-        // to help detect the case where this info is not parceled & can be used to thow
-        // SecurityException here.
-        return mIsPrimary;
-    }
-
     @Override
     public boolean equals(Object that) {
         if (this == that) return true;
@@ -1387,8 +1337,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 && Objects.equals(mMaxSupportedTxLinkSpeed, thatWifiInfo.mMaxSupportedTxLinkSpeed)
                 && Objects.equals(mMaxSupportedRxLinkSpeed, thatWifiInfo.mMaxSupportedRxLinkSpeed)
                 && Objects.equals(mPasspointUniqueId, thatWifiInfo.mPasspointUniqueId)
-                && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements)
-                && Objects.equals(mIsPrimary, thatWifiInfo.mIsPrimary);
+                && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements);
     }
 
     @Override
@@ -1431,8 +1380,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mMaxSupportedTxLinkSpeed,
                 mMaxSupportedRxLinkSpeed,
                 mPasspointUniqueId,
-                mInformationElements,
-                mIsPrimary);
+                mInformationElements);
     }
 
     /**

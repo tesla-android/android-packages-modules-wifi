@@ -88,7 +88,6 @@ public class WifiInfoTest {
         writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
         List<ScanResult.InformationElement> informationElements = generateIes();
         writeWifiInfo.setInformationElements(informationElements);
-        writeWifiInfo.setIsPrimary(true);
 
         // Make a copy which allows parcelling of location sensitive data.
         WifiInfo writeWifiInfoWithLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
@@ -136,7 +135,6 @@ public class WifiInfoTest {
                     readWifiInfo.getInformationElements().get(1).idExt);
             assertArrayEquals(informationElements.get(1).bytes,
                     readWifiInfo.getInformationElements().get(1).bytes);
-            assertTrue(readWifiInfo.isPrimary());
         }
     }
 
@@ -166,7 +164,6 @@ public class WifiInfoTest {
         writeWifiInfo.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
         writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
         writeWifiInfo.setInformationElements(generateIes());
-        writeWifiInfo.setIsPrimary(true);
 
         // Make a copy which allows parcelling of location sensitive data.
         WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(false);
@@ -202,7 +199,6 @@ public class WifiInfoTest {
             assertTrue(readWifiInfo.isCarrierMerged());
             assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
             assertNull(readWifiInfo.getInformationElements());
-            assertTrue(readWifiInfo.isPrimary());
         }
     }
 
@@ -267,7 +263,6 @@ public class WifiInfoTest {
         writeWifiInfo.setMaxSupportedTxLinkSpeedMbps(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS);
         writeWifiInfo.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
         writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
-        writeWifiInfo.setIsPrimary(true);
 
         WifiInfo readWifiInfo = new WifiInfo(writeWifiInfo);
 
@@ -291,7 +286,6 @@ public class WifiInfoTest {
             assertTrue(readWifiInfo.isOemPrivate());
             assertTrue(readWifiInfo.isCarrierMerged());
             assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
-            assertTrue(readWifiInfo.isPrimary());
         }
     }
 
@@ -315,7 +309,6 @@ public class WifiInfoTest {
             assertFalse(wifiInfo.isOemPrivate());
             assertFalse(wifiInfo.isCarrierMerged());
             assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID, wifiInfo.getSubscriptionId());
-            assertFalse(wifiInfo.isPrimary());
         }
     }
 
