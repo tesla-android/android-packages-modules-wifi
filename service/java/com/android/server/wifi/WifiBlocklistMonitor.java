@@ -932,12 +932,12 @@ public class WifiBlocklistMonitor {
         int duration = mContext.getResources().getInteger(
                 R.integer.config_wifiDisableReasonAuthenticationFailureCarrierSpecificDurationMs);
         DisableReasonInfo disableReasonInfo = new DisableReasonInfo(
-                "NETWORK_SELECTION_DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC",
+                "NETWORK_SELECTION_DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR",
                 mContext.getResources().getInteger(R.integer
                         .config_wifiDisableReasonAuthenticationFailureCarrierSpecificThreshold),
                 duration);
         mDisableReasonInfo.put(
-                NetworkSelectionStatus.DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC,
+                NetworkSelectionStatus.DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR,
                 disableReasonInfo);
     }
 

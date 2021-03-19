@@ -5895,7 +5895,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiBlocklistMonitor).loadCarrierConfigsForDisableReasonInfos();
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
                 eq(WifiConfiguration.NetworkSelectionStatus
-                        .DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC));
+                        .DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR));
     }
 
     /**
