@@ -1008,7 +1008,6 @@ public class ClientModeImplTest extends WifiBaseTest {
                     WifiInfo wifiInfoFromTi = (WifiInfo) nc.getTransportInfo();
                     assertEquals(TEST_BSSID_STR, wifiInfoFromTi.getBSSID());
                     assertEquals(sFreq, wifiInfoFromTi.getFrequency());
-                    assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfoFromTi.getMacAddress());
                     assertEquals(TEST_WIFI_SSID, wifiInfoFromTi.getWifiSsid());
                     if (wifiInfo.isPasspointAp()) {
                         assertEquals(wifiInfoFromTi.getPasspointProviderFriendlyName(),

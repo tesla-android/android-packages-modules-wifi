@@ -30,7 +30,6 @@ import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.LinkProperties;
 import android.net.Network;
-import android.net.NetworkCapabilities;
 import android.net.NetworkInfo.DetailedState;
 import android.net.TransportInfo;
 import android.os.Build;
@@ -39,6 +38,7 @@ import android.os.Parcelable;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.Inet4AddressUtils;
 
@@ -102,10 +102,26 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * Indicates whether parceling should preserve fields that are set based on permissions of
-     * the process receiving the {@link NetworkCapabilities}.
+     * TODO (b/156867433): Migrate to NetworkCapabilies constants once the connectivity change lands
+     * in AOSP.
      */
-    private final boolean mParcelLocationSenstiveFields;
+    /** @hide */
+    @VisibleForTesting
+    public static final long REDACTION_NONE = 0;
+    /** @hide */
+    @VisibleForTesting
+    public static final long REDACTION_ACCESS_FINE_LOCATION = 1 << 0;
+    /** @hide */
+    @VisibleForTesting
+    public static final long REDACTION_LOCAL_MAC_ADDRESS = 1 << 1;
+    /** @hide */
+    @VisibleForTesting
+    public static final long REDACTION_NETWORK_SETTINGS = 1 << 2;
+    /** @hide */
+    @VisibleForTesting
+    public static final long REDACTION_ALL = ~0;
+
+    private final long mRedactions;
 
     private SupplicantState mSupplicantState;
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.P, trackingBug = 115609023)
@@ -418,7 +434,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /** @hide */
     @UnsupportedAppUsage
     public WifiInfo() {
-        mParcelLocationSenstiveFields = false;
+        mRedactions = WifiInfo.REDACTION_ALL;
         mWifiSsid = null;
         mBSSID = null;
         mNetworkId = -1;
@@ -432,11 +448,11 @@ public class WifiInfo implements TransportInfo, Parcelable {
 
     /** @hide */
     public void reset() {
-        if (mParcelLocationSenstiveFields) {
+        if (mRedactions != WifiInfo.REDACTION_ALL) {
             // To ensure that we don't accidentally set this bit on the master copy of WifiInfo
             // (reset is only invoked in the master copy)
             throw new UnsupportedOperationException(
-                    "Cannot clear WifiInfo when parcelSensitiveLocationFields is set");
+                    "Cannot clear WifiInfo when mRedactions is set");
         }
         setInetAddress(null);
         setBSSID(null);
@@ -480,15 +496,15 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public WifiInfo(WifiInfo source) {
-        this(source, false);
+        this(source, WifiInfo.REDACTION_ALL);
     }
 
     /**
      * Copy constructor
      * @hide
      */
-    private WifiInfo(WifiInfo source, boolean parcelSensitiveFields) {
-        mParcelLocationSenstiveFields = parcelSensitiveFields;
+    private WifiInfo(WifiInfo source, /* @WifiInfo.RedactionType */ long redactions) {
+        mRedactions = redactions;
         if (source != null) {
             mSupplicantState = source.mSupplicantState;
             mBSSID = source.mBSSID;
@@ -830,13 +846,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
 
     /**
      * Returns the MAC address used for this connection.
-     * <p>
-     * Note:
-     * <li> This field is only populated when retrieved via {@link WifiManager#getConnectionInfo()}.
-     * WifiInfo retrieved via {@link NetworkCapabilities#getTransportInfo()} will always return
-     * {@code "02:00:00:00:00:00"}.
-     * </li>
-     * </p>
      * @return MAC address of the connection or {@code "02:00:00:00:00:00"} if the caller has
      * insufficient permission.
      */
@@ -1203,9 +1212,19 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return 0;
     }
 
+    private boolean shouldParcelLocationSensitiveFields() {
+        return (mRedactions & REDACTION_ACCESS_FINE_LOCATION) == 0;
+    }
+
+    private boolean shouldParcelLocalMacAddressFields() {
+        return (mRedactions & REDACTION_LOCAL_MAC_ADDRESS) == 0;
+    }
+
     /** Implement the Parcelable interface {@hide} */
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeInt(mParcelLocationSenstiveFields ? mNetworkId : INVALID_NETWORK_ID);
+        // TODO (b/162602799): Should we proactively redact instance fields in memory instead of
+        // current approach of redacting while parceling.
+        dest.writeInt(shouldParcelLocationSensitiveFields() ? mNetworkId : INVALID_NETWORK_ID);
         dest.writeInt(mRssi);
         dest.writeInt(mLinkSpeed);
         dest.writeInt(mTxLinkSpeed);
@@ -1220,7 +1239,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         if (mWifiSsid != null) {
             dest.writeInt(1);
             final WifiSsid ssid;
-            if (mParcelLocationSenstiveFields) {
+            if (shouldParcelLocationSensitiveFields()) {
                 ssid = mWifiSsid;
             } else {
                 ssid = WifiSsid.createFromHex(null);
@@ -1229,8 +1248,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
         } else {
             dest.writeInt(0);
         }
-        dest.writeString(mParcelLocationSenstiveFields ? mBSSID : DEFAULT_MAC_ADDRESS);
-        dest.writeString(mMacAddress);
+        dest.writeString(shouldParcelLocationSensitiveFields() ? mBSSID : DEFAULT_MAC_ADDRESS);
+        dest.writeString(shouldParcelLocalMacAddressFields() ? mMacAddress : DEFAULT_MAC_ADDRESS);
         dest.writeInt(mMeteredHint ? 1 : 0);
         dest.writeInt(mEphemeral ? 1 : 0);
         dest.writeInt(mTrusted ? 1 : 0);
@@ -1249,15 +1268,16 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mSupplicantState.writeToParcel(dest, flags);
         dest.writeInt(mOsuAp ? 1 : 0);
         dest.writeString(mRequestingPackageName);
-        dest.writeString(mParcelLocationSenstiveFields ? mFqdn : null);
-        dest.writeString(mParcelLocationSenstiveFields ? mProviderFriendlyName : null);
+        dest.writeString(shouldParcelLocationSensitiveFields() ? mFqdn : null);
+        dest.writeString(shouldParcelLocationSensitiveFields() ? mProviderFriendlyName : null);
         dest.writeInt(mWifiStandard);
         dest.writeInt(mMaxSupportedTxLinkSpeed);
         dest.writeInt(mMaxSupportedRxLinkSpeed);
-        dest.writeString(mParcelLocationSenstiveFields ? mPasspointUniqueId : null);
+        dest.writeString(shouldParcelLocationSensitiveFields() ? mPasspointUniqueId : null);
         dest.writeInt(mSubscriptionId);
         if (SdkLevel.isAtLeastS()) {
-            dest.writeTypedList(mParcelLocationSenstiveFields ? mInformationElements : null);
+            dest.writeTypedList(
+                    shouldParcelLocationSensitiveFields() ? mInformationElements : null);
             // TODO (b/156867433): Redact this for non-settings users.
             dest.writeBoolean(mIsPrimary);
         }
@@ -1511,41 +1531,51 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * Make a copy of WifiInfo instance.
-     *
-     * @param parcelSensitiveFields Whether to parcel location sensitive fields or not.
-     * @return instance of {@link WifiInfo}.
      * @hide
      */
     @NonNull
-    public WifiInfo makeCopyInternal(boolean parcelSensitiveFields) {
-        return new WifiInfo(this, parcelSensitiveFields);
+    public WifiInfo makeCopyInternal(/* @WifiInfo.RedactionType */ long redactions) {
+        return new WifiInfo(this, redactions);
     }
 
     /**
-     * Make a copy of WifiInfo instance.
-     *
-     * @param parcelSensitiveFields Whether to parcel location sensitive fields or not.
-     * @return instance of {@link WifiInfo}.
+     * TODO (b/156867433): Remove this once the connectivity change lands in AOSP.
      */
     @NonNull
-    @Override
     public WifiInfo makeCopy(boolean parcelSensitiveFields) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        return makeCopyInternal(parcelSensitiveFields);
+        return makeCopyInternal(parcelSensitiveFields ? 0 : REDACTION_ACCESS_FINE_LOCATION);
     }
 
     /**
-     * Whether it has location sensitive data or not.
+     * TODO (b/156867433): Remove this once the connectivity change lands in AOSP.
+     * @hide
      */
-    @Override
     public boolean hasLocationSensitiveFields() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
         return true;
+    }
+
+    @NonNull
+    public WifiInfo makeCopy(long redactions) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return makeCopyInternal(redactions);
+    }
+
+    /**
+     * @hide
+     */
+    public long getApplicableRedactions() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return REDACTION_ACCESS_FINE_LOCATION | REDACTION_LOCAL_MAC_ADDRESS;
     }
 
     /**

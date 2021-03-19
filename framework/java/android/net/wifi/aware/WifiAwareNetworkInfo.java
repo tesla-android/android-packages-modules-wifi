@@ -23,8 +23,6 @@ import android.net.TransportInfo;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.android.modules.utils.build.SdkLevel;
-
 import java.net.Inet6Address;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -134,7 +132,7 @@ public final class WifiAwareNetworkInfo implements TransportInfo, Parcelable {
         dest.writeInt(mTransportProtocol);
     }
 
-    public static final @android.annotation.NonNull Creator<WifiAwareNetworkInfo> CREATOR =
+    public static final @NonNull Creator<WifiAwareNetworkInfo> CREATOR =
             new Creator<WifiAwareNetworkInfo>() {
                 @Override
                 public WifiAwareNetworkInfo createFromParcel(Parcel in) {
@@ -196,21 +194,5 @@ public final class WifiAwareNetworkInfo implements TransportInfo, Parcelable {
     @Override
     public int hashCode() {
         return Objects.hash(mIpv6Addr, mPort, mTransportProtocol);
-    }
-
-    /**
-     * Make a copy of WifiAwareNetworkInfo instance.
-     *
-     * @param parcelSensitiveFields Whether to parcel location sensitive fields or not.
-     * @return instance of {@link WifiAwareNetworkInfo}.
-     */
-    @NonNull
-    @Override
-    public WifiAwareNetworkInfo makeCopy(boolean parcelSensitiveFields) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        // No location sensitive data, ignore parcelSensitiveFields.
-        return new WifiAwareNetworkInfo(this);
     }
 }
