@@ -90,6 +90,12 @@ public class MakeBeforeBreakManager {
             public void onInternetValidated(@NonNull ConcreteClientModeManager clientModeManager) {
                 MakeBeforeBreakManager.this.onInternetValidated(clientModeManager);
             }
+
+            @Override
+            public void onCaptivePortalDetected(
+                    @NonNull ConcreteClientModeManager clientModeManager) {
+                MakeBeforeBreakManager.this.onCaptivePortalDetected(clientModeManager);
+            }
         });
     }
 
@@ -225,6 +231,28 @@ public class MakeBeforeBreakManager {
         // current primary CMM). This is to preserve the legacy single STA behavior.
         mBroadcastQueue.fakeDisconnectionBroadcasts();
         mMakeBeforeBreakInfo = new MakeBeforeBreakInfo(currentPrimary, newPrimary);
+    }
+
+    private void onCaptivePortalDetected(@NonNull ConcreteClientModeManager newPrimary) {
+        if (!mActiveModeWarden.isStaStaConcurrencySupportedForMbb()) {
+            return;
+        }
+        if (newPrimary.getRole() != ROLE_CLIENT_SECONDARY_TRANSIENT) {
+            return;
+        }
+
+        ConcreteClientModeManager currentPrimary =
+                mActiveModeWarden.getPrimaryClientModeManagerNullable();
+
+        if (currentPrimary == null) {
+            Log.i(TAG, "onCaptivePortalDetected: Current primary is null, nothing to stop");
+        } else {
+            Log.i(TAG, "onCaptivePortalDetected: stopping current primary CMM");
+            currentPrimary.stop();
+        }
+        // Once the currentPrimary teardown completes, recoverPrimary() will make the Captive
+        // Portal CMM the new primary, because it is the only SECONDARY_TRANSIENT CMM and no
+        // primary CMM exists.
     }
 
     private void maybeContinueMakeBeforeBreak(

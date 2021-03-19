@@ -78,4 +78,11 @@ public class ClientModeImplMonitor implements ClientModeImplListener {
             listener.onConnectionEnd(clientModeManager);
         }
     }
+
+    @Override
+    public void onCaptivePortalDetected(@NonNull ConcreteClientModeManager clientModeManager) {
+        for (ClientModeImplListener listener : mListeners) {
+            listener.onCaptivePortalDetected(clientModeManager);
+        }
+    }
 }
