@@ -3050,7 +3050,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
         // Verify the blocklist is cleared again.
         verify(mWifiConfigManager).enableTemporaryDisabledNetworks();
-        verify(mWifiConfigManager).stopTemporarilyDisablingAllNonCarrierMergedWifi();
+        verify(mWifiConfigManager).stopRestrictingAutoJoinToSubscriptionId();
         // Verify WifiNetworkSelector is informed of the disable.
         verify(mWifiNS).resetOnDisable();
     }

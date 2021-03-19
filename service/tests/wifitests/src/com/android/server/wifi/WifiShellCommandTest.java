@@ -18,8 +18,8 @@ package com.android.server.wifi;
 
 import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PAID;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
-import static android.net.NetworkCapabilitiesProto.NET_CAPABILITY_TRUSTED;
-import static android.net.NetworkCapabilitiesProto.TRANSPORT_WIFI;
+import static android.net.NetworkCapabilities.NET_CAPABILITY_TRUSTED;
+import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
 import static com.android.server.wifi.WifiShellCommand.SHELL_PACKAGE_NAME;

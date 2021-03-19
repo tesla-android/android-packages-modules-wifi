@@ -630,13 +630,13 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     mWifiService.enableVerboseLogging(enabled ? 1 : 0);
                     return 0;
                 }
-                case "start-temporarily-disabling-all-non-carrier-merged-wifi": {
+                case "start-restricting-auto-join-to-subscription-id": {
                     int subId = Integer.parseInt(getNextArgRequired());
-                    mWifiService.startTemporarilyDisablingAllNonCarrierMergedWifi(subId);
+                    mWifiService.startRestrictingAutoJoinToSubscriptionId(subId);
                     return 0;
                 }
-                case "stop-temporarily-disabling-all-non-carrier-merged-wifi": {
-                    mWifiService.stopTemporarilyDisablingAllNonCarrierMergedWifi();
+                case "stop-restricting-auto-join-to-subscription-id": {
+                    mWifiService.stopRestrictingAutoJoinToSubscriptionId();
                     return 0;
                 }
                 case "add-suggestion": {
@@ -1396,12 +1396,12 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Current wifi status");
         pw.println("  set-verbose-logging enabled|disabled ");
         pw.println("    Set the verbose logging enabled or disabled");
-        pw.println("  start-temporarily-disabling-all-non-carrier-merged-wifi subId");
+        pw.println("  start-restricting-auto-join-to-subscription-id subId");
         pw.println("    temporarily disable all wifi networks except merged carrier networks with"
                 + " the given subId");
-        pw.println("  stop-temporarily-disabling-all-non-carrier-merged-wifi");
+        pw.println("  stop-restricting-auto-join-to-subscription-id");
         pw.println("    Undo the effects of "
-                + "start-temporarily-disabling-all-non-carrier-merged-wifi");
+                + "start-restricting-auto-join-to-subscription-id");
         pw.println("  add-suggestion <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-u] [-o] [-p] [-m] "
                 + " [-s] [-d] [-b <bssid>] [-e] [-i] [-a <carrierId>] [-c <subscriptionId>]");
         pw.println("    Add a network suggestion with provided params");

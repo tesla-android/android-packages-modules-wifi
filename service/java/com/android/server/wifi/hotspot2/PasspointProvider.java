@@ -38,6 +38,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.IMSIParameter;
 import com.android.server.wifi.WifiCarrierInfoManager;
@@ -555,7 +556,9 @@ public class PasspointProvider {
                     String.join(";", mConfig.getAaaServerTrustedNames()));
             enterpriseConfig.setCaPath(SYSTEM_CA_STORE_PATH);
         }
-        enterpriseConfig.setDecoratedIdentityPrefix(mConfig.getDecoratedIdentityPrefix());
+        if (SdkLevel.isAtLeastS()) {
+            enterpriseConfig.setDecoratedIdentityPrefix(mConfig.getDecoratedIdentityPrefix());
+        }
         wifiConfig.enterpriseConfig = enterpriseConfig;
         // PPS MO Credential/CheckAAAServerCertStatus node contains a flag which indicates
         // if the mobile device needs to check the AAA server certificate's revocation status

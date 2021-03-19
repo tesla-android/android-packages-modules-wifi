@@ -897,7 +897,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
          *        default is false.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
-        public @NonNull Builder enableWpa3SaeH2eOnlyMode(boolean enable) {
+        public @NonNull Builder setIsWpa3SaeH2eOnlyModeEnabled(boolean enable) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
             }

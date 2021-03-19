@@ -287,6 +287,14 @@ public class WifiNetworkSuggestionsManager {
             this.wns.wifiConfiguration.ephemeral = true;
             this.wns.wifiConfiguration.creatorName = perAppInfo.packageName;
             this.wns.wifiConfiguration.creatorUid = perAppInfo.uid;
+            if (perAppInfo.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                return;
+            }
+            // If App is carrier privileged, set carrier Id to the profile.
+            this.wns.wifiConfiguration.carrierId = perAppInfo.carrierId;
+            if (this.wns.passpointConfiguration != null) {
+                this.wns.passpointConfiguration.setCarrierId(perAppInfo.carrierId);
+            }
         }
 
         @Override
@@ -306,17 +314,6 @@ public class WifiNetworkSuggestionsManager {
             return wns.equals(other.wns)
                     && perAppInfo.uid == other.perAppInfo.uid
                     && TextUtils.equals(perAppInfo.packageName, other.perAppInfo.packageName);
-        }
-
-        /**
-         * Helper method to set the carrier Id.
-         */
-        public void setCarrierId(int carrierId) {
-            if (wns.passpointConfiguration == null) {
-                wns.wifiConfiguration.carrierId = carrierId;
-            } else {
-                wns.passpointConfiguration.setCarrierId(carrierId);
-            }
         }
 
         @Override
@@ -837,10 +834,9 @@ public class WifiNetworkSuggestionsManager {
             final PerAppInfo perAppInfo) {
         return networkSuggestions
                 .stream()
-                .collect(Collectors.mapping(
-                        n -> ExtendedWifiNetworkSuggestion.fromWns(n, perAppInfo,
-                                n.isInitialAutoJoinEnabled),
-                        Collectors.toSet()));
+                .map(n -> ExtendedWifiNetworkSuggestion.fromWns(n, perAppInfo,
+                        n.isInitialAutoJoinEnabled))
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -852,9 +848,8 @@ public class WifiNetworkSuggestionsManager {
             final Collection<ExtendedWifiNetworkSuggestion> extNetworkSuggestions) {
         return extNetworkSuggestions
                 .stream()
-                .collect(Collectors.mapping(
-                        n -> n.wns,
-                        Collectors.toSet()));
+                .map(n -> n.wns)
+                .collect(Collectors.toSet());
     }
 
     private void updateWifiConfigInWcmIfPresent(
@@ -982,9 +977,6 @@ public class WifiNetworkSuggestionsManager {
         }
 
         for (ExtendedWifiNetworkSuggestion ewns: extNetworkSuggestions) {
-            if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
-                ewns.setCarrierId(carrierId);
-            }
             // If network has no IMSI protection and user didn't approve exemption, make it initial
             // auto join disabled
             if (isSimBasedSuggestion(ewns)) {

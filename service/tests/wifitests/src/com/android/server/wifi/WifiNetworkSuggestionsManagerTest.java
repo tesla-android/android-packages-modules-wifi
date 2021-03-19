@@ -3741,7 +3741,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
             config.subscriptionId = TEST_SUBID;
         }
         WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
-                config, null, true, false, true, true, DEFAULT_PRIORITY_GROUP);
+                new WifiConfiguration(config), null, true, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
         networkSuggestionList.add(networkSuggestion);
         when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
@@ -3757,6 +3758,13 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 WifiNetworkSuggestionsManager.APP_TYPE_CARRIER_PRIVILEGED);
         verify(mUserApprovalStatusListener).onUserApprovalStatusChange(
                 WifiManager.STATUS_SUGGESTION_APPROVAL_APPROVED_BY_CARRIER_PRIVILEGE);
+
+        WifiNetworkSuggestion suggestionToRemove = createWifiNetworkSuggestion(
+                new WifiConfiguration(config), null, true, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.remove(List.of(suggestionToRemove), TEST_UID_1,
+                        TEST_PACKAGE_1));
     }
 
     /**

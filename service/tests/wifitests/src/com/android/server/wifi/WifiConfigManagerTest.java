@@ -4901,7 +4901,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that when startTemporarilyDisablingAllNonCarrierMergedWifi is called, all
+     * Verify that when startRestrictingAutoJoinToSubscriptionId is called, all
      * non-carrier-merged networks are disabled for a duration, and non-carrier-merged networks
      * visible at the time of API call are disabled a longer duration, until they disappear from
      * scan results for sufficiently long.
@@ -4920,7 +4920,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // verify both networks are disabled at the start
         when(mClock.getWallClockMillis()).thenReturn(0L);
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
-        mWifiConfigManager.startTemporarilyDisablingAllNonCarrierMergedWifi(5);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
         mWifiConfigManager.updateUserDisabledList(new ArrayList<String>());
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
@@ -4943,7 +4943,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that startTemporarilyDisablingAllNonCarrierMergedWifi disables all passpoint networks
+     * Verify that startRestrictingAutoJoinToSubscriptionId disables all passpoint networks
      * with the same FQDN as the visible passpoint network, even if the SSID is different.
      */
     @Test
@@ -4969,7 +4969,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // verify all networks are disabled at the start
         when(mClock.getWallClockMillis()).thenReturn(0L);
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
-        mWifiConfigManager.startTemporarilyDisablingAllNonCarrierMergedWifi(5);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
                 passpointNetwork_1));
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
@@ -4989,11 +4989,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that stopTemporarilyDisablingAllNonCarrierMergedWifi cancels the effects of
-     * startTemporarilyDisablingAllNonCarrierMergedWifi.
+     * Verify that stopRestrictingAutoJoinToSubscriptionId cancels the effects of
+     * startRestrictingAutoJoinToSubscriptionId.
      */
     @Test
-    public void testStopTemporarilyDisablingAllNonCarrierMergedWifi() {
+    public void testStopRestrictAutoJoinToSubscriptionId() {
         verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworksWithPasswords();
@@ -5006,12 +5006,12 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // verify both networks are disabled at the start
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
-        mWifiConfigManager.startTemporarilyDisablingAllNonCarrierMergedWifi(5);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
         mWifiConfigManager.updateUserDisabledList(new ArrayList<String>());
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
 
-        mWifiConfigManager.stopTemporarilyDisablingAllNonCarrierMergedWifi();
+        mWifiConfigManager.stopRestrictingAutoJoinToSubscriptionId();
         assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
                 visibleNetwork));
         assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
@@ -5019,7 +5019,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Verify that the carrier network with the matching subscription ID is still allowed for
-     * auto connect after startTemporarilyDisablingAllNonCarrierMergedWifi is called.
+     * auto connect after startRestrictingAutoJoinToSubscriptionId is called.
      */
     @Test
     public void testStartTemporarilyDisablingAllNonCarrierMergedWifiAllowCarrierNetwork() {
@@ -5035,7 +5035,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // verify that the carrier network is not disabled.
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
-        mWifiConfigManager.startTemporarilyDisablingAllNonCarrierMergedWifi(testSubscriptionId);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(testSubscriptionId);
         assertFalse(mWifiConfigManager
                 .isNonCarrierMergedNetworkTemporarilyDisabled(carrierNetwork));
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
