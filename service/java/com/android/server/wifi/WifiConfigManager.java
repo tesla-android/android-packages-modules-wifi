@@ -2430,16 +2430,12 @@ public class WifiConfigManager {
     private boolean shouldNetworksBeLinked(
             WifiConfiguration network1, WifiConfiguration network2,
             ScanDetailCache scanDetailCache1, ScanDetailCache scanDetailCache2) {
-        // Check if networks should be linked due to credential match
-        if (TextUtils.equals(network1.preSharedKey, network2.preSharedKey)) {
-            return true;
-        }
+        // Check if networks should not be linked due to credential mismatch
         if (mContext.getResources().getBoolean(
                 R.bool.config_wifi_only_link_same_credential_configurations)) {
-            if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "shouldNetworksBeLinked unlink due to password mismatch");
+            if (!TextUtils.equals(network1.preSharedKey, network2.preSharedKey)) {
+                return false;
             }
-            return false;
         }
 
         // Check if networks should be linked due to default gateway match
@@ -2455,10 +2451,9 @@ public class WifiConfigManager {
             return false;
         }
 
-        // We do not know BOTH default gateways hence we will try to link
-        // hoping that WifiConfigurations are indeed behind the same gateway.
-        // once both WifiConfiguration have been tried and thus once both default gateways
-        // are known we will revisit the choice of linking them.
+        // We do not know BOTH default gateways yet, but if the first 16 ASCII characters of BSSID
+        // match then we can assume this is a DBDC with the same gateway. Once both gateways become
+        // known, we will unlink the networks if it turns out the gateways are actually different.
         if (!mContext.getResources().getBoolean(
                 R.bool.config_wifiAllowLinkingUnknownDefaultGatewayConfigurations)) {
             return false;
@@ -2468,8 +2463,6 @@ public class WifiConfigManager {
                 for (String bbssid : scanDetailCache2.keySet()) {
                     if (abssid.regionMatches(
                             true, 0, bbssid, 0, LINK_CONFIGURATION_BSSID_MATCH_LENGTH)) {
-                        // If first 16 ASCII characters of BSSID matches,
-                        // we assume this is a DBDC.
                         if (mVerboseLoggingEnabled) {
                             Log.v(TAG, "shouldNetworksBeLinked link due to DBDC BSSID match "
                                     + network2.SSID + " and " + network1.SSID
