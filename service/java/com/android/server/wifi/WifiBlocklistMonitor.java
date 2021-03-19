@@ -43,6 +43,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -717,21 +718,21 @@ public class WifiBlocklistMonitor {
                     fwMaxBlocklistSize));
         }
 
+        // Collect all the allowed SSIDs
+        Set<String> allowedSsidSet = new HashSet<>();
+        for (String ssid : ssids) {
+            List<String> allowedSsidsForSsid = mSsidAllowlistMap.get(ssid);
+            if (allowedSsidsForSsid != null) {
+                allowedSsidSet.addAll(allowedSsidsForSsid);
+            }
+        }
+        ArrayList<String> ssidAllowlist = new ArrayList<>(allowedSsidSet);
+        int allowlistSize = ssidAllowlist.size();
         int maxAllowlistSize = mConnectivityHelper.getMaxNumAllowlistSsid();
         if (maxAllowlistSize <= 0) {
             Log.wtf(TAG, "Invalid max SSID allowlist size:  " + maxAllowlistSize);
             return;
         }
-
-        int allowlistSize;
-        ArrayList<String> ssidAllowlist = new ArrayList<String>();
-        for (String ssid : ssids) {
-            if (mSsidAllowlistMap.get(ssid) != null) {
-                ssidAllowlist.addAll(mSsidAllowlistMap.get(ssid));
-            }
-        }
-
-        allowlistSize = ssidAllowlist.size();
         if (allowlistSize > maxAllowlistSize) {
             ssidAllowlist = new ArrayList<>(ssidAllowlist.subList(0, maxAllowlistSize));
             localLog("Trim down SSID allowlist size from " + allowlistSize + " to "
