@@ -19,6 +19,7 @@ package android.net.wifi;
 import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
 
 import android.Manifest;
+import android.annotation.IntDef;
 import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -41,6 +42,8 @@ import android.text.TextUtils;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.Inet4AddressUtils;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -110,6 +113,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     @UnsupportedAppUsage
     private WifiSsid mWifiSsid;
     private int mNetworkId;
+    private int mSecurityType;
 
     /**
      * Used to indicate that the RSSI is invalid, for example if no RSSI measurements are available
@@ -125,6 +129,59 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /** @hide **/
     public static final int MAX_RSSI = 200;
 
+    /** Unknown security type. */
+    public static final int SECURITY_TYPE_UNKNOWN = -1;
+    /** Security type for an open network. */
+    public static final int SECURITY_TYPE_OPEN = 0;
+    /** Security type for a WEP network. */
+    public static final int SECURITY_TYPE_WEP = 1;
+    /** Security type for a PSK network. */
+    public static final int SECURITY_TYPE_PSK = 2;
+    /** Security type for an EAP network. */
+    public static final int SECURITY_TYPE_EAP = 3;
+    /** Security type for an SAE network. */
+    public static final int SECURITY_TYPE_SAE = 4;
+    /** Security type for a WPA3-Enterprise in 192-bit security network. */
+    public static final int SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT = 5;
+    /** Security type for an OWE network. */
+    public static final int SECURITY_TYPE_OWE = 6;
+    /** Security type for a WAPI PSK network. */
+    public static final int SECURITY_TYPE_WAPI_PSK = 7;
+    /** Security type for a WAPI Certificate network. */
+    public static final int SECURITY_TYPE_WAPI_CERT = 8;
+    /** Security type for a WPA3-Enterprise network. */
+    public static final int SECURITY_TYPE_EAP_WPA3_ENTERPRISE = 9;
+    /** Security type for an OSEN network. */
+    public static final int SECURITY_TYPE_OSEN = 10;
+    /** Security type for a Passpoint R1/R2 network, where TKIP and WEP are not allowed. */
+    public static final int SECURITY_TYPE_PASSPOINT_R1_R2 = 11;
+    /**
+     * Security type for a Passpoint R3 network, where TKIP and WEP are not allowed,
+     * and PMF must be set to Required.
+     */
+    public static final int SECURITY_TYPE_PASSPOINT_R3 = 12;
+
+    /**
+     * Security type of current connection.
+     * @hide
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = { "SECURITY_TYPE_" }, value = {
+            SECURITY_TYPE_UNKNOWN,
+            SECURITY_TYPE_OPEN,
+            SECURITY_TYPE_WEP,
+            SECURITY_TYPE_PSK,
+            SECURITY_TYPE_EAP,
+            SECURITY_TYPE_SAE,
+            SECURITY_TYPE_OWE,
+            SECURITY_TYPE_WAPI_PSK,
+            SECURITY_TYPE_WAPI_CERT,
+            SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+            SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+            SECURITY_TYPE_PASSPOINT_R1_R2,
+            SECURITY_TYPE_PASSPOINT_R3,
+    })
+    public @interface SecurityType {}
 
     /**
      * Received Signal Strength Indicator
@@ -370,6 +427,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mLinkSpeed = LINK_SPEED_UNKNOWN;
         mFrequency = -1;
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        mSecurityType = -1;
     }
 
     /** @hide */
@@ -414,6 +472,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mSuccessfulRxPacketsPerSecond = 0;
         mTxRetriedTxPacketsPerSecond = 0;
         score = 0;
+        mSecurityType = -1;
     }
 
     /**
@@ -471,6 +530,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mInformationElements = new ArrayList<>(source.mInformationElements);
             }
             mIsPrimary = source.mIsPrimary;
+            mSecurityType = source.mSecurityType;
         }
     }
 
@@ -515,6 +575,16 @@ public class WifiInfo implements TransportInfo, Parcelable {
         @NonNull
         public Builder setNetworkId(int networkId) {
             mWifiInfo.setNetworkId(networkId);
+            return this;
+        }
+
+        /**
+         * Set the current security type
+         * @see WifiInfo#getCurrentSecurityType()
+         */
+        @NonNull
+        public Builder setCurrentSecurityType(@WifiConfiguration.SecurityType int securityType) {
+            mWifiInfo.setCurrentSecurityType(securityType);
             return this;
         }
 
@@ -1106,6 +1176,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         sb.append("SSID: ").append(getSSID())
                 .append(", BSSID: ").append(mBSSID == null ? none : mBSSID)
                 .append(", MAC: ").append(mMacAddress == null ? none : mMacAddress)
+                .append(", Security type: ").append(mSecurityType)
                 .append(", Supplicant state: ")
                 .append(mSupplicantState == null ? none : mSupplicantState)
                 .append(", Wi-Fi standard: ").append(mWifiStandard)
@@ -1190,6 +1261,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             // TODO (b/156867433): Redact this for non-settings users.
             dest.writeBoolean(mIsPrimary);
         }
+        dest.writeInt(mSecurityType);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1244,6 +1316,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                             ScanResult.InformationElement.CREATOR);
                     info.mIsPrimary = in.readBoolean();
                 }
+                info.mSecurityType = in.readInt();
                 return info;
             }
 
@@ -1388,7 +1461,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 && Objects.equals(mMaxSupportedRxLinkSpeed, thatWifiInfo.mMaxSupportedRxLinkSpeed)
                 && Objects.equals(mPasspointUniqueId, thatWifiInfo.mPasspointUniqueId)
                 && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements)
-                && Objects.equals(mIsPrimary, thatWifiInfo.mIsPrimary);
+                && Objects.equals(mIsPrimary, thatWifiInfo.mIsPrimary)
+                && Objects.equals(mSecurityType, thatWifiInfo.mSecurityType);
     }
 
     @Override
@@ -1432,7 +1506,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mMaxSupportedRxLinkSpeed,
                 mPasspointUniqueId,
                 mInformationElements,
-                mIsPrimary);
+                mIsPrimary,
+                mSecurityType);
     }
 
     /**
@@ -1471,5 +1546,62 @@ public class WifiInfo implements TransportInfo, Parcelable {
             throw new UnsupportedOperationException();
         }
         return true;
+    }
+
+    /**
+     * Set the security type of the current connection
+     * @hide
+     */
+    public void setCurrentSecurityType(@WifiConfiguration.SecurityType int securityType) {
+        mSecurityType = convertSecurityTypeToWifiInfo(securityType);
+    }
+
+    /**
+     * Clear the last set security type
+     * @hide
+     */
+    public void clearCurrentSecurityType() {
+        mSecurityType = SECURITY_TYPE_UNKNOWN;
+    }
+
+    /**
+     * Returns the security type of the current 802.11 network connection.
+     *
+     * @return the security type, or {@link #SECURITY_TYPE_UNKNOWN} if not currently connected.
+     */
+    public @SecurityType int getCurrentSecurityType() {
+        return mSecurityType;
+    }
+
+    private @SecurityType int convertSecurityTypeToWifiInfo(
+            @WifiConfiguration.SecurityType int securityType) {
+        switch (securityType) {
+            case WifiConfiguration.SECURITY_TYPE_OPEN:
+                return SECURITY_TYPE_OPEN;
+            case WifiConfiguration.SECURITY_TYPE_WEP:
+                return SECURITY_TYPE_WEP;
+            case WifiConfiguration.SECURITY_TYPE_PSK:
+                return SECURITY_TYPE_PSK;
+            case WifiConfiguration.SECURITY_TYPE_EAP:
+                return SECURITY_TYPE_EAP;
+            case WifiConfiguration.SECURITY_TYPE_SAE:
+                return SECURITY_TYPE_SAE;
+            case WifiConfiguration.SECURITY_TYPE_OWE:
+                return SECURITY_TYPE_OWE;
+            case WifiConfiguration.SECURITY_TYPE_WAPI_PSK:
+                return SECURITY_TYPE_WAPI_PSK;
+            case WifiConfiguration.SECURITY_TYPE_WAPI_CERT:
+                return SECURITY_TYPE_WAPI_CERT;
+            case WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE:
+                return SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
+            case WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT:
+                return SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
+            case WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2:
+                return SECURITY_TYPE_PASSPOINT_R1_R2;
+            case WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3:
+                return SECURITY_TYPE_PASSPOINT_R3;
+            default:
+                return SECURITY_TYPE_UNKNOWN;
+        }
     }
 }
