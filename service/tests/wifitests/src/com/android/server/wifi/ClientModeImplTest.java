@@ -987,6 +987,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(sFreq, wifiInfo.getFrequency());
         assertEquals(TEST_WIFI_SSID, wifiInfo.getWifiSsid());
         assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfo.getMacAddress());
+        assertEquals(mConnectedNetwork.getDefaultSecurityParams().getSecurityType(),
+                mWifiInfo.getCurrentSecurityType());
         if (wifiInfo.isPasspointAp()) {
             assertEquals(wifiInfo.getPasspointProviderFriendlyName(),
                     WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME);
@@ -1973,6 +1975,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 anyInt(), anyInt(), anyInt());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 any(), anyInt(), any(), any());
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, mWifiInfo.getCurrentSecurityType());
         assertEquals("DisconnectedState", getCurrentState().getName());
     }
 

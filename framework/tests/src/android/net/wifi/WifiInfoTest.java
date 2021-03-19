@@ -466,6 +466,62 @@ public class WifiInfoTest {
         }
     }
 
+    @Test
+    public void testWifiInfoCurrentSecurityType() throws Exception {
+        WifiInfo.Builder builder = new WifiInfo.Builder()
+                .setSsid(TEST_SSID.getBytes(StandardCharsets.UTF_8))
+                .setBssid(TEST_BSSID)
+                .setRssi(TEST_RSSI)
+                .setNetworkId(TEST_NETWORK_ID)
+                .setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_SAE);
+
+        WifiInfo info = new WifiInfo();
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, info.getCurrentSecurityType());
+
+        info = builder.build();
+        assertEquals(WifiInfo.SECURITY_TYPE_SAE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_OPEN, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WEP).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WEP, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PSK).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PSK, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_EAP).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_OWE).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_OWE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WAPI_PSK, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_CERT).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WAPI_CERT, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PASSPOINT_R1_R2, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PASSPOINT_R3, info.getCurrentSecurityType());
+
+        info.clearCurrentSecurityType();
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, info.getCurrentSecurityType());
+    }
+
     private static List<ScanResult.InformationElement> generateIes() {
         List<ScanResult.InformationElement> informationElements = new ArrayList<>();
         ScanResult.InformationElement informationElement = new ScanResult.InformationElement();

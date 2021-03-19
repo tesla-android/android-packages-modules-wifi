@@ -70,6 +70,7 @@ import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiAnnotations.WifiStandard;
 import android.net.wifi.WifiConfiguration;
@@ -2452,6 +2453,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setSSID(null);
             mWifiInfo.setWifiStandard(ScanResult.WIFI_STANDARD_UNKNOWN);
             mWifiInfo.setInformationElements(null);
+            mWifiInfo.clearCurrentSecurityType();
         }
         updateLayer2Information();
         // SSID might have been updated, so call updateCapabilities
@@ -2496,6 +2498,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setRequestingPackageName(config.creatorName);
         }
         mWifiInfo.setIsPrimary(mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY);
+        SecurityParams securityParams = config.getNetworkSelectionStatus()
+                .getCandidateSecurityParams();
+        if (securityParams != null) {
+            mWifiInfo.setCurrentSecurityType(securityParams.getSecurityType());
+        } else {
+            mWifiInfo.clearCurrentSecurityType();
+            Log.e(TAG, "Network connection candidate with no security parameters");
+        }
     }
 
     private void updateWifiInfoLinkParamsAfterAssociation() {
