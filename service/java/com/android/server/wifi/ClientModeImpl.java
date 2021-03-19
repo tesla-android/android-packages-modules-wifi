@@ -3988,6 +3988,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
+    /**
+     * All callbacks are triggered on the main Wifi thread.
+     * See {@link WifiNetworkAgent#WifiNetworkAgent}'s looper argument in
+     * {@link WifiInjector#makeWifiNetworkAgent}.
+     */
     private class WifiNetworkAgentCallback implements WifiNetworkAgent.Callback {
         private int mLastNetworkStatus = -1; // To detect when the status really changes
 
@@ -4024,10 +4029,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_NETWORK_AGENT_VALID_NETWORK);
                 doNetworkStatus(status);
             }
-            if (redirectUri != null && redirectUri.toString() != null
-                    && redirectUri.toString().length() > 0) {
-                mWifiThreadRunner.post(() ->
-                        mWifiConfigManager.noteCaptivePortalDetected(mWifiInfo.getNetworkId()));
+            boolean captivePortalDetected = redirectUri != null
+                    && redirectUri.toString() != null
+                    && redirectUri.toString().length() > 0;
+            if (captivePortalDetected) {
+                Log.i(getTag(), "Captive Portal detected, status=" + status
+                        + ", redirectUri=" + redirectUri);
+                mWifiConfigManager.noteCaptivePortalDetected(mWifiInfo.getNetworkId());
+                mCmiMonitor.onCaptivePortalDetected(mClientModeManager);
             }
         }
 
@@ -4114,11 +4123,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
-    void unwantedNetwork(int reason) {
+    private void unwantedNetwork(int reason) {
         sendMessage(CMD_UNWANTED_NETWORK, reason);
     }
 
-    void doNetworkStatus(int status) {
+    private void doNetworkStatus(int status) {
         sendMessage(CMD_NETWORK_STATUS, status);
     }
 
