@@ -19,6 +19,7 @@ package com.android.server.wifi.hotspot2;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +39,7 @@ import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.FakeKeys;
 import com.android.server.wifi.MboOceConstants;
@@ -1943,6 +1945,7 @@ public class PasspointProviderTest extends WifiBaseTest {
      */
     @Test
     public void testSetDecoratedIdentityPrefix() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         // Create provider for R2.
         PasspointConfiguration config = generateTestPasspointConfiguration(
                 CredentialType.USER, false);
