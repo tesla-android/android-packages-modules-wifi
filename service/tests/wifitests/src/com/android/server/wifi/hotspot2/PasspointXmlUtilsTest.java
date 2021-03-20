@@ -29,6 +29,7 @@ import android.util.Xml;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiBaseTest;
 
 import org.junit.Test;
@@ -185,7 +186,9 @@ public class PasspointXmlUtilsTest extends WifiBaseTest {
         config.setSubscriptionId(TEST_SUBSCRIPTION_ID);
 
         // Extensions
-        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        if (SdkLevel.isAtLeastS()) {
+            config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        }
         return config;
     }
 
