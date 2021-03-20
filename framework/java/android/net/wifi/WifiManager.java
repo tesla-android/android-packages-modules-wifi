@@ -7898,9 +7898,7 @@ public class WifiManager {
      * networks.
      * 2. Intended to be used by Device Owner (DO), Profile Owner (PO), Settings and provisioning
      * apps.
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
