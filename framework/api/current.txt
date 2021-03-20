@@ -290,6 +290,7 @@ package android.net.wifi {
   public class WifiInfo implements android.os.Parcelable android.net.TransportInfo {
     method public int describeContents();
     method public String getBSSID();
+    method public int getCurrentSecurityType();
     method public static android.net.NetworkInfo.DetailedState getDetailedStateOf(android.net.wifi.SupplicantState);
     method public int getFrequency();
     method public boolean getHiddenSSID();
@@ -310,16 +311,32 @@ package android.net.wifi {
     method @IntRange(from=0xffffffff) public int getTxLinkSpeedMbps();
     method public int getWifiStandard();
     method @NonNull public android.net.wifi.WifiInfo makeCopy(boolean);
+    method @NonNull public android.net.wifi.WifiInfo makeCopy(long);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final String FREQUENCY_UNITS = "MHz";
     field public static final String LINK_SPEED_UNITS = "Mbps";
     field public static final int LINK_SPEED_UNKNOWN = -1; // 0xffffffff
+    field public static final int SECURITY_TYPE_EAP = 3; // 0x3
+    field public static final int SECURITY_TYPE_EAP_WPA3_ENTERPRISE = 9; // 0x9
+    field public static final int SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT = 5; // 0x5
+    field public static final int SECURITY_TYPE_OPEN = 0; // 0x0
+    field public static final int SECURITY_TYPE_OSEN = 10; // 0xa
+    field public static final int SECURITY_TYPE_OWE = 6; // 0x6
+    field public static final int SECURITY_TYPE_PASSPOINT_R1_R2 = 11; // 0xb
+    field public static final int SECURITY_TYPE_PASSPOINT_R3 = 12; // 0xc
+    field public static final int SECURITY_TYPE_PSK = 2; // 0x2
+    field public static final int SECURITY_TYPE_SAE = 4; // 0x4
+    field public static final int SECURITY_TYPE_UNKNOWN = -1; // 0xffffffff
+    field public static final int SECURITY_TYPE_WAPI_CERT = 8; // 0x8
+    field public static final int SECURITY_TYPE_WAPI_PSK = 7; // 0x7
+    field public static final int SECURITY_TYPE_WEP = 1; // 0x1
   }
 
   public static final class WifiInfo.Builder {
     ctor public WifiInfo.Builder();
     method @NonNull public android.net.wifi.WifiInfo build();
     method @NonNull public android.net.wifi.WifiInfo.Builder setBssid(@NonNull String);
+    method @NonNull public android.net.wifi.WifiInfo.Builder setCurrentSecurityType(int);
     method @NonNull public android.net.wifi.WifiInfo.Builder setNetworkId(int);
     method @NonNull public android.net.wifi.WifiInfo.Builder setRssi(int);
     method @NonNull public android.net.wifi.WifiInfo.Builder setSsid(@NonNull byte[]);
@@ -752,7 +769,6 @@ package android.net.wifi.aware {
     method @Nullable public java.net.Inet6Address getPeerIpv6Addr();
     method public int getPort();
     method public int getTransportProtocol();
-    method @NonNull public android.net.wifi.aware.WifiAwareNetworkInfo makeCopy(boolean);
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareNetworkInfo> CREATOR;
   }

@@ -81,6 +81,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiConfigManager}.
@@ -2628,6 +2630,74 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                         otherNetwork.getProfileKeyInternal()));
             }
         }
+    }
+
+    /**
+     * Verifies the linking of networks when they have the same default GW Mac address in
+     * {@link WifiConfigManager#getOrCreateScanDetailCacheForNetwork(WifiConfiguration)} AND the
+     * same pre-shared key.
+     */
+    @Test
+    public void testNetworkLinkOnlyIfCredentialsMatch() {
+        mResources.setBoolean(
+                R.bool.config_wifi_only_link_same_credential_configurations, true);
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        // Set the same pre-shared key for network 1 and 2 but not 3
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey1\"";
+        network3.preSharedKey = "\"preSharedKey2\"";
+        verifyAddNetworkToWifiConfigManager(network1);
+        verifyAddNetworkToWifiConfigManager(network2);
+        verifyAddNetworkToWifiConfigManager(network3);
+
+        // Set the same default GW mac address for all of the networks.
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network1.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network2.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network3.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+
+        // Now create fake scan detail corresponding to the networks.
+        ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1);
+        ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2);
+        ScanDetail networkScanDetail3 = createScanDetailForNetwork(network3);
+
+        // Now save all these scan details corresponding to each of this network and expect
+        // all of these networks to be linked with each other.
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail1));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail2));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
+
+        Map<Integer, WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworks().stream().collect(
+                        Collectors.toMap(config -> config.networkId, Function.identity()));
+        // Networks 1 and 2 should link due to GW match + same pre-shared key
+        WifiConfiguration retrievedNetwork1 = retrievedNetworks.get(network1.networkId);
+        assertEquals(1, retrievedNetwork1.linkedConfigurations.size());
+        assertNotNull(retrievedNetwork1.linkedConfigurations.get(network2.getProfileKeyInternal()));
+        WifiConfiguration retrievedNetwork2 = retrievedNetworks.get(network2.networkId);
+        assertEquals(1, retrievedNetwork2.linkedConfigurations.size());
+        assertNotNull(retrievedNetwork2.linkedConfigurations.get(network1.getProfileKeyInternal()));
+        // Network 3 should not link due to different pre-shared key
+        WifiConfiguration retrievedNetwork3 = retrievedNetworks.get(network3.networkId);
+        assertNull(retrievedNetwork3.linkedConfigurations);
     }
 
     /**

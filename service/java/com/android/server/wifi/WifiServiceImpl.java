@@ -3065,29 +3065,25 @@ public class WifiServiceImpl extends BaseWifiService {
                     () -> getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
                             uid, callingPackage)
                             .syncRequestConnectionInfo(), new WifiInfo());
-            boolean hideDefaultMacAddress = true;
-            boolean hideLocationSensitiveData = true;
+            /* @WifiInfo.RedactionType */ long redactions =
+                    wifiInfo.getApplicableRedactions();
             try {
                 if (mWifiInjector.getWifiPermissionsWrapper().getLocalMacAddressPermission(uid)
                         == PERMISSION_GRANTED) {
-                    hideDefaultMacAddress = false;
+                    redactions &= ~WifiInfo.REDACTION_LOCAL_MAC_ADDRESS;
                 }
                 mWifiPermissionsUtil.enforceCanAccessScanResults(callingPackage, callingFeatureId,
                         uid, null);
-                hideLocationSensitiveData = false;
+                redactions &= ~WifiInfo.REDACTION_ACCESS_FINE_LOCATION;
             } catch (SecurityException ignored) {
             }
-            WifiInfo result = wifiInfo.makeCopyInternal(!hideLocationSensitiveData);
-            // TODO (b/162602799): Do we need to expose the MAC address of the secondary STA?
-            if (hideDefaultMacAddress) {
-                result.setMacAddress(WifiInfo.DEFAULT_MAC_ADDRESS);
-            }
+            WifiInfo result = wifiInfo.makeCopyInternal(redactions);
             if (mVerboseLoggingEnabled
-                    && (hideLocationSensitiveData || hideDefaultMacAddress)) {
+                    && (redactions != WifiInfo.REDACTION_NONE)) {
                 mLog.v("getConnectionInfo: hideLocationSensitiveData="
-                        + hideLocationSensitiveData
+                        + (redactions & WifiInfo.REDACTION_ACCESS_FINE_LOCATION)
                         + ", hideDefaultMacAddress="
-                        + hideDefaultMacAddress);
+                        + (redactions & WifiInfo.REDACTION_LOCAL_MAC_ADDRESS));
             }
             return result;
         } finally {

@@ -70,6 +70,7 @@ import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiAnnotations.WifiStandard;
 import android.net.wifi.WifiConfiguration;
@@ -2452,6 +2453,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setSSID(null);
             mWifiInfo.setWifiStandard(ScanResult.WIFI_STANDARD_UNKNOWN);
             mWifiInfo.setInformationElements(null);
+            mWifiInfo.clearCurrentSecurityType();
         }
         updateLayer2Information();
         // SSID might have been updated, so call updateCapabilities
@@ -2496,6 +2498,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setRequestingPackageName(config.creatorName);
         }
         mWifiInfo.setIsPrimary(mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY);
+        SecurityParams securityParams = config.getNetworkSelectionStatus()
+                .getCandidateSecurityParams();
+        if (securityParams != null) {
+            mWifiInfo.setCurrentSecurityType(securityParams.getSecurityType());
+        } else {
+            mWifiInfo.clearCurrentSecurityType();
+            Log.e(TAG, "Network connection candidate with no security parameters");
+        }
     }
 
     private void updateWifiInfoLinkParamsAfterAssociation() {
@@ -3884,12 +3894,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         // Only send out WifiInfo in >= Android S devices.
         if (SdkLevel.isAtLeastS()) {
-            WifiInfo wifiInfo = new WifiInfo(mWifiInfo);
-            // Always mask MAC address when set in TransportInfo since this field is protected
-            // with LOCAL_MAC_ADDRESS permission which cannot be enforced by connectivity stack.
-            // Connectivity stack only enforces location permission on TransportInfo.
-            wifiInfo.setMacAddress(WifiInfo.DEFAULT_MAC_ADDRESS);
-            builder.setTransportInfo(wifiInfo);
+            builder.setTransportInfo(new WifiInfo(mWifiInfo));
         }
 
         Pair<Integer, String> specificRequestUidAndPackageName =
@@ -3983,6 +3988,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
+    /**
+     * All callbacks are triggered on the main Wifi thread.
+     * See {@link WifiNetworkAgent#WifiNetworkAgent}'s looper argument in
+     * {@link WifiInjector#makeWifiNetworkAgent}.
+     */
     private class WifiNetworkAgentCallback implements WifiNetworkAgent.Callback {
         private int mLastNetworkStatus = -1; // To detect when the status really changes
 
@@ -4019,10 +4029,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_NETWORK_AGENT_VALID_NETWORK);
                 doNetworkStatus(status);
             }
-            if (redirectUri != null && redirectUri.toString() != null
-                    && redirectUri.toString().length() > 0) {
-                mWifiThreadRunner.post(() ->
-                        mWifiConfigManager.noteCaptivePortalDetected(mWifiInfo.getNetworkId()));
+            boolean captivePortalDetected = redirectUri != null
+                    && redirectUri.toString() != null
+                    && redirectUri.toString().length() > 0;
+            if (captivePortalDetected) {
+                Log.i(getTag(), "Captive Portal detected, status=" + status
+                        + ", redirectUri=" + redirectUri);
+                mWifiConfigManager.noteCaptivePortalDetected(mWifiInfo.getNetworkId());
+                mCmiMonitor.onCaptivePortalDetected(mClientModeManager);
             }
         }
 
@@ -4109,11 +4123,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
-    void unwantedNetwork(int reason) {
+    private void unwantedNetwork(int reason) {
         sendMessage(CMD_UNWANTED_NETWORK, reason);
     }
 
-    void doNetworkStatus(int status) {
+    private void doNetworkStatus(int status) {
         sendMessage(CMD_NETWORK_STATUS, status);
     }
 
@@ -4493,7 +4507,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 && targetedNetwork.enterpriseConfig.isAuthenticationSimBased()) {
                             if (mEapFailureNotifier.onEapFailure(errorCode, targetedNetwork)) {
                                 disableReason = WifiConfiguration.NetworkSelectionStatus
-                                    .DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC;
+                                    .DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR;
                                 mWifiBlocklistMonitor.loadCarrierConfigsForDisableReasonInfos();
                             }
                         }

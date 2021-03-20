@@ -51,4 +51,11 @@ public interface ClientModeImplListener {
      * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
      */
     default void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {}
+
+    /**
+     * Called when a Captive Portal is detected on this connection.
+     *
+     * @param clientModeManager the ClientModeManager associated with the ClientModeImpl
+     */
+    default void onCaptivePortalDetected(@NonNull ConcreteClientModeManager clientModeManager) {}
 }

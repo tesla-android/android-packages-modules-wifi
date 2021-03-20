@@ -89,6 +89,7 @@ import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.NetworkSpecifier;
 import android.net.StaticIpConfiguration;
+import android.net.Uri;
 import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
 import android.net.vcn.VcnManager;
@@ -464,6 +465,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ClientModeManager mPrimaryClientModeManager;
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
+    @Mock Uri mMockUri;
 
     @Captor ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mConfigUpdateListenerCaptor;
     @Captor ArgumentCaptor<WifiNetworkAgent.Callback> mWifiNetworkAgentCallbackCaptor;
@@ -987,6 +989,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(sFreq, wifiInfo.getFrequency());
         assertEquals(TEST_WIFI_SSID, wifiInfo.getWifiSsid());
         assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfo.getMacAddress());
+        assertEquals(mConnectedNetwork.getDefaultSecurityParams().getSecurityType(),
+                mWifiInfo.getCurrentSecurityType());
         if (wifiInfo.isPasspointAp()) {
             assertEquals(wifiInfo.getPasspointProviderFriendlyName(),
                     WifiConfigurationTestUtil.TEST_PROVIDER_FRIENDLY_NAME);
@@ -1006,7 +1010,6 @@ public class ClientModeImplTest extends WifiBaseTest {
                     WifiInfo wifiInfoFromTi = (WifiInfo) nc.getTransportInfo();
                     assertEquals(TEST_BSSID_STR, wifiInfoFromTi.getBSSID());
                     assertEquals(sFreq, wifiInfoFromTi.getFrequency());
-                    assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, wifiInfoFromTi.getMacAddress());
                     assertEquals(TEST_WIFI_SSID, wifiInfoFromTi.getWifiSsid());
                     if (wifiInfo.isPasspointAp()) {
                         assertEquals(wifiInfoFromTi.getPasspointProviderFriendlyName(),
@@ -1973,6 +1976,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 anyInt(), anyInt(), anyInt());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 any(), anyInt(), any(), any());
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, mWifiInfo.getCurrentSecurityType());
         assertEquals("DisconnectedState", getCurrentState().getName());
     }
 
@@ -4014,6 +4018,22 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     @Test
+    public void captivePortalDetected_notifiesCmiMonitor() throws Exception {
+        connect();
+        verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), anyInt(), any(), any(),
+                mWifiNetworkAgentCallbackCaptor.capture());
+
+        // captive portal detected
+        when(mMockUri.toString()).thenReturn("TEST_URI");
+        mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
+                NetworkAgent.VALIDATION_STATUS_NOT_VALID, mMockUri);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager).noteCaptivePortalDetected(anyInt());
+        verify(mCmiMonitor).onCaptivePortalDetected(mClientModeManager);
+    }
+
+    @Test
     public void internetValidationFailure_userSelectedRecently_expectNotDisabled()
             throws Exception {
         connect();
@@ -5893,7 +5913,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiBlocklistMonitor).loadCarrierConfigsForDisableReasonInfos();
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
                 eq(WifiConfiguration.NetworkSelectionStatus
-                        .DISABLED_AUTHENTICATION_FAILURE_CARRIER_SPECIFIC));
+                        .DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR));
     }
 
     /**

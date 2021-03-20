@@ -65,7 +65,7 @@ public class WifiInfoTest {
      *  Verify parcel write/read with WifiInfo.
      */
     @Test
-    public void testWifiInfoParcelWriteReadWithLocationSensitiveInfo() throws Exception {
+    public void testWifiInfoParcelWriteReadWithNoRedactions() throws Exception {
         WifiInfo writeWifiInfo = new WifiInfo();
         writeWifiInfo.txSuccess = TEST_TX_SUCCESS;
         writeWifiInfo.txRetries = TEST_TX_RETRIES;
@@ -91,10 +91,11 @@ public class WifiInfoTest {
         writeWifiInfo.setIsPrimary(true);
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
+        WifiInfo writeWifiInfoCopy =
+                writeWifiInfo.makeCopyInternal(WifiInfo.REDACTION_NONE);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoWithLocationSensitiveInfo.writeToParcel(parcel, 0);
+        writeWifiInfoCopy.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
@@ -169,10 +170,11 @@ public class WifiInfoTest {
         writeWifiInfo.setIsPrimary(true);
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(false);
+        WifiInfo writeWifiInfoCopy =
+                writeWifiInfo.makeCopyInternal(WifiInfo.REDACTION_ACCESS_FINE_LOCATION);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
+        writeWifiInfoCopy.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
@@ -217,10 +219,11 @@ public class WifiInfoTest {
         writeWifiInfo.setInformationElements(null);
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
+        WifiInfo writeWifiInfoCopy =
+                writeWifiInfo.makeCopyInternal(WifiInfo.REDACTION_NONE);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
+        writeWifiInfo.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
@@ -238,10 +241,11 @@ public class WifiInfoTest {
         writeWifiInfo.setInformationElements(new ArrayList<>());
 
         // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoWithoutLocationSensitiveInfo = writeWifiInfo.makeCopyInternal(true);
+        WifiInfo writeWifiInfoCopy =
+                writeWifiInfo.makeCopyInternal(WifiInfo.REDACTION_NONE);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoWithoutLocationSensitiveInfo.writeToParcel(parcel, 0);
+        writeWifiInfoCopy.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
@@ -464,6 +468,62 @@ public class WifiInfoTest {
             // On R devices, system generated hashcode.
             assertNotEquals(info1.hashCode(), info2.hashCode());
         }
+    }
+
+    @Test
+    public void testWifiInfoCurrentSecurityType() throws Exception {
+        WifiInfo.Builder builder = new WifiInfo.Builder()
+                .setSsid(TEST_SSID.getBytes(StandardCharsets.UTF_8))
+                .setBssid(TEST_BSSID)
+                .setRssi(TEST_RSSI)
+                .setNetworkId(TEST_NETWORK_ID)
+                .setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_SAE);
+
+        WifiInfo info = new WifiInfo();
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, info.getCurrentSecurityType());
+
+        info = builder.build();
+        assertEquals(WifiInfo.SECURITY_TYPE_SAE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_OPEN, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WEP).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WEP, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PSK).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PSK, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_EAP).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_OWE).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_OWE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WAPI_PSK, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_CERT).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_WAPI_CERT, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PASSPOINT_R1_R2, info.getCurrentSecurityType());
+
+        info = builder.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3).build();
+        assertEquals(WifiInfo.SECURITY_TYPE_PASSPOINT_R3, info.getCurrentSecurityType());
+
+        info.clearCurrentSecurityType();
+        assertEquals(WifiInfo.SECURITY_TYPE_UNKNOWN, info.getCurrentSecurityType());
     }
 
     private static List<ScanResult.InformationElement> generateIes() {
