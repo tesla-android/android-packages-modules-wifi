@@ -158,7 +158,9 @@ public class XmlUtilTest extends WifiBaseTest {
             throws IOException, XmlPullParserException {
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
         config.enterpriseConfig.setAnonymousIdentity(ANONYMOUS_IDENTITY);
-        config.enterpriseConfig.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        if (SdkLevel.isAtLeastS()) {
+            config.enterpriseConfig.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        }
         serializeDeserializeWifiConfigurationForConfigStore(config);
     }
 

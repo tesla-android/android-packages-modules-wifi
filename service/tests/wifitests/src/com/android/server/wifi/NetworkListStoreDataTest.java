@@ -31,6 +31,7 @@ import android.util.Xml;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 import com.android.server.wifi.util.XmlUtilTest;
@@ -231,9 +232,10 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<boolean name=\"AppInstalledRootCaCert\" value=\"false\" />\n"
                     + "<boolean name=\"AppInstalledPrivateKey\" value=\"false\" />\n"
                     + "<null name=\"KeyChainAlias\" />\n"
-                    + "<string name=\"DecoratedIdentityPrefix\"></string>\n"
+                    + (SdkLevel.isAtLeastS()
+                    ? "<string name=\"DecoratedIdentityPrefix\"></string>\n" : "")
                     + "</WifiEnterpriseConfiguration>\n"
-                    + "</Network>\n";
+                    + "</Network>\n";;
 
     private static final String SINGLE_SAE_NETWORK_DATA_XML_STRING_FORMAT =
             "<Network>\n"
