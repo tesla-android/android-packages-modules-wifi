@@ -63,7 +63,6 @@ import android.net.wifi.WifiSsid;
 import android.os.IBinder;
 import android.os.PatternMatcher;
 import android.os.PowerManager;
-import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.WorkSource;
@@ -2245,17 +2244,10 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                                 secondaryConnectionDurationMillis)));
     }
 
-
-    /**
-     * Verify we return the correct UID when processing network request with network specifier.
-     */
     @Test
-    public void testHandleNetworkRequestWithSpecifierGetUid() throws Exception {
-        assertEquals(Integer.valueOf(Process.INVALID_UID),
-                mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        new WifiConfiguration(), new String()).first);
-        assertTrue(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                new WifiConfiguration(), new String()).second.isEmpty());
+    public void testHandleNetworkRequestWithSpecifierIsInProgress() throws Exception {
+        assertFalse(mWifiNetworkFactory.isSpecificRequestInProgress(
+                new WifiConfiguration(), ""));
 
         sendNetworkRequestAndSetupForConnectionStatus();
         assertNotNull(mSelectedNetwork);
@@ -2263,21 +2255,14 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // connected to a different network.
         WifiConfiguration connectedNetwork = new WifiConfiguration(mSelectedNetwork);
         connectedNetwork.SSID += "test";
-        assertEquals(Integer.valueOf(Process.INVALID_UID),
-                mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        new WifiConfiguration(), new String()).first);
-        assertTrue(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                new WifiConfiguration(), new String()).second.isEmpty());
+        assertFalse(mWifiNetworkFactory.isSpecificRequestInProgress(
+                new WifiConfiguration(), ""));
 
         // connected to the correct network.
         connectedNetwork = new WifiConfiguration(mSelectedNetwork);
         String connectedBssid = TEST_BSSID_1;
-        assertEquals(Integer.valueOf(TEST_UID_1),
-                mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        connectedNetwork, connectedBssid).first);
-        assertEquals(TEST_PACKAGE_NAME_1,
-                mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        connectedNetwork, connectedBssid).second);
+        assertTrue(mWifiNetworkFactory.isSpecificRequestInProgress(
+                connectedNetwork, connectedBssid));
     }
 
     /**
