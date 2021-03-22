@@ -3897,16 +3897,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             builder.setTransportInfo(new WifiInfo(mWifiInfo));
         }
 
-        Pair<Integer, String> specificRequestUidAndPackageName =
-                mNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
-                        currentWifiConfiguration, currentBssid);
         // There is an active specific request.
-        if (specificRequestUidAndPackageName.first != Process.INVALID_UID) {
+        if (mNetworkFactory.isSpecificRequestInProgress(currentWifiConfiguration, currentBssid)) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-            // Fill up the uid/packageName for this connection.
-            builder.setRequestorUid(specificRequestUidAndPackageName.first);
-            builder.setRequestorPackageName(specificRequestUidAndPackageName.second);
             // Fill up the network agent specifier for this connection.
             builder.setNetworkSpecifier(createNetworkAgentSpecifier(
                     currentWifiConfiguration, getConnectedBssidInternal()));
