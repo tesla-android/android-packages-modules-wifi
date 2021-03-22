@@ -140,7 +140,7 @@ public class CoexUtils {
     /** Gets the upper or lower edge of a given channel */
     private static int getChannelEdgeKhz(int channel, @WifiAnnotations.WifiBandBasic int band,
             boolean lowerEdge) {
-        int centerFreqMhz = ScanResult.convertChannelToFrequencyMhz(channel, band);
+        int centerFreqMhz = ScanResult.convertChannelToFrequencyMhzIfSupported(channel, band);
         if (centerFreqMhz == UNSPECIFIED) {
             return INVALID_FREQ;
         }

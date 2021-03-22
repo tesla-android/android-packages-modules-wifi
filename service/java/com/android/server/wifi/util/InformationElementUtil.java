@@ -280,7 +280,7 @@ public class InformationElementUtil {
             if (mCenterFreqIndex1 == 0 || mChannelMode == 0) {
                 return 0;
             } else {
-                return ScanResult.convertChannelToFrequencyMhz(mCenterFreqIndex1,
+                return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqIndex1,
                         WifiScanner.WIFI_BAND_5_GHZ);
             }
         }
@@ -295,7 +295,7 @@ public class InformationElementUtil {
             if (mCenterFreqIndex2 == 0 || mChannelMode == 0) {
                 return 0;
             } else {
-                return ScanResult.convertChannelToFrequencyMhz(mCenterFreqIndex2,
+                return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqIndex2,
                         WifiScanner.WIFI_BAND_5_GHZ);
             }
         }
@@ -393,7 +393,7 @@ public class InformationElementUtil {
          * Only applicable for 6GHz channels
          */
         public int getPrimaryFreq() {
-            return ScanResult.convertChannelToFrequencyMhz(mPrimaryChannel,
+            return ScanResult.convertChannelToFrequencyMhzIfSupported(mPrimaryChannel,
                         WifiScanner.WIFI_BAND_6_GHZ);
         }
 
@@ -406,7 +406,7 @@ public class InformationElementUtil {
                 if (mCenterFreqSeg0 == 0) {
                     return 0;
                 } else {
-                    return ScanResult.convertChannelToFrequencyMhz(mCenterFreqSeg0,
+                    return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqSeg0,
                             WifiScanner.WIFI_BAND_6_GHZ);
                 }
             } else {
@@ -423,7 +423,7 @@ public class InformationElementUtil {
                 if (mCenterFreqSeg1 == 0) {
                     return 0;
                 } else {
-                    return ScanResult.convertChannelToFrequencyMhz(mCenterFreqSeg1,
+                    return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqSeg1,
                             WifiScanner.WIFI_BAND_6_GHZ);
                 }
             } else {

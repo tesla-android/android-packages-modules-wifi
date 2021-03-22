@@ -1507,7 +1507,7 @@ public class SupplicantP2pIfaceHal {
                 ranges.add(range2);
             }
             for (CoexUnsafeChannel cuc: unsafeChannels) {
-                int centerFreq = ScanResult.convertChannelToFrequencyMhz(
+                int centerFreq = ScanResult.convertChannelToFrequencyMhzIfSupported(
                         cuc.getChannel(), cuc.getBand());
                 ISupplicantP2pIface.FreqRange range = new ISupplicantP2pIface.FreqRange();
                 // The range boundaries are inclusive in native frequency inclusion check.
