@@ -255,7 +255,8 @@ public class ScanResultTest {
     public void convertFrequencyToChannel() throws Exception {
         for (int i = 0; i < FREQUENCY_TO_CHANNEL_MAP.length; i += 3) {
             assertEquals(FREQUENCY_TO_CHANNEL_MAP[i + 2],
-                    ScanResult.convertFrequencyMhzToChannel(FREQUENCY_TO_CHANNEL_MAP[i]));
+                    ScanResult.convertFrequencyMhzToChannelIfSupported(
+                    FREQUENCY_TO_CHANNEL_MAP[i]));
         }
     }
 
@@ -264,7 +265,7 @@ public class ScanResultTest {
      */
     @Test
     public void convertFrequencyToChannelWithInvalidFreq() throws Exception {
-        assertEquals(-1, ScanResult.convertFrequencyMhzToChannel(8000));
+        assertEquals(-1, ScanResult.convertFrequencyMhzToChannelIfSupported(8000));
     }
 
     /**

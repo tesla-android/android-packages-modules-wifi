@@ -758,7 +758,7 @@ public final class ScanResult implements Parcelable {
      * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
      * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
      *
-     * See also {@link #convertFrequencyMhzToChannel(int)}.
+     * See also {@link #convertFrequencyMhzToChannelIfSupported(int)}.
      *
      * @param channel number to convert.
      * @param band of channel to convert. One of the following bands:
@@ -766,7 +766,7 @@ public final class ScanResult implements Parcelable {
      *        {@link #WIFI_BAND_6_GHZ},  {@link #WIFI_BAND_60_GHZ}.
      * @return center frequency in Mhz of the channel, {@link #UNSPECIFIED} if no match
      */
-    public static int convertChannelToFrequencyMhz(int channel, @WifiBand int band) {
+    public static int convertChannelToFrequencyMhzIfSupported(int channel, @WifiBand int band) {
         if (band == WIFI_BAND_24_GHZ) {
             // Special case
             if (channel == 14) {
@@ -807,12 +807,12 @@ public final class ScanResult implements Parcelable {
     /**
      * Utility function to convert frequency in MHz to channel number.
      *
-     * See also {@link #convertChannelToFrequencyMhz(int, int)}.
+     * See also {@link #convertChannelToFrequencyMhzIfSupported(int, int)}.
      *
      * @param freqMhz frequency in MHz
      * @return channel number associated with given frequency, {@link #UNSPECIFIED} if no match
      */
-    public static int convertFrequencyMhzToChannel(int freqMhz) {
+    public static int convertFrequencyMhzToChannelIfSupported(int freqMhz) {
         // Special case
         if (freqMhz == 2484) {
             return 14;

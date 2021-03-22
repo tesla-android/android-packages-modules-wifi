@@ -295,7 +295,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
         int freq = ApConfigUtil.chooseApChannel(SoftApConfiguration.BAND_2GHZ, mWifiNative,
                 mCoexManager, mResources);
         assertEquals(ApConfigUtil.DEFAULT_AP_CHANNEL,
-                ScanResult.convertFrequencyMhzToChannel(freq));
+                ScanResult.convertFrequencyMhzToChannelIfSupported(freq));
     }
 
     /**

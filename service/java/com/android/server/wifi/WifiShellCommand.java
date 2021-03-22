@@ -360,7 +360,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                                     + "- must be a positive integer");
                             return -1;
                         }
-                        int apChannel = ScanResult.convertFrequencyMhzToChannel(apChannelMHz);
+                        int apChannel = ScanResult.convertFrequencyMhzToChannelIfSupported(
+                                apChannelMHz);
                         int band = ApConfigUtil.convertFrequencyToBand(apChannelMHz);
                         pw.println("channel: " + apChannel + " band: " + band);
                         if (apChannel == -1 || band == -1) {
