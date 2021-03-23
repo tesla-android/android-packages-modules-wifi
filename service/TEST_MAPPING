@@ -12,8 +12,7 @@
       ]
     }
   ],
-  // TODO(b/179512200): move to mainline-presubmit once passing
-  "mainline-postsubmit": [
+  "mainline-presubmit": [
     {
       "name": "FrameworksWifiTests[com.google.android.wifi.apex]"
     }
