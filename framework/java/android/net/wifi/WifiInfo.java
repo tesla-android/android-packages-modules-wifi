@@ -30,6 +30,7 @@ import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.LinkProperties;
 import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo.DetailedState;
 import android.net.TransportInfo;
 import android.os.Build;
@@ -38,7 +39,6 @@ import android.os.Parcelable;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.Inet4AddressUtils;
 
@@ -100,26 +100,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
         stateMap.put(SupplicantState.UNINITIALIZED, DetailedState.IDLE);
         stateMap.put(SupplicantState.INVALID, DetailedState.FAILED);
     }
-
-    /**
-     * TODO (b/156867433): Migrate to NetworkCapabilies constants once the connectivity change lands
-     * in AOSP.
-     */
-    /** @hide */
-    @VisibleForTesting
-    public static final long REDACTION_NONE = 0;
-    /** @hide */
-    @VisibleForTesting
-    public static final long REDACTION_ACCESS_FINE_LOCATION = 1 << 0;
-    /** @hide */
-    @VisibleForTesting
-    public static final long REDACTION_LOCAL_MAC_ADDRESS = 1 << 1;
-    /** @hide */
-    @VisibleForTesting
-    public static final long REDACTION_NETWORK_SETTINGS = 1 << 2;
-    /** @hide */
-    @VisibleForTesting
-    public static final long REDACTION_ALL = ~0;
 
     private final long mRedactions;
 
@@ -434,7 +414,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /** @hide */
     @UnsupportedAppUsage
     public WifiInfo() {
-        mRedactions = WifiInfo.REDACTION_ALL;
+        mRedactions = NetworkCapabilities.REDACT_ALL;
         mWifiSsid = null;
         mBSSID = null;
         mNetworkId = -1;
@@ -448,7 +428,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
 
     /** @hide */
     public void reset() {
-        if (mRedactions != WifiInfo.REDACTION_ALL) {
+        if (mRedactions != NetworkCapabilities.REDACT_ALL) {
             // To ensure that we don't accidentally set this bit on the master copy of WifiInfo
             // (reset is only invoked in the master copy)
             throw new UnsupportedOperationException(
@@ -496,14 +476,14 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public WifiInfo(WifiInfo source) {
-        this(source, WifiInfo.REDACTION_ALL);
+        this(source, NetworkCapabilities.REDACT_ALL);
     }
 
     /**
      * Copy constructor
      * @hide
      */
-    private WifiInfo(WifiInfo source, /* @WifiInfo.RedactionType */ long redactions) {
+    private WifiInfo(WifiInfo source, long redactions) {
         mRedactions = redactions;
         if (source != null) {
             mSupplicantState = source.mSupplicantState;
@@ -1213,11 +1193,11 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     private boolean shouldParcelLocationSensitiveFields() {
-        return (mRedactions & REDACTION_ACCESS_FINE_LOCATION) == 0;
+        return (mRedactions & NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION) == 0;
     }
 
     private boolean shouldParcelLocalMacAddressFields() {
-        return (mRedactions & REDACTION_LOCAL_MAC_ADDRESS) == 0;
+        return (mRedactions & NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS) == 0;
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1531,51 +1511,28 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * @hide
+     * Create a copy of a {@link WifiInfo} with some fields redacted based on the permissions
+     * held by the receiving app.
+     *
+     * @param redactions bitmask of redactions that needs to be performed on this instance.
+     * @return Copy of this instance with the necessary redactions.
      */
+    @Override
     @NonNull
-    public WifiInfo makeCopyInternal(/* @WifiInfo.RedactionType */ long redactions) {
+    public WifiInfo makeCopy(long redactions) {
         return new WifiInfo(this, redactions);
     }
 
     /**
-     * TODO (b/156867433): Remove this once the connectivity change lands in AOSP.
+     * Returns a bitmask of all the applicable redactions (based on the permissions held by the
+     * receiving app) to be performed on this TransportInfo.
+     *
+     * @return bitmask of redactions applicable on this instance.
      */
-    @NonNull
-    public WifiInfo makeCopy(boolean parcelSensitiveFields) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return makeCopyInternal(parcelSensitiveFields ? 0 : REDACTION_ACCESS_FINE_LOCATION);
-    }
-
-    /**
-     * TODO (b/156867433): Remove this once the connectivity change lands in AOSP.
-     * @hide
-     */
-    public boolean hasLocationSensitiveFields() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return true;
-    }
-
-    @NonNull
-    public WifiInfo makeCopy(long redactions) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return makeCopyInternal(redactions);
-    }
-
-    /**
-     * @hide
-     */
+    @Override
     public long getApplicableRedactions() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return REDACTION_ACCESS_FINE_LOCATION | REDACTION_LOCAL_MAC_ADDRESS;
+        return NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION
+                | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
     }
 
     /**
