@@ -180,6 +180,20 @@ public class WifiInfo implements TransportInfo, Parcelable {
     })
     public @interface SecurityType {}
 
+    /** @see #isPrimary() - No permission to access the field.  */
+    private static final int IS_PRIMARY_NO_PERMISSION = -1;
+    /** @see #isPrimary() - false */
+    private static final int IS_PRIMARY_FALSE = 0;
+    /** @see #isPrimary() - true */
+    private static final int IS_PRIMARY_TRUE = 1;
+    /** Tri state to store {@link #isPrimary()} field. */
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = { "IS_PRIMARY_" }, value = {
+            IS_PRIMARY_NO_PERMISSION, IS_PRIMARY_FALSE, IS_PRIMARY_TRUE
+    })
+    public @interface IsPrimaryValues {}
+
     /**
      * Received Signal Strength Indicator
      */
@@ -407,10 +421,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
 
     /**
      * @see #isPrimary()
-     *
-     * TODO (b/156867433): Redact this for non-settings users.
+     * The field is stored as an int since is a tristate internally -  true, false, no permission.
      */
-    private boolean mIsPrimary;
+    private @IsPrimaryValues int mIsPrimary;
 
     /** @hide */
     @UnsupportedAppUsage
@@ -425,6 +438,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mFrequency = -1;
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mSecurityType = -1;
+        mIsPrimary = IS_PRIMARY_FALSE;
     }
 
     /** @hide */
@@ -1204,6 +1218,10 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return (mRedactions & NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS) == 0;
     }
 
+    private boolean shouldParcelNetworkSettingsFields() {
+        return (mRedactions & NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS) == 0;
+    }
+
     /** Implement the Parcelable interface {@hide} */
     public void writeToParcel(Parcel dest, int flags) {
         // TODO (b/162602799): Should we proactively redact instance fields in memory instead of
@@ -1264,8 +1282,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
         if (SdkLevel.isAtLeastS()) {
             dest.writeTypedList(
                     shouldParcelLocationSensitiveFields() ? mInformationElements : null);
-            // TODO (b/156867433): Redact this for non-settings users.
-            dest.writeBoolean(mIsPrimary);
+            // IS_PRIMARY_NO_PERMISSION indicates no permission to access field.
+            dest.writeInt(shouldParcelNetworkSettingsFields()
+                    ? mIsPrimary : IS_PRIMARY_NO_PERMISSION);
         }
         dest.writeInt(mSecurityType);
     }
@@ -1320,7 +1339,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 if (SdkLevel.isAtLeastS()) {
                     info.mInformationElements = in.createTypedArrayList(
                             ScanResult.InformationElement.CREATOR);
-                    info.mIsPrimary = in.readBoolean();
+                    info.mIsPrimary = in.readInt();
                 }
                 info.mSecurityType = in.readInt();
                 return info;
@@ -1387,7 +1406,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public void setIsPrimary(boolean isPrimary) {
-        mIsPrimary = isPrimary;
+        mIsPrimary = isPrimary ? IS_PRIMARY_TRUE : IS_PRIMARY_FALSE;
     }
 
     /**
@@ -1408,14 +1427,14 @@ public class WifiInfo implements TransportInfo, Parcelable {
     @SystemApi
     public boolean isPrimary() {
         if (!SdkLevel.isAtLeastS()) {
-            // Intentional - since we don't support STA + STA on older devices & hence this field
+            // Intentional - since we don't support STA + STA on older devices, this field
             // is redundant. Don't allow anyone to use this.
             throw new UnsupportedOperationException();
         }
-        // TODO (b/156867433): Redact this for non-settings users. May need to use an |int| instead
-        // to help detect the case where this info is not parceled & can be used to thow
-        // SecurityException here.
-        return mIsPrimary;
+        if (mIsPrimary == IS_PRIMARY_NO_PERMISSION) {
+            throw new SecurityException("Not allowed to access this field");
+        }
+        return mIsPrimary == IS_PRIMARY_TRUE;
     }
 
     @Override
@@ -1538,7 +1557,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
     @Override
     public long getApplicableRedactions() {
         return NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION
-                | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
+                | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS
+                | NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS;
     }
 
     /**

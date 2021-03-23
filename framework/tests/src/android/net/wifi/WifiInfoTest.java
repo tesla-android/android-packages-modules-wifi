@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import android.net.NetworkCapabilities;
@@ -232,11 +233,40 @@ public class WifiInfoTest {
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getMacAddress());
     }
 
+    /**
+     *  Verify parcel write/read with WifiInfo.
+     */
+    @Test
+    public void testWifiInfoParcelWriteReadWithoutNetworkSettingsInfo() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+
+        WifiInfo writeWifiInfo = new WifiInfo();
+        writeWifiInfo.setIsPrimary(true);
+
+        WifiInfo writeWifiInfoCopy =
+                writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS);
+
+        Parcel parcel = Parcel.obtain();
+        writeWifiInfoCopy.writeToParcel(parcel, 0);
+        // Rewind the pointer to the head of the parcel.
+        parcel.setDataPosition(0);
+        WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
+
+        assertNotNull(readWifiInfo);
+        try {
+            // Should generate a security exception if caller does not have network settings
+            // permission.
+            readWifiInfo.isPrimary();
+            fail();
+        } catch (SecurityException e) { /* pass */ }
+    }
+
     @Test
     public void testWifiInfoGetApplicableRedactions() throws Exception {
         long redactions = new WifiInfo().getApplicableRedactions();
         assertEquals(NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION
-                | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS, redactions);
+                | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS
+                | NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS, redactions);
     }
 
     @Test

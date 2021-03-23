@@ -3069,16 +3069,17 @@ public class WifiServiceImpl extends BaseWifiService {
                             uid, callingPackage)
                             .syncRequestConnectionInfo(), new WifiInfo());
             long redactions = wifiInfo.getApplicableRedactions();
+            if (mWifiPermissionsUtil.checkLocalMacAddressPermission(uid)) {
+                redactions &= ~NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
+            }
+            if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)) {
+                redactions &= ~NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS;
+            }
             try {
-                if (mWifiInjector.getWifiPermissionsWrapper().getLocalMacAddressPermission(uid)
-                        == PERMISSION_GRANTED) {
-                    redactions &= ~NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
-                }
                 mWifiPermissionsUtil.enforceCanAccessScanResults(callingPackage, callingFeatureId,
                         uid, null);
                 redactions &= ~NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION;
-            } catch (SecurityException ignored) {
-            }
+            } catch (SecurityException ignored) { }
             return wifiInfo.makeCopy(redactions);
         } finally {
             Binder.restoreCallingIdentity(ident);
