@@ -3895,6 +3895,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // Only send out WifiInfo in >= Android S devices.
         if (SdkLevel.isAtLeastS()) {
             builder.setTransportInfo(new WifiInfo(mWifiInfo));
+
+            if (mWifiInfo.getSubscriptionId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                    && mWifiInfo.isCarrierMerged()) {
+                builder.setSubIds(Collections.singleton(mWifiInfo.getSubscriptionId()));
+            }
         }
 
         // There is an active specific request.
