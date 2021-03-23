@@ -47,20 +47,23 @@ public class SelfRecovery {
     public static final int REASON_WIFINATIVE_FAILURE = 1;
     public static final int REASON_STA_IFACE_DOWN = 2;
     public static final int REASON_API_CALL = 3;
+    public static final int REASON_SUBSYSTEM_RESTART = 4;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"REASON_"}, value = {
             REASON_LAST_RESORT_WATCHDOG,
             REASON_WIFINATIVE_FAILURE,
             REASON_STA_IFACE_DOWN,
-            REASON_API_CALL})
+            REASON_API_CALL,
+            REASON_SUBSYSTEM_RESTART})
     public @interface RecoveryReason {}
 
     protected static final String[] REASON_STRINGS = {
             "Last Resort Watchdog",  // REASON_LAST_RESORT_WATCHDOG
             "WifiNative Failure",    // REASON_WIFINATIVE_FAILURE
             "Sta Interface Down",    // REASON_STA_IFACE_DOWN
-            "API call (e.g. user)"   // REASON_API_CALL
+            "API call (e.g. user)",  // REASON_API_CALL
+            "Subsystem Restart"      // REASON_SUBSYSTEM_RESTART
     };
 
     private final Context mContext;
@@ -68,11 +71,43 @@ public class SelfRecovery {
     private final Clock mClock;
     // Time since boot (in millis) that restart occurred
     private final LinkedList<Long> mPastRestartTimes;
-    public SelfRecovery(Context context, ActiveModeWarden activeModeWarden, Clock clock) {
+    private final WifiNative mWifiNative;
+    private int mSelfRecoveryReason;
+    private boolean mDidWeTriggerSelfRecovery;
+    private SubsystemRestartListenerInternal mSubsystemRestartListener;
+
+    private class SubsystemRestartListenerInternal
+            implements HalDeviceManager.SubsystemRestartListener{
+        @Override
+        public void onSubsystemRestart() {
+            String reasonString =  "";
+            if (!mDidWeTriggerSelfRecovery) {
+                // We did not trigger recovery, but looks like the firmware crashed?
+                mSelfRecoveryReason = REASON_SUBSYSTEM_RESTART;
+            }
+
+            if (mSelfRecoveryReason < REASON_STRINGS.length && mSelfRecoveryReason >= 0) {
+                reasonString = REASON_STRINGS[mSelfRecoveryReason];
+            }
+
+            Log.e(TAG, "Restarting wifi for reason: " + reasonString);
+            mActiveModeWarden.recoveryRestartWifi(mSelfRecoveryReason, reasonString,
+                    mSelfRecoveryReason != REASON_LAST_RESORT_WATCHDOG);
+
+            mDidWeTriggerSelfRecovery = false;
+        }
+    }
+
+    public SelfRecovery(Context context, ActiveModeWarden activeModeWarden,
+            Clock clock, WifiNative wifiNative) {
         mContext = context;
         mActiveModeWarden = activeModeWarden;
         mClock = clock;
         mPastRestartTimes = new LinkedList<>();
+        mWifiNative = wifiNative;
+        mSubsystemRestartListener = new SubsystemRestartListenerInternal();
+        mWifiNative.registerSubsystemRestartListener(mSubsystemRestartListener);
+        mDidWeTriggerSelfRecovery = false;
     }
 
     /**
@@ -89,7 +124,7 @@ public class SelfRecovery {
      */
     public void trigger(@RecoveryReason int reason) {
         if (!(reason == REASON_LAST_RESORT_WATCHDOG || reason == REASON_WIFINATIVE_FAILURE
-                  || reason == REASON_STA_IFACE_DOWN)) {
+                  || reason == REASON_STA_IFACE_DOWN || reason == REASON_API_CALL)) {
             Log.e(TAG, "Invalid trigger reason. Ignoring...");
             return;
         }
@@ -118,12 +153,12 @@ public class SelfRecovery {
             mPastRestartTimes.add(mClock.getElapsedSinceBootMillis());
         }
 
-        String reasonString =  "";
-        if (reason < REASON_STRINGS.length && reason >= 0) {
-            reasonString = REASON_STRINGS[reason];
+        mSelfRecoveryReason = reason;
+        mDidWeTriggerSelfRecovery = true;
+        if (!mWifiNative.startSubsystemRestart()) {
+            // HAL call failed, fallback to internal flow.
+            mSubsystemRestartListener.onSubsystemRestart();
         }
-        mActiveModeWarden.recoveryRestartWifi(reason, reasonString,
-                reason != REASON_LAST_RESORT_WATCHDOG);
     }
 
     /**

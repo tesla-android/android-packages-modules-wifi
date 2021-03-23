@@ -961,6 +961,18 @@ public class WifiNative {
     }
 
     /**
+     * Register listener for subsystem restart event
+     *
+     * @param listener SubsystemRestartListener listener object.
+     */
+    public void registerSubsystemRestartListener(
+            HalDeviceManager.SubsystemRestartListener listener) {
+        if (listener != null) {
+            mWifiVendorHal.registerSubsystemRestartListener(listener);
+        }
+    }
+
+    /**
      * Initialize the native modules.
      *
      * @return true on success, false otherwise.
@@ -3909,5 +3921,13 @@ public class WifiNative {
     public boolean updateLinkedNetworks(@NonNull String ifaceName, int networkId,
             Map<String, WifiConfiguration> linkedNetworks) {
         return mSupplicantStaIfaceHal.updateLinkedNetworks(ifaceName, networkId, linkedNetworks);
+    }
+
+    /**
+     * Start Subsystem Restart
+     * @return true on success
+     */
+    public boolean startSubsystemRestart() {
+        return mWifiVendorHal.startSubsystemRestart();
     }
 }
