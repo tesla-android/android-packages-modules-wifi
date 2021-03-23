@@ -236,7 +236,7 @@ public class WifiP2pDevice implements Parcelable {
                     if (match.group(11) != null) {
                         String r2str = match.group(12);
                         if (null == r2str) break;
-                        wfdInfo.setWfdR2Device(parseHex(r2str.substring(0, 4)));
+                        wfdInfo.setR2DeviceType(parseHex(r2str.substring(0, 4)));
                     }
                 }
                 break;

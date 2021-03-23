@@ -1133,7 +1133,7 @@ package android.net.wifi.p2p {
     method public boolean isCoupledSinkSupportedAtSink();
     method public boolean isCoupledSinkSupportedAtSource();
     method public boolean isEnabled();
-    method public boolean isR2Enabled();
+    method public boolean isR2Supported();
     method public boolean isSessionAvailable();
     method public void setContentProtectionSupported(boolean);
     method public void setControlPort(@IntRange(from=0) int);
@@ -1142,8 +1142,8 @@ package android.net.wifi.p2p {
     method public boolean setDeviceType(int);
     method public void setEnabled(boolean);
     method public void setMaxThroughput(@IntRange(from=0) int);
+    method public boolean setR2DeviceType(int);
     method public void setSessionAvailable(boolean);
-    method public void setWfdR2Device(int);
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.p2p.WifiP2pWfdInfo> CREATOR;
     field public static final int DEVICE_TYPE_PRIMARY_SINK = 1; // 0x1

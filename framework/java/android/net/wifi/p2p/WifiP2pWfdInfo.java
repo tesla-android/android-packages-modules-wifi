@@ -34,7 +34,7 @@ import java.util.Locale;
  * A class representing Wifi Display information for a device.
  *
  * See Wifi Display technical specification v1.0.0, section 5.1.2.
- * See Wifi Display technical specification v2.0.0, section 5.1.12 for Wi-Fi Display R2.
+ * See Wifi Display technical specification v2.0.0, section 5.1.12 for Wifi Display R2.
  */
 public final class WifiP2pWfdInfo implements Parcelable {
 
@@ -70,7 +70,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
-     * Wi-Fi Display Technical Specification.
+     * Wifi Display Technical Specification.
      */
     private static final int DEVICE_TYPE                            = 1 << 1 | 1 << 0;
     private static final int COUPLED_SINK_SUPPORT_AT_SOURCE         = 1 << 2;
@@ -105,7 +105,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
     }
 
     /** Returns true is Wifi Display R2 is enabled, false otherwise. */
-    public boolean isR2Enabled() {
+    public boolean isR2Supported() {
         return mR2DeviceInfo >= 0;
     }
 
@@ -119,20 +119,31 @@ public final class WifiP2pWfdInfo implements Parcelable {
     }
 
     /**
-     * Sets Wi-Fi Display R2 device info.
+     * Sets the type of the Wifi Display R2 device.
+     * See Wifi Display technical specification v2.0.0, section 5.1.12 for Wifi Display R2.
      * Before calling this API, call {@link WifiManager#isWifiDisplayR2Supported()
-     * to know whether Wi-Fi Display R2 is supported or not.
-     * If R2 info was filled without Wi-Fi Display R2 support,
+     * to know whether Wifi Display R2 is supported or not.
+     * If R2 info was filled without Wifi Display R2 support,
      * {@link WifiP2pManager#setWfdInfo(Channel, WifiP2pWfdInfo, ActionListener)
      * would fail.
      *
-     * @param r2DeviceInfo WFD R2 device info
+     * @param deviceType One of {@link #DEVICE_TYPE_WFD_SOURCE}, {@link #DEVICE_TYPE_PRIMARY_SINK},
+     * {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}
+     * @return true if the device type was successfully set, false otherwise
      */
-    public void setWfdR2Device(int r2DeviceInfo) {
+    public boolean setR2DeviceType(@DeviceType int deviceType) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        mR2DeviceInfo = r2DeviceInfo;
+        if (DEVICE_TYPE_WFD_SOURCE != deviceType
+                && DEVICE_TYPE_PRIMARY_SINK != deviceType
+                && DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK != deviceType) {
+            return false;
+        }
+        if (!isR2Supported()) mR2DeviceInfo = 0;
+        mR2DeviceInfo &= ~DEVICE_TYPE;
+        mR2DeviceInfo |= deviceType;
+        return true;
     }
 
     /**
