@@ -408,6 +408,26 @@ public class HalDeviceManager {
     }
 
     /**
+     * Register a SubsystemRestartListener to listen to the subsystem restart event from HAL.
+     * Use the action() to forward the event to SelfRecovery when receiving the event from HAL.
+     *
+     * @param listener SubsystemRestartListener listener object.
+     * @param handler Handler on which to dispatch listener. Null implies the listener will be
+     *                invoked synchronously from the context of the client which triggered the
+     *                state change.
+     */
+    public void registerSubsystemRestartListener(@NonNull SubsystemRestartListener listener,
+            @Nullable Handler handler) {
+        if (listener == null) {
+            Log.wtf(TAG, "registerSubsystemRestartListener with nulls!? listener=" + listener);
+            return;
+        }
+        if (!mSubsystemRestartListener.add(new SubsystemRestartListenerProxy(listener, handler))) {
+            Log.w(TAG, "registerSubsystemRestartListener: duplicate registration ignored");
+        }
+    }
+
+    /**
      * Register an InterfaceDestroyedListener to the specified iface - returns true on success
      * and false on failure. This listener is in addition to the one registered when the interface
      * was created - allowing non-creators to monitor interface status.
@@ -503,6 +523,17 @@ public class HalDeviceManager {
         }
 
         return nameResp.value;
+    }
+
+    /**
+     * Called when subsystem restart
+     */
+    public interface SubsystemRestartListener {
+        /**
+         * Called for subsystem restart event from the HAL.
+         * It will trigger recovery mechanism in framework.
+         */
+        void onSubsystemRestart();
     }
 
     /**
@@ -654,11 +685,13 @@ public class HalDeviceManager {
     private IWifi mWifi;
     private IWifiRttController mIWifiRttController;
     private final WifiEventCallback mWifiEventCallback = new WifiEventCallback();
+    private final WifiEventCallbackV15 mWifiEventCallbackV15 = new WifiEventCallbackV15();
     private final Set<ManagerStatusListenerProxy> mManagerStatusListeners = new HashSet<>();
     private final Set<InterfaceRttControllerLifecycleCallbackProxy>
             mRttControllerLifecycleCallbacks = new HashSet<>();
     private final SparseArray<IWifiChipEventCallback.Stub> mDebugCallbacks = new SparseArray<>();
     private boolean mIsReady;
+    private final Set<SubsystemRestartListenerProxy> mSubsystemRestartListener = new HashSet<>();
 
     /*
      * This is the only place where we cache HIDL information in this manager. Necessary since
@@ -734,6 +767,11 @@ public class HalDeviceManager {
             Log.e(TAG, "Exception getting IWifi service: " + e);
             return null;
         }
+    }
+
+    protected android.hardware.wifi.V1_5.IWifi getWifiServiceForV1_5Mockable(IWifi iWifi) {
+        if (null == iWifi) return null;
+        return android.hardware.wifi.V1_5.IWifi.castFrom(iWifi);
     }
 
     protected IServiceManager getServiceManagerMockable() {
@@ -903,7 +941,14 @@ public class HalDeviceManager {
                     return;
                 }
 
-                WifiStatus status = mWifi.registerEventCallback(mWifiEventCallback);
+                WifiStatus status;
+                android.hardware.wifi.V1_5.IWifi iWifiV15 = getWifiServiceForV1_5Mockable(mWifi);
+                if (iWifiV15 != null) {
+                    status = iWifiV15.registerEventCallback_1_5(mWifiEventCallbackV15);
+                } else {
+                    status = mWifi.registerEventCallback(mWifiEventCallback);
+                }
+
                 if (status.code != WifiStatusCode.SUCCESS) {
                     Log.e(TAG, "IWifi.registerEventCallback failed: " + statusString(status));
                     mWifi = null;
@@ -1453,6 +1498,36 @@ public class HalDeviceManager {
                 synchronized (mLock) {
                     mIsReady = false;
                     teardownInternal();
+                }
+            });
+        }
+    }
+
+    private class WifiEventCallbackV15 extends
+            android.hardware.wifi.V1_5.IWifiEventCallback.Stub {
+        private final WifiEventCallback mWifiEventCallback = new WifiEventCallback();
+        @Override
+        public void onStart() throws RemoteException {
+            mWifiEventCallback.onStart();
+        }
+
+        @Override
+        public void onStop() throws RemoteException {
+            mWifiEventCallback.onStop();
+        }
+
+        @Override
+        public void onFailure(WifiStatus status) throws RemoteException {
+            mWifiEventCallback.onFailure(status);
+        }
+
+        @Override
+        public void onSubsystemRestart(WifiStatus status) throws RemoteException {
+            mEventHandler.post(() -> {
+                synchronized (mLock) {
+                    for (SubsystemRestartListenerProxy cb : mSubsystemRestartListener) {
+                        cb.action();
+                    }
                 }
             });
         }
@@ -2367,6 +2442,19 @@ public class HalDeviceManager {
         ListenerProxy(LISTENER listener, Handler handler, String tag) {
             mListener = listener;
             mHandler = handler;
+        }
+    }
+
+    private class SubsystemRestartListenerProxy extends
+            ListenerProxy<SubsystemRestartListener> {
+        SubsystemRestartListenerProxy(@NonNull SubsystemRestartListener subsystemRestartListener,
+                                        Handler handler) {
+            super(subsystemRestartListener, handler, "SubsystemRestartListenerProxy");
+        }
+
+        @Override
+        protected void action() {
+            mListener.onSubsystemRestart();
         }
     }
 
