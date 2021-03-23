@@ -21,8 +21,8 @@ package android.net.wifi {
   public final class ScanResult implements android.os.Parcelable {
     ctor public ScanResult(@NonNull android.net.wifi.ScanResult);
     ctor public ScanResult();
-    method public static int convertChannelToFrequencyMhz(int, int);
-    method public static int convertFrequencyMhzToChannel(int);
+    method public static int convertChannelToFrequencyMhzIfSupported(int, int);
+    method public static int convertFrequencyMhzToChannelIfSupported(int);
     method public int describeContents();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method public int getWifiStandard();
@@ -1129,6 +1129,7 @@ package android.net.wifi.p2p {
     method public int getControlPort();
     method public int getDeviceType();
     method public int getMaxThroughput();
+    method public int getR2DeviceType();
     method public boolean isContentProtectionSupported();
     method public boolean isCoupledSinkSupportedAtSink();
     method public boolean isCoupledSinkSupportedAtSource();

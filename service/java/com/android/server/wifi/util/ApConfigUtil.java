@@ -127,7 +127,7 @@ public class ApConfigUtil {
      * @return center frequency in Mhz of the channel, -1 if no match
      */
     public static int convertChannelToFrequency(int channel, @BandType int band) {
-        return ScanResult.convertChannelToFrequencyMhz(channel,
+        return ScanResult.convertChannelToFrequencyMhzIfSupported(channel,
                 apConfig2wifiScannerBand(band));
     }
 
@@ -308,7 +308,7 @@ public class ApConfigUtil {
         Set<Integer> unsafeFreqs = new HashSet<>();
         if (SdkLevel.isAtLeastS()) {
             for (CoexUnsafeChannel unsafeChannel : coexManager.getCoexUnsafeChannels()) {
-                unsafeFreqs.add(ScanResult.convertChannelToFrequencyMhz(
+                unsafeFreqs.add(ScanResult.convertChannelToFrequencyMhzIfSupported(
                         unsafeChannel.getChannel(), unsafeChannel.getBand()));
             }
         }
@@ -366,7 +366,7 @@ public class ApConfigUtil {
             if (inFrequencyMHz) {
                 regulatoryList.add(freq);
             } else {
-                regulatoryList.add(ScanResult.convertFrequencyMhzToChannel(freq));
+                regulatoryList.add(ScanResult.convertFrequencyMhzToChannelIfSupported(freq));
             }
         }
 
@@ -565,7 +565,8 @@ public class ApConfigUtil {
                 return ERROR_NO_CHANNEL;
             }
             configBuilder.setChannel(
-                    ScanResult.convertFrequencyMhzToChannel(freq), convertFrequencyToBand(freq));
+                    ScanResult.convertFrequencyMhzToChannelIfSupported(freq),
+                    convertFrequencyToBand(freq));
         }
 
         return SUCCESS;

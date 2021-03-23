@@ -59,7 +59,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
     public static final int DEVICE_TYPE_WFD_SOURCE = 0;
     /** The device is a primary sink. */
     public static final int DEVICE_TYPE_PRIMARY_SINK = 1;
-    /** The device is a secondary sink. */
+    /** The device is a secondary sink. This type is only supported by R1. */
     public static final int DEVICE_TYPE_SECONDARY_SINK = 2;
     /** The device is dual-role capable i.e. either a WFD source or a primary sink. */
     public static final int DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK = 3;
@@ -143,6 +143,16 @@ public final class WifiP2pWfdInfo implements Parcelable {
     @DeviceType
     public int getDeviceType() {
         return mDeviceInfo & DEVICE_TYPE;
+    }
+
+    /**
+     * Get the type of the R2 device.
+     * One of {@link #DEVICE_TYPE_WFD_SOURCE}, {@link #DEVICE_TYPE_PRIMARY_SINK},
+     * or {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}
+     */
+    @DeviceType
+    public int getR2DeviceType() {
+        return mR2DeviceInfo & DEVICE_TYPE;
     }
 
     /**
