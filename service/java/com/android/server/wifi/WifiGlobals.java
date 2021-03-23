@@ -58,6 +58,9 @@ public class WifiGlobals {
     // This is read from the overlay, cache it after boot up.
     private final boolean mIsWpa3SaeH2eSupported;
 
+    // This is set by WifiManager#setVerboseLoggingEnabled(int).
+    private boolean mIsShowKeyVerboseLoggingModeEnabled = false;
+
     public WifiGlobals(Context context) {
         mContext = context;
 
@@ -186,6 +189,16 @@ public class WifiGlobals {
      */
     public boolean isWpa3SaeH2eSupported() {
         return mIsWpa3SaeH2eSupported;
+    }
+
+    /** Set if show key verbose logging mode is enabled. */
+    public void setShowKeyVerboseLoggingModeEnabled(boolean enable) {
+        mIsShowKeyVerboseLoggingModeEnabled = enable;
+    }
+
+    /** Check if show key verbose logging mode is enabled. */
+    public boolean getShowKeyVerboseLoggingModeEnabled() {
+        return mIsShowKeyVerboseLoggingModeEnabled;
     }
 
     /** Dump method for debugging */

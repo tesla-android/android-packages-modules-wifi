@@ -159,6 +159,28 @@ public class WifiThreadRunner {
         return mHandler.post(runnable);
     }
 
+    /**
+     * Asynchronously runs a Runnable on the main Wifi thread with delay.
+     *
+     * @param runnable The Runnable that will be executed.
+     * @param delayMillis The delay (in milliseconds) until the Runnable
+     *        will be executed.
+     * @return true if the runnable was successfully posted <b>(not executed)</b> to the main Wifi
+     * thread, false otherwise
+     */
+    public boolean postDelayed(@NonNull Runnable runnable, long delayMillis) {
+        return mHandler.postDelayed(runnable, delayMillis);
+    }
+
+    /**
+     * Remove any pending posts of Runnable r that are in the message queue.
+     *
+     * @param r The Runnable that will be removed.
+     */
+    public final void removeCallbacks(@NonNull Runnable r) {
+        mHandler.removeCallbacks(r);
+    }
+
     // Note: @hide methods copied from android.os.Handler
     /**
      * Runs the specified task synchronously.
