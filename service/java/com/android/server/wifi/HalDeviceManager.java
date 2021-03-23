@@ -574,7 +574,7 @@ public class HalDeviceManager {
             for (int type : IFACE_TYPES_BY_PRIORITY) {
                 ifaceComboArr[type] = ifaceCombo.get(type, 0);
             }
-            WifiChipInfo[] chipInfos = getAllChipInfo();
+            WifiChipInfo[] chipInfos = getAllChipInfoCached();
             if (chipInfos == null) return false;
             return isItPossibleToCreateIfaceCombo(
                     chipInfos, requiredChipCapabilities, ifaceComboArr);
@@ -1026,6 +1026,23 @@ public class HalDeviceManager {
         }
     }
 
+    @Nullable
+    private WifiChipInfo[] mCachedWifiChipInfos = null;
+
+    /**
+     * Get current information about all the chips in the system: modes, current mode (if any), and
+     * any existing interfaces.
+     *
+     * Intended to be called for any external iface support related queries. This information is
+     * cached to reduce performance overhead (unlike {@link #getAllChipInfo()}).
+     */
+    private WifiChipInfo[] getAllChipInfoCached() {
+        if (mCachedWifiChipInfos == null) {
+            mCachedWifiChipInfos = getAllChipInfo();
+        }
+        return mCachedWifiChipInfos;
+    }
+
     /**
      * Get current information about all the chips in the system: modes, current mode (if any), and
      * any existing interfaces.
@@ -1461,10 +1478,10 @@ public class HalDeviceManager {
         }
     }
 
-    Set<Integer> getSupportedIfaceTypesInternal(IWifiChip chip) {
+    private Set<Integer> getSupportedIfaceTypesInternal(IWifiChip chip) {
         Set<Integer> results = new HashSet<>();
 
-        WifiChipInfo[] chipInfos = getAllChipInfo();
+        WifiChipInfo[] chipInfos = getAllChipInfoCached();
         if (chipInfos == null) {
             Log.e(TAG, "getSupportedIfaceTypesInternal: no chip info found");
             return results;
