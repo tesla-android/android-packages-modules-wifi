@@ -165,6 +165,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     private @Mock ActiveModeWarden mActiveModeWarden;
     private @Mock ClientModeManager mPrimaryClientModeManager;
     private @Mock WifiGlobals mWifiGlobals;
+    private @Mock Clock mClock;
     private MockitoSession mStaticMockSession = null;
     private TestLooper mLooper;
     private final ArgumentCaptor<AppOpsManager.OnOpChangedListener> mAppOpChangedListenerCaptor =
@@ -221,6 +222,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mNotificationBuilder.setLocalOnly(anyBoolean())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.setColor(anyInt())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.addAction(any())).thenReturn(mNotificationBuilder);
+        when(mNotificationBuilder.setTimeoutAfter(anyLong())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.build()).thenReturn(mNotification);
         when(mFrameworkFacade.makeAlertDialogBuilder(any()))
                 .thenReturn(mAlertDialogBuilder);
@@ -287,7 +289,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 new WifiNetworkSuggestionsManager(mContext, new Handler(mLooper.getLooper()),
                         mWifiInjector, mWifiPermissionsUtil, mWifiConfigManager, mWifiConfigStore,
                         mWifiMetrics, mWifiCarrierInfoManager, mWifiKeyStore,
-                        mLruConnectionTracker);
+                        mLruConnectionTracker, mClock);
         verify(mContext).getResources();
         verify(mContext).getSystemService(Context.APP_OPS_SERVICE);
         verify(mContext).getPackageManager();

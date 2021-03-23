@@ -267,7 +267,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         mWifiCarrierInfoManager = spy(new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
                 wifiContext, mock(WifiConfigStore.class), mock(Handler.class),
-                mWifiMetrics));
+                mWifiMetrics, mClock));
         mLruConnectionTracker = new LruConnectionTracker(100, mContext);
         createWifiConfigManager();
         mWifiConfigManager.addOnNetworkUpdateListener(mWcmListener);
