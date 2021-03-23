@@ -2701,6 +2701,63 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
+     * Verifies no linking of networks when the gateways have VRRP MAC addresses that match the VRRP
+     * prefix of 00:00:5E:00:01.
+     */
+    @Test
+    public void testNoNetworkLinkVrrpMacAddress() {
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
+        network3.preSharedKey = "\"preSharedKey3\"";
+        verifyAddNetworkToWifiConfigManager(network1);
+        verifyAddNetworkToWifiConfigManager(network2);
+        verifyAddNetworkToWifiConfigManager(network3);
+
+        final String vrrpMacAddress = "00:00:5E:00:01:00";
+        // Set the same VRRP GW mac address for all of the networks.
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network1.networkId, vrrpMacAddress));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network2.networkId, vrrpMacAddress));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network3.networkId, vrrpMacAddress));
+
+        // Now create fake scan detail corresponding to the networks.
+        ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1);
+        ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2);
+        ScanDetail networkScanDetail3 = createScanDetailForNetwork(network3);
+
+        // Now save all these scan details corresponding to each of this network and expect
+        // all of these networks to be linked with each other.
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail1));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail2));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
+
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworks();
+        for (WifiConfiguration network : retrievedNetworks) {
+            assertNull(network.linkedConfigurations);
+        }
+    }
+
+    /**
      * Verify that setRecentFailureAssociationStatus is setting the recent failure reason and
      * expiration timestamp properly. Then, verify that cleanupExpiredRecentFailureReasons
      * properly clears expired recent failure statuses.

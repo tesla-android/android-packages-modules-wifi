@@ -199,6 +199,8 @@ public class WifiConfigManager {
     private static final MacAddress DEFAULT_MAC_ADDRESS =
             MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS);
 
+    private static final String VRRP_MAC_ADDRESS_PREFIX = "00:00:5E:00:01";
+
     /**
      * Expiration timeout for user disconnect network. (1 hour)
      */
@@ -2438,10 +2440,21 @@ public class WifiConfigManager {
             }
         }
 
+        // Skip VRRP MAC addresses since they are likely to correspond to different networks even if
+        // they match.
+        if ((network1.defaultGwMacAddress != null && network1.defaultGwMacAddress
+                .regionMatches(true, 0, VRRP_MAC_ADDRESS_PREFIX, 0,
+                        VRRP_MAC_ADDRESS_PREFIX.length()))
+                || (network2.defaultGwMacAddress != null && network2.defaultGwMacAddress
+                .regionMatches(true, 0, VRRP_MAC_ADDRESS_PREFIX, 0,
+                        VRRP_MAC_ADDRESS_PREFIX.length()))) {
+            return false;
+        }
+
         // Check if networks should be linked due to default gateway match
         if (network1.defaultGwMacAddress != null && network2.defaultGwMacAddress != null) {
             // If both default GW are known, link only if they are equal
-            if (network1.defaultGwMacAddress.equals(network2.defaultGwMacAddress)) {
+            if (network1.defaultGwMacAddress.equalsIgnoreCase(network2.defaultGwMacAddress)) {
                 if (mVerboseLoggingEnabled) {
                     Log.v(TAG, "shouldNetworksBeLinked link due to same gw " + network2.SSID
                             + " and " + network1.SSID + " GW " + network1.defaultGwMacAddress);
