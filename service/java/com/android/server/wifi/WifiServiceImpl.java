@@ -54,6 +54,7 @@ import android.net.DhcpInfo;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
 import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkStack;
 import android.net.Uri;
 import android.net.ip.IpClientUtil;
@@ -3065,27 +3066,18 @@ public class WifiServiceImpl extends BaseWifiService {
                     () -> getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
                             uid, callingPackage)
                             .syncRequestConnectionInfo(), new WifiInfo());
-            /* @WifiInfo.RedactionType */ long redactions =
-                    wifiInfo.getApplicableRedactions();
+            long redactions = wifiInfo.getApplicableRedactions();
             try {
                 if (mWifiInjector.getWifiPermissionsWrapper().getLocalMacAddressPermission(uid)
                         == PERMISSION_GRANTED) {
-                    redactions &= ~WifiInfo.REDACTION_LOCAL_MAC_ADDRESS;
+                    redactions &= ~NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
                 }
                 mWifiPermissionsUtil.enforceCanAccessScanResults(callingPackage, callingFeatureId,
                         uid, null);
-                redactions &= ~WifiInfo.REDACTION_ACCESS_FINE_LOCATION;
+                redactions &= ~NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION;
             } catch (SecurityException ignored) {
             }
-            WifiInfo result = wifiInfo.makeCopyInternal(redactions);
-            if (mVerboseLoggingEnabled
-                    && (redactions != WifiInfo.REDACTION_NONE)) {
-                mLog.v("getConnectionInfo: hideLocationSensitiveData="
-                        + (redactions & WifiInfo.REDACTION_ACCESS_FINE_LOCATION)
-                        + ", hideDefaultMacAddress="
-                        + (redactions & WifiInfo.REDACTION_LOCAL_MAC_ADDRESS));
-            }
-            return result;
+            return wifiInfo.makeCopy(redactions);
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
