@@ -35,6 +35,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -1137,6 +1138,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
 
+        clearInvocations(mWifiMock);
+
         assertTrue(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
                 put(IfaceType.STA, 1);
             }}
@@ -1178,6 +1181,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 put(IfaceType.NAN, 1);
             }}
         ));
+
+        // Ensure we only fetched chip info once, use the cache after that.
+        verify(mWifiMock, times(1)).getChipIds(any());
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
@@ -1490,6 +1496,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
 
+        clearInvocations(mWifiMock);
+
         assertTrue(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
                 put(IfaceType.STA, 1);
             }}
@@ -1557,6 +1565,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 put(IfaceType.AP, 1);
             }}
         ));
+
+        // Ensure we only fetched chip info once, use the cache after that.
+        verify(mWifiMock, times(1)).getChipIds(any());
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
