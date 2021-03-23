@@ -97,6 +97,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProfileTypeC
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProvisionStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProvisionStats.ProvisionFailureCount;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PnoScanMetrics;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.RateStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.SoftApConnectedClientsEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.StaEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.StaEvent.ConfigInfo;
@@ -4112,6 +4113,21 @@ public class WifiMetrics {
         line.append(",is_throughput_sufficient=" + entry.isThroughputSufficient);
         line.append(",is_wifi_scoring_enabled=" + entry.isWifiScoringEnabled);
         line.append(",is_cellular_data_available=" + entry.isCellularDataAvailable);
+        line.append(",sta_count=" + entry.staCount);
+        line.append(",channel_utilization=" + entry.channelUtilization);
+        if (entry.rateStats != null) {
+            for (RateStats rateStat : entry.rateStats) {
+                line.append(",preamble=" + rateStat.preamble);
+                line.append(",nss=" + rateStat.nss);
+                line.append(",bw=" + rateStat.bw);
+                line.append(",rate_mcs_idx=" + rateStat.rateMcsIdx);
+                line.append(",bit_rate_in_kbps=" + rateStat.bitRateInKbps);
+                line.append(",tx_mpdu=" + rateStat.txMpdu);
+                line.append(",rx_mpdu=" + rateStat.rxMpdu);
+                line.append(",mpdu_lost=" + rateStat.mpduLost);
+                line.append(",retries=" + rateStat.retries);
+            }
+        }
         pw.println(line.toString());
     }
 
@@ -5986,6 +6002,30 @@ public class WifiMetrics {
                 wifiUsabilityStatsEntry.isWifiScoringEnabled =
                         mWifiSettingsStore.isWifiScoringEnabled();
             }
+            // Here it is assumed there is only one peer information from HAL and the peer is the
+            // AP that STA is associated with.
+            if (stats.peerInfo != null && stats.peerInfo.length > 0
+                    && stats.peerInfo[0].rateStats != null) {
+                wifiUsabilityStatsEntry.staCount = stats.peerInfo[0].staCount;
+                wifiUsabilityStatsEntry.channelUtilization = stats.peerInfo[0].chanUtil;
+                int numRates = stats.peerInfo[0].rateStats != null
+                        ? stats.peerInfo[0].rateStats.length : 0;
+                wifiUsabilityStatsEntry.rateStats = new RateStats[numRates];
+                for (int i = 0; i < numRates; i++) {
+                    RateStats rate = new RateStats();
+                    WifiLinkLayerStats.RateStat curRate = stats.peerInfo[0].rateStats[i];
+                    rate.preamble = curRate.preamble;
+                    rate.nss = curRate.nss;
+                    rate.bw = curRate.bw;
+                    rate.rateMcsIdx = curRate.rateMcsIdx;
+                    rate.bitRateInKbps = curRate.bitRateInKbps;
+                    rate.txMpdu = curRate.txMpdu;
+                    rate.rxMpdu = curRate.rxMpdu;
+                    rate.mpduLost = curRate.mpduLost;
+                    rate.retries = curRate.retries;
+                    wifiUsabilityStatsEntry.rateStats[i] = rate;
+                }
+            }
 
             mWifiUsabilityStatsEntriesList.add(wifiUsabilityStatsEntry);
             mWifiUsabilityStatsCounter++;
@@ -6057,6 +6097,10 @@ public class WifiMetrics {
                 new android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats[
                         android.net.wifi.WifiUsabilityStatsEntry.NUM_WME_ACCESS_CATEGORIES];
         createNewContentionTimeStatsParcelable(contentionTimeStats, s.contentionTimeStats);
+        int numRates = s.rateStats != null ? s.rateStats.length : 0;
+        android.net.wifi.WifiUsabilityStatsEntry.RateStats[] rateStats =
+                new android.net.wifi.WifiUsabilityStatsEntry.RateStats[numRates];
+        createNewRateStatsParcelable(rateStats, s.rateStats);
         // TODO: remove the following hardcoded values once if they are removed from public API
         return new android.net.wifi.WifiUsabilityStatsEntry(s.timeStampMs, s.rssi,
                 s.linkSpeedMbps, s.totalTxSuccess, s.totalTxRetries,
@@ -6066,7 +6110,7 @@ public class WifiMetrics {
                 s.totalPnoScanTimeMs, s.totalHotspot2ScanTimeMs, s.totalCcaBusyFreqTimeMs,
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
-                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, contentionTimeStats,
+                s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, contentionTimeStats, rateStats,
                 s.channelUtilizationRatio, s.isThroughputSufficient, s.isWifiScoringEnabled,
                 s.isCellularDataAvailable, 0, 0, 0, false
         );
@@ -6111,6 +6155,85 @@ public class WifiMetrics {
         }
     }
 
+    private void createNewRateStatsParcelable(
+            android.net.wifi.WifiUsabilityStatsEntry.RateStats[] statsParcelable,
+                    RateStats[] stats) {
+        if (stats == null) {
+            return;
+        }
+        for (int i = 0; i < stats.length; i++) {
+            statsParcelable[i] = new android.net.wifi.WifiUsabilityStatsEntry.RateStats(
+                    convertPreambleTypeEnumToUsabilityStatsType(stats[i].preamble),
+                    convertSpatialStreamEnumToUsabilityStatsType(stats[i].nss),
+                    convertBandwidthEnumToUsabilityStatsType(stats[i].bw),
+                    stats[i].rateMcsIdx, stats[i].bitRateInKbps, stats[i].txMpdu, stats[i].rxMpdu,
+                    stats[i].mpduLost, stats[i].retries
+            );
+        }
+    }
+
+    /**
+     * Converts bandwidth enum in proto to WifiUsabilityStatsEntry type.
+     * @param value
+     */
+    private static int convertBandwidthEnumToUsabilityStatsType(int value) {
+        switch (value) {
+            case RateStats.WIFI_BANDWIDTH_20_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_20_MHZ;
+            case RateStats.WIFI_BANDWIDTH_40_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_40_MHZ;
+            case RateStats.WIFI_BANDWIDTH_80_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_80_MHZ;
+            case RateStats.WIFI_BANDWIDTH_160_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_160_MHZ;
+            case RateStats.WIFI_BANDWIDTH_80P80_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_80P80_MHZ;
+            case RateStats.WIFI_BANDWIDTH_5_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_5_MHZ;
+            case RateStats.WIFI_BANDWIDTH_10_MHZ:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_10_MHZ;
+        }
+        return android.net.wifi.WifiUsabilityStatsEntry.WIFI_BANDWIDTH_INVALID;
+    }
+
+    /**
+     * Converts spatial streams enum in proto to WifiUsabilityStatsEntry type.
+     * @param value
+     */
+    private static int convertSpatialStreamEnumToUsabilityStatsType(int value) {
+        switch (value) {
+            case RateStats.WIFI_SPATIAL_STREAMS_ONE:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_SPATIAL_STREAMS_ONE;
+            case RateStats.WIFI_SPATIAL_STREAMS_TWO:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_SPATIAL_STREAMS_TWO;
+            case RateStats.WIFI_SPATIAL_STREAMS_THREE:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_SPATIAL_STREAMS_THREE;
+            case RateStats.WIFI_SPATIAL_STREAMS_FOUR:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_SPATIAL_STREAMS_FOUR;
+        }
+        return android.net.wifi.WifiUsabilityStatsEntry.WIFI_SPATIAL_STREAMS_INVALID;
+    }
+
+    /**
+     * Converts preamble type enum in proto to WifiUsabilityStatsEntry type.
+     * @param value
+     */
+    private static int convertPreambleTypeEnumToUsabilityStatsType(int value) {
+        switch (value) {
+            case RateStats.WIFI_PREAMBLE_OFDM:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_OFDM;
+            case RateStats.WIFI_PREAMBLE_CCK:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_CCK;
+            case RateStats.WIFI_PREAMBLE_HT:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_HT;
+            case RateStats.WIFI_PREAMBLE_VHT:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_VHT;
+            case RateStats.WIFI_PREAMBLE_HE:
+                return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_HE;
+        }
+        return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_INVALID;
+    }
+
     private WifiUsabilityStatsEntry createNewWifiUsabilityStatsEntry(WifiUsabilityStatsEntry s) {
         WifiUsabilityStatsEntry out = new WifiUsabilityStatsEntry();
         out.timeStampMs = s.timeStampMs;
@@ -6149,6 +6272,9 @@ public class WifiMetrics {
         out.isThroughputSufficient = s.isThroughputSufficient;
         out.isWifiScoringEnabled = s.isWifiScoringEnabled;
         out.isCellularDataAvailable = s.isCellularDataAvailable;
+        out.rateStats = s.rateStats;
+        out.staCount = s.staCount;
+        out.channelUtilization = s.channelUtilization;
         return out;
     }
 
