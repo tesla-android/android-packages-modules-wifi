@@ -1621,6 +1621,42 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     }
 
     /**
+     * Tests the setting of log level with show key enabled.
+     */
+    @Test
+    public void testSetLogLevelWithShowKeyEnabled() throws Exception {
+        when(mWifiGlobals.getShowKeyVerboseLoggingModeEnabled())
+                .thenReturn(true);
+        when(mISupplicantMock.setDebugParams(anyInt(), anyBoolean(), anyBoolean()))
+                .thenReturn(mStatusSuccess);
+
+        executeAndValidateInitializationSequence();
+
+        // This should work.
+        assertTrue(mDut.setLogLevel(true));
+        verify(mISupplicantMock)
+                .setDebugParams(eq(ISupplicant.DebugLevel.DEBUG), eq(false), eq(true));
+    }
+
+    /**
+     * Tests that show key is not enabled when verbose logging is not enabled.
+     */
+    @Test
+    public void testVerboseLoggingDisabledWithShowKeyEnabled() throws Exception {
+        when(mWifiGlobals.getShowKeyVerboseLoggingModeEnabled())
+                .thenReturn(true);
+        when(mISupplicantMock.setDebugParams(anyInt(), anyBoolean(), anyBoolean()))
+                .thenReturn(mStatusSuccess);
+
+        executeAndValidateInitializationSequence();
+
+        // If verbose logging is not enabled, show key should not be enabled.
+        assertTrue(mDut.setLogLevel(false));
+        verify(mISupplicantMock)
+                .setDebugParams(eq(ISupplicant.DebugLevel.INFO), eq(false), eq(false));
+    }
+
+    /**
      * Tests the setting of concurrency priority.
      */
     @Test
