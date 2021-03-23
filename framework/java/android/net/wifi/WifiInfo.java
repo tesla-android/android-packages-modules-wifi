@@ -65,6 +65,7 @@ import java.util.Objects;
  * {@link #getPasspointFqdn()} will return null.
  * {@link #getPasspointProviderFriendlyName()} will return null.
  * {@link #getInformationElements()} will return null.
+ * {@link #getMacAddress()} will return {@code "02:00:00:00:00:00"}.
  */
 public class WifiInfo implements TransportInfo, Parcelable {
     private static final String TAG = "WifiInfo";
@@ -829,7 +830,10 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @return MAC address of the connection or {@code "02:00:00:00:00:00"} if the caller has
      * insufficient permission.
      */
-    @RequiresPermission(Manifest.permission.LOCAL_MAC_ADDRESS)
+    @RequiresPermission(allOf = {
+            Manifest.permission.LOCAL_MAC_ADDRESS,
+            Manifest.permission.ACCESS_FINE_LOCATION
+    })
     public String getMacAddress() {
         return mMacAddress;
     }
@@ -1229,7 +1233,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
             dest.writeInt(0);
         }
         dest.writeString(shouldParcelLocationSensitiveFields() ? mBSSID : DEFAULT_MAC_ADDRESS);
-        dest.writeString(shouldParcelLocalMacAddressFields() ? mMacAddress : DEFAULT_MAC_ADDRESS);
+        dest.writeString(
+                shouldParcelLocalMacAddressFields() && shouldParcelLocationSensitiveFields()
+                        ? mMacAddress : DEFAULT_MAC_ADDRESS);
         dest.writeInt(mMeteredHint ? 1 : 0);
         dest.writeInt(mEphemeral ? 1 : 0);
         dest.writeInt(mTrusted ? 1 : 0);
