@@ -152,6 +152,14 @@ public class WifiCarrierInfoManager {
     private static final int KC_LEN = 8;
 
     private static final Uri CONTENT_URI = Uri.parse("content://carrier_information/carrier");
+    /**
+     * Expiration timeout for user notification in milliseconds. (15 min)
+     */
+    private static final long NOTIFICATION_EXPIRY_MILLS = 15 * 60 * 1000;
+    /**
+     * Notification update delay in milliseconds. (10 min)
+     */
+    private static final long NOTIFICATION_UPDATE_DELAY_MILLS = 10 * 60 * 1000;
 
     private final WifiContext mContext;
     private final Handler mHandler;
@@ -161,6 +169,7 @@ public class WifiCarrierInfoManager {
     private final SubscriptionManager mSubscriptionManager;
     private final WifiNotificationManager mNotificationManager;
     private final WifiMetrics mWifiMetrics;
+    private final Clock mClock;
     /**
      * Cached Map of <subscription ID, CarrierConfig PersistableBundle> since retrieving the
      * PersistableBundle from CarrierConfigManager is somewhat expensive as it has hundreds of
@@ -192,11 +201,15 @@ public class WifiCarrierInfoManager {
 
     private List<SubscriptionInfo> mActiveSubInfos = null;
 
-    private boolean mUserApprovalUiActive = false;
     private boolean mHasNewUserDataToSerialize = false;
     private boolean mHasNewSharedDataToSerialize = false;
     private boolean mUserDataLoaded = false;
     private boolean mIsLastUserApprovalUiDialog = false;
+    /**
+     * The {@link Clock#getElapsedSinceBootMillis()} must be at least this value for us
+     * to update/show the notification.
+     */
+    private long mNotificationUpdateTime = 0L;
 
     private static class SimInfo {
         public final String imsi;
@@ -396,7 +409,7 @@ public class WifiCarrierInfoManager {
             };
     private void handleUserDismissAction() {
         Log.i(TAG, "User dismissed the notification");
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalCarrierUiReaction(ACTION_USER_DISMISS,
                 mIsLastUserApprovalUiDialog);
     }
@@ -404,7 +417,7 @@ public class WifiCarrierInfoManager {
     private void handleUserAllowCarrierExemptionAction(String carrierName, int carrierId) {
         Log.i(TAG, "User clicked to allow carrier:" + carrierName);
         setHasUserApprovedImsiPrivacyExemptionForCarrier(true, carrierId);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalCarrierUiReaction(ACTION_USER_ALLOWED_CARRIER,
                 mIsLastUserApprovalUiDialog);
 
@@ -413,7 +426,7 @@ public class WifiCarrierInfoManager {
     private void handleUserDisallowCarrierExemptionAction(String carrierName, int carrierId) {
         Log.i(TAG, "User clicked to disallow carrier:" + carrierName);
         setHasUserApprovedImsiPrivacyExemptionForCarrier(false, carrierId);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalCarrierUiReaction(
                 ACTION_USER_DISALLOWED_CARRIER, mIsLastUserApprovalUiDialog);
     }
@@ -440,7 +453,8 @@ public class WifiCarrierInfoManager {
             @NonNull WifiContext context,
             @NonNull WifiConfigStore configStore,
             @NonNull Handler handler,
-            @NonNull WifiMetrics wifiMetrics) {
+            @NonNull WifiMetrics wifiMetrics,
+            @NonNull Clock clock) {
         mTelephonyManager = telephonyManager;
         mContext = context;
         mResources = mContext.getResources();
@@ -450,6 +464,7 @@ public class WifiCarrierInfoManager {
         mFrameworkFacade = frameworkFacade;
         mWifiMetrics = wifiMetrics;
         mNotificationManager = mWifiInjector.getWifiNotificationManager();
+        mClock = clock;
         // Register broadcast receiver for UI interactions.
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(NOTIFICATION_USER_DISMISSED_INTENT_ACTION);
@@ -1715,11 +1730,13 @@ public class WifiCarrierInfoManager {
                         mContext.getTheme()))
                 .addAction(userDisallowAppNotificationAction)
                 .addAction(userAllowAppNotificationAction)
+                .setTimeoutAfter(NOTIFICATION_EXPIRY_MILLS)
                 .build();
 
         // Post the notification.
         mNotificationManager.notify(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE, notification);
-        mUserApprovalUiActive = true;
+        mNotificationUpdateTime = mClock.getElapsedSinceBootMillis()
+                + NOTIFICATION_UPDATE_DELAY_MILLS;
         mIsLastUserApprovalUiDialog = false;
     }
 
@@ -1752,7 +1769,6 @@ public class WifiCarrierInfoManager {
         dialog.getWindow().addSystemFlags(
                 WindowManager.LayoutParams.SYSTEM_FLAG_SHOW_FOR_ALL_USERS);
         dialog.show();
-        mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = true;
     }
 
@@ -1771,8 +1787,8 @@ public class WifiCarrierInfoManager {
         if (mImsiPrivacyProtectionExemptionMap.containsKey(carrierId)) {
             return;
         }
-        if (mUserApprovalUiActive) {
-            return;
+        if (mNotificationUpdateTime > mClock.getElapsedSinceBootMillis()) {
+            return; // Active notification is still available, do not update.
         }
         Log.i(TAG, "Sending IMSI protection notification for " + carrierId);
         sendImsiPrivacyNotification(carrierId);
@@ -1898,7 +1914,7 @@ public class WifiCarrierInfoManager {
 
     public void resetNotification() {
         mNotificationManager.cancel(SystemMessage.NOTE_CARRIER_SUGGESTION_AVAILABLE);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
     }
 
     private SimInfo getSimInfo(int subId) {

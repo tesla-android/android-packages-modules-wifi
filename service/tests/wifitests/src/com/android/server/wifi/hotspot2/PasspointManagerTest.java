@@ -257,7 +257,7 @@ public class PasspointManagerTest extends WifiBaseTest {
         mHandler = new Handler(mLooper.getLooper());
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
-                mock(WifiContext.class), mWifiConfigStore, mHandler, mWifiMetrics);
+                mock(WifiContext.class), mWifiConfigStore, mHandler, mWifiMetrics, mClock);
         verify(mSubscriptionManager).addOnSubscriptionsChangedListener(any(),
                 mSubscriptionsCaptor.capture());
         mManager = new PasspointManager(mContext, mWifiInjector, mHandler, mWifiNative,

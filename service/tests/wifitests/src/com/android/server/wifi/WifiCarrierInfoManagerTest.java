@@ -139,6 +139,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     @Mock WifiCarrierInfoManager.OnUserApproveCarrierListener mListener;
     @Mock WifiMetrics mWifiMetrics;
     @Mock WifiCarrierInfoManager.OnCarrierOffloadDisabledListener mOnCarrierOffloadDisabledListener;
+    @Mock Clock mClock;
 
     private List<SubscriptionInfo> mSubInfoList;
 
@@ -184,6 +185,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(mNotificationBuilder.setLocalOnly(anyBoolean())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.setColor(anyInt())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.addAction(any())).thenReturn(mNotificationBuilder);
+        when(mNotificationBuilder.setTimeoutAfter(anyLong())).thenReturn(mNotificationBuilder);
         when(mNotificationBuilder.build()).thenReturn(mNotification);
         when(mWifiInjector.makeWifiCarrierInfoStoreManagerData(any()))
                 .thenReturn(mWifiCarrierInfoStoreManagerData);
@@ -191,7 +193,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mFrameworkFacade, mContext, mWifiConfigStore,
-                new Handler(mLooper.getLooper()), mWifiMetrics);
+                new Handler(mLooper.getLooper()), mWifiMetrics, mClock);
         ArgumentCaptor<WifiCarrierInfoStoreManagerData.DataSource>
                 carrierInfoSourceArgumentCaptor =
                 ArgumentCaptor.forClass(WifiCarrierInfoStoreManagerData.DataSource.class);
@@ -270,6 +272,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 mListenerArgumentCaptor.capture());
         mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
         mLooper.dispatchAll();
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(1000L);
     }
 
     @After
