@@ -42,6 +42,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
 
 import android.os.Messenger;
@@ -72,6 +73,8 @@ interface IWifiManager
     Map getMatchingPasspointConfigsForOsuProviders(in List<OsuProvider> osuProviders);
 
     int addOrUpdateNetwork(in WifiConfiguration config, String packageName);
+
+    WifiManager.AddNetworkResult addOrUpdateNetworkPrivileged(in WifiConfiguration config, String packageName);
 
     boolean addOrUpdatePasspointConfiguration(in PasspointConfiguration config, String packageName);
 

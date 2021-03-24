@@ -5836,6 +5836,92 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementNumAddOrUpdateNetworkCalls();
     }
 
+    private void verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt(), anyString()))
+                .thenReturn(new NetworkUpdateResult(0));
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.addOrUpdateNetworkPrivileged(config, TEST_PACKAGE_NAME);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiConfigManager).addOrUpdateNetwork(any(),  anyInt(), any());
+        verify(mWifiMetrics).incrementNumAddOrUpdateNetworkCalls();
+    }
+
+    /**
+     * Verify that addOrUpdateNetworkPrivileged throws a SecurityException if the calling app
+     * has no permissions.
+     */
+    @Test
+    public void testAddOrUpdateNetworkPrivilegedNotAllowedForNormalApps() throws Exception {
+        try {
+            WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+            mWifiServiceImpl.addOrUpdateNetworkPrivileged(config, TEST_PACKAGE_NAME);
+            fail("Expected SecurityException for apps without permission");
+        } catch (SecurityException e) {
+        }
+    }
+
+    /**
+     * Verify that a privileged app with NETWORK_SETTINGS permission is allowed to call
+     * addOrUpdateNetworkPrivileged.
+     */
+    @Test
+    public void testAddOrUpdateNetworkPrivilegedIsAllowedForPrivilegedApp() throws Exception {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
+    }
+
+    /**
+     * Verify that a system app is allowed to call addOrUpdateNetworkPrivileged.
+     */
+    @Test
+    public void testAddOrUpdateNetworkPrivilegedIsAllowedForSystemApp() throws Exception {
+        when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(true);
+        verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
+    }
+
+    /**
+     * Verify that a Device Owner (DO) app is allowed to call addOrUpdateNetworkPrivileged.
+     */
+    @Test
+    public void testAddOrUpdateNetworkPrivilegedIsAllowedForDOApp() throws Exception {
+        when(mWifiPermissionsUtil.isDeviceOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+        verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
+    }
+
+    /**
+     * Verify that a Profile Owner (PO) app is allowed to call addOrUpdateNetworkPrivileged.
+     */
+    @Test
+    public void testAddOrUpdateNetworkPrivilegedIsAllowedForPOApp() throws Exception {
+        when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+        verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
+    }
+
+    /**
+     * Verify the proper status code is returned when addOrUpdateNetworkPrivileged failed due to
+     * a failure in WifiConfigManager.addOrUpdateNetwork().
+     */
+    @Test
+    public void testAddOrUpdateNetworkInvalidConfiguration() throws Exception {
+        when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(true);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt(), anyString()))
+                .thenReturn(new NetworkUpdateResult(-1));
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        mLooper.startAutoDispatch();
+        WifiManager.AddNetworkResult result = mWifiServiceImpl.addOrUpdateNetworkPrivileged(
+                config, TEST_PACKAGE_NAME);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        assertEquals(WifiManager.AddNetworkResult.STATUS_ADD_WIFI_CONFIG_FAILURE,
+                result.statusCode);
+        assertEquals(-1, result.networkId);
+    }
+
     /**
      * Verify that enableNetwork is allowed for privileged Apps
      */
