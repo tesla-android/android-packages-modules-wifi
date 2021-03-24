@@ -1540,6 +1540,8 @@ public class WifiMetrics {
      * @param newStats
      */
     public void incrementWifiLinkLayerUsageStats(WifiLinkLayerStats newStats) {
+        // This is only collected for primary STA currently because RSSI polling is disabled for
+        // non-primary STAs.
         if (newStats == null) {
             return;
         }
@@ -5865,6 +5867,8 @@ public class WifiMetrics {
      * @param stats
      */
     public void updateWifiUsabilityStatsEntries(WifiInfo info, WifiLinkLayerStats stats) {
+        // This is only collected for primary STA currently because RSSI polling is disabled for
+        // non-primary STAs.
         synchronized (mLock) {
             if (info == null) {
                 return;
@@ -6081,6 +6085,8 @@ public class WifiMetrics {
             }
 
             // Invoke Wifi usability stats listener.
+            // TODO(b/179518316): Enable this for secondary transient STA also if external scorer
+            // is in charge of MBB.
             sendWifiUsabilityStats(mSeqNumInsideFramework, isSameBssidAndFreq,
                     createNewWifiUsabilityStatsEntryParcelable(wifiUsabilityStatsEntry));
 
