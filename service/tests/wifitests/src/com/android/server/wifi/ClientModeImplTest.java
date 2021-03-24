@@ -562,7 +562,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         WifiCarrierInfoManager tu = new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
                 mock(WifiContext.class), mock(WifiConfigStore.class), mock(Handler.class),
-                mWifiMetrics);
+                mWifiMetrics, mClock);
         mWifiCarrierInfoManager = spy(tu);
         // static mocking
         mSession = ExtendedMockito.mockitoSession().strictness(Strictness.LENIENT)
@@ -6082,11 +6082,13 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
         when(mDataTelephonyManager.getSubscriberId()).thenReturn(testSubscriberId);
         mConnectedNetwork.carrierMerged = true;
+        mConnectedNetwork.subscriptionId = DATA_SUBID;
         connect();
         expectRegisterNetworkAgent((agentConfig) -> {
             assertEquals(testSubscriberId, agentConfig.subscriberId);
         }, (cap) -> {
                 assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
+                assertEquals(Collections.singleton(DATA_SUBID), cap.getSubIds());
             });
         // Verify VCN policy listener is registered
         inOrder.verify(vcnManager).addVcnNetworkPolicyChangeListener(any(),
@@ -6153,6 +6155,7 @@ public class ClientModeImplTest extends WifiBaseTest {
             assertEquals(null, agentConfig.subscriberId);
         }, (cap) -> {
                 assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
+                assertTrue(cap.getSubIds().isEmpty());
             });
 
         // Verify VCN policy listener is registered

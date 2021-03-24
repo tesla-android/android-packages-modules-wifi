@@ -27,6 +27,9 @@ import android.util.Log;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
@@ -169,7 +172,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
 
         /** Implement the Parcelable interface */
-        public static final @android.annotation.NonNull Creator<ContentionTimeStats> CREATOR =
+        public static final @NonNull Creator<ContentionTimeStats> CREATOR =
                 new Creator<ContentionTimeStats>() {
             public ContentionTimeStats createFromParcel(Parcel in) {
                 ContentionTimeStats stats = new ContentionTimeStats();
@@ -205,6 +208,215 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
     }
     private final ContentionTimeStats[] mContentionTimeStats;
+
+    /** {@hide} */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WIFI_PREAMBLE_"}, value = {
+        WIFI_PREAMBLE_OFDM,
+        WIFI_PREAMBLE_CCK,
+        WIFI_PREAMBLE_HT,
+        WIFI_PREAMBLE_VHT,
+        WIFI_PREAMBLE_HE,
+        WIFI_PREAMBLE_INVALID})
+    public @interface WifiPreambleType {}
+
+    /** Preamble type for 802.11a/g, IEEE Std 802.11-2020, Section 17 */
+    public static final int WIFI_PREAMBLE_OFDM = 0;
+    /** Preamble type for 802.11b, IEEE Std 802.11-2020, Section 16 */
+    public static final int WIFI_PREAMBLE_CCK = 1;
+    /** Preamble type for 802.11n, IEEE Std 802.11-2020, Section 19 */
+    public static final int WIFI_PREAMBLE_HT = 2;
+    /** Preamble type for 802.11ac, IEEE Std 802.11-2020, Section 21 */
+    public static final int WIFI_PREAMBLE_VHT = 3;
+    /** Preamble type for 802.11ax, IEEE Std 802.11-2020, Section 27 */
+    public static final int WIFI_PREAMBLE_HE = 5;
+    /** Invalid */
+    public static final int WIFI_PREAMBLE_INVALID = -1;
+
+    /** {@hide} */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WIFI_SPATIAL_STREAMS_"}, value = {
+        WIFI_SPATIAL_STREAMS_ONE,
+        WIFI_SPATIAL_STREAMS_TWO,
+        WIFI_SPATIAL_STREAMS_THREE,
+        WIFI_SPATIAL_STREAMS_FOUR,
+        WIFI_SPATIAL_STREAMS_INVALID})
+    public @interface WifiSpatialStreams {}
+
+    /** Single stream, 1x1 */
+    public static final int WIFI_SPATIAL_STREAMS_ONE = 0;
+    /** Dual streams, 2x2 */
+    public static final int WIFI_SPATIAL_STREAMS_TWO = 1;
+    /** Three streams, 3x3 */
+    public static final int WIFI_SPATIAL_STREAMS_THREE = 2;
+    /** Four streams, 4x4 */
+    public static final int WIFI_SPATIAL_STREAMS_FOUR = 3;
+    /** Invalid */
+    public static final int WIFI_SPATIAL_STREAMS_INVALID = -1;
+
+    /** {@hide} */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WIFI_BANDWIDTH_"}, value = {
+        WIFI_BANDWIDTH_20_MHZ,
+        WIFI_BANDWIDTH_40_MHZ,
+        WIFI_BANDWIDTH_80_MHZ,
+        WIFI_BANDWIDTH_160_MHZ,
+        WIFI_BANDWIDTH_80P80_MHZ,
+        WIFI_BANDWIDTH_5_MHZ,
+        WIFI_BANDWIDTH_10_MHZ,
+        WIFI_BANDWIDTH_INVALID})
+    public @interface WifiChannelBandwidth {}
+
+    /** Channel bandwidth: 20MHz */
+    public static final int WIFI_BANDWIDTH_20_MHZ = 0;
+    /** Channel bandwidth: 40MHz */
+    public static final int WIFI_BANDWIDTH_40_MHZ = 1;
+    /** Channel bandwidth: 80MHz */
+    public static final int WIFI_BANDWIDTH_80_MHZ = 2;
+    /** Channel bandwidth: 160MHz */
+    public static final int WIFI_BANDWIDTH_160_MHZ = 3;
+    /** Channel bandwidth: 80MHz + 80MHz */
+    public static final int WIFI_BANDWIDTH_80P80_MHZ = 4;
+    /** Channel bandwidth: 5MHz */
+    public static final int WIFI_BANDWIDTH_5_MHZ = 5;
+    /** Channel bandwidth: 10MHz */
+    public static final int WIFI_BANDWIDTH_10_MHZ = 6;
+    /** Invalid */
+    public static final int WIFI_BANDWIDTH_INVALID = -1;
+
+    /**
+     * Rate information and statistics: packet counters (tx/rx successful packets, retries, lost)
+     * indexed by preamble, bandwidth, number of spatial streams, MCS, and bit rate.
+     */
+    public static final class RateStats implements Parcelable {
+        @WifiPreambleType private int mPreamble;
+        @WifiSpatialStreams private int mNss;
+        @WifiChannelBandwidth private int mBw;
+        private int mRateMcsIdx;
+        private int mBitRateInKbps;
+        private int mTxMpdu;
+        private int mRxMpdu;
+        private int mMpduLost;
+        private int mRetries;
+
+        /** @hide */
+        public RateStats() {
+        }
+
+        /**
+         * Constructor function.
+         * @param preamble Preamble information.
+         * @param nss Number of spatial streams.
+         * @param bw Bandwidth information.
+         * @param rateMcsIdx MCS index. OFDM/CCK rate code would be as per IEEE std in the units of
+         *                   0.5Mbps. HT/VHT/HE: it would be MCS index.
+         * @param bitRateInKbps Bitrate in units of 100 Kbps.
+         * @param txMpdu Number of successfully transmitted data packets (ACK received).
+         * @param rxMpdu Number of received data packets.
+         * @param mpduLost Number of data packet losses (no ACK).
+         * @param retries Number of data packet retries.
+         */
+        public RateStats(@WifiPreambleType int preamble, @WifiSpatialStreams int nss,
+                @WifiChannelBandwidth int bw, int rateMcsIdx, int bitRateInKbps, int txMpdu,
+                int rxMpdu, int mpduLost, int retries) {
+            this.mPreamble = preamble;
+            this.mNss = nss;
+            this.mBw = bw;
+            this.mRateMcsIdx = rateMcsIdx;
+            this.mBitRateInKbps = bitRateInKbps;
+            this.mTxMpdu = txMpdu;
+            this.mRxMpdu = rxMpdu;
+            this.mMpduLost = mpduLost;
+            this.mRetries = retries;
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            dest.writeInt(mPreamble);
+            dest.writeInt(mNss);
+            dest.writeInt(mBw);
+            dest.writeInt(mRateMcsIdx);
+            dest.writeInt(mBitRateInKbps);
+            dest.writeInt(mTxMpdu);
+            dest.writeInt(mRxMpdu);
+            dest.writeInt(mMpduLost);
+            dest.writeInt(mRetries);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @NonNull Creator<RateStats> CREATOR = new Creator<RateStats>() {
+            public RateStats createFromParcel(Parcel in) {
+                RateStats stats = new RateStats();
+                stats.mPreamble = in.readInt();
+                stats.mNss = in.readInt();
+                stats.mBw = in.readInt();
+                stats.mRateMcsIdx = in.readInt();
+                stats.mBitRateInKbps = in.readInt();
+                stats.mTxMpdu = in.readInt();
+                stats.mRxMpdu = in.readInt();
+                stats.mMpduLost = in.readInt();
+                stats.mRetries = in.readInt();
+                return stats;
+            }
+            public RateStats[] newArray(int size) {
+                return new RateStats[size];
+            }
+        };
+
+        /** Preamble information, see {@link WifiPreambleType} */
+        @WifiPreambleType public int getPreamble() {
+            return mPreamble;
+        }
+
+        /** Number of spatial streams, see {@link WifiSpatialStreams} */
+        @WifiSpatialStreams public int getNumberOfSpatialStreams() {
+            return mNss;
+        }
+
+        /** Bandwidth information, see {@link WifiChannelBandwidth} */
+        @WifiChannelBandwidth public int getBandwidthInMhz() {
+            return mBw;
+        }
+
+        /**
+         * MCS index. OFDM/CCK rate code would be as per IEEE std in the units of 0.5Mbps.
+         * HT/VHT/HE: it would be MCS index
+         */
+        public int getRateMcsIdx() {
+            return mRateMcsIdx;
+        }
+
+        /** Bitrate in units of a hundred Kbps */
+        public int getBitRateInKbps() {
+            return mBitRateInKbps;
+        }
+
+        /** Number of successfully transmitted data packets (ACK received) */
+        public int getTxMpdu() {
+            return mTxMpdu;
+        }
+
+        /** Number of received data packets */
+        public int getRxMpdu() {
+            return mRxMpdu;
+        }
+
+        /** Number of data packet losses (no ACK) */
+        public int getMpduLost() {
+            return mMpduLost;
+        }
+
+        /** Number of data packet retries */
+        public int getRetries() {
+            return mRetries;
+        }
+    }
+    private final RateStats[] mRateStats;
     private final int mChannelUtilizationRatio;
     private final boolean mIsThroughputSufficient;
     private final boolean mIsWifiScoringEnabled;
@@ -226,7 +438,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             @ProbeStatus int probeStatusSinceLastUpdate, int probeElapsedTimeSinceLastUpdateMillis,
             int probeMcsRateSinceLastUpdate, int rxLinkSpeedMbps,
             int timeSliceDutyCycleInPercent, ContentionTimeStats[] contentionTimeStats,
-            int channelUtilizationRatio, boolean isThroughputSufficient,
+            RateStats[] rateStats, int channelUtilizationRatio, boolean isThroughputSufficient,
             boolean isWifiScoringEnabled, boolean isCellularDataAvailable,
             @NetworkType int cellularDataNetworkType, int cellularSignalStrengthDbm,
             int cellularSignalStrengthDb, boolean isSameRegisteredCell) {
@@ -255,6 +467,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         mRxLinkSpeedMbps = rxLinkSpeedMbps;
         mTimeSliceDutyCycleInPercent = timeSliceDutyCycleInPercent;
         mContentionTimeStats = contentionTimeStats;
+        mRateStats = rateStats;
         mChannelUtilizationRatio = channelUtilizationRatio;
         mIsThroughputSufficient = isThroughputSufficient;
         mIsWifiScoringEnabled = isWifiScoringEnabled;
@@ -297,6 +510,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         dest.writeInt(mRxLinkSpeedMbps);
         dest.writeInt(mTimeSliceDutyCycleInPercent);
         dest.writeTypedArray(mContentionTimeStats, flags);
+        dest.writeTypedArray(mRateStats, flags);
         dest.writeInt(mChannelUtilizationRatio);
         dest.writeBoolean(mIsThroughputSufficient);
         dest.writeBoolean(mIsWifiScoringEnabled);
@@ -321,6 +535,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
                     in.readLong(), in.readLong(), in.readInt(),
                     in.readInt(), in.readInt(), in.readInt(),
                     in.readInt(), in.createTypedArray(ContentionTimeStats.CREATOR),
+                    in.createTypedArray(RateStats.CREATOR),
                     in.readInt(), in.readBoolean(), in.readBoolean(),
                     in.readBoolean(), in.readInt(), in.readInt(),
                     in.readInt(), in.readBoolean()
@@ -478,6 +693,18 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
         Log.e(TAG, "The ContentionTimeStats is not filled out correctly: " + mContentionTimeStats);
         return new ContentionTimeStats();
+    }
+
+    /**
+     * Per rate information and statistics.
+     * @return A list of rate statistics, see {@link RateStats}.
+     */
+    @NonNull
+    public List<RateStats> getRateStats() {
+        if (mRateStats != null) {
+            return Arrays.asList(mRateStats);
+        }
+        return Collections.emptyList();
     }
 
     /**

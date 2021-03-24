@@ -4230,7 +4230,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
         mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
         mTestThisDevice.wfdInfo.setEnabled(true);
-        mTestThisDevice.wfdInfo.setWfdR2Device(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
+        mTestThisDevice.wfdInfo.setR2DeviceType(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
         when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
         when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
                 .thenReturn(PackageManager.PERMISSION_GRANTED);
@@ -4264,7 +4264,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
         mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
         mTestThisDevice.wfdInfo.setEnabled(true);
-        mTestThisDevice.wfdInfo.setWfdR2Device(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
+        mTestThisDevice.wfdInfo.setR2DeviceType(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
         when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
         when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
                 .thenReturn(PackageManager.PERMISSION_GRANTED);

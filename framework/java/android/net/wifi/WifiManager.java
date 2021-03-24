@@ -5920,7 +5920,23 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public void setVerboseLoggingEnabled(boolean enable) {
-        enableVerboseLogging(enable ? 1 : 0);
+        enableVerboseLogging(enable ? VERBOSE_LOGGING_LEVEL_ENABLED
+                : VERBOSE_LOGGING_LEVEL_DISABLED);
+    }
+
+    /**
+     * Set Wi-Fi verbose logging level from developer settings.
+     *
+     * @param verbose the verbose logging mode which could be
+     * {@link #VERBOSE_LOGGING_LEVEL_DISABLED}, {@link #VERBOSE_LOGGING_LEVEL_ENABLED}, or
+     * {@link #VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY}.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public void setVerboseLoggingLevel(@VerboseLoggingLevel int verbose) {
+        enableVerboseLogging(verbose);
     }
 
     /** @hide */
@@ -5929,7 +5945,7 @@ public class WifiManager {
             publicAlternatives = "Use {@code #setVerboseLoggingEnabled(boolean)} instead."
     )
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
-    public void enableVerboseLogging (int verbose) {
+    public void enableVerboseLogging(@VerboseLoggingLevel int verbose) {
         try {
             mService.enableVerboseLogging(verbose);
         } catch (Exception e) {
@@ -5940,7 +5956,7 @@ public class WifiManager {
 
     /**
      * Get the persisted Wi-Fi verbose logging level, set by
-     * {@link #setVerboseLoggingEnabled(boolean)}.
+     * {@link #setVerboseLoggingEnabled(boolean)} or {@link #setVerboseLoggingLevel(int)}.
      * No permissions are required to call this method.
      *
      * @return true to indicate that verbose logging is enabled, false to indicate that verbose
@@ -5953,13 +5969,19 @@ public class WifiManager {
         return getVerboseLoggingLevel() > 0;
     }
 
-    /** @hide */
-    // TODO(b/145484145): remove once SUW stops calling this via reflection
-    @UnsupportedAppUsage(
-            maxTargetSdk = Build.VERSION_CODES.Q,
-            publicAlternatives = "Use {@code #isVerboseLoggingEnabled()} instead."
-    )
-    public int getVerboseLoggingLevel() {
+    /**
+     * Get the persisted Wi-Fi verbose logging level, set by
+     * {@link #setVerboseLoggingEnabled(boolean)} or {@link #setVerboseLoggingLevel(int)}.
+     * No permissions are required to call this method.
+     *
+     * @return one of {@link #VERBOSE_LOGGING_LEVEL_DISABLED},
+     *         {@link #VERBOSE_LOGGING_LEVEL_ENABLED},
+     *         or {@link #VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY}.
+     *
+     * @hide
+     */
+    @SystemApi
+    public @VerboseLoggingLevel int getVerboseLoggingLevel() {
         try {
             return mService.getVerboseLoggingLevel();
         } catch (RemoteException e) {
@@ -6562,6 +6584,43 @@ public class WifiManager {
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface EasyConnectCryptographyCurve {
+    }
+
+    /**
+     * Verbose logging mode: DISABLED.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_DISABLED = 0;
+
+    /**
+     * Verbose logging mode: ENABLED.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_ENABLED = 1;
+
+    /**
+     * Verbose logging mode: ENABLED_SHOW_KEY.
+     * This mode causes the Wi-Fi password and encryption keys to be output to the logcat.
+     * This is security sensitive information useful for debugging.
+     * This configuration is enabled for 30 seconds and then falls back to
+     * the regular verbose mode (i.e. to {@link VERBOSE_LOGGING_LEVEL_ENABLED}).
+     * Show key mode is not persistent, i.e. rebooting the device would fallback to
+     * the regular verbose mode.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY = 2;
+
+    /** @hide */
+    @IntDef(prefix = {"VERBOSE_LOGGING_LEVEL_"}, value = {
+            VERBOSE_LOGGING_LEVEL_DISABLED,
+            VERBOSE_LOGGING_LEVEL_ENABLED,
+            VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface VerboseLoggingLevel {
     }
 
     /**

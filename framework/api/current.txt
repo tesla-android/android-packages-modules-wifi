@@ -297,7 +297,7 @@ package android.net.wifi {
     method @Nullable public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @Deprecated public int getIpAddress();
     method public int getLinkSpeed();
-    method @RequiresPermission(android.Manifest.permission.LOCAL_MAC_ADDRESS) public String getMacAddress();
+    method @RequiresPermission(allOf={android.Manifest.permission.LOCAL_MAC_ADDRESS, android.Manifest.permission.ACCESS_FINE_LOCATION}) public String getMacAddress();
     method public int getMaxSupportedRxLinkSpeedMbps();
     method public int getMaxSupportedTxLinkSpeedMbps();
     method public int getNetworkId();
@@ -310,7 +310,6 @@ package android.net.wifi {
     method public android.net.wifi.SupplicantState getSupplicantState();
     method @IntRange(from=0xffffffff) public int getTxLinkSpeedMbps();
     method public int getWifiStandard();
-    method @NonNull public android.net.wifi.WifiInfo makeCopy(boolean);
     method @NonNull public android.net.wifi.WifiInfo makeCopy(long);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final String FREQUENCY_UNITS = "MHz";
@@ -1134,7 +1133,7 @@ package android.net.wifi.p2p {
     method public boolean isCoupledSinkSupportedAtSink();
     method public boolean isCoupledSinkSupportedAtSource();
     method public boolean isEnabled();
-    method public boolean isR2Enabled();
+    method public boolean isR2Supported();
     method public boolean isSessionAvailable();
     method public void setContentProtectionSupported(boolean);
     method public void setControlPort(@IntRange(from=0) int);
@@ -1143,8 +1142,8 @@ package android.net.wifi.p2p {
     method public boolean setDeviceType(int);
     method public void setEnabled(boolean);
     method public void setMaxThroughput(@IntRange(from=0) int);
+    method public boolean setR2DeviceType(int);
     method public void setSessionAvailable(boolean);
-    method public void setWfdR2Device(int);
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.p2p.WifiP2pWfdInfo> CREATOR;
     field public static final int DEVICE_TYPE_PRIMARY_SINK = 1; // 0x1

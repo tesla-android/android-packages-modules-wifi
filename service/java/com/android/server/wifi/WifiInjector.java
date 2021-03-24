@@ -329,7 +329,7 @@ public class WifiInjector {
                 mContext.getSystemService(SubscriptionManager.class);
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(makeTelephonyManager(),
                 subscriptionManager, this, mFrameworkFacade, mContext,
-                mWifiConfigStore, wifiHandler, mWifiMetrics);
+                mWifiConfigStore, wifiHandler, mWifiMetrics, mClock);
         String l2KeySeed = Secure.getString(mContext.getContentResolver(), Secure.ANDROID_ID);
         mWifiScoreCard = new WifiScoreCard(mClock, l2KeySeed, mDeviceConfigFacade,
                 mFrameworkFacade, mContext);
@@ -389,8 +389,8 @@ public class WifiInjector {
         mWifiMetrics.setWifiNetworkSelector(mWifiNetworkSelector);
         mWifiNetworkSuggestionsManager = new WifiNetworkSuggestionsManager(mContext, wifiHandler,
                 this, mWifiPermissionsUtil, mWifiConfigManager, mWifiConfigStore, mWifiMetrics,
-                mWifiCarrierInfoManager, mWifiKeyStore, mLruConnectionTracker
-        );
+                mWifiCarrierInfoManager, mWifiKeyStore, mLruConnectionTracker,
+                mClock);
         mPasspointManager = new PasspointManager(mContext, this,
                 wifiHandler, mWifiNative, mWifiKeyStore, mClock, new PasspointObjectFactory(),
                 mWifiConfigManager, mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager,
@@ -490,7 +490,7 @@ public class WifiInjector {
                 this, mFrameworkFacade, mClock);
         mLockManager = new WifiLockManager(mContext, mBatteryStats, mActiveModeWarden,
                 mFrameworkFacade, wifiHandler, mClock, mWifiMetrics);
-        mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock);
+        mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock, mWifiNative);
         mWifiMulticastLockManager = new WifiMulticastLockManager(mActiveModeWarden, mBatteryStats);
 
         // Register the various network Nominators with the network selector.

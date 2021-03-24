@@ -42,6 +42,7 @@ public class SelfRecoveryTest extends WifiBaseTest {
     @Mock Context mContext;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock Clock mClock;
+    @Mock WifiNative mWifiNative;
 
     @Before
     public void setUp() throws Exception {
@@ -51,7 +52,7 @@ public class SelfRecoveryTest extends WifiBaseTest {
         mResources.setInteger(R.integer.config_wifiMaxNativeFailureSelfRecoveryPerHour,
                 DEFAULT_MAX_RECOVERY_PER_HOUR);
         when(mContext.getResources()).thenReturn(mResources);
-        mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock);
+        mSelfRecovery = new SelfRecovery(mContext, mActiveModeWarden, mClock, mWifiNative);
     }
 
     /**

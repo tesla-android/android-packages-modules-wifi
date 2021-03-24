@@ -408,6 +408,26 @@ public class HalDeviceManager {
     }
 
     /**
+     * Register a SubsystemRestartListener to listen to the subsystem restart event from HAL.
+     * Use the action() to forward the event to SelfRecovery when receiving the event from HAL.
+     *
+     * @param listener SubsystemRestartListener listener object.
+     * @param handler Handler on which to dispatch listener. Null implies the listener will be
+     *                invoked synchronously from the context of the client which triggered the
+     *                state change.
+     */
+    public void registerSubsystemRestartListener(@NonNull SubsystemRestartListener listener,
+            @Nullable Handler handler) {
+        if (listener == null) {
+            Log.wtf(TAG, "registerSubsystemRestartListener with nulls!? listener=" + listener);
+            return;
+        }
+        if (!mSubsystemRestartListener.add(new SubsystemRestartListenerProxy(listener, handler))) {
+            Log.w(TAG, "registerSubsystemRestartListener: duplicate registration ignored");
+        }
+    }
+
+    /**
      * Register an InterfaceDestroyedListener to the specified iface - returns true on success
      * and false on failure. This listener is in addition to the one registered when the interface
      * was created - allowing non-creators to monitor interface status.
@@ -506,6 +526,17 @@ public class HalDeviceManager {
     }
 
     /**
+     * Called when subsystem restart
+     */
+    public interface SubsystemRestartListener {
+        /**
+         * Called for subsystem restart event from the HAL.
+         * It will trigger recovery mechanism in framework.
+         */
+        void onSubsystemRestart();
+    }
+
+    /**
      * Called when interface is destroyed.
      */
     public interface InterfaceDestroyedListener {
@@ -574,7 +605,7 @@ public class HalDeviceManager {
             for (int type : IFACE_TYPES_BY_PRIORITY) {
                 ifaceComboArr[type] = ifaceCombo.get(type, 0);
             }
-            WifiChipInfo[] chipInfos = getAllChipInfo();
+            WifiChipInfo[] chipInfos = getAllChipInfoCached();
             if (chipInfos == null) return false;
             return isItPossibleToCreateIfaceCombo(
                     chipInfos, requiredChipCapabilities, ifaceComboArr);
@@ -654,11 +685,13 @@ public class HalDeviceManager {
     private IWifi mWifi;
     private IWifiRttController mIWifiRttController;
     private final WifiEventCallback mWifiEventCallback = new WifiEventCallback();
+    private final WifiEventCallbackV15 mWifiEventCallbackV15 = new WifiEventCallbackV15();
     private final Set<ManagerStatusListenerProxy> mManagerStatusListeners = new HashSet<>();
     private final Set<InterfaceRttControllerLifecycleCallbackProxy>
             mRttControllerLifecycleCallbacks = new HashSet<>();
     private final SparseArray<IWifiChipEventCallback.Stub> mDebugCallbacks = new SparseArray<>();
     private boolean mIsReady;
+    private final Set<SubsystemRestartListenerProxy> mSubsystemRestartListener = new HashSet<>();
 
     /*
      * This is the only place where we cache HIDL information in this manager. Necessary since
@@ -734,6 +767,11 @@ public class HalDeviceManager {
             Log.e(TAG, "Exception getting IWifi service: " + e);
             return null;
         }
+    }
+
+    protected android.hardware.wifi.V1_5.IWifi getWifiServiceForV1_5Mockable(IWifi iWifi) {
+        if (null == iWifi) return null;
+        return android.hardware.wifi.V1_5.IWifi.castFrom(iWifi);
     }
 
     protected IServiceManager getServiceManagerMockable() {
@@ -903,7 +941,14 @@ public class HalDeviceManager {
                     return;
                 }
 
-                WifiStatus status = mWifi.registerEventCallback(mWifiEventCallback);
+                WifiStatus status;
+                android.hardware.wifi.V1_5.IWifi iWifiV15 = getWifiServiceForV1_5Mockable(mWifi);
+                if (iWifiV15 != null) {
+                    status = iWifiV15.registerEventCallback_1_5(mWifiEventCallbackV15);
+                } else {
+                    status = mWifi.registerEventCallback(mWifiEventCallback);
+                }
+
                 if (status.code != WifiStatusCode.SUCCESS) {
                     Log.e(TAG, "IWifi.registerEventCallback failed: " + statusString(status));
                     mWifi = null;
@@ -1024,6 +1069,23 @@ public class HalDeviceManager {
                 return;
             }
         }
+    }
+
+    @Nullable
+    private WifiChipInfo[] mCachedWifiChipInfos = null;
+
+    /**
+     * Get current information about all the chips in the system: modes, current mode (if any), and
+     * any existing interfaces.
+     *
+     * Intended to be called for any external iface support related queries. This information is
+     * cached to reduce performance overhead (unlike {@link #getAllChipInfo()}).
+     */
+    private WifiChipInfo[] getAllChipInfoCached() {
+        if (mCachedWifiChipInfos == null) {
+            mCachedWifiChipInfos = getAllChipInfo();
+        }
+        return mCachedWifiChipInfos;
     }
 
     /**
@@ -1441,6 +1503,36 @@ public class HalDeviceManager {
         }
     }
 
+    private class WifiEventCallbackV15 extends
+            android.hardware.wifi.V1_5.IWifiEventCallback.Stub {
+        private final WifiEventCallback mWifiEventCallback = new WifiEventCallback();
+        @Override
+        public void onStart() throws RemoteException {
+            mWifiEventCallback.onStart();
+        }
+
+        @Override
+        public void onStop() throws RemoteException {
+            mWifiEventCallback.onStop();
+        }
+
+        @Override
+        public void onFailure(WifiStatus status) throws RemoteException {
+            mWifiEventCallback.onFailure(status);
+        }
+
+        @Override
+        public void onSubsystemRestart(WifiStatus status) throws RemoteException {
+            mEventHandler.post(() -> {
+                synchronized (mLock) {
+                    for (SubsystemRestartListenerProxy cb : mSubsystemRestartListener) {
+                        cb.action();
+                    }
+                }
+            });
+        }
+    }
+
     private void managerStatusListenerDispatch() {
         synchronized (mLock) {
             for (ManagerStatusListenerProxy cb : mManagerStatusListeners) {
@@ -1461,10 +1553,10 @@ public class HalDeviceManager {
         }
     }
 
-    Set<Integer> getSupportedIfaceTypesInternal(IWifiChip chip) {
+    private Set<Integer> getSupportedIfaceTypesInternal(IWifiChip chip) {
         Set<Integer> results = new HashSet<>();
 
-        WifiChipInfo[] chipInfos = getAllChipInfo();
+        WifiChipInfo[] chipInfos = getAllChipInfoCached();
         if (chipInfos == null) {
             Log.e(TAG, "getSupportedIfaceTypesInternal: no chip info found");
             return results;
@@ -2350,6 +2442,19 @@ public class HalDeviceManager {
         ListenerProxy(LISTENER listener, Handler handler, String tag) {
             mListener = listener;
             mHandler = handler;
+        }
+    }
+
+    private class SubsystemRestartListenerProxy extends
+            ListenerProxy<SubsystemRestartListener> {
+        SubsystemRestartListenerProxy(@NonNull SubsystemRestartListener subsystemRestartListener,
+                                        Handler handler) {
+            super(subsystemRestartListener, handler, "SubsystemRestartListenerProxy");
+        }
+
+        @Override
+        protected void action() {
+            mListener.onSubsystemRestart();
         }
     }
 

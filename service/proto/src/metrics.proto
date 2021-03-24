@@ -2527,6 +2527,16 @@ message WifiUsabilityStatsEntry {
 
   // Indicate whether Cellular data is available, see {@link WifiDataStall#isCellularDataAvailable()}.
   optional bool is_cellular_data_available = 40;
+
+  // Rate statistics, including number of successful packets, retries, etc.,
+  // indexed by preamble, bandwidth, number of spatial streams, MCS.
+  repeated RateStats rate_stats = 41;
+
+  // Number of stations associated with current AP.
+  optional int32 sta_count = 42;
+
+  // Channel utilization at current AP in the range of [0, 255].
+  optional int32 channel_utilization = 43;
 }
 
 message ContentionTimeStats {
@@ -2558,6 +2568,83 @@ message ContentionTimeStats {
 
   // Number of data packets used for contention statistics
   optional int32 contention_num_samples = 5;
+}
+
+message RateStats {
+  enum WifiPreambleType {
+    // Preamble type for IEEE 802.11a/g, IEEE Std 802.11-2020, Section 17
+    WIFI_PREAMBLE_OFDM = 0;
+    // Preamble type for IEEE 802.11b, IEEE Std 802.11-2020, Section 16
+    WIFI_PREAMBLE_CCK = 1;
+    // Preamble type for IEEE 802.11n, IEEE Std 802.11-2020, Section 19
+    WIFI_PREAMBLE_HT = 2;
+    // Preamble type for IEEE 802.11ac, IEEE Std 802.11-2020, Section 21
+    WIFI_PREAMBLE_VHT = 3;
+    // Preamble type for IEEE 802.11ax, IEEE Std 802.11-2020, Section 27
+    WIFI_PREAMBLE_HE = 5;
+    // Invalid
+    WIFI_PREAMBLE_INVALID = -1;
+  }
+
+  enum WifiSpatialStreams {
+    // Single stream, 1x1
+    WIFI_SPATIAL_STREAMS_ONE = 0;
+    // Dual streams, 2x2
+    WIFI_SPATIAL_STREAMS_TWO = 1;
+    // Three streams, 3x3
+    WIFI_SPATIAL_STREAMS_THREE = 2;
+    // Four streams, 4x4
+    WIFI_SPATIAL_STREAMS_FOUR = 3;
+    // Invalid
+    WIFI_SPATIAL_STREAMS_INVALID = -1;
+  }
+
+  enum WifiChannelBandwidth {
+    // Channel bandwidth: 20MHz
+    WIFI_BANDWIDTH_20_MHZ = 0;
+    // Channel bandwidth: 40MHz
+    WIFI_BANDWIDTH_40_MHZ = 1;
+    // Channel bandwidth: 80MHz
+    WIFI_BANDWIDTH_80_MHZ = 2;
+    // Channel bandwidth: 160MHz
+    WIFI_BANDWIDTH_160_MHZ = 3;
+    // Channel bandwidth: 80MHz + 80MHz
+    WIFI_BANDWIDTH_80P80_MHZ = 4;
+    // Channel bandwidth: 5MHz
+    WIFI_BANDWIDTH_5_MHZ = 5;
+    // Channel bandwidth: 10MHz
+    WIFI_BANDWIDTH_10_MHZ = 6;
+    // Invalid channel bandwidth
+    WIFI_BANDWIDTH_INVALID = -1;
+  }
+
+  // Preamble information.
+  optional WifiPreambleType preamble = 1;
+
+  // Number of spatial streams.
+  optional WifiSpatialStreams nss = 2;
+
+  // Bandwidth information.
+  optional WifiChannelBandwidth bw = 3;
+
+  // MCS index. OFDM/CCK rate code would be as per IEEE std in the units of 0.5Mbps.
+  // HT/VHT/HE: it would be MCS index.
+  optional int32 rate_mcs_idx = 4;
+
+  // Bitrate in units of 100 Kbps.
+  optional int32 bit_rate_in_kbps = 5;
+
+  // Number of successfully transmitted data packets (ACK received).
+  optional int32 tx_mpdu = 6;
+
+  // Number of received data packets.
+  optional int32 rx_mpdu = 7;
+
+  // Number of data packet losses (no ACK).
+  optional int32 mpdu_lost = 8;
+
+  // Number of data packet retries.
+  optional int32 retries = 9;
 }
 
 message WifiUsabilityStats {

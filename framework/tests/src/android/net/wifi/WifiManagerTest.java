@@ -102,6 +102,7 @@ import android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener;
 import android.net.wifi.WifiManager.TrafficStateCallback;
 import android.net.wifi.WifiManager.WifiConnectedNetworkScorer;
 import android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats;
+import android.net.wifi.WifiUsabilityStatsEntry.RateStats;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerExecutor;
@@ -2222,10 +2223,13 @@ public class WifiManagerTest {
         contentionTimeStats[1] = new ContentionTimeStats(5, 6, 7, 8);
         contentionTimeStats[2] = new ContentionTimeStats(9, 10, 11, 12);
         contentionTimeStats[3] = new ContentionTimeStats(13, 14, 15, 16);
+        RateStats[] rateStats = new RateStats[2];
+        rateStats[0] = new RateStats(1, 3, 5, 7, 9, 11, 13, 15, 17);
+        rateStats[1] = new RateStats(2, 4, 6, 8, 10, 12, 14, 16, 18);
         callbackCaptor.getValue().onWifiUsabilityStats(1, true,
                 new WifiUsabilityStatsEntry(System.currentTimeMillis(), -50, 100, 10, 0, 5, 5, 100,
                         100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 1, 100, 10, 100, 27,
-                        contentionTimeStats, 101, true, true, true, 0, 10, 10, true));
+                        contentionTimeStats, rateStats, 101, true, true, true, 0, 10, 10, true));
         verify(mOnWifiUsabilityStatsListener).onWifiUsabilityStats(anyInt(), anyBoolean(),
                 any(WifiUsabilityStatsEntry.class));
     }

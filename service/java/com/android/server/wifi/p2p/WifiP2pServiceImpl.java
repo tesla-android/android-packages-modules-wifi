@@ -3887,7 +3887,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         private boolean setWfdR2InfoIfNecessary(WifiP2pWfdInfo wfdInfo) {
             if (!SdkLevel.isAtLeastS()) return true;
-            if (!wfdInfo.isR2Enabled()) return true;
+            if (!wfdInfo.isR2Supported()) return true;
             return mWifiNative.setWfdR2DeviceInfo(wfdInfo.getR2DeviceInfoHex());
         }
 

@@ -335,6 +335,16 @@ public class WifiVendorHal {
     }
 
     /**
+     * Register to listen for subsystem restart events from the HAL.
+     *
+     * @param listener SubsystemRestartListener listener object.
+     */
+    public void registerSubsystemRestartListener(
+            HalDeviceManager.SubsystemRestartListener listener) {
+        mHalDeviceManager.registerSubsystemRestartListener(listener, mHalEventHandler);
+    }
+
+    /**
      * Returns whether the vendor HAL is supported on this device or not.
      */
     public boolean isVendorHalSupported() {
@@ -497,7 +507,6 @@ public class WifiVendorHal {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
             if (iface == null) return boolResult(false);
-
             if (!mHalDeviceManager.removeIface((IWifiIface) iface)) {
                 mLog.err("Failed to remove STA iface").flush();
                 return boolResult(false);
@@ -3661,6 +3670,25 @@ public class WifiVendorHal {
                     handler.onDeath();
                 }
             }
+        }
+    }
+
+    /**
+     * Trigger subsystem restart in vendor side
+     */
+    public boolean startSubsystemRestart() {
+        synchronized (sLock) {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 != null) {
+                try {
+                    return ok(iWifiChipV15.triggerSubsystemRestart());
+                } catch (RemoteException e) {
+                    handleRemoteException(e);
+                    return false;
+                }
+            }
+            // HAL version does not support this api
+            return false;
         }
     }
 }

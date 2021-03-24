@@ -54,6 +54,7 @@ import android.net.DhcpInfo;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
 import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkStack;
 import android.net.Uri;
 import android.net.ip.IpClientUtil;
@@ -174,6 +175,8 @@ public class WifiServiceImpl extends BaseWifiService {
 
     /** Max wait time for posting blocking runnables */
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
+    @VisibleForTesting
+    static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 30000;
 
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
@@ -207,10 +210,8 @@ public class WifiServiceImpl extends BaseWifiService {
     private final ConnectHelper mConnectHelper;
     private final WifiGlobals mWifiGlobals;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
-    /**
-     * Verbose logging flag. Toggled by developer options.
-     */
-    private boolean mVerboseLoggingEnabled = false;
+    private @WifiManager.VerboseLoggingLevel int mVerboseLoggingLevel =
+            WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED;
     private final RemoteCallbackList<IWifiVerboseLoggingStatusCallback>
             mRegisteredWifiLoggingStatusCallbacks = new RemoteCallbackList<>();
 
@@ -364,7 +365,9 @@ public class WifiServiceImpl extends BaseWifiService {
                 Log.e(TAG, "Failed to load from config store");
             }
             // config store is read, check if verbose logging is enabled.
-            enableVerboseLoggingInternal(getVerboseLoggingLevel());
+            enableVerboseLoggingInternal(
+                    mWifiInjector.getSettingsConfigStore().get(WIFI_VERBOSE_LOGGING_ENABLED)
+                    ? 1 : 0);
             // Check if wi-fi needs to be enabled
             boolean wifiEnabled = mSettingsStore.isWifiToggleEnabled();
             Log.i(TAG,
@@ -630,7 +633,7 @@ public class WifiServiceImpl extends BaseWifiService {
     public String getCurrentNetworkWpsNfcConfigurationToken() {
         // while CLs are in flight, return null here, will be removed (b/72423090)
         enforceNetworkStackPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getCurrentNetworkWpsNfcConfigurationToken uid=%")
                     .c(Binder.getCallingUid()).flush();
         }
@@ -902,7 +905,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new UnsupportedOperationException();
         }
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerSubsystemRestartCallback uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -919,7 +922,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new UnsupportedOperationException();
         }
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerSubsystemRestartCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         mWifiThreadRunner.post(() -> {
@@ -935,7 +938,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new UnsupportedOperationException();
         }
         enforceRestartWifiSubsystemPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("restartWifiSubsystem uid=% reason=%").c(Binder.getCallingUid()).r(
                     reason).flush();
         }
@@ -957,7 +960,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public int getWifiEnabledState() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiEnabledState uid=%").c(Binder.getCallingUid()).flush();
         }
         return mActiveModeWarden.getPrimaryClientModeManager().syncGetWifiState();
@@ -974,7 +977,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public int getWifiApEnabledState() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiApEnabledState uid=%").c(Binder.getCallingUid()).flush();
         }
         return mTetheredSoftApTracker.getState();
@@ -1076,7 +1079,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (callback == null) {
             throw new IllegalArgumentException("callback must not be null");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerCoexCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         mWifiThreadRunner.post(() -> mCoexManager.registerRemoteCoexCallback(callback));
@@ -1094,7 +1097,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (callback == null) {
             throw new IllegalArgumentException("callback must not be null");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterCoexCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         mWifiThreadRunner.post(() -> mCoexManager.unregisterRemoteCoexCallback(callback));
@@ -1889,7 +1892,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     + "(uid/pid = " + uid + "/" + pid + ")");
         }
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerSoftApCallback uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -1931,7 +1934,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     + "(uid/pid = " + uid + "/" + pid + ")");
         }
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterSoftApCallback uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -2119,7 +2122,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     + "(uid = " + uid + ")");
         }
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiApConfiguration uid=%").c(uid).flush();
         }
 
@@ -2145,7 +2148,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException("App not allowed to read or update stored WiFi Ap config "
                     + "(uid = " + uid + ")");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getSoftApConfiguration uid=%").c(uid).flush();
         }
 
@@ -2241,7 +2244,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public boolean isScanAlwaysAvailable() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("isScanAlwaysAvailable uid=%").c(Binder.getCallingUid()).flush();
         }
         return mSettingsStore.isScanAlwaysAvailableToggleEnabled();
@@ -2313,7 +2316,7 @@ public class WifiServiceImpl extends BaseWifiService {
      * the feature set has not changed and the time interval is short.
      */
     private boolean needToLogSupportedFeatures(long features) {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             long now = mClock.getElapsedSinceBootMillis();
             synchronized (this) {
                 if (now > mLastLoggedSupportedFeaturesTimestamp + A_FEW_MILLISECONDS
@@ -2348,7 +2351,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public void getWifiActivityEnergyInfoAsync(IOnWifiActivityEnergyInfoListener listener) {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiActivityEnergyInfoAsync uid=%")
                     .c(Binder.getCallingUid())
                     .flush();
@@ -2364,7 +2367,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     private WifiActivityEnergyInfo getWifiActivityEnergyInfo() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiActivityEnergyInfo uid=%").c(Binder.getCallingUid()).flush();
         }
         if ((getSupportedFeatures() & WifiManager.WIFI_FEATURE_LINK_LAYER_STATS) == 0) {
@@ -2446,7 +2449,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     .c(callingUid).flush();
             return new ParceledListSlice<>(new ArrayList<>());
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getConfiguredNetworks uid=%").c(callingUid).flush();
         }
 
@@ -2497,7 +2500,7 @@ public class WifiServiceImpl extends BaseWifiService {
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getPrivilegedConfiguredNetworks uid=%").c(callingUid).flush();
         }
         List<WifiConfiguration> configs = mWifiThreadRunner.call(
@@ -2521,7 +2524,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getMatchingPasspointConfigurations uid=%").c(Binder.getCallingUid()).flush();
         }
         if (!ScanResultUtil.validateScanResultList(scanResults)) {
@@ -2545,7 +2548,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getMatchingOsuProviders uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -2569,7 +2572,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getMatchingPasspointConfigsForOsuProviders uid=%").c(
                     Binder.getCallingUid()).flush();
         }
@@ -2596,7 +2599,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiConfigsForPasspointProfiles uid=%").c(
                     Binder.getCallingUid()).flush();
         }
@@ -2625,7 +2628,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getWifiConfigsForMatchedNetworkSuggestions uid=%").c(
                     Binder.getCallingUid()).flush();
         }
@@ -3056,7 +3059,7 @@ public class WifiServiceImpl extends BaseWifiService {
     public WifiInfo getConnectionInfo(String callingPackage, String callingFeatureId) {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getConnectionInfo uid=%").c(uid).flush();
         }
         long ident = Binder.clearCallingIdentity();
@@ -3065,27 +3068,19 @@ public class WifiServiceImpl extends BaseWifiService {
                     () -> getClientModeManagerIfSecondaryCmmRequestedByCallerPresent(
                             uid, callingPackage)
                             .syncRequestConnectionInfo(), new WifiInfo());
-            /* @WifiInfo.RedactionType */ long redactions =
-                    wifiInfo.getApplicableRedactions();
+            long redactions = wifiInfo.getApplicableRedactions();
+            if (mWifiPermissionsUtil.checkLocalMacAddressPermission(uid)) {
+                redactions &= ~NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS;
+            }
+            if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)) {
+                redactions &= ~NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS;
+            }
             try {
-                if (mWifiInjector.getWifiPermissionsWrapper().getLocalMacAddressPermission(uid)
-                        == PERMISSION_GRANTED) {
-                    redactions &= ~WifiInfo.REDACTION_LOCAL_MAC_ADDRESS;
-                }
                 mWifiPermissionsUtil.enforceCanAccessScanResults(callingPackage, callingFeatureId,
                         uid, null);
-                redactions &= ~WifiInfo.REDACTION_ACCESS_FINE_LOCATION;
-            } catch (SecurityException ignored) {
-            }
-            WifiInfo result = wifiInfo.makeCopyInternal(redactions);
-            if (mVerboseLoggingEnabled
-                    && (redactions != WifiInfo.REDACTION_NONE)) {
-                mLog.v("getConnectionInfo: hideLocationSensitiveData="
-                        + (redactions & WifiInfo.REDACTION_ACCESS_FINE_LOCATION)
-                        + ", hideDefaultMacAddress="
-                        + (redactions & WifiInfo.REDACTION_LOCAL_MAC_ADDRESS));
-            }
-            return result;
+                redactions &= ~NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION;
+            } catch (SecurityException ignored) { }
+            return wifiInfo.makeCopy(redactions);
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
@@ -3101,7 +3096,7 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
         long ident = Binder.clearCallingIdentity();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getScanResults uid=%").c(uid).flush();
         }
         try {
@@ -3232,7 +3227,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 || mWifiPermissionsUtil.checkNetworkSetupWizardPermission(uid)) {
             privileged = true;
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getPasspointConfigurations uid=%").c(Binder.getCallingUid()).flush();
         }
         final boolean privilegedFinal = privileged;
@@ -3274,7 +3269,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public String getCountryCode() {
         enforceNetworkSettingsPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getCountryCode uid=%").c(Binder.getCallingUid()).flush();
         }
         return mCountryCode.getCountryCode();
@@ -3297,7 +3292,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     + " code. But got countryCode " + countryCode
                     + " instead");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("setOverrideCountryCode uid=% countryCode=%")
                     .c(Binder.getCallingUid()).c(countryCode).flush();
         }
@@ -3316,7 +3311,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.MANAGE_WIFI_COUNTRY_CODE, "WifiService");
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("clearCountryCode uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
@@ -3340,7 +3335,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     + " code. But got countryCode " + countryCode
                     + " instead");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("setDefaultCountryCode uid=% countryCode=%")
                     .c(Binder.getCallingUid()).c(countryCode).flush();
         }
@@ -3350,7 +3345,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public boolean is24GHzBandSupported() {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("is24GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -3369,7 +3364,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public boolean is5GHzBandSupported() {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("is5GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -3387,7 +3382,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public boolean is6GHzBandSupported() {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("is6GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -3409,7 +3404,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new UnsupportedOperationException();
         }
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("is60GHzBandSupported uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -3442,7 +3437,7 @@ public class WifiServiceImpl extends BaseWifiService {
     public DhcpInfo getDhcpInfo(@NonNull String packageName) {
         enforceAccessPermission();
         int callingUid = Binder.getCallingUid();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getDhcpInfo uid=%").c(callingUid).flush();
         }
         DhcpResultsParcelable dhcpResults = mWifiThreadRunner.call(
@@ -3693,7 +3688,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiMetrics.setEnhancedMacRandomizationForceEnabled(isEnhancedMacRandEnabled);
         mWifiMetrics.setIsScanningAlwaysEnabled(
                 mSettingsStore.isScanAlwaysAvailableToggleEnabled());
-        mWifiMetrics.setVerboseLoggingEnabled(mVerboseLoggingEnabled);
+        mWifiMetrics.setVerboseLoggingEnabled(isVerboseLoggingEnabled());
         mWifiMetrics.setWifiWakeEnabled(mWifiInjector.getWakeupController().isEnabled());
     }
 
@@ -3723,7 +3718,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     wifiScoreCard.getNetworkListBase64(true), "");
             pw.println(networkListBase64);
         } else {
-            pw.println("Verbose logging is " + (mVerboseLoggingEnabled ? "on" : "off"));
+            pw.println("Verbose logging is " + (isVerboseLoggingEnabled() ? "on" : "off"));
             pw.println("Stay-awake conditions: " +
                     mFacade.getIntegerSetting(mContext,
                             Settings.Global.STAY_ON_WHILE_PLUGGED_IN, 0));
@@ -3860,7 +3855,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public boolean isMulticastEnabled() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("isMulticastEnabled uid=%").c(Binder.getCallingUid()).flush();
         }
         return mWifiMulticastLockManager.isMulticastEnabled();
@@ -3893,9 +3888,25 @@ public class WifiServiceImpl extends BaseWifiService {
         mRegisteredWifiLoggingStatusCallbacks.finishBroadcast();
     }
 
+    private boolean isVerboseLoggingEnabled() {
+        return WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
+    }
+
     private void enableVerboseLoggingInternal(int verbose) {
-        mVerboseLoggingEnabled = verbose > 0;
-        mActiveModeWarden.enableVerboseLogging(mVerboseLoggingEnabled);
+        mVerboseLoggingLevel = verbose;
+
+        // Update wifi globals before sending the verbose logging change.
+        mWifiThreadRunner.removeCallbacks(mAutoDisableShowKeyVerboseLoggingModeRunnable);
+        if (WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY == mVerboseLoggingLevel) {
+            mWifiGlobals.setShowKeyVerboseLoggingModeEnabled(true);
+            mWifiThreadRunner.postDelayed(mAutoDisableShowKeyVerboseLoggingModeRunnable,
+                    AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS);
+        } else {
+            // Ensure the show key mode is disabled.
+            mWifiGlobals.setShowKeyVerboseLoggingModeEnabled(false);
+        }
+
+        mActiveModeWarden.enableVerboseLogging(isVerboseLoggingEnabled());
         mWifiLockManager.enableVerboseLogging(verbose);
         mWifiMulticastLockManager.enableVerboseLogging(verbose);
         mWifiInjector.enableVerboseLogging(verbose);
@@ -3904,11 +3915,21 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public int getVerboseLoggingLevel() {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getVerboseLoggingLevel uid=%").c(Binder.getCallingUid()).flush();
         }
-        return mWifiInjector.getSettingsConfigStore().get(WIFI_VERBOSE_LOGGING_ENABLED) ? 1 : 0;
+        return mVerboseLoggingLevel;
     }
+
+    private Runnable mAutoDisableShowKeyVerboseLoggingModeRunnable = new Runnable() {
+        @Override
+        public void run() {
+            // If still enabled, fallback to the regular verbose logging mode.
+            if (isVerboseLoggingEnabled()) {
+                enableVerboseLoggingInternal(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
+            }
+        }
+    };
 
     @Override
     public void factoryReset(String packageName) {
@@ -3990,7 +4011,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getCurrentNetwork uid=%").c(Binder.getCallingUid()).flush();
         }
         return mActiveModeWarden.getPrimaryClientModeManager().syncGetCurrentNetwork();
@@ -4173,7 +4194,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new IllegalArgumentException("Callback must not be null");
         }
         enforceNetworkSettingsPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerTrafficStateCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
@@ -4192,7 +4213,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public void unregisterTrafficStateCallback(ITrafficStateCallback callback) {
         enforceNetworkSettingsPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterTrafficStateCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
@@ -4281,7 +4302,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new IllegalArgumentException("Callback must not be null");
         }
         enforceNetworkSettingsPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerNetworkRequestMatchCallback uid=%")
                     .c(Binder.getCallingUid()).flush();
         }
@@ -4301,7 +4322,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public void unregisterNetworkRequestMatchCallback(INetworkRequestMatchCallback callback) {
         enforceNetworkSettingsPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterNetworkRequestMatchCallback uid=%")
                     .c(Binder.getCallingUid()).flush();
         }
@@ -4326,7 +4347,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (enforceChangePermission(callingPackageName) != MODE_ALLOWED) {
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED;
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("addNetworkSuggestions uid=%").c(Binder.getCallingUid()).flush();
         }
         int callingUid = Binder.getCallingUid();
@@ -4354,7 +4375,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (enforceChangePermission(callingPackageName) != MODE_ALLOWED) {
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED;
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("removeNetworkSuggestions uid=%").c(Binder.getCallingUid()).flush();
         }
         int callingUid = Binder.getCallingUid();
@@ -4378,7 +4399,7 @@ public class WifiServiceImpl extends BaseWifiService {
         int callingUid = Binder.getCallingUid();
         mAppOps.checkPackage(callingUid, callingPackageName);
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("getNetworkSuggestionList uid=%").c(Binder.getCallingUid()).flush();
         }
         return mWifiThreadRunner.call(() ->
@@ -4419,7 +4440,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_SET_DEVICE_MOBILITY_STATE, "WifiService");
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("setDeviceMobilityState uid=% state=%")
                     .c(Binder.getCallingUid())
                     .c(state)
@@ -4651,7 +4672,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("addOnWifiUsabilityStatsListener uid=%")
                 .c(Binder.getCallingUid()).flush();
         }
@@ -4672,7 +4693,7 @@ public class WifiServiceImpl extends BaseWifiService {
     public void removeOnWifiUsabilityStatsListener(IOnWifiUsabilityStatsListener listener) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("removeOnWifiUsabilityStatsListener uid=%")
                     .c(Binder.getCallingUid()).flush();
         }
@@ -4692,7 +4713,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("updateWifiUsabilityScore uid=% seqNum=% score=% predictionHorizonSec=%")
                     .c(Binder.getCallingUid())
                     .c(seqNum)
@@ -4860,7 +4881,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         enforceAccessPermission();
 
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerScanResultsCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         mWifiThreadRunner.post(() -> {
@@ -4874,7 +4895,7 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link WifiManager#registerScanResultsCallback(WifiManager.ScanResultsCallback)}
      */
     public void unregisterScanResultsCallback(@NonNull IScanResultsCallback callback) {
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterScanResultCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         enforceAccessPermission();
@@ -4897,7 +4918,7 @@ public class WifiServiceImpl extends BaseWifiService {
         final int uid = Binder.getCallingUid();
         enforceAccessPermission();
         enforceLocationPermission(packageName, featureId, uid);
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("registerSuggestionConnectionStatusListener uid=%").c(uid).flush();
         }
         mWifiThreadRunner.post(() ->
@@ -4913,7 +4934,7 @@ public class WifiServiceImpl extends BaseWifiService {
             @NonNull ISuggestionConnectionStatusListener listener, String packageName) {
         enforceAccessPermission();
         int uid = Binder.getCallingUid();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("unregisterSuggestionConnectionStatusListener uid=%")
                     .c(uid).flush();
         }
@@ -4949,7 +4970,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("setWifiConnectedNetworkScorer uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
@@ -4964,7 +4985,7 @@ public class WifiServiceImpl extends BaseWifiService {
     public void clearWifiConnectedNetworkScorer() {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE, "WifiService");
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("clearWifiConnectedNetworkScorer uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
@@ -4989,7 +5010,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public boolean isScanThrottleEnabled() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("isScanThrottleEnabled uid=%").c(Binder.getCallingUid()).flush();
         }
         return mWifiThreadRunner.call(()-> mScanRequestProxy.isScanThrottleEnabled(), true);
@@ -5013,7 +5034,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public boolean isAutoWakeupEnabled() {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("isAutoWakeupEnabled uid=%").c(Binder.getCallingUid()).flush();
         }
         return mWifiThreadRunner.call(()-> mWifiInjector.getWakeupController().isEnabled(), false);
@@ -5028,7 +5049,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("setCarrierNetworkOffloadEnabled uid=%").c(Binder.getCallingUid()).flush();
         }
         mWifiThreadRunner.post(() ->
@@ -5041,7 +5062,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public boolean isCarrierNetworkOffloadEnabled(int subId, boolean merged) {
         enforceAccessPermission();
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("isCarrierNetworkOffload uid=%").c(Binder.getCallingUid()).flush();
         }
 
@@ -5071,7 +5092,7 @@ public class WifiServiceImpl extends BaseWifiService {
             // restore calling identity
             Binder.restoreCallingIdentity(callingIdentity);
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("addSuggestionUserApprovalStatusListener uid=%").c(uid).flush();
         }
         mWifiThreadRunner.post(() -> mWifiNetworkSuggestionsManager
@@ -5097,7 +5118,7 @@ public class WifiServiceImpl extends BaseWifiService {
             // restore calling identity
             Binder.restoreCallingIdentity(callingIdentity);
         }
-        if (mVerboseLoggingEnabled) {
+        if (isVerboseLoggingEnabled()) {
             mLog.info("removeSuggestionUserApprovalStatusListener uid=%")
                     .c(uid).flush();
         }

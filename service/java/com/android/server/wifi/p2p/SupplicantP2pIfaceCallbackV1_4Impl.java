@@ -315,7 +315,7 @@ public class SupplicantP2pIfaceCallbackV1_4Impl
                     ((wfdDeviceInfo[4] & 0xFF) << 8) + (wfdDeviceInfo[5] & 0xFF));
         }
         if (wfdR2DeviceInfo != null && wfdR2DeviceInfo.length >= 2) {
-            device.wfdInfo.setWfdR2Device(
+            device.wfdInfo.setR2DeviceType(
                     ((wfdR2DeviceInfo[0] & 0xFF) << 8) + (wfdR2DeviceInfo[1] & 0xFF));
         }
 

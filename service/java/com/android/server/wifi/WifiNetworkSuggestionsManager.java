@@ -134,6 +134,14 @@ public class WifiNetworkSuggestionsManager {
      * Limit number of hidden networks attach to scan
      */
     private static final int NUMBER_OF_HIDDEN_NETWORK_FOR_ONE_SCAN = 100;
+    /**
+     * Expiration timeout for user notification in milliseconds. (15 min)
+     */
+    private static final long NOTIFICATION_EXPIRY_MILLS = 15 * 60 * 1000;
+    /**
+     * Notification update delay in milliseconds. (10 min)
+     */
+    private static final long NOTIFICATION_UPDATE_DELAY_MILLS = 10 * 60 * 1000;
 
     private final WifiContext mContext;
     private final Resources mResources;
@@ -150,6 +158,7 @@ public class WifiNetworkSuggestionsManager {
     private final FrameworkFacade mFrameworkFacade;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
     private final WifiKeyStore mWifiKeyStore;
+    private final Clock mClock;
     // Keep order of network connection.
     private final LruConnectionTracker mLruConnectionTracker;
 
@@ -423,9 +432,10 @@ public class WifiNetworkSuggestionsManager {
      */
     private boolean mHasNewDataToSerialize = false;
     /**
-     * Indicates if the user approval notification is active.
+     * The {@link Clock#getElapsedSinceBootMillis()} must be at least this value for us
+     * to update/show the notification.
      */
-    private boolean mUserApprovalUiActive = false;
+    private long mNotificationUpdateTime;
 
     private boolean mIsLastUserApprovalUiDialog = false;
 
@@ -547,7 +557,7 @@ public class WifiNetworkSuggestionsManager {
         Log.i(TAG, "User clicked to allow app");
         // Set the user approved flag.
         setHasUserApprovedForApp(true, uid, packageName);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalSuggestionAppUiReaction(
                 ACTION_USER_ALLOWED_APP,
                 mIsLastUserApprovalUiDialog);
@@ -560,7 +570,7 @@ public class WifiNetworkSuggestionsManager {
                 MODE_IGNORED);
         // Set the user approved flag.
         setHasUserApprovedForApp(false, uid, packageName);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalSuggestionAppUiReaction(
                 ACTION_USER_DISALLOWED_APP,
                 mIsLastUserApprovalUiDialog);
@@ -568,7 +578,7 @@ public class WifiNetworkSuggestionsManager {
 
     private void handleUserDismissAction() {
         Log.i(TAG, "User dismissed the notification");
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
         mWifiMetrics.addUserApprovalSuggestionAppUiReaction(
                 ACTION_USER_DISMISS,
                 mIsLastUserApprovalUiDialog);
@@ -630,7 +640,8 @@ public class WifiNetworkSuggestionsManager {
             WifiInjector wifiInjector, WifiPermissionsUtil wifiPermissionsUtil,
             WifiConfigManager wifiConfigManager, WifiConfigStore wifiConfigStore,
             WifiMetrics wifiMetrics, WifiCarrierInfoManager wifiCarrierInfoManager,
-            WifiKeyStore keyStore, LruConnectionTracker lruConnectionTracker) {
+            WifiKeyStore keyStore, LruConnectionTracker lruConnectionTracker,
+            Clock clock) {
         mContext = context;
         mResources = context.getResources();
         mHandler = handler;
@@ -646,6 +657,7 @@ public class WifiNetworkSuggestionsManager {
         mWifiCarrierInfoManager = wifiCarrierInfoManager;
         mWifiKeyStore = keyStore;
         mNotificationManager = mWifiInjector.getWifiNotificationManager();
+        mClock = clock;
 
         // register the data store for serializing/deserializing data.
         wifiConfigStore.registerStoreData(
@@ -1554,7 +1566,6 @@ public class WifiNetworkSuggestionsManager {
         dialog.getWindow().addSystemFlags(
                 WindowManager.LayoutParams.SYSTEM_FLAG_SHOW_FOR_ALL_USERS);
         dialog.show();
-        mUserApprovalUiActive = true;
         mIsLastUserApprovalUiDialog = true;
     }
 
@@ -1591,11 +1602,13 @@ public class WifiNetworkSuggestionsManager {
                         mContext.getTheme()))
                 .addAction(userAllowAppNotificationAction)
                 .addAction(userDisallowAppNotificationAction)
+                .setTimeoutAfter(NOTIFICATION_EXPIRY_MILLS)
                 .build();
 
         // Post the notification.
         mNotificationManager.notify(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE, notification);
-        mUserApprovalUiActive = true;
+        mNotificationUpdateTime = mClock.getElapsedSinceBootMillis()
+                + NOTIFICATION_UPDATE_DELAY_MILLS;
         mIsLastUserApprovalUiDialog = false;
     }
 
@@ -1615,8 +1628,8 @@ public class WifiNetworkSuggestionsManager {
             return false; // already approved.
         }
 
-        if (mUserApprovalUiActive) {
-            return false; // has active notification.
+        if (mNotificationUpdateTime > mClock.getElapsedSinceBootMillis()) {
+            return false; // Active notification is still available, do not update.
         }
         Log.i(TAG, "Sending user approval notification for " + packageName);
         sendUserApprovalNotification(packageName, uid);
@@ -2613,6 +2626,6 @@ public class WifiNetworkSuggestionsManager {
 
     public void resetNotification() {
         mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
-        mUserApprovalUiActive = false;
+        mNotificationUpdateTime = 0;
     }
 }

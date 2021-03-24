@@ -1428,6 +1428,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiConfigManager).loadFromStore();
         verify(mActiveModeWarden).enableVerboseLogging(true);
+        // show key mode is always disabled at the beginning.
+        verify(mWifiGlobals).setShowKeyVerboseLoggingModeEnabled(eq(false));
         verify(mActiveModeWarden).start();
     }
 
@@ -2411,6 +2413,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertEquals(WifiConfiguration.INVALID_NETWORK_ID, connectionInfo.getNetworkId());
         assertNull(connectionInfo.getPasspointFqdn());
         assertNull(connectionInfo.getPasspointProviderFriendlyName());
+        try {
+            connectionInfo.isPrimary();
+            fail();
+        } catch (SecurityException e) { /* pass */ }
     }
 
     /**
@@ -4486,20 +4492,20 @@ public class WifiServiceImplTest extends WifiBaseTest {
         TestWifiVerboseLoggingStatusCallback callback = new TestWifiVerboseLoggingStatusCallback();
         mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(callback);
         mLooper.dispatchAll();
-        mWifiServiceImpl.enableVerboseLogging(1);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
         verify(mWifiSettingsConfigStore).put(WIFI_VERBOSE_LOGGING_ENABLED, true);
         verify(mActiveModeWarden).enableVerboseLogging(anyBoolean());
         assertEquals(1, callback.numStatusChangedCounts);
         assertTrue(callback.lastReceivedValue);
 
-        mWifiServiceImpl.enableVerboseLogging(0);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED);
         assertEquals(2, callback.numStatusChangedCounts);
         assertFalse(callback.lastReceivedValue);
 
         // unregister the callback and verify no more updates happen.
         mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(callback);
         mLooper.dispatchAll();
-        mWifiServiceImpl.enableVerboseLogging(1);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
         assertEquals(2, callback.numStatusChangedCounts);
         assertFalse(callback.lastReceivedValue);
     }
@@ -4555,9 +4561,33 @@ public class WifiServiceImplTest extends WifiBaseTest {
         // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
         // before invocation.
         reset(mClientModeManager);
-        mWifiServiceImpl.enableVerboseLogging(1);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
         verify(mWifiSettingsConfigStore).put(WIFI_VERBOSE_LOGGING_ENABLED, true);
         verify(mActiveModeWarden).enableVerboseLogging(anyBoolean());
+    }
+
+    /**
+     * Verify that setting verbose logging mode to
+     * {@link WifiManager#VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY)} is allowed from
+     * callers with the signature only NETWORK_SETTINGS permission.
+     */
+    @Test
+    public void testEnableShowKeyVerboseLoggingWithNetworkSettingsPermission() throws Exception {
+        doNothing().when(mContext)
+                .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                        eq("WifiService"));
+        // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
+        // before invocation.
+        reset(mClientModeManager);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY);
+        verify(mWifiSettingsConfigStore).put(WIFI_VERBOSE_LOGGING_ENABLED, true);
+        verify(mActiveModeWarden).enableVerboseLogging(anyBoolean());
+        verify(mWifiGlobals).setShowKeyVerboseLoggingModeEnabled(eq(true));
+
+        // After auto disable show key mode after the countdown
+        mLooper.moveTimeForward(WifiServiceImpl.AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS + 1);
+        mLooper.dispatchAll();
+        verify(mWifiGlobals).setShowKeyVerboseLoggingModeEnabled(eq(false));
     }
 
     /**
@@ -4572,7 +4602,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         // Vebose logging is enabled first in the constructor for WifiServiceImpl, so reset
         // before invocation.
         reset(mClientModeManager);
-        mWifiServiceImpl.enableVerboseLogging(1);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
         verify(mWifiSettingsConfigStore, never()).put(
                 WIFI_VERBOSE_LOGGING_ENABLED, anyBoolean());
         verify(mActiveModeWarden, never()).enableVerboseLogging(anyBoolean());
@@ -7229,7 +7259,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
     @Test
     public void getSupportedFeaturesVerboseLoggingThrottled() {
-        mWifiServiceImpl.enableVerboseLogging(1); // this logs
+        mWifiServiceImpl.enableVerboseLogging(
+                WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED); // this logs
         when(mClock.getElapsedSinceBootMillis()).thenReturn(1000L);
         testGetSupportedFeaturesCaseForMacRandomization(0, true, true, false);
         when(mClock.getElapsedSinceBootMillis()).thenReturn(1001L);

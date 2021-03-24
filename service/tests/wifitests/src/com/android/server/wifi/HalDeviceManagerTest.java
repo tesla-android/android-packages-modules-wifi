@@ -35,6 +35,7 @@ import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -104,6 +105,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     private HalDeviceManager mDut;
     @Mock IServiceManager mServiceManagerMock;
     @Mock IWifi mWifiMock;
+    @Mock android.hardware.wifi.V1_5.IWifi mWifiMockV15;
     @Mock IWifiRttController mRttControllerMock;
     @Mock HalDeviceManager.ManagerStatusListener mManagerStatusListenerMock;
     @Mock private Clock mClock;
@@ -120,6 +122,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             ArgumentCaptor.forClass(IServiceNotification.Stub.class);
     private ArgumentCaptor<IWifiEventCallback> mWifiEventCallbackCaptor = ArgumentCaptor.forClass(
             IWifiEventCallback.class);
+    private ArgumentCaptor<android.hardware.wifi.V1_5.IWifiEventCallback>
+            mWifiEventCallbackCaptorV15 = ArgumentCaptor.forClass(
+            android.hardware.wifi.V1_5.IWifiEventCallback.class);
     private InOrder mInOrder;
     @Rule public ErrorCollector collector = new ErrorCollector();
     private WifiStatus mStatusOk;
@@ -133,6 +138,13 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         @Override
         protected IWifi getWifiServiceMockable() {
             return mWifiMock;
+        }
+
+        @Override
+        protected android.hardware.wifi.V1_5.IWifi getWifiServiceForV1_5Mockable(IWifi iWifi) {
+            return (mWifiMockV15 != null)
+                    ? mWifiMockV15
+                    : null;
         }
 
         @Override
@@ -156,6 +168,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // initialize placeholder status objects
         mStatusOk = getStatus(WifiStatusCode.SUCCESS);
         mStatusFail = getStatus(WifiStatusCode.ERROR_UNKNOWN);
+
+        setupWifiV15(mWifiMock);
 
         when(mWifiInjector.makeWsHelper(TEST_WORKSOURCE_0)).thenReturn(mWorkSourceHelper0);
         when(mWifiInjector.makeWsHelper(TEST_WORKSOURCE_1)).thenReturn(mWorkSourceHelper1);
@@ -203,7 +217,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testStartStopFlow() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mManagerStatusListenerMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15,
+                mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
 
@@ -225,7 +240,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testServiceRegisterationAfterInitialize() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mManagerStatusListenerMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15,
+                mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
 
         // This should now be ignored since IWifi is already non-null.
@@ -240,7 +256,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testMultipleCallbackRegistrations() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mManagerStatusListenerMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15,
+                mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
 
         // register another 2 callbacks - one of them twice
@@ -267,7 +284,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testWifiDeathAndRegistration() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mManagerStatusListenerMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, mWifiMockV15,
+                mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
 
@@ -283,11 +301,20 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // verify: initialization of IWifi
         mInOrder.verify(mWifiMock).linkToDeath(mDeathRecipientCaptor.capture(), anyLong());
-        mInOrder.verify(mWifiMock).registerEventCallback(mWifiEventCallbackCaptor.capture());
+        if (null != mWifiMockV15) {
+            mInOrder.verify(mWifiMockV15).registerEventCallback_1_5(
+                    mWifiEventCallbackCaptorV15.capture());
+        } else {
+            mInOrder.verify(mWifiMock).registerEventCallback(mWifiEventCallbackCaptor.capture());
+        }
 
         // act: start
         collector.checkThat(mDut.start(), equalTo(true));
-        mWifiEventCallbackCaptor.getValue().onStart();
+        if (null != mWifiMockV15) {
+            mWifiEventCallbackCaptorV15.getValue().onStart();
+        } else {
+            mWifiEventCallbackCaptor.getValue().onStart();
+        }
         mTestLooper.dispatchAll();
 
         // verify: service and callback calls
@@ -302,12 +329,17 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testWifiFail() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mManagerStatusListenerMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, mWifiMockV15,
+                mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
 
         // act: IWifi failure
-        mWifiEventCallbackCaptor.getValue().onFailure(mStatusFail);
+        if (null != mWifiMockV15) {
+            mWifiEventCallbackCaptorV15.getValue().onFailure(mStatusFail);
+        } else {
+            mWifiEventCallbackCaptor.getValue().onFailure(mStatusFail);
+        }
         mTestLooper.dispatchAll();
 
         // verify: getting onStop
@@ -315,7 +347,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // act: start again
         collector.checkThat(mDut.start(), equalTo(true));
-        mWifiEventCallbackCaptor.getValue().onStart();
+        if (null != mWifiMockV15) {
+            mWifiEventCallbackCaptorV15.getValue().onStart();
+        } else {
+            mWifiEventCallbackCaptor.getValue().onStart();
+        }
         mTestLooper.dispatchAll();
 
         // verify: service and callback calls
@@ -336,7 +372,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testCacheMismatchError() throws Exception {
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -420,7 +456,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence(2, true);
@@ -439,7 +475,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence(START_HAL_RETRY_TIMES + 1, false);
     }
@@ -457,7 +493,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence(1, false);
     }
@@ -468,7 +504,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testIsSupportedTrue() throws Exception {
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock);
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15);
         executeAndValidateInitializationSequence();
         assertTrue(mDut.isSupported());
     }
@@ -501,7 +537,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // concurrency in this test).
         ChipMockBase chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -554,7 +590,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // STA (which will configure the chip).
         ChipMockBase chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -632,7 +668,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // & create a STA (which will configure the chip).
         ChipMockBase chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -682,7 +718,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // initialize a test chip & create a STA (which will configure the chip).
         ChipMockBase chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -880,7 +916,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -925,7 +961,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         InterfaceDestroyedListener apIdl = mock(
                 InterfaceDestroyedListener.class);
 
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock, staIdl, apIdl);
         executeAndValidateInitializationSequence();
 
@@ -981,7 +1017,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1038,7 +1074,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testDuplicateStaRequestsFromLowerPriorityAppTestChipV1() throws Exception {
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1080,7 +1116,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesAllTestChipV1() throws Exception {
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1105,7 +1141,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesOneChipTestChipV1() throws Exception {
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1132,10 +1168,12 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
+
+        clearInvocations(mWifiMock);
 
         assertTrue(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
                 put(IfaceType.STA, 1);
@@ -1179,6 +1217,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             }}
         ));
 
+        // Ensure we only fetched chip info once, use the cache after that.
+        verify(mWifiMock, times(1)).getChipIds(any());
+
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
 
@@ -1188,7 +1229,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1257,7 +1298,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testInterfaceCreationFlowTestChipV2() throws Exception {
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1433,7 +1474,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesAllTestChipV2() throws Exception {
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1458,7 +1499,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesOneChipTestChipV2() throws Exception {
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1485,10 +1526,12 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
+
+        clearInvocations(mWifiMock);
 
         assertTrue(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
                 put(IfaceType.STA, 1);
@@ -1558,6 +1601,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             }}
         ));
 
+        // Ensure we only fetched chip info once, use the cache after that.
+        verify(mWifiMock, times(1)).getChipIds(any());
+
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
 
@@ -1567,7 +1613,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1650,7 +1696,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testInterfaceCreationFlowTestChipV3() throws Exception {
         TestChipV3 chipMock = new TestChipV3();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1819,7 +1865,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesAllTestChipV3() throws Exception {
         TestChipV3 chipMock = new TestChipV3();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1844,7 +1890,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesOneChipTestChipV3() throws Exception {
         TestChipV3 chipMock = new TestChipV3();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1868,7 +1914,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV3 chipMock = new TestChipV3();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -1950,7 +1996,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testInterfaceCreationFlowTestChipV4() throws Exception {
         TestChipV4 chipMock = new TestChipV4();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -2092,7 +2138,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testInterfaceCreationFlowTestChipV3WithInternalRequest() throws Exception {
         TestChipV3 chipMock = new TestChipV3();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -2170,7 +2216,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesAllTestChipV4() throws Exception {
         TestChipV4 chipMock = new TestChipV4();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -2195,7 +2241,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void testGetSupportedIfaceTypesOneChipTestChipV4() throws Exception {
         TestChipV4 chipMock = new TestChipV4();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -2219,7 +2265,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         TestChipV4 chipMock = new TestChipV4();
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
@@ -2286,10 +2332,10 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 android.hardware.wifi.V1_5.IWifiChip.ChipCapabilityMask.WIGIG;
         chipMock.initialize();
         if (mWifiChipV15 != null) {
-            mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+            mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                     mWifiChipV15, mManagerStatusListenerMock);
         } else {
-            mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+            mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                     mManagerStatusListenerMock);
         }
         executeAndValidateInitializationSequence();
@@ -2415,6 +2461,12 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                         android.hardware.wifi.V1_5.IWifiChip.getCapabilities_1_5Callback.class));
     }
 
+    private void setupWifiV15(IWifi iWifiMock) throws RemoteException {
+        mWifiMockV15 = mock(android.hardware.wifi.V1_5.IWifi.class);
+        when(mWifiMockV15.registerEventCallback_1_5(
+                any(android.hardware.wifi.V1_5.IWifiEventCallback.class))).thenReturn(mStatusOk);
+    }
+
     private void dumpDut(String prefix) {
         StringWriter sw = new StringWriter();
         mDut.dump(null, new PrintWriter(sw), null);
@@ -2442,9 +2494,16 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         // verify: wifi initialization sequence if vendor HAL is supported.
         if (isSupported) {
             mInOrder.verify(mWifiMock).linkToDeath(mDeathRecipientCaptor.capture(), anyLong());
-            mInOrder.verify(mWifiMock).registerEventCallback(mWifiEventCallbackCaptor.capture());
+            if (null != mWifiMockV15) {
+                mInOrder.verify(mWifiMockV15).registerEventCallback_1_5(
+                        mWifiEventCallbackCaptorV15.capture());
+            } else {
+                mInOrder.verify(mWifiMock).registerEventCallback(
+                        mWifiEventCallbackCaptor.capture());
+            }
             // verify: onStop called as a part of initialize.
             mInOrder.verify(mWifiMock).stop();
+
             collector.checkThat("isReady is true", mDut.isReady(), equalTo(true));
         } else {
             collector.checkThat("isReady is false", mDut.isReady(), equalTo(false));
@@ -2466,7 +2525,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         if (success) {
             // act: trigger onStart callback of IWifiEventCallback
-            mWifiEventCallbackCaptor.getValue().onStart();
+            if (mWifiMockV15 != null) {
+                mWifiEventCallbackCaptorV15.getValue().onStart();
+            } else {
+                mWifiEventCallbackCaptor.getValue().onStart();
+            }
             mTestLooper.dispatchAll();
 
             // verify: onStart called on registered listener
@@ -2478,10 +2541,10 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             String ifaceName, int finalChipMode) throws Exception {
         chipMock.initialize();
         if (mWifiChipV15 != null) {
-            mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+            mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                     mWifiChipV15, mManagerStatusListenerMock);
         } else {
-            mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+            mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                     mManagerStatusListenerMock);
         }
         executeAndValidateInitializationSequence();
@@ -2546,7 +2609,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     public void runP2pAndNanExclusiveInteractionsTestChip(ChipMockBase chipMock,
             int onlyChipMode) throws Exception {
         chipMock.initialize();
-        mInOrder = inOrder(mServiceManagerMock, mWifiMock, chipMock.chip,
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();

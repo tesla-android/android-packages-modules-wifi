@@ -2596,7 +2596,8 @@ public class SupplicantStaIfaceHal {
             int logLevel = turnOnVerbose
                     ? ISupplicant.DebugLevel.DEBUG
                     : ISupplicant.DebugLevel.INFO;
-            return setDebugParams(logLevel, false, false);
+            return setDebugParams(logLevel, false,
+                    turnOnVerbose && mWifiGlobals.getShowKeyVerboseLoggingModeEnabled());
         }
     }
 
