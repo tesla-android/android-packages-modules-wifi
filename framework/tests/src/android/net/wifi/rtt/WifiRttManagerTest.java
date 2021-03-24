@@ -295,7 +295,7 @@ public class WifiRttManagerTest {
             // confirm rtt burst size is set correctly to default value
             assertEquals(request.getRttBurstSize(), RangingRequest.getDefaultRttBurstSize());
             // confirm the number of peers in the request is the max number of peers
-            List<ResponderConfig> rttPeers = request.getRttPeers();
+            List<ResponderConfig> rttPeers = request.getRttResponders();
             int numRttPeers = rttPeers.size();
             assertEquals(RangingRequest.getMaxPeers(), numRttPeers);
             // confirm each peer has the correct mac address
