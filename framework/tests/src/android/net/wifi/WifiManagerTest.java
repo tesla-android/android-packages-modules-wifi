@@ -2375,6 +2375,25 @@ public class WifiManagerTest {
     }
 
     /**
+     * Test {@link WifiManager#addNetworkPrivileged(WifiConfiguration)} goes to WifiService.
+     * Also verify that an IllegalArgumentException is thrown if the input is null.
+     */
+    @Test
+    public void testAddNetworkPrivileged() throws Exception {
+        WifiConfiguration configuration = new WifiConfiguration();
+        mWifiManager.addNetworkPrivileged(configuration);
+        verify(mWifiService).addOrUpdateNetworkPrivileged(configuration,
+                mContext.getOpPackageName());
+
+        // send a null config and verify an exception is thrown
+        try {
+            mWifiManager.addNetworkPrivileged(null);
+            fail("configuration is null - IllegalArgumentException is expected.");
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
+    /**
      * Test behavior of {@link WifiManager#addNetwork(WifiConfiguration)}
      */
     @Test
