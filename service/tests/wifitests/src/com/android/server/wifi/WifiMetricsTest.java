@@ -95,6 +95,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
+import com.android.server.wifi.WifiLinkLayerStats.RadioStat;
 import com.android.server.wifi.WifiLinkLayerStats.RateStat;
 import com.android.server.wifi.aware.WifiAwareMetrics;
 import com.android.server.wifi.hotspot2.NetworkDetail;
@@ -118,6 +119,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.NetworkSelectionExper
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProfileTypeCount;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProvisionStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PnoScanMetrics;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.RadioStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.RateStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.SoftApConnectedClientsEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.StaEvent;
@@ -3620,6 +3622,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         out.timeSliceDutyCycleInPercent =
                 (short) ((current.timeSliceDutyCycleInPercent + nextRandInt()) % 101);
         out.peerInfo = createNewPeerInfo(current.peerInfo);
+        out.radioStats = createNewRadioStat(current.radioStats);
         return out;
     }
 
@@ -3652,6 +3655,29 @@ public class WifiMetricsTest extends WifiBaseTest {
             out[i].rateStats = rateStats;
             out[i].staCount = (short) (current[i].staCount + nextRandInt() % 10);
             out[i].chanUtil = (short) ((current[i].chanUtil + nextRandInt()) % 100);
+        }
+        return out;
+    }
+
+    private RadioStat[] createNewRadioStat(RadioStat[] current) {
+        if (current == null) {
+            return null;
+        }
+        RadioStat[] out = new RadioStat[current.length];
+        for (int i = 0; i < current.length; i++) {
+            RadioStat currentRadio = current[i];
+            RadioStat newRadio = new RadioStat();
+            newRadio.radio_id = currentRadio.radio_id;
+            newRadio.on_time = currentRadio.on_time + nextRandInt();
+            newRadio.tx_time = currentRadio.tx_time + nextRandInt();
+            newRadio.rx_time = currentRadio.rx_time + nextRandInt();
+            newRadio.on_time_scan = currentRadio.on_time_scan + nextRandInt();
+            newRadio.on_time_nan_scan = currentRadio.on_time_nan_scan + nextRandInt();
+            newRadio.on_time_background_scan = currentRadio.on_time_background_scan + nextRandInt();
+            newRadio.on_time_roam_scan = currentRadio.on_time_roam_scan + nextRandInt();
+            newRadio.on_time_pno_scan = currentRadio.on_time_pno_scan + nextRandInt();
+            newRadio.on_time_hs20_scan = currentRadio.on_time_hs20_scan + nextRandInt();
+            out[i] = newRadio;
         }
         return out;
     }
@@ -3751,6 +3777,21 @@ public class WifiMetricsTest extends WifiBaseTest {
                 usabilityStats.totalTxBad);
         assertEquals(stats.rxmpdu_be + stats.rxmpdu_bk + stats.rxmpdu_vi + stats.rxmpdu_vo,
                 usabilityStats.totalRxSuccess);
+        assertEquals(stats.radioStats.length, usabilityStats.radioStats.length);
+        for (int i = 0; i < stats.radioStats.length; i++) {
+            RadioStat radio = stats.radioStats[i];
+            RadioStats radioStats = usabilityStats.radioStats[i];
+            assertEquals(radio.radio_id, radioStats.radioId);
+            assertEquals(radio.on_time, radioStats.totalRadioOnTimeMs);
+            assertEquals(radio.tx_time, radioStats.totalRadioTxTimeMs);
+            assertEquals(radio.rx_time, radioStats.totalRadioRxTimeMs);
+            assertEquals(radio.on_time_scan, radioStats.totalScanTimeMs);
+            assertEquals(radio.on_time_nan_scan, radioStats.totalNanScanTimeMs);
+            assertEquals(radio.on_time_background_scan, radioStats.totalBackgroundScanTimeMs);
+            assertEquals(radio.on_time_roam_scan, radioStats.totalRoamScanTimeMs);
+            assertEquals(radio.on_time_pno_scan, radioStats.totalPnoScanTimeMs);
+            assertEquals(radio.on_time_hs20_scan, radioStats.totalHotspot2ScanTimeMs);
+        }
         assertEquals(stats.on_time, usabilityStats.totalRadioOnTimeMs);
         assertEquals(stats.tx_time, usabilityStats.totalRadioTxTimeMs);
         assertEquals(stats.rx_time, usabilityStats.totalRadioRxTimeMs);
@@ -3862,7 +3903,6 @@ public class WifiMetricsTest extends WifiBaseTest {
         when(mWifiChannelUtilization.getUtilizationRatio(anyInt())).thenReturn(150);
         when(mWifiSettingsStore.isWifiScoringEnabled()).thenReturn(true);
 
-
         WifiLinkLayerStats stats1 = nextRandomStats(createNewWifiLinkLayerStats());
         WifiLinkLayerStats stats2 = nextRandomStats(stats1);
         mWifiMetrics.incrementWifiScoreCount(TEST_IFACE_NAME, 60);
@@ -3941,6 +3981,13 @@ public class WifiMetricsTest extends WifiBaseTest {
         peerInfo[0] = new PeerInfo();
         peerInfo[0].rateStats = rateStats;
         stats.peerInfo = peerInfo;
+        RadioStat[] radioStats = new RadioStat[2];
+        for (int i = 0; i < 2; i++) {
+            RadioStat radio = new RadioStat();
+            radio.radio_id = i;
+            radioStats[i] = radio;
+        }
+        stats.radioStats = radioStats;
         return stats;
     }
 

@@ -73,6 +73,7 @@ import com.android.internal.util.HexDump;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
 import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
+import com.android.server.wifi.WifiLinkLayerStats.RadioStat;
 import com.android.server.wifi.WifiLinkLayerStats.RateStat;
 import com.android.server.wifi.WifiNative.RxFateReport;
 import com.android.server.wifi.WifiNative.TxFateReport;
@@ -1217,7 +1218,7 @@ public class WifiVendorHal {
         if (stats == null) return null;
         WifiLinkLayerStats out = new WifiLinkLayerStats();
         setIfaceStats_1_5(out, stats.iface);
-        setRadioStats_1_3(out, stats.radios);
+        setRadioStats_1_5(out, stats.radios);
         setTimeStamp(out, stats.timeStampInMs);
         out.version = WifiLinkLayerStats.V1_5;
         return out;
@@ -1319,49 +1320,101 @@ public class WifiVendorHal {
         }
     }
 
+    /**
+     * Set individual radio stats from the hal radio stats
+     */
+    private static void setFrameworkPerRadioStatsFromHidl(int radioId, RadioStat radio,
+            android.hardware.wifi.V1_3.StaLinkLayerRadioStats hidlRadioStats) {
+        radio.radio_id = radioId;
+        radio.on_time = hidlRadioStats.V1_0.onTimeInMs;
+        radio.tx_time = hidlRadioStats.V1_0.txTimeInMs;
+        radio.rx_time = hidlRadioStats.V1_0.rxTimeInMs;
+        radio.on_time_scan = hidlRadioStats.V1_0.onTimeInMsForScan;
+        radio.on_time_nan_scan = hidlRadioStats.onTimeInMsForNanScan;
+        radio.on_time_background_scan = hidlRadioStats.onTimeInMsForBgScan;
+        radio.on_time_roam_scan = hidlRadioStats.onTimeInMsForRoamScan;
+        radio.on_time_pno_scan = hidlRadioStats.onTimeInMsForPnoScan;
+        radio.on_time_hs20_scan = hidlRadioStats.onTimeInMsForHs20Scan;
+        /* Copy list of channel stats */
+        for (android.hardware.wifi.V1_3.WifiChannelStats channelStats
+                : hidlRadioStats.channelStats) {
+            ChannelStats channelStatsEntry = new ChannelStats();
+            channelStatsEntry.frequency = channelStats.channel.centerFreq;
+            channelStatsEntry.radioOnTimeMs = channelStats.onTimeInMs;
+            channelStatsEntry.ccaBusyTimeMs = channelStats.ccaBusyTimeInMs;
+            radio.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
+        }
+    }
+
+    /**
+     * If config_wifiLinkLayerAllRadiosStatsAggregationEnabled is set to true, aggregate
+     * the radio stats from all the radios else process the stats from Radio 0 only.
+     */
+    private static void aggregateFrameworkRadioStatsFromHidl(int radioIndex,
+            WifiLinkLayerStats stats,
+            android.hardware.wifi.V1_3.StaLinkLayerRadioStats hidlRadioStats) {
+        if (!sContext.getResources()
+                .getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled)
+                && radioIndex > 0) {
+            return;
+        }
+        // Aggregate the radio stats from all the radios
+        stats.on_time += hidlRadioStats.V1_0.onTimeInMs;
+        stats.tx_time += hidlRadioStats.V1_0.txTimeInMs;
+        // Aggregate tx_time_per_level based on the assumption that the length of
+        // txTimeInMsPerLevel is the same across all radios. So txTimeInMsPerLevel on other
+        // radios at array indices greater than the length of first radio will be dropped.
+        if (stats.tx_time_per_level == null) {
+            stats.tx_time_per_level = new int[hidlRadioStats.V1_0.txTimeInMsPerLevel.size()];
+        }
+        for (int i = 0; i < hidlRadioStats.V1_0.txTimeInMsPerLevel.size()
+                && i < stats.tx_time_per_level.length; i++) {
+            stats.tx_time_per_level[i] += hidlRadioStats.V1_0.txTimeInMsPerLevel.get(i);
+        }
+        stats.rx_time += hidlRadioStats.V1_0.rxTimeInMs;
+        stats.on_time_scan += hidlRadioStats.V1_0.onTimeInMsForScan;
+        stats.on_time_nan_scan += hidlRadioStats.onTimeInMsForNanScan;
+        stats.on_time_background_scan += hidlRadioStats.onTimeInMsForBgScan;
+        stats.on_time_roam_scan += hidlRadioStats.onTimeInMsForRoamScan;
+        stats.on_time_pno_scan += hidlRadioStats.onTimeInMsForPnoScan;
+        stats.on_time_hs20_scan += hidlRadioStats.onTimeInMsForHs20Scan;
+        /* Copy list of channel stats */
+        for (android.hardware.wifi.V1_3.WifiChannelStats channelStats
+                : hidlRadioStats.channelStats) {
+            ChannelStats channelStatsEntry =
+                    stats.channelStatsMap.get(channelStats.channel.centerFreq);
+            if (channelStatsEntry == null) {
+                channelStatsEntry = new ChannelStats();
+                channelStatsEntry.frequency = channelStats.channel.centerFreq;
+                stats.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
+            }
+            channelStatsEntry.radioOnTimeMs += channelStats.onTimeInMs;
+            channelStatsEntry.ccaBusyTimeMs += channelStats.ccaBusyTimeInMs;
+        }
+        stats.numRadios++;
+    }
+
     private static void setRadioStats_1_3(WifiLinkLayerStats stats,
             List<android.hardware.wifi.V1_3.StaLinkLayerRadioStats> radios) {
         if (radios == null) return;
-        // Aggregate the radio stats from all the radios.
+        int radioIndex = 0;
         for (android.hardware.wifi.V1_3.StaLinkLayerRadioStats radioStats : radios) {
-            stats.on_time += radioStats.V1_0.onTimeInMs;
-            stats.tx_time += radioStats.V1_0.txTimeInMs;
-            // Aggregate tx_time_per_level based on the assumption that the length of
-            // txTimeInMsPerLevel is the same across all radios. So txTimeInMsPerLevel on other
-            // radios at array indices greater than the length of first radio will be dropped.
-            if (stats.tx_time_per_level == null) {
-                stats.tx_time_per_level = new int[radioStats.V1_0.txTimeInMsPerLevel.size()];
-            }
-            for (int i = 0; i < radioStats.V1_0.txTimeInMsPerLevel.size()
-                    && i < stats.tx_time_per_level.length; i++) {
-                stats.tx_time_per_level[i] += radioStats.V1_0.txTimeInMsPerLevel.get(i);
-            }
-            stats.rx_time += radioStats.V1_0.rxTimeInMs;
-            stats.on_time_scan += radioStats.V1_0.onTimeInMsForScan;
-            stats.on_time_nan_scan += radioStats.onTimeInMsForNanScan;
-            stats.on_time_background_scan += radioStats.onTimeInMsForBgScan;
-            stats.on_time_roam_scan += radioStats.onTimeInMsForRoamScan;
-            stats.on_time_pno_scan += radioStats.onTimeInMsForPnoScan;
-            stats.on_time_hs20_scan += radioStats.onTimeInMsForHs20Scan;
-            /* Copy list of channel stats */
-            for (android.hardware.wifi.V1_3.WifiChannelStats channelStats
-                    : radioStats.channelStats) {
-                ChannelStats channelStatsEntry =
-                        stats.channelStatsMap.get(channelStats.channel.centerFreq);
-                if (channelStatsEntry == null) {
-                    channelStatsEntry = new ChannelStats();
-                    channelStatsEntry.frequency = channelStats.channel.centerFreq;
-                    stats.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
-                }
-                channelStatsEntry.radioOnTimeMs += channelStats.onTimeInMs;
-                channelStatsEntry.ccaBusyTimeMs += channelStats.ccaBusyTimeInMs;
-            }
-            stats.numRadios++;
-            if (!sContext.getResources()
-                    .getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled)) {
-                // Return stats from radio 0 only.
-                break;
-            }
+            aggregateFrameworkRadioStatsFromHidl(radioIndex, stats, radioStats);
+            radioIndex++;
+        }
+    }
+
+    private static void setRadioStats_1_5(WifiLinkLayerStats stats,
+            List<android.hardware.wifi.V1_5.StaLinkLayerRadioStats> radios) {
+        if (radios == null) return;
+        int radioIndex = 0;
+        stats.radioStats = new RadioStat[radios.size()];
+        for (android.hardware.wifi.V1_5.StaLinkLayerRadioStats radioStats : radios) {
+            RadioStat radio = new RadioStat();
+            setFrameworkPerRadioStatsFromHidl(radioStats.radioId, radio, radioStats.V1_3);
+            stats.radioStats[radioIndex] = radio;
+            aggregateFrameworkRadioStatsFromHidl(radioIndex, stats, radioStats.V1_3);
+            radioIndex++;
         }
     }
 
