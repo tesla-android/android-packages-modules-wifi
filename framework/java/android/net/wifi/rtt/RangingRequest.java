@@ -114,15 +114,15 @@ public final class RangingRequest implements Parcelable {
     }
 
     /**
-     * Returns the list of RTT capable peers.
+     * Returns the list of RTT capable responding peers.
      *
-     * @return the list of RTT capable peers in a common system representation
+     * @return the list of RTT capable responding peers in a common system representation
      *
      * @hide
      */
     @SystemApi
     @NonNull
-    public List<ResponderConfig> getRttPeers() {
+    public List<ResponderConfig> getRttResponders() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
