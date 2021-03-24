@@ -80,7 +80,7 @@ java_defaults {
     ],
     libs: [
         "unsupportedappusage", // for android.compat.annotation.UnsupportedAppUsage
-        "framework-connectivity",
+        "framework-connectivity.stubs.module_lib",
     ],
     aidl: {
         include_dirs: [
@@ -119,7 +119,7 @@ java_sdk_library {
         "framework-wifi-defaults",
     ],
 
-    stub_only_libs: ["framework-connectivity"],
+    stub_only_libs: ["framework-connectivity.stubs.module_lib"],
 
     jarjar_rules: ":wifi-jarjar-rules",
 
