@@ -3624,18 +3624,13 @@ public class WifiManager {
      * {@link #registerSubsystemRestartTrackingCallback(Executor, SubsystemRestartTrackingCallback)}
      * to track the operation.
      *
-     * @param reason If non-null, requests a bug report and attaches the reason string to it. A bug
-     *               report may still not be generated based on framework criteria - for instance,
-     *               build type or throttling. The WiFi subsystem is restarted whether or not a bug
-     *               report is requested or generated.
-     *
      * @hide
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM)
-    public void restartWifiSubsystem(@Nullable String reason) {
+    public void restartWifiSubsystem() {
         try {
-            mService.restartWifiSubsystem(reason);
+            mService.restartWifiSubsystem();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

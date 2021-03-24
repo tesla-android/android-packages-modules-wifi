@@ -542,7 +542,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerWifiVerboseLoggingStatusCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.WifiVerboseLoggingStatusCallback);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void removeAppState(int, @NonNull String);
     method @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE) public void removeOnWifiUsabilityStatsListener(@NonNull android.net.wifi.WifiManager.OnWifiUsabilityStatsListener);
-    method @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM) public void restartWifiSubsystem(@Nullable String);
+    method @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM) public void restartWifiSubsystem();
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void restoreBackupData(@NonNull byte[]);
     method @Nullable @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public android.net.wifi.SoftApConfiguration restoreSoftApBackupData(@NonNull byte[]);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void restoreSupplicantBackupData(@NonNull byte[], @NonNull byte[]);

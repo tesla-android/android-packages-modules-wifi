@@ -1117,7 +1117,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM), eq("WifiService"));
 
         try {
-            mWifiServiceImpl.restartWifiSubsystem("doesn't matter");
+            mWifiServiceImpl.restartWifiSubsystem();
             fail("restartWifiSubsystem should fail w/o the APM permission!");
         } catch (SecurityException e) {
             // empty clause
@@ -1176,20 +1176,15 @@ public class WifiServiceImplTest extends WifiBaseTest {
      * Verify that the restartWifiSubsystem succeeds and passes correct parameters.
      */
     @Test
-    public void testRestartWifiSubsystemWithReason() {
+    public void testRestartWifiSubsystem() {
         assumeTrue(SdkLevel.isAtLeastS());
         when(mContext.checkPermission(eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
-        String reason = "Something is failing";
-        mWifiServiceImpl.restartWifiSubsystem(reason);
-        verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, reason, true);
-        mWifiServiceImpl.restartWifiSubsystem("");
-        verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, "", false);
-        mWifiServiceImpl.restartWifiSubsystem(null);
+        mWifiServiceImpl.restartWifiSubsystem();
         verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, null, false);
-        verify(mWifiMetrics, times(3)).logUserActionEvent(
-                eq(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM), anyInt());
+        verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM),
+                anyInt());
     }
 
     /**

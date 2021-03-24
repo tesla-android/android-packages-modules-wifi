@@ -453,9 +453,8 @@ public class WifiManagerTest {
      */
     @Test
     public void testRestartWifiSubsystem() throws Exception {
-        String reason = "some reason";
-        mWifiManager.restartWifiSubsystem(reason);
-        verify(mWifiService).restartWifiSubsystem(reason);
+        mWifiManager.restartWifiSubsystem();
+        verify(mWifiService).restartWifiSubsystem();
     }
 
     /**
