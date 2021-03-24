@@ -2413,10 +2413,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertEquals(WifiConfiguration.INVALID_NETWORK_ID, connectionInfo.getNetworkId());
         assertNull(connectionInfo.getPasspointFqdn());
         assertNull(connectionInfo.getPasspointProviderFriendlyName());
-        try {
-            connectionInfo.isPrimary();
-            fail();
-        } catch (SecurityException e) { /* pass */ }
+        if (SdkLevel.isAtLeastS()) {
+            try {
+                connectionInfo.isPrimary();
+                fail();
+            } catch (SecurityException e) { /* pass */ }
+        }
     }
 
     /**
