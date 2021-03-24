@@ -99,6 +99,8 @@ public class WifiHealthMonitor {
     static final int HEALTH_MONITOR_COUNT_TX_SPEED_MIN_MBPS = 54;
     // Minimum Tx packet per seconds for disconnection stats collection
     static final int HEALTH_MONITOR_MIN_TX_PACKET_PER_SEC = 4;
+    private static final long MAX_TIME_SINCE_LAST_CONNECTION_MS = 48 * 3600_000;
+
 
     private final Context mContext;
     private final WifiConfigManager mWifiConfigManager;
@@ -309,10 +311,13 @@ public class WifiHealthMonitor {
         List<WifiConfiguration> configuredNetworks = mWifiConfigManager.getConfiguredNetworks();
         for (WifiConfiguration network : configuredNetworks) {
             if (isInvalidConfiguredNetwork(network)) continue;
+            boolean isRecentlyConnected = (mClock.getWallClockMillis() - network.lastConnected)
+                    < MAX_TIME_SINCE_LAST_CONNECTION_MS;
             PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(network.SSID);
             int cntName = WifiScoreCard.CNT_CONNECTION_ATTEMPT;
             if (perNetwork.getStatsCurrBuild().getCount(cntName) > 0
-                    || perNetwork.getRecentStats().getCount(cntName) > 0) {
+                    || perNetwork.getRecentStats().getCount(cntName) > 0
+                    || isRecentlyConnected) {
                 pw.println(mWifiScoreCard.lookupNetwork(network.SSID));
             }
         }

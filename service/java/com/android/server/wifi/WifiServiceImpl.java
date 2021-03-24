@@ -3804,8 +3804,12 @@ public class WifiServiceImpl extends BaseWifiService {
                     WifiDiagnostics.REPORT_REASON_USER_ACTION);
             mWifiInjector.getWifiDiagnostics().dump(fd, pw, args);
             mWifiConnectivityManager.dump(fd, pw, args);
-            mWifiHealthMonitor.dump(fd, pw, args);
-            mWifiScoreCard.dump(fd, pw, args);
+            mWifiThreadRunner.run(() -> {
+                mWifiHealthMonitor.dump(fd, pw, args);
+            });
+            mWifiThreadRunner.run(() -> {
+                mWifiScoreCard.dump(fd, pw, args);
+            });
             mWifiInjector.getWakeupController().dump(fd, pw, args);
             mWifiInjector.getWifiLastResortWatchdog().dump(fd, pw, args);
             mWifiInjector.getAdaptiveConnectivityEnabledSettingObserver().dump(fd, pw, args);

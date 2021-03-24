@@ -2254,6 +2254,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mLastRxKbps = newRxKbps;
             updateCapabilities();
         }
+
+        int l2TxKbps = mWifiDataStall.getTxThroughputKbps();
+        int l2RxKbps = mWifiDataStall.getRxThroughputKbps();
+        if (l2RxKbps < 0 && l2TxKbps > 0) {
+            l2RxKbps = l2TxKbps;
+        }
+        int [] reportedKbps = {mLastTxKbps, mLastRxKbps};
+        int [] l2Kbps = {l2TxKbps, l2RxKbps};
+        network.updateBwMetrics(reportedKbps, l2Kbps);
     }
 
     // Polling has completed, hence we won't have a score anymore
@@ -3948,8 +3957,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             rxTputKbps = maxRxLinkSpeedMbps * 1000;
         }
         if (mVerboseLoggingEnabled) {
-            logd("tx tput in kbps: " + txTputKbps);
-            logd("rx tput in kbps: " + rxTputKbps);
+            logd("reported txKbps " + txTputKbps + " rxKbps " + rxTputKbps);
         }
         if (txTputKbps > 0) {
             networkCapabilitiesBuilder.setLinkUpstreamBandwidthKbps(txTputKbps);
