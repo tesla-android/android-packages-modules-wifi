@@ -174,6 +174,11 @@ public class WifiLinkLayerStats {
     public final SparseArray<ChannelStats> channelStatsMap = new SparseArray<>();
 
     /**
+     * numRadios - Number of radios used for coalescing above radio stats.
+     */
+    public int numRadios;
+
+    /**
      * TimeStamp - absolute milliseconds from boot when these stats were sampled.
      */
     public long timeStampInMs;
@@ -185,11 +190,6 @@ public class WifiLinkLayerStats {
      * If not using time slicing (i.e SCC or DBS), set to 100.
      */
     public short timeSliceDutyCycleInPercent = -1;
-
-    /**
-     * numRadios - Number of radios.
-     */
-    public int numRadios;
 
     /**
      * Per rate information and statistics.
@@ -257,6 +257,66 @@ public class WifiLinkLayerStats {
      */
     public PeerInfo[] peerInfo;
 
+    /**
+     * Radio stats
+     */
+    public static class RadioStat {
+        /**
+         * Radio identifier
+         */
+        public int radio_id;
+        /**
+         * Cumulative milliseconds when radio is awake from the last radio chip reset
+         */
+        public int on_time;
+        /**
+         * Cumulative milliseconds of active transmission from the last radio chip reset
+         */
+        public int tx_time;
+        /**
+         * Cumulative milliseconds of active receive from the last radio chip reset
+         */
+        public int rx_time;
+        /**
+         * Cumulative milliseconds when radio is awake due to scan from the last radio chip reset
+         */
+        public int on_time_scan;
+        /**
+         * Cumulative milliseconds when radio is awake due to nan scan from the last radio chip
+         * reset
+         */
+        public int on_time_nan_scan;
+        /**
+         * Cumulative milliseconds when radio is awake due to background scan from the last radio
+         * chip reset
+         */
+        public int on_time_background_scan;
+        /**
+         * Cumulative milliseconds when radio is awake due to roam scan from the last radio chip
+         * reset
+         */
+        public int on_time_roam_scan;
+        /**
+         * Cumulative milliseconds when radio is awake due to pno scan from the last radio chip
+         * reset
+         */
+        public int on_time_pno_scan;
+        /**
+         * Cumulative milliseconds when radio is awake due to hotspot 2.0 scan amd GAS exchange
+         * from the last radio chip reset
+         */
+        public int on_time_hs20_scan;
+        /**
+         * Channel stats list
+         */
+        public final SparseArray<ChannelStats> channelStatsMap = new SparseArray<>();
+    }
+
+    /**
+     * Radio stats of all the radios.
+     */
+    public RadioStat[] radioStats;
+
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
@@ -313,7 +373,8 @@ public class WifiLinkLayerStats {
                 .append(Integer.toString(this.contentionTimeAvgVoInUsec))
                 .append(" contention_num_samples")
                 .append(Integer.toString(this.contentionNumSamplesVo)).append('\n');
-        sbuf.append(" on_time : ").append(Integer.toString(this.on_time))
+        sbuf.append(" numRadios=" + numRadios)
+                .append(" on_time= ").append(Integer.toString(this.on_time))
                 .append(" tx_time=").append(Integer.toString(this.tx_time))
                 .append(" rx_time=").append(Integer.toString(this.rx_time))
                 .append(" scan_time=").append(Integer.toString(this.on_time_scan)).append('\n')
@@ -336,8 +397,36 @@ public class WifiLinkLayerStats {
                     .append(" radioOnTimeMs=").append(channelStatsEntry.radioOnTimeMs)
                     .append(" ccaBusyTimeMs=").append(channelStatsEntry.ccaBusyTimeMs).append('\n');
         }
+        int numRadios = this.radioStats == null ? 0 : this.radioStats.length;
+        sbuf.append(" Individual radio stats: numRadios=").append(numRadios).append('\n');
+        for (int i = 0; i < numRadios; i++) {
+            RadioStat radio = this.radioStats[i];
+            sbuf.append(" radio_id=" + radio.radio_id)
+                    .append(" on_time=").append(Integer.toString(radio.on_time))
+                    .append(" tx_time=").append(Integer.toString(radio.tx_time))
+                    .append(" rx_time=").append(Integer.toString(radio.rx_time))
+                    .append(" scan_time=").append(Integer.toString(radio.on_time_scan)).append('\n')
+                    .append(" nan_scan_time=")
+                    .append(Integer.toString(radio.on_time_nan_scan)).append('\n')
+                    .append(" g_scan_time=")
+                    .append(Integer.toString(radio.on_time_background_scan)).append('\n')
+                    .append(" roam_scan_time=")
+                    .append(Integer.toString(radio.on_time_roam_scan)).append('\n')
+                    .append(" pno_scan_time=")
+                    .append(Integer.toString(radio.on_time_pno_scan)).append('\n')
+                    .append(" hs2.0_scan_time=")
+                    .append(Integer.toString(radio.on_time_hs20_scan)).append('\n');
+            int numRadioChanStats = radio.channelStatsMap.size();
+            sbuf.append(" Number of channel stats=").append(numRadioChanStats).append('\n');
+            for (int j = 0; j < numRadioChanStats; ++j) {
+                ChannelStats channelStatsEntry = this.channelStatsMap.valueAt(j);
+                sbuf.append(" Frequency=").append(channelStatsEntry.frequency)
+                        .append(" radioOnTimeMs=").append(channelStatsEntry.radioOnTimeMs)
+                        .append(" ccaBusyTimeMs=").append(channelStatsEntry.ccaBusyTimeMs)
+                        .append('\n');
+            }
+        }
         sbuf.append(" ts=" + timeStampInMs);
-        sbuf.append(" numRadios=" + numRadios);
         int numPeers = this.peerInfo == null ? 0 : this.peerInfo.length;
         sbuf.append(" Number of peers=").append(numPeers).append('\n');
         for (int i = 0; i < numPeers; i++) {

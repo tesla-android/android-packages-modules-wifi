@@ -97,6 +97,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProfileTypeC
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProvisionStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PasspointProvisionStats.ProvisionFailureCount;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.PnoScanMetrics;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.RadioStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.RateStats;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.SoftApConnectedClientsEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.StaEvent;
@@ -4084,6 +4085,20 @@ public class WifiMetrics {
         line.append(",total_tx_retries=" + entry.totalTxRetries);
         line.append(",total_tx_bad=" + entry.totalTxBad);
         line.append(",total_rx_success=" + entry.totalRxSuccess);
+        if (entry.radioStats != null) {
+            for (RadioStats radioStat : entry.radioStats) {
+                line.append(",Radio Stats from radio_id=" + radioStat.radioId);
+                line.append(",radio_on_time_ms=" + radioStat.totalRadioOnTimeMs);
+                line.append(",radio_tx_time_ms=" + radioStat.totalRadioTxTimeMs);
+                line.append(",radio_rx_time_ms=" + radioStat.totalRadioRxTimeMs);
+                line.append(",scan_time_ms=" + radioStat.totalScanTimeMs);
+                line.append(",nan_scan_time_ms=" + radioStat.totalNanScanTimeMs);
+                line.append(",background_scan_time_ms=" + radioStat.totalBackgroundScanTimeMs);
+                line.append(",roam_scan_time_ms=" + radioStat.totalRoamScanTimeMs);
+                line.append(",pno_scan_time_ms=" + radioStat.totalPnoScanTimeMs);
+                line.append(",hotspot_2_scan_time_ms=" + radioStat.totalHotspot2ScanTimeMs);
+            }
+        }
         line.append(",total_radio_on_time_ms=" + entry.totalRadioOnTimeMs);
         line.append(",total_radio_tx_time_ms=" + entry.totalRadioTxTimeMs);
         line.append(",total_radio_rx_time_ms=" + entry.totalRadioRxTimeMs);
@@ -5876,6 +5891,27 @@ public class WifiMetrics {
                     + stats.lostmpdu_vi + stats.lostmpdu_vo;
             wifiUsabilityStatsEntry.totalRxSuccess = stats.rxmpdu_be + stats.rxmpdu_bk
                     + stats.rxmpdu_vi + stats.rxmpdu_vo;
+            /* Update per radio stats */
+            if (stats.radioStats != null && stats.radioStats.length > 0) {
+                int numRadios = stats.radioStats.length;
+                wifiUsabilityStatsEntry.radioStats =
+                        new RadioStats[numRadios];
+                for (int i = 0; i < numRadios; i++) {
+                    RadioStats radioStats = new RadioStats();
+                    WifiLinkLayerStats.RadioStat radio = stats.radioStats[i];
+                    radioStats.radioId = radio.radio_id;
+                    radioStats.totalRadioOnTimeMs = radio.on_time;
+                    radioStats.totalRadioTxTimeMs = radio.tx_time;
+                    radioStats.totalRadioRxTimeMs = radio.rx_time;
+                    radioStats.totalScanTimeMs = radio.on_time_scan;
+                    radioStats.totalNanScanTimeMs = radio.on_time_nan_scan;
+                    radioStats.totalBackgroundScanTimeMs = radio.on_time_background_scan;
+                    radioStats.totalRoamScanTimeMs = radio.on_time_roam_scan;
+                    radioStats.totalPnoScanTimeMs = radio.on_time_pno_scan;
+                    radioStats.totalHotspot2ScanTimeMs = radio.on_time_hs20_scan;
+                    wifiUsabilityStatsEntry.radioStats[i] = radioStats;
+                }
+            }
             wifiUsabilityStatsEntry.totalRadioOnTimeMs = stats.on_time;
             wifiUsabilityStatsEntry.totalRadioTxTimeMs = stats.tx_time;
             wifiUsabilityStatsEntry.totalRadioRxTimeMs = stats.rx_time;
@@ -6101,6 +6137,10 @@ public class WifiMetrics {
         android.net.wifi.WifiUsabilityStatsEntry.RateStats[] rateStats =
                 new android.net.wifi.WifiUsabilityStatsEntry.RateStats[numRates];
         createNewRateStatsParcelable(rateStats, s.rateStats);
+        int numRadios = s.radioStats != null ? s.radioStats.length : 0;
+        android.net.wifi.WifiUsabilityStatsEntry.RadioStats[] radioStats =
+                new android.net.wifi.WifiUsabilityStatsEntry.RadioStats[numRadios];
+        createNewRadioStatsParcelable(radioStats, s.radioStats);
         // TODO: remove the following hardcoded values once if they are removed from public API
         return new android.net.wifi.WifiUsabilityStatsEntry(s.timeStampMs, s.rssi,
                 s.linkSpeedMbps, s.totalTxSuccess, s.totalTxRetries,
@@ -6111,8 +6151,8 @@ public class WifiMetrics {
                 s.totalRadioOnFreqTimeMs, s.totalBeaconRx, probeStatus,
                 s.probeElapsedTimeSinceLastUpdateMs, s.probeMcsRateSinceLastUpdate,
                 s.rxLinkSpeedMbps, s.timeSliceDutyCycleInPercent, contentionTimeStats, rateStats,
-                s.channelUtilizationRatio, s.isThroughputSufficient, s.isWifiScoringEnabled,
-                s.isCellularDataAvailable, 0, 0, 0, false
+                radioStats, s.channelUtilizationRatio, s.isThroughputSufficient,
+                s.isWifiScoringEnabled, s.isCellularDataAvailable, 0, 0, 0, false
         );
     }
 
@@ -6234,6 +6274,28 @@ public class WifiMetrics {
         return android.net.wifi.WifiUsabilityStatsEntry.WIFI_PREAMBLE_INVALID;
     }
 
+    private void createNewRadioStatsParcelable(
+            android.net.wifi.WifiUsabilityStatsEntry.RadioStats[] statsParcelable,
+            RadioStats[] stats) {
+        if (stats == null) {
+            return;
+        }
+        for (int i = 0; i < stats.length; i++) {
+            statsParcelable[i] =
+                    new android.net.wifi.WifiUsabilityStatsEntry.RadioStats(
+                            stats[i].radioId,
+                            stats[i].totalRadioOnTimeMs,
+                            stats[i].totalRadioTxTimeMs,
+                            stats[i].totalRadioRxTimeMs,
+                            stats[i].totalScanTimeMs,
+                            stats[i].totalNanScanTimeMs,
+                            stats[i].totalBackgroundScanTimeMs,
+                            stats[i].totalRoamScanTimeMs,
+                            stats[i].totalPnoScanTimeMs,
+                            stats[i].totalHotspot2ScanTimeMs);
+        }
+    }
+
     private WifiUsabilityStatsEntry createNewWifiUsabilityStatsEntry(WifiUsabilityStatsEntry s) {
         WifiUsabilityStatsEntry out = new WifiUsabilityStatsEntry();
         out.timeStampMs = s.timeStampMs;
@@ -6275,6 +6337,7 @@ public class WifiMetrics {
         out.rateStats = s.rateStats;
         out.staCount = s.staCount;
         out.channelUtilization = s.channelUtilization;
+        out.radioStats = s.radioStats;
         return out;
     }
 
