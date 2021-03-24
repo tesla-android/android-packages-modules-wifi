@@ -325,7 +325,7 @@ interface IWifiManager
 
     void unregisterSubsystemRestartCallback(in ISubsystemRestartCallback callback);
 
-    void restartWifiSubsystem(String reason);
+    void restartWifiSubsystem();
 
     void addSuggestionUserApprovalStatusListener(in ISuggestionUserApprovalStatusListener listener, String packageName);
 

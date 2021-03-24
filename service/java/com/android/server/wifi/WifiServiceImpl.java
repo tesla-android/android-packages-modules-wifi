@@ -934,20 +934,19 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     @Override
-    public void restartWifiSubsystem(@Nullable String reason) {
+    public void restartWifiSubsystem() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
         enforceRestartWifiSubsystemPermission();
         if (isVerboseLoggingEnabled()) {
-            mLog.info("restartWifiSubsystem uid=% reason=%").c(Binder.getCallingUid()).r(
-                    reason).flush();
+            mLog.info("restartWifiSubsystem uid=%").c(Binder.getCallingUid()).flush();
         }
         WifiInfo wifiInfo =
                 mActiveModeWarden.getPrimaryClientModeManager().syncRequestConnectionInfo();
         mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM,
                 wifiInfo == null ? -1 : wifiInfo.getNetworkId());
-        mActiveModeWarden.recoveryRestartWifi(REASON_API_CALL, reason, !TextUtils.isEmpty(reason));
+        mActiveModeWarden.recoveryRestartWifi(REASON_API_CALL, null, false);
     }
 
     /**
