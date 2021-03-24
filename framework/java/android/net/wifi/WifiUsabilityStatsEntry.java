@@ -120,13 +120,25 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         WME_ACCESS_CATEGORY_VO})
     public @interface WmeAccessCategory {}
 
-    /** WME Best Effort Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Best Effort Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_BE = 0;
-    /** WME Background Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Background Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_BK = 1;
-    /** WME Video Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Video Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_VI = 2;
-    /** WME Voice Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Voice Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_VO = 3;
     /** Number of WME Access Categories */
     public static final int NUM_WME_ACCESS_CATEGORIES = 4;
