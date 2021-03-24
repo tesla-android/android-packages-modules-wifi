@@ -17,10 +17,7 @@
   "mainline-presubmit": [
     {
       "name": "MtsWifiTestCases[com.google.android.wifi.apex]"
-    }
-  ],
-  // TODO(b/179512200): move to mainline-presubmit once passing
-  "mainline-postsubmit": [
+    },
     {
       "name": "CtsWifiTestCases[com.google.android.wifi.apex]",
       "options": [
