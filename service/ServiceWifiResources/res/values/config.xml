@@ -612,7 +612,7 @@
 
     <!-- A value to decide when NetworkCapabilities are updated to reflect the latest link
     bandwidth. If the bandwidth change is above this value, NetworkCapabilities are updated -->
-    <integer translatable="false" name="config_wifiLinkBandwidthUpdateThresholdPercent">40</integer>
+    <integer translatable="false" name="config_wifiLinkBandwidthUpdateThresholdPercent">15</integer>
 
     <!-- Whether we should apply APF filters on non primary STA connections when STA + STA is active.
          Defaults to false since most wifi chips cannot support concurrent APF filter set needed for STA + STA-->

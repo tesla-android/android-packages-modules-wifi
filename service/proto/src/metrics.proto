@@ -739,6 +739,9 @@ message WifiLog {
 
   // Metrics for Wifi to Wifi switches.
   optional WifiToWifiSwitchStats wifi_to_wifi_switch_stats = 209;
+
+  // Bandwidth estimator stats.
+  optional BandwidthEstimatorStats bandwidth_estimator_stats = 210;
 }
 
 // Information that gets logged for every WiFi connection.
@@ -3733,5 +3736,41 @@ message WifiToWifiSwitchStats {
 
   // Number of times the old network in Make Before Break completed lingering and was disconnected.
   optional int32 make_before_break_linger_completed_count = 8;
+}
+
+// Network layer bandwidth estimator stats
+message BandwidthEstimatorStats {
+  // Bandwidth stats of each signal level
+  message perLevel {
+    // Signal level derived by RssiUtil.calculateSignalLevel based on RSSI
+    optional uint32 signal_level = 1;
+    // Accumulated bandwidth sample count
+    optional uint32 count = 2;
+    // Average network layer bandwidth in kbps based on TrafficStats byte count and radio on time
+    // of link layer stats.
+    optional uint32 avg_bandwidth_kbps = 3;
+    // Normalized root mean square error (NRMSE) of layer 2 link bandwidth in percent
+    optional uint32 l2_nrmse_percent = 4;
+    // Normalized root mean square error (NRMSE) of network layer bandwidth estimation in percent
+    optional uint32 bandwidth_est_nrmse_percent = 5;
+  }
+
+  // Bandwidth stats of each link
+  message perLink {
+    repeated perLevel level = 1;
+  }
+
+  // Bandwidth stats of each band
+  message perBand {
+    // Tx bandwidth stats
+    optional perLink tx = 1;
+    // Rx bandwidth stats
+    optional perLink rx = 2;
+  }
+
+  // Stats of 2g band
+  optional perBand stats_2g = 1;
+  // Stats of above-2g band
+  optional perBand stats_above_2g = 2;
 }
 
