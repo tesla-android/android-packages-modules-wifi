@@ -111,6 +111,7 @@ public class WifiHealthMonitor {
     private final WifiNative mWifiNative;
     private final WifiInjector mWifiInjector;
     private final DeviceConfigFacade mDeviceConfigFacade;
+    private final ActiveModeWarden mActiveModeWarden;
     private WifiScanner mScanner;
     private MemoryStore mMemoryStore;
     private boolean mWifiEnabled;
@@ -127,9 +128,31 @@ public class WifiHealthMonitor {
     private boolean mHasNewDataForWifiMetrics = false;
     private int mDeviceMobilityState = WifiManager.DEVICE_MOBILITY_STATE_UNKNOWN;
 
+    private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        private void update() {
+            setWifiEnabled(mActiveModeWarden.getPrimaryClientModeManagerNullable() != null);
+        }
+    }
+
     WifiHealthMonitor(Context context, WifiInjector wifiInjector, Clock clock,
             WifiConfigManager wifiConfigManager, WifiScoreCard wifiScoreCard, Handler handler,
-            WifiNative wifiNative, String l2KeySeed, DeviceConfigFacade deviceConfigFacade) {
+            WifiNative wifiNative, String l2KeySeed, DeviceConfigFacade deviceConfigFacade,
+            ActiveModeWarden activeModeWarden) {
         mContext = context;
         mWifiInjector = wifiInjector;
         mClock = clock;
@@ -139,9 +162,10 @@ public class WifiHealthMonitor {
         mHandler = handler;
         mWifiNative = wifiNative;
         mDeviceConfigFacade = deviceConfigFacade;
-        mWifiEnabled = false;
+        mActiveModeWarden = activeModeWarden;
         mWifiSystemInfoStats = new WifiSystemInfoStats(l2KeySeed);
         mWifiConfigManager.addOnNetworkUpdateListener(new OnNetworkUpdateListener());
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
     }
 
     /**
@@ -188,7 +212,8 @@ public class WifiHealthMonitor {
      * During the off->on transition, retrieve scanner.
      * During the on->off transition, issue MemoryStore write to save data.
      */
-    public void setWifiEnabled(boolean enable) {
+    private void setWifiEnabled(boolean enable) {
+        if (mWifiEnabled == enable) return;
         mWifiEnabled = enable;
         logd("Set WiFi " + (enable ? "enabled" : "disabled"));
         if (enable) {
