@@ -2226,7 +2226,11 @@ public class WifiServiceImpl extends BaseWifiService {
     @Override
     public void setScanAlwaysAvailable(boolean isAvailable, String packageName) {
         enforceNetworkSettingsPermission();
-        mLog.info("setScanAlwaysAvailable uid=%").c(Binder.getCallingUid()).flush();
+        mLog.info("setScanAlwaysAvailable uid=% package=% isAvailable=%")
+                .c(Binder.getCallingUid())
+                .c(packageName)
+                .c(isAvailable)
+                .flush();
         mSettingsStore.handleWifiScanAlwaysAvailableToggled(isAvailable);
         long ident = Binder.clearCallingIdentity();
         try {
