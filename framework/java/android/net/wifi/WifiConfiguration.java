@@ -1066,6 +1066,47 @@ public class WifiConfiguration implements Parcelable {
     public int priority;
 
     /**
+     * The deletion priority of this configuration.
+     *
+     * Deletion priority is a non-negative value (default 0) indicating the priority for deletion
+     * when auto-pruning the amount of saved configurations. Networks with a lower value will be
+     * pruned before networks with a higher value.
+     */
+    private int mDeletionPriority;
+
+    /**
+     * Sets the deletion priority of this configuration.
+     *
+     * Deletion priority is a non-negative value (default 0) indicating the priority for deletion
+     * when auto-pruning the amount of saved configurations. Networks with a lower value will be
+     * pruned before networks with a higher value.
+     *
+     * @param priority non-negative deletion priority
+     * @hide
+     */
+    @SystemApi
+    public void setDeletionPriority(int priority) throws IllegalArgumentException {
+        if (priority < 0) {
+            throw new IllegalArgumentException("Deletion priority must be non-negative");
+        }
+        mDeletionPriority = priority;
+    }
+
+    /**
+     * Returns the deletion priority of this configuration.
+     *
+     * Deletion priority is a non-negative value (default 0) indicating the priority for deletion
+     * when auto-pruning the amount of saved configurations. Networks with a lower value will be
+     * pruned before networks with a higher value.
+     *
+     * @hide
+     */
+    @SystemApi
+    public int getDeletionPriority() {
+        return mDeletionPriority;
+    }
+
+    /**
      * This is a network that does not broadcast its SSID, so an
      * SSID-specific probe request must be used for scans.
      */
@@ -2780,6 +2821,7 @@ public class WifiConfiguration implements Parcelable {
         FQDN = null;
         roamingConsortiumIds = new long[0];
         priority = 0;
+        mDeletionPriority = 0;
         hiddenSSID = false;
         allowedKeyManagement = new BitSet();
         allowedProtocols = new BitSet();
@@ -2946,6 +2988,7 @@ public class WifiConfiguration implements Parcelable {
         sbuf.append(" randomizedMacLastModifiedTimeMs: ")
                 .append(randomizedMacLastModifiedTimeMs == 0 ? "<none>"
                         : logTimeOfDay(randomizedMacLastModifiedTimeMs)).append("\n");
+        sbuf.append(" deletionPriority: ").append(mDeletionPriority).append("\n");
         sbuf.append(" KeyMgmt:");
         for (int k = 0; k < this.allowedKeyManagement.size(); k++) {
             if (this.allowedKeyManagement.get(k)) {
@@ -3477,6 +3520,7 @@ public class WifiConfiguration implements Parcelable {
 
             wepTxKeyIndex = source.wepTxKeyIndex;
             priority = source.priority;
+            mDeletionPriority = source.mDeletionPriority;
             hiddenSSID = source.hiddenSSID;
             allowedKeyManagement   = (BitSet) source.allowedKeyManagement.clone();
             allowedProtocols       = (BitSet) source.allowedProtocols.clone();
@@ -3564,6 +3608,7 @@ public class WifiConfiguration implements Parcelable {
         }
         dest.writeInt(wepTxKeyIndex);
         dest.writeInt(priority);
+        dest.writeInt(mDeletionPriority);
         dest.writeInt(hiddenSSID ? 1 : 0);
         dest.writeInt(requirePmf ? 1 : 0);
         dest.writeString(updateIdentifier);
@@ -3649,6 +3694,7 @@ public class WifiConfiguration implements Parcelable {
                 }
                 config.wepTxKeyIndex = in.readInt();
                 config.priority = in.readInt();
+                config.mDeletionPriority = in.readInt();
                 config.hiddenSSID = in.readInt() != 0;
                 config.requirePmf = in.readInt() != 0;
                 config.updateIdentifier = in.readString();
