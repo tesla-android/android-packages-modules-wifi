@@ -120,13 +120,25 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         WME_ACCESS_CATEGORY_VO})
     public @interface WmeAccessCategory {}
 
-    /** WME Best Effort Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Best Effort Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_BE = 0;
-    /** WME Background Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Background Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_BK = 1;
-    /** WME Video Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Video Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_VI = 2;
-    /** WME Voice Access Category */
+    /**
+     * Wireless Multimedia Extensions (WME) Voice Access Category, IEEE Std 802.11-2020,
+     * Section 9.4.2.28, Table 9-155
+     */
     public static final int WME_ACCESS_CATEGORY_VO = 3;
     /** Number of WME Access Categories */
     public static final int NUM_WME_ACCESS_CATEGORIES = 4;
@@ -417,6 +429,169 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         }
     }
     private final RateStats[] mRateStats;
+
+    /**
+     * Wifi link layer radio stats.
+     */
+    public static final class RadioStats implements Parcelable {
+        private int mRadioId;
+        private long mTotalRadioOnTimeMillis;
+        private long mTotalRadioTxTimeMillis;
+        private long mTotalRadioRxTimeMillis;
+        private long mTotalScanTimeMillis;
+        private long mTotalNanScanTimeMillis;
+        private long mTotalBackgroundScanTimeMillis;
+        private long mTotalRoamScanTimeMillis;
+        private long mTotalPnoScanTimeMillis;
+        private long mTotalHotspot2ScanTimeMillis;
+
+        /** @hide */
+        public RadioStats() {
+        }
+
+        /**
+         * Constructor function
+         * @param radioId Firmware/Hardware implementation specific persistent value for this
+         *                device, identifying the radio interface for which the stats are produced.
+         * @param onTime The total time the wifi radio is on in ms counted from the last radio
+         *               chip reset
+         * @param txTime The total time the wifi radio is transmitting in ms counted from the last
+         *               radio chip reset
+         * @param rxTime The total time the wifi radio is receiving in ms counted from the last
+         *               radio chip reset
+         * @param onTimeScan The total time spent on all types of scans in ms counted from the
+         *                   last radio chip reset
+         * @param onTimeNanScan The total time spent on nan scans in ms counted from the last radio
+         *                      chip reset
+         * @param onTimeBackgroundScan The total time spent on background scans in ms counted from
+         *                             the last radio chip reset
+         * @param onTimeRoamScan The total time spent on roam scans in ms counted from the last
+         *                       radio chip reset
+         * @param onTimePnoScan The total time spent on pno scans in ms counted from the last radio
+         *                      chip reset
+         * @param onTimeHs20Scan The total time spent on hotspot2.0 scans and GAS exchange in ms
+         *                       counted from the last radio chip reset
+         */
+        public RadioStats(int radioId, long onTime, long txTime, long rxTime, long onTimeScan,
+                long onTimeNanScan, long onTimeBackgroundScan, long onTimeRoamScan,
+                long onTimePnoScan, long onTimeHs20Scan) {
+            this.mRadioId = radioId;
+            this.mTotalRadioOnTimeMillis = onTime;
+            this.mTotalRadioTxTimeMillis = txTime;
+            this.mTotalRadioRxTimeMillis = rxTime;
+            this.mTotalScanTimeMillis = onTimeScan;
+            this.mTotalNanScanTimeMillis = onTimeNanScan;
+            this.mTotalBackgroundScanTimeMillis = onTimeBackgroundScan;
+            this.mTotalRoamScanTimeMillis = onTimeRoamScan;
+            this.mTotalPnoScanTimeMillis = onTimePnoScan;
+            this.mTotalHotspot2ScanTimeMillis = onTimeHs20Scan;
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            dest.writeInt(mRadioId);
+            dest.writeLong(mTotalRadioOnTimeMillis);
+            dest.writeLong(mTotalRadioTxTimeMillis);
+            dest.writeLong(mTotalRadioRxTimeMillis);
+            dest.writeLong(mTotalScanTimeMillis);
+            dest.writeLong(mTotalNanScanTimeMillis);
+            dest.writeLong(mTotalBackgroundScanTimeMillis);
+            dest.writeLong(mTotalRoamScanTimeMillis);
+            dest.writeLong(mTotalPnoScanTimeMillis);
+            dest.writeLong(mTotalHotspot2ScanTimeMillis);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @NonNull Creator<RadioStats> CREATOR =
+                new Creator<RadioStats>() {
+                    public RadioStats createFromParcel(Parcel in) {
+                        RadioStats stats = new RadioStats();
+                        stats.mRadioId = in.readInt();
+                        stats.mTotalRadioOnTimeMillis = in.readLong();
+                        stats.mTotalRadioTxTimeMillis = in.readLong();
+                        stats.mTotalRadioRxTimeMillis = in.readLong();
+                        stats.mTotalScanTimeMillis = in.readLong();
+                        stats.mTotalNanScanTimeMillis = in.readLong();
+                        stats.mTotalBackgroundScanTimeMillis = in.readLong();
+                        stats.mTotalRoamScanTimeMillis = in.readLong();
+                        stats.mTotalPnoScanTimeMillis = in.readLong();
+                        stats.mTotalHotspot2ScanTimeMillis = in.readLong();
+                        return stats;
+                    }
+                    public RadioStats[] newArray(int size) {
+                        return new RadioStats[size];
+                    }
+                };
+
+        /**
+         * Firmware/Hardware implementation specific persistent value for this
+         * device, identifying the radio interface for which the stats are produced.
+         */
+        public long getRadioId() {
+            return mRadioId;
+        }
+
+        /** The total time the wifi radio is on in ms counted from the last radio chip reset */
+        public long getTotalRadioOnTimeMillis() {
+            return mTotalRadioOnTimeMillis;
+        }
+
+        /**
+         * The total time the wifi radio is transmitting in ms counted from the last radio chip
+         * reset
+         */
+        public long getTotalRadioTxTimeMillis() {
+            return mTotalRadioTxTimeMillis;
+        }
+
+        /**
+         * The total time the wifi radio is receiving in ms counted from the last radio chip reset
+         */
+        public long getTotalRadioRxTimeMillis() {
+            return mTotalRadioRxTimeMillis;
+        }
+
+        /**
+         * The total time spent on all types of scans in ms counted from the last radio chip reset
+         */
+        public long getTotalScanTimeMillis() {
+            return mTotalScanTimeMillis;
+        }
+
+        /** The total time spent on nan scans in ms counted from the last radio chip reset */
+        public long getTotalNanScanTimeMillis() {
+            return mTotalNanScanTimeMillis;
+        }
+
+        /** The total time spent on background scans in ms counted from the last radio chip reset */
+        public long getTotalBackgroundScanTimeMillis() {
+            return mTotalBackgroundScanTimeMillis;
+        }
+
+        /** The total time spent on roam scans in ms counted from the last radio chip reset */
+        public long getTotalRoamScanTimeMillis() {
+            return mTotalRoamScanTimeMillis;
+        }
+
+        /** The total time spent on pno scans in ms counted from the last radio chip reset */
+        public long getTotalPnoScanTimeMillis() {
+            return mTotalPnoScanTimeMillis;
+        }
+
+        /**
+         * The total time spent on hotspot2.0 scans and GAS exchange in ms counted from the
+         * last radio chip reset
+         */
+        public long getTotalHotspot2ScanTimeMillis() {
+            return mTotalHotspot2ScanTimeMillis;
+        }
+    }
+    private final RadioStats[] mRadioStats;
     private final int mChannelUtilizationRatio;
     private final boolean mIsThroughputSufficient;
     private final boolean mIsWifiScoringEnabled;
@@ -438,10 +613,11 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             @ProbeStatus int probeStatusSinceLastUpdate, int probeElapsedTimeSinceLastUpdateMillis,
             int probeMcsRateSinceLastUpdate, int rxLinkSpeedMbps,
             int timeSliceDutyCycleInPercent, ContentionTimeStats[] contentionTimeStats,
-            RateStats[] rateStats, int channelUtilizationRatio, boolean isThroughputSufficient,
-            boolean isWifiScoringEnabled, boolean isCellularDataAvailable,
-            @NetworkType int cellularDataNetworkType, int cellularSignalStrengthDbm,
-            int cellularSignalStrengthDb, boolean isSameRegisteredCell) {
+            RateStats[] rateStats, RadioStats[] radiostats, int channelUtilizationRatio,
+            boolean isThroughputSufficient, boolean isWifiScoringEnabled,
+            boolean isCellularDataAvailable, @NetworkType int cellularDataNetworkType,
+            int cellularSignalStrengthDbm, int cellularSignalStrengthDb,
+            boolean isSameRegisteredCell) {
         mTimeStampMillis = timeStampMillis;
         mRssi = rssi;
         mLinkSpeedMbps = linkSpeedMbps;
@@ -468,6 +644,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         mTimeSliceDutyCycleInPercent = timeSliceDutyCycleInPercent;
         mContentionTimeStats = contentionTimeStats;
         mRateStats = rateStats;
+        mRadioStats = radiostats;
         mChannelUtilizationRatio = channelUtilizationRatio;
         mIsThroughputSufficient = isThroughputSufficient;
         mIsWifiScoringEnabled = isWifiScoringEnabled;
@@ -511,6 +688,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
         dest.writeInt(mTimeSliceDutyCycleInPercent);
         dest.writeTypedArray(mContentionTimeStats, flags);
         dest.writeTypedArray(mRateStats, flags);
+        dest.writeTypedArray(mRadioStats, flags);
         dest.writeInt(mChannelUtilizationRatio);
         dest.writeBoolean(mIsThroughputSufficient);
         dest.writeBoolean(mIsWifiScoringEnabled);
@@ -536,6 +714,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
                     in.readInt(), in.readInt(), in.readInt(),
                     in.readInt(), in.createTypedArray(ContentionTimeStats.CREATOR),
                     in.createTypedArray(RateStats.CREATOR),
+                    in.createTypedArray(RadioStats.CREATOR),
                     in.readInt(), in.readBoolean(), in.readBoolean(),
                     in.readBoolean(), in.readInt(), in.readInt(),
                     in.readInt(), in.readBoolean()
@@ -703,6 +882,18 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     public List<RateStats> getRateStats() {
         if (mRateStats != null) {
             return Arrays.asList(mRateStats);
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * Radio stats from all the radios, see {@link RadioStats#getRadioId()}
+     * @return A list of Wifi link layer radio stats, see {@link RadioStats}
+     */
+    @NonNull
+    public List<RadioStats> getWifiLinkLayerRadioStats() {
+        if (mRadioStats != null) {
+            return Arrays.asList(mRadioStats);
         }
         return Collections.emptyList();
     }

@@ -343,6 +343,7 @@ package android.net.wifi {
 
   public class WifiManager {
     method @Deprecated public int addNetwork(android.net.wifi.WifiConfiguration);
+    method @NonNull @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_STACK, android.Manifest.permission.NETWORK_SETUP_WIZARD, android.Manifest.permission.NETWORK_MANAGED_PROVISIONING}) public android.net.wifi.WifiManager.AddNetworkResult addNetworkPrivileged(@NonNull android.net.wifi.WifiConfiguration);
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int addNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
     method public void addOrUpdatePasspointConfiguration(android.net.wifi.hotspot2.PasspointConfiguration);
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_WIFI_STATE}) public void addSuggestionConnectionStatusListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SuggestionConnectionStatusListener);
@@ -476,6 +477,26 @@ package android.net.wifi {
     field @Deprecated public static final int WPS_TIMED_OUT = 7; // 0x7
     field @Deprecated public static final int WPS_TKIP_ONLY_PROHIBITED = 5; // 0x5
     field @Deprecated public static final int WPS_WEP_PROHIBITED = 4; // 0x4
+  }
+
+  public static final class WifiManager.AddNetworkResult implements android.os.Parcelable {
+    ctor public WifiManager.AddNetworkResult(int, int);
+    method public int describeContents();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiManager.AddNetworkResult> CREATOR;
+    field public static final int STATUS_ADD_PASSPOINT_FAILURE = 3; // 0x3
+    field public static final int STATUS_ADD_WIFI_CONFIG_FAILURE = 4; // 0x4
+    field public static final int STATUS_FAILURE_UNKNOWN = 1; // 0x1
+    field public static final int STATUS_FAILURE_UPDATE_NETWORK_KEYS = 9; // 0x9
+    field public static final int STATUS_INVALID_CONFIGURATION = 5; // 0x5
+    field public static final int STATUS_INVALID_CONFIGURATION_ENTERPRISE = 10; // 0xa
+    field public static final int STATUS_NO_PERMISSION = 2; // 0x2
+    field public static final int STATUS_NO_PERMISSION_MODIFY_CONFIG = 6; // 0x6
+    field public static final int STATUS_NO_PERMISSION_MODIFY_MAC_RANDOMIZATION = 8; // 0x8
+    field public static final int STATUS_NO_PERMISSION_MODIFY_PROXY_SETTING = 7; // 0x7
+    field public static final int STATUS_SUCCESS = 0; // 0x0
+    field public final int networkId;
+    field public final int statusCode;
   }
 
   public static class WifiManager.LocalOnlyHotspotCallback {

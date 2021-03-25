@@ -1519,7 +1519,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * @param enabled boolean idicating if polling should start
      */
     @VisibleForTesting
-    void enableRssiPolling(boolean enabled) {
+    public void enableRssiPolling(boolean enabled) {
         sendMessage(CMD_ENABLE_RSSI_POLL, enabled ? 1 : 0, 0);
     }
 
@@ -2078,7 +2078,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             R.bool.config_wifiSuspendOptimizationsEnabled)
                     + " state " + getCurrentState().getName());
         }
-        enableRssiPolling(screenOn);
+        if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+            // Only enable RSSI polling on primary STA, none of the secondary STA use-cases
+            // can become the default route when other networks types that provide internet
+            // connectivity (e.g. cellular) are available. So, no point in scoring
+            // these connections for the purpose of switching between wifi and other network
+            // types.
+            // TODO(b/179518316): Enable this for secondary transient STA also if external scorer
+            // is in charge of MBB.
+            enableRssiPolling(screenOn);
+        }
         if (mContext.getResources().getBoolean(R.bool.config_wifiSuspendOptimizationsEnabled)) {
             int shouldReleaseWakeLock = 0;
             if (screenOn) {
@@ -6318,6 +6327,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     public void onRoleChanged() {
         if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
             applyCachedPacketFilter();
+            if (mScreenOn) {
+                // Start RSSI polling for the new primary network to enable scoring.
+                enableRssiPolling(true);
+            }
+        } else {
+            if (mScreenOn) {
+                // Stop RSSI polling (if enabled) for the secondary network.
+                enableRssiPolling(false);
+            }
         }
         WifiConfiguration connectedNetwork = getConnectedWifiConfiguration();
         if (connectedNetwork != null) {

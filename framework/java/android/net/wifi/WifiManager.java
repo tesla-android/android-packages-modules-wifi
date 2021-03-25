@@ -53,6 +53,8 @@ import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.os.connectivity.WifiActivityEnergyInfo;
@@ -1685,6 +1687,148 @@ public class WifiManager {
         }
         config.networkId = -1;
         return addOrUpdateNetwork(config);
+    }
+
+    /**
+     * This is a new version of {@link #addNetwork(WifiConfiguration)} which returns more detailed
+     * failure codes. The usage of this API is limited to Device Owner (DO), Profile Owner (PO),
+     * system app, and privileged apps.
+     * <p>
+     * Add a new network description to the set of configured networks. The {@code networkId}
+     * field of the supplied configuration object is ignored. The new network will be marked
+     * DISABLED by default. To enable it, call {@link #enableNetwork}.
+     * <p>
+     * @param config the set of variables that describe the configuration,
+     *            contained in a {@link WifiConfiguration} object.
+     *            If the {@link WifiConfiguration} has an Http Proxy set
+     *            the calling app must be System, or be provisioned as the Profile or Device Owner.
+     * @return A {@link AddNetworkResult} Object.
+     * @throws {@link SecurityException} if the calling app is not a Device Owner (DO),
+     *                           Profile Owner (PO), system app, or a privileged app that has one of
+     *                           the permissions required by this API.
+     * @throws {@link IllegalArgumentException} if the input configuration is null.
+     */
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_STACK,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD,
+            android.Manifest.permission.NETWORK_MANAGED_PROVISIONING
+    })
+    @NonNull
+    public AddNetworkResult addNetworkPrivileged(@NonNull WifiConfiguration config) {
+        if (config == null) throw new IllegalArgumentException("config cannot be null");
+        config.networkId = -1;
+        try {
+            return mService.addOrUpdateNetworkPrivileged(config, mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Provides the results of a call to {@link #addNetworkPrivileged(WifiConfiguration)}
+     */
+    public static final class AddNetworkResult implements Parcelable {
+        /**
+         * The operation has completed successfully.
+         */
+        public static final int STATUS_SUCCESS = 0;
+        /**
+         * The operation has failed due to an unknown reason.
+         */
+        public static final int STATUS_FAILURE_UNKNOWN = 1;
+        /**
+         * The calling app does not have permission to call this API.
+         */
+        public static final int STATUS_NO_PERMISSION = 2;
+        /**
+         * Generic failure code for adding a passpoint network.
+         */
+        public static final int STATUS_ADD_PASSPOINT_FAILURE = 3;
+        /**
+         * Generic failure code for adding a non-passpoint network.
+         */
+        public static final int STATUS_ADD_WIFI_CONFIG_FAILURE = 4;
+        /**
+         * The network configuration is invalid.
+         */
+        public static final int STATUS_INVALID_CONFIGURATION = 5;
+        /**
+         * The calling app has no permission to modify the configuration.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_CONFIG = 6;
+        /**
+         * The calling app has no permission to modify the proxy setting.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_PROXY_SETTING = 7;
+        /**
+         * The calling app has no permission to modify the MAC randomization setting.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_MAC_RANDOMIZATION = 8;
+        /**
+         * Internal failure in updating network keys..
+         */
+        public static final int STATUS_FAILURE_UPDATE_NETWORK_KEYS = 9;
+        /**
+         * The enterprise network is missing either the root CA or domain name.
+         */
+        public static final int STATUS_INVALID_CONFIGURATION_ENTERPRISE = 10;
+
+        /** @hide */
+        @IntDef(prefix = { "STATUS_" }, value = {
+                STATUS_SUCCESS,
+                STATUS_FAILURE_UNKNOWN,
+                STATUS_NO_PERMISSION,
+                STATUS_ADD_PASSPOINT_FAILURE,
+                STATUS_ADD_WIFI_CONFIG_FAILURE,
+                STATUS_INVALID_CONFIGURATION,
+                STATUS_NO_PERMISSION_MODIFY_CONFIG,
+                STATUS_NO_PERMISSION_MODIFY_PROXY_SETTING,
+                STATUS_NO_PERMISSION_MODIFY_MAC_RANDOMIZATION,
+                STATUS_FAILURE_UPDATE_NETWORK_KEYS,
+                STATUS_INVALID_CONFIGURATION_ENTERPRISE,
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface AddNetworkStatusCode {}
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            dest.writeInt(statusCode);
+            dest.writeInt(networkId);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @android.annotation.NonNull Creator<AddNetworkResult> CREATOR =
+                new Creator<AddNetworkResult>() {
+                    public AddNetworkResult createFromParcel(Parcel in) {
+                        return new AddNetworkResult(in.readInt(), in.readInt());
+                    }
+
+                    public AddNetworkResult[] newArray(int size) {
+                        return new AddNetworkResult[size];
+                    }
+                };
+
+        /**
+         * One of the {@code STATUS_} values. If the operation is successful this field
+         * will be set to {@code STATUS_SUCCESS}.
+         */
+        public final @AddNetworkStatusCode int statusCode;
+        /**
+         * The identifier of the added network, which could be used in other operations. This field
+         * will be set to {@code -1} if the operation failed.
+         */
+        public final int networkId;
+
+        public AddNetworkResult(@AddNetworkStatusCode int statusCode, int networkId) {
+            this.statusCode = statusCode;
+            this.networkId = networkId;
+        }
     }
 
     /**
@@ -3480,18 +3624,13 @@ public class WifiManager {
      * {@link #registerSubsystemRestartTrackingCallback(Executor, SubsystemRestartTrackingCallback)}
      * to track the operation.
      *
-     * @param reason If non-null, requests a bug report and attaches the reason string to it. A bug
-     *               report may still not be generated based on framework criteria - for instance,
-     *               build type or throttling. The WiFi subsystem is restarted whether or not a bug
-     *               report is requested or generated.
-     *
      * @hide
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM)
-    public void restartWifiSubsystem(@Nullable String reason) {
+    public void restartWifiSubsystem() {
         try {
-            mService.restartWifiSubsystem(reason);
+            mService.restartWifiSubsystem();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

@@ -83,6 +83,7 @@ import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiManager.AddNetworkResult;
 import android.net.wifi.WifiManager.CoexRestriction;
 import android.net.wifi.WifiManager.DeviceMobilityState;
 import android.net.wifi.WifiManager.LocalOnlyHotspotCallback;
@@ -933,20 +934,19 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     @Override
-    public void restartWifiSubsystem(@Nullable String reason) {
+    public void restartWifiSubsystem() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
         enforceRestartWifiSubsystemPermission();
         if (isVerboseLoggingEnabled()) {
-            mLog.info("restartWifiSubsystem uid=% reason=%").c(Binder.getCallingUid()).r(
-                    reason).flush();
+            mLog.info("restartWifiSubsystem uid=%").c(Binder.getCallingUid()).flush();
         }
         WifiInfo wifiInfo =
                 mActiveModeWarden.getPrimaryClientModeManager().syncRequestConnectionInfo();
         mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM,
                 wifiInfo == null ? -1 : wifiInfo.getNetworkId());
-        mActiveModeWarden.recoveryRestartWifi(REASON_API_CALL, reason, !TextUtils.isEmpty(reason));
+        mActiveModeWarden.recoveryRestartWifi(REASON_API_CALL, null, false);
     }
 
     /**
@@ -2643,6 +2643,25 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * see {@link WifiManager#addNetworkPrivileged(WifiConfiguration)}
+     * @return WifiManager.AddNetworkResult Object.
+     */
+    @Override
+    public @NonNull WifiManager.AddNetworkResult addOrUpdateNetworkPrivileged(
+            WifiConfiguration config, String packageName) {
+        int pid = Binder.getCallingPid();
+        int uid = Binder.getCallingUid();
+        boolean hasPermission = isPrivileged(pid, uid)
+                || isDeviceOrProfileOwner(uid, packageName)
+                || mWifiPermissionsUtil.isSystem(packageName, uid);
+        if (!hasPermission) {
+            throw new SecurityException("Caller is not a device owner, profile owner, system app,"
+                    + " or privileged app");
+        }
+        return addOrUpdateNetworkInternal(config, packageName, uid);
+    }
+
+    /**
      * see {@link android.net.wifi.WifiManager#addOrUpdateNetwork(WifiConfiguration)}
      * @return the supplicant-assigned identifier for the new or updated
      * network if the operation succeeds, or {@code -1} if it fails
@@ -2660,10 +2679,15 @@ public class WifiServiceImpl extends BaseWifiService {
             return -1;
         }
         mLog.info("addOrUpdateNetwork uid=%").c(Binder.getCallingUid()).flush();
+        return addOrUpdateNetworkInternal(config, packageName, callingUid).networkId;
+    }
 
+    private @NonNull AddNetworkResult addOrUpdateNetworkInternal(WifiConfiguration config,
+            String packageName, int callingUid) {
         if (config == null) {
             Log.e(TAG, "bad network configuration");
-            return -1;
+            return new AddNetworkResult(
+                    AddNetworkResult.STATUS_INVALID_CONFIGURATION, -1);
         }
         mWifiMetrics.incrementNumAddOrUpdateNetworkCalls();
 
@@ -2674,7 +2698,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     PasspointProvider.convertFromWifiConfig(config);
             if (passpointConfig == null || passpointConfig.getCredential() == null) {
                 Log.e(TAG, "Missing credential for Passpoint profile");
-                return -1;
+                return new AddNetworkResult(
+                        AddNetworkResult.STATUS_ADD_PASSPOINT_FAILURE, -1);
             }
 
             // Copy over certificates and keys.
@@ -2690,28 +2715,35 @@ public class WifiServiceImpl extends BaseWifiService {
                     config.enterpriseConfig.getClientPrivateKey());
             if (!addOrUpdatePasspointConfiguration(passpointConfig, packageName)) {
                 Log.e(TAG, "Failed to add Passpoint profile");
-                return -1;
+                return new AddNetworkResult(
+                        AddNetworkResult.STATUS_ADD_PASSPOINT_FAILURE, -1);
             }
             // There is no network ID associated with a Passpoint profile.
-            return 0;
+            return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, 0);
         }
 
-        if (config.isEnterprise()) {
-            if (config.enterpriseConfig.isTlsBasedEapMethod()
-                    && !config.enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
-                Log.e(TAG, "Enterprise network configuration is missing either a Root CA "
-                        + "or a domain name");
-                return -1;
-            }
+        if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
+                && !config.enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
+            Log.e(TAG, "Enterprise network configuration is missing either a Root CA "
+                    + "or a domain name");
+            return new AddNetworkResult(
+                    AddNetworkResult.STATUS_INVALID_CONFIGURATION_ENTERPRISE, -1);
         }
 
-        Log.i("addOrUpdateNetwork", " uid = " + Binder.getCallingUid()
+        Log.i("addOrUpdateNetworkInternal", " uid = " + Binder.getCallingUid()
                 + " SSID " + config.SSID
                 + " nid=" + config.networkId);
-        return mWifiThreadRunner.call(
-            () -> mWifiConfigManager.addOrUpdateNetwork(config, callingUid, packageName)
-                    .getNetworkId(),
+        // TODO: b/171981339, add more detailed failure reason into
+        //  WifiConfigManager.NetworkUpdateResult, and plumb that reason up.
+        int networkId =  mWifiThreadRunner.call(
+                () -> mWifiConfigManager.addOrUpdateNetwork(config, callingUid, packageName)
+                        .getNetworkId(),
                 WifiConfiguration.INVALID_NETWORK_ID);
+        if (networkId >= 0) {
+            return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, networkId);
+        }
+        return new AddNetworkResult(
+                AddNetworkResult.STATUS_ADD_WIFI_CONFIG_FAILURE, -1);
     }
 
     public static void verifyCert(X509Certificate caCert)

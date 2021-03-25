@@ -542,7 +542,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerWifiVerboseLoggingStatusCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.WifiVerboseLoggingStatusCallback);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void removeAppState(int, @NonNull String);
     method @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE) public void removeOnWifiUsabilityStatsListener(@NonNull android.net.wifi.WifiManager.OnWifiUsabilityStatsListener);
-    method @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM) public void restartWifiSubsystem(@Nullable String);
+    method @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM) public void restartWifiSubsystem();
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void restoreBackupData(@NonNull byte[]);
     method @Nullable @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public android.net.wifi.SoftApConfiguration restoreSoftApBackupData(@NonNull byte[]);
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void restoreSupplicantBackupData(@NonNull byte[], @NonNull byte[]);
@@ -917,6 +917,7 @@ package android.net.wifi {
     method public long getTotalTxBad();
     method public long getTotalTxRetries();
     method public long getTotalTxSuccess();
+    method @NonNull public java.util.List<android.net.wifi.WifiUsabilityStatsEntry.RadioStats> getWifiLinkLayerRadioStats();
     method public boolean isCellularDataAvailable();
     method public boolean isSameRegisteredCell();
     method public boolean isThroughputSufficient();
@@ -962,6 +963,23 @@ package android.net.wifi {
     method public int getContentionTimeMinMicros();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats> CREATOR;
+  }
+
+  public static final class WifiUsabilityStatsEntry.RadioStats implements android.os.Parcelable {
+    ctor public WifiUsabilityStatsEntry.RadioStats(int, long, long, long, long, long, long, long, long, long);
+    method public int describeContents();
+    method public long getRadioId();
+    method public long getTotalBackgroundScanTimeMillis();
+    method public long getTotalHotspot2ScanTimeMillis();
+    method public long getTotalNanScanTimeMillis();
+    method public long getTotalPnoScanTimeMillis();
+    method public long getTotalRadioOnTimeMillis();
+    method public long getTotalRadioRxTimeMillis();
+    method public long getTotalRadioTxTimeMillis();
+    method public long getTotalRoamScanTimeMillis();
+    method public long getTotalScanTimeMillis();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry.RadioStats> CREATOR;
   }
 
   public static final class WifiUsabilityStatsEntry.RateStats implements android.os.Parcelable {

@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static android.content.Intent.ACTION_SCREEN_OFF;
+import static android.content.Intent.ACTION_SCREEN_ON;
 import static android.net.NetworkInfo.DetailedState.CONNECTED;
 import static android.net.NetworkInfo.DetailedState.CONNECTING;
 import static android.net.NetworkInfo.DetailedState.OBTAINING_IPADDR;
@@ -67,6 +69,7 @@ import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.app.test.TestAlarmManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -472,6 +475,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Captor ArgumentCaptor<WifiCarrierInfoManager.OnCarrierOffloadDisabledListener>
             mOffloadDisabledListenerArgumentCaptor = ArgumentCaptor.forClass(
                     WifiCarrierInfoManager.OnCarrierOffloadDisabledListener.class);
+    @Captor ArgumentCaptor<BroadcastReceiver> mScreenStateBroadcastReceiverCaptor;
 
     private void setUpWifiNative() throws Exception {
         when(mWifiNative.getStaFactoryMacAddress(WIFI_IFACE_NAME)).thenReturn(
@@ -701,6 +705,10 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         verify(mWifiLastResortWatchdog, atLeastOnce()).clearAllFailureCounts();
         assertEquals("DisconnectedState", getCurrentState().getName());
+
+        verify(mContext, atLeastOnce()).registerReceiver(
+                mScreenStateBroadcastReceiverCaptor.capture(),
+                argThat(f -> f.hasAction(ACTION_SCREEN_ON) && f.hasAction(ACTION_SCREEN_OFF)));
     }
 
     @After
@@ -6302,5 +6310,125 @@ public class ClientModeImplTest extends WifiBaseTest {
                 assertTrue(wifiInfoFromTi.isPrimary());
             }
         });
+    }
+
+    private void setScreenState(boolean screenOn) {
+        BroadcastReceiver broadcastReceiver = mScreenStateBroadcastReceiverCaptor.getValue();
+        assertNotNull(broadcastReceiver);
+        Intent intent = new Intent(screenOn  ? ACTION_SCREEN_ON : ACTION_SCREEN_OFF);
+        broadcastReceiver.onReceive(mContext, intent);
+    }
+
+    @Test
+    public void verifyRssiPollOnScreenStateChange() throws Exception {
+        setScreenState(true);
+        connect();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        WifiLinkLayerStats oldLLStats = new WifiLinkLayerStats();
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(oldLLStats);
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+        verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+                null, oldLLStats, mWifiInfo);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+
+        WifiLinkLayerStats newLLStats = new WifiLinkLayerStats();
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(newLLStats);
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+        verify(mWifiNative, times(2)).getWifiLinkLayerStats(WIFI_IFACE_NAME);
+
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+                oldLLStats, newLLStats, mWifiInfo);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(newLLStats);
+
+        // Now set the screen state to false & move time forward, ensure no more link layer stats
+        // collection.
+        setScreenState(false);
+        mLooper.dispatchAll();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
+    }
+
+    @Test
+    public void verifyRssiPollOnSecondaryCmm() throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        setScreenState(true);
+        connect();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(new WifiLinkLayerStats());
+
+        // No link layer stats collection on secondary CMM.
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
+    }
+
+    @Test
+    public void verifyRssiPollOnOnRoleChangeToPrimary() throws Exception {
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        setScreenState(true);
+        connect();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(new WifiLinkLayerStats());
+
+        // No link layer stats collection on secondary CMM.
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        // Now invoke role change, that should start rssi polling on the new primary.
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        mCmi.onRoleChanged();
+        mLooper.dispatchAll();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        WifiLinkLayerStats oldLLStats = new WifiLinkLayerStats();
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(oldLLStats);
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+        verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+                null, oldLLStats, mWifiInfo);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+    }
+
+    @Test
+    public void verifyRssiPollOnOnRoleChangeToSecondary() throws Exception {
+        setScreenState(true);
+        connect();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        // RSSI polling is enabled on primary.
+        WifiLinkLayerStats oldLLStats = new WifiLinkLayerStats();
+        when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(oldLLStats);
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+        verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+                null, oldLLStats, mWifiInfo);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+
+        // Now invoke role change, that should stop rssi polling on the secondary.
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        mCmi.onRoleChanged();
+        mLooper.dispatchAll();
+        clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        // No link layer stats collection on secondary CMM.
+        mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
     }
 }

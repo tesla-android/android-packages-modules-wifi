@@ -2537,6 +2537,9 @@ message WifiUsabilityStatsEntry {
 
   // Channel utilization at current AP in the range of [0, 255].
   optional int32 channel_utilization = 43;
+
+  // Link layer radio stats for all the radios
+  repeated RadioStats radio_stats = 44;
 }
 
 message ContentionTimeStats {
@@ -2645,6 +2648,38 @@ message RateStats {
 
   // Number of data packet retries.
   optional int32 retries = 9;
+}
+
+message RadioStats {
+  // The Radio ID
+  optional int32 radio_id = 1;
+  // The total time the wifi radio is on in ms counted from the last radio chip reset
+  optional int64 total_radio_on_time_ms = 2;
+
+  // The total time the wifi radio is doing tx in ms counted from the last radio chip reset
+  optional int64 total_radio_tx_time_ms = 3;
+
+  // The total time the wifi radio is doing rx in ms counted from the last radio chip reset
+  optional int64 total_radio_rx_time_ms = 4;
+
+  // The total time spent on all types of scans in ms counted from the last radio chip reset
+  optional int64 total_scan_time_ms = 5;
+
+  // The total time spent on nan scans in ms counted from the last radio chip reset
+  optional int64 total_nan_scan_time_ms = 6;
+
+  // The total time spent on background scans in ms counted from the last radio chip reset
+  optional int64 total_background_scan_time_ms = 7;
+
+  // The total time spent on roam scans in ms counted from the last radio chip reset
+  optional int64 total_roam_scan_time_ms = 8;
+
+  // The total time spent on pno scans in ms counted from the last radio chip reset
+  optional int64 total_pno_scan_time_ms = 9;
+
+  // The total time spent on hotspot2.0 scans and GAS exchange in ms counted from the last radio
+  // chip reset
+  optional int64 total_hotspot_2_scan_time_ms = 10;
 }
 
 message WifiUsabilityStats {
