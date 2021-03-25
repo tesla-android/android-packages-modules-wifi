@@ -349,6 +349,7 @@ package android.net.wifi {
 
   @Deprecated public class WifiConfiguration implements android.os.Parcelable {
     method @Deprecated public int getAuthType();
+    method @Deprecated public int getDeletionPriority();
     method @Deprecated @NonNull public android.net.IpConfiguration getIpConfiguration();
     method @Deprecated @NonNull public android.net.wifi.WifiConfiguration.NetworkSelectionStatus getNetworkSelectionStatus();
     method @Deprecated @NonNull public String getPrintableSsid();
@@ -358,6 +359,7 @@ package android.net.wifi {
     method @Deprecated public boolean isEphemeral();
     method @Deprecated public static boolean isMetered(@Nullable android.net.wifi.WifiConfiguration, @Nullable android.net.wifi.WifiInfo);
     method @Deprecated public boolean isNoInternetAccessExpected();
+    method @Deprecated public void setDeletionPriority(int) throws java.lang.IllegalArgumentException;
     method @Deprecated public void setIpConfiguration(@Nullable android.net.IpConfiguration);
     method @Deprecated public void setNetworkSelectionStatus(@NonNull android.net.wifi.WifiConfiguration.NetworkSelectionStatus);
     field @Deprecated public static final int INVALID_NETWORK_ID = -1; // 0xffffffff
