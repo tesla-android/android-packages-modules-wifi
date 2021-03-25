@@ -18,6 +18,8 @@ package com.android.server.wifi;
 
 import static com.android.server.wifi.util.InformationElementUtil.BssLoad.CHANNEL_UTILIZATION_SCALE;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager.DeviceMobilityState;
@@ -27,6 +29,8 @@ import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.server.wifi.ActiveModeWarden.PrimaryClientModeManagerChangedCallback;
+import com.android.server.wifi.WifiNative.ConnectionCapabilities;
 import com.android.server.wifi.proto.WifiStatsLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
 import com.android.server.wifi.scanner.KnownBandsChannelHelper;
@@ -61,7 +65,8 @@ public class WifiDataStall {
     private final WifiChannelUtilization mWifiChannelUtilization;
     private TelephonyManager mTelephonyManager;
     private final ThroughputPredictor mThroughputPredictor;
-    private WifiNative.ConnectionCapabilities mConnectionCapabilities;
+    private final ActiveModeWarden mActiveModeWarden;
+    private final ClientModeImplMonitor mClientModeImplMonitor;
 
     private int mLastFrequency = -1;
     private String mLastBssid;
@@ -78,9 +83,60 @@ public class WifiDataStall {
     private int mTxTputKbps = INVALID_THROUGHPUT;
     private int mRxTputKbps = INVALID_THROUGHPUT;
 
+    private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        private void update() {
+            // Register/Unregister phone listener on wifi on/off.
+            if (mActiveModeWarden.getPrimaryClientModeManagerNullable() != null) {
+                enablePhoneStateListener();
+            } else {
+                disablePhoneStateListener();
+            }
+        }
+    }
+
+    private class PrimaryModeChangeCallback implements PrimaryClientModeManagerChangedCallback {
+        @Override
+        public void onChange(
+                @Nullable ConcreteClientModeManager prevPrimaryClientModeManager,
+                @Nullable ConcreteClientModeManager newPrimaryClientModeManager) {
+            // This is needed to reset state on an MBB switch or wifi toggle.
+            if (prevPrimaryClientModeManager != null) {
+                reset();
+            }
+            if (newPrimaryClientModeManager != null) {
+                init();
+            }
+        }
+    }
+
+    private class ClientModeImplListenerInternal implements ClientModeImplListener {
+        @Override
+        public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (clientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+                reset();
+            }
+        }
+    }
+
     public WifiDataStall(FrameworkFacade facade, WifiMetrics wifiMetrics, Context context,
             DeviceConfigFacade deviceConfigFacade, WifiChannelUtilization wifiChannelUtilization,
-            Clock clock, Handler handler, ThroughputPredictor throughputPredictor) {
+            Clock clock, Handler handler, ThroughputPredictor throughputPredictor,
+            ActiveModeWarden activeModeWarden, ClientModeImplMonitor clientModeImplMonitor) {
         mFacade = facade;
         mDeviceConfigFacade = deviceConfigFacade;
         mWifiMetrics = wifiMetrics;
@@ -89,6 +145,8 @@ public class WifiDataStall {
         mWifiChannelUtilization = wifiChannelUtilization;
         mWifiChannelUtilization.setCacheUpdateIntervalMs(LLSTATS_CACHE_UPDATE_INTERVAL_MIN_MS);
         mThroughputPredictor = throughputPredictor;
+        mActiveModeWarden = activeModeWarden;
+        mClientModeImplMonitor = clientModeImplMonitor;
         mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(handler)) {
             @Override
             public void onDataConnectionStateChanged(int state, int networkType) {
@@ -103,12 +161,16 @@ public class WifiDataStall {
                 logd("Cellular Data: " + mIsCellularDataAvailable);
             }
         };
+        mActiveModeWarden.registerPrimaryClientModeManagerChangedCallback(
+                new PrimaryModeChangeCallback());
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
+        mClientModeImplMonitor.registerListener(new ClientModeImplListenerInternal());
     }
 
     /**
      * initialization after wifi is enabled
      */
-    public void init() {
+    private void init() {
         mWifiChannelUtilization.init(null);
         reset();
     }
@@ -116,7 +178,7 @@ public class WifiDataStall {
     /**
      * Reset internal variables
      */
-    public void reset() {
+    private void reset() {
         mLastTxBytes = 0;
         mLastRxBytes = 0;
         mLastFrequency = -1;
@@ -130,15 +192,9 @@ public class WifiDataStall {
     }
 
     /**
-     * Set ConnectionCapabilities after each association and roaming
-     */
-    public void setConnectionCapabilities(WifiNative.ConnectionCapabilities capabilities) {
-        mConnectionCapabilities = capabilities;
-    }
-    /**
      * Enable phone state listener
      */
-    public void enablePhoneStateListener() {
+    private void enablePhoneStateListener() {
         if (mTelephonyManager == null) {
             mTelephonyManager = (TelephonyManager) mContext
                     .getSystemService(Context.TELEPHONY_SERVICE);
@@ -153,7 +209,7 @@ public class WifiDataStall {
     /**
      * Disable phone state listener
      */
-    public void disablePhoneStateListener() {
+    private void disablePhoneStateListener() {
         if (mTelephonyManager != null && mPhoneStateListenerEnabled) {
             mPhoneStateListenerEnabled = false;
             mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
@@ -217,25 +273,31 @@ public class WifiDataStall {
     /**
      * Update data stall detection, check throughput sufficiency and report wifi health stat
      * with the latest link layer stats
+     * @param connectionCapabilities Connection capabilities.
      * @param oldStats second most recent WifiLinkLayerStats
      * @param newStats most recent WifiLinkLayerStats
      * @param wifiInfo WifiInfo for current connection
      * @return trigger type of WifiIsUnusableEvent
+     *
+     * Note: This is only collected for primary STA currently because RSSI polling is disabled for
+     * non-primary STAs.
      */
-    public int checkDataStallAndThroughputSufficiency(WifiLinkLayerStats oldStats,
-            WifiLinkLayerStats newStats, WifiInfo wifiInfo) {
+    public int checkDataStallAndThroughputSufficiency(
+            @NonNull ConnectionCapabilities connectionCapabilities,
+            @Nullable WifiLinkLayerStats oldStats,
+            @Nullable WifiLinkLayerStats newStats,
+            @NonNull WifiInfo wifiInfo) {
         int currFrequency = wifiInfo.getFrequency();
         mWifiChannelUtilization.refreshChannelStatsAndChannelUtilization(newStats, currFrequency);
         int ccaLevel = mWifiChannelUtilization.getUtilizationRatio(currFrequency);
         mWifiMetrics.incrementChannelUtilizationCount(ccaLevel, currFrequency);
-
         if (oldStats == null || newStats == null) {
             // First poll after new association
             // Update throughput with prediction
-            if (wifiInfo.getRssi() != WifiInfo.INVALID_RSSI && mConnectionCapabilities != null) {
-                mTxTputKbps = mThroughputPredictor.predictTxThroughput(mConnectionCapabilities,
+            if (wifiInfo.getRssi() != WifiInfo.INVALID_RSSI && connectionCapabilities != null) {
+                mTxTputKbps = mThroughputPredictor.predictTxThroughput(connectionCapabilities,
                         wifiInfo.getRssi(), currFrequency, ccaLevel) * 1000;
-                mRxTputKbps = mThroughputPredictor.predictRxThroughput(mConnectionCapabilities,
+                mRxTputKbps = mThroughputPredictor.predictRxThroughput(connectionCapabilities,
                         wifiInfo.getRssi(), currFrequency, ccaLevel) * 1000;
             }
             mIsThroughputSufficient = true;
