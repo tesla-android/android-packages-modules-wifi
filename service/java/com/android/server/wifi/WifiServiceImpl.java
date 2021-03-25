@@ -79,6 +79,7 @@ import android.net.wifi.SoftApCapability;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApInfo;
 import android.net.wifi.WifiAnnotations.WifiStandard;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
@@ -5201,6 +5202,34 @@ public class WifiServiceImpl extends BaseWifiService {
         // Post operation to handler thread
         return mWifiThreadRunner.call(
                 () -> mSettingsStore.handleWifiScoringEnabled(enabled), false);
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#getUsableChannels(int, int) and
+     * See {@link android.net.wifi.WifiManager#getAllowedChannels(int, int).
+     *
+     * @throws SecurityException if the caller does not have permission
+     */
+    @Override
+    public List<WifiAvailableChannel> getUsableChannels(@WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode, @WifiAvailableChannel.Filter int filter) {
+        // Location mode must be enabled
+        if (!mWifiPermissionsUtil.isLocationModeEnabled()) {
+            throw new SecurityException("Location mode is disabled for the device");
+        }
+        final int uid = Binder.getCallingUid();
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getUsableChannels uid=%").c(Binder.getCallingUid()).flush();
+        }
+        if (!mWifiPermissionsUtil.checkCallersHardwareLocationPermission(uid)) {
+            throw new SecurityException("UID " + uid + " does not have location h/w permission");
+        }
+        List<WifiAvailableChannel> channels = mWifiThreadRunner.call(
+                () -> mWifiNative.getUsableChannels(band, mode, filter), null);
+        if (channels == null) {
+            throw new UnsupportedOperationException();
+        }
+        return channels;
     }
 
     private void resetNotificationManager() {

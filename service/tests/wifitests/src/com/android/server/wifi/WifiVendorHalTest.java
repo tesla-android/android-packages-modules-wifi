@@ -89,6 +89,7 @@ import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
 import android.hardware.wifi.V1_5.StaLinkLayerIfaceContentionTimeStats;
 import android.hardware.wifi.V1_5.StaPeerInfo;
 import android.hardware.wifi.V1_5.StaRateStat;
+import android.hardware.wifi.V1_5.WifiUsableChannel;
 import android.net.InetAddresses;
 import android.net.KeepalivePacketData;
 import android.net.MacAddress;
@@ -97,6 +98,7 @@ import android.net.apf.ApfCapabilities;
 import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
@@ -4034,5 +4036,27 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         assertTrue(mWifiVendorHal.setScanMode(TEST_IFACE_NAME, false));
         verify(mIWifiStaIfaceV15).setScanMode(false);
+    }
+
+    @Test
+    public void testGetUsableChannels() throws Exception {
+        assertTrue(mWifiVendorHal.startVendorHalSta());
+        mWifiVendorHal = new WifiVendorHalSpyV1_5(mContext, mHalDeviceManager, mHandler,
+                mWifiGlobals);
+        ArrayList<WifiUsableChannel> channels = new ArrayList<>();
+        doAnswer(new AnswerWithArguments() {
+            public void answer(int band, int mode, int filter,
+                    android.hardware.wifi.V1_5.IWifiChip.getUsableChannelsCallback cb)
+                    throws RemoteException {
+                cb.onValues(mWifiStatusSuccess, channels);
+            }
+        }).when(mIWifiChipV15).getUsableChannels(anyInt(), anyInt(), anyInt(),
+                any(android.hardware.wifi.V1_5.IWifiChip.getUsableChannelsCallback.class));
+        mWifiVendorHal.getUsableChannels(
+                WifiScanner.WIFI_BAND_24_GHZ,
+                WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI,
+                WifiAvailableChannel.FILTER_CELLULAR_COEXISTENCE);
+        verify(mIWifiChipV15).getUsableChannels(anyInt(), anyInt(), anyInt(),
+                any(android.hardware.wifi.V1_5.IWifiChip.getUsableChannelsCallback.class));
     }
 }

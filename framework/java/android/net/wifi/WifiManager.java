@@ -8109,4 +8109,67 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Returns a list of {@link WifiAvailableChannel} for the specified band and operational
+     * mode(s), that is allowed for the current regulatory domain. An empty list implies that there
+     * are no available channels for use.
+     *
+     * @param band one of the {@code WifiScanner#WIFI_BAND_*} constants
+     *        e.g. {@link WifiScanner#WIFI_BAND_24_GHZ}
+     * @param mode Bitwise OR of {@code WifiAvailableChannel#OP_MODE_*} constants
+     *        e.g. {@link WifiAvailableChannel#OP_MODE_WIFI_AWARE}
+     * @return a list of {@link WifiAvailableChannel}
+     *
+     * @throws UnsupportedOperationException if this API is not supported on this device.
+     * @hide
+     */
+    @SystemApi
+    @NonNull
+    @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE)
+    public List<WifiAvailableChannel> getAllowedChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.getUsableChannels(band, mode,
+                    WifiAvailableChannel.FILTER_REGULATORY);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Returns a list of {@link WifiAvailableChannel} for the specified band and operational
+     * mode(s) per the current regulatory domain and device-specific constraints such as concurrency
+     * state and interference due to other radios. An empty list implies that there are no available
+     * channels for use.
+     *
+     * @param band one of the {@code WifiScanner#WIFI_BAND_*} constants
+     *        e.g. {@link WifiScanner#WIFI_BAND_24_GHZ}
+     * @param mode Bitwise OR of {@code WifiAvailableChannel#OP_MODE_*} constants
+     *        e.g. {@link WifiAvailableChannel#OP_MODE_WIFI_AWARE}
+     * @return a list of {@link WifiAvailableChannel}
+     *
+     * @throws UnsupportedOperationException if this API is not supported on this device.
+     * @hide
+     */
+    @SystemApi
+    @NonNull
+    @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE)
+    public List<WifiAvailableChannel> getUsableChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.getUsableChannels(band, mode,
+                    WifiAvailableChannel.getUsableFilter());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }
