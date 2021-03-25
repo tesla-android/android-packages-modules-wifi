@@ -3285,4 +3285,34 @@ public class WifiManagerTest {
                 .thenReturn(new Long(~WIFI_FEATURE_DECORATED_IDENTITY));
         assertFalse(mWifiManager.isDecoratedIdentitySupported());
     }
+
+    /**
+     * Verify call to getAllowedChannels goes to WifiServiceImpl
+     */
+    @Test
+    public void testGetAllowedChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        int band = WifiScanner.WIFI_BAND_24_5_6_GHZ;
+        int mode = WifiAvailableChannel.OP_MODE_WIFI_AWARE
+                | WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO
+                | WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI;
+        mWifiManager.getAllowedChannels(band, mode);
+        verify(mWifiService).getUsableChannels(eq(band), eq(mode),
+                eq(WifiAvailableChannel.FILTER_REGULATORY));
+    }
+
+    /**
+     * Verify call to getUsableChannels goes to WifiServiceImpl
+     */
+    @Test
+    public void testGetUsableChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        int band = WifiScanner.WIFI_BAND_BOTH_WITH_DFS;
+        int mode = WifiAvailableChannel.OP_MODE_WIFI_AWARE
+                | WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI;
+        mWifiManager.getUsableChannels(band, mode);
+        verify(mWifiService).getUsableChannels(eq(band), eq(mode),
+                eq(WifiAvailableChannel.FILTER_CONCURRENCY
+                    | WifiAvailableChannel.FILTER_CELLULAR_COEXISTENCE));
+    }
 }

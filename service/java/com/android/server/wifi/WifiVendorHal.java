@@ -50,13 +50,17 @@ import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_2.IWifiChipEventCallback.IfaceInfo;
 import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
+import android.hardware.wifi.V1_5.IWifiChip.UsableChannelFilter;
 import android.hardware.wifi.V1_5.StaPeerInfo;
 import android.hardware.wifi.V1_5.StaRateStat;
 import android.hardware.wifi.V1_5.WifiBand;
+import android.hardware.wifi.V1_5.WifiIfaceMode;
+import android.hardware.wifi.V1_5.WifiUsableChannel;
 import android.net.MacAddress;
 import android.net.apf.ApfCapabilities;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
@@ -3742,6 +3746,105 @@ public class WifiVendorHal {
             }
             // HAL version does not support this api
             return false;
+        }
+    }
+
+    /**
+     * Convert framework's operational mode to HAL's operational mode.
+     */
+    private int frameworkToHalIfaceMode(@WifiAvailableChannel.OpMode int mode) {
+        int halMode = 0;
+        if ((mode & WifiAvailableChannel.OP_MODE_STA) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_STA;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_SAP) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_SOFTAP;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_P2P_CLIENT;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_P2P_GO;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_AWARE) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_NAN;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_TDLS) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_TDLS;
+        }
+        return halMode;
+    }
+
+    /**
+     * Convert from HAL's operational mode to framework's operational mode.
+     */
+    private @WifiAvailableChannel.OpMode int frameworkFromHalIfaceMode(int halMode) {
+        int mode = 0;
+        if ((mode & WifiIfaceMode.IFACE_MODE_STA) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_STA;
+        }
+        if ((mode & WifiIfaceMode.IFACE_MODE_SOFTAP) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_SAP;
+        }
+        if ((mode & WifiIfaceMode.IFACE_MODE_P2P_CLIENT) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI;
+        }
+        if ((mode & WifiIfaceMode.IFACE_MODE_P2P_GO) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO;
+        }
+        if ((mode & WifiIfaceMode.IFACE_MODE_NAN) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_AWARE;
+        }
+        if ((mode & WifiIfaceMode.IFACE_MODE_TDLS) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_TDLS;
+        }
+        return mode;
+    }
+
+    /**
+     * Convert framework's WifiAvailableChannel.FILTER_* to HAL's UsableChannelFilter.
+     */
+    private int frameworkToHalUsableFilter(@WifiAvailableChannel.Filter int filter) {
+        int halFilter = 0;  // O implies no additional filter other than regulatory (default)
+
+        if ((filter & WifiAvailableChannel.FILTER_CONCURRENCY) != 0) {
+            halFilter |= UsableChannelFilter.CONCURRENCY;
+        }
+        if ((filter & WifiAvailableChannel.FILTER_CELLULAR_COEXISTENCE) != 0) {
+            halFilter |= UsableChannelFilter.CELLULAR_COEXISTENCE;
+        }
+        return halFilter;
+    }
+
+    /**
+     * Retrieve the list of usable Wifi channels.
+     */
+    public List<WifiAvailableChannel> getUsableChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode,
+            @WifiAvailableChannel.Filter int filter) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) {
+                    return null;
+                }
+                ArrayList<WifiAvailableChannel> results = new ArrayList<>();
+                iWifiChipV15.getUsableChannels(
+                        makeWifiBandFromFrameworkBand(band),
+                        frameworkToHalIfaceMode(mode),
+                        frameworkToHalUsableFilter(filter), (status, channels) -> {
+                            if (!ok(status)) return;
+                            for (WifiUsableChannel ch : channels) {
+                                results.add(new WifiAvailableChannel(ch.channel,
+                                        frameworkFromHalIfaceMode(ch.ifaceModeMask)));
+                            }
+                        });
+                return results;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            }
         }
     }
 }
