@@ -3741,7 +3741,7 @@ message WifiToWifiSwitchStats {
 // Network layer bandwidth estimator stats
 message BandwidthEstimatorStats {
   // Bandwidth stats of each signal level
-  message perLevel {
+  message PerLevel {
     // Signal level derived by RssiUtil.calculateSignalLevel based on RSSI
     optional uint32 signal_level = 1;
     // Accumulated bandwidth sample count
@@ -3756,21 +3756,21 @@ message BandwidthEstimatorStats {
   }
 
   // Bandwidth stats of each link
-  message perLink {
-    repeated perLevel level = 1;
+  message PerLink {
+    repeated PerLevel level = 1;
   }
 
   // Bandwidth stats of each band
-  message perBand {
+  message PerBand {
     // Tx bandwidth stats
-    optional perLink tx = 1;
+    optional PerLink tx = 1;
     // Rx bandwidth stats
-    optional perLink rx = 2;
+    optional PerLink rx = 2;
   }
 
   // Stats of 2g band
-  optional perBand stats_2g = 1;
+  optional PerBand stats_2g = 1;
   // Stats of above-2g band
-  optional perBand stats_above_2g = 2;
+  optional PerBand stats_above_2g = 2;
 }
 
