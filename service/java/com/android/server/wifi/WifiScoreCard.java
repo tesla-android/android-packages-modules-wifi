@@ -2481,36 +2481,36 @@ public class WifiScoreCard {
         return stats;
     }
 
-    private BandwidthEstimatorStats.perBand dumpBandwdithStatsPerBand(int bandIdx) {
-        BandwidthEstimatorStats.perBand stats = new BandwidthEstimatorStats.perBand();
+    private BandwidthEstimatorStats.PerBand dumpBandwdithStatsPerBand(int bandIdx) {
+        BandwidthEstimatorStats.PerBand stats = new BandwidthEstimatorStats.PerBand();
         stats.tx = dumpBandwidthStatsPerLink(bandIdx, LINK_TX);
         stats.rx = dumpBandwidthStatsPerLink(bandIdx, LINK_RX);
         return stats;
     }
 
-    private BandwidthEstimatorStats.perLink dumpBandwidthStatsPerLink(
+    private BandwidthEstimatorStats.PerLink dumpBandwidthStatsPerLink(
             int bandIdx, int linkIdx) {
-        BandwidthEstimatorStats.perLink stats = new BandwidthEstimatorStats.perLink();
-        List<BandwidthEstimatorStats.perLevel> levels = new ArrayList<>();
+        BandwidthEstimatorStats.PerLink stats = new BandwidthEstimatorStats.PerLink();
+        List<BandwidthEstimatorStats.PerLevel> levels = new ArrayList<>();
         for (int level = 0; level < NUM_SIGNAL_LEVEL; level++) {
-            BandwidthEstimatorStats.perLevel currStats =
+            BandwidthEstimatorStats.PerLevel currStats =
                     dumpBandwidthStatsPerLevel(bandIdx, linkIdx, level);
             if (currStats != null) {
                 levels.add(currStats);
             }
         }
-        stats.level = levels.toArray(new BandwidthEstimatorStats.perLevel[0]);
+        stats.level = levels.toArray(new BandwidthEstimatorStats.PerLevel[0]);
         return stats;
     }
 
-    private BandwidthEstimatorStats.perLevel dumpBandwidthStatsPerLevel(
+    private BandwidthEstimatorStats.PerLevel dumpBandwidthStatsPerLevel(
             int bandIdx, int linkIdx, int level) {
         int count = mBwEstCount[bandIdx][linkIdx][level];
         if (count <= 0) {
             return null;
         }
 
-        BandwidthEstimatorStats.perLevel stats = new BandwidthEstimatorStats.perLevel();
+        BandwidthEstimatorStats.PerLevel stats = new BandwidthEstimatorStats.PerLevel();
         stats.signalLevel = level;
         stats.count = count;
         stats.avgBandwidthKbps = mBwEstValue[bandIdx][linkIdx][level];
