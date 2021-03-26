@@ -64,6 +64,7 @@ import com.android.server.wifi.proto.WifiScoreCardProto.Network;
 import com.android.server.wifi.proto.WifiScoreCardProto.NetworkList;
 import com.android.server.wifi.proto.WifiScoreCardProto.NetworkStats;
 import com.android.server.wifi.proto.WifiScoreCardProto.Signal;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.BandwidthEstimatorStats;
 import com.android.server.wifi.util.IntHistogram;
 import com.android.server.wifi.util.RssiUtil;
 import com.android.wifi.resources.R;
@@ -1585,6 +1586,13 @@ public class WifiScoreCardTest extends WifiBaseTest {
         when(mFrameworkFacade.getTotalRxBytes()).thenReturn(mTotalRxBytes);
     }
 
+    private void subtractTotalBytes(long txBytes, long rxBytes) {
+        mTotalTxBytes -= txBytes;
+        mTotalRxBytes -= rxBytes;
+        when(mFrameworkFacade.getTotalTxBytes()).thenReturn(mTotalTxBytes);
+        when(mFrameworkFacade.getTotalRxBytes()).thenReturn(mTotalRxBytes);
+    }
+
     @Test
     public void testLinkBandwidthOneBssidOneSignalLevelOneBand() {
         mWifiInfo.setRssi(-70);
@@ -1638,7 +1646,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         }
 
         assertEquals(211_049, perNetwork.getTxLinkBandwidthKbps());
-        assertEquals(241_693, perNetwork.getRxLinkBandwidthKbps());
+        assertEquals(94_056, perNetwork.getRxLinkBandwidthKbps());
 
         // Add BANDWIDTH_STATS_COUNT_THR / 2 polls at BSSID 2 at 1st level
         mWifiInfo.setRssi(-72);
@@ -1649,7 +1657,40 @@ public class WifiScoreCardTest extends WifiBaseTest {
         }
 
         assertEquals(229_523, perNetwork.getTxLinkBandwidthKbps());
-        assertEquals(122_989, perNetwork.getRxLinkBandwidthKbps());
+        assertEquals(12_442, perNetwork.getRxLinkBandwidthKbps());
+    }
+
+    @Test
+    public void testLinkBandwidthInvalidTrafficStats() {
+        mWifiInfo.setRssi(-70);
+        mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
+        PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        mWifiInfo.setFrequency(5210);
+        mWifiScoreCard.noteIpConfiguration(mWifiInfo);
+        mNewLlStats.on_time = 100;
+        mOldLlStats.timeStampInMs = 7_000;
+        mNewLlStats.timeStampInMs = 10_000;
+        long txBytes = 2_000_000L;
+        long rxBytes = 100_000L;
+        int[] reportedKbps = new int[]{400_000, 300_000};
+        int[] l2Kbps = new int[]{800_000, 700_000};
+        // Add BANDWIDTH_STATS_COUNT_THR polls with one of them has invalid traffic stats
+        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR; i++) {
+            if (i == 1) {
+                subtractTotalBytes(txBytes, rxBytes);
+            } else {
+                addTotalBytes(txBytes, rxBytes);
+            }
+            millisecondsPass(3_000);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
+        }
+
+        assertEquals(160_000, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(LINK_BANDWIDTH_INIT_KBPS[1][LINK_RX][2], perNetwork.getRxLinkBandwidthKbps());
+        BandwidthEstimatorStats stats = mWifiScoreCard.dumpBandwidthEstimatorStats();
+        assertEquals(0, stats.stats2G.tx.level.length);
+        assertEquals(0, stats.stats2G.rx.level.length);
     }
 
     @Test
@@ -1664,35 +1705,59 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mNewLlStats.timeStampInMs = 10_000;
         long txBytes = 2_000_000L;
         long rxBytes = 100_000L;
+        int [] reportedKbps = new int[]{400_000, 300_000};
+        int [] l2Kbps = new int[]{800_000, 700_000};
         // Add BANDWIDTH_STATS_COUNT_THR polls at 1st level and 1st band
         for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR; i++) {
             addTotalBytes(txBytes, rxBytes);
             millisecondsPass(3_000);
             perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
         }
         // Add BANDWIDTH_STATS_COUNT_THR polls at 2nd level and 1st band
         mWifiInfo.setRssi(-65);
-        rxBytes = 2_000_000L;
+        rxBytes = 7_000_000L;
         for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR; i++) {
             addTotalBytes(txBytes, rxBytes);
             millisecondsPass(3_000);
             perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
         }
 
-        // Add BANDWIDTH_STATS_COUNT_THR polls at 1st level and 2nd band
+        // Add BANDWIDTH_STATS_COUNT_THR * 2 polls at 1st level and 2nd band
         mWifiInfo.setRssi(-70);
         mWifiInfo.setFrequency(2437);
-        txBytes = 3_000_000L;
-        mNewLlStats.on_time = 50;
-        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR; i++) {
+        txBytes = 6_000_000L;
+        mNewLlStats.on_time = 200;
+        for (int i = 0; i < (2 * BANDWIDTH_STATS_COUNT_THR); i++) {
             addTotalBytes(txBytes, rxBytes);
             millisecondsPass(3_000);
             perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
         }
 
         // Expect stats of 1st level and 2nd band are used
-        assertEquals(442_349, perNetwork.getTxLinkBandwidthKbps());
-        assertEquals(301_174, perNetwork.getRxLinkBandwidthKbps());
+        assertEquals(239_503, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(281_737, perNetwork.getRxLinkBandwidthKbps());
+
+        BandwidthEstimatorStats stats = mWifiScoreCard.dumpBandwidthEstimatorStats();
+        assertEquals(1, stats.stats2G.tx.level.length);
+        assertEquals(1, stats.stats2G.rx.level.length);
+
+        assertEquals(2, stats.stats2G.rx.level[0].signalLevel);
+        assertEquals(BANDWIDTH_STATS_COUNT_THR - 1, stats.stats2G.rx.level[0].count);
+        assertEquals(280_000, stats.stats2G.rx.level[0].avgBandwidthKbps);
+        assertEquals(150, stats.stats2G.rx.level[0].l2NrmsePercent);
+        assertEquals(7, stats.stats2G.rx.level[0].bandwidthEstNrmsePercent);
+
+        assertEquals(2, stats.stats2G.tx.level[0].signalLevel);
+        assertEquals(BANDWIDTH_STATS_COUNT_THR - 1, stats.stats2G.tx.level[0].count);
+        assertEquals(240_000, stats.stats2G.tx.level[0].avgBandwidthKbps);
+        assertEquals(233, stats.stats2G.tx.level[0].l2NrmsePercent);
+        assertEquals(66, stats.stats2G.tx.level[0].bandwidthEstNrmsePercent);
+
+        assertEquals(0, stats.statsAbove2G.tx.level.length);
+        assertEquals(0, stats.statsAbove2G.rx.level.length);
     }
 
     @Test

@@ -40,6 +40,7 @@ import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.IWifiVerboseLoggingStatusCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -338,4 +339,6 @@ interface IWifiManager
     boolean setWifiScoringEnabled(boolean enabled);
 
     void flushPasspointAnqpCache(String packageName);
+
+    List<WifiAvailableChannel> getUsableChannels(int band, int mode, int filter);
 }

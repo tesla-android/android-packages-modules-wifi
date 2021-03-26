@@ -137,6 +137,7 @@ class WifiBackupDataV1Parser implements WifiBackupDataParser {
                 add(WifiConfigurationXmlUtil.XML_TAG_SAE_IS_H2E_ONLY_MODE);
                 add(WifiConfigurationXmlUtil.XML_TAG_SAE_IS_PK_ONLY_MODE);
                 add(WifiConfigurationXmlUtil.XML_TAG_IS_ADDED_BY_AUTO_UPGRADE);
+                add(WifiConfigurationXmlUtil.XML_TAG_DELETION_PRIORITY);
             }};
 
     // List of tags supported for <IpConfiguration> section in minor version 0 to 3
@@ -380,6 +381,9 @@ class WifiBackupDataV1Parser implements WifiBackupDataParser {
                     break;
                 case WifiConfigurationXmlUtil.XML_TAG_IS_AUTO_JOIN:
                     configuration.allowAutojoin = (boolean) value;
+                    break;
+                case WifiConfigurationXmlUtil.XML_TAG_DELETION_PRIORITY:
+                    configuration.setDeletionPriority((int) value);
                     break;
                 case WifiConfigurationXmlUtil.XML_TAG_SECURITY_PARAMS_LIST:
                     parseSecurityParamsListFromXml(in, outerTagDepth + 1, configuration);

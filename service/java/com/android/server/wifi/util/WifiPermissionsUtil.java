@@ -217,7 +217,7 @@ public class WifiPermissionsUtil {
      *
      * @param uid The uid of the package
      */
-    private boolean checkCallersHardwareLocationPermission(int uid) {
+    public boolean checkCallersHardwareLocationPermission(int uid) {
         return mWifiPermissionsWrapper.getUidPermission(Manifest.permission.LOCATION_HARDWARE, uid)
                 == PackageManager.PERMISSION_GRANTED;
     }

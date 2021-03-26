@@ -251,6 +251,7 @@ public class WifiBackupRestoreTest extends WifiBaseTest {
                     + "<byte-array name=\"AllowedSuiteBCiphers\" num=\"0\"></byte-array>\n"
                     + "<boolean name=\"Shared\" value=\"true\" />\n"
                     + "<boolean name=\"AutoJoinEnabled\" value=\"false\" />\n"
+                    + "<int name=\"DeletionPriority\" value=\"0\" />\n"
                     + "<SecurityParamsList>\n"
                     + "<SecurityParams>\n"
                     + "<int name=\"SecurityType\" value=\"2\" />\n"

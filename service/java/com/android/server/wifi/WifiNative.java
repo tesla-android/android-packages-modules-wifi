@@ -28,6 +28,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAnnotations;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
@@ -3085,6 +3086,21 @@ public class WifiNative {
      */
     public WifiLinkLayerStats getWifiLinkLayerStats(@NonNull String ifaceName) {
         return mWifiVendorHal.getWifiLinkLayerStats(ifaceName);
+    }
+
+    /**
+     * Gets the usable channels
+     * @param band one of the {@code WifiScanner#WIFI_BAND_*} constants.
+     * @param mode bitmask of {@code WifiAvailablechannel#OP_MODE_*} constants.
+     * @param filter bitmask of filters (regulatory, coex, concurrency).
+     *
+     * @return list of channels
+     */
+    public List<WifiAvailableChannel> getUsableChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode,
+            @WifiAvailableChannel.Filter int filter) {
+        return mWifiVendorHal.getUsableChannels(band, mode, filter);
     }
 
     /**
