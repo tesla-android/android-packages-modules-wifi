@@ -61,8 +61,9 @@ import java.util.List;
  * security configuration.
  *
  * @deprecated Use {@link WifiNetworkSpecifier.Builder} to create {@link NetworkSpecifier} and
- * {@link WifiNetworkSuggestion.Builder} to create {@link WifiNetworkSuggestion}. This will become a
- * system use only object in the future.
+ * {@link WifiNetworkSuggestion.Builder} to create {@link WifiNetworkSuggestion}. This class can
+ * still be used with privileged APIs such as
+ * {@link WifiManager#addNetwork(WifiConfiguration)}.
  */
 @Deprecated
 public class WifiConfiguration implements Parcelable {
