@@ -64,6 +64,7 @@ public class WakeupController {
     private final WakeupConfigStoreData mWakeupConfigStoreData;
     private final WifiWakeMetrics mWifiWakeMetrics;
     private final Clock mClock;
+    private final ActiveModeWarden mActiveModeWarden;
 
     private final WifiScanner.ScanListener mScanListener = new WifiScanner.ScanListener() {
         @Override
@@ -102,7 +103,10 @@ public class WakeupController {
     /** Whether the WakeupController is currently active. */
     private boolean mIsActive = false;
 
-    /** The number of scans that have been handled by the controller since last {@link #reset()}. */
+    /**
+     *  The number of scans that have been handled by the controller since last
+     * {@link #onWifiEnabled()}.
+     */
     private int mNumScansHandled = 0;
 
     /** Whether Wifi verbose logging is enabled. */
@@ -134,7 +138,8 @@ public class WakeupController {
             WifiWakeMetrics wifiWakeMetrics,
             WifiInjector wifiInjector,
             FrameworkFacade frameworkFacade,
-            Clock clock) {
+            Clock clock,
+            ActiveModeWarden activeModeWarden) {
         mContext = context;
         mHandler = handler;
         mWakeupLock = wakeupLock;
@@ -145,6 +150,7 @@ public class WakeupController {
         mWifiWakeMetrics = wifiWakeMetrics;
         mFrameworkFacade = frameworkFacade;
         mWifiInjector = wifiInjector;
+        mActiveModeWarden = activeModeWarden;
         mContentObserver = new ContentObserver(mHandler) {
             @Override
             public void onChange(boolean selfChange) {
@@ -167,6 +173,14 @@ public class WakeupController {
         mClock = clock;
         mLastDisconnectTimestampMillis = 0;
         mLastDisconnectInfo = null;
+
+        mActiveModeWarden.registerPrimaryClientModeManagerChangedCallback(
+                (prevPrimaryClientModeManager, newPrimaryClientModeManager) -> {
+                    // reset when the primary CMM changes
+                    if (newPrimaryClientModeManager != null) {
+                        onWifiEnabled();
+                    }
+                });
     }
 
     private void readWifiWakeupEnabledFromSettings() {
@@ -299,9 +313,12 @@ public class WakeupController {
         mWakeupOnboarding.onStop();
     }
 
-    /** Resets the WakeupController, setting {@link #mIsActive} to false. */
-    public void reset() {
-        Log.d(TAG, "reset()");
+    /**
+     * This is called at the end of a Wifi Wake session, after Wifi Wake successfully turned Wifi
+     * back on.
+     */
+    private void onWifiEnabled() {
+        Log.d(TAG, "onWifiEnabled()");
         mWifiWakeMetrics.recordResetEvent(mNumScansHandled);
         mNumScansHandled = 0;
         setActive(false);
@@ -423,7 +440,7 @@ public class WakeupController {
         if (USE_PLATFORM_WIFI_WAKE) {
             // TODO(b/72180295): ensure that there is no race condition with WifiServiceImpl here
             if (mWifiInjector.getWifiSettingsStore().handleWifiToggled(true /* wifiEnabled */)) {
-                mWifiInjector.getActiveModeWarden().wifiToggled(
+                mActiveModeWarden.wifiToggled(
                         // Assumes user toggled it on from settings before.
                         mFrameworkFacade.getSettingsWorkSource(mContext));
                 mWifiWakeMetrics.recordWakeupEvent(mNumScansHandled);

@@ -43,6 +43,7 @@ import android.provider.Settings;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.server.wifi.ActiveModeWarden.PrimaryClientModeManagerChangedCallback;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 
@@ -50,6 +51,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -92,8 +94,10 @@ public class WakeupControllerTest extends WifiBaseTest {
     @Mock private ActiveModeWarden mActiveModeWarden;
     @Mock private WifiNative mWifiNative;
     @Mock private Clock mClock;
-    @Mock private ClientModeManager mPrimaryClientModeManager;
+    @Mock private ConcreteClientModeManager mPrimaryClientModeManager;
     @Mock private WifiGlobals mWifiGlobals;
+
+    @Captor private ArgumentCaptor<PrimaryClientModeManagerChangedCallback> mPrimaryChangedCaptor;
 
     private TestLooper mLooper;
     private WakeupController mWakeupController;
@@ -178,7 +182,10 @@ public class WakeupControllerTest extends WifiBaseTest {
                 mWifiWakeMetrics,
                 mWifiInjector,
                 mFrameworkFacade,
-                mClock);
+                mClock, mActiveModeWarden);
+
+        verify(mActiveModeWarden).registerPrimaryClientModeManagerChangedCallback(
+                mPrimaryChangedCaptor.capture());
 
         ArgumentCaptor<WakeupConfigStoreData> captor =
                 ArgumentCaptor.forClass(WakeupConfigStoreData.class);
@@ -364,7 +371,7 @@ public class WakeupControllerTest extends WifiBaseTest {
         metricsInOrder.verify(mWifiWakeMetrics).recordStartEvent(anyInt());
 
         mWakeupController.stop();
-        mWakeupController.reset();
+        mPrimaryChangedCaptor.getValue().onChange(null, mPrimaryClientModeManager);
         metricsInOrder.verify(mWifiWakeMetrics).recordResetEvent(0 /* numScans */);
 
         mWakeupController.start();
@@ -773,13 +780,13 @@ public class WakeupControllerTest extends WifiBaseTest {
         mWakeupController.setLastDisconnectInfo(matchInfo);
         mWakeupController.start();
 
-        verify(mWakeupLock).setLock(eq(Collections.singleton(matchInfo)));
+        verify(mWakeupLock).setLock(Set.of(matchInfo));
 
         mWakeupController.stop();
-        mWakeupController.reset();
+        mPrimaryChangedCaptor.getValue().onChange(null, mPrimaryClientModeManager);
         mWakeupController.start();
 
-        verify(mWakeupLock).setLock(eq(Collections.emptySet()));
+        verify(mWakeupLock).setLock(Set.of());
     }
 
     /**
