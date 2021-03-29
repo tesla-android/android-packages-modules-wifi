@@ -21,6 +21,7 @@ import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LO
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doAnswer;
 
 import android.content.Context;
 import android.telephony.TelephonyManager;
@@ -57,12 +58,17 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ConcreteClientModeManager mClientModeManager;
     @Mock ClientModeImplMonitor mClientModeImplMonitor;
+    @Mock WifiNative mWifiNative;
     private WifiCountryCode mWifiCountryCode;
 
     @Captor
     private ArgumentCaptor<ActiveModeWarden.ModeChangeCallback> mModeChangeCallbackCaptor;
     @Captor
     private ArgumentCaptor<ClientModeImplListener> mClientModeImplListenerCaptor;
+    @Captor
+    private ArgumentCaptor<WifiCountryCode.ChangeListener> mChangeListenerCaptor;
+    @Captor
+    private ArgumentCaptor<String> mSetCountryCodeCaptor;
 
     /**
      * Setup test.
@@ -76,6 +82,13 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         when(mContext.getSystemService(Context.TELEPHONY_SERVICE))
                 .thenReturn(mTelephonyManager);
 
+        doAnswer((invocation) -> {
+            mChangeListenerCaptor.getValue()
+                    .onDriverCountryCodeChanged(mSetCountryCodeCaptor.getValue());
+            return true;
+        }).when(mClientModeManager).setCountryCode(
+                    mSetCountryCodeCaptor.capture());
+
         createWifiCountryCode();
     }
 
@@ -87,11 +100,14 @@ public class WifiCountryCodeTest extends WifiBaseTest {
                 mContext,
                 mActiveModeWarden,
                 mClientModeImplMonitor,
+                mWifiNative,
                 mDefaultCountryCode);
         verify(mActiveModeWarden, atLeastOnce()).registerModeChangeCallback(
                     mModeChangeCallbackCaptor.capture());
         verify(mClientModeImplMonitor, atLeastOnce()).registerListener(
                 mClientModeImplListenerCaptor.capture());
+        verify(mWifiNative, atLeastOnce()).registerCountryCodeEventListener(
+                mChangeListenerCaptor.capture());
     }
 
     /**

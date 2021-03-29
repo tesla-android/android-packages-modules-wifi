@@ -64,6 +64,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -255,6 +256,10 @@ public class WifiNativeTest extends WifiBaseTest {
 
     ArgumentCaptor<WifiNl80211Manager.ScanEventCallback> mScanCallbackCaptor =
             ArgumentCaptor.forClass(WifiNl80211Manager.ScanEventCallback.class);
+
+    @Captor
+    private ArgumentCaptor<WifiNl80211Manager.CountryCodeChangeListener>
+            mCountryCodeChangeListenerCaptor;
 
     private WifiNative mWifiNative;
 
@@ -1251,5 +1256,17 @@ public class WifiNativeTest extends WifiBaseTest {
         when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
                 .thenReturn("otherrealm.example.net!");
         assertNull(mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+    }
+
+
+    @Test
+    public void testCountryCodeChangeListener() {
+        final String testCountryCode = "US";
+        WifiCountryCode.ChangeListener changeListener = mock(WifiCountryCode.ChangeListener.class);
+        mWifiNative.registerCountryCodeEventListener(changeListener);
+        verify(mWificondControl).registerCountryCodeChangeListener(any(),
+                mCountryCodeChangeListenerCaptor.capture());
+        mCountryCodeChangeListenerCaptor.getValue().onChanged(testCountryCode);
+        verify(changeListener).onDriverCountryCodeChanged(testCountryCode);
     }
 }
