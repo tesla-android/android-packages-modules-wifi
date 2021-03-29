@@ -921,6 +921,8 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 }
 
                 setRoleInternalAndInvokeCallback(mScanRoleChangeInfoToSetOnTransition);
+                // If we're in ScanOnlyModeState, there is only 1 CMM. So it's ok to call
+                // WakeupController directly, there won't be multiple CMMs trampling over each other
                 mWakeupController.start();
                 mWifiNative.setScanMode(mClientInterfaceName, true);
             }
@@ -942,6 +944,8 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 mScanOnlyModeImpl = null;
                 mScanRoleChangeInfoToSetOnTransition = null;
 
+                // If we're in ScanOnlyModeState, there is only 1 CMM. So it's ok to call
+                // WakeupController directly, there won't be multiple CMMs trampling over each other
                 mWakeupController.stop();
                 mWifiNative.setScanMode(mClientInterfaceName, false);
             }
