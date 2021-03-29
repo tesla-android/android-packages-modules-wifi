@@ -99,6 +99,7 @@ public class WifiNative {
     private boolean mIsEnhancedOpenSupported = false;
     private final Set<CoexUnsafeChannel> mCachedCoexUnsafeChannels = new HashSet<>();
     private int mCachedCoexRestrictions;
+    private CountryCodeChangeListenerInternal mCountryCodeChangeListener;
 
     public WifiNative(WifiVendorHal vendorHal,
                       SupplicantStaIfaceHal staIfaceHal, HostapdHal hostapdHal,
@@ -160,6 +161,23 @@ public class WifiNative {
         public void onConnectedClientsChanged(NativeWifiClient client, boolean isConnected) {
             mSoftApListener.onConnectedClientsChanged(mIfaceName,
                     client.getMacAddress(), isConnected);
+        }
+    }
+
+    private static class CountryCodeChangeListenerInternal implements
+            WifiNl80211Manager.CountryCodeChangeListener {
+        private WifiCountryCode.ChangeListener mListener;
+
+        public void setChangeListener(@NonNull WifiCountryCode.ChangeListener listener) {
+            mListener = listener;
+        }
+
+        @Override
+        public void onChanged(String country) {
+            Log.d(TAG, "onCountryCodeChanged: " + country);
+            if (mListener != null) {
+                mListener.onDriverCountryCodeChanged(country);
+            }
         }
     }
 
@@ -437,6 +455,7 @@ public class WifiNative {
                     Log.i(TAG, "Vendor Hal not supported, ignoring start.");
                 }
             }
+            registerWificondListenerIfNecessary();
             return true;
         }
     }
@@ -453,6 +472,20 @@ public class WifiNative {
                 } else {
                     Log.i(TAG, "Vendor Hal not supported, ignoring stop.");
                 }
+            }
+        }
+    }
+
+    /**
+     * Helper method invoked to setup wificond related callback/listener.
+     */
+    private void registerWificondListenerIfNecessary() {
+        if (mCountryCodeChangeListener == null) {
+            mCountryCodeChangeListener = new CountryCodeChangeListenerInternal();
+            // The country code listener is a new API in S.
+            if (SdkLevel.isAtLeastS()) {
+                mWifiCondManager.registerCountryCodeChangeListener(Runnable::run,
+                        mCountryCodeChangeListener);
             }
         }
     }
@@ -3945,5 +3978,15 @@ public class WifiNative {
      */
     public boolean startSubsystemRestart() {
         return mWifiVendorHal.startSubsystemRestart();
+    }
+
+    /**
+     * Register the provided listener for country code event.
+     *
+     * @param listener listener for country code changed events.
+     */
+    public void registerCountryCodeEventListener(WifiCountryCode.ChangeListener listener) {
+        registerWificondListenerIfNecessary();
+        mCountryCodeChangeListener.setChangeListener(listener);
     }
 }

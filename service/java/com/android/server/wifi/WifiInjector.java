@@ -451,7 +451,7 @@ public class WifiInjector {
                 mActiveModeWarden);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
-                mCmiMonitor, SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
+                mCmiMonitor, mWifiNative, SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
         mConnectionFailureNotifier = new ConnectionFailureNotifier(
                 mContext, mFrameworkFacade, mWifiConfigManager,
                 mWifiConnectivityManager, wifiHandler,

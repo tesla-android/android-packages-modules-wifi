@@ -35,6 +35,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -48,6 +49,7 @@ public class WifiCountryCode {
     private final Context mContext;
     private final TelephonyManager mTelephonyManager;
     private final ActiveModeWarden mActiveModeWarden;
+    private final WifiNative mWifiNative;
     private List<ChangeListener> mListeners = new ArrayList<>();
     private boolean DBG = false;
     /**
@@ -130,17 +132,35 @@ public class WifiCountryCode {
 
     }
 
+    private class CountryChangeListenerInternal implements ChangeListener {
+        @Override
+        public void onDriverCountryCodeChanged(String country) {
+            if (Objects.equals(country, mDriverCountryCode)) {
+                return;
+            }
+            Log.i(TAG, "Receive onDriverCountryCodeChanged " + country);
+            mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
+            mDriverCountryCode = country;
+            for (ChangeListener listener : mListeners) {
+                listener.onDriverCountryCodeChanged(country);
+            }
+        }
+    }
+
     public WifiCountryCode(
             Context context,
             ActiveModeWarden activeModeWarden,
             ClientModeImplMonitor clientModeImplMonitor,
+            WifiNative wifiNative,
             String oemDefaultCountryCode) {
         mContext = context;
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         mActiveModeWarden = activeModeWarden;
+        mWifiNative = wifiNative;
 
         mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallbackInternal());
         clientModeImplMonitor.registerListener(new ClientModeListenerInternal());
+        mWifiNative.registerCountryCodeEventListener(new CountryChangeListenerInternal());
 
         if (!TextUtils.isEmpty(oemDefaultCountryCode)) {
             mDefaultCountryCode = oemDefaultCountryCode.toUpperCase(Locale.US);
@@ -173,6 +193,9 @@ public class WifiCountryCode {
      */
     public void registerListener(@NonNull ChangeListener listener) {
         mListeners.add(listener);
+        if (mDriverCountryCode != null) {
+            listener.onDriverCountryCodeChanged(mDriverCountryCode);
+        }
     }
 
     /**
@@ -395,12 +418,7 @@ public class WifiCountryCode {
         // as there is at least one active interface to communicate to Wifi chip
         for (ConcreteClientModeManager cm : cmms) {
             if (cm.setCountryCode(country)) {
-                mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
-                mDriverCountryCode = country;
                 Log.d(TAG, "Succeeded to set country code to: " + country);
-                for (ChangeListener listener : mListeners) {
-                    listener.onDriverCountryCodeChanged(country);
-                }
                 return true;
             }
         }
