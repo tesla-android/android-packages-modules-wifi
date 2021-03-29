@@ -34,8 +34,9 @@ import java.util.Set;
 
 @SmallTest
 public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
-    private static final long TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION = 1000;
-    private static final long TEST_TEMP_DISABLE_NETWORK_DURATION = 3000;
+    private static final long TEST_MIN_DISABLE_ALL_DURATION = 1000;
+    private static final long TEST_MAX_DISABLE_ALL_DURATION = 100000;
+    private static final long TEST_MIN_DURATION_NOT_SEEN_IN_SCANS = 3000;
     private static final int TEST_SUBSCRIPTION_ID = 1;
     private static final int INVALID_SUBSCRIPTION_ID = -1;
     private NonCarrierMergedNetworksStatusTracker mNonCarrierMergedNetworksStatusTracker;
@@ -66,21 +67,22 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
 
     /**
      * Verify that after disableAllNonCarrierMergedNetworks is called, a non-carrier-merged network
-     * is disabled until the disable duration passes.
+     * that's not explicitly disabled by "temporarilyDisableNetwork" gets re-enabled when the min
+     * disable duration passes.
      */
     @Test
     public void testDisableAllNonCarrierMergedNetworks() {
         // start disabling non-carrier-merged networks.
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
-                TEST_SUBSCRIPTION_ID, TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION);
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
 
         // verify the non-carrier-merged network is disabled before the disable duration is over.
-        setClockTime(TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION - 1);
+        setClockTime(TEST_MIN_DISABLE_ALL_DURATION - 1);
         assertTrue(mNonCarrierMergedNetworksStatusTracker
                 .isNetworkDisabled(mTestNonCarrierMergedNetwork));
 
         // verify the non-carrier-merged network is no longer disabled after the disable duration.
-        setClockTime(TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION);
+        setClockTime(TEST_MIN_DISABLE_ALL_DURATION);
         assertFalse(mNonCarrierMergedNetworksStatusTracker
                 .isNetworkDisabled(mTestNonCarrierMergedNetwork));
     }
@@ -92,7 +94,7 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
     @Test
     public void testCarrierMergedNetworkWithMatchingSubscriptionIdIsEnabled() {
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
-                TEST_SUBSCRIPTION_ID, TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION);
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -123,7 +125,7 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         WifiConfiguration testConfig = WifiConfigurationTestUtil.createOpenNetwork();
         // start disabling non-carrier-merged networks.
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
-                TEST_SUBSCRIPTION_ID, TEST_DISABLE_ALL_CARRIER_MERGED_NETWORKS_DURATION);
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
 
         // verify the non-carrier-merged network is disabled.
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(testConfig));
@@ -139,8 +141,10 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
      */
     @Test
     public void testTemporarilyDisableNetwork() {
+        mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_TEMP_DISABLE_NETWORK_DURATION);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -150,7 +154,36 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
 
         // verify that after the network is gone from scan results for long enough, the
         // network is no longer disabled.
-        setClockTime(TEST_TEMP_DISABLE_NETWORK_DURATION + 1);
+        setClockTime(TEST_MIN_DURATION_NOT_SEEN_IN_SCANS + 1);
+        assertFalse(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
+                mTestNonCarrierMergedNetwork));
+    }
+
+    /**
+     * Verify that a non-carrier merged network disabled with temporarilyDisableNetwork gets
+     * re-enabled after the max disable duration passes even though the network is still seen in
+     * scan results.
+     */
+    @Test
+    public void testTemporarilyDisableNetworkWithMaxDisableDuration() {
+        mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
+        mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
+        assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
+                mTestNonCarrierMergedNetwork));
+
+        // verify the network is still disabled after the network is seen in scan results 1ms
+        // before the max disable duration timeout.
+        setClockTime(TEST_MAX_DISABLE_ALL_DURATION - 1);
+        Set<String> networks = new HashSet<>();
+        networks.add(mTestNonCarrierMergedNetwork.SSID);
+        mNonCarrierMergedNetworksStatusTracker.update(networks);
+        assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
+                mTestNonCarrierMergedNetwork));
+
+        // verify the network is re-enabled after the max disable duration.
+        setClockTime(TEST_MAX_DISABLE_ALL_DURATION);
         assertFalse(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
     }
@@ -161,8 +194,10 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
      */
     @Test
     public void testClearResetsTemporarilyDisableNetwork() {
+        mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_TEMP_DISABLE_NETWORK_DURATION);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -177,8 +212,10 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
      */
     @Test
     public void testNetworkAppearingWillResetCounter() {
+        mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
+                TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_TEMP_DISABLE_NETWORK_DURATION);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
         mNonCarrierMergedNetworksStatusTracker.update(Collections.EMPTY_SET);
@@ -194,10 +231,10 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         mNonCarrierMergedNetworksStatusTracker.update(Collections.EMPTY_SET);
 
         // verify that the timer was reset properly
-        setClockTime(networkAppearTime + TEST_TEMP_DISABLE_NETWORK_DURATION);
+        setClockTime(networkAppearTime + TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
-        setClockTime(networkAppearTime + TEST_TEMP_DISABLE_NETWORK_DURATION + 1);
+        setClockTime(networkAppearTime + TEST_MIN_DURATION_NOT_SEEN_IN_SCANS + 1);
         assertFalse(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
     }
