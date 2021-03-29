@@ -2666,12 +2666,18 @@ public class WifiConfigManager {
      * @param subscriptionId
      */
     public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
-        localLog("startRestrictingAutoJoinToSubscriptionId: " + subscriptionId);
+        int minDisableDurationMinutes = mContext.getResources().getInteger(R.integer
+                .config_wifiAllNonCarrierMergedWifiMinDisableDurationMinutes);
+        int maxDisableDurationMinutes = mContext.getResources().getInteger(R.integer
+                .config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes);
+        localLog("startRestrictingAutoJoinToSubscriptionId: " + subscriptionId
+                + " minDisableDurationMinutes:" + minDisableDurationMinutes
+                + " maxDisableDurationMinutes:" + maxDisableDurationMinutes);
         // do a clear to make sure we start at a clean state.
         mNonCarrierMergedNetworksStatusTracker.clear();
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(subscriptionId,
-                mContext.getResources().getInteger(R.integer
-                        .config_wifiAllNonCarrierMergedWifiDisableDurationMinutes) * 60 * 1000);
+                minDisableDurationMinutes * 60 * 1000,
+                maxDisableDurationMinutes * 60 * 1000);
         for (WifiConfiguration config : getInternalConfiguredNetworks()) {
             ScanDetailCache scanDetailCache = getScanDetailCacheForNetwork(config.networkId);
             if (scanDetailCache == null) {
@@ -3320,6 +3326,7 @@ public class WifiConfigManager {
                 + mContext.getResources().getBoolean(R.bool.config_wifiPnoRecencySortingEnabled));
         mWifiConfigStore.dump(fd, pw, args);
         mWifiCarrierInfoManager.dump(fd, pw, args);
+        mNonCarrierMergedNetworksStatusTracker.dump(fd, pw, args);
     }
 
     /**
