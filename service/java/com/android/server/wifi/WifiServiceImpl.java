@@ -73,7 +73,7 @@ import android.net.wifi.ISuggestionConnectionStatusListener;
 import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
-import android.net.wifi.IWifiVerboseLoggingStatusCallback;
+import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApCapability;
 import android.net.wifi.SoftApConfiguration;
@@ -215,8 +215,8 @@ public class WifiServiceImpl extends BaseWifiService {
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
     private @WifiManager.VerboseLoggingLevel int mVerboseLoggingLevel =
             WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED;
-    private final RemoteCallbackList<IWifiVerboseLoggingStatusCallback>
-            mRegisteredWifiLoggingStatusCallbacks = new RemoteCallbackList<>();
+    private final RemoteCallbackList<IWifiVerboseLoggingStatusChangedListener>
+            mRegisteredWifiLoggingStatusListeners = new RemoteCallbackList<>();
 
     private final FrameworkFacade mFrameworkFacade;
 
@@ -3863,17 +3863,17 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     private void onVerboseLoggingStatusChanged(boolean enabled) {
-        int itemCount = mRegisteredWifiLoggingStatusCallbacks.beginBroadcast();
+        int itemCount = mRegisteredWifiLoggingStatusListeners.beginBroadcast();
         for (int i = 0; i < itemCount; i++) {
             try {
-                mRegisteredWifiLoggingStatusCallbacks.getBroadcastItem(i)
+                mRegisteredWifiLoggingStatusListeners.getBroadcastItem(i)
                         .onStatusChanged(enabled);
             } catch (RemoteException e) {
                 Log.e(TAG, "onVerboseLoggingStatusChanged: RemoteException -- ", e);
             }
 
         }
-        mRegisteredWifiLoggingStatusCallbacks.finishBroadcast();
+        mRegisteredWifiLoggingStatusListeners.finishBroadcast();
     }
 
     private boolean isVerboseLoggingEnabled() {
@@ -4602,45 +4602,45 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#registerWifiVerboseLoggingStatusCallback(Executor,
-     * WifiManager.WifiVerboseLoggingStatusCallback)}
+     * see {@link android.net.wifi.WifiManager#addWifiVerboseLoggingStatusChangedListener(Executor,
+     * WifiManager.WifiVerboseLoggingStatusChangedListener)}
      *
-     * @param callback WifiVerboseLoggingStatusCallback callback to add
+     * @param listener IWifiVerboseLoggingStatusChangedListener listener to add
      *
      * @throws SecurityException if the caller does not have permission to add a listener.
      * @throws IllegalArgumentException if the argument is null.
      */
     @Override
-    public void registerWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
-        if (callback == null) {
-            throw new IllegalArgumentException("Callback must not be null");
+    public void addWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("Listener must not be null");
         }
         enforceAccessPermission();
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mRegisteredWifiLoggingStatusCallbacks.register(callback));
+                mRegisteredWifiLoggingStatusListeners.register(listener));
     }
 
     /**
      * see {@link android.net.wifi.WifiManager#unregisterWifiVerboseLoggingStatusCallback
      * (WifiManager.WifiVerboseLoggingStatusCallback)}
      *
-     * @param callback WifiVerboseLoggingStatusCallback callback to be removed.
+     * @param listener the listener to be removed.
      *
      * @throws SecurityException if the caller does not have permission to add a listener.
      * @throws IllegalArgumentException if the argument is null.
      */
     @Override
-    public void unregisterWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
-        if (callback == null) {
-            throw new IllegalArgumentException("Callback must not be null");
+    public void removeWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("Listener must not be null");
         }
         enforceAccessPermission();
         // Post operation to handler thread
         mWifiThreadRunner.post(() ->
-                mRegisteredWifiLoggingStatusCallbacks.unregister(callback));
+                mRegisteredWifiLoggingStatusListeners.unregister(listener));
     }
 
     /**

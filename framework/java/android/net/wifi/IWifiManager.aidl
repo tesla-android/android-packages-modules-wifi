@@ -37,7 +37,7 @@ import android.net.wifi.ISuggestionConnectionStatusListener;
 import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
-import android.net.wifi.IWifiVerboseLoggingStatusCallback;
+import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAvailableChannel;
@@ -235,9 +235,9 @@ interface IWifiManager
 
     void unregisterSoftApCallback(in ISoftApCallback callback);
 
-    void registerWifiVerboseLoggingStatusCallback(in IWifiVerboseLoggingStatusCallback listener);
+    void addWifiVerboseLoggingStatusChangedListener(in IWifiVerboseLoggingStatusChangedListener listener);
 
-    void unregisterWifiVerboseLoggingStatusCallback(in IWifiVerboseLoggingStatusCallback listener);
+    void removeWifiVerboseLoggingStatusChangedListener(in IWifiVerboseLoggingStatusChangedListener listener);
 
     void addOnWifiUsabilityStatsListener(in IOnWifiUsabilityStatsListener listener);
 

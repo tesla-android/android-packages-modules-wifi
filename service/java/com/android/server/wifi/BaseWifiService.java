@@ -35,7 +35,7 @@ import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.IWifiManager;
-import android.net.wifi.IWifiVerboseLoggingStatusCallback;
+import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAvailableChannel;
@@ -533,14 +533,14 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void registerWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
+    public void addWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener callback) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void unregisterWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
+    public void removeWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener callback) {
         throw new UnsupportedOperationException();
     }
 
