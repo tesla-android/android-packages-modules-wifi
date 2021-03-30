@@ -419,7 +419,7 @@ public class WifiLinkLayerStats {
             int numRadioChanStats = radio.channelStatsMap.size();
             sbuf.append(" Number of channel stats=").append(numRadioChanStats).append('\n');
             for (int j = 0; j < numRadioChanStats; ++j) {
-                ChannelStats channelStatsEntry = this.channelStatsMap.valueAt(j);
+                ChannelStats channelStatsEntry = radio.channelStatsMap.valueAt(j);
                 sbuf.append(" Frequency=").append(channelStatsEntry.frequency)
                         .append(" radioOnTimeMs=").append(channelStatsEntry.radioOnTimeMs)
                         .append(" ccaBusyTimeMs=").append(channelStatsEntry.ccaBusyTimeMs)
