@@ -831,8 +831,8 @@ public class PasspointManagerTest extends WifiBaseTest {
                 add(config.getUniqueId());
             }};
         assertEquals(TEST_CARRIER_ID,
-                ut.getWifiConfigsForPasspointProfiles(passpointProfilesList).get(0).carrierId);
-
+                ut.getWifiConfigsForPasspointProfiles(passpointProfilesList, false)
+                        .get(0).carrierId);
     }
 
     /**
@@ -1282,7 +1282,7 @@ public class PasspointManagerTest extends WifiBaseTest {
         assertEquals(3, mManager.getWifiConfigsForPasspointProfiles(
                 Arrays.asList(provider1.getConfig().getUniqueId(),
                         provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        TEST_FQDN + "_353ab8c93", TEST_FQDN + "_83765319aca")).size());
+                        TEST_FQDN + "_353ab8c93", TEST_FQDN + "_83765319aca"), false).size());
         PasspointProvider provider4 = addTestProvider(TEST_FQDN + 3, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, true, null);
         when(mWifiNetworkSuggestionsManager
@@ -1290,7 +1290,8 @@ public class PasspointManagerTest extends WifiBaseTest {
         assertEquals(3, mManager.getWifiConfigsForPasspointProfiles(
                 Arrays.asList(provider1.getConfig().getUniqueId(),
                         provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        provider4.getConfig().getUniqueId(), TEST_FQDN + "_83765319aca")).size());
+                        provider4.getConfig().getUniqueId(), TEST_FQDN + "_83765319aca"), false)
+                .size());
         PasspointProvider provider5 = addTestProvider(TEST_FQDN + 4, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, true, null);
         when(mWifiNetworkSuggestionsManager
@@ -1298,8 +1299,21 @@ public class PasspointManagerTest extends WifiBaseTest {
         assertEquals(4, mManager.getWifiConfigsForPasspointProfiles(
                 Arrays.asList(provider1.getConfig().getUniqueId(),
                         provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        provider4.getConfig().getUniqueId(), provider5.getConfig().getUniqueId()))
+                        provider4.getConfig().getUniqueId(), provider5.getConfig().getUniqueId()),
+                false)
                 .size());
+        // Verify only return the WifiConfiguration that is already added into WifiConfigManager.
+        WifiConfiguration config = provider1.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider1.getConfig().getUniqueId()))
+                .thenReturn(config);
+        List<WifiConfiguration> configurationList = mManager.getWifiConfigsForPasspointProfiles(
+                Arrays.asList(provider1.getConfig().getUniqueId(),
+                        provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
+                        provider4.getConfig().getUniqueId(), provider5.getConfig().getUniqueId()),
+                true);
+        assertEquals(1, configurationList.size());
+        assertEquals(provider1.getWifiConfig().getProfileKeyInternal(),
+                configurationList.get(0).getProfileKeyInternal());
     }
 
     /**
@@ -1314,7 +1328,7 @@ public class PasspointManagerTest extends WifiBaseTest {
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
         WifiConfiguration config = mManager.getWifiConfigsForPasspointProfiles(
-                Collections.singletonList(provider.getConfig().getUniqueId())).get(0);
+                Collections.singletonList(provider.getConfig().getUniqueId()), false).get(0);
         assertEquals(config.getRandomizedMacAddress(), randomizedMacAddress);
         verify(mMacAddressUtil).calculatePersistentMac(
                 eq(provider.getConfig().getUniqueId()), any());
@@ -1333,7 +1347,7 @@ public class PasspointManagerTest extends WifiBaseTest {
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
         WifiConfiguration config = mManager.getWifiConfigsForPasspointProfiles(
-                Collections.singletonList(provider.getConfig().getUniqueId())).get(0);
+                Collections.singletonList(provider.getConfig().getUniqueId()), false).get(0);
         assertEquals(config.getRandomizedMacAddress(), MacAddress.fromString(DEFAULT_MAC_ADDRESS));
     }
 
