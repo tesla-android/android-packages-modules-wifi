@@ -326,9 +326,15 @@
     <!-- Duration in minutes a recent failure should be displayed in the wifi picker UI. -->
     <integer translatable="false" name="config_wifiRecentFailureReasonExpirationMinutes">30</integer>
 
-    <!-- Duration in minutes that all non-carrier-merged wifi becomes disabled when
+    <!-- The minimum duration in minutes that all non-carrier-merged wifi becomes disabled when
     WifiManager#startRestrictingAutoJoinToSubscriptionId is called. -->
-    <integer translatable="false" name="config_wifiAllNonCarrierMergedWifiDisableDurationMinutes">30</integer>
+    <integer translatable="false"
+             name="config_wifiAllNonCarrierMergedWifiMinDisableDurationMinutes">30</integer>
+
+    <!-- The maximum duration in minutes that all non-carrier-merged wifi becomes disabled when
+    WifiManager#startRestrictingAutoJoinToSubscriptionId is called. -->
+    <integer translatable="false"
+             name="config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes">480</integer>
 
     <!-- Indicates that wifi link probing is supported on this device -->
     <bool translatable="false" name="config_wifi_link_probing_supported">false</bool>

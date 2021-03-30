@@ -18,9 +18,12 @@ package com.android.server.wifi;
 
 import android.net.wifi.WifiConfiguration;
 import android.telephony.SubscriptionManager;
+import android.util.ArraySet;
 
 import com.android.server.wifi.util.MissingCounterTimerLockList;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.Set;
 
 /**
@@ -30,26 +33,35 @@ public class NonCarrierMergedNetworksStatusTracker {
     private final Clock mClock;
     private int mSubscriptionId;
     private long mDisableStartTimeMs;
-    private long mDisableDurationMs;
+    private long mMinDisableDurationMs;
+    private long mMaxDisableDurationMs;
     private final MissingCounterTimerLockList<String> mTemporarilyDisabledNonCarrierMergedList;
+    private final Set<String> mTemporarilyDisabledNonCarrierMergedListAtStart;
 
     public NonCarrierMergedNetworksStatusTracker(Clock clock) {
         mClock = clock;
         mTemporarilyDisabledNonCarrierMergedList =
                 new MissingCounterTimerLockList<>(
                         WifiConfigManager.SCAN_RESULT_MISSING_COUNT_THRESHOLD, mClock);
+        mTemporarilyDisabledNonCarrierMergedListAtStart = new ArraySet<>();
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     }
 
     /**
      * Disable autojoin for all non-carrier-merged networks for the specified duration.
      * @param subscriptionId the subscription ID of the carrier network.
-     * @param disableDurationMs the duration in milliseconds this carrier network is selected.
+     * @param minDisableDurationMs the minimum duration in milliseconds to stay on the carrier
+     *                             network even if wifi is available.
+     * @param maxDisableDurationMs the maximum duration to disable all non-carrier merged wifi
+     *                             networks. After this duration passes, all non-carrier merged
+     *                             networks will get re-enabled for auto connections.
      */
-    public void disableAllNonCarrierMergedNetworks(int subscriptionId, long disableDurationMs) {
+    public void disableAllNonCarrierMergedNetworks(int subscriptionId, long minDisableDurationMs,
+            long maxDisableDurationMs) {
         mSubscriptionId = subscriptionId;
         mDisableStartTimeMs = mClock.getElapsedSinceBootMillis();
-        mDisableDurationMs = disableDurationMs;
+        mMinDisableDurationMs = minDisableDurationMs;
+        mMaxDisableDurationMs = maxDisableDurationMs;
     }
 
     /**
@@ -57,7 +69,9 @@ public class NonCarrierMergedNetworksStatusTracker {
      * or FQDN will be re-enabled when after it is out of range for the specified duration.
      */
     public void temporarilyDisableNetwork(WifiConfiguration config, long timerDurationMs) {
-        mTemporarilyDisabledNonCarrierMergedList.add(getKeyFromConfig(config), timerDurationMs);
+        String key = getKeyFromConfig(config);
+        mTemporarilyDisabledNonCarrierMergedList.add(key, timerDurationMs);
+        mTemporarilyDisabledNonCarrierMergedListAtStart.add(key);
     }
 
     /**
@@ -75,8 +89,10 @@ public class NonCarrierMergedNetworksStatusTracker {
     public void clear() {
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mDisableStartTimeMs = 0;
-        mDisableDurationMs = 0;
+        mMinDisableDurationMs = 0;
+        mMaxDisableDurationMs = 0;
         mTemporarilyDisabledNonCarrierMergedList.clear();
+        mTemporarilyDisabledNonCarrierMergedListAtStart.clear();
     }
 
     /**
@@ -86,6 +102,11 @@ public class NonCarrierMergedNetworksStatusTracker {
      * @param config the network to check whether auto-connect should be disabled on
      */
     public boolean isNetworkDisabled(WifiConfiguration config) {
+        // All wifi networks are enabled after the max effective duration of the API call passes.
+        if (mClock.getElapsedSinceBootMillis() - mDisableStartTimeMs >= mMaxDisableDurationMs) {
+            clear();
+            return false;
+        }
         // always allow a carrier-merged network with matching subscription ID through.
         if (config.carrierMerged && config.subscriptionId == mSubscriptionId) {
             return false;
@@ -106,6 +127,23 @@ public class NonCarrierMergedNetworksStatusTracker {
     }
 
     private boolean shouldDisableAllNonCarrierMergedNetworks() {
-        return mClock.getElapsedSinceBootMillis() - mDisableStartTimeMs < mDisableDurationMs;
+        return mClock.getElapsedSinceBootMillis() - mDisableStartTimeMs < mMinDisableDurationMs;
+    }
+
+    /**
+     * Dump information for debugging.
+     */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("NonCarrierMergedNetworksStatusTracker - Log Begin ----");
+        pw.println("mSubscriptionId=" + mSubscriptionId);
+        pw.println("dumpTimeMs=" + mClock.getElapsedSinceBootMillis());
+        pw.println("mDisableStartTimeMs=" + mDisableStartTimeMs);
+        pw.println("mMinDisableDurationMs=" + mMinDisableDurationMs);
+        pw.println("mMaxDisableDurationMs=" + mMaxDisableDurationMs);
+        pw.println("mTemporarilyDisabledNonCarrierMergedListAtStart=");
+        for (String s : mTemporarilyDisabledNonCarrierMergedListAtStart) {
+            pw.println(s);
+        }
+        pw.println("NonCarrierMergedNetworksStatusTracker - Log End ----");
     }
 }

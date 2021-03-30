@@ -122,7 +122,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
             MacAddress.fromString("d2:11:19:34:a5:20");
     private static final int DATA_SUBID = 1;
     private static final String SYSUI_PACKAGE_NAME = "com.android.systemui";
-    private static final int ALL_NON_CARRIER_MERGED_WIFI_DISABLE_DURATION_MINUTES = 30;
+    private static final int ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES = 30;
+    private static final int ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES = 480;
     private static final int TEST_NETWORK_SELECTION_ENABLE_REASON =
             NetworkSelectionStatus.DISABLED_NONE;
     private static final int TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON =
@@ -197,8 +198,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         mResources.setBoolean(R.bool.config_wifi_connected_mac_randomization_supported, true);
         mResources.setInteger(R.integer.config_wifiMaxPnoSsidCount, 16);
         mResources.setInteger(
-                R.integer.config_wifiAllNonCarrierMergedWifiDisableDurationMinutes,
-                ALL_NON_CARRIER_MERGED_WIFI_DISABLE_DURATION_MINUTES);
+                R.integer.config_wifiAllNonCarrierMergedWifiMinDisableDurationMinutes,
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES);
+        mResources.setInteger(
+                R.integer.config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes,
+                ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES);
         when(mContext.getResources()).thenReturn(mResources);
 
         // Setup UserManager profiles for the default user.
@@ -5055,7 +5059,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // the network visible at the start of the API call should still be disabled, but the
         // other non-carrier-merged network should now be free to connect
         when(mClock.getElapsedSinceBootMillis()).thenReturn(
-                ALL_NON_CARRIER_MERGED_WIFI_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
         assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
 
@@ -5107,7 +5111,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // of the API call. But both passpoint network should still be disabled due to the FQDN
         // of passpointNetwork_1 being disabled.
         when(mClock.getElapsedSinceBootMillis()).thenReturn(
-                ALL_NON_CARRIER_MERGED_WIFI_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
                 passpointNetwork_1));
         assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(

@@ -2593,7 +2593,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         WifiConfiguration wifiConfig = getConnectedWifiConfigurationInternal();
         if (wifiConfig != null) {
             ScanResultMatchInfo matchInfo = ScanResultMatchInfo.fromWifiConfiguration(wifiConfig);
-            mWakeupController.setLastDisconnectInfo(matchInfo);
+            // WakeupController should only care about the primary, internet providing network
+            if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+                mWakeupController.setLastDisconnectInfo(matchInfo);
+            }
             mWifiNetworkSuggestionsManager.handleDisconnect(
                     wifiConfig, getConnectedBssidInternal());
         }
@@ -3450,7 +3453,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.reset();
             mWifiInfo.setSupplicantState(SupplicantState.DISCONNECTED);
 
-            mWakeupController.reset();
             sendNetworkChangeBroadcast(DetailedState.DISCONNECTED);
 
             // Inform metrics that Wifi is Enabled (but not yet connected)
