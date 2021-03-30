@@ -1393,6 +1393,8 @@ public class WifiManager {
             sSuggestionConnectionStatusListenerMap = new SparseArray();
     private static final SparseArray<ISuggestionUserApprovalStatusListener>
             sSuggestionUserApprovalStatusListenerMap = new SparseArray();
+    private static final SparseArray<IWifiVerboseLoggingStatusChangedListener>
+            sWifiVerboseLoggingStatusChangedListenerMap = new SparseArray();
     private static final SparseArray<INetworkRequestMatchCallback>
             sNetworkRequestMatchCallbackMap = new SparseArray();
     private static final SparseArray<ITrafficStateCallback>
@@ -6970,77 +6972,20 @@ public class WifiManager {
     }
 
     /**
-     * Abstract callback class for applications to receive updates on Wi-Fi verbose logging status.
-     * Should be implemented by applications and set when calling
-     * {@link WifiManager#registerWifiVerboseLoggingStatusCallback(Executor,
-     * WifiVerboseLoggingStatusCallback)}.
+     * Interface for Wi-Fi verbose logging status listener. Should be implemented by applications
+     * and set when calling {@link WifiManager#addWifiVerboseLoggingStatusListener(Executor,
+     * WifiVerboseLoggingStatusListener)}.
      *
      * @hide
      */
     @SystemApi
-    public abstract static class WifiVerboseLoggingStatusCallback {
-        private final WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy mProxy;
-
-        public WifiVerboseLoggingStatusCallback() {
-            mProxy = new WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy();
-        }
-
-        /*package*/ @NonNull
-        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy getProxy() {
-            return mProxy;
-        }
+    public interface WifiVerboseLoggingStatusChangedListener {
         /**
          * Called when Wi-Fi verbose logging setting is updated.
          *
          * @param enabled true if verbose logging is enabled, false if verbose logging is disabled.
          */
-        public abstract void onStatusChanged(boolean enabled);
-
-        private static class WifiVerboseLoggingStatusCallbackProxy extends
-                IWifiVerboseLoggingStatusCallback.Stub {
-            private final Object mLock = new Object();
-            @Nullable
-            @GuardedBy("mLock")
-            private Executor mExecutor;
-            @Nullable
-            @GuardedBy("mLock")
-            private WifiVerboseLoggingStatusCallback mCallback;
-
-            WifiVerboseLoggingStatusCallbackProxy() {
-                mExecutor = null;
-                mCallback = null;
-            }
-
-            /*package*/ void initProxy(@NonNull Executor executor,
-                    @NonNull WifiVerboseLoggingStatusCallback callback) {
-                synchronized (mLock) {
-                    mExecutor = executor;
-                    mCallback = callback;
-                }
-            }
-
-            /*package*/ void cleanUpProxy() {
-                synchronized (mLock) {
-                    mExecutor = null;
-                    mCallback = null;
-                }
-            }
-
-            @Override
-            public void onStatusChanged(boolean enabled) throws RemoteException {
-                Executor executor;
-                WifiVerboseLoggingStatusCallback callback;
-                synchronized (mLock) {
-                    executor = mExecutor;
-                    callback = mCallback;
-                }
-                if (executor == null || callback == null) {
-                    return;
-                }
-                Binder.clearCallingIdentity();
-                executor.execute(() -> callback.onStatusChanged(enabled));
-            }
-        }
+        void onWifiVerboseLoggingStatusChanged(boolean enabled);
     }
 
     /**
@@ -7305,67 +7250,87 @@ public class WifiManager {
     }
 
     /**
-     * Add a callback listening to wifi verbose logging changes.
-     * See {@link WifiVerboseLoggingStatusCallback}.
+     * Add a listener listening to wifi verbose logging changes.
+     * See {@link WifiVerboseLoggingStatusChangedListener}.
      * Caller can remove a previously registered listener using
-     * {@link WifiManager#unregisterWifiVerboseLoggingStatusCallback(
-     * WifiVerboseLoggingStatusCallback)}
-     * Same caller can add multiple callbacks to monitor the event.
+     * {@link WifiManager#removeWifiVerboseLoggingStatusChangedListener(
+     * WifiVerboseLoggingStatusChangedListener)}
+     * Same caller can add multiple listeners to monitor the event.
      * <p>
-     * Applications should have {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Applications should have the
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
      * Callers without the permission will trigger a {@link java.lang.SecurityException}.
      * <p>
      * @param executor The executor to execute the listener of the {@code listener} object.
-     * @param callback callback for changes in wifi verbose logging.
+     * @param listener listener for changes in wifi verbose logging.
      *
      * @hide
      */
     @SystemApi
     @RequiresPermission(ACCESS_WIFI_STATE)
-    public void registerWifiVerboseLoggingStatusCallback(
+    public void addWifiVerboseLoggingStatusChangedListener(
             @NonNull @CallbackExecutor Executor executor,
-            @NonNull WifiVerboseLoggingStatusCallback callback) {
-        if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
+            @NonNull WifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
         if (executor == null) throw new IllegalArgumentException("Executor cannot be null");
         if (mVerboseLoggingEnabled) {
-            Log.v(TAG, "registerWifiVerboseLoggingStatusCallback callback=" + callback
+            Log.v(TAG, "addWifiVerboseLoggingStatusChangedListener listener=" + listener
                     + ", executor=" + executor);
         }
-        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy proxy =
-                callback.getProxy();
-        proxy.initProxy(executor, callback);
         try {
-            mService.registerWifiVerboseLoggingStatusCallback(proxy);
+            synchronized (sWifiVerboseLoggingStatusChangedListenerMap) {
+                IWifiVerboseLoggingStatusChangedListener.Stub binderCallback =
+                        new IWifiVerboseLoggingStatusChangedListener.Stub() {
+                            @Override
+                            public void onStatusChanged(boolean enabled) {
+                                if (mVerboseLoggingEnabled) {
+                                    Log.v(TAG, "WifiVerboseLoggingStatusListener: "
+                                            + "onVerboseLoggingStatusChanged: enabled=" + enabled);
+                                }
+                                Binder.clearCallingIdentity();
+                                executor.execute(() -> listener.onWifiVerboseLoggingStatusChanged(
+                                        enabled));
+                            }
+                        };
+                sWifiVerboseLoggingStatusChangedListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.addWifiVerboseLoggingStatusChangedListener(binderCallback);
+            }
         } catch (RemoteException e) {
-            proxy.cleanUpProxy();
             throw e.rethrowFromSystemServer();
         }
     }
 
     /**
-     * Allow callers to remove a previously registered callback.
+     * Allow callers to remove a previously registered listener.
      * <p>
-     * Applications should have {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Applications should have the
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
      * Callers without the permission will trigger a {@link java.lang.SecurityException}.
      * <p>
-     * @param callback callback to remove.
+     * @param listener listener to remove.
      *
      * @hide
      */
     @SystemApi
     @RequiresPermission(ACCESS_WIFI_STATE)
-    public void unregisterWifiVerboseLoggingStatusCallback(
-            @NonNull WifiVerboseLoggingStatusCallback callback) {
-        if (callback == null) throw new IllegalArgumentException("Callback cannot be null");
-        Log.v(TAG, "unregisterWifiVerboseLoggingStatusCallback: callback=" + callback);
-        WifiVerboseLoggingStatusCallback.WifiVerboseLoggingStatusCallbackProxy proxy =
-                callback.getProxy();
+    public void removeWifiVerboseLoggingStatusChangedListener(
+            @NonNull WifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
+        Log.v(TAG, "removeWifiVerboseLoggingStatusChangedListener: listener=" + listener);
         try {
-            mService.unregisterWifiVerboseLoggingStatusCallback(proxy);
+            synchronized (sWifiVerboseLoggingStatusChangedListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sWifiVerboseLoggingStatusChangedListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.removeWifiVerboseLoggingStatusChangedListener(
+                        sWifiVerboseLoggingStatusChangedListenerMap.get(listenerIdentifier));
+                sWifiVerboseLoggingStatusChangedListenerMap.remove(listenerIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
-        } finally {
-            proxy.cleanUpProxy();
         }
     }
 
