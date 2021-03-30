@@ -625,6 +625,17 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     countDownLatch.await(500, TimeUnit.MILLISECONDS);
                     return 0;
                 }
+                case "pmksa-flush": {
+                    String networkId = getNextArgRequired();
+                    int netId = Integer.parseInt(networkId);
+                    WifiConfiguration config = mWifiConfigManager.getConfiguredNetwork(netId);
+                    if (config == null) {
+                        pw.println("No Wifi config corresponding to networkId: " + netId);
+                        return -1;
+                    }
+                    mWifiNative.removeNetworkCachedData(netId);
+                    return 0;
+                }
                 case "status":
                     printStatus(pw);
                     return 0;
@@ -1488,6 +1499,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 + "force-softap-channel command");
         pw.println("  stop-softap");
         pw.println("    Stop softap (hotspot)");
+        pw.println("  pmksa-flush <networkId>");
+        pw.println("        - Flush the local PMKSA cache associated with the network id."
+                + " Use list-networks to retrieve <networkId> for the network");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {
