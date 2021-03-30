@@ -22,8 +22,8 @@ import com.android.internal.util.StateMachine.LogRec;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Enough information about a StateMachine to reconstruct the dump() log. This is necessary
@@ -41,18 +41,23 @@ public class StateMachineObituary {
      * messages could be discarded.
      */
     private final int mTotalProcessedRecords;
-    private final Collection<String> mLogRecs;
+    private final List<String> mLogRecs = new ArrayList<>();
     private final String mLastStateName;
 
     public StateMachineObituary(StateMachine stateMachine) {
         mName = stateMachine.getName();
+        // total number of LogRecs ever
         mTotalProcessedRecords = stateMachine.getLogRecCount();
-        // LogRecs are mutable and StateMachine internally reuses LogRec instances of allocating
-        // new ones. Thus, convert the LogRecs to Strings.
-        mLogRecs = stateMachine.copyLogRecs()
-                .stream()
-                .map(LogRec::toString)
-                .collect(Collectors.toList());
+        // number of records currently readable i.e. not yet discarded
+        int currentReadableRecords = stateMachine.getLogRecSize();
+        // LogRecs are mutable and StateMachine internally reuses LogRec instances instead of
+        // allocating new ones. Thus, convert the LogRecs to Strings.
+        for (int i = 0; i < currentReadableRecords; i++) {
+            LogRec logRec = stateMachine.getLogRec(i);
+            if (logRec != null) { // just in case
+                mLogRecs.add(logRec.toString());
+            }
+        }
         final IState curState = stateMachine.getCurrentState();
         mLastStateName = curState == null ? "<QUIT>" : curState.getName();
     }
