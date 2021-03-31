@@ -51,7 +51,7 @@ public final class RangingRequest implements Parcelable {
     private static final int MAX_PEERS = 10;
     private static final int DEFAULT_RTT_BURST_SIZE = 8;
     private static final int MIN_RTT_BURST_SIZE = 2;
-    private static final int MAX_RTT_BURST_SIZE = 17;
+    private static final int MAX_RTT_BURST_SIZE = 31;
 
     /**
      * Returns the maximum number of peers to range which can be specified in a single {@code
