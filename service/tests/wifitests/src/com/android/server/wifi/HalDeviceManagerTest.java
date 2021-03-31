@@ -39,6 +39,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -190,6 +191,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         when(mWifiMock.start()).thenReturn(mStatusOk);
         when(mWifiMock.stop()).thenReturn(mStatusOk);
         when(mWifiMock.isStarted()).thenReturn(true);
+        when(mWifiMockV15.isStarted()).thenReturn(true);
 
         mDut = new HalDeviceManagerSpy();
     }
@@ -1171,6 +1173,14 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
+        // Try to query iface support before starting the HAL. Should return false.
+        when(mWifiMock.isStarted()).thenReturn(false);
+        assertFalse(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
+                put(IfaceType.STA, 1);
+            }}
+        ));
+        verify(mWifiMock, never()).getChipIds(any());
+        when(mWifiMock.isStarted()).thenReturn(true);
         executeAndValidateStartupSequence();
 
         clearInvocations(mWifiMock);
@@ -1529,6 +1539,14 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
+        // Try to query iface support before starting the HAL. Should return false.
+        when(mWifiMock.isStarted()).thenReturn(false);
+        assertFalse(mDut.canSupportIfaceCombo(new SparseArray<Integer>() {{
+                put(IfaceType.STA, 1);
+            }}
+        ));
+        verify(mWifiMock, never()).getChipIds(any());
+        when(mWifiMock.isStarted()).thenReturn(true);
         executeAndValidateStartupSequence();
 
         clearInvocations(mWifiMock);
