@@ -1168,25 +1168,25 @@ package android.net.wifi.p2p {
     method public boolean setR2DeviceType(int);
     method public void setSessionAvailable(boolean);
     method public void writeToParcel(@NonNull android.os.Parcel, int);
-    field public static final int AUDIO_ONLY_SUPPORT_AT_SOURCE = 2048; // 0x800
-    field public static final int AUDIO_UNSUPPORTED_AT_PRIMARY_SINK = 1024; // 0x400
-    field public static final int CONTENT_PROTECTION_SUPPORT = 256; // 0x100
-    field public static final int COUPLED_SINK_SUPPORT_AT_SINK = 8; // 0x8
-    field public static final int COUPLED_SINK_SUPPORT_AT_SOURCE = 4; // 0x4
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.p2p.WifiP2pWfdInfo> CREATOR;
-    field public static final int DEVICE_TYPE = 3; // 0x3
+    field public static final int DEVICE_INFO_AUDIO_ONLY_SUPPORT_AT_SOURCE = 2048; // 0x800
+    field public static final int DEVICE_INFO_AUDIO_UNSUPPORTED_AT_PRIMARY_SINK = 1024; // 0x400
+    field public static final int DEVICE_INFO_CONTENT_PROTECTION_SUPPORT = 256; // 0x100
+    field public static final int DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK = 8; // 0x8
+    field public static final int DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE = 4; // 0x4
+    field public static final int DEVICE_INFO_DEVICE_TYPE_MASK = 3; // 0x3
+    field public static final int DEVICE_INFO_PREFERRED_CONNECTIVITY_MASK = 128; // 0x80
+    field public static final int DEVICE_INFO_SESSION_AVAILABLE_MASK = 48; // 0x30
+    field public static final int DEVICE_INFO_TDLS_PERSISTENT_GROUP = 4096; // 0x1000
+    field public static final int DEVICE_INFO_TDLS_PERSISTENT_GROUP_REINVOKE = 8192; // 0x2000
+    field public static final int DEVICE_INFO_TIME_SYNCHRONIZATION_SUPPORT = 512; // 0x200
+    field public static final int DEVICE_INFO_WFD_SERVICE_DISCOVERY_SUPPORT = 64; // 0x40
     field public static final int DEVICE_TYPE_PRIMARY_SINK = 1; // 0x1
     field public static final int DEVICE_TYPE_SECONDARY_SINK = 2; // 0x2
     field public static final int DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK = 3; // 0x3
     field public static final int DEVICE_TYPE_WFD_SOURCE = 0; // 0x0
-    field public static final int PREFERRED_CONNECTIVITY = 128; // 0x80
     field public static final int PREFERRED_CONNECTIVITY_P2P = 0; // 0x0
     field public static final int PREFERRED_CONNECTIVITY_TDLS = 1; // 0x1
-    field public static final int SESSION_AVAILABLE = 48; // 0x30
-    field public static final int TDLS_PERSISTENT_GROUP = 4096; // 0x1000
-    field public static final int TDLS_PERSISTENT_GROUP_REINVOKE = 8192; // 0x2000
-    field public static final int TIME_SYNCHRONIZATION_SUPPORT = 512; // 0x200
-    field public static final int WFD_SERVICE_DISCOVERY_SUPPORT = 64; // 0x40
   }
 
 }
