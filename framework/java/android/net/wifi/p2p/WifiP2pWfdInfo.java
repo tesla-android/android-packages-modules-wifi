@@ -78,58 +78,58 @@ public final class WifiP2pWfdInfo implements Parcelable {
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef(value = {
-            DEVICE_TYPE,
-            COUPLED_SINK_SUPPORT_AT_SOURCE,
-            COUPLED_SINK_SUPPORT_AT_SINK,
-            SESSION_AVAILABLE,
-            WFD_SERVICE_DISCOVERY_SUPPORT,
-            PREFERRED_CONNECTIVITY,
-            CONTENT_PROTECTION_SUPPORT,
-            TIME_SYNCHRONIZATION_SUPPORT,
-            AUDIO_UNSUPPORTED_AT_PRIMARY_SINK,
-            AUDIO_ONLY_SUPPORT_AT_SOURCE,
-            TDLS_PERSISTENT_GROUP,
-            TDLS_PERSISTENT_GROUP_REINVOKE})
+    @IntDef(flag = true, prefix = {"DEVICE_INFO_"}, value = {
+            DEVICE_INFO_DEVICE_TYPE_MASK,
+            DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE,
+            DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK,
+            DEVICE_INFO_SESSION_AVAILABLE_MASK,
+            DEVICE_INFO_WFD_SERVICE_DISCOVERY_SUPPORT,
+            DEVICE_INFO_PREFERRED_CONNECTIVITY_MASK,
+            DEVICE_INFO_CONTENT_PROTECTION_SUPPORT,
+            DEVICE_INFO_TIME_SYNCHRONIZATION_SUPPORT,
+            DEVICE_INFO_AUDIO_UNSUPPORTED_AT_PRIMARY_SINK,
+            DEVICE_INFO_AUDIO_ONLY_SUPPORT_AT_SOURCE,
+            DEVICE_INFO_TDLS_PERSISTENT_GROUP,
+            DEVICE_INFO_TDLS_PERSISTENT_GROUP_REINVOKE})
     public @interface DeviceInfoMask {}
 
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef(value = {DEVICE_TYPE})
+    @IntDef(flag = true, prefix = {"DEVICE_INFO_"}, value = {DEVICE_INFO_DEVICE_TYPE_MASK})
     public @interface R2DeviceInfoMask {}
 
     /**
-     * {@link #getDeviceInfo()} & {@link #DEVICE_TYPE} is one of {@link #DEVICE_TYPE_WFD_SOURCE},
-     * {@link #DEVICE_TYPE_PRIMARY_SINK}, {@link #DEVICE_TYPE_SECONDARY_SINK} or
-     * {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}.
+     * {@link #getDeviceInfo()} & {@link #DEVICE_INFO_DEVICE_TYPE_MASK} is one of
+     * {@link #DEVICE_TYPE_WFD_SOURCE}, {@link #DEVICE_TYPE_PRIMARY_SINK},
+     * {@link #DEVICE_TYPE_SECONDARY_SINK} or {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement and
      * 5.1.12 WFD R2 Device Information Subelement in Wifi Display Technical Specification.
      */
-    public static final int DEVICE_TYPE                            = 1 << 1 | 1 << 0;
+    public static final int DEVICE_INFO_DEVICE_TYPE_MASK = 1 << 1 | 1 << 0;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicates that coupled sink is supported at source.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int COUPLED_SINK_SUPPORT_AT_SOURCE         = 1 << 2;
+    public static final int DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE = 1 << 2;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicates that coupled sink is supporeted at sink.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int COUPLED_SINK_SUPPORT_AT_SINK           = 1 << 3;
-    private static final int SESSION_AVAILABLE_BIT1                 = 1 << 4;
-    private static final int SESSION_AVAILABLE_BIT2                 = 1 << 5;
+    public static final int DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK = 1 << 3;
+    private static final int SESSION_AVAILABLE_BIT1 = 1 << 4;
+    private static final int SESSION_AVAILABLE_BIT2 = 1 << 5;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicates that Wifi Display session is available.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int SESSION_AVAILABLE                      =
+    public static final int DEVICE_INFO_SESSION_AVAILABLE_MASK =
             SESSION_AVAILABLE_BIT2 | SESSION_AVAILABLE_BIT1;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicates that Wifi Display discovery is supported.
@@ -137,14 +137,16 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int WFD_SERVICE_DISCOVERY_SUPPORT          = 1 << 6;
+    public static final int DEVICE_INFO_WFD_SERVICE_DISCOVERY_SUPPORT = 1 << 6;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicate the preferred connectifity for Wifi Display.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
+     * The value is one of {@link #PREFERRED_CONNECTIVITY_P2P} or
+     * {@link #PREFERRED_CONNECTIVITY_TDLS}.
      */
-    public static final int PREFERRED_CONNECTIVITY                 = 1 << 7;
+    public static final int DEVICE_INFO_PREFERRED_CONNECTIVITY_MASK = 1 << 7;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicate the support of Content Protection
      * using the HDCP system 2.0/2.1.
@@ -152,7 +154,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int CONTENT_PROTECTION_SUPPORT             = 1 << 8;
+    public static final int DEVICE_INFO_CONTENT_PROTECTION_SUPPORT = 1 << 8;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicate time synchronization
      * using 802.1AS is supported.
@@ -160,34 +162,34 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int TIME_SYNCHRONIZATION_SUPPORT           = 1 << 9;
+    public static final int DEVICE_INFO_TIME_SYNCHRONIZATION_SUPPORT = 1 << 9;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicate audio is not supported at primary sink.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int AUDIO_UNSUPPORTED_AT_PRIMARY_SINK      = 1 << 10;
+    public static final int DEVICE_INFO_AUDIO_UNSUPPORTED_AT_PRIMARY_SINK = 1 << 10;
     /**
      * Bit field for {@link #getDeviceInfo()}, indicate audo is only supported at source.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int AUDIO_ONLY_SUPPORT_AT_SOURCE           = 1 << 11;
+    public static final int DEVICE_INFO_AUDIO_ONLY_SUPPORT_AT_SOURCE = 1 << 11;
     /** Bit field for {@link #getDeviceInfo()}, indicate that TDLS persistent group is intended.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int TDLS_PERSISTENT_GROUP                  = 1 << 12;
+    public static final int DEVICE_INFO_TDLS_PERSISTENT_GROUP = 1 << 12;
     /** Bit field for {@link #getDeviceInfo()}, indicate that the request is for
      * re-invocation of TDLS persistent group.
      *
      * The bit definition is listed in 5.1.2 WFD Device Information Subelement in
      * Wifi Display Technical Specification.
      */
-    public static final int TDLS_PERSISTENT_GROUP_REINVOKE         = 1 << 13;
+    public static final int DEVICE_INFO_TDLS_PERSISTENT_GROUP_REINVOKE = 1 << 13;
 
     private int mCtrlPort;
 
@@ -209,13 +211,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
     /**
      * Return R1 raw device info, See
      * Wifi Display technical specification v1.0.0, section 5.1.2.
-     * Access bit fields by {@link #DEVICE_TYPE}, {@link #COUPLED_SINK_SUPPORT_AT_SOURCE},
-     * {@link #COUPLED_SINK_SUPPORT_AT_SINK}, {@link #SESSION_AVAILABLE},
-     * {@link #WFD_SERVICE_DISCOVERY_SUPPORT}, {@link #PREFERRED_CONNECTIVITY},
-     * {@link #CONTENT_PROTECTION_SUPPORT}, {@link #TIME_SYNCHRONIZATION_SUPPORT},
-     * {@link #AUDIO_UNSUPPORTED_AT_PRIMARY_SINK}, {@link #AUDIO_ONLY_SUPPORT_AT_SOURCE},
-     * {@link #TDLS_PERSISTENT_GROUP}, or {@link #TDLS_PERSISTENT_GROUP_REINVOKE}.
+     * Access bit fields by DEVICE_INFO_* constants.
      */
+    @DeviceInfoMask
     public int getDeviceInfo() {
         return mDeviceInfo;
     }
@@ -223,8 +221,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
     /**
      * Return R2 raw device info, See
      * Wifi Display technical specification v2.0.0, section 5.1.12.
-     * Access bit fields by {@link #DEVICE_TYPE}.
+     * Access bit fields by {@link #DEVICE_INFO_DEVICE_TYPE_MASK}.
      */
+    @R2DeviceInfoMask
     public int getR2DeviceInfo() {
         return mR2DeviceInfo;
     }
@@ -271,7 +270,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
             return false;
         }
         if (!isR2Supported()) mR2DeviceInfo = 0;
-        mR2DeviceInfo &= ~DEVICE_TYPE;
+        mR2DeviceInfo &= ~DEVICE_INFO_DEVICE_TYPE_MASK;
         mR2DeviceInfo |= deviceType;
         return true;
     }
@@ -283,7 +282,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     @DeviceType
     public int getDeviceType() {
-        return mDeviceInfo & DEVICE_TYPE;
+        return mDeviceInfo & DEVICE_INFO_DEVICE_TYPE_MASK;
     }
 
     /**
@@ -293,7 +292,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     @DeviceType
     public int getR2DeviceType() {
-        return mR2DeviceInfo & DEVICE_TYPE;
+        return mR2DeviceInfo & DEVICE_INFO_DEVICE_TYPE_MASK;
     }
 
     /**
@@ -306,7 +305,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
     public boolean setDeviceType(@DeviceType int deviceType) {
         if (DEVICE_TYPE_WFD_SOURCE <= deviceType
                 && deviceType <= DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK) {
-            mDeviceInfo &= ~DEVICE_TYPE;
+            mDeviceInfo &= ~DEVICE_INFO_DEVICE_TYPE_MASK;
             mDeviceInfo |= deviceType;
             return true;
         }
@@ -315,7 +314,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
 
     /** Returns true if a session is available, false otherwise. */
     public boolean isSessionAvailable() {
-        return (mDeviceInfo & SESSION_AVAILABLE) != 0;
+        return (mDeviceInfo & DEVICE_INFO_SESSION_AVAILABLE_MASK) != 0;
     }
 
     /**
@@ -328,7 +327,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
             mDeviceInfo |= SESSION_AVAILABLE_BIT1;
             mDeviceInfo &= ~SESSION_AVAILABLE_BIT2;
         } else {
-            mDeviceInfo &= ~SESSION_AVAILABLE;
+            mDeviceInfo &= ~DEVICE_INFO_SESSION_AVAILABLE_MASK;
         }
     }
 
@@ -336,7 +335,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * @return true if Content Protection using the HDCP system 2.0/2.1 is supported.
      */
     public boolean isContentProtectionSupported() {
-        return (mDeviceInfo & CONTENT_PROTECTION_SUPPORT) != 0;
+        return (mDeviceInfo & DEVICE_INFO_CONTENT_PROTECTION_SUPPORT) != 0;
     }
 
     /**
@@ -346,9 +345,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     public void setContentProtectionSupported(boolean enabled) {
         if (enabled) {
-            mDeviceInfo |= CONTENT_PROTECTION_SUPPORT;
+            mDeviceInfo |= DEVICE_INFO_CONTENT_PROTECTION_SUPPORT;
         } else {
-            mDeviceInfo &= ~CONTENT_PROTECTION_SUPPORT;
+            mDeviceInfo &= ~DEVICE_INFO_CONTENT_PROTECTION_SUPPORT;
         }
     }
 
@@ -357,7 +356,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * See Wifi Display technical specification v1.0.0, section 4.9.
      */
     public boolean isCoupledSinkSupportedAtSource() {
-        return (mDeviceInfo & COUPLED_SINK_SUPPORT_AT_SOURCE) != 0;
+        return (mDeviceInfo & DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE) != 0;
     }
 
     /**
@@ -368,9 +367,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     public void setCoupledSinkSupportAtSource(boolean enabled) {
         if (enabled) {
-            mDeviceInfo |= COUPLED_SINK_SUPPORT_AT_SOURCE;
+            mDeviceInfo |= DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE;
         } else {
-            mDeviceInfo &= ~COUPLED_SINK_SUPPORT_AT_SOURCE;
+            mDeviceInfo &= ~DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SOURCE;
         }
     }
 
@@ -379,7 +378,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * See Wifi Display technical specification v1.0.0, section 4.9.
      */
     public boolean isCoupledSinkSupportedAtSink() {
-        return (mDeviceInfo & COUPLED_SINK_SUPPORT_AT_SINK) != 0;
+        return (mDeviceInfo & DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK) != 0;
     }
 
     /**
@@ -390,9 +389,9 @@ public final class WifiP2pWfdInfo implements Parcelable {
      */
     public void setCoupledSinkSupportAtSink(boolean enabled) {
         if (enabled) {
-            mDeviceInfo |= COUPLED_SINK_SUPPORT_AT_SINK;
+            mDeviceInfo |= DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK;
         } else {
-            mDeviceInfo &= ~COUPLED_SINK_SUPPORT_AT_SINK;
+            mDeviceInfo &= ~DEVICE_INFO_COUPLED_SINK_SUPPORT_AT_SINK;
         }
     }
 
