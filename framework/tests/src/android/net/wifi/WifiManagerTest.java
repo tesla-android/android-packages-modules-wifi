@@ -1119,56 +1119,58 @@ public class WifiManagerTest {
      * Verify an IllegalArgumentException is thrown if a callback or executor is not provided.
      */
     @Test
-    public void testAddWifiVerboseLoggingStatusCallbackIllegalArguments() throws Exception {
+    public void testAddWifiVerboseLoggingStatusChangedListenerIllegalArguments() throws Exception {
         try {
-            mWifiManager.registerWifiVerboseLoggingStatusCallback(
+            mWifiManager.addWifiVerboseLoggingStatusChangedListener(
                     new HandlerExecutor(mHandler), null);
             fail("expected IllegalArgumentException - null callback");
         } catch (IllegalArgumentException expected) {
         }
         try {
-            WifiManager.WifiVerboseLoggingStatusCallback verboseLoggingStatusCallback =
-                    new WifiManager.WifiVerboseLoggingStatusCallback() {
-                @Override
-                public void onStatusChanged(boolean enabled) {
+            WifiManager.WifiVerboseLoggingStatusChangedListener listener =
+                    new WifiManager.WifiVerboseLoggingStatusChangedListener() {
+                        @Override
+                        public void onWifiVerboseLoggingStatusChanged(boolean enabled) {
 
-                }
-            };
-            mWifiManager.registerWifiVerboseLoggingStatusCallback(
-                    null, verboseLoggingStatusCallback);
+                        }
+                    };
+            mWifiManager.addWifiVerboseLoggingStatusChangedListener(null, listener);
             fail("expected IllegalArgumentException - null executor");
         } catch (IllegalArgumentException expected) {
         }
     }
 
     /**
-     * Verify the call to registerWifiVerboseLoggingStatusCallback and
-     * unregisterWifiVerboseLoggingStatusCallback goes to WifiServiceImpl.
+     * Verify the call to addWifiVerboseLoggingStatusChangedListener and
+     * removeWifiVerboseLoggingStatusChangedListener goes to WifiServiceImpl.
      */
     @Test
-    public void testWifiVerboseLoggingStatusCallbackGoesToWifiServiceImpl() throws Exception {
-        WifiManager.WifiVerboseLoggingStatusCallback verboseLoggingStatusCallback =
-                new WifiManager.WifiVerboseLoggingStatusCallback() {
+    public void testWifiVerboseLoggingStatusChangedListenerGoesToWifiServiceImpl()
+            throws Exception {
+        WifiManager.WifiVerboseLoggingStatusChangedListener listener =
+                new WifiManager.WifiVerboseLoggingStatusChangedListener() {
                     @Override
-                    public void onStatusChanged(boolean enabled) {
+                    public void onWifiVerboseLoggingStatusChanged(boolean enabled) {
+
                     }
                 };
-        mWifiManager.registerWifiVerboseLoggingStatusCallback(new HandlerExecutor(mHandler),
-                verboseLoggingStatusCallback);
-        verify(mWifiService).registerWifiVerboseLoggingStatusCallback(
-                any(IWifiVerboseLoggingStatusCallback.Stub.class));
-        mWifiManager.unregisterWifiVerboseLoggingStatusCallback(verboseLoggingStatusCallback);
-        verify(mWifiService).unregisterWifiVerboseLoggingStatusCallback(
-                any(IWifiVerboseLoggingStatusCallback.Stub.class));
+        mWifiManager.addWifiVerboseLoggingStatusChangedListener(new HandlerExecutor(mHandler),
+                listener);
+        verify(mWifiService).addWifiVerboseLoggingStatusChangedListener(
+                any(IWifiVerboseLoggingStatusChangedListener.Stub.class));
+        mWifiManager.removeWifiVerboseLoggingStatusChangedListener(listener);
+        verify(mWifiService).removeWifiVerboseLoggingStatusChangedListener(
+                any(IWifiVerboseLoggingStatusChangedListener.Stub.class));
     }
 
     /**
      * Verify an IllegalArgumentException is thrown if a callback is not provided.
      */
     @Test
-    public void testRemoveWifiVerboseLoggingStatusCallbackIllegalArguments() throws Exception {
+    public void testRemoveWifiVerboseLoggingStatusChangedListenerIllegalArguments()
+            throws Exception {
         try {
-            mWifiManager.unregisterWifiVerboseLoggingStatusCallback(null);
+            mWifiManager.removeWifiVerboseLoggingStatusChangedListener(null);
             fail("expected IllegalArgumentException - null callback");
         } catch (IllegalArgumentException expected) {
         }
@@ -2108,22 +2110,15 @@ public class WifiManagerTest {
     }
 
     /**
-     * Check the call to getAllMatchingWifiConfigs calls getAllMatchingFqdnsForScanResults and
-     * getWifiConfigsForPasspointProfiles of WifiService in order.
+     * Check the call to getAllMatchingWifiConfigs calls getAllMatchingWifiConfigsForPasspoint of
+     * WifiService.
      */
     @Test
     public void testGetAllMatchingWifiConfigs() throws Exception {
-        Map<String, List<ScanResult>> passpointProfiles = new HashMap<>();
-        passpointProfiles.put("www.test.com_987a69bca26", new ArrayList<>());
-        when(mWifiService.getAllMatchingPasspointProfilesForScanResults(
-                any(List.class))).thenReturn(passpointProfiles);
-        InOrder inOrder = inOrder(mWifiService);
-
         mWifiManager.getAllMatchingWifiConfigs(new ArrayList<>());
-
-        inOrder.verify(mWifiService).getAllMatchingPasspointProfilesForScanResults(any(List.class));
-        inOrder.verify(mWifiService).getWifiConfigsForPasspointProfiles(any(List.class));
+        verify(mWifiService).getAllMatchingWifiConfigsForPasspoint(any(List.class));
     }
+
 
     /**
      * Check the call to getMatchingOsuProviders calls getMatchingOsuProviders of WifiService

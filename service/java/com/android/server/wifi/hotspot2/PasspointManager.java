@@ -1140,9 +1140,12 @@ public class PasspointManager {
      * An empty list will be returned when no match is found.
      *
      * @param idList a list of unique identifiers
+     * @param isFromWifiConfigManagerOnly true will only return configs already added into
+     *                                    WifiConfigManager, false will return all matched ones.
      * @return List of {@link WifiConfiguration} converted from {@link PasspointProvider}
      */
-    public List<WifiConfiguration> getWifiConfigsForPasspointProfiles(List<String> idList) {
+    public List<WifiConfiguration> getWifiConfigsForPasspointProfiles(List<String> idList,
+            boolean isFromWifiConfigManagerOnly) {
         if (mProviders.isEmpty()) {
             return Collections.emptyList();
         }
@@ -1170,6 +1173,12 @@ public class PasspointManager {
                     && !mWifiInjector.getWifiNetworkSuggestionsManager()
                     .isPasspointSuggestionSharedWithUser(config)) {
                 continue;
+            }
+            if (isFromWifiConfigManagerOnly) {
+                config = mWifiConfigManager.getConfiguredNetwork(config.getProfileKey());
+                if (config == null) {
+                    continue;
+                }
             }
             configs.add(config);
         }
@@ -1579,5 +1588,34 @@ public class PasspointManager {
         Log.i(TAG, "Captive network, Terms and Conditions URL: " + termsAndConditionsUrl
                 + " from BSSID: " + Utils.macToString(event.getBssid()));
         return termsAndConditionsUrl;
+    }
+
+    /**
+     * Returns a list of all matching WifiConfigurations for a given list of ScanResult.
+     * @param scanResults The list of scan results
+     * @param isFromWifiConfigManagerOnly true will only return configs already added into
+     *                                    WifiConfigManager, false will return all matched ones.
+     * @return List that consists of {@link WifiConfiguration} and corresponding scanResults per
+     * network type({@link WifiManager#PASSPOINT_HOME_NETWORK} and
+     * {@link WifiManager#PASSPOINT_ROAMING_NETWORK}).
+     */
+    public List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>> getAllMatchingWifiConfigs(
+            @NonNull List<ScanResult> scanResults, boolean isFromWifiConfigManagerOnly) {
+        List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>> configs = new ArrayList<>();
+        Map<String, Map<Integer, List<ScanResult>>> results =
+                getAllMatchingPasspointProfilesForScanResults(scanResults);
+        if (results.isEmpty()) {
+            return configs;
+        }
+        List<WifiConfiguration> wifiConfigurations = getWifiConfigsForPasspointProfiles(
+                new ArrayList<>(results.keySet()), isFromWifiConfigManagerOnly);
+        for (WifiConfiguration configuration : wifiConfigurations) {
+            Map<Integer, List<ScanResult>> scanResultsPerNetworkType =
+                    results.get(configuration.getProfileKeyInternal());
+            if (scanResultsPerNetworkType != null) {
+                configs.add(Pair.create(configuration, scanResultsPerNetworkType));
+            }
+        }
+        return configs;
     }
 }

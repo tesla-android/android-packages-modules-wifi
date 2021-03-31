@@ -21,7 +21,7 @@ package android.net.wifi;
  *
  * @hide
  */
-oneway interface IWifiVerboseLoggingStatusCallback
+oneway interface IWifiVerboseLoggingStatusChangedListener
 {
    void onStatusChanged(in boolean enabled);
 }

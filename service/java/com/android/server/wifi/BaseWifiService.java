@@ -35,7 +35,7 @@ import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.IWifiManager;
-import android.net.wifi.IWifiVerboseLoggingStatusCallback;
+import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAvailableChannel;
@@ -49,6 +49,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.WorkSource;
+import android.util.Pair;
 
 import com.android.modules.utils.ParceledListSlice;
 
@@ -146,7 +147,10 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * @deprecated
+     */
+    @Deprecated
     public List<WifiConfiguration> getWifiConfigsForPasspointProfiles(List<String> fqdnList) {
         throw new UnsupportedOperationException();
     }
@@ -529,14 +533,14 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void registerWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
+    public void addWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener callback) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void unregisterWifiVerboseLoggingStatusCallback(
-            IWifiVerboseLoggingStatusCallback callback) {
+    public void removeWifiVerboseLoggingStatusChangedListener(
+            IWifiVerboseLoggingStatusChangedListener callback) {
         throw new UnsupportedOperationException();
     }
 
@@ -735,7 +739,10 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    /**
+     * @deprecated
+     */
+    @Deprecated
     public Map<String, Map<Integer, List<ScanResult>>>
             getAllMatchingPasspointProfilesForScanResults(List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();
@@ -780,6 +787,12 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void flushPasspointAnqpCache(@NonNull String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>>
+            getAllMatchingWifiConfigsForPasspoint(@NonNull List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();
     }
 

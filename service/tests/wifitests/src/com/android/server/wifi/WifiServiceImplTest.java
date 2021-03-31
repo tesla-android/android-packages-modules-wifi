@@ -129,7 +129,7 @@ import android.net.wifi.ISuggestionConnectionStatusListener;
 import android.net.wifi.ISuggestionUserApprovalStatusListener;
 import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
-import android.net.wifi.IWifiVerboseLoggingStatusCallback;
+import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApInfo;
@@ -4129,56 +4129,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is not redirected to
-     * specific API getAllMatchingPasspointProfilesForScanResults when the caller doesn't have
-     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
-     */
-    @Test(expected = SecurityException.class)
-    public void testGetAllMatchingPasspointProfilesForScanResultsWithoutPermissions() {
-        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(new ArrayList<>());
-    }
-
-    /**
-     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is redirected to
-     * specific API getAllMatchingPasspointProfilesForScanResults when the caller have
-     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
-     */
-    @Test
-    public void testGetAllMatchingPasspointProfilesForScanResultsWithPermissions() {
-        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
-                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
-        mLooper.startAutoDispatch();
-        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(createScanResultList());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mPasspointManager).getAllMatchingPasspointProfilesForScanResults(any());
-    }
-
-    /**
-     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is not redirected to
-     * specific API getAllMatchingPasspointProfilesForScanResults when the caller provider invalid
-     * ScanResult.
-     */
-    @Test
-    public void testGetAllMatchingPasspointProfilesForScanResultsWithInvalidScanResult() {
-        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
-                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
-        mLooper.startAutoDispatch();
-        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(new ArrayList<>());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mPasspointManager, never()).getAllMatchingPasspointProfilesForScanResults(any());
-    }
-
-    /**
-     * Verify that the call to getWifiConfigsForPasspointProfiles is not redirected to specific API
-     * syncGetWifiConfigsForPasspointProfiles when the caller doesn't have NETWORK_SETTINGS
-     * permissions and NETWORK_SETUP_WIZARD.
-     */
-    @Test(expected = SecurityException.class)
-    public void testGetWifiConfigsForPasspointProfilesWithoutPermissions() {
-        mWifiServiceImpl.getWifiConfigsForPasspointProfiles(new ArrayList<>());
-    }
-
-    /**
      * Verify that the call to getMatchingOsuProviders is not redirected to specific API
      * syncGetMatchingOsuProviders when the caller doesn't have NETWORK_SETTINGS
      * permissions and NETWORK_SETUP_WIZARD.
@@ -4459,70 +4409,67 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .retrieveBackupDataFromSoftApConfiguration(any(SoftApConfiguration.class));
     }
 
-    class TestWifiVerboseLoggingStatusCallback implements IWifiVerboseLoggingStatusCallback {
+    class TestWifiVerboseLoggingStatusChangedListener extends
+            IWifiVerboseLoggingStatusChangedListener.Stub {
         public int numStatusChangedCounts;
         public boolean lastReceivedValue;
-        private IBinder mBinder = mock(IBinder.class);
         @Override
         public void onStatusChanged(boolean enabled) throws RemoteException {
             numStatusChangedCounts++;
             lastReceivedValue = enabled;
         }
-
-        @Override
-        public IBinder asBinder() {
-            return mBinder;
-        }
     }
 
     /**
      * Verify that a call to {@link WifiServiceImpl#enableVerboseLogging(int)} is propagated to
-     * registered {@link IWifiVerboseLoggingStatusCallback}. Then, verify that changes are no
+     * registered {@link IWifiVerboseLoggingStatusChangedListener}. Then, verify that changes are no
      * longer propagated when the listener gets unregistered.
      */
     @Test
-    public void testVerboseLoggingCallback() throws Exception {
+    public void testVerboseLoggingListener() throws Exception {
         doNothing().when(mContext)
                 .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
                         eq("WifiService"));
         // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
         // before invocation.
         reset(mClientModeManager);
-        TestWifiVerboseLoggingStatusCallback callback = new TestWifiVerboseLoggingStatusCallback();
-        mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(callback);
+        TestWifiVerboseLoggingStatusChangedListener listener =
+                new TestWifiVerboseLoggingStatusChangedListener();
+        mWifiServiceImpl.addWifiVerboseLoggingStatusChangedListener(listener);
         mLooper.dispatchAll();
         mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
         verify(mWifiSettingsConfigStore).put(WIFI_VERBOSE_LOGGING_ENABLED, true);
         verify(mActiveModeWarden).enableVerboseLogging(anyBoolean());
-        assertEquals(1, callback.numStatusChangedCounts);
-        assertTrue(callback.lastReceivedValue);
+        assertEquals(1, listener.numStatusChangedCounts);
+        assertTrue(listener.lastReceivedValue);
 
         mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED);
-        assertEquals(2, callback.numStatusChangedCounts);
-        assertFalse(callback.lastReceivedValue);
+        assertEquals(2, listener.numStatusChangedCounts);
+        assertFalse(listener.lastReceivedValue);
 
         // unregister the callback and verify no more updates happen.
-        mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(callback);
+        mWifiServiceImpl.removeWifiVerboseLoggingStatusChangedListener(listener);
         mLooper.dispatchAll();
         mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED);
-        assertEquals(2, callback.numStatusChangedCounts);
-        assertFalse(callback.lastReceivedValue);
+        assertEquals(2, listener.numStatusChangedCounts);
+        assertFalse(listener.lastReceivedValue);
     }
 
     /**
-     * Verify an exception is thrown for invalid inputs to registerWifiVerboseLoggingStatusCallback
-     * and unregisterWifiVerboseLoggingStatusCallback.
+     * Verify an exception is thrown for invalid inputs to
+     * addWifiVerboseLoggingStatusChangedListener and removeWifiVerboseLoggingStatusChangedListener.
      */
     @Test
-    public void testVerboseLoggingCallbackInvalidInput() throws Exception {
+    public void testVerboseLoggingListenerInvalidInput() throws Exception {
         try {
-            mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(null);
-            fail("expected IllegalArgumentException in registerWifiVerboseLoggingStatusCallback");
+            mWifiServiceImpl.addWifiVerboseLoggingStatusChangedListener(null);
+            fail("expected IllegalArgumentException in addWifiVerboseLoggingStatusChangedListener");
         } catch (IllegalArgumentException e) {
         }
         try {
-            mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(null);
-            fail("expected IllegalArgumentException in unregisterWifiVerboseLoggingStatusCallback");
+            mWifiServiceImpl.removeWifiVerboseLoggingStatusChangedListener(null);
+            fail("expected IllegalArgumentException in "
+                    + "removeWifiVerboseLoggingStatusChangedListener");
         } catch (IllegalArgumentException e) {
         }
     }
@@ -4531,19 +4478,21 @@ public class WifiServiceImplTest extends WifiBaseTest {
      * Verify a SecurityException if the caller doesn't have sufficient permissions.
      */
     @Test
-    public void testVerboseLoggingCallbackNoPermission() throws Exception {
+    public void testVerboseLoggingListenerNoPermission() throws Exception {
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
                         eq("WifiService"));
-        TestWifiVerboseLoggingStatusCallback callback = new TestWifiVerboseLoggingStatusCallback();
+        TestWifiVerboseLoggingStatusChangedListener listener =
+                new TestWifiVerboseLoggingStatusChangedListener();
         try {
-            mWifiServiceImpl.registerWifiVerboseLoggingStatusCallback(callback);
-            fail("expected IllegalArgumentException in registerWifiVerboseLoggingStatusCallback");
+            mWifiServiceImpl.addWifiVerboseLoggingStatusChangedListener(listener);
+            fail("expected IllegalArgumentException in addWifiVerboseLoggingStatusChangedListener");
         } catch (SecurityException e) {
         }
         try {
-            mWifiServiceImpl.unregisterWifiVerboseLoggingStatusCallback(callback);
-            fail("expected IllegalArgumentException in unregisterWifiVerboseLoggingStatusCallback");
+            mWifiServiceImpl.removeWifiVerboseLoggingStatusChangedListener(listener);
+            fail("expected IllegalArgumentException in "
+                    + "removeWifiVerboseLoggingStatusChangedListener");
         } catch (SecurityException e) {
         }
     }
@@ -7982,6 +7931,33 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
+    }
+
+    /**
+     * Verify that the call to getAllMatchingWifiConfigsForPasspoint will raise a security Exception
+     * when the caller doesn't have NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test
+    public void testGetAllMatchingWifiConfigsForPasspointWithoutPermissions() {
+        try {
+            mWifiServiceImpl.getAllMatchingWifiConfigsForPasspoint(new ArrayList<>());
+            fail("expected SecurityException");
+        } catch (SecurityException expected) { }
+
+    }
+
+    /**
+     * Verify that the call to getAllMatchingWifiConfigsForPasspoint will is redirected to
+     * PasspointManager when the caller have permission.
+     */
+    @Test
+    public void testGetAllMatchingWifiConfigsForPasspointWithPermissions() {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.getAllMatchingWifiConfigsForPasspoint(createScanResultList());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mPasspointManager).getAllMatchingWifiConfigs(any(), eq(true));
     }
 
     /**
