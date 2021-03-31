@@ -1099,8 +1099,7 @@ public class HalDeviceManager {
         if (VDBG) Log.d(TAG, "getAllChipInfo");
 
         synchronized (mLock) {
-            if (mWifi == null) {
-                Log.e(TAG, "getAllChipInfo: called but mWifi is null!?");
+            if (!isWifiStarted()) {
                 return null;
             }
 
@@ -1394,7 +1393,6 @@ public class HalDeviceManager {
         synchronized (mLock) {
             try {
                 if (mWifi == null) {
-                    Log.w(TAG, "isWifiStarted called but mWifi is null!?");
                     return false;
                 } else {
                     return mWifi.isStarted();
