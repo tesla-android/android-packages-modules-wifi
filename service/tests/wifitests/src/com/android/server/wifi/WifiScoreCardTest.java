@@ -1247,11 +1247,10 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(BANDWIDTH_STATS_COUNT_THR,
                 stats.getStats2G().getRx().getLevel(1).getCount());
 
-        // The last 2 samples are ignored because of the raised byte count threshold values
-        assertEquals(5_000_000L * 8 / 100 * BANDWIDTH_STATS_COUNT_THR,
+        assertEquals(5_000_000L * 8 / 100 * (BANDWIDTH_STATS_COUNT_THR + 2),
                 stats.getStatsAbove2G().getTx().getLevel(1).getValue());
         assertEquals(0, stats.getStatsAbove2G().getRx().getLevel(1).getValue());
-        assertEquals(BANDWIDTH_STATS_COUNT_THR,
+        assertEquals(BANDWIDTH_STATS_COUNT_THR + 2,
                 stats.getStatsAbove2G().getTx().getLevel(1).getCount());
         assertEquals(0, stats.getStatsAbove2G().getRx().getLevel(1).getCount());
     }
