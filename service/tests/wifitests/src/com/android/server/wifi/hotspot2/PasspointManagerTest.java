@@ -856,6 +856,9 @@ public class PasspointManagerTest extends WifiBaseTest {
         verify(mWifiConfigManager).saveToStore(true);
         verify(mWifiMetrics).incrementNumPasspointProviderInstallation();
         verify(mWifiMetrics).incrementNumPasspointProviderInstallSuccess();
+        verify(origProvider, never()).setUserConnectChoice(any(), anyInt());
+        verify(origProvider, never()).setAutojoinEnabled(anyBoolean());
+        verify(origProvider, never()).setAnonymousIdentity(any());
         reset(mWifiMetrics);
         reset(mWifiConfigManager);
 
@@ -873,6 +876,9 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.addOrUpdateNetwork(
                 origWifiConfig, TEST_CREATOR_UID, TEST_PACKAGE))
                 .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID));
+        when(origProvider.getAnonymousIdentity()).thenReturn(TEST_ANONYMOUS_IDENTITY);
+        when(origProvider.getConnectChoice()).thenReturn(USER_CONNECT_CHOICE);
+        when(origProvider.getConnectChoiceRssi()).thenReturn(TEST_RSSI);
         assertTrue(mManager.addOrUpdateProvider(origConfig, TEST_CREATOR_UID, TEST_PACKAGE,
                 false, true));
         verify(mWifiConfigManager, never()).removePasspointConfiguredNetwork(
@@ -884,6 +890,9 @@ public class PasspointManagerTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementNumPasspointProviderInstallation();
         verify(mWifiMetrics).incrementNumPasspointProviderInstallSuccess();
         assertEquals(2, mSharedDataSource.getProviderIndex());
+        // Update provider will keep the user settings from the existing provider.
+        verify(origProvider).setUserConnectChoice(eq(USER_CONNECT_CHOICE), eq(TEST_RSSI));
+        verify(origProvider).setAnonymousIdentity(eq(TEST_ANONYMOUS_IDENTITY));
         reset(mWifiMetrics);
         reset(mWifiConfigManager);
 
