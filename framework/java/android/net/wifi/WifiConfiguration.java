@@ -1221,31 +1221,31 @@ public class WifiConfiguration implements Parcelable {
     private IpConfiguration mIpConfiguration;
 
     /**
-     * @hide
      * dhcp server MAC address if known
+     * @hide
      */
     public String dhcpServer;
 
     /**
-     * @hide
      * default Gateway MAC address if known
+     * @hide
      */
     @UnsupportedAppUsage
     public String defaultGwMacAddress;
 
     /**
-     * @hide
      * last time we connected, this configuration had validated internet access
+     * @hide
      */
     @UnsupportedAppUsage
     public boolean validatedInternetAccess;
 
     /**
-     * @hide
      * The number of beacon intervals between Delivery Traffic Indication Maps (DTIM)
      * This value is populated from scan results that contain Beacon Frames, which are infrequent.
      * The value is not guaranteed to be set or current (Although it SHOULDNT change once set)
      * Valid values are from 1 - 255. Initialized here as 0, use this to check if set.
+     * @hide
      */
     public int dtimInterval = 0;
 
@@ -1257,38 +1257,38 @@ public class WifiConfiguration implements Parcelable {
      */
     public boolean isLegacyPasspointConfig = false;
     /**
-     * @hide
      * Uid of app creating the configuration
+     * @hide
      */
     @SystemApi
     public int creatorUid;
 
     /**
-     * @hide
      * Uid of last app issuing a connection related command
+     * @hide
      */
     @SystemApi
     public int lastConnectUid;
 
     /**
-     * @hide
      * Uid of last app modifying the configuration
+     * @hide
      */
     @SystemApi
     public int lastUpdateUid;
 
     /**
-     * @hide
      * Universal name for app creating the configuration
      *    see {@link PackageManager#getNameForUid(int)}
+     * @hide
      */
     @SystemApi
     public String creatorName;
 
     /**
-     * @hide
      * Universal name for app updating the configuration
      *    see {@link PackageManager#getNameForUid(int)}
+     * @hide
      */
     @SystemApi
     public String lastUpdateName;
@@ -1310,9 +1310,9 @@ public class WifiConfiguration implements Parcelable {
     public int subscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     /**
-     * @hide
      * Auto-join is allowed by user for this network.
      * Default true.
+     * @hide
      */
     @SystemApi
     public boolean allowAutojoin = true;
@@ -1322,17 +1322,17 @@ public class WifiConfiguration implements Parcelable {
     public static int INVALID_RSSI = -127;
 
     /**
-     * @hide
      * Number of reports indicating no Internet Access
+     * @hide
      */
     @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
     public int numNoInternetAccessReports;
 
     /**
-     * @hide
      * The WiFi configuration is considered to have no internet access for purpose of autojoining
      * if there has been a report of it having no internet access, and, it never have had
      * internet access in the past.
+     * @hide
      */
     @SystemApi
     public boolean hasNoInternetAccess() {
@@ -1366,16 +1366,30 @@ public class WifiConfiguration implements Parcelable {
     public boolean osu;
 
     /**
-     * @hide
      * Last time the system was connected to this configuration.
+     * @hide
      */
     public long lastConnected;
 
     /**
-     * @hide
      * Last time the system was disconnected to this configuration.
+     * @hide
      */
     public long lastDisconnected;
+
+    /**
+     * Last time this configuration was updated or created.
+     * Note: This field only exists in-memory and is not persisted in WifiConfigStore.xml for
+     *       privacy reasons.
+     * @hide
+     */
+    public long lastUpdated;
+
+    /**
+     * Number of reboots since this config was last used (either connected or updated).
+     * @hide
+     */
+    public int numRebootsSinceLastUse;
 
     /**
      * Set if the configuration was self added by the framework
@@ -1395,16 +1409,16 @@ public class WifiConfiguration implements Parcelable {
     public String peerWifiConfiguration;
 
     /**
-     * @hide
      * Indicate that a WifiConfiguration is temporary and should not be saved
      * nor considered by AutoJoin.
+     * @hide
      */
     public boolean ephemeral;
 
     /**
-     * @hide
      * Indicate that a WifiConfiguration is temporary and should not be saved
      * nor considered by AutoJoin.
+     * @hide
      */
     @SystemApi
     public boolean isEphemeral() {
@@ -1562,8 +1576,8 @@ public class WifiConfiguration implements Parcelable {
     }
 
     /**
-     * @hide
      * Returns true if this WiFi config is for an Open or Enhanced Open network.
+     * @hide
      */
     public boolean isOpenNetwork() {
         boolean hasNonOpenSecurityType = mSecurityParamsList.stream()
@@ -1572,36 +1586,36 @@ public class WifiConfiguration implements Parcelable {
     }
 
     /**
-     * @hide
      * Setting this value will force scan results associated with this configuration to
      * be included in the bucket of networks that are externally scored.
      * If not set, associated scan results will be treated as legacy saved networks and
      * will take precedence over networks in the scored category.
+     * @hide
      */
     @SystemApi
     public boolean useExternalScores;
 
     /**
-     * @hide
      * Number of time the scorer overrode a the priority based choice, when comparing two
      * WifiConfigurations, note that since comparing WifiConfiguration happens very often
      * potentially at every scan, this number might become very large, even on an idle
      * system.
+     * @hide
      */
     @SystemApi
     public int numScorerOverride;
 
     /**
-     * @hide
      * Number of time the scorer overrode a the priority based choice, and the comparison
      * triggered a network switch
+     * @hide
      */
     @SystemApi
     public int numScorerOverrideAndSwitchedNetwork;
 
     /**
+     * Number of times we associated to this configuration.
      * @hide
-     * Number of time we associated to this configuration.
      */
     @SystemApi
     public int numAssociation;
@@ -1655,16 +1669,16 @@ public class WifiConfiguration implements Parcelable {
     public int macRandomizationSetting = RANDOMIZATION_AUTO;
 
     /**
-     * @hide
      * Randomized MAC address to use with this particular network
+     * @hide
      */
     @NonNull
     private MacAddress mRandomizedMacAddress;
 
     /**
-     * @hide
      * The wall clock time of when |mRandomizedMacAddress| should be re-randomized in enhanced
      * MAC randomization mode.
+     * @hide
      */
     public long randomizedMacExpirationTimeMs = 0;
 
@@ -1675,11 +1689,11 @@ public class WifiConfiguration implements Parcelable {
     public long randomizedMacLastModifiedTimeMs = 0;
 
     /**
-     * @hide
      * Checks if the given MAC address can be used for Connected Mac Randomization
      * by verifying that it is non-null, unicast, locally assigned, and not default mac.
      * @param mac MacAddress to check
      * @return true if mac is good to use
+     * @hide
      */
     public static boolean isValidMacAddressForRandomization(MacAddress mac) {
         return mac != null && !MacAddressUtils.isMulticastAddress(mac) && mac.isLocallyAssigned()
@@ -1700,8 +1714,8 @@ public class WifiConfiguration implements Parcelable {
     }
 
     /**
-     * @hide
      * @param mac MacAddress to change into
+     * @hide
      */
     public void setRandomizedMacAddress(@NonNull MacAddress mac) {
         if (mac == null) {
@@ -2577,8 +2591,8 @@ public class WifiConfiguration implements Parcelable {
     }
 
     /**
-     * @hide
      * network selection related member
+     * @hide
      */
     private NetworkSelectionStatus mNetworkSelectionStatus = new NetworkSelectionStatus();
 
@@ -2806,12 +2820,12 @@ public class WifiConfiguration implements Parcelable {
     }
 
     /**
-     * @hide
      * Linked Configurations: represent the set of Wificonfigurations that are equivalent
      * regarding roaming and auto-joining.
      * The linked configuration may or may not have same SSID, and may or may not have same
      * credentials.
      * For instance, linked configurations will have same defaultGwMacAddress or same dhcp server.
+     * @hide
      */
     public HashMap<String, Integer>  linkedConfigurations;
 
@@ -2854,6 +2868,7 @@ public class WifiConfiguration implements Parcelable {
         shared = true;
         dtimInterval = 0;
         mRandomizedMacAddress = MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS);
+        numRebootsSinceLastUse = 0;
     }
 
     /**
@@ -3120,6 +3135,13 @@ public class WifiConfiguration implements Parcelable {
             sbuf.append(" ");
         }
         sbuf.append('\n');
+        if (this.lastUpdated != 0) {
+            sbuf.append('\n');
+            sbuf.append("lastUpdated: ").append(logTimeOfDay(this.lastUpdated));
+            sbuf.append(" ");
+        }
+        sbuf.append('\n');
+        sbuf.append("numRebootsSinceLastUse: ").append(numRebootsSinceLastUse).append('\n');
         if (this.linkedConfigurations != null) {
             for (String key : this.linkedConfigurations.keySet()) {
                 sbuf.append(" linked: ").append(key);
@@ -3565,6 +3587,8 @@ public class WifiConfiguration implements Parcelable {
 
             lastConnected = source.lastConnected;
             lastDisconnected = source.lastDisconnected;
+            lastUpdated = source.lastUpdated;
+            numRebootsSinceLastUse = source.numRebootsSinceLastUse;
             numScorerOverride = source.numScorerOverride;
             numScorerOverrideAndSwitchedNetwork = source.numScorerOverrideAndSwitchedNetwork;
             numAssociation = source.numAssociation;
