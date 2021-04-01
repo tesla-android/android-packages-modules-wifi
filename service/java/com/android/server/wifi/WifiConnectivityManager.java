@@ -2307,7 +2307,17 @@ public class WifiConnectivityManager {
             MacAddress macAddress = MacAddress.fromString(bssid);
             int prevNumCandidates = mLatestCandidates.size();
             mLatestCandidates = mLatestCandidates.stream()
-                    .filter(candidate -> !macAddress.equals(candidate.getKey().bssid))
+                    .filter(candidate -> {
+                        // filter out the candidate with the BSSID that just failed
+                        if (macAddress.equals(candidate.getKey().bssid)) {
+                            return false;
+                        }
+                        // filter out candidates that are disabled.
+                        WifiConfiguration config =
+                                mConfigManager.getConfiguredNetwork(candidate.getNetworkConfigId());
+                        return config != null
+                                && config.getNetworkSelectionStatus().isNetworkEnabled();
+                    })
                     .collect(Collectors.toList());
             if (prevNumCandidates == mLatestCandidates.size()) {
                 return;
