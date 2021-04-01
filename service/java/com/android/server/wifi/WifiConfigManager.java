@@ -41,6 +41,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.LocalLog;
@@ -70,6 +71,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * This class provides the APIs to manage configured Wi-Fi networks.
@@ -1180,6 +1182,8 @@ public class WifiConfigManager {
         newInternalConfig.creatorUid = newInternalConfig.lastUpdateUid = uid;
         newInternalConfig.creatorName = newInternalConfig.lastUpdateName =
                 packageName != null ? packageName : mContext.getPackageManager().getNameForUid(uid);
+        newInternalConfig.lastUpdated = mClock.getWallClockMillis();
+        newInternalConfig.numRebootsSinceLastUse = 0;
         initRandomizedMacForInternalConfig(newInternalConfig);
         return newInternalConfig;
     }
@@ -1205,7 +1209,8 @@ public class WifiConfigManager {
         newInternalConfig.lastUpdateUid = uid;
         newInternalConfig.lastUpdateName =
                 packageName != null ? packageName : mContext.getPackageManager().getNameForUid(uid);
-
+        newInternalConfig.lastUpdated = mClock.getWallClockMillis();
+        newInternalConfig.numRebootsSinceLastUse = 0;
         return newInternalConfig;
     }
 
@@ -1342,6 +1347,13 @@ public class WifiConfigManager {
             Log.e(TAG, "Failed to add network to config map", e);
             return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
         }
+        if (removeExcessNetworks()) {
+            if (mConfiguredNetworks.getForAllUsers(newInternalConfig.networkId) == null) {
+                Log.e(TAG, "Cannot add network because number of configured networks is maxed.");
+                return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
+            }
+        }
+
         // Only re-enable network: 1. add or update user saved network; 2. add or update a user
         // saved passpoint network framework consider it is a new network.
         if (!newInternalConfig.fromWifiNetworkSuggestion
@@ -1443,6 +1455,71 @@ public class WifiConfigManager {
      */
     public NetworkUpdateResult addOrUpdateNetwork(WifiConfiguration config, int uid) {
         return addOrUpdateNetwork(config, uid, null);
+    }
+
+    /**
+     * Increments the number of reboots since last use for each configuration.
+     *
+     * @see {@link WifiConfiguration#numRebootsSinceLastUse}
+     */
+    public void incrementNumRebootsSinceLastUse() {
+        getInternalConfiguredNetworks().forEach(config -> config.numRebootsSinceLastUse++);
+        saveToStore(false);
+    }
+
+    /**
+     * Removes excess networks in case the number of saved networks exceeds the max limit
+     * specified in config_wifiMaxNumWifiConfigurations.
+     *
+     * Configs are removed in ascending order of
+     *     1. Non-carrier networks before carrier networks
+     *     2. Non-connected networks before connected networks.
+     *     3. Deletion priority {@see WifiConfiguration#getDeletionPriority()}
+     *     4. Last use/creation/update time (lastUpdated/lastConnected or numRebootsSinceLastUse)
+     *     5. Open and OWE networks before networks with other security types.
+     *     6. Number of associations
+     *
+     * @return {@code true} if networks were removed, {@code false} otherwise.
+     */
+    private boolean removeExcessNetworks() {
+        final int maxNumConfigs = mContext.getResources().getInteger(
+                R.integer.config_wifiMaxNumWifiConfigurations);
+        if (maxNumConfigs < 0) {
+            // Max number of saved networks not specified.
+            return false;
+        }
+
+        List<WifiConfiguration> savedNetworks = getSavedNetworks(Process.WIFI_UID);
+        final int numExcessNetworks = savedNetworks.size() - maxNumConfigs;
+        if (numExcessNetworks <= 0) {
+            return false;
+        }
+
+        List<WifiConfiguration> configsToDelete = savedNetworks
+                .stream()
+                .sorted(Comparator.comparing((WifiConfiguration config) -> config.carrierId
+                        == TelephonyManager.UNKNOWN_CARRIER_ID)
+                        .thenComparing((WifiConfiguration config) -> config.status
+                                == WifiConfiguration.Status.CURRENT)
+                        .thenComparing((WifiConfiguration config) -> config.getDeletionPriority())
+                        .thenComparing((WifiConfiguration config) -> -config.numRebootsSinceLastUse)
+                        .thenComparing((WifiConfiguration config) ->
+                                Math.max(config.lastConnected, config.lastUpdated))
+                        .thenComparing((WifiConfiguration config) -> {
+                            int authType = config.getAuthType();
+                            return !(authType == WifiConfiguration.KeyMgmt.NONE
+                                    || authType == WifiConfiguration.KeyMgmt.OWE);
+                        })
+                        .thenComparing((WifiConfiguration config) -> config.numAssociation))
+                .limit(numExcessNetworks)
+                .collect(Collectors.toList());
+        for (WifiConfiguration config : configsToDelete) {
+            mConfiguredNetworks.remove(config.networkId);
+            localLog("removeExcessNetworks: removed config."
+                    + " netId=" + config.networkId
+                    + " configKey=" + config.getProfileKeyInternal());
+        }
+        return true;
     }
 
     /**
@@ -1960,6 +2037,7 @@ public class WifiConfigManager {
             setUserConnectChoice(config.networkId, rssi);
         }
         config.lastConnected = mClock.getWallClockMillis();
+        config.numRebootsSinceLastUse = 0;
         config.numAssociation++;
         config.getNetworkSelectionStatus().clearDisableReasonCounter();
         config.getNetworkSelectionStatus().setHasEverConnected(true);

@@ -203,6 +203,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         mResources.setInteger(
                 R.integer.config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes,
                 ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES);
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, -1);
         when(mContext.getResources()).thenReturn(mResources);
 
         // Setup UserManager profiles for the default user.
@@ -6850,5 +6851,110 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID),
                 WifiConfigurationTestUtil.createEapNetwork(TEST_SSID),
                 false);
+    }
+
+    /**
+     * Verifies that excess networks are removed in the right order when more than the max amount of
+     * WifiConfigurations are added.
+     */
+    @Test
+    public void testRemoveExcessNetworksOnAdd() {
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, 8);
+        List<WifiConfiguration> configsInDeletionOrder = new ArrayList<>();
+        WifiConfiguration currentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        currentConfig.status = WifiConfiguration.Status.CURRENT;
+        WifiConfiguration lessDeletionPriorityConfig = WifiConfigurationTestUtil.createPskNetwork();
+        lessDeletionPriorityConfig.setDeletionPriority(1);
+        WifiConfiguration newlyAddedConfig = WifiConfigurationTestUtil.createPskNetwork();
+        newlyAddedConfig.lastUpdated = 1;
+        WifiConfiguration recentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        recentConfig.lastConnected = 2;
+        WifiConfiguration notRecentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        notRecentConfig.lastConnected = 1;
+        WifiConfiguration oneRebootSaeConfig = WifiConfigurationTestUtil.createSaeNetwork();
+        oneRebootSaeConfig.numRebootsSinceLastUse = 1;
+        WifiConfiguration oneRebootOpenConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        oneRebootOpenConfig.numRebootsSinceLastUse = 1;
+        oneRebootOpenConfig.numAssociation = 1;
+        WifiConfiguration noAssociationConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        noAssociationConfig.numRebootsSinceLastUse = 1;
+        noAssociationConfig.numAssociation = 0;
+
+        configsInDeletionOrder.add(noAssociationConfig);
+        configsInDeletionOrder.add(oneRebootOpenConfig);
+        configsInDeletionOrder.add(oneRebootSaeConfig);
+        configsInDeletionOrder.add(notRecentConfig);
+        configsInDeletionOrder.add(recentConfig);
+        configsInDeletionOrder.add(newlyAddedConfig);
+        configsInDeletionOrder.add(lessDeletionPriorityConfig);
+        configsInDeletionOrder.add(currentConfig);
+
+        // Add carrier configs to flush out the other configs, since they are deleted last.
+        for (WifiConfiguration configToDelete : configsInDeletionOrder) {
+            WifiConfiguration carrierConfig = WifiConfigurationTestUtil.createPskNetwork();
+            carrierConfig.carrierId = 1;
+            verifyAddNetworkToWifiConfigManager(carrierConfig);
+
+            for (WifiConfiguration savedConfig : mWifiConfigManager.getConfiguredNetworks()) {
+                if (savedConfig.networkId == configToDelete.networkId) {
+                    fail("Config was not deleted: " + configToDelete);
+                }
+            }
+        }
+    }
+
+    /**
+     * Verifies that adding a network fails if the amount of saved networks is maxed out and the
+     * next network to be removed is the same as the added network.
+     */
+    @Test
+    public void testAddNetworkFailsIfNetworkMustBeRemoved() {
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, 5);
+        // Max out number of configurations with SAE networks
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+
+        // Add an open network, which should be deleted before SAE networks
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(
+                WifiConfigurationTestUtil.createOpenNetwork());
+
+        assertFalse(result.isSuccess());
+    }
+
+    /**
+     * Verifies that numRebootsSinceLastUse is reset after a connection.
+     */
+    @Test
+    public void testNumRebootsSinceLastUseUpdatedAfterConnect() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork();
+        verifyAddNetworkToWifiConfigManager(config);
+        mWifiConfigManager.incrementNumRebootsSinceLastUse();
+        assertEquals(1,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+
+        mWifiConfigManager.updateNetworkAfterConnect(config.networkId, false, TEST_RSSI);
+
+        assertEquals(0,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+    }
+
+    /**
+     * Verifies that numRebootsSinceLastUse is reset after a config update.
+     */
+    @Test
+    public void testNumRebootsSinceLastUseUpdatedAfterConfigUpdate() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork();
+        verifyAddNetworkToWifiConfigManager(config);
+        mWifiConfigManager.incrementNumRebootsSinceLastUse();
+        assertEquals(1,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+
+        verifyUpdateNetworkToWifiConfigManager(config);
+
+        assertEquals(0,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
     }
 }

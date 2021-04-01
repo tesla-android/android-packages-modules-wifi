@@ -641,4 +641,9 @@
     <!-- Indicate how many digits the postfix are. If the value is negative or smaller than 4,
          the postfix will fallback to the first digit of ANDROID_ID. -->
     <integer translatable="false" name="config_wifiP2pDeviceNamePostfixNumDigits">-1</integer>
+
+    <!-- Integer threshold for max number of WifiConfigurations that can be saved on the device.
+         A value of -1 indicates no limit. If a max number is specified, then under-used configs will
+         be deleted to make room for new configs.-->
+    <integer translatable="false" name="config_wifiMaxNumWifiConfigurations">-1</integer>
 </resources>
