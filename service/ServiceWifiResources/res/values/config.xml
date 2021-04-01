@@ -635,4 +635,10 @@
          Defaults to true so that all full DBS capable devices report stats correctly in STA mode.
          If false, fetch radio stats only from Radio 0. -->
     <bool translatable="false" name="config_wifiLinkLayerAllRadiosStatsAggregationEnabled">true</bool>
+
+    <!-- Indicate the prefix of wifi p2p device name, the length should be between 1 ~ 28. -->
+    <string translatable="false" name="config_wifiP2pDeviceNamePrefix">Android_</string>
+    <!-- Indicate how many digits the postfix are. If the value is negative or smaller than 4,
+         the postfix will fallback to the first digit of ANDROID_ID. -->
+    <integer translatable="false" name="config_wifiP2pDeviceNamePostfixNumDigits">-1</integer>
 </resources>

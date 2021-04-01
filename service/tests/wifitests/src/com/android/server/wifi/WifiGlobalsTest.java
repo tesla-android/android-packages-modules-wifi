@@ -102,4 +102,17 @@ public class WifiGlobalsTest extends WifiBaseTest {
         mWifiGlobals = new WifiGlobals(mContext);
         assertTrue(mWifiGlobals.isWpa3SaeH2eSupported());
     }
+
+    /** Verify P2P device name customization. */
+    @Test
+    public void testP2pDeviceNameCustomization() {
+        final String customPrefix = "Custom-";
+        final int customPostfixDigit = 5;
+        mResources.setString(R.string.config_wifiP2pDeviceNamePrefix, customPrefix);
+        mResources.setInteger(R.integer.config_wifiP2pDeviceNamePostfixNumDigits,
+                customPostfixDigit);
+        mWifiGlobals = new WifiGlobals(mContext);
+        assertEquals(customPrefix, mWifiGlobals.getWifiP2pDeviceNamePrefix());
+        assertEquals(customPostfixDigit, mWifiGlobals.getWifiP2pDeviceNamePostfixNumDigits());
+    }
 }
