@@ -231,9 +231,17 @@ public class ScanResultUtil {
     }
 
     /**
+     *  Helper method to check if the provided |scanResult| corresponds to an unknown amk network.
+     *  This checks if the provided capabilities string contains ? or not.
+     */
+    public static boolean isScanResultForUnknownAkmNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("?");
+    }
+
+    /**
      * Helper method to check if the provided |scanResult| corresponds to an open network or not.
      * This checks if the provided capabilities string does not contain either of WEP, PSK, SAE
-     * or EAP encryption types or not.
+     * EAP, or unknown encryption types or not.
      */
     public static boolean isScanResultForOpenNetwork(ScanResult scanResult) {
         return (!(isScanResultForWepNetwork(scanResult) || isScanResultForPskNetwork(scanResult)
@@ -242,7 +250,8 @@ public class ScanResultUtil {
                 || isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
                 || isScanResultForWapiPskNetwork(scanResult)
                 || isScanResultForWapiCertNetwork(scanResult)
-                || isScanResultForEapSuiteBNetwork(scanResult)));
+                || isScanResultForEapSuiteBNetwork(scanResult)
+                || isScanResultForUnknownAkmNetwork(scanResult)));
     }
 
     /**
