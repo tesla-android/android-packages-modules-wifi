@@ -96,12 +96,14 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FrameworkFacade;
+import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiLog;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
+import com.android.server.wifi.util.StringUtil;
 import com.android.server.wifi.util.WifiAsyncChannel;
 import com.android.server.wifi.util.WifiHandler;
 import com.android.server.wifi.util.WifiPermissionsUtil;
@@ -142,6 +144,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private boolean mVerboseLoggingEnabled = false;
     private static final String NETWORKTYPE = "WIFI_P2P";
     @VisibleForTesting
+    static final String DEFAULT_DEVICE_NAME_PREFIX = "Android_";
+    // The maxinum length of the device name is 32 bytes, see
+    // Section 4.1.15 in Wi-Fi Direct Specification v1 and
+    // Section 12 in Wi-Fi Protected Setup Specification v2.
+    @VisibleForTesting
+    static final int DEVICE_NAME_LENGTH_MAX = 32;
+    @VisibleForTesting
+    static final int DEVICE_NAME_POSTFIX_LENGTH_MIN = 4;
+    @VisibleForTesting
+    static final int DEVICE_NAME_PREFIX_LENGTH_MAX =
+            DEVICE_NAME_LENGTH_MAX - DEVICE_NAME_POSTFIX_LENGTH_MIN;
+    @VisibleForTesting
     static final int DEFAULT_GROUP_OWNER_INTENT = 6;
 
     private Context mContext;
@@ -161,6 +175,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private WifiSettingsConfigStore mSettingsConfigStore;
     private WifiP2pMetrics mWifiP2pMetrics;
     private CoexManager mCoexManager;
+    private WifiGlobals mWifiGlobals;
 
     private static final Boolean JOIN_GROUP = true;
     private static final Boolean FORM_GROUP = false;
@@ -496,6 +511,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         mSettingsConfigStore = mWifiInjector.getSettingsConfigStore();
         mWifiP2pMetrics = mWifiInjector.getWifiP2pMetrics();
         mCoexManager = mWifiInjector.getCoexManager();
+        mWifiGlobals = mWifiInjector.getWifiGlobals();
 
         mDetailedState = NetworkInfo.DetailedState.IDLE;
 
@@ -3836,14 +3852,38 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         private String getPersistedDeviceName() {
             String deviceName = mSettingsConfigStore.get(WIFI_P2P_DEVICE_NAME);
-            if (deviceName == null) {
+            if (null != deviceName) return deviceName;
+
+            String prefix = mWifiGlobals.getWifiP2pDeviceNamePrefix();
+            if (DEVICE_NAME_PREFIX_LENGTH_MAX < prefix.getBytes(StandardCharsets.UTF_8).length
+                    || 0 == prefix.getBytes(StandardCharsets.UTF_8).length) {
+                logw("The length of default device name prefix is invalid"
+                        + ", fallback to default name.");
+                prefix = DEFAULT_DEVICE_NAME_PREFIX;
+            }
+            // The length of remaining bytes is at least {@link #DEVICE_NAME_POSTFIX_LENGTH_MIN}.
+            int remainingBytes =
+                    DEVICE_NAME_LENGTH_MAX - prefix.getBytes(StandardCharsets.UTF_8).length;
+
+            int numDigits = mWifiGlobals.getWifiP2pDeviceNamePostfixNumDigits();
+            if (numDigits > remainingBytes) {
+                logw("The postfix length exceeds the remaining byte number"
+                        + ", use the smaller one.");
+                numDigits = remainingBytes;
+            }
+
+            String postfix;
+            if (numDigits >= DEVICE_NAME_POSTFIX_LENGTH_MIN) {
+                postfix = StringUtil.generateRandomNumberString(numDigits);
+            } else {
                 // We use the 4 digits of the ANDROID_ID to have a friendly
                 // default that has low likelihood of collision with a peer
                 String id = mFrameworkFacade.getSecureStringSetting(mContext,
                         Settings.Secure.ANDROID_ID);
-                return "Android_" + id.substring(0, 4);
+                postfix = id.substring(0, 4);
             }
-            return deviceName;
+            logd("the default device name: " + prefix + postfix);
+            return prefix + postfix;
         }
 
         private boolean setAndPersistDeviceName(String devName) {
