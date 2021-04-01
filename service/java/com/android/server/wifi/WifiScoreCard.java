@@ -968,7 +968,7 @@ public class WifiScoreCard {
     // int [NUM_SIGNAL_LEVEL]
     static final int[] LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE = {200, 500, 750, 1000, 1000};
     // Byte threshold may be raised if average used BW is high but no more than the following value
-    static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 5000;
+    static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 4000;
     // To be used in the long term avg, each count needs to be above the following value
     static final int BANDWIDTH_STATS_COUNT_THR = 5;
     private static final int TIME_CONSTANT_LARGE_SEC = 6;
@@ -980,7 +980,8 @@ public class WifiScoreCard {
     // Force weight to 0 if the elapsed time is above LARGE_TIME_DECAY_RATIO * time constant
     private static final int LARGE_TIME_DECAY_RATIO = 4;
     // Used to derive byte count threshold from avg BW
-    private static final int AVG_BW_TO_LOW_BW_RATIO = 4;
+    private static final int LOW_BW_TO_AVG_BW_RATIO_NUM = 3;
+    private static final int LOW_BW_TO_AVG_BW_RATIO_DEN = 8;
     // radio on time below the following value is ignored.
     static final int RADIO_ON_TIME_MIN_MS = 10;
     static final int RADIO_ON_ELAPSED_TIME_DELTA_MAX_MS = 200;
@@ -1228,6 +1229,8 @@ public class WifiScoreCard {
          */
         void updateLinkBandwidth(WifiLinkLayerStats oldStats, WifiLinkLayerStats newStats,
                 ExtendedWifiInfo wifiInfo) {
+            mBandwidthSampleValid[LINK_TX] = false;
+            mBandwidthSampleValid[LINK_RX] = false;
             long txBytes = mFrameworkFacade.getTotalTxBytes() - mFrameworkFacade.getMobileTxBytes();
             long rxBytes = mFrameworkFacade.getTotalRxBytes() - mFrameworkFacade.getMobileRxBytes();
             // Sometimes TrafficStats byte counts return invalid values
@@ -1237,7 +1240,8 @@ public class WifiScoreCard {
                 mLastTrafficValid = trafficValid;
                 mLastTxBytes = txBytes;
                 mLastRxBytes = rxBytes;
-                Log.e(TAG, " run into invalid traffic count");
+                logv("invalid traffic count tx " + txBytes + " last " + mLastTxBytes
+                        + " rx " + rxBytes + " last " + mLastRxBytes);
                 return;
             }
 
@@ -1265,8 +1269,6 @@ public class WifiScoreCard {
         private void updateLinkBandwidthTxRxSample(WifiLinkLayerStats oldStats,
                 WifiLinkLayerStats newStats, ExtendedWifiInfo wifiInfo,
                 long txBytes, long rxBytes) {
-            mBandwidthSampleValid[LINK_TX] = false;
-            mBandwidthSampleValid[LINK_RX] = false;
             // oldStats is reset to null after screen off or disconnection
             if (oldStats == null || newStats == null) {
                 return;
@@ -1422,7 +1424,7 @@ public class WifiScoreCard {
         // Calculate a byte count threshold for the given avg BW and observation window size
         private int calculateByteCountThreshold(int avgBwKbps, int durationMs) {
             int avgBytes = avgBwKbps / 8 * durationMs;
-            return avgBytes / AVG_BW_TO_LOW_BW_RATIO;
+            return avgBytes * LOW_BW_TO_AVG_BW_RATIO_NUM / LOW_BW_TO_AVG_BW_RATIO_DEN;
         }
 
         /**

@@ -256,13 +256,13 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     public @interface WifiSpatialStreams {}
 
     /** Single stream, 1x1 */
-    public static final int WIFI_SPATIAL_STREAMS_ONE = 0;
+    public static final int WIFI_SPATIAL_STREAMS_ONE = 1;
     /** Dual streams, 2x2 */
-    public static final int WIFI_SPATIAL_STREAMS_TWO = 1;
+    public static final int WIFI_SPATIAL_STREAMS_TWO = 2;
     /** Three streams, 3x3 */
-    public static final int WIFI_SPATIAL_STREAMS_THREE = 2;
+    public static final int WIFI_SPATIAL_STREAMS_THREE = 3;
     /** Four streams, 4x4 */
-    public static final int WIFI_SPATIAL_STREAMS_FOUR = 3;
+    public static final int WIFI_SPATIAL_STREAMS_FOUR = 4;
     /** Invalid */
     public static final int WIFI_SPATIAL_STREAMS_INVALID = -1;
 
@@ -875,8 +875,16 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
     }
 
     /**
-     * Per rate information and statistics.
-     * @return A list of rate statistics, see {@link RateStats}.
+     * Rate information and statistics, which are ordered by preamble, modulation and coding scheme
+     * (MCS), and number of spatial streams (NSS).
+     * @return A list of rate statistics in the form of a list of {@link RateStats} objects.
+     *         Depending on the link type, the list is created following the order of:
+     *         - HT (IEEE Std 802.11-2020, Section 19): LEGACY rates (1Mbps, ..., 54Mbps),
+     *           HT MCS0, ..., MCS15;
+     *         - VHT (IEEE Std 802.11-2020, Section 21): LEGACY rates (1Mbps, ..., 54Mbps),
+     *           VHT MCS0/NSS1, ..., VHT MCS11/NSS1, VHT MCSO/NSS2, ..., VHT MCS11/NSS2;
+     *         - HE (IEEE Std 802.11-2020, Section 27): LEGACY rates (1Mbps, ..., 54Mbps),
+     *           HE MCS0/NSS1, ..., HE MCS11/NSS1, HE MCSO/NSS2, ..., HE MCS11/NSS2.
      */
     @NonNull
     public List<RateStats> getRateStats() {

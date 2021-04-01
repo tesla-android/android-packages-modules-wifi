@@ -1233,19 +1233,25 @@ public class ActiveModeWarden {
          * Hardware needs to be configured for STA + STA before sending the callbacks to clients
          * letting them know that CM is ready for use.
          */
-        private void configureHwForMultiStaIfNecessary(
-                ConcreteClientModeManager clientModeManager) {
-            ClientRole clientRole = clientModeManager.getRole();
-            if (clientRole == ROLE_CLIENT_PRIMARY || clientRole == ROLE_CLIENT_SCAN_ONLY) {
+        private void configureHwForMultiStaIfNecessary() {
+            List<ClientModeManager> cmms = getClientModeManagers();
+            if (cmms.size() <= 1) {
                 // not multi sta.
                 return;
             }
-            // All other client roles are secondary (i.e multi STA) by definition.
-            if (clientRole == ROLE_CLIENT_LOCAL_ONLY
-                    || clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
-                mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_NON_TRANSIENT_UNBIASED);
-            } else if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
-                mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY);
+            // Note: The use-case setting finds the first non-primary client mode manager to set
+            // the use-case to HAL. This does not extend to 3 STA concurrency when there are
+            // 2 secondary STA client mode managers.
+            for (ClientModeManager cmm : cmms) {
+                ClientRole clientRole = cmm.getRole();
+                if (clientRole == ROLE_CLIENT_LOCAL_ONLY
+                        || clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
+                    mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_NON_TRANSIENT_UNBIASED);
+                    break;
+                } else if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                    mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY);
+                    break;
+                }
             }
             String primaryIfaceName = getPrimaryClientModeManager().getInterfaceName();
             // if no primary exists (occurs briefly during Make Before Break), don't update the
@@ -1259,7 +1265,7 @@ public class ActiveModeWarden {
         private void onStartedOrRoleChanged(ConcreteClientModeManager clientModeManager) {
             updateClientScanMode();
             updateBatteryStats();
-            configureHwForMultiStaIfNecessary(clientModeManager);
+            configureHwForMultiStaIfNecessary();
             if (mExternalRequestListener != null) {
                 mExternalRequestListener.onAnswer(clientModeManager);
                 mExternalRequestListener = null; // reset after one shot.

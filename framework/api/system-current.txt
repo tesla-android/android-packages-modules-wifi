@@ -961,11 +961,11 @@ package android.net.wifi {
     field public static final int WIFI_PREAMBLE_INVALID = -1; // 0xffffffff
     field public static final int WIFI_PREAMBLE_OFDM = 0; // 0x0
     field public static final int WIFI_PREAMBLE_VHT = 3; // 0x3
-    field public static final int WIFI_SPATIAL_STREAMS_FOUR = 3; // 0x3
+    field public static final int WIFI_SPATIAL_STREAMS_FOUR = 4; // 0x4
     field public static final int WIFI_SPATIAL_STREAMS_INVALID = -1; // 0xffffffff
-    field public static final int WIFI_SPATIAL_STREAMS_ONE = 0; // 0x0
-    field public static final int WIFI_SPATIAL_STREAMS_THREE = 2; // 0x2
-    field public static final int WIFI_SPATIAL_STREAMS_TWO = 1; // 0x1
+    field public static final int WIFI_SPATIAL_STREAMS_ONE = 1; // 0x1
+    field public static final int WIFI_SPATIAL_STREAMS_THREE = 3; // 0x3
+    field public static final int WIFI_SPATIAL_STREAMS_TWO = 2; // 0x2
     field public static final int WME_ACCESS_CATEGORY_BE = 0; // 0x0
     field public static final int WME_ACCESS_CATEGORY_BK = 1; // 0x1
     field public static final int WME_ACCESS_CATEGORY_VI = 2; // 0x2
