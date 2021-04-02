@@ -1040,7 +1040,7 @@ public class InformationElementUtil {
                             rsnKeyManagement.add(ScanResult.KEY_MGMT_FILS_SHA384);
                             break;
                         default:
-                            // do nothing
+                            rsnKeyManagement.add(ScanResult.KEY_MGMT_UNKNOWN);
                             break;
                     }
                 }
@@ -1200,7 +1200,7 @@ public class InformationElementUtil {
                             wpaKeyManagement.add(ScanResult.KEY_MGMT_PSK);
                             break;
                         default:
-                            // do nothing
+                            wpaKeyManagement.add(ScanResult.KEY_MGMT_UNKNOWN);
                             break;
                     }
                 }

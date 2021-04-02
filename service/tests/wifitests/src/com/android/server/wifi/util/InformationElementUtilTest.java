@@ -343,6 +343,28 @@ public class InformationElementUtilTest extends WifiBaseTest {
     }
 
     /**
+     * Test Capabilities.generateCapabilitiesString() with a RSN IE which contains
+     * an unknown AKM.
+     * Expect the function to return a string with the proper security information.
+     */
+    @Test
+    public void buildCapabilities_rsnElementWithUnknownAkm() {
+        InformationElement ie = new InformationElement();
+        ie.id = InformationElement.EID_RSN;
+        ie.bytes = new byte[] { (byte) 0x01, (byte) 0x00, // Version
+                                (byte) 0x00, (byte) 0x0F, (byte) 0xAC, (byte) 0x02, // TKIP
+                                (byte) 0x02, (byte) 0x00, // Pairwise cipher count
+                                (byte) 0x00, (byte) 0x0F, (byte) 0xAC, (byte) 0x04, // CCMP
+                                (byte) 0x00, (byte) 0x0F, (byte) 0xAC, (byte) 0x02, // TKIP
+                                (byte) 0x01, (byte) 0x00, // AKM count
+                                (byte) 0x00, (byte) 0x0F, (byte) 0x99, (byte) 0x99, // Unknown AKM
+                                (byte) 0x00, (byte) 0x00 // RSN capabilities
+        };
+        verifyCapabilityStringFromIeWithoutOweSupported(ie,
+                "[RSN-?-CCMP+TKIP]");
+    }
+
+    /**
      * Test Capabilities.generateCapabilitiesString() with a RSN IE.
      * Expect the function to return a string with the proper security information.
      */
@@ -511,6 +533,27 @@ public class InformationElementUtilTest extends WifiBaseTest {
                                 (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x50,
                                 (byte) 0xF2, (byte) 0x02, (byte) 0x00, (byte) 0x00 };
         verifyCapabilityStringFromIeWithoutOweSupported(ie, "[WPA-PSK-CCMP+TKIP]");
+    }
+
+    /**
+     * Test Capabilities.generateCapabilitiesString() with a WPA type 1 IE which
+     * contains an unknown AKM.
+     * Expect the function to return a string with the proper security information.
+     */
+    @Test
+    public void buildCapabilities_wpa1ElementWithUnknownAkm() {
+        InformationElement ie = new InformationElement();
+        ie.id = InformationElement.EID_VSA;
+        ie.bytes = new byte[] { (byte) 0x00, (byte) 0x50, (byte) 0xF2, (byte) 0x01, // OUI & type
+                                (byte) 0x01, (byte) 0x00, // Version
+                                (byte) 0x00, (byte) 0x50, (byte) 0xF2, (byte) 0x02, // TKIP
+                                (byte) 0x02, (byte) 0x00, // Pairwise cipher count
+                                (byte) 0x00, (byte) 0x50, (byte) 0xF2, (byte) 0x04, // CCMP
+                                (byte) 0x00, (byte) 0x50, (byte) 0xF2, (byte) 0x02, // TKIP
+                                (byte) 0x01, (byte) 0x00, // AKM count
+                                (byte) 0x00, (byte) 0x50, (byte) 0x99, (byte) 0x99, // Unknown AKM
+                                (byte) 0x00, (byte) 0x00};
+        verifyCapabilityStringFromIeWithoutOweSupported(ie, "[WPA-?-CCMP+TKIP]");
     }
 
     /**

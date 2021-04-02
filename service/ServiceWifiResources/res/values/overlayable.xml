@@ -192,6 +192,9 @@
           <item type="bool" name="config_wifiUseHalApiToDisableFwRoaming" />
           <item type="bool" name="config_wifiSaeH2eSupported" />
           <item type="bool" name="config_wifiLinkLayerAllRadiosStatsAggregationEnabled" />
+          <item type="string" name="config_wifiP2pDeviceNamePrefix"/>
+          <item type="integer" name="config_wifiP2pDeviceNamePostfixNumDigits" />
+          <item type="integer" name="config_wifiMaxNumWifiConfigurations" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

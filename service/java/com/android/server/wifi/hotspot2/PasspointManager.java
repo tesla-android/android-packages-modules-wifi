@@ -514,6 +514,9 @@ public class PasspointManager {
                     + " and unique ID: " + config.getUniqueId());
             old.uninstallCertsAndKeys();
             mProviders.remove(config.getUniqueId());
+            // Keep the user connect choice and AnonymousIdentity
+            newProvider.setUserConnectChoice(old.getConnectChoice(), old.getConnectChoiceRssi());
+            newProvider.setAnonymousIdentity(old.getAnonymousIdentity());
             // New profile changes the credential, remove the related WifiConfig.
             if (!old.equals(newProvider)) {
                 mWifiConfigManager.removePasspointConfiguredNetwork(

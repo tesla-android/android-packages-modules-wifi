@@ -403,6 +403,24 @@ public class ScanResultUtilTest extends WifiBaseTest {
         verifyPasspointNetwork(caps, true, null, false, false);
     }
 
+    /**
+     * Test that an unknown AMK network is not detected as an open network.
+     */
+    @Test
+    public void testUnknownAkmNotOpenNetwork() {
+        final String ssid = "UnknownAkm-Network";
+        String caps = "[RSN-?-TKIP+CCMP][ESS][WPS]";
+
+        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+                "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
+                0, true);
+
+        input.informationElements = new InformationElement[] {
+                createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
+        };
+
+        assertFalse(ScanResultUtil.isScanResultForOpenNetwork(input));
+    }
 
     /**
      * Verify ScanResultList validation.

@@ -57,6 +57,10 @@ public class WifiGlobals {
     private final boolean mFlushAnqpCacheOnWifiToggleOffEvent;
     // This is read from the overlay, cache it after boot up.
     private final boolean mIsWpa3SaeH2eSupported;
+    // This is read from the overlay, cache it after boot up.
+    private final String mP2pDeviceNamePrefix;
+    // This is read from the overlay, cache it after boot up.
+    private final int mP2pDeviceNamePostfixNumDigits;
 
     // This is set by WifiManager#setVerboseLoggingEnabled(int).
     private boolean mIsShowKeyVerboseLoggingModeEnabled = false;
@@ -76,6 +80,10 @@ public class WifiGlobals {
                 .getBoolean(R.bool.config_wifiFlushAnqpCacheOnWifiToggleOffEvent);
         mIsWpa3SaeH2eSupported = mContext.getResources()
                 .getBoolean(R.bool.config_wifiSaeH2eSupported);
+        mP2pDeviceNamePrefix = mContext.getResources()
+                .getString(R.string.config_wifiP2pDeviceNamePrefix);
+        mP2pDeviceNamePostfixNumDigits = mContext.getResources()
+                .getInteger(R.integer.config_wifiP2pDeviceNamePostfixNumDigits);
     }
 
     /** Get the interval between RSSI polls, in milliseconds. */
@@ -201,6 +209,17 @@ public class WifiGlobals {
         return mIsShowKeyVerboseLoggingModeEnabled;
     }
 
+    /** Get the prefix of the default wifi p2p device name. */
+    public String getWifiP2pDeviceNamePrefix() {
+        return mP2pDeviceNamePrefix;
+    }
+
+    /** Get the number of the default wifi p2p device name postfix digit. */
+    public int getWifiP2pDeviceNamePostfixNumDigits() {
+        return mP2pDeviceNamePostfixNumDigits;
+    }
+
+
     /** Dump method for debugging */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of WifiGlobals");
@@ -213,5 +232,7 @@ public class WifiGlobals {
         pw.println("mIsWpa3EnterpriseUpgradeEnabled=" + mIsWpa3EnterpriseUpgradeEnabled);
         pw.println("mFlushAnqpCacheOnWifiToggleOffEvent=" + mFlushAnqpCacheOnWifiToggleOffEvent);
         pw.println("mIsWpa3SaeH2eSupported=" + mIsWpa3SaeH2eSupported);
+        pw.println("mP2pDeviceNamePrefix=" + mP2pDeviceNamePrefix);
+        pw.println("mP2pDeviceNamePostfixNumDigits=" + mP2pDeviceNamePostfixNumDigits);
     }
 }

@@ -85,6 +85,7 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
+import android.provider.Settings;
 
 import androidx.test.filters.SmallTest;
 
@@ -92,11 +93,13 @@ import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
+import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
+import com.android.server.wifi.util.StringUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.server.wifi.util.WifiPermissionsWrapper;
 import com.android.wifi.resources.R;
@@ -132,6 +135,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private static final String thisDeviceName = "thisDeviceName";
     private static final String ANONYMIZED_DEVICE_ADDRESS = "02:00:00:00:00:00";
     private static final String TEST_PACKAGE_NAME = "com.p2p.test";
+    private static final String TEST_ANDROID_ID = "314Deadbeef";
 
     private ArgumentCaptor<BroadcastReceiver> mBcastRxCaptor = ArgumentCaptor.forClass(
             BroadcastReceiver.class);
@@ -179,6 +183,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Mock CoexManager mCoexManager;
     @Spy FakeWifiLog mLog;
     @Spy MockWifiP2pMonitor mWifiMonitor;
+    @Mock WifiGlobals mWifiGlobals;
     CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
@@ -813,6 +818,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiPermissionsUtil()).thenReturn(mWifiPermissionsUtil);
         when(mWifiInjector.getSettingsConfigStore()).thenReturn(mWifiSettingsConfigStore);
         when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
         // enable all permissions, disable specific permissions in tests
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.checkNetworkStackPermission(anyInt())).thenReturn(true);
@@ -2293,6 +2299,82 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         WifiP2pDevice wifiP2pDevice = (WifiP2pDevice) mMessageCaptor.getValue().obj;
         assertEquals(thisDeviceMac, wifiP2pDevice.deviceAddress);
         assertEquals(thisDeviceName, wifiP2pDevice.deviceName);
+    }
+
+    private void verifyCustomizeDefaultDeviceName(String expectedName, boolean isRandomPostfix)
+            throws Exception {
+        forceP2pEnabled(mClient1);
+        when(mWifiPermissionsUtil.checkLocalMacAddressPermission(anyInt())).thenReturn(true);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
+
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_DEVICE_INFO);
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        assertEquals(WifiP2pManager.RESPONSE_DEVICE_INFO, mMessageCaptor.getValue().what);
+
+        WifiP2pDevice wifiP2pDevice = (WifiP2pDevice) mMessageCaptor.getValue().obj;
+        if (isRandomPostfix) {
+            assertEquals(expectedName,
+                    wifiP2pDevice.deviceName.substring(0, expectedName.length()));
+        } else {
+            assertEquals(expectedName, wifiP2pDevice.deviceName);
+        }
+    }
+
+    private void setupDefaultDeviceNameCustomization(
+            String prefix, int postfixDigit) {
+        when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_DEVICE_NAME))).thenReturn(null);
+        when(mFrameworkFacade.getSecureStringSetting(any(), eq(Settings.Secure.ANDROID_ID)))
+                .thenReturn(TEST_ANDROID_ID);
+        when(mWifiGlobals.getWifiP2pDeviceNamePrefix()).thenReturn(prefix);
+        when(mWifiGlobals.getWifiP2pDeviceNamePostfixNumDigits()).thenReturn(postfixDigit);
+    }
+
+    /** Verify that the default device name is customized by overlay. */
+    @Test
+    public void testCustomizeDefaultDeviceName() throws Exception {
+        setupDefaultDeviceNameCustomization("Niceboat-", -1);
+        verifyCustomizeDefaultDeviceName("Niceboat-" + TEST_ANDROID_ID.substring(0, 4), false);
+    }
+
+    /** Verify that the prefix fallback to Android_ if the prefix is too long. */
+    @Test
+    public void testCustomizeDefaultDeviceNameTooLongPrefix() throws Exception {
+        setupDefaultDeviceNameCustomization(
+                StringUtil.generateRandomNumberString(
+                        WifiP2pServiceImpl.DEVICE_NAME_PREFIX_LENGTH_MAX + 1), 4);
+        verifyCustomizeDefaultDeviceName(WifiP2pServiceImpl.DEFAULT_DEVICE_NAME_PREFIX, true);
+    }
+
+    /** Verify that the prefix fallback to Android_ if the prefix is empty. */
+    @Test
+    public void testCustomizeDefaultDeviceNameEmptyPrefix() throws Exception {
+        setupDefaultDeviceNameCustomization("", 6);
+        verifyCustomizeDefaultDeviceName(WifiP2pServiceImpl.DEFAULT_DEVICE_NAME_PREFIX, true);
+    }
+
+    /** Verify that the postfix fallbacks to 4-digit ANDROID_ID if the length is smaller than 4. */
+    @Test
+    public void testCustomizeDefaultDeviceNamePostfixTooShort() throws Exception {
+        setupDefaultDeviceNameCustomization("Prefix",
+                WifiP2pServiceImpl.DEVICE_NAME_POSTFIX_LENGTH_MIN - 1);
+        verifyCustomizeDefaultDeviceName("Prefix" + TEST_ANDROID_ID.substring(0, 4), true);
+    }
+
+    /** Verify that the postfix fallbacks to 4-digit ANDROID_ID if the length is 0.*/
+    @Test
+    public void testCustomizeDefaultDeviceNamePostfixIsZeroLength() throws Exception {
+        setupDefaultDeviceNameCustomization("Prefix", 0);
+        verifyCustomizeDefaultDeviceName("Prefix" + TEST_ANDROID_ID.substring(0, 4), true);
+    }
+
+    /** Verify that the digit length exceeds the remaining bytes. */
+    @Test
+    public void testCustomizeDefaultDeviceNameWithFewerRemainingBytes() throws Exception {
+        int postfixLength = 6;
+        String prefix = StringUtil.generateRandomNumberString(
+                WifiP2pServiceImpl.DEVICE_NAME_LENGTH_MAX - postfixLength + 1);
+        setupDefaultDeviceNameCustomization(prefix, postfixLength);
+        verifyCustomizeDefaultDeviceName(prefix, true);
     }
 
     /**

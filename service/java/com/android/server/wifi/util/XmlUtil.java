@@ -359,6 +359,7 @@ public class XmlUtil {
         public static final String XML_TAG_SUBSCRIPTION_ID = "SubscriptionId";
         public static final String XML_TAG_IS_AUTO_JOIN = "AutoJoinEnabled";
         public static final String XML_TAG_DELETION_PRIORITY = "DeletionPriority";
+        public static final String XML_TAG_NUM_REBOOTS_SINCE_LAST_USE = "NumRebootsSinceLastUse";
 
         public static final String XML_TAG_IS_TRUSTED = "Trusted";
         public static final String XML_TAG_IS_OEM_PAID = "OemPaid";
@@ -495,8 +496,12 @@ public class XmlUtil {
                     configuration.allowedSuiteBCiphers.toByteArray());
             XmlUtil.writeNextValue(out, XML_TAG_SHARED, configuration.shared);
             XmlUtil.writeNextValue(out, XML_TAG_IS_AUTO_JOIN, configuration.allowAutojoin);
-            XmlUtil.writeNextValue(out, XML_TAG_DELETION_PRIORITY,
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_DELETION_PRIORITY,
                     configuration.getDeletionPriority());
+            XmlUtil.writeNextValue(
+                    out, XML_TAG_NUM_REBOOTS_SINCE_LAST_USE,
+                    configuration.numRebootsSinceLastUse);
             writeSecurityParamsListToXml(out, configuration);
         }
 
@@ -818,6 +823,9 @@ public class XmlUtil {
                             break;
                         case XML_TAG_DELETION_PRIORITY:
                             configuration.setDeletionPriority((int) value);
+                            break;
+                        case XML_TAG_NUM_REBOOTS_SINCE_LAST_USE:
+                            configuration.numRebootsSinceLastUse = (int) value;
                             break;
                         case XML_TAG_IS_TRUSTED:
                             configuration.trusted = (boolean) value;

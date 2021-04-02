@@ -71,6 +71,7 @@ public class WifiCountryCode {
     private String mTelephonyCountryCode = null;
     private String mOverrideCountryCode = null;
     private String mDriverCountryCode = null;
+    private String mReceivedDriverCountryCode = null;
     private String mTelephonyCountryTimestamp = null;
     private String mDriverCountryTimestamp = null;
     private String mReadyTimestamp = null;
@@ -135,15 +136,12 @@ public class WifiCountryCode {
     private class CountryChangeListenerInternal implements ChangeListener {
         @Override
         public void onDriverCountryCodeChanged(String country) {
-            if (Objects.equals(country, mDriverCountryCode)) {
+            if (Objects.equals(country, mReceivedDriverCountryCode)) {
                 return;
             }
             Log.i(TAG, "Receive onDriverCountryCodeChanged " + country);
-            mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
-            mDriverCountryCode = country;
-            for (ChangeListener listener : mListeners) {
-                listener.onDriverCountryCodeChanged(country);
-            }
+            mReceivedDriverCountryCode = country;
+            updateDriverCountryCodeAndNotifyListener(country);
         }
     }
 
@@ -419,11 +417,23 @@ public class WifiCountryCode {
         for (ConcreteClientModeManager cm : cmms) {
             if (cm.setCountryCode(country)) {
                 Log.d(TAG, "Succeeded to set country code to: " + country);
+                // The country code change listener from wificond rely on driver supported
+                // NL80211_CMD_REG_CHANGE/NL80211_CMD_WIPHY_REG_CHANGE. Trigger update country code
+                // to listener here for non-supported platform.
+                updateDriverCountryCodeAndNotifyListener(country);
                 return true;
             }
         }
         Log.d(TAG, "Failed to set country code to: " + country);
         return false;
+    }
+
+    private void updateDriverCountryCodeAndNotifyListener(String country) {
+        mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
+        mDriverCountryCode = country;
+        for (ChangeListener listener : mListeners) {
+            listener.onDriverCountryCodeChanged(country);
+        }
     }
 }
 
