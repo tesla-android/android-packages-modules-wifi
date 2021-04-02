@@ -16,6 +16,7 @@
 
 package com.android.server.wifi.util;
 
+import android.annotation.Nullable;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
@@ -267,17 +268,21 @@ public class ScanResultUtil {
      * Creates a network configuration object using the provided |scanResult|.
      * This is used to create ephemeral network configurations.
      */
-    public static WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
+    public static @Nullable WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = createQuotedSSID(scanResult.SSID);
-        config.setSecurityParams(generateSecurityParamsListFromScanResult(scanResult));
+        List<SecurityParams> list = generateSecurityParamsListFromScanResult(scanResult);
+        if (null == list) {
+            return null;
+        }
+        config.setSecurityParams(list);
         return config;
     }
 
     /**
      * Generate security params from the scan result.
      */
-    public static List<SecurityParams> generateSecurityParamsListFromScanResult(
+    public static @Nullable List<SecurityParams> generateSecurityParamsListFromScanResult(
             ScanResult scanResult) {
         List<SecurityParams> list = new ArrayList<>();
 
@@ -363,9 +368,7 @@ public class ScanResultUtil {
             list.add(SecurityParams.createSecurityParamsBySecurityType(
                     WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
         }
-        if (!list.isEmpty()) return list;
-
-        throw new IllegalArgumentException("Invalid ScanResult: " + scanResult);
+        return list.isEmpty() ? null : list;
     }
 
     /**
