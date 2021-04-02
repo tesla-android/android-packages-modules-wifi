@@ -94,6 +94,7 @@ public class WifiBlocklistMonitorTest {
     @Mock private LocalLog mLocalLog;
     @Mock private WifiScoreCard mWifiScoreCard;
     @Mock private ScoringParams mScoringParams;
+    @Mock private WifiMetrics mWifiMetrics;
     @Mock private WifiScoreCard.PerNetwork mPerNetwork;
     @Mock private WifiScoreCard.NetworkConnectionStats mRecentStats;
 
@@ -179,7 +180,8 @@ public class WifiBlocklistMonitorTest {
         when(mPerNetwork.getRecentStats()).thenReturn(mRecentStats);
         when(mWifiScoreCard.lookupNetwork(anyString())).thenReturn(mPerNetwork);
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
-                mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams);
+                mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams,
+                mWifiMetrics);
     }
 
     private void verifyAddTestBssidToBlocklist() {
@@ -612,6 +614,8 @@ public class WifiBlocklistMonitorTest {
 
             // verify that the blocklist streak is incremented
             verify(mWifiScoreCard).incrementBssidBlocklistStreak(TEST_SSID_1, TEST_BSSID_1, reason);
+            // verify WifiMetrics also increments the blocklist count.
+            verify(mWifiMetrics).incrementBssidBlocklistCount(reason);
 
             // Verify that TEST_BSSID_1 is removed from the blocklist after the timeout duration.
             when(mClock.getWallClockMillis()).thenReturn(BASE_BLOCKLIST_DURATION + 1);
@@ -1170,9 +1174,7 @@ public class WifiBlocklistMonitorTest {
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         int disableReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
 
-        // Verify that with 0 BSSIDs in blocklist we enable the network immediately
         verifyDisableNetwork(openNetwork, disableReason);
-
         verifyNetworkIsEnabledAfter(openNetwork,
                 mWifiBlocklistMonitor.getNetworkSelectionDisableTimeoutMillis(disableReason)
                         + TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS);
@@ -1188,6 +1190,8 @@ public class WifiBlocklistMonitorTest {
         for (int i = 1; i <= disableThreshold; i++) {
             verifyUpdateNetworkSelectionStatus(config, reason, i);
         }
+        // verify WifiMetrics increments the blocklist count.
+        verify(mWifiMetrics).incrementWificonfigurationBlocklistCount(reason);
     }
 
     private void verifyNetworkIsEnabledAfter(WifiConfiguration config, long timeout) {
@@ -1215,7 +1219,8 @@ public class WifiBlocklistMonitorTest {
         mResources.setInteger(
                 R.integer.config_wifiDisableReasonDhcpFailureThreshold, newThreshold);
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
-                mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams);
+                mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams,
+                mWifiMetrics);
 
         // Verify that the threshold is updated in the copied version
         assertEquals(newThreshold, mWifiBlocklistMonitor.getNetworkSelectionDisableThreshold(
