@@ -2113,8 +2113,16 @@ public class WifiMetricsTest extends WifiBaseTest {
     public void testBssidBlocklistMetrics() throws Exception {
         for (int i = 0; i < 3; i++) {
             mWifiMetrics.incrementNetworkSelectionFilteredBssidCount(i);
+            mWifiMetrics.incrementBssidBlocklistCount(
+                    WifiBlocklistMonitor.REASON_ASSOCIATION_TIMEOUT);
+            mWifiMetrics.incrementWificonfigurationBlocklistCount(
+                    NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION);
         }
         mWifiMetrics.incrementNetworkSelectionFilteredBssidCount(2);
+        mWifiMetrics.incrementBssidBlocklistCount(
+                WifiBlocklistMonitor.REASON_NETWORK_VALIDATION_FAILURE);
+        mWifiMetrics.incrementWificonfigurationBlocklistCount(
+                NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY);
         mResources.setBoolean(R.bool.config_wifiHighMovementNetworkSelectionOptimizationEnabled,
                 true);
         mWifiMetrics.incrementNumHighMovementConnectionStarted();
@@ -2122,13 +2130,25 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.incrementNumHighMovementConnectionSkipped();
         dumpProtoAndDeserialize();
 
-        Int32Count[] expectedHistogram = {
+        Int32Count[] expectedFilteredBssidHistogram = {
                 buildInt32Count(0, 1),
                 buildInt32Count(1, 1),
                 buildInt32Count(2, 2),
         };
-        assertKeyCountsEqual(expectedHistogram,
+        Int32Count[] expectedBssidBlocklistPerReasonHistogram = {
+                buildInt32Count(WifiBlocklistMonitor.REASON_NETWORK_VALIDATION_FAILURE, 1),
+                buildInt32Count(WifiBlocklistMonitor.REASON_ASSOCIATION_TIMEOUT, 3),
+        };
+        Int32Count[] expectedWificonfigBlocklistPerReasonHistogram = {
+                buildInt32Count(NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION, 3),
+                buildInt32Count(NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY, 1),
+        };
+        assertKeyCountsEqual(expectedFilteredBssidHistogram,
                 mDecodedProto.bssidBlocklistStats.networkSelectionFilteredBssidCount);
+        assertKeyCountsEqual(expectedBssidBlocklistPerReasonHistogram,
+                mDecodedProto.bssidBlocklistStats.bssidBlocklistPerReasonCount);
+        assertKeyCountsEqual(expectedWificonfigBlocklistPerReasonHistogram,
+                mDecodedProto.bssidBlocklistStats.wifiConfigBlocklistPerReasonCount);
         assertEquals(true, mDecodedProto.bssidBlocklistStats
                 .highMovementMultipleScansFeatureEnabled);
         assertEquals(1, mDecodedProto.bssidBlocklistStats.numHighMovementConnectionStarted);
