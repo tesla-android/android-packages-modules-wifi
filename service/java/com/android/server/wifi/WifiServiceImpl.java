@@ -605,7 +605,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 return false;
             }
         } catch (SecurityException e) {
-            Log.e(TAG, "Permission violation - startScan not allowed for"
+            Log.w(TAG, "Permission violation - startScan not allowed for"
                     + " uid=" + callingUid + ", packageName=" + packageName + ", reason=" + e);
             return false;
         } finally {
@@ -2442,7 +2442,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId,
                         callingUid, null);
             } catch (SecurityException e) {
-                Log.e(TAG, "Permission violation - getConfiguredNetworks not allowed for uid="
+                Log.w(TAG, "Permission violation - getConfiguredNetworks not allowed for uid="
                         + callingUid + ", packageName=" + packageName + ", reason=" + e);
                 return new ParceledListSlice<>(new ArrayList<>());
             } finally {
@@ -2501,7 +2501,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId, callingUid,
                     null);
         } catch (SecurityException e) {
-            Log.e(TAG, "Permission violation - getPrivilegedConfiguredNetworks not allowed for"
+            Log.w(TAG, "Permission violation - getPrivilegedConfiguredNetworks not allowed for"
                     + " uid=" + callingUid + ", packageName=" + packageName + ", reason=" + e);
             return null;
         } finally {
@@ -3091,7 +3091,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     mScanRequestProxy::getScanResults, Collections.emptyList());
             return scanResults;
         } catch (SecurityException e) {
-            Log.e(TAG, "Permission violation - getScanResults not allowed for uid="
+            Log.w(TAG, "Permission violation - getScanResults not allowed for uid="
                     + uid + ", packageName=" + callingPackage + ", reason=" + e);
             return new ArrayList<>();
         } finally {
@@ -3130,7 +3130,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     },
                     Collections.emptyMap());
         } catch (SecurityException e) {
-            Log.e(TAG, "Permission violation - getMatchingScanResults not allowed for uid="
+            Log.w(TAG, "Permission violation - getMatchingScanResults not allowed for uid="
                     + uid + ", packageName=" + callingPackage + ", reason + e");
         } finally {
             Binder.restoreCallingIdentity(ident);
