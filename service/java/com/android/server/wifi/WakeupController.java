@@ -50,6 +50,8 @@ public class WakeupController {
     private static final String TAG = "WakeupController";
 
     private static final boolean USE_PLATFORM_WIFI_WAKE = true;
+    private static final int INIT_WAKEUP_LOCK_SCAN_RESULT_VALID_DURATION_MS =
+            10 * 60 * 1000; // 10 minutes
 
     private final Context mContext;
     private final Handler mHandler;
@@ -272,8 +274,9 @@ public class WakeupController {
         if (isEnabledAndReady()) {
             mWakeupOnboarding.maybeShowNotification();
 
-            List<ScanResult> scanResults =
-                    filterDfsScanResults(mWifiInjector.getWifiScanner().getSingleScanResults());
+            List<ScanResult> scanResults = filterDfsScanResults(
+                    mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(
+                            INIT_WAKEUP_LOCK_SCAN_RESULT_VALID_DURATION_MS));
             Set<ScanResultMatchInfo> matchInfos = toMatchInfos(scanResults);
             matchInfos.retainAll(getGoodSavedNetworksAndSuggestions());
 

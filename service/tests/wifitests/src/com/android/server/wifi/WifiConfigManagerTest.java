@@ -6761,6 +6761,35 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 mWifiConfigManager.getConfiguredNetworksWithPasswords());
     }
 
+    /**
+     * Verify getMostRecentScanResultsForConfiguredNetworks returns most recent scan results.
+     */
+    @Test
+    public void testGetMostRecentScanResultsForConfiguredNetworks() {
+        int testMaxAgeMillis = 2000;
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS);
+        ScanDetail scanDetail = createScanDetailForNetwork(openNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        ScanResult scanResult = scanDetail.getScanResult();
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
+
+        // verify the ScanResult is returned before the testMaxAgeMillis
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
+                + testMaxAgeMillis - 1);
+        List<ScanResult> scanResults = mWifiConfigManager
+                .getMostRecentScanResultsForConfiguredNetworks(testMaxAgeMillis);
+        assertEquals(1, scanResults.size());
+        assertEquals(TEST_BSSID, scanResults.get(0).BSSID);
+
+        // verify no ScanResult is returned after the timeout.
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
+                + testMaxAgeMillis);
+        assertEquals(0, mWifiConfigManager
+                .getMostRecentScanResultsForConfiguredNetworks(testMaxAgeMillis).size());
+    }
+
     private void verifyAddUpgradableTypeNetwork(
             WifiConfiguration baseConfig, WifiConfiguration newConfig,
             boolean isNewConfigUpgradableType) {

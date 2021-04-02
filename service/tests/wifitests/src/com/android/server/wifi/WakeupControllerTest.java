@@ -401,7 +401,7 @@ public class WakeupControllerTest extends WifiBaseTest {
         ScanResult savedScanResult = createOpenScanResult(ssid1, 2412 /* frequency */);
         ScanResult unsavedScanResult = createOpenScanResult(ssid2, 2412 /* frequency */);
 
-        when(mWifiScanner.getSingleScanResults())
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
                 .thenReturn(Arrays.asList(savedScanResult, unsavedScanResult));
 
         // intersection of most recent scan + saved configs
@@ -441,7 +441,7 @@ public class WakeupControllerTest extends WifiBaseTest {
         ScanResult savedScanResult = createOpenScanResult(ssid1, 2412 /* frequency */);
         ScanResult unsavedScanResult = createOpenScanResult(ssid2, 2412 /* frequency */);
 
-        when(mWifiScanner.getSingleScanResults())
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
                 .thenReturn(Arrays.asList(savedScanResult, unsavedScanResult));
 
         // intersection of most recent scan + saved configs
@@ -484,7 +484,7 @@ public class WakeupControllerTest extends WifiBaseTest {
         ScanResult suggestionScanResult = createOweScanResult(ssid2, 2412 /* frequency */);
         ScanResult unknownScanResult = createOpenScanResult(ssid3, 2412 /* frequency */);
 
-        when(mWifiScanner.getSingleScanResults())
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
                 .thenReturn(Arrays.asList(savedScanResult, suggestionScanResult,
                         unknownScanResult));
 
@@ -523,7 +523,7 @@ public class WakeupControllerTest extends WifiBaseTest {
         ScanResult scanResultDfs = createOpenScanResult(ssidDfs, DFS_CHANNEL_FREQ);
         ScanResult scanResult24 = createOpenScanResult(ssid24, 2412 /* frequency */);
 
-        when(mWifiScanner.getSingleScanResults())
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
                 .thenReturn(Arrays.asList(scanResultDfs, scanResult24));
 
         // should filter out scanResultDfs
@@ -774,7 +774,8 @@ public class WakeupControllerTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L,
                 (long) (0.8 * WakeupController.LAST_DISCONNECT_TIMEOUT_MILLIS));
         ScanResultMatchInfo matchInfo = ScanResultMatchInfo.fromScanResult(mTestScanResult);
-        when(mWifiScanner.getSingleScanResults()).thenReturn(Collections.emptyList());
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
+                .thenReturn(Collections.emptyList());
         initializeWakeupController(true);
 
         mWakeupController.setLastDisconnectInfo(matchInfo);
@@ -799,7 +800,8 @@ public class WakeupControllerTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L,
                 (long) (1.2 * WakeupController.LAST_DISCONNECT_TIMEOUT_MILLIS));
         ScanResultMatchInfo matchInfo = ScanResultMatchInfo.fromScanResult(mTestScanResult);
-        when(mWifiScanner.getSingleScanResults()).thenReturn(Collections.emptyList());
+        when(mWifiConfigManager.getMostRecentScanResultsForConfiguredNetworks(anyInt()))
+                .thenReturn(Collections.emptyList());
         initializeWakeupController(true);
 
         mWakeupController.setLastDisconnectInfo(matchInfo);

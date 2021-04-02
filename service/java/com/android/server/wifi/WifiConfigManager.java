@@ -3624,6 +3624,30 @@ public class WifiConfigManager {
     }
 
     /**
+     * Gets the most recent scan result that is newer than maxAgeMillis for each configured network.
+     * @param maxAgeMillis scan results older than this parameter will get filtered out.
+     */
+    public @NonNull List<ScanResult> getMostRecentScanResultsForConfiguredNetworks(
+            int maxAgeMillis) {
+        List<ScanResult> results = new ArrayList<>();
+        long timeNowMs = mClock.getWallClockMillis();
+        for (WifiConfiguration config : getInternalConfiguredNetworks()) {
+            ScanDetailCache scanDetailCache = getScanDetailCacheForNetwork(config.networkId);
+            if (scanDetailCache == null) {
+                continue;
+            }
+            ScanResult scanResult = scanDetailCache.getMostRecentScanResult();
+            if (scanResult == null) {
+                continue;
+            }
+            if (timeNowMs - scanResult.seen < maxAgeMillis) {
+                results.add(scanResult);
+            }
+        }
+        return results;
+    }
+
+    /**
      * Update the configuration according to transition disable indications.
      *
      * @param networkId network ID corresponding to the network.
