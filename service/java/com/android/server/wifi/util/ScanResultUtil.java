@@ -20,6 +20,7 @@ import android.annotation.Nullable;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.ScanDetail;
@@ -36,6 +37,7 @@ import java.util.List;
  *   > Helper methods to identify the encryption of a ScanResult.
  */
 public class ScanResultUtil {
+    private static final String TAG = "ScanResultUtil";
     private ScanResultUtil() { /* not constructable */ }
 
     /**
@@ -422,10 +424,12 @@ public class ScanResultUtil {
      */
     public static boolean validateScanResultList(List<ScanResult> scanResults) {
         if (scanResults == null || scanResults.isEmpty()) {
+            Log.w(TAG, "Empty or null ScanResult list");
             return false;
         }
         for (ScanResult scanResult : scanResults) {
             if (!validate(scanResult)) {
+                Log.w(TAG, "Invalid ScanResult: " + scanResult);
                 return false;
             }
         }
