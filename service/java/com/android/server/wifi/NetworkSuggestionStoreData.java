@@ -40,11 +40,11 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * This class performs serialization and parsing of XML data block that contain the list of WiFi
@@ -174,8 +174,8 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
             int maxSize = entry.getValue().maxSize;
             int uid = entry.getValue().uid;
             int carrierId = entry.getValue().carrierId;
-            Set<ExtendedWifiNetworkSuggestion> networkSuggestions =
-                    entry.getValue().extNetworkSuggestions;
+            Collection<ExtendedWifiNetworkSuggestion> networkSuggestions =
+                    entry.getValue().extNetworkSuggestions.values();
             XmlUtil.writeNextSectionStart(out, XML_TAG_SECTION_HEADER_NETWORK_SUGGESTION_PER_APP);
             XmlUtil.writeNextValue(out, XML_TAG_SUGGESTOR_PACKAGE_NAME, packageName);
             XmlUtil.writeNextValue(out, XML_TAG_SUGGESTOR_FEATURE_ID, featureId);
@@ -194,8 +194,8 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void serializeExtNetworkSuggestions(
-            XmlSerializer out, final Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions,
+    private void serializeExtNetworkSuggestions(XmlSerializer out,
+            final Collection<ExtendedWifiNetworkSuggestion> extNetworkSuggestions,
             @Nullable WifiConfigStoreEncryptionUtil encryptionUtil)
             throws XmlPullParserException, IOException {
         for (ExtendedWifiNetworkSuggestion extNetworkSuggestion : extNetworkSuggestions) {
@@ -330,7 +330,7 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
                             case XML_TAG_SECTION_HEADER_NETWORK_SUGGESTION:
                                 ExtendedWifiNetworkSuggestion ewns = parseNetworkSuggestion(in,
                                         outerTagDepth + 2, version, encryptionUtil, perAppInfo);
-                                perAppInfo.extNetworkSuggestions.add(ewns);
+                                perAppInfo.extNetworkSuggestions.put(ewns.hashCode(), ewns);
                                 break;
                             default:
                                 Log.w(TAG, "Ignoring unknown tag under "
