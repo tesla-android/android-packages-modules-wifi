@@ -328,6 +328,12 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
 
                     mEphemeralConfig =
                             ScanResultUtil.createNetworkFromScanResult(mScanResultCandidate);
+                    if (null == mEphemeralConfig) {
+                        mLocalLog.log("Failed to create ephemeral network from the scan result:"
+                                + " SSID=" + mScanResultCandidate.SSID
+                                + ", caps=" + mScanResultCandidate.capabilities);
+                        break;
+                    }
                     // Mark this config as ephemeral so it isn't persisted.
                     mEphemeralConfig.ephemeral = true;
                     // Mark this network as untrusted.

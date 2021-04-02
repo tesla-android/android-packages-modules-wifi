@@ -24,6 +24,7 @@ import static com.android.server.wifi.ConnectToNetworkNotificationBuilder.AVAILA
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.Notification;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -85,7 +86,8 @@ public class AvailableNetworkNotifier {
     /** No recommendation is made and no notifications are shown. */
     private static final int STATE_NO_NOTIFICATION = 0;
     /** The initial notification recommending a network to connect to is shown. */
-    private static final int STATE_SHOWING_RECOMMENDATION_NOTIFICATION = 1;
+    @VisibleForTesting
+    static final int STATE_SHOWING_RECOMMENDATION_NOTIFICATION = 1;
     /** The notification of status of connecting to the recommended network is shown. */
     private static final int STATE_CONNECTING_IN_NOTIFICATION = 2;
     /** The notification that the connection to the recommended network was successful is shown. */
@@ -94,7 +96,8 @@ public class AvailableNetworkNotifier {
     private static final int STATE_CONNECT_FAILED_NOTIFICATION = 4;
 
     /** Current state of the notification. */
-    @State private int mState = STATE_NO_NOTIFICATION;
+    @VisibleForTesting
+    @State int mState = STATE_NO_NOTIFICATION;
 
     /**
      * The {@link Clock#getWallClockMillis()} must be at least this value for us
@@ -128,7 +131,8 @@ public class AvailableNetworkNotifier {
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final WifiNotificationManager mWifiNotificationManager;
 
-    private ScanResult mRecommendedNetwork;
+    @VisibleForTesting
+    ScanResult mRecommendedNetwork;
 
     /** Tag used for logs and metrics */
     private final String mTag;
@@ -432,6 +436,10 @@ public class AvailableNetworkNotifier {
                 "User initiated connection to recommended network: "
                         + "\"" + mRecommendedNetwork.SSID + "\"");
         WifiConfiguration network = createRecommendedNetworkConfig(mRecommendedNetwork);
+        if (null == network) {
+            Log.e(mTag, "Cannot create the network from the scan result.");
+            return;
+        }
 
         NetworkUpdateResult result = mConfigManager.addOrUpdateNetwork(network, Process.WIFI_UID);
         if (result.isSuccess()) {
@@ -477,7 +485,7 @@ public class AvailableNetworkNotifier {
                 + "\"" + ssid + "\"");
     }
 
-    WifiConfiguration createRecommendedNetworkConfig(ScanResult recommendedNetwork) {
+    @Nullable WifiConfiguration createRecommendedNetworkConfig(ScanResult recommendedNetwork) {
         return ScanResultUtil.createNetworkFromScanResult(recommendedNetwork);
     }
 
