@@ -219,6 +219,21 @@ public final class WifiP2pWfdInfo implements Parcelable {
     }
 
     /**
+     * Set Wifi Display R2 raw device info, see
+     * Wifi Display technical specification v2.0.0, section 5.1.12.
+     * Access bit fields by {@link #DEVICE_INFO_DEVICE_TYPE_MASK}.
+     *
+     * @param r2DeviceInfo the raw data of R2 device info.
+     * @hide
+     */
+    public void setR2DeviceInfo(int r2DeviceInfo) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        mR2DeviceInfo = r2DeviceInfo;
+    }
+
+    /**
      * Return R2 raw device info, See
      * Wifi Display technical specification v2.0.0, section 5.1.12.
      * Access bit fields by {@link #DEVICE_INFO_DEVICE_TYPE_MASK}.
