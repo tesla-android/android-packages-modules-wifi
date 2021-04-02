@@ -99,6 +99,7 @@ import org.mockito.quality.Strictness;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -689,16 +690,26 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
     /**
      * Verify that modify networks that are already active is allowed.
+     * - Adding two suggestions and not add into the WifiConfigManager - before network selection
+     * - Set user connect choice, Anonymous Identity and auto-join on suggestion
+     * - Adding the suggestions with same profile should succeed. And no WifiConfigManager update.
+     * - After in-place modify, user connect choice, Anonymous Identity and auto-join should be
+     *   preserved.
      */
     @Test
     public void testAddNetworkSuggestionsSuccessOnInPlaceModificationWhenNotInWcm() {
+        when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
+                .thenReturn(true);
+
+        // Create an EAP-SIM suggestion and a passpoint suggestion
         PasspointConfiguration passpointConfiguration =
                 createTestConfigWithUserCredential(TEST_FQDN, TEST_FRIENDLY_NAME);
         WifiConfiguration placeholderConfig = createPlaceholderConfigForPasspoint(TEST_FQDN,
                 passpointConfiguration.getUniqueId());
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration eapSimConfig = WifiConfigurationTestUtil.createEapNetwork(
+                WifiEnterpriseConfig.Eap.SIM, WifiEnterpriseConfig.Phase2.NONE);
         WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
-                openNetwork, null, false, false, true, true,
+                eapSimConfig, null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
         WifiNetworkSuggestion networkSuggestion2 = createWifiNetworkSuggestion(
                 placeholderConfig, passpointConfiguration, false, false, true, true,
@@ -709,6 +720,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                     add(networkSuggestion2);
                 }};
 
+        // Verify adding suggestion succeed.
         when(mPasspointManager.addOrUpdateProvider(any(),
                 anyInt(), anyString(), eq(true), anyBoolean())).thenReturn(true);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
@@ -722,10 +734,23 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetwork(networkSuggestion2.wifiConfiguration
                 .getProfileKeyInternal())).thenReturn(null);
 
-        // Modify the same suggestion to mark it auto-join disabled.
+        // Set user connect choice, Anonymous Identity and auto join.
+        WifiConfiguration config = new WifiConfiguration(eapSimConfig);
+        config.fromWifiNetworkSuggestion = true;
+        config.ephemeral = true;
+        config.creatorName = TEST_PACKAGE_1;
+        config.creatorUid = TEST_UID_1;
+        config.enterpriseConfig.setAnonymousIdentity(TEST_ANONYMOUS_IDENTITY);
+        WifiConfigManager.OnNetworkUpdateListener listener = mNetworkListenerCaptor.getValue();
+        listener.onConnectChoiceSet(List.of(config), USER_CONNECT_CHOICE, TEST_RSSI);
+        mWifiNetworkSuggestionsManager.setAnonymousIdentity(config);
+        mWifiNetworkSuggestionsManager.allowNetworkSuggestionAutojoin(config, false);
+
+        // Keep the same suggestion as auto-join enabled, but user already mark it disabled.
         WifiNetworkSuggestion networkSuggestion3 = createWifiNetworkSuggestion(
-                openNetwork, null, false, false, true, false,
+                eapSimConfig, null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
+        // Modify the same suggestion to mark it auto-join disabled.
         WifiNetworkSuggestion networkSuggestion4 = createWifiNetworkSuggestion(
                 placeholderConfig, passpointConfiguration, false, false, true, false,
                 DEFAULT_PRIORITY_GROUP);
@@ -743,13 +768,20 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         Set<ExtendedWifiNetworkSuggestion> matchedPasspointSuggestions =
                 mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(TEST_FQDN);
         assertEquals(1, matchedPasspointSuggestions.size());
+        // As user didn't change the auto-join, will follow the newly added one.
         assertFalse(matchedPasspointSuggestions.iterator().next().isAutojoinEnabled);
 
-        ScanDetail scanDetail = createScanDetailForNetwork(openNetwork);
+        ScanDetail scanDetail = createScanDetailForNetwork(eapSimConfig);
         Set<ExtendedWifiNetworkSuggestion> matchedSuggestions =
                 mWifiNetworkSuggestionsManager.getNetworkSuggestionsForScanDetail(scanDetail);
         assertEquals(1, matchedSuggestions.size());
-        assertFalse(matchedSuggestions.iterator().next().isAutojoinEnabled);
+        ExtendedWifiNetworkSuggestion matchedSuggestion = matchedSuggestions.iterator().next();
+        // As user changes the auto-join, will keep the user choice.
+        assertFalse(matchedSuggestion.isAutojoinEnabled);
+        // Verify user connect choice and Anonymous Identity are preserved during the modify.
+        assertEquals(TEST_ANONYMOUS_IDENTITY, matchedSuggestion.anonymousIdentity);
+        assertEquals(USER_CONNECT_CHOICE, matchedSuggestion.connectChoice);
+        assertEquals(TEST_RSSI, matchedSuggestion.connectChoiceRssi);
 
         // Verify we did not update config in WCM.
         verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(), anyInt(), any());
@@ -1918,8 +1950,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertEquals(1, networkSuggestionsMapToWrite.size());
         assertTrue(networkSuggestionsMapToWrite.keySet().contains(TEST_PACKAGE_1));
         assertFalse(networkSuggestionsMapToWrite.get(TEST_PACKAGE_1).hasUserApproved);
-        Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestionsToWrite =
-                networkSuggestionsMapToWrite.get(TEST_PACKAGE_1).extNetworkSuggestions;
+        Collection<ExtendedWifiNetworkSuggestion> extNetworkSuggestionsToWrite =
+                networkSuggestionsMapToWrite.get(TEST_PACKAGE_1).extNetworkSuggestions.values();
         Set<WifiNetworkSuggestion> expectedAllNetworkSuggestions =
                 new HashSet<WifiNetworkSuggestion>() {{
                     add(networkSuggestion);
@@ -2028,10 +2060,12 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
                 placeholderConfig, passpointConfiguration, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
-        appInfo.extNetworkSuggestions.add(
-                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion, appInfo, true));
-        appInfo.extNetworkSuggestions.add(
-                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion1, appInfo, true));
+        ExtendedWifiNetworkSuggestion ewns1 =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion, appInfo, true);
+        appInfo.extNetworkSuggestions.put(ewns1.hashCode(), ewns1);
+        ExtendedWifiNetworkSuggestion ewns2 =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion1, appInfo, true);
+        appInfo.extNetworkSuggestions.put(ewns2.hashCode(), ewns2);
         mDataSource.fromDeserialized(new HashMap<String, PerAppInfo>() {{
                         put(TEST_PACKAGE_1, appInfo);
                 }});
@@ -2086,8 +2120,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
-        appInfo1.extNetworkSuggestions.add(
-                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion1, appInfo1, true));
+        ExtendedWifiNetworkSuggestion ewns =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion1, appInfo1, true);
+        appInfo1.extNetworkSuggestions.put(ewns.hashCode(), ewns);
         mDataSource.fromDeserialized(new HashMap<String, PerAppInfo>() {{
                     put(TEST_PACKAGE_1, appInfo1);
                 }});
@@ -2100,8 +2135,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiNetworkSuggestion networkSuggestion2 = createWifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
-        appInfo2.extNetworkSuggestions.add(
-                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion2, appInfo2, true));
+        ExtendedWifiNetworkSuggestion ewns2 =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion2, appInfo2, true);
+        appInfo2.extNetworkSuggestions.put(ewns2.hashCode(), ewns2);
         mDataSource.fromDeserialized(new HashMap<String, PerAppInfo>() {{
                     put(TEST_PACKAGE_2, appInfo2);
                 }});
@@ -2430,8 +2466,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
-        appInfo.extNetworkSuggestions.add(
-                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion, appInfo, true));
+        ExtendedWifiNetworkSuggestion ewns =
+                ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion, appInfo, true);
+        appInfo.extNetworkSuggestions.put(ewns.hashCode(), ewns);
         mDataSource.fromDeserialized(new HashMap<String, PerAppInfo>() {{
                     put(TEST_PACKAGE_1, appInfo);
                 }});
@@ -4266,7 +4303,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mLruConnectionTracker.isMostRecentlyConnected(any())).thenReturn(true);
         Map<String, PerAppInfo> suggestionStore = new HashMap<>(mDataSource.toSerialize());
         PerAppInfo perAppInfo = suggestionStore.get(TEST_PACKAGE_1);
-        ExtendedWifiNetworkSuggestion ewns = perAppInfo.extNetworkSuggestions.iterator().next();
+        ExtendedWifiNetworkSuggestion ewns =
+                perAppInfo.extNetworkSuggestions.values().iterator().next();
         assertTrue(ewns.wns.wifiConfiguration.isMostRecentlyConnected);
         mDataSource.fromDeserialized(suggestionStore);
         verify(mLruConnectionTracker).addNetwork(any());
@@ -4275,7 +4313,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mLruConnectionTracker.isMostRecentlyConnected(any())).thenReturn(false);
         suggestionStore = mDataSource.toSerialize();
         perAppInfo = suggestionStore.get(TEST_PACKAGE_1);
-        ewns = perAppInfo.extNetworkSuggestions.iterator().next();
+        ewns = perAppInfo.extNetworkSuggestions.values().iterator().next();
         assertFalse(ewns.wns.wifiConfiguration.isMostRecentlyConnected);
         mDataSource.fromDeserialized(suggestionStore);
         verify(mLruConnectionTracker, never()).addNetwork(any());
