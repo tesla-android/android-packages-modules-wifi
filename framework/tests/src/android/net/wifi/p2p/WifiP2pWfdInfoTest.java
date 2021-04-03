@@ -90,6 +90,10 @@ public class WifiP2pWfdInfoTest {
         assertFalse(info.isR2Supported());
         info.setR2DeviceType(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
         assertEquals(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE, info.getR2DeviceType());
+
+        info.setR2DeviceInfo(0x10f);
+        assertEquals(0x10f, info.getR2DeviceInfo());
+
         assertTrue(info.isR2Supported());
     }
 

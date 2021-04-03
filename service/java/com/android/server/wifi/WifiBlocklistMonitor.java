@@ -123,6 +123,7 @@ public class WifiBlocklistMonitor {
     private final LocalLog mLocalLog;
     private final WifiScoreCard mWifiScoreCard;
     private final ScoringParams mScoringParams;
+    private final WifiMetrics mWifiMetrics;
     private final Map<Integer, BssidDisableReason> mBssidDisableReasons =
             buildBssidDisableReasons();
     private final SparseArray<DisableReasonInfo> mDisableReasonInfo;
@@ -195,7 +196,7 @@ public class WifiBlocklistMonitor {
      */
     WifiBlocklistMonitor(Context context, WifiConnectivityHelper connectivityHelper,
             WifiLastResortWatchdog wifiLastResortWatchdog, Clock clock, LocalLog localLog,
-            WifiScoreCard wifiScoreCard, ScoringParams scoringParams) {
+            WifiScoreCard wifiScoreCard, ScoringParams scoringParams, WifiMetrics wifiMetrics) {
         mContext = context;
         mConnectivityHelper = connectivityHelper;
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
@@ -204,6 +205,7 @@ public class WifiBlocklistMonitor {
         mWifiScoreCard = wifiScoreCard;
         mScoringParams = scoringParams;
         mDisableReasonInfo = DISABLE_REASON_INFOS.clone();
+        mWifiMetrics = wifiMetrics;
         loadCustomConfigsForDisableReasonInfos();
     }
 
@@ -860,6 +862,7 @@ public class WifiBlocklistMonitor {
             blocklistEndTimeMs = blocklistStartTimeMs + durationMs;
             this.blockReason = blockReason;
             lastRssi = rssi;
+            mWifiMetrics.incrementBssidBlocklistCount(blockReason);
         }
 
         @Override
@@ -1081,6 +1084,7 @@ public class WifiBlocklistMonitor {
         status.setDisableTime(mClock.getElapsedSinceBootMillis());
         status.setNetworkSelectionDisableReason(disableReason);
         handleWifiConfigurationDisabled(config.SSID);
+        mWifiMetrics.incrementWificonfigurationBlocklistCount(disableReason);
     }
 
     /**
@@ -1096,6 +1100,7 @@ public class WifiBlocklistMonitor {
         status.setNetworkSelectionDisableReason(disableReason);
         handleWifiConfigurationDisabled(config.SSID);
         config.status = WifiConfiguration.Status.DISABLED;
+        mWifiMetrics.incrementWificonfigurationBlocklistCount(disableReason);
     }
 
     /**

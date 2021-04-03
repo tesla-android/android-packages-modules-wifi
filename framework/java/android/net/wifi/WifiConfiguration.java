@@ -520,6 +520,12 @@ public class WifiConfiguration implements Parcelable {
     public static final int SECURITY_TYPE_PASSPOINT_R3 = 12;
 
     /**
+     * This is used for the boundary check and should be the same as the last type.
+     * @hide
+     */
+    public static final int SECURITY_TYPE_NUM = SECURITY_TYPE_PASSPOINT_R3;
+
+    /**
      * Security types we support.
      * @hide
      */
@@ -540,6 +546,13 @@ public class WifiConfiguration implements Parcelable {
             SECURITY_TYPE_PASSPOINT_R3,
     })
     public @interface SecurityType {}
+
+    private static final String[] SECURITY_TYPE_NAMES = {
+        "open", "wep", "wpa2-psk", "wpa2-enterprise",
+        "wpa3-sae", "wpa3 enterprise 192-bit", "owe",
+        "wapi-psk", "wapi-cert", "wpa3 enterprise",
+        "wpa3 enterprise 192-bit", "passpoint r1/r2",
+        "passpoint r3"};
 
     private List<SecurityParams> mSecurityParamsList = new ArrayList<>();
 
@@ -3894,6 +3907,32 @@ public class WifiConfiguration implements Parcelable {
             key = KeyMgmt.strings[KeyMgmt.NONE];
         }
         return key;
+    }
+
+    /**
+     * Get the security type name.
+     *
+     * @param securityType One of the following security types:
+     * {@link #SECURITY_TYPE_OPEN},
+     * {@link #SECURITY_TYPE_WEP},
+     * {@link #SECURITY_TYPE_PSK},
+     * {@link #SECURITY_TYPE_EAP},
+     * {@link #SECURITY_TYPE_SAE},
+     * {@link #SECURITY_TYPE_OWE},
+     * {@link #SECURITY_TYPE_WAPI_PSK},
+     * {@link #SECURITY_TYPE_WAPI_CERT},
+     * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
+     * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_PASSPOINT_R1_R2},
+     * or {@link #SECURITY_TYPE_PASSPOINT_R3}.
+     * @return the name of the given type.
+     * @hide
+     */
+    public static String getSecurityTypeName(@SecurityType int securityType) {
+        if (securityType < SECURITY_TYPE_OPEN || SECURITY_TYPE_NUM > securityType) {
+            return "unknown";
+        }
+        return SECURITY_TYPE_NAMES[securityType];
     }
 
 }

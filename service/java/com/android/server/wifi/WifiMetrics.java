@@ -711,6 +711,8 @@ public class WifiMetrics {
         public IntCounter networkSelectionFilteredBssidCount = new IntCounter();
         public int numHighMovementConnectionSkipped = 0;
         public int numHighMovementConnectionStarted = 0;
+        private final IntCounter mBlockedBssidPerReasonCount = new IntCounter();
+        private final IntCounter mBlockedConfigurationPerReasonCount = new IntCounter();
 
         public WifiMetricsProto.BssidBlocklistStats toProto() {
             WifiMetricsProto.BssidBlocklistStats proto = new WifiMetricsProto.BssidBlocklistStats();
@@ -719,18 +721,35 @@ public class WifiMetrics {
                     R.bool.config_wifiHighMovementNetworkSelectionOptimizationEnabled);
             proto.numHighMovementConnectionSkipped = numHighMovementConnectionSkipped;
             proto.numHighMovementConnectionStarted = numHighMovementConnectionStarted;
+            proto.bssidBlocklistPerReasonCount = mBlockedBssidPerReasonCount.toProto();
+            proto.wifiConfigBlocklistPerReasonCount = mBlockedConfigurationPerReasonCount.toProto();
             return proto;
+        }
+
+        public void incrementBssidBlocklistCount(int blockReason) {
+            mBlockedBssidPerReasonCount.increment(blockReason);
+        }
+
+        public void incrementWificonfigurationBlocklistCount(int blockReason) {
+            mBlockedConfigurationPerReasonCount.increment(blockReason);
         }
 
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("networkSelectionFilteredBssidCount=" + networkSelectionFilteredBssidCount);
+            sb.append("\nmBlockedBssidPerReasonCount=" + mBlockedBssidPerReasonCount);
+            sb.append("\nmBlockedConfigurationPerReasonCount="
+                    + mBlockedConfigurationPerReasonCount);
+
             sb.append(", highMovementMultipleScansFeatureEnabled="
                     + mContext.getResources().getBoolean(
                             R.bool.config_wifiHighMovementNetworkSelectionOptimizationEnabled));
             sb.append(", numHighMovementConnectionSkipped=" + numHighMovementConnectionSkipped);
             sb.append(", numHighMovementConnectionStarted=" + numHighMovementConnectionStarted);
+            sb.append(", mBlockedBssidPerReasonCount=" + mBlockedBssidPerReasonCount);
+            sb.append(", mBlockedConfigurationPerReasonCount="
+                    + mBlockedConfigurationPerReasonCount);
             return sb.toString();
         }
     }
@@ -7160,6 +7179,22 @@ public class WifiMetrics {
      */
     public void incrementNumHighMovementConnectionStarted() {
         mBssidBlocklistStats.numHighMovementConnectionStarted++;
+    }
+
+    /**
+     * Increment the number of times BSSIDs are blocked per reason.
+     * @param blockReason one of {@link WifiBlocklistMonitor.FailureReason}
+     */
+    public void incrementBssidBlocklistCount(int blockReason) {
+        mBssidBlocklistStats.incrementBssidBlocklistCount(blockReason);
+    }
+
+    /**
+     * Increment the number of times WifiConfigurations are blocked per reason.
+     * @param blockReason one of {@Link NetworkSelectionStatus.NetworkSelectionDisableReason}
+     */
+    public void incrementWificonfigurationBlocklistCount(int blockReason) {
+        mBssidBlocklistStats.incrementWificonfigurationBlocklistCount(blockReason);
     }
 
     /**

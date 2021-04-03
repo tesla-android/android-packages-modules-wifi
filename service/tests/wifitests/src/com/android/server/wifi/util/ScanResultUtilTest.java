@@ -442,6 +442,24 @@ public class ScanResultUtilTest extends WifiBaseTest {
         assertTrue(ScanResultUtil.validateScanResultList(scanResults));
     }
 
+    /**
+     * Verify that unknown AKM in the scan result
+     */
+    @Test
+    public void testUnknownAkmForSecurityParamsGeneration() {
+        final String ssid = "Another SSid";
+        ScanResult scanResult = new ScanResult(ssid, "ab:cd:01:ef:45:89", 1245, 0, "",
+                -78, 2450, 1025, 22, 33, 20, 0, 0, true);
+        scanResult.informationElements = new InformationElement[] {
+                createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
+        };
+        WifiConfiguration config;
+
+        scanResult.capabilities = "[RSN-?-CCMP]";
+        config = ScanResultUtil.createNetworkFromScanResult(scanResult);
+        assertNull(config);
+    }
+
     private static InformationElement createIE(int id, byte[] bytes) {
         InformationElement ie = new InformationElement();
         ie.id = id;

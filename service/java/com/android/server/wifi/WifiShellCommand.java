@@ -90,6 +90,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Interprets and executes 'adb shell cmd wifi [args]'.
@@ -542,18 +543,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     } else {
                         pw.println("Network Id      SSID                         Security type");
                         for (WifiConfiguration network : networks.getList()) {
-                            String securityType = null;
-                            if (WifiConfigurationUtil.isConfigForSaeNetwork(network)) {
-                                securityType = "wpa3";
-                            } else if (WifiConfigurationUtil.isConfigForPskNetwork(network)) {
-                                securityType = "wpa2";
-                            } else if (WifiConfigurationUtil.isConfigForEapNetwork(network)) {
-                                securityType = "eap";
-                            } else if (WifiConfigurationUtil.isConfigForOweNetwork(network)) {
-                                securityType = "owe";
-                            } else if (WifiConfigurationUtil.isConfigForOpenNetwork(network)) {
-                                securityType = "open";
-                            }
+                            String securityType = network.getSecurityParamsList().stream()
+                                    .map(p -> WifiConfiguration.getSecurityTypeName(
+                                                    p.getSecurityType())
+                                            + (p.isAddedByAutoUpgrade() ? "^" : ""))
+                                    .collect(Collectors.joining("/"));
                             pw.println(String.format("%-12d %-32s %-4s",
                                     network.networkId, WifiInfo.sanitizeSsid(network.SSID),
                                     securityType));

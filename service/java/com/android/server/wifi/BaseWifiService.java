@@ -49,7 +49,6 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.WorkSource;
-import android.util.Pair;
 
 import com.android.modules.utils.ParceledListSlice;
 
@@ -147,10 +146,7 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * @deprecated
-     */
-    @Deprecated
+    @Override
     public List<WifiConfiguration> getWifiConfigsForPasspointProfiles(List<String> fqdnList) {
         throw new UnsupportedOperationException();
     }
@@ -739,10 +735,7 @@ public class BaseWifiService extends IWifiManager.Stub {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * @deprecated
-     */
-    @Deprecated
+    @Override
     public Map<String, Map<Integer, List<ScanResult>>>
             getAllMatchingPasspointProfilesForScanResults(List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();
@@ -787,12 +780,6 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void flushPasspointAnqpCache(@NonNull String packageName) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>>
-            getAllMatchingWifiConfigsForPasspoint(@NonNull List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();
     }
 
