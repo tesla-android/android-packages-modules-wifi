@@ -1523,11 +1523,10 @@ public class WifiManager {
     }
 
     /**
-     * Returns a list of all matching WifiConfigurations of PasspointConfiguration for a given list
-     * of ScanResult.
+     * Returns a list of all matching WifiConfigurations for a given list of ScanResult.
      *
-     * An empty list will be returned when no PasspointConfiguration are installed or if no
-     * PasspointConfiguration match the ScanResult.
+     * An empty list will be returned when no configurations are installed or if no configurations
+     * match the ScanResult.
      *
      * @param scanResults a list of scanResult that represents the BSSID
      * @return List that consists of {@link WifiConfiguration} and corresponding scanResults per
@@ -1542,11 +1541,28 @@ public class WifiManager {
     @NonNull
     public List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>> getAllMatchingWifiConfigs(
             @NonNull List<ScanResult> scanResults) {
+        List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>> configs = new ArrayList<>();
         try {
-            return mService.getAllMatchingWifiConfigsForPasspoint(scanResults);
+            Map<String, Map<Integer, List<ScanResult>>> results =
+                    mService.getAllMatchingPasspointProfilesForScanResults(scanResults);
+            if (results.isEmpty()) {
+                return configs;
+            }
+            List<WifiConfiguration> wifiConfigurations =
+                    mService.getWifiConfigsForPasspointProfiles(
+                            new ArrayList<>(results.keySet()));
+            for (WifiConfiguration configuration : wifiConfigurations) {
+                Map<Integer, List<ScanResult>> scanResultsPerNetworkType =
+                        results.get(configuration.getProfileKeyInternal());
+                if (scanResultsPerNetworkType != null) {
+                    configs.add(Pair.create(configuration, scanResultsPerNetworkType));
+                }
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
+
+        return configs;
     }
 
     /**

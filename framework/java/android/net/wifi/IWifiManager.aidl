@@ -83,6 +83,8 @@ interface IWifiManager
 
     List<PasspointConfiguration> getPasspointConfigurations(in String packageName);
 
+    List<WifiConfiguration> getWifiConfigsForPasspointProfiles(in List<String> fqdnList);
+
     void queryPasspointIcon(long bssid, String fileName);
 
     int matchProviderWithCurrentNetwork(String fqdn);
@@ -306,6 +308,8 @@ interface IWifiManager
 
     boolean isScanThrottleEnabled();
 
+    Map getAllMatchingPasspointProfilesForScanResults(in List<ScanResult> scanResult);
+
     void setAutoWakeupEnabled(boolean enable);
 
     boolean isAutoWakeupEnabled();
@@ -335,8 +339,6 @@ interface IWifiManager
     boolean setWifiScoringEnabled(boolean enabled);
 
     void flushPasspointAnqpCache(String packageName);
-
-    List getAllMatchingWifiConfigsForPasspoint(in List<ScanResult> scanResult);
 
     List<WifiAvailableChannel> getUsableChannels(int band, int mode, int filter);
 }

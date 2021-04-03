@@ -121,7 +121,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.Pair;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -2517,6 +2516,33 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * Return a map of all matching configurations keys with corresponding scanResults (or an empty
+     * map if none).
+     *
+     * @param scanResults The list of scan results
+     * @return Map that consists of FQDN (Fully Qualified Domain Name) and corresponding
+     * scanResults per network type({@link WifiManager#PASSPOINT_HOME_NETWORK} and {@link
+     * WifiManager#PASSPOINT_ROAMING_NETWORK}).
+     */
+    @Override
+    public Map<String, Map<Integer, List<ScanResult>>>
+            getAllMatchingPasspointProfilesForScanResults(List<ScanResult> scanResults) {
+        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getMatchingPasspointConfigurations uid=%").c(Binder.getCallingUid()).flush();
+        }
+        if (!ScanResultUtil.validateScanResultList(scanResults)) {
+            Log.e(TAG, "Attempt to retrieve passpoint with invalid scanResult List");
+            return Collections.emptyMap();
+        }
+        return mWifiThreadRunner.call(
+            () -> mPasspointManager.getAllMatchingPasspointProfilesForScanResults(scanResults),
+                Collections.emptyMap());
+    }
+
+    /**
      * Returns list of OSU (Online Sign-Up) providers associated with the given list of ScanResult.
      *
      * @param scanResults a list of ScanResult that has Passpoint APs.
@@ -2563,6 +2589,33 @@ public class WifiServiceImpl extends BaseWifiService {
         return mWifiThreadRunner.call(
             () -> mPasspointManager.getMatchingPasspointConfigsForOsuProviders(osuProviders),
                 Collections.emptyMap());
+    }
+
+    /**
+     * Returns the corresponding wifi configurations for given FQDN (Fully Qualified Domain Name)
+     * list.
+     *
+     * An empty list will be returned when no match is found.
+     *
+     * @param fqdnList a list of FQDN
+     * @return List of {@link WifiConfiguration} converted from {@link PasspointProvider}
+     */
+    @Override
+    public List<WifiConfiguration> getWifiConfigsForPasspointProfiles(List<String> fqdnList) {
+        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getWifiConfigsForPasspointProfiles uid=%").c(
+                    Binder.getCallingUid()).flush();
+        }
+        if (fqdnList == null) {
+            Log.e(TAG, "Attempt to retrieve WifiConfiguration with null fqdn List");
+            return new ArrayList<>();
+        }
+        return mWifiThreadRunner.call(
+            () -> mPasspointManager.getWifiConfigsForPasspointProfiles(fqdnList),
+                Collections.emptyList());
     }
 
     /**
@@ -5199,23 +5252,5 @@ public class WifiServiceImpl extends BaseWifiService {
                     android.Manifest.permission.NETWORK_CARRIER_PROVISIONING);
         }
         mWifiThreadRunner.post(mPasspointManager::clearAnqpRequestsAndFlushCache);
-    }
-
-    @Override
-    public List<Pair<WifiConfiguration, Map<Integer, List<ScanResult>>>>
-            getAllMatchingWifiConfigsForPasspoint(@NonNull List<ScanResult> scanResults) {
-        if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
-            throw new SecurityException(TAG + ": Permission denied");
-        }
-        if (isVerboseLoggingEnabled()) {
-            mLog.info("getMatchingPasspointConfigurations uid=%").c(Binder.getCallingUid()).flush();
-        }
-        if (!ScanResultUtil.validateScanResultList(scanResults)) {
-            Log.w(TAG, "Attempt to retrieve passpoint with invalid scanResult List");
-            return Collections.emptyList();
-        }
-        return mWifiThreadRunner.call(
-                () -> mPasspointManager.getAllMatchingWifiConfigs(scanResults, true),
-                Collections.emptyList());
     }
 }

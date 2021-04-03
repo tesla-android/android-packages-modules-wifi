@@ -4129,6 +4129,56 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is not redirected to
+     * specific API getAllMatchingPasspointProfilesForScanResults when the caller doesn't have
+     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test(expected = SecurityException.class)
+    public void testGetAllMatchingPasspointProfilesForScanResultsWithoutPermissions() {
+        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(new ArrayList<>());
+    }
+
+    /**
+     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is redirected to
+     * specific API getAllMatchingPasspointProfilesForScanResults when the caller have
+     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test
+    public void testGetAllMatchingPasspointProfilesForScanResultsWithPermissions() {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(createScanResultList());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mPasspointManager).getAllMatchingPasspointProfilesForScanResults(any());
+    }
+
+    /**
+     * Verify that the call to getAllMatchingPasspointProfilesForScanResults is not redirected to
+     * specific API getAllMatchingPasspointProfilesForScanResults when the caller provider invalid
+     * ScanResult.
+     */
+    @Test
+    public void testGetAllMatchingPasspointProfilesForScanResultsWithInvalidScanResult() {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.getAllMatchingPasspointProfilesForScanResults(new ArrayList<>());
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mPasspointManager, never()).getAllMatchingPasspointProfilesForScanResults(any());
+    }
+
+    /**
+     * Verify that the call to getWifiConfigsForPasspointProfiles is not redirected to specific API
+     * syncGetWifiConfigsForPasspointProfiles when the caller doesn't have NETWORK_SETTINGS
+     * permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test(expected = SecurityException.class)
+    public void testGetWifiConfigsForPasspointProfilesWithoutPermissions() {
+        mWifiServiceImpl.getWifiConfigsForPasspointProfiles(new ArrayList<>());
+    }
+
+    /**
      * Verify that the call to getMatchingOsuProviders is not redirected to specific API
      * syncGetMatchingOsuProviders when the caller doesn't have NETWORK_SETTINGS
      * permissions and NETWORK_SETUP_WIZARD.
@@ -7931,33 +7981,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.flushPasspointAnqpCache(TEST_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(mPasspointManager).clearAnqpRequestsAndFlushCache();
-    }
-
-    /**
-     * Verify that the call to getAllMatchingWifiConfigsForPasspoint will raise a security Exception
-     * when the caller doesn't have NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
-     */
-    @Test
-    public void testGetAllMatchingWifiConfigsForPasspointWithoutPermissions() {
-        try {
-            mWifiServiceImpl.getAllMatchingWifiConfigsForPasspoint(new ArrayList<>());
-            fail("expected SecurityException");
-        } catch (SecurityException expected) { }
-
-    }
-
-    /**
-     * Verify that the call to getAllMatchingWifiConfigsForPasspoint will is redirected to
-     * PasspointManager when the caller have permission.
-     */
-    @Test
-    public void testGetAllMatchingWifiConfigsForPasspointWithPermissions() {
-        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
-                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
-        mLooper.startAutoDispatch();
-        mWifiServiceImpl.getAllMatchingWifiConfigsForPasspoint(createScanResultList());
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mPasspointManager).getAllMatchingWifiConfigs(any(), eq(true));
     }
 
     /**

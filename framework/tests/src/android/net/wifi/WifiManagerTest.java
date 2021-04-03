@@ -2110,15 +2110,22 @@ public class WifiManagerTest {
     }
 
     /**
-     * Check the call to getAllMatchingWifiConfigs calls getAllMatchingWifiConfigsForPasspoint of
-     * WifiService.
+     * Check the call to getAllMatchingWifiConfigs calls getAllMatchingFqdnsForScanResults and
+     * getWifiConfigsForPasspointProfiles of WifiService in order.
      */
     @Test
     public void testGetAllMatchingWifiConfigs() throws Exception {
-        mWifiManager.getAllMatchingWifiConfigs(new ArrayList<>());
-        verify(mWifiService).getAllMatchingWifiConfigsForPasspoint(any(List.class));
-    }
+        Map<String, List<ScanResult>> passpointProfiles = new HashMap<>();
+        passpointProfiles.put("www.test.com_987a69bca26", new ArrayList<>());
+        when(mWifiService.getAllMatchingPasspointProfilesForScanResults(
+                any(List.class))).thenReturn(passpointProfiles);
+        InOrder inOrder = inOrder(mWifiService);
 
+        mWifiManager.getAllMatchingWifiConfigs(new ArrayList<>());
+
+        inOrder.verify(mWifiService).getAllMatchingPasspointProfilesForScanResults(any(List.class));
+        inOrder.verify(mWifiService).getWifiConfigsForPasspointProfiles(any(List.class));
+    }
 
     /**
      * Check the call to getMatchingOsuProviders calls getMatchingOsuProviders of WifiService
