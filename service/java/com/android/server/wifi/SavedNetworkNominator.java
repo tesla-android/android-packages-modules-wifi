@@ -78,9 +78,7 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
      * Update the Nominator.
      */
     @Override
-    public void update(List<ScanDetail> scanDetails) {
-        mPasspointNetworkNominateHelper.getPasspointNetworkCandidates(scanDetails, false);
-    }
+    public void update(List<ScanDetail> scanDetails) { }
 
     /**
      * Run through all scanDetails and nominate all connectable network as candidates.
