@@ -846,11 +846,21 @@ public class ApConfigUtil {
             return false;
         }
 
-        if (config.getBands().length > 1
-                && !capability.areFeaturesSupported(SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)
-                && (config.getChannels().valueAt(0) == 0 || config.getChannels().valueAt(1) == 0)) {
-            Log.d(TAG, "Error, dual APs requires HAL ACS support when channel isn't specified");
-            return false;
+        if (config.getBands().length > 1) {
+            int[] bands = config.getBands();
+            if ((bands[0] & SoftApConfiguration.BAND_6GHZ) != 0
+                    || (bands[0] & SoftApConfiguration.BAND_60GHZ) != 0
+                    || (bands[1] & SoftApConfiguration.BAND_6GHZ) != 0
+                    || (bands[1] & SoftApConfiguration.BAND_60GHZ) != 0) {
+                Log.d(TAG, "Error, dual APs doesn't support on 6GHz and 60GHz");
+                return false;
+            }
+            if (!capability.areFeaturesSupported(SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)
+                    && (config.getChannels().valueAt(0) == 0
+                    || config.getChannels().valueAt(1) == 0)) {
+                Log.d(TAG, "Error, dual APs requires HAL ACS support when channel isn't specified");
+                return false;
+            }
         }
         return true;
     }
