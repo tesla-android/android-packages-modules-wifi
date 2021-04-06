@@ -372,6 +372,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock OpenNetworkNotifier mOpenNetworkNotifier;
     @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock SarManager mSarManager;
+    @Mock SelfRecovery mSelfRecovery;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -497,6 +498,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
+        when(mWifiInjector.getSelfRecovery()).thenReturn(mSelfRecovery);
 
         doAnswer(new AnswerWithArguments() {
             public void answer(Runnable onStoppedListener) throws Throwable {
@@ -1184,7 +1186,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
         mWifiServiceImpl.restartWifiSubsystem();
-        verify(mActiveModeWarden).recoveryRestartWifi(REASON_API_CALL, null, false);
+        mLooper.dispatchAll();
+        verify(mSelfRecovery).trigger(eq(REASON_API_CALL));
         verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM),
                 anyInt());
     }
