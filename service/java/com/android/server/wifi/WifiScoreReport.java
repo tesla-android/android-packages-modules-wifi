@@ -20,6 +20,7 @@ import android.annotation.Nullable;
 import android.content.Context;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkScore;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiConnectedSessionInfo;
 import android.net.wifi.WifiInfo;
@@ -68,7 +69,11 @@ public class WifiScoreReport {
     static final int LINGERING_SCORE = 1;
 
     // Cache of the last score
-    private int mScore = ConnectedScore.WIFI_MAX_SCORE;
+    private int mLegacyIntScore = ConnectedScore.WIFI_MAX_SCORE;
+    // Builder for NetworkScore. Primary by default, unless mShouldReduceNetworkScore is true
+    // to make it lose against the primary STA.
+    private final NetworkScore.Builder mScoreBuilder =
+            new NetworkScore.Builder().setLegacyInt(mLegacyIntScore).setTransportPrimary(true);
 
     /**
      * If true, indicates that the associated {@link ClientModeImpl} instance is lingering
@@ -122,22 +127,22 @@ public class WifiScoreReport {
             // TODO(b/171571687): Check the Sdk level and score is used for metric collection only
             // in S.
             if (score < ConnectedScore.WIFI_TRANSITION_SCORE) {
-                if (mScore >= ConnectedScore.WIFI_TRANSITION_SCORE) {
+                if (mLegacyIntScore >= ConnectedScore.WIFI_TRANSITION_SCORE) {
                     mLastScoreBreachLowTimeMillis = millis;
                 }
             } else {
                 mLastScoreBreachLowTimeMillis = INVALID_WALL_CLOCK_MILLIS;
             }
             if (score > ConnectedScore.WIFI_TRANSITION_SCORE) {
-                if (mScore <= ConnectedScore.WIFI_TRANSITION_SCORE) {
+                if (mLegacyIntScore <= ConnectedScore.WIFI_TRANSITION_SCORE) {
                     mLastScoreBreachHighTimeMillis = millis;
                 }
             } else {
                 mLastScoreBreachHighTimeMillis = INVALID_WALL_CLOCK_MILLIS;
             }
             reportNetworkScoreToConnectivityServiceIfNecessary(score);
-            mScore = score;
-            updateWifiMetrics(millis, -1, mScore);
+            mLegacyIntScore = score;
+            updateWifiMetrics(millis, -1, mLegacyIntScore);
         }
 
         @Override
@@ -220,7 +225,11 @@ public class WifiScoreReport {
                     Log.d(TAG, "Wifi scoring disabled - Stay a notch above the transition score");
                 }
             }
-            mNetworkAgent.sendNetworkScore(score);
+            mNetworkAgent.sendNetworkScore(mScoreBuilder
+                    .setLegacyInt(score)
+                    .setTransportPrimary(true)
+                    .setExiting(score < ConnectedScore.WIFI_TRANSITION_SCORE)
+                    .build());
         }
 
         @Override
@@ -281,7 +290,12 @@ public class WifiScoreReport {
         // inform the external scorer that ongoing session has ended (since the score is no longer
         // under their control)
         if (mShouldReduceNetworkScore) {
-            if (mNetworkAgent != null) mNetworkAgent.sendNetworkScore(LINGERING_SCORE);
+            if (mNetworkAgent != null) {
+                mNetworkAgent.sendNetworkScore(mScoreBuilder
+                        .setLegacyInt(LINGERING_SCORE)
+                        .setTransportPrimary(false)
+                        .build());
+            }
             if (mWifiConnectedNetworkScorerHolder != null) {
                 mWifiConnectedNetworkScorerHolder.stopSession();
             }
@@ -339,7 +353,11 @@ public class WifiScoreReport {
                 Log.d(TAG, "Wifi scoring disabled - Stay a notch above the transition score");
             }
         }
-        mNetworkAgent.sendNetworkScore(score);
+        mNetworkAgent.sendNetworkScore(mScoreBuilder
+                .setLegacyInt(score)
+                .setTransportPrimary(true)
+                .setExiting(score < ConnectedScore.WIFI_TRANSITION_SCORE)
+                .build());
     }
 
     /**
@@ -480,7 +498,7 @@ public class WifiScoreReport {
      */
     public void reset() {
         mSessionNumber++;
-        mScore = ConnectedScore.WIFI_MAX_SCORE;
+        mLegacyIntScore = ConnectedScore.WIFI_MAX_SCORE;
         mLastKnownNudCheckScore = ConnectedScore.WIFI_TRANSITION_SCORE;
         mAggressiveConnectedScore.reset();
         if (mVelocityBasedConnectedScore != null) {
@@ -572,7 +590,7 @@ public class WifiScoreReport {
         //report score
         reportNetworkScoreToConnectivityServiceIfNecessary(score);
         updateWifiMetrics(millis, s2, score);
-        mScore = score;
+        mLegacyIntScore = score;
     }
 
     private int getCurrentNetId() {
@@ -678,7 +696,7 @@ public class WifiScoreReport {
                         a * (mLastKnownNudCheckScore - deltaLevel) + (1.0 - a) * nextNudBreach;
             }
         }
-        if (mScore >= nextNudBreach) {
+        if (mLegacyIntScore >= nextNudBreach) {
             return false;
         }
         mNudYes++;
@@ -694,7 +712,7 @@ public class WifiScoreReport {
     public void noteIpCheck() {
         long millis = mClock.getWallClockMillis();
         mLastKnownNudCheckTimeMillis = millis;
-        mLastKnownNudCheckScore = mScore;
+        mLastKnownNudCheckScore = mLegacyIntScore;
         mNudCount++;
         // Make sure that only one NUD operation can be triggered.
         if (mWifiConnectedNetworkScorerHolder != null) {
@@ -912,7 +930,10 @@ public class WifiScoreReport {
         // if mNetworkAgent was null when setShouldReduceNetworkScore() was called, the score wasn't
         // sent. Send it now that the NetworkAgent has been set.
         if (mNetworkAgent == null && agent != null && mShouldReduceNetworkScore) {
-            agent.sendNetworkScore(LINGERING_SCORE);
+            agent.sendNetworkScore(mScoreBuilder
+                    .setLegacyInt(LINGERING_SCORE)
+                    .setTransportPrimary(false)
+                    .build());
         }
         mNetworkAgent = agent;
     }
@@ -920,8 +941,13 @@ public class WifiScoreReport {
     /**
      * Get cached score
      */
-    public int getScore() {
-        return mScore;
+    @VisibleForTesting
+    public NetworkScore getScore() {
+        return mScoreBuilder
+                .setLegacyInt(mLegacyIntScore)
+                .setTransportPrimary(true)
+                .setExiting(mLegacyIntScore < ConnectedScore.WIFI_TRANSITION_SCORE)
+                .build();
     }
 
     private void revertToDefaultConnectedScorer() {
