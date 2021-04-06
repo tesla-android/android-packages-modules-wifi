@@ -973,12 +973,12 @@ package android.net.wifi {
   }
 
   public static final class WifiUsabilityStatsEntry.ContentionTimeStats implements android.os.Parcelable {
-    ctor public WifiUsabilityStatsEntry.ContentionTimeStats(int, int, int, int);
+    ctor public WifiUsabilityStatsEntry.ContentionTimeStats(long, long, long, long);
     method public int describeContents();
-    method public int getContentionNumSamples();
-    method public int getContentionTimeAvgMicros();
-    method public int getContentionTimeMaxMicros();
-    method public int getContentionTimeMinMicros();
+    method public long getContentionNumSamples();
+    method public long getContentionTimeAvgMicros();
+    method public long getContentionTimeMaxMicros();
+    method public long getContentionTimeMinMicros();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats> CREATOR;
   }
