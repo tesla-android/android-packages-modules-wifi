@@ -2572,16 +2572,16 @@ message ContentionTimeStats {
   optional AccessCategory access_category = 1;
 
   // Data packet min contention time in microseconds
-  optional int32 contention_time_min_micros = 2;
+  optional int64 contention_time_min_micros = 2;
 
   // Data packet max contention time in microseconds
-  optional int32 contention_time_max_micros = 3;
+  optional int64 contention_time_max_micros = 3;
 
   // Data packet average contention time in microseconds
-  optional int32 contention_time_avg_micros = 4;
+  optional int64 contention_time_avg_micros = 4;
 
   // Number of data packets used for contention statistics
-  optional int32 contention_num_samples = 5;
+  optional int64 contention_num_samples = 5;
 }
 
 message RateStats {
