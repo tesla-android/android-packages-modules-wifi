@@ -1137,8 +1137,14 @@ public class PasspointManager {
     }
 
     /**
-     * Returns the corresponding wifi configurations for given a list Passpoint profile unique
-     * identifiers.
+     * Returns the corresponding wifi configurations from {@link WifiConfigManager} for given a list
+     * of Passpoint profile unique identifiers.
+     *
+     * Note: Not all matched Passpoint profile's WifiConfiguration will be returned, only the ones
+     * already be added into the {@link WifiConfigManager} will be returned. As the returns of this
+     * method is expected to show in Wifi Picker or use with
+     * {@link WifiManager#connect(int, WifiManager.ActionListener)} API, each WifiConfiguration must
+     * have a valid network Id.
      *
      * An empty list will be returned when no match is found.
      *
@@ -1158,6 +1164,17 @@ public class PasspointManager {
                 continue;
             }
             WifiConfiguration config = provider.getWifiConfig();
+            config = mWifiConfigManager.getConfiguredNetwork(config.getProfileKeyInternal());
+            if (config == null) {
+                continue;
+            }
+            // If the Passpoint configuration is from a suggestion, check if the app shares this
+            // suggestion with the user.
+            if (provider.isFromSuggestion()
+                    && !mWifiInjector.getWifiNetworkSuggestionsManager()
+                    .isPasspointSuggestionSharedWithUser(config)) {
+                continue;
+            }
             if (mWifiConfigManager.shouldUseEnhancedRandomization(config)) {
                 config.setRandomizedMacAddress(MacAddress.fromString(DEFAULT_MAC_ADDRESS));
             } else {
@@ -1166,13 +1183,6 @@ public class PasspointManager {
                 if (result != null) {
                     config.setRandomizedMacAddress(result);
                 }
-            }
-            // If the Passpoint configuration is from a suggestion, check if the app shares this
-            // suggestion with the user.
-            if (provider.isFromSuggestion()
-                    && !mWifiInjector.getWifiNetworkSuggestionsManager()
-                    .isPasspointSuggestionSharedWithUser(config)) {
-                continue;
             }
             configs.add(config);
         }
