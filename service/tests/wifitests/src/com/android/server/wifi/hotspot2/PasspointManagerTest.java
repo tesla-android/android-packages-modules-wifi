@@ -128,6 +128,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link PasspointManager}.
@@ -827,12 +828,6 @@ public class PasspointManagerTest extends WifiBaseTest {
                 true, true));
 
         assertEquals(TEST_CARRIER_ID, config.getCarrierId());
-        List<String> passpointProfilesList = new ArrayList<String>(){{
-                add(config.getUniqueId());
-            }};
-        assertEquals(TEST_CARRIER_ID,
-                ut.getWifiConfigsForPasspointProfiles(passpointProfilesList).get(0).carrierId);
-
     }
 
     /**
@@ -1276,39 +1271,50 @@ public class PasspointManagerTest extends WifiBaseTest {
 
     /**
      * Verify that an expected list of {@link WifiConfiguration} will be returned when provided
-     * a list of FQDN is matched to installed Passpoint profiles. For suggestion passpoint network,
-     * will check if that suggestion share credential with user to choose from wifi picker.
+     * a list of FQDN is matched to installed Passpoint profiles which is already added into the
+     * WifiConfigManager. For suggestion passpoint network, will check if that suggestion share
+     * credential with user to choose from wifi picker.
+     * - Provider1 and Provider2 are saved passpoint, Provider1 is already added into the
+     * WifiConfigManger
+     * - Provider3 and Provider4 are suggestion passpoint, only Provider4 is shared with user. Both
+     * providers are already added into the WifiConfigManager
+     * - Expected result: Provider1 and Provider4 should be returned .
      */
     @Test
     public void getWifiConfigsForPasspointProfiles() {
         PasspointProvider provider1 = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
+        WifiConfiguration config1 = provider1.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider1.getConfig().getUniqueId()))
+                .thenReturn(config1);
         PasspointProvider provider2 = addTestProvider(TEST_FQDN + 1, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
         PasspointProvider provider3 = addTestProvider(TEST_FQDN + 2, TEST_FRIENDLY_NAME,
-                TEST_PACKAGE, false, null);
-
-        assertEquals(3, mManager.getWifiConfigsForPasspointProfiles(
-                Arrays.asList(provider1.getConfig().getUniqueId(),
-                        provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        TEST_FQDN + "_353ab8c93", TEST_FQDN + "_83765319aca")).size());
+                TEST_PACKAGE, true, null);
+        when(mWifiNetworkSuggestionsManager
+                .isPasspointSuggestionSharedWithUser(provider3.getWifiConfig())).thenReturn(false);
+        WifiConfiguration config3 = provider3.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider3.getConfig().getUniqueId()))
+                .thenReturn(config3);
         PasspointProvider provider4 = addTestProvider(TEST_FQDN + 3, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, true, null);
         when(mWifiNetworkSuggestionsManager
-                .isPasspointSuggestionSharedWithUser(provider4.getWifiConfig())).thenReturn(false);
-        assertEquals(3, mManager.getWifiConfigsForPasspointProfiles(
-                Arrays.asList(provider1.getConfig().getUniqueId(),
-                        provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        provider4.getConfig().getUniqueId(), TEST_FQDN + "_83765319aca")).size());
-        PasspointProvider provider5 = addTestProvider(TEST_FQDN + 4, TEST_FRIENDLY_NAME,
-                TEST_PACKAGE, true, null);
-        when(mWifiNetworkSuggestionsManager
-                .isPasspointSuggestionSharedWithUser(provider5.getWifiConfig())).thenReturn(true);
-        assertEquals(4, mManager.getWifiConfigsForPasspointProfiles(
-                Arrays.asList(provider1.getConfig().getUniqueId(),
-                        provider2.getConfig().getUniqueId(), provider3.getConfig().getUniqueId(),
-                        provider4.getConfig().getUniqueId(), provider5.getConfig().getUniqueId()))
-                .size());
+                .isPasspointSuggestionSharedWithUser(provider4.getWifiConfig())).thenReturn(true);
+        WifiConfiguration config4 = provider4.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider4.getConfig().getUniqueId()))
+                .thenReturn(config4);
+
+        List<WifiConfiguration> wifiConfigurationList = mManager.getWifiConfigsForPasspointProfiles(
+                List.of(provider1.getConfig().getUniqueId(), provider2.getConfig().getUniqueId(),
+                        provider3.getConfig().getUniqueId(), provider4.getConfig().getUniqueId(),
+                        TEST_FQDN + "_353ab8c93", TEST_FQDN + "_83765319aca"));
+        assertEquals(2, wifiConfigurationList.size());
+        Set<String> uniqueIdSet = wifiConfigurationList
+                .stream()
+                .map(WifiConfiguration::getPasspointUniqueId)
+                .collect(Collectors.toSet());
+        assertTrue(uniqueIdSet.contains(provider1.getConfig().getUniqueId()));
+        assertTrue(uniqueIdSet.contains(provider4.getConfig().getUniqueId()));
     }
 
     /**
@@ -1322,6 +1328,9 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.shouldUseEnhancedRandomization(any())).thenReturn(false);
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
+        WifiConfiguration configuration = provider.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider.getConfig().getUniqueId()))
+                .thenReturn(configuration);
         WifiConfiguration config = mManager.getWifiConfigsForPasspointProfiles(
                 Collections.singletonList(provider.getConfig().getUniqueId())).get(0);
         assertEquals(config.getRandomizedMacAddress(), randomizedMacAddress);
@@ -1341,6 +1350,9 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mWifiConfigManager.shouldUseEnhancedRandomization(any())).thenReturn(true);
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
+        WifiConfiguration configuration = provider.getWifiConfig();
+        when(mWifiConfigManager.getConfiguredNetwork(provider.getConfig().getUniqueId()))
+                .thenReturn(configuration);
         WifiConfiguration config = mManager.getWifiConfigsForPasspointProfiles(
                 Collections.singletonList(provider.getConfig().getUniqueId())).get(0);
         assertEquals(config.getRandomizedMacAddress(), MacAddress.fromString(DEFAULT_MAC_ADDRESS));
