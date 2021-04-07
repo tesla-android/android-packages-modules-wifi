@@ -350,7 +350,6 @@ public class WifiServiceImpl extends BaseWifiService {
         mSimRequiredNotifier = wifiInjector.getSimRequiredNotifier();
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
         mMakeBeforeBreakManager = mWifiInjector.getMakeBeforeBreakManager();
-        mCountryCode.registerListener(new CountryCodeListenerProxy());
     }
 
     /**
@@ -537,6 +536,8 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().register();
             mWifiInjector.getOemWifiNetworkFactory().register();
             mWifiInjector.getWifiP2pConnection().handleBootCompleted();
+            // Start to listen country code change.
+            mCountryCode.registerListener(new CountryCodeListenerProxy());
             mTetheredSoftApTracker.handleBootCompleted();
             mWifiInjector.getSarManager().handleBootCompleted();
         });
