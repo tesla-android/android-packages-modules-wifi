@@ -95,7 +95,7 @@ public final class SoftApConfiguration implements Parcelable {
     public static final int BAND_60GHZ = 1 << 3;
 
     /**
-     * Device is allowed to choose the optimal band (2Ghz, 5Ghz, 6Ghz) based on device capability,
+     * Device is allowed to choose the optimal band (2GHz, 5GHz, 6GHz) based on device capability,
      * operating country code and current radio conditions.
      * @hide
      *
@@ -1087,6 +1087,9 @@ public final class SoftApConfiguration implements Parcelable {
          * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
+         * Note: Only supports 2.4GHz + 5GHz bands. If any other band is set, will report error
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
          * @param bands Array of the {@link #BandType}.
          * @return Builder for chaining.
          * @throws IllegalArgumentException when more than 2 bands are set or an invalid band type
@@ -1179,6 +1182,9 @@ public final class SoftApConfiguration implements Parcelable {
          * when multiple bands are configured without specified channel value (i.e. channel is
          * the special value 0). Otherwise,
          * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
+         * Note: Only supports 2.4GHz + 5GHz bands. If any other band is set, will report error
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
          * The API contains (band, channel) input since the 6GHz band uses the same channel

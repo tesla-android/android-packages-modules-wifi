@@ -948,7 +948,9 @@ public class WifiServiceImpl extends BaseWifiService {
                 mActiveModeWarden.getPrimaryClientModeManager().syncRequestConnectionInfo();
         mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_RESTART_WIFI_SUB_SYSTEM,
                 wifiInfo == null ? -1 : wifiInfo.getNetworkId());
-        mActiveModeWarden.recoveryRestartWifi(REASON_API_CALL, null, false);
+        mWifiThreadRunner.post(() -> {
+            mWifiInjector.getSelfRecovery().trigger(REASON_API_CALL);
+        });
     }
 
     /**

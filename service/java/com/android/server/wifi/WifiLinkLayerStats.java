@@ -52,13 +52,13 @@ public class WifiLinkLayerStats {
     /** WME Best Effort Access Category number of transmission retries */
     public long retries_be;
     /** WME Best Effort Access Category data packet min contention time in microseconds */
-    public int contentionTimeMinBeInUsec;
+    public long contentionTimeMinBeInUsec;
     /** WME Best Effort Access Category data packet max contention time in microseconds */
-    public int contentionTimeMaxBeInUsec;
+    public long contentionTimeMaxBeInUsec;
     /** WME Best Effort Access Category data packet avg contention time in microseconds */
-    public int contentionTimeAvgBeInUsec;
+    public long contentionTimeAvgBeInUsec;
     /** WME Best Effort Access Category number of data packets used for contention statistics */
-    public int contentionNumSamplesBe;
+    public long contentionNumSamplesBe;
 
     /** WME Background Access Category received mpdu */
     public long rxmpdu_bk;
@@ -69,13 +69,13 @@ public class WifiLinkLayerStats {
     /** WME Background Access Category number of transmission retries */
     public long retries_bk;
     /** WME Background Access Category data packet min contention time in microseconds */
-    public int contentionTimeMinBkInUsec;
+    public long contentionTimeMinBkInUsec;
     /** WME Background Access Category data packet max contention time in microseconds */
-    public int contentionTimeMaxBkInUsec;
+    public long contentionTimeMaxBkInUsec;
     /** WME Background Access Category data packet avg contention time in microseconds */
-    public int contentionTimeAvgBkInUsec;
+    public long contentionTimeAvgBkInUsec;
     /** WME Background Access Category number of data packets used for contention statistics */
-    public int contentionNumSamplesBk;
+    public long contentionNumSamplesBk;
 
     /** WME Video Access Category received mpdu */
     public long rxmpdu_vi;
@@ -86,13 +86,13 @@ public class WifiLinkLayerStats {
     /** WME Video Access Category number of transmission retries */
     public long retries_vi;
     /** WME Video Access Category data packet min contention time in microseconds */
-    public int contentionTimeMinViInUsec;
+    public long contentionTimeMinViInUsec;
     /** WME Video Access Category data packet max contention time in microseconds */
-    public int contentionTimeMaxViInUsec;
+    public long contentionTimeMaxViInUsec;
     /** WME Video Access Category data packet avg contention time in microseconds */
-    public int contentionTimeAvgViInUsec;
+    public long contentionTimeAvgViInUsec;
     /** WME Video Access Category number of data packets used for contention statistics */
-    public int contentionNumSamplesVi;
+    public long contentionNumSamplesVi;
 
     /** WME Voice Access Category received mpdu */
     public long rxmpdu_vo;
@@ -103,13 +103,13 @@ public class WifiLinkLayerStats {
     /** WME Voice Access Category number of transmission retries */
     public long retries_vo;
     /** WME Voice Access Category data packet min contention time in microseconds */
-    public int contentionTimeMinVoInUsec;
+    public long contentionTimeMinVoInUsec;
     /** WME Voice Access Category data packet max contention time in microseconds */
-    public int contentionTimeMaxVoInUsec;
+    public long contentionTimeMaxVoInUsec;
     /** WME Voice Access Category data packet avg contention time in microseconds */
-    public int contentionTimeAvgVoInUsec;
+    public long contentionTimeAvgVoInUsec;
     /** WME Voice Access Category number of data packets used for contention statistics */
-    public int contentionNumSamplesVo;
+    public long contentionNumSamplesVo;
 
     /**
      * Cumulative milliseconds when radio is awake
@@ -330,49 +330,49 @@ public class WifiLinkLayerStats {
                 .append(" lost=").append(Long.toString(this.lostmpdu_be))
                 .append(" retries=").append(Long.toString(this.retries_be)).append('\n')
                 .append(" contention_time_min")
-                .append(Integer.toString(this.contentionTimeMinBeInUsec))
+                .append(Long.toString(this.contentionTimeMinBeInUsec))
                 .append(" contention_time_max")
-                .append(Integer.toString(this.contentionTimeMaxBeInUsec)).append('\n')
+                .append(Long.toString(this.contentionTimeMaxBeInUsec)).append('\n')
                 .append(" contention_time_avg")
-                .append(Integer.toString(this.contentionTimeAvgBeInUsec))
+                .append(Long.toString(this.contentionTimeAvgBeInUsec))
                 .append(" contention_num_samples")
-                .append(Integer.toString(this.contentionNumSamplesBe)).append('\n');
+                .append(Long.toString(this.contentionNumSamplesBe)).append('\n');
         sbuf.append(" BK : ").append(" rx=").append(Long.toString(this.rxmpdu_bk))
                 .append(" tx=").append(Long.toString(this.txmpdu_bk))
                 .append(" lost=").append(Long.toString(this.lostmpdu_bk))
                 .append(" retries=").append(Long.toString(this.retries_bk)).append('\n')
                 .append(" contention_time_min")
-                .append(Integer.toString(this.contentionTimeMinBkInUsec))
+                .append(Long.toString(this.contentionTimeMinBkInUsec))
                 .append(" contention_time_max")
-                .append(Integer.toString(this.contentionTimeMaxBkInUsec)).append('\n')
+                .append(Long.toString(this.contentionTimeMaxBkInUsec)).append('\n')
                 .append(" contention_time_avg")
-                .append(Integer.toString(this.contentionTimeAvgBkInUsec))
+                .append(Long.toString(this.contentionTimeAvgBkInUsec))
                 .append(" contention_num_samples")
-                .append(Integer.toString(this.contentionNumSamplesBk)).append('\n');
+                .append(Long.toString(this.contentionNumSamplesBk)).append('\n');
         sbuf.append(" VI : ").append(" rx=").append(Long.toString(this.rxmpdu_vi))
                 .append(" tx=").append(Long.toString(this.txmpdu_vi))
                 .append(" lost=").append(Long.toString(this.lostmpdu_vi))
                 .append(" retries=").append(Long.toString(this.retries_vi)).append('\n')
                 .append(" contention_time_min")
-                .append(Integer.toString(this.contentionTimeMinViInUsec))
+                .append(Long.toString(this.contentionTimeMinViInUsec))
                 .append(" contention_time_max")
-                .append(Integer.toString(this.contentionTimeMaxViInUsec)).append('\n')
+                .append(Long.toString(this.contentionTimeMaxViInUsec)).append('\n')
                 .append(" contention_time_avg")
-                .append(Integer.toString(this.contentionTimeAvgViInUsec))
+                .append(Long.toString(this.contentionTimeAvgViInUsec))
                 .append(" contention_num_samples")
-                .append(Integer.toString(this.contentionNumSamplesVi)).append('\n');
+                .append(Long.toString(this.contentionNumSamplesVi)).append('\n');
         sbuf.append(" VO : ").append(" rx=").append(Long.toString(this.rxmpdu_vo))
                 .append(" tx=").append(Long.toString(this.txmpdu_vo))
                 .append(" lost=").append(Long.toString(this.lostmpdu_vo))
                 .append(" retries=").append(Long.toString(this.retries_vo)).append('\n')
                 .append(" contention_time_min")
-                .append(Integer.toString(this.contentionTimeMinVoInUsec))
+                .append(Long.toString(this.contentionTimeMinVoInUsec))
                 .append(" contention_time_max")
-                .append(Integer.toString(this.contentionTimeMaxVoInUsec)).append('\n')
+                .append(Long.toString(this.contentionTimeMaxVoInUsec)).append('\n')
                 .append(" contention_time_avg")
-                .append(Integer.toString(this.contentionTimeAvgVoInUsec))
+                .append(Long.toString(this.contentionTimeAvgVoInUsec))
                 .append(" contention_num_samples")
-                .append(Integer.toString(this.contentionNumSamplesVo)).append('\n');
+                .append(Long.toString(this.contentionNumSamplesVo)).append('\n');
         sbuf.append(" numRadios=" + numRadios)
                 .append(" on_time= ").append(Integer.toString(this.on_time))
                 .append(" tx_time=").append(Integer.toString(this.tx_time))
