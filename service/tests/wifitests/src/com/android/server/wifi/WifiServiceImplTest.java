@@ -586,7 +586,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden, atLeastOnce()).registerLohsCallback(
                 lohsCallbackCaptor.capture());
         mLohsApCallback = lohsCallbackCaptor.getValue();
-        verify(mWifiCountryCode).registerListener(any(WifiCountryCode.ChangeListener.class));
         mLooper.dispatchAll();
         return wifiServiceImpl;
     }
@@ -6873,6 +6872,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mUntrustedWifiNetworkFactory).register();
         verify(mPasspointManager).initializeProvisioner(any());
         verify(mWifiP2pConnection).handleBootCompleted();
+        verify(mWifiCountryCode).registerListener(any(WifiCountryCode.ChangeListener.class));
     }
 
     /**
