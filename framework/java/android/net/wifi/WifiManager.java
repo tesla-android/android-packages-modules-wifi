@@ -1523,10 +1523,11 @@ public class WifiManager {
     }
 
     /**
-     * Returns a list of all matching WifiConfigurations for a given list of ScanResult.
+     * Returns a list of all matching WifiConfigurations of PasspointConfiguration for a given list
+     * of ScanResult.
      *
-     * An empty list will be returned when no configurations are installed or if no configurations
-     * match the ScanResult.
+     * An empty list will be returned when no PasspointConfiguration are installed or if no
+     * PasspointConfiguration match the ScanResult.
      *
      * @param scanResults a list of scanResult that represents the BSSID
      * @return List that consists of {@link WifiConfiguration} and corresponding scanResults per
