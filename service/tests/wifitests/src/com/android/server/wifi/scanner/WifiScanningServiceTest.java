@@ -44,6 +44,7 @@ import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -94,6 +95,7 @@ import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiMetrics;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
+import com.android.server.wifi.util.LastCallerInfoManager;
 import com.android.server.wifi.util.WifiAsyncChannel;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 
@@ -148,6 +150,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
     @Mock WifiMetrics mWifiMetrics;
     @Mock WifiMetrics.ScanMetrics mScanMetrics;
     @Mock WifiManager mWifiManager;
+    @Mock LastCallerInfoManager mLastCallerInfoManager;
     ChannelHelper mChannelHelper0;
     ChannelHelper mChannelHelper1;
     TestLooper mLooper;
@@ -202,6 +205,7 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         when(mContext.checkPermission(eq(Manifest.permission.NETWORK_STACK),
                 anyInt(), eq(Binder.getCallingUid())))
                 .thenReturn(PERMISSION_GRANTED);
+        when(mWifiInjector.getLastCallerInfoManager()).thenReturn(mLastCallerInfoManager);
         mWifiScanningServiceImpl = new WifiScanningServiceImpl(mContext, mLooper.getLooper(),
                 mWifiScannerImplFactory, mBatteryStats, mWifiInjector);
     }
@@ -2711,6 +2715,9 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verifySuccessfulResponse(order, handler, 192);
         assertDumpContainsRequestLog("addBackgroundScanRequest", 192);
+        verify(mLastCallerInfoManager, atLeastOnce()).put(
+                eq(LastCallerInfoManager.SCANNING_ENABLED), anyInt(), anyInt(), anyInt(), any(),
+                eq(true));
     }
 
     /**
@@ -2762,6 +2769,9 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         assertDumpContainsRequestLog("addSingleScanRequest", requestId);
         assertDumpContainsCallbackLog("singleScanResults", requestId,
                 "results=" + results.getScanData().getResults().length);
+        verify(mLastCallerInfoManager, atLeastOnce()).put(
+                eq(LastCallerInfoManager.SCANNING_ENABLED), anyInt(), anyInt(), anyInt(), any(),
+                eq(true));
     }
 
     /**
@@ -3112,6 +3122,8 @@ public class WifiScanningServiceTest extends WifiBaseTest {
         controlChannel.sendMessage(Message.obtain(null, WifiScanner.CMD_DISABLE));
         mLooper.dispatchAll();
 
+        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SCANNING_ENABLED), anyInt(),
+                anyInt(), anyInt(), any(), eq(false));
         verify(mWifiScannerImpl0).cleanup();
     }
 

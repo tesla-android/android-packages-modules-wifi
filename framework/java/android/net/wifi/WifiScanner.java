@@ -34,6 +34,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.text.TextUtils;
@@ -1063,7 +1064,8 @@ public class WifiScanner {
     @RequiresPermission(Manifest.permission.NETWORK_STACK)
     public void setScanningEnabled(boolean enable) {
         validateChannel();
-        mAsyncChannel.sendMessage(enable ? CMD_ENABLE : CMD_DISABLE);
+        mAsyncChannel.sendMessage(enable ? CMD_ENABLE : CMD_DISABLE, Process.myTid(),
+                Binder.getCallingPid(), mContext.getOpPackageName());
     }
 
     /**

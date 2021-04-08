@@ -134,6 +134,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.UserActionEvent;
 import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.GeneralUtil.Mutable;
+import com.android.server.wifi.util.LastCallerInfoManager;
 import com.android.server.wifi.util.RssiUtil;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
@@ -270,6 +271,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final WifiNative mWifiNative;
     private final SimRequiredNotifier mSimRequiredNotifier;
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
+    private final LastCallerInfoManager mLastCallerInfoManager;
 
     /**
      * The wrapper of SoftApCallback is used in WifiService internally.
@@ -350,6 +352,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mSimRequiredNotifier = wifiInjector.getSimRequiredNotifier();
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
         mMakeBeforeBreakManager = mWifiInjector.getMakeBeforeBreakManager();
+        mLastCallerInfoManager = mWifiInjector.getLastCallerInfoManager();
     }
 
     /**
@@ -900,6 +903,8 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiMetrics.incrementNumWifiToggles(isPrivileged, enable);
         mActiveModeWarden.wifiToggled(new WorkSource(Binder.getCallingUid(), packageName));
+        mLastCallerInfoManager.put(LastCallerInfoManager.WIFI_ENABLED, Process.myTid(),
+                Binder.getCallingUid(), Binder.getCallingPid(), packageName, enable);
         return true;
     }
 
@@ -1147,7 +1152,8 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-
+        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+                Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
 
@@ -1183,7 +1189,8 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-
+        mLastCallerInfoManager.put(LastCallerInfoManager.TETHERED_HOTSPOT, Process.myTid(),
+                Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
 
@@ -1227,6 +1234,8 @@ public class WifiServiceImpl extends BaseWifiService {
         mLog.info("stopSoftAp uid=%").c(Binder.getCallingUid()).flush();
 
         stopSoftApInternal(WifiManager.IFACE_IP_MODE_TETHERED);
+        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+                Binder.getCallingUid(), Binder.getCallingPid(), "<unknown>", false);
         return true;
     }
 
@@ -2956,8 +2965,9 @@ public class WifiServiceImpl extends BaseWifiService {
 
         int callingUid = Binder.getCallingUid();
         mLog.info("allowAutojoinGlobal=% uid=%").c(choice).c(callingUid).flush();
-
         mWifiThreadRunner.post(() -> mWifiConnectivityManager.setAutoJoinEnabledExternal(choice));
+        mLastCallerInfoManager.put(LastCallerInfoManager.AUTOJOIN_GLOBAL, Process.myTid(),
+                callingUid, Binder.getCallingPid(), "<unknown>", choice);
     }
 
     /**
@@ -3824,6 +3834,8 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getAdaptiveConnectivityEnabledSettingObserver().dump(fd, pw, args);
             mWifiInjector.getWifiGlobals().dump(fd, pw, args);
             mWifiInjector.getSarManager().dump(fd, pw, args);
+            pw.println();
+            mLastCallerInfoManager.dump(pw);
             pw.println();
         }
     }
