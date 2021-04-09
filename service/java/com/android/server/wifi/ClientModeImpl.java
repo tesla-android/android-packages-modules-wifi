@@ -1210,6 +1210,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             long mRxPkts = mFacade.getRxPackets(mInterfaceName);
             mWifiInfo.updatePacketRates(mTxPkts, mRxPkts, mLastLinkLayerStatsUpdate);
         }
+        mWifiMetrics.incrementWifiLinkLayerUsageStats(stats);
         return stats;
     }
 
@@ -2887,22 +2888,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (config == null) return;
 
         switch(reason) {
-            case ReasonCode.MICHAEL_MIC_FAILURE:
-            case ReasonCode.FOURWAY_HANDSHAKE_TIMEOUT:
-            case ReasonCode.GROUP_KEY_UPDATE_TIMEOUT:
-            case ReasonCode.IE_IN_4WAY_DIFFERS:
-            case ReasonCode.GROUP_CIPHER_NOT_VALID:
-            case ReasonCode.PAIRWISE_CIPHER_NOT_VALID:
-            case ReasonCode.AKMP_NOT_VALID:
-            case ReasonCode.IEEE_802_1X_AUTH_FAILED:
-            case ReasonCode.CIPHER_SUITE_REJECTED:
-            case ReasonCode.BAD_CIPHER_OR_AKM:
-            case ReasonCode.PEERKEY_MISMATCH:
-            case ReasonCode.INVALID_PMKID:
-                mWifiNative.removeNetworkCachedData(config.networkId);
+            case ReasonCode.UNSPECIFIED:
+            case ReasonCode.DEAUTH_LEAVING:
+                logi("Keep PMK cache for network disconnection reason " + reason);
                 break;
             default:
-                logi("Keep PMK cache for network disconnection reason " + reason);
+                mWifiNative.removeNetworkCachedData(config.networkId);
                 break;
         }
     }
@@ -5118,7 +5109,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mWifiScoreReport.noteIpCheck();
             }
 
-            mWifiMetrics.incrementWifiLinkLayerUsageStats(stats);
             mLastLinkLayerStats = stats;
             return stats;
         }
