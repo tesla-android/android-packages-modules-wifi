@@ -328,4 +328,24 @@ public class CoexUtilsTest {
         assertThat(getIntermodCoexUnsafeChannels(ulFreqKhz, bandwidthKhz, dlFreqKhz, bandwidthKhz,
                 2, -1, maxOverlap, WIFI_BAND_24_GHZ)).containsExactlyElementsIn(coexUnsafeChannels);
     }
+
+    /**
+     * Verifies that getIntermodCoexUnsafeChannels returns the correct subset of 5GHz channels
+     * for cell channels below the wifi band.
+     */
+    @Test
+    public void testGet5gIntermodUnsafeChannels_cellBelowWifiBand_returnsCorrectWifiChannels() {
+        int dlFreqKhz = 3280_000;
+        int ulFreqKhz = 2000_000;
+        int bandwidthKhz = 10_000;
+        int maxOverlap = 100;
+
+        Set<CoexUnsafeChannel> coexUnsafeChannels = new HashSet<>();
+        coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 54));
+        coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 56));
+        coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 58));
+        coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 50));
+        assertThat(getIntermodCoexUnsafeChannels(ulFreqKhz, bandwidthKhz, dlFreqKhz, bandwidthKhz,
+                -1, 1, maxOverlap, WIFI_BAND_5_GHZ)).containsExactlyElementsIn(coexUnsafeChannels);
+    }
 }
