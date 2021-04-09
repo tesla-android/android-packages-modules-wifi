@@ -504,16 +504,12 @@ public class CoexUtils {
         }
 
         for (int channel : channelSet) {
-            int intermodLowerKhz =
-                    Math.abs(n * ulLowerKhz + m * getUpperFreqKhz(channel, band));
-            int intermodUpperKhz =
-                    Math.abs(n * ulUpperKhz + m * getLowerFreqKhz(channel, band));
-            // Swap the bounds if lower becomes upper from taking the absolute value
-            if (intermodLowerKhz > intermodUpperKhz) {
-                int temp = intermodLowerKhz;
-                intermodLowerKhz = intermodUpperKhz;
-                intermodUpperKhz = temp;
-            }
+            final int wifiLowerKhz = getLowerFreqKhz(channel, band);
+            final int wifiUpperKhz = getUpperFreqKhz(channel, band);
+            final int intermodLowerKhz = Math.min(n * ulLowerKhz, n * ulUpperKhz)
+                    + Math.min(m * wifiLowerKhz, m * wifiUpperKhz);
+            final int intermodUpperKhz = Math.max(n * ulLowerKhz, n * ulUpperKhz)
+                    + Math.max(m * wifiLowerKhz, m * wifiUpperKhz);
             if (getOverlapPercent(intermodLowerKhz, intermodUpperKhz, dlLowerKhz, dlUpperKhz)
                     >= overlapPercentThreshold) {
                 coexUnsafeChannels.add(new CoexUnsafeChannel(band, channel));
