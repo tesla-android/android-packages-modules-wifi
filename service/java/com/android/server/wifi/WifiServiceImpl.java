@@ -179,7 +179,7 @@ public class WifiServiceImpl extends BaseWifiService {
     /** Max wait time for posting blocking runnables */
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
     @VisibleForTesting
-    static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 30000;
+    static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 24 * 60 * 60 * 1000;
 
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
@@ -225,6 +225,8 @@ public class WifiServiceImpl extends BaseWifiService {
     private final TetheredSoftApTracker mTetheredSoftApTracker;
 
     private final LohsSoftApTracker mLohsSoftApTracker;
+
+    private final BuildProperties mBuildProperties;
 
     /**
      * Callback for use with LocalOnlyHotspot to unregister requesting applications upon death.
@@ -353,6 +355,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
         mMakeBeforeBreakManager = mWifiInjector.getMakeBeforeBreakManager();
         mLastCallerInfoManager = mWifiInjector.getLastCallerInfoManager();
+        mBuildProperties = mWifiInjector.getBuildProperties();
     }
 
     /**
@@ -3950,6 +3953,10 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     private void enableVerboseLoggingInternal(int verbose) {
+        if (verbose > WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED
+                && mBuildProperties.isUserBuild()) {
+            throw new SecurityException(TAG + ": Not allowed for the user build.");
+        }
         mVerboseLoggingLevel = verbose;
 
         // Update wifi globals before sending the verbose logging change.
