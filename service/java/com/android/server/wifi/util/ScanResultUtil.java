@@ -16,6 +16,7 @@
 
 package com.android.server.wifi.util;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
@@ -274,7 +275,7 @@ public class ScanResultUtil {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = createQuotedSSID(scanResult.SSID);
         List<SecurityParams> list = generateSecurityParamsListFromScanResult(scanResult);
-        if (null == list) {
+        if (list.isEmpty()) {
             return null;
         }
         config.setSecurityParams(list);
@@ -283,8 +284,10 @@ public class ScanResultUtil {
 
     /**
      * Generate security params from the scan result.
+     * @param scanResult the scan result to be checked.
+     * @return a list of security params. If no known security params, return an empty list.
      */
-    public static @Nullable List<SecurityParams> generateSecurityParamsListFromScanResult(
+    public static @NonNull List<SecurityParams> generateSecurityParamsListFromScanResult(
             ScanResult scanResult) {
         List<SecurityParams> list = new ArrayList<>();
 
@@ -370,7 +373,7 @@ public class ScanResultUtil {
             list.add(SecurityParams.createSecurityParamsBySecurityType(
                     WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
         }
-        return list.isEmpty() ? null : list;
+        return list;
     }
 
     /**
