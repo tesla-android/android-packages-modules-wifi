@@ -1029,4 +1029,8 @@ public class WifiInjector {
     public LastCallerInfoManager getLastCallerInfoManager() {
         return mLastCallerInfoManager;
     }
+
+    public BuildProperties getBuildProperties() {
+        return mBuildProperties;
+    }
 }

@@ -375,6 +375,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock SarManager mSarManager;
     @Mock SelfRecovery mSelfRecovery;
     @Mock LastCallerInfoManager mLastCallerInfoManager;
+    @Mock BuildProperties mBuildProperties;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -407,6 +408,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiHandlerThread()).thenReturn(mHandlerThread);
         when(mWifiInjector.getMakeBeforeBreakManager()).thenReturn(mMakeBeforeBreakManager);
         when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
+        when(mWifiInjector.getBuildProperties()).thenReturn(mBuildProperties);
         when(mHandlerThread.getThreadHandler()).thenReturn(new Handler(mLooper.getLooper()));
         when(mHandlerThread.getLooper()).thenReturn(mLooper.getLooper());
         when(mContext.getResources()).thenReturn(mResources);
@@ -4599,6 +4601,23 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(WifiServiceImpl.AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS + 1);
         mLooper.dispatchAll();
         verify(mWifiGlobals).setShowKeyVerboseLoggingModeEnabled(eq(false));
+    }
+
+    /**
+     * Verify that setting verbose logging level to
+     * {@link WifiManager#VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY)} is not allowed for
+     * the user build.
+     */
+    @Test(expected = SecurityException.class)
+    public void testEnableShowKeyVerboseLoggingNotAllowedForUserBuild() throws Exception {
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+        doNothing().when(mContext)
+                .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                        eq("WifiService"));
+        // Verbose logging is enabled first in the constructor for WifiServiceImpl, so reset
+        // before invocation.
+        reset(mClientModeManager);
+        mWifiServiceImpl.enableVerboseLogging(WifiManager.VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY);
     }
 
     /**
