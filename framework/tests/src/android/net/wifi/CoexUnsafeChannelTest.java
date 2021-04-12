@@ -16,6 +16,7 @@
 
 package android.net.wifi;
 
+import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
 import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -42,39 +43,23 @@ public class CoexUnsafeChannelTest {
     }
 
     /**
-     * Verifies {@link CoexUnsafeChannel#isPowerCapAvailable()} returns false if no cap is set.
+     * Verifies {@link CoexUnsafeChannel#getPowerCapDbm()} returns POWER_CAP_NONE if no cap is set.
      */
     @Test
-    public void testIsPowerCapAvailable_noPowerCap_returnsFalse() {
+    public void testGetPowerCapDbm_noPowerCap_returnsPowerCapNone() {
         CoexUnsafeChannel unsafeChannel = new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6);
 
-        assertThat(unsafeChannel.isPowerCapAvailable()).isFalse();
+        assertThat(unsafeChannel.getPowerCapDbm()).isEqualTo(POWER_CAP_NONE);
     }
 
     /**
-     * Verifies {@link CoexUnsafeChannel#isPowerCapAvailable()} returns true if a cap is set, and
-     * {@link CoexUnsafeChannel#getPowerCapDbm()} returns the set value.
+     * Verifies {@link CoexUnsafeChannel#getPowerCapDbm()} returns a power cap if a cap is set.
      */
     @Test
-    public void testIsPowerCapAvailable_powerCapSet_returnsTrue() {
-        final int powerCapDbm = -50;
-        CoexUnsafeChannel unsafeChannel = new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6);
+    public void testGetPowerCapDbm_powerCapSet_returnsSetPowerCap() {
+        CoexUnsafeChannel unsafeChannel = new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6, -50);
 
-        unsafeChannel.setPowerCapDbm(powerCapDbm);
-
-        assertThat(unsafeChannel.isPowerCapAvailable()).isTrue();
-        assertThat(unsafeChannel.getPowerCapDbm()).isEqualTo(powerCapDbm);
-    }
-
-    /**
-     * Verifies {@link CoexUnsafeChannel#getPowerCapDbm()} throws an IllegalStateException if
-     * {@link CoexUnsafeChannel#isPowerCapAvailable()} is {@code false}.
-     */
-    @Test(expected = IllegalStateException.class)
-    public void testGetPowerCap_powerCapUnavailable_throwsException() {
-        CoexUnsafeChannel unsafeChannel = new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6);
-
-        unsafeChannel.getPowerCapDbm();
+        assertThat(unsafeChannel.getPowerCapDbm()).isEqualTo(-50);
     }
 
     /**

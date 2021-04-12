@@ -15,6 +15,8 @@
  */
 package com.android.server.wifi;
 
+import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -654,7 +656,7 @@ public class WifiVendorHal {
     @NonNull
     private ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel>
             frameworkCoexUnsafeChannelsToHidl(
-                    @NonNull Set<android.net.wifi.CoexUnsafeChannel> frameworkUnsafeChannels) {
+                    @NonNull List<android.net.wifi.CoexUnsafeChannel> frameworkUnsafeChannels) {
         final ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel> hidlList =
                 new ArrayList<>();
         for (android.net.wifi.CoexUnsafeChannel frameworkUnsafeChannel : frameworkUnsafeChannels) {
@@ -680,8 +682,9 @@ public class WifiVendorHal {
                     continue;
             }
             hidlUnsafeChannel.channel = frameworkUnsafeChannel.getChannel();
-            if (frameworkUnsafeChannel.isPowerCapAvailable()) {
-                hidlUnsafeChannel.powerCapDbm = frameworkUnsafeChannel.getPowerCapDbm();
+            final int powerCapDbm = frameworkUnsafeChannel.getPowerCapDbm();
+            if (powerCapDbm != POWER_CAP_NONE) {
+                hidlUnsafeChannel.powerCapDbm = powerCapDbm;
             } else {
                 hidlUnsafeChannel.powerCapDbm =
                         android.hardware.wifi.V1_5.IWifiChip.PowerCapConstant.NO_POWER_CAP;
@@ -707,13 +710,13 @@ public class WifiVendorHal {
 
     /**
      * Set the current coex unsafe channels to avoid and their restrictions.
-     * @param unsafeChannels Set of {@link android.net.wifi.CoexUnsafeChannel} to avoid.
+     * @param unsafeChannels List of {@link android.net.wifi.CoexUnsafeChannel} to avoid.
      * @param restrictions int containing a bitwise-OR combination of
      *                     {@link WifiManager.CoexRestriction}.
      * @return true if the operation succeeded, false if there is an error in Hal.
      */
     public boolean setCoexUnsafeChannels(
-            @NonNull Set<android.net.wifi.CoexUnsafeChannel> unsafeChannels, int restrictions) {
+            @NonNull List<android.net.wifi.CoexUnsafeChannel> unsafeChannels, int restrictions) {
         try {
             android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
             if (iWifiChipV15 == null) return boolResult(false);

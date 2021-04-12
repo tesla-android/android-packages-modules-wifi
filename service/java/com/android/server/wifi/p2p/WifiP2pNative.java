@@ -35,6 +35,7 @@ import com.android.server.wifi.PropertyService;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.WifiVendorHal;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -475,7 +476,7 @@ public class WifiP2pNative {
      * @param unsafeChannels channels are not allowed.
      * @return true if operation was successful.
      */
-    public boolean p2pSetOperatingChannel(int oc, @NonNull Set<CoexUnsafeChannel> unsafeChannels) {
+    public boolean p2pSetOperatingChannel(int oc, @NonNull List<CoexUnsafeChannel> unsafeChannels) {
         if (null == unsafeChannels) {
             Log.wtf(TAG, "unsafeChannels is null.");
             return false;
