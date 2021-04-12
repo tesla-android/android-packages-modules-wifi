@@ -53,7 +53,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Set;
 
 /**
  * Unit tests for {@link com.android.server.wifi.util.ApConfigUtil}.
@@ -390,7 +389,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 .thenReturn("149, 153");
         when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
                 .thenReturn(ALLOWED_5G_FREQS); //ch# 149, 153
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 153)
         ));
@@ -427,7 +426,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 .thenReturn("149, 153");
         when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
                 .thenReturn(ALLOWED_5G_FREQS); //ch# 149, 153
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 6),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 11),
@@ -457,7 +456,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 .thenReturn("149, 153");
         when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
                 .thenReturn(ALLOWED_5G_FREQS); //ch# 149, 153
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 6),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 11),
@@ -735,7 +734,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
                 testSoftApCapability, testBand_2_60, mCoexManager));
         // Test with soft unsafe channels
         when(mCoexManager.getCoexRestrictions()).thenReturn(0);
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 1),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)

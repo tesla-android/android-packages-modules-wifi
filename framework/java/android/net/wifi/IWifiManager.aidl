@@ -167,10 +167,6 @@ interface IWifiManager
 
     void setCoexUnsafeChannels(in List<CoexUnsafeChannel> unsafeChannels, int mandatoryRestrictions);
 
-    List<CoexUnsafeChannel> getCoexUnsafeChannels();
-
-    int getCoexRestrictions();
-
     void registerCoexCallback(in ICoexCallback callback);
 
     void unregisterCoexCallback(in ICoexCallback callback);

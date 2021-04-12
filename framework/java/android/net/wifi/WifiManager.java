@@ -79,7 +79,6 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -3756,7 +3755,7 @@ public class WifiManager {
     /**
      * Mandatory coex restriction flag for Wi-Fi Direct.
      *
-     * @see #setCoexUnsafeChannels(Set, int)
+     * @see #setCoexUnsafeChannels(List, int)
      *
      * @hide
      */
@@ -3766,7 +3765,7 @@ public class WifiManager {
     /**
      * Mandatory coex restriction flag for SoftAP
      *
-     * @see #setCoexUnsafeChannels(Set, int)
+     * @see #setCoexUnsafeChannels(List, int)
      *
      * @hide
      */
@@ -3776,7 +3775,7 @@ public class WifiManager {
     /**
      * Mandatory coex restriction flag for Wi-Fi Aware.
      *
-     * @see #setCoexUnsafeChannels(Set, int)
+     * @see #setCoexUnsafeChannels(List, int)
      *
      * @hide
      */
@@ -3806,76 +3805,27 @@ public class WifiManager {
     }
 
     /**
-     * Specify the set of {@link CoexUnsafeChannel} to propagate through the framework for
+     * Specify the list of {@link CoexUnsafeChannel} to propagate through the framework for
      * Wi-Fi/Cellular coex channel avoidance if the default algorithm is disabled via overlay
      * (i.e. config_wifiCoexDefaultAlgorithmEnabled = false). Otherwise do nothing.
      *
-     * @param unsafeChannels Set of {@link CoexUnsafeChannel} to avoid.
-     * @param restrictions Bitmap of {@link CoexRestriction} specifying the mandatory restricted
-     *                     uses of the specified channels. If any restrictions are set, then the
-     *                     supplied CoexUnsafeChannels will be completely avoided for the
-     *                     specified modes, rather than be avoided with best effort.
+     * @param unsafeChannels List of {@link CoexUnsafeChannel} to avoid.
+     * @param restrictions Bitmap of {@code COEX_RESTRICTION_*} constants specifying the mode
+     *                     restrictions on the specified channels. If any restrictions are set,
+     *                     then the supplied CoexUnsafeChannels should be completely avoided for
+     *                     the specified modes, rather than be avoided with best effort.
      *
      * @hide
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS)
-    public void setCoexUnsafeChannels(@NonNull Set<CoexUnsafeChannel> unsafeChannels,
-            int restrictions) {
+    public void setCoexUnsafeChannels(
+            @NonNull List<CoexUnsafeChannel> unsafeChannels, @CoexRestriction int restrictions) {
         if (unsafeChannels == null) {
             throw new IllegalArgumentException("unsafeChannels must not be null");
         }
         try {
-            mService.setCoexUnsafeChannels(new ArrayList<>(unsafeChannels), restrictions);
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
-        }
-    }
-
-    /**
-     * Returns the set of current {@link CoexUnsafeChannel} being used for Wi-Fi/Cellular coex
-     * channel avoidance.
-     *
-     * This returns the set calculated by the default algorithm if
-     * config_wifiCoexDefaultAlgorithmEnabled is {@code true}. Otherwise, returns the set supplied
-     * in {@link #setCoexUnsafeChannels(Set, int)}.
-     *
-     * If any {@link CoexRestriction} flags are set in {@link #getCoexRestrictions()}, then the
-     * CoexUnsafeChannels should be totally avoided (i.e. not best effort) for the Wi-Fi modes
-     * specified by the flags.
-     *
-     * @return Set of current CoexUnsafeChannels.
-     *
-     * @hide
-     */
-    @NonNull
-    @SystemApi
-    @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
-    public Set<CoexUnsafeChannel> getCoexUnsafeChannels() {
-        try {
-            return new HashSet<>(mService.getCoexUnsafeChannels());
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
-        }
-    }
-
-    /**
-     * Returns the current coex restrictions being used for Wi-Fi/Cellular coex
-     * channel avoidance.
-     *
-     * This returns the restrictions calculated by the default algorithm if
-     * config_wifiCoexDefaultAlgorithmEnabled is {@code true}. Otherwise, returns the value supplied
-     * in {@link #setCoexUnsafeChannels(Set, int)}.
-     *
-     * @return int containing a bitwise-OR combination of {@link CoexRestriction}.
-     *
-     * @hide
-     */
-    @SystemApi
-    @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
-    public int getCoexRestrictions() {
-        try {
-            return mService.getCoexRestrictions();
+            mService.setCoexUnsafeChannels(unsafeChannels, restrictions);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3883,7 +3833,10 @@ public class WifiManager {
 
     /**
      * Registers a CoexCallback to listen on the current CoexUnsafeChannels and restrictions being
-     * used for Wi-Fi/cellular coex channel avoidance.
+     * used for Wi-Fi/cellular coex channel avoidance. The callback method
+     * {@link CoexCallback#onCoexUnsafeChannelsChanged(List, int)} will be called immediately after
+     * registration to return the current values.
+     *
      * @param executor Executor to execute listener callback on
      * @param callback CoexCallback to register
      *
@@ -3948,11 +3901,18 @@ public class WifiManager {
         }
 
         /**
-         * Indicates that the current CoexUnsafeChannels or restrictions have changed.
-         * Clients should call {@link #getCoexUnsafeChannels()} and {@link #getCoexRestrictions()}
-         * to get the updated values.
+         * This indicates the current CoexUnsafeChannels and restrictions calculated by the default
+         * coex algorithm if config_wifiCoexDefaultAlgorithmEnabled is {@code true}. Otherwise, the
+         * values will match the ones supplied to {@link #setCoexUnsafeChannels(List, int)}.
+         *
+         * @param unsafeChannels List of {@link CoexUnsafeChannel} to avoid.
+         * @param restrictions Bitmap of {@code COEX_RESTRICTION_*} constants specifying the mode
+         *                     restrictions on the specified channels. If any restrictions are set,
+         *                     then the supplied CoexUnsafeChannels should be completely avoided for
+         *                     the specified modes, rather than be avoided with best effort.
          */
-        public abstract void onCoexUnsafeChannelsChanged();
+        public abstract void onCoexUnsafeChannelsChanged(
+                @NonNull List<CoexUnsafeChannel> unsafeChannels, @CoexRestriction int restrictions);
 
         /**
          * Callback proxy for CoexCallback objects.
@@ -3983,7 +3943,9 @@ public class WifiManager {
             }
 
             @Override
-            public void onCoexUnsafeChannelsChanged() {
+            public void onCoexUnsafeChannelsChanged(
+                    @NonNull List<CoexUnsafeChannel> unsafeChannels,
+                    @CoexRestriction int restrictions) {
                 Executor executor;
                 CoexCallback callback;
                 synchronized (mLock) {
@@ -3994,7 +3956,8 @@ public class WifiManager {
                     return;
                 }
                 Binder.clearCallingIdentity();
-                executor.execute(callback::onCoexUnsafeChannelsChanged);
+                executor.execute(() ->
+                        callback.onCoexUnsafeChannelsChanged(unsafeChannels, restrictions));
             }
         }
     }

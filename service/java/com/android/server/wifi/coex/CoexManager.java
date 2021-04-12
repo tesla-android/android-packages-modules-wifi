@@ -16,6 +16,7 @@
 
 package com.android.server.wifi.coex;
 
+import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_DIRECT;
@@ -109,7 +110,7 @@ public class CoexManager {
             new ArrayList<CoexUtils.CoexCellChannel>();
     private boolean mIsUsingMockCellChannels = false;
     @NonNull
-    private final Set<CoexUnsafeChannel> mCurrentCoexUnsafeChannels = new HashSet<>();
+    private final List<CoexUnsafeChannel> mCurrentCoexUnsafeChannels = new ArrayList<>();
     private int mCoexRestrictions;
     @NonNull
     private final Set<CoexListener> mListeners = new HashSet<>();
@@ -147,8 +148,11 @@ public class CoexManager {
         if (!SdkLevel.isAtLeastS()) {
             return;
         }
-        if (!mContext.getResources().getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled)
-                || !readTableFromXml()) {
+        if (!mContext.getResources().getBoolean(R.bool.config_wifiDefaultCoexAlgorithmEnabled)) {
+            Log.i(TAG, "Default coex algorithm is disabled.");
+            return;
+        }
+        if (!readTableFromXml()) {
             return;
         }
         IntentFilter filter = new IntentFilter();
@@ -159,8 +163,8 @@ public class CoexManager {
     }
 
     /**
-     * Returns the set of current {@link CoexUnsafeChannel} being used for Wi-Fi/Cellular coex
-     * channel avoidance supplied in {@link #setCoexUnsafeChannels(Set, int)}.
+     * Returns the list of current {@link CoexUnsafeChannel} being used for Wi-Fi/Cellular coex
+     * channel avoidance supplied in {@link #setCoexUnsafeChannels(List, int)}.
      *
      * If any {@link CoexRestriction} flags are set in {@link #getCoexRestrictions()}, then the
      * CoexUnsafeChannels should be totally avoided (i.e. not best effort) for the Wi-Fi modes
@@ -169,13 +173,13 @@ public class CoexManager {
      * @return Set of current CoexUnsafeChannels.
      */
     @NonNull
-    public Set<CoexUnsafeChannel> getCoexUnsafeChannels() {
+    public List<CoexUnsafeChannel> getCoexUnsafeChannels() {
         return mCurrentCoexUnsafeChannels;
     }
 
     /**
      * Returns the current coex restrictions being used for Wi-Fi/Cellular coex
-     * channel avoidance supplied in {@link #setCoexUnsafeChannels(Set, int)}.
+     * channel avoidance supplied in {@link #setCoexUnsafeChannels(List, int)}.
      *
      * @return int containing a bitwise-OR combination of {@link CoexRestriction}.
      */
@@ -193,7 +197,7 @@ public class CoexManager {
      *                           {@link #getCoexUnsafeChannels()}
      * @param coexRestrictions int to return in {@link #getCoexRestrictions()}
      */
-    public void setCoexUnsafeChannels(@NonNull Set<CoexUnsafeChannel> coexUnsafeChannels,
+    public void setCoexUnsafeChannels(@NonNull List<CoexUnsafeChannel> coexUnsafeChannels,
             int coexRestrictions) {
         if (coexUnsafeChannels == null) {
             Log.e(TAG, "setCoexUnsafeChannels called with null unsafe channel set");
@@ -206,10 +210,11 @@ public class CoexManager {
         }
         mCurrentCoexUnsafeChannels.clear();
         mCurrentCoexUnsafeChannels.addAll(coexUnsafeChannels);
-        if (mVerboseLoggingEnabled) {
-            Log.v(TAG, "Current unsafe channels: " + mCurrentCoexUnsafeChannels);
-        }
         mCoexRestrictions = coexRestrictions;
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "Current unsafe channels: " + mCurrentCoexUnsafeChannels
+                    + ", restrictions: " + mCoexRestrictions);
+        }
         mWifiNative.setCoexUnsafeChannels(mCurrentCoexUnsafeChannels, mCoexRestrictions);
         notifyListeners();
         notifyRemoteCallbacks();
@@ -243,12 +248,17 @@ public class CoexManager {
     }
 
     /**
-     * Registers a remote ICoexCallback from an external app.
+     * Registers a remote ICoexCallback from an external app and immediately notifies it.
      * see {@link WifiManager#registerCoexCallback(Executor, WifiManager.CoexCallback)}
      * @param callback ICoexCallback instance to register
      */
     public void registerRemoteCoexCallback(ICoexCallback callback) {
         mRemoteCallbackList.register(callback);
+        try {
+            callback.onCoexUnsafeChannelsChanged(mCurrentCoexUnsafeChannels, mCoexRestrictions);
+        } catch (RemoteException e) {
+            Log.e(TAG, "onCoexUnsafeChannelsChanged: remote exception -- " + e);
+        }
     }
 
     /**
@@ -270,7 +280,8 @@ public class CoexManager {
         final int itemCount = mRemoteCallbackList.beginBroadcast();
         for (int i = 0; i < itemCount; i++) {
             try {
-                mRemoteCallbackList.getBroadcastItem(i).onCoexUnsafeChannelsChanged();
+                mRemoteCallbackList.getBroadcastItem(i)
+                        .onCoexUnsafeChannelsChanged(mCurrentCoexUnsafeChannels, mCoexRestrictions);
             } catch (RemoteException e) {
                 Log.e(TAG, "onCoexUnsafeChannelsChanged: remote exception -- " + e);
             }
@@ -351,14 +362,23 @@ public class CoexManager {
             if (entry == null) {
                 continue;
             }
-            final Set<CoexUnsafeChannel> currentBandUnsafeChannels = new HashSet<>();
+            final int powerCapDbm;
+            if (entry.hasPowerCapDbm()) {
+                powerCapDbm = entry.getPowerCapDbm();
+                if (mVerboseLoggingEnabled) {
+                    Log.v(TAG, cellChannel + " sets wifi power cap " + powerCapDbm);
+                }
+            } else {
+                powerCapDbm = POWER_CAP_NONE;
+            }
+            final List<CoexUnsafeChannel> currentBandUnsafeChannels = new ArrayList<>();
             // Set coex restrictions for LAA based on carrier config values.
             if (cellChannel.getRat() == NETWORK_TYPE_LTE
                     && cellChannel.getBand() == AccessNetworkConstants.EutranBand.BAND_46) {
                 if (mIs5gSoftApAvoidedForLaa || mIs5gWifiDirectAvoidedForLaa) {
                     for (int channel : CHANNEL_SET_5_GHZ) {
                         currentBandUnsafeChannels.add(
-                                new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel));
+                                new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel, powerCapDbm));
                     }
                     if (mIs5gSoftApAvoidedForLaa) {
                         if (mVerboseLoggingEnabled) {
@@ -391,11 +411,12 @@ public class CoexManager {
                 // Calculate interference from cell downlink.
                 if (downlinkFreqKhz >= 0 && downlinkBandwidthKhz > 0) {
                     if (neighborThresholds != null && neighborThresholds.hasCellVictimMhz()) {
-                        final Set<CoexUnsafeChannel> neighboringChannels =
+                        final List<CoexUnsafeChannel> neighboringChannels =
                                 getNeighboringCoexUnsafeChannels(
                                         downlinkFreqKhz,
                                         downlinkBandwidthKhz,
-                                        neighborThresholds.getCellVictimMhz() * 1000);
+                                        neighborThresholds.getCellVictimMhz() * 1000,
+                                        powerCapDbm);
                         if (!neighboringChannels.isEmpty()) {
                             if (mVerboseLoggingEnabled) {
                                 Log.v(TAG, cellChannel + " is neighboring victim of "
@@ -408,11 +429,12 @@ public class CoexManager {
                 // Calculate interference from cell uplink
                 if (uplinkFreqKhz >= 0 && uplinkBandwidthKhz > 0) {
                     if (neighborThresholds != null && neighborThresholds.hasWifiVictimMhz()) {
-                        final Set<CoexUnsafeChannel> neighboringChannels =
+                        final List<CoexUnsafeChannel> neighboringChannels =
                                 getNeighboringCoexUnsafeChannels(
                                         uplinkFreqKhz,
                                         uplinkBandwidthKhz,
-                                        neighborThresholds.getWifiVictimMhz() * 1000);
+                                        neighborThresholds.getWifiVictimMhz() * 1000,
+                                        powerCapDbm);
                         if (!neighboringChannels.isEmpty()) {
                             if (mVerboseLoggingEnabled) {
                                 Log.v(TAG, cellChannel + " is neighboring aggressor to "
@@ -422,12 +444,13 @@ public class CoexManager {
                         }
                     }
                     if (harmonicParams2g != null && !isEntire2gBandUnsafe) {
-                        final Set<CoexUnsafeChannel> harmonicChannels2g =
+                        final List<CoexUnsafeChannel> harmonicChannels2g =
                                 get2gHarmonicCoexUnsafeChannels(
                                         uplinkFreqKhz,
                                         uplinkBandwidthKhz,
                                         harmonicParams2g.getN(),
-                                        harmonicParams2g.getOverlap());
+                                        harmonicParams2g.getOverlap(),
+                                        powerCapDbm);
                         if (!harmonicChannels2g.isEmpty()) {
                             if (mVerboseLoggingEnabled) {
                                 Log.v(TAG, cellChannel + " has harmonic interference with "
@@ -437,12 +460,13 @@ public class CoexManager {
                         }
                     }
                     if (harmonicParams5g != null && !isEntire5gBandUnsafe) {
-                        final Set<CoexUnsafeChannel> harmonicChannels5g =
+                        final List<CoexUnsafeChannel> harmonicChannels5g =
                                 get5gHarmonicCoexUnsafeChannels(
                                         uplinkFreqKhz,
                                         uplinkBandwidthKhz,
                                         harmonicParams5g.getN(),
-                                        harmonicParams5g.getOverlap());
+                                        harmonicParams5g.getOverlap(),
+                                        powerCapDbm);
                         if (!harmonicChannels5g.isEmpty()) {
                             if (mVerboseLoggingEnabled) {
                                 Log.v(TAG, cellChannel + " has harmonic interference with "
@@ -456,7 +480,7 @@ public class CoexManager {
                         for (CoexUtils.CoexCellChannel victimCellChannel : cellChannels) {
                             if (victimCellChannel.getDownlinkFreqKhz() >= 0
                                     && victimCellChannel.getDownlinkBandwidthKhz() > 0) {
-                                final Set<CoexUnsafeChannel> intermodChannels2g =
+                                final List<CoexUnsafeChannel> intermodChannels2g =
                                         getIntermodCoexUnsafeChannels(
                                                 uplinkFreqKhz,
                                                 uplinkBandwidthKhz,
@@ -465,7 +489,8 @@ public class CoexManager {
                                                 intermodParams2g.getN(),
                                                 intermodParams2g.getM(),
                                                 intermodParams2g.getOverlap(),
-                                                WIFI_BAND_24_GHZ);
+                                                WIFI_BAND_24_GHZ,
+                                                powerCapDbm);
                                 if (!intermodChannels2g.isEmpty()) {
                                     if (mVerboseLoggingEnabled) {
                                         Log.v(TAG, cellChannel + " and " + intermodChannels2g
@@ -481,7 +506,7 @@ public class CoexManager {
                         for (CoexUtils.CoexCellChannel victimCellChannel : cellChannels) {
                             if (victimCellChannel.getDownlinkFreqKhz() >= 0
                                     && victimCellChannel.getDownlinkBandwidthKhz() > 0) {
-                                final Set<CoexUnsafeChannel> intermodChannels5g =
+                                final List<CoexUnsafeChannel> intermodChannels5g =
                                         getIntermodCoexUnsafeChannels(
                                                 uplinkFreqKhz,
                                                 uplinkBandwidthKhz,
@@ -490,7 +515,8 @@ public class CoexManager {
                                                 intermodParams5g.getN(),
                                                 intermodParams5g.getM(),
                                                 intermodParams5g.getOverlap(),
-                                                WIFI_BAND_5_GHZ);
+                                                WIFI_BAND_5_GHZ,
+                                                powerCapDbm);
                                 if (!intermodChannels5g.isEmpty()) {
                                     if (mVerboseLoggingEnabled) {
                                         Log.v(TAG, cellChannel + " and " + intermodChannels5g
@@ -538,7 +564,7 @@ public class CoexManager {
                         }
                         for (int channel : channelList2g) {
                             currentBandUnsafeChannels.add(
-                                    new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel));
+                                    new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel, powerCapDbm));
                         }
                     }
                 }
@@ -565,18 +591,9 @@ public class CoexManager {
                         }
                         for (int channel : channelList5g) {
                             currentBandUnsafeChannels.add(
-                                    new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel));
+                                    new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel, powerCapDbm));
                         }
                     }
-                }
-            }
-            // Add the power cap for the band, if there is one.
-            if (entry.hasPowerCapDbm()) {
-                if (mVerboseLoggingEnabled) {
-                    Log.v(TAG, cellChannel + " sets wifi power cap " + entry.getPowerCapDbm());
-                }
-                for (CoexUnsafeChannel unsafeChannel : currentBandUnsafeChannels) {
-                    unsafeChannel.setPowerCapDbm(entry.getPowerCapDbm());
                 }
             }
             // Add all of the CoexUnsafeChannels calculated from this cell channel to the total.
@@ -589,12 +606,12 @@ public class CoexManager {
                 final CoexUnsafeChannel existingUnsafeChannel =
                         coexUnsafeChannelsByBandChannelPair.get(bandChannelPair);
                 if (existingUnsafeChannel != null) {
-                    if (!unsafeChannel.isPowerCapAvailable()) {
+                    if (unsafeChannel.getPowerCapDbm() == POWER_CAP_NONE) {
                         continue;
                     }
-                    if (existingUnsafeChannel.isPowerCapAvailable()
-                            && existingUnsafeChannel.getPowerCapDbm()
-                            < unsafeChannel.getPowerCapDbm()) {
+                    final int existingPowerCapDbm = existingUnsafeChannel.getPowerCapDbm();
+                    if (existingPowerCapDbm != POWER_CAP_NONE
+                            && existingPowerCapDbm < unsafeChannel.getPowerCapDbm()) {
                         continue;
                     }
                 }
@@ -628,8 +645,8 @@ public class CoexManager {
                         new Pair<>(WIFI_BAND_5_GHZ, default5gChannel));
             }
         }
-        setCoexUnsafeChannels(new HashSet<>(coexUnsafeChannelsByBandChannelPair.values()),
-                coexRestrictions);
+        setCoexUnsafeChannels(
+                new ArrayList<>(coexUnsafeChannelsByBandChannelPair.values()), coexRestrictions);
     }
 
     /**

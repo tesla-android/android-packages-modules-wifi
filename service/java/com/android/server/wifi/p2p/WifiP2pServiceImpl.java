@@ -121,11 +121,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -814,7 +812,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         private final WifiP2pDeviceList mPeers = new WifiP2pDeviceList();
         private String mInterfaceName;
 
-        private Set<CoexUnsafeChannel> mCoexUnsafeChannels = new HashSet<>();
+        private List<CoexUnsafeChannel> mCoexUnsafeChannels = new ArrayList<>();
         private int mUserListenChannel = 0;
         private int mUserOperatingChannel = 0;
 
@@ -937,19 +935,19 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         void checkCoexUnsafeChannels() {
-            Set<CoexUnsafeChannel> unsafeChannelSet = null;
+            List<CoexUnsafeChannel> unsafeChannels = null;
 
             // If WIFI DIRECT bit is not set, pass null to clear unsafe channels.
             if ((mCoexManager.getCoexRestrictions() & WifiManager.COEX_RESTRICTION_WIFI_DIRECT)
                     != 0) {
-                unsafeChannelSet = mCoexManager.getCoexUnsafeChannels();
+                unsafeChannels = mCoexManager.getCoexUnsafeChannels();
                 Log.d(TAG, "UnsafeChannels: "
-                        + unsafeChannelSet.stream()
+                        + unsafeChannels.stream()
                                 .map(Object::toString)
                                 .collect(Collectors.joining(",")));
             }
 
-            sendMessage(UPDATE_P2P_DISALLOWED_CHANNELS, unsafeChannelSet);
+            sendMessage(UPDATE_P2P_DISALLOWED_CHANNELS, unsafeChannels);
         }
 
         /**
@@ -1861,7 +1859,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case UPDATE_P2P_DISALLOWED_CHANNELS:
                         mCoexUnsafeChannels.clear();
                         if (null != message.obj) {
-                            mCoexUnsafeChannels.addAll((Set<CoexUnsafeChannel>) message.obj);
+                            mCoexUnsafeChannels.addAll((List<CoexUnsafeChannel>) message.obj);
                         }
                         updateP2pChannels();
                         break;

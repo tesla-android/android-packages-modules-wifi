@@ -67,8 +67,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Unit tests for SupplicantP2pIfaceHal
@@ -1673,7 +1673,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
         ranges.add(range1);
         ranges.add(range2);
-        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
 
         when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
                 .thenReturn(mStatusSuccess);
@@ -1699,7 +1699,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testSetOperatingChannel_failure() throws Exception {
-        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
                 .thenReturn(mStatusFailure);
@@ -1713,7 +1713,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testSetOperatingChannel_exception() throws Exception {
-        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
                 .thenThrow(mRemoteException);

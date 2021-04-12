@@ -51,7 +51,6 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_SCANNER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SUITE_B;
 import static android.net.wifi.WifiManager.WpsCallback;
-import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -81,6 +80,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import android.annotation.NonNull;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -126,12 +126,11 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.Executor;
 
 /**
@@ -282,7 +281,8 @@ public class WifiManagerTest {
         if (SdkLevel.isAtLeastS()) {
             mCoexCallback = new CoexCallback() {
                 @Override
-                public void onCoexUnsafeChannelsChanged() {
+                public void onCoexUnsafeChannelsChanged(
+                        @NonNull List<CoexUnsafeChannel> unsafeChannels, int restrictions) {
                     mRunnable.run();
                 }
             };
@@ -312,13 +312,13 @@ public class WifiManagerTest {
     @Test
     public void testSetCoexUnsafeChannelsGoesToWifiServiceImpl() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
-        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
                 | COEX_RESTRICTION_WIFI_AWARE;
 
         mWifiManager.setCoexUnsafeChannels(unsafeChannels, restrictions);
 
-        verify(mWifiService).setCoexUnsafeChannels(new ArrayList<>(unsafeChannels), restrictions);
+        verify(mWifiService).setCoexUnsafeChannels(unsafeChannels, restrictions);
     }
 
     /**
@@ -333,35 +333,6 @@ public class WifiManagerTest {
         } catch (IllegalArgumentException expected) {
         }
     }
-
-    /**
-     * Check the call to getCoexUnsafeChannels calls WifiServiceImpl to return the values from
-     * getCoexUnsafeChannels.
-     */
-    @Test
-    public void testGetCoexUnsafeChannelsGoesToWifiServiceImpl() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
-        Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
-        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
-        when(mWifiService.getCoexUnsafeChannels()).thenReturn(new ArrayList<>(unsafeChannels));
-
-        assertEquals(mWifiManager.getCoexUnsafeChannels(), unsafeChannels);
-    }
-
-    /**
-     * Verify call to getCoexRestrictions calls WifiServiceImpl to return the value from
-     * getCoexRestrictions.
-     */
-    @Test
-    public void testGetCoexRestrictionsGoesToWifiServiceImpl() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
-        int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
-                | COEX_RESTRICTION_WIFI_AWARE;
-        when(mWifiService.getCoexRestrictions()).thenReturn(restrictions);
-
-        assertEquals(mWifiService.getCoexRestrictions(), restrictions);
-    }
-
 
     /**
      * Verify an IllegalArgumentException is thrown if callback is not provided.
@@ -391,7 +362,7 @@ public class WifiManagerTest {
                 ArgumentCaptor.forClass(ICoexCallback.Stub.class);
         mWifiManager.registerCoexCallback(new SynchronousExecutor(), mCoexCallback);
         verify(mWifiService).registerCoexCallback(callbackCaptor.capture());
-        callbackCaptor.getValue().onCoexUnsafeChannelsChanged();
+        callbackCaptor.getValue().onCoexUnsafeChannelsChanged(Collections.emptyList(), 0);
         verify(mRunnable).run();
     }
 
@@ -406,7 +377,7 @@ public class WifiManagerTest {
         mWifiManager.registerCoexCallback(mExecutor, mCoexCallback);
         verify(mWifiService).registerCoexCallback(callbackCaptor.capture());
         mWifiManager.registerCoexCallback(mAnotherExecutor, mCoexCallback);
-        callbackCaptor.getValue().onCoexUnsafeChannelsChanged();
+        callbackCaptor.getValue().onCoexUnsafeChannelsChanged(Collections.emptyList(), 0);
         verify(mExecutor, never()).execute(any(Runnable.class));
         verify(mAnotherExecutor).execute(any(Runnable.class));
     }
@@ -422,10 +393,10 @@ public class WifiManagerTest {
         mWifiManager.registerCoexCallback(new SynchronousExecutor(), mCoexCallback);
         verify(mWifiService).registerCoexCallback(callbackCaptor.capture());
         mWifiManager.unregisterCoexCallback(mCoexCallback);
-        callbackCaptor.getValue().onCoexUnsafeChannelsChanged();
+        callbackCaptor.getValue().onCoexUnsafeChannelsChanged(Collections.emptyList(), 0);
         verify(mRunnable, never()).run();
         mWifiManager.registerCoexCallback(new SynchronousExecutor(), mCoexCallback);
-        callbackCaptor.getValue().onCoexUnsafeChannelsChanged();
+        callbackCaptor.getValue().onCoexUnsafeChannelsChanged(Collections.emptyList(), 0);
         verify(mRunnable).run();
     }
 

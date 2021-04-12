@@ -159,11 +159,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -1027,7 +1025,7 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#setCoexUnsafeChannels(Set, int)}
+     * see {@link android.net.wifi.WifiManager#setCoexUnsafeChannels(List, int)}
      * @param unsafeChannels List of {@link CoexUnsafeChannel} to avoid.
      * @param restrictions Bitmap of {@link CoexRestriction} specifying the mandatory
      *                     uses of the specified channels.
@@ -1047,37 +1045,8 @@ public class WifiServiceImpl extends BaseWifiService {
             Log.e(TAG, "setCoexUnsafeChannels called but default coex algorithm is enabled");
             return;
         }
-        mWifiThreadRunner.post(() -> mCoexManager.setCoexUnsafeChannels(
-                new HashSet<>(unsafeChannels), restrictions));
-    }
-
-    /**
-     * see {@link android.net.wifi.WifiManager#getCoexUnsafeChannels()}
-     * @return List of current CoexUnsafeChannels.
-     */
-    @Override
-    public List<CoexUnsafeChannel> getCoexUnsafeChannels() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        mContext.enforceCallingOrSelfPermission(
-                Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
-        return mWifiThreadRunner.call(() -> new ArrayList<>(mCoexManager.getCoexUnsafeChannels()),
-                Collections.emptyList());
-    }
-
-    /**
-     * see {@link android.net.wifi.WifiManager#getCoexRestrictions()}
-     * @return Bitmask of current coex restrictions.
-     */
-    @Override
-    public int getCoexRestrictions() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        mContext.enforceCallingOrSelfPermission(
-                Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS, "WifiService");
-        return mWifiThreadRunner.call(mCoexManager::getCoexRestrictions, 0);
+        mWifiThreadRunner.post(() ->
+                mCoexManager.setCoexUnsafeChannels(unsafeChannels, restrictions));
     }
 
     /**

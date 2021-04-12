@@ -16,6 +16,7 @@
 
 package com.android.server.wifi.coex;
 
+import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
 import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
 
@@ -69,16 +70,17 @@ public class CoexUtilsTest {
     public void testGetNeighboringCoexUnsafeChannels_noOverlap_returnsEmptySet() {
         // Below/Above 2.4GHz
         assertThat(getNeighboringCoexUnsafeChannels(getLowerFreqKhz(1, WIFI_BAND_24_GHZ) - 100_000,
-                50_000, 50_000)).isEmpty();
+                50_000, 50_000, POWER_CAP_NONE)).isEmpty();
         assertThat(getNeighboringCoexUnsafeChannels(getUpperFreqKhz(14, WIFI_BAND_24_GHZ) + 100_000,
-                50_000, 50_000)).isEmpty();
-        assertThat(getNeighboringCoexUnsafeChannels(2595_000, 50_000, 50_000)).isEmpty();
+                50_000, 50_000, POWER_CAP_NONE)).isEmpty();
+        assertThat(getNeighboringCoexUnsafeChannels(2595_000,
+                50_000, 50_000, POWER_CAP_NONE)).isEmpty();
 
         // Below/Above 5GHz
         assertThat(getNeighboringCoexUnsafeChannels(getLowerFreqKhz(32, WIFI_BAND_5_GHZ) - 100_000,
-                50_000, 50_000)).isEmpty();
+                50_000, 50_000, POWER_CAP_NONE)).isEmpty();
         assertThat(getNeighboringCoexUnsafeChannels(getUpperFreqKhz(173, WIFI_BAND_5_GHZ) + 100_000,
-                50_000, 50_000)).isEmpty();
+                50_000, 50_000, POWER_CAP_NONE)).isEmpty();
     }
 
     /**
@@ -93,7 +95,7 @@ public class CoexUtilsTest {
             lowerCoexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, i));
         }
         assertThat(getNeighboringCoexUnsafeChannels(2401_000,
-                0, 2431_000 - 2401_000 + 1))
+                0, 2431_000 - 2401_000 + 1, POWER_CAP_NONE))
                 .containsExactlyElementsIn(lowerCoexUnsafeChannels);
 
         // Test channel 7 from above
@@ -102,7 +104,7 @@ public class CoexUtilsTest {
             upperCoexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, i));
         }
         assertThat(getNeighboringCoexUnsafeChannels(2495_000,
-                0, 2495_000 - 2453_000 + 1))
+                0, 2495_000 - 2453_000 + 1, POWER_CAP_NONE))
                 .containsExactlyElementsIn(upperCoexUnsafeChannels);
     }
 
@@ -126,7 +128,7 @@ public class CoexUtilsTest {
         lowerCoexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 114));
 
         assertThat(getNeighboringCoexUnsafeChannels(5150_000,
-                0, 5490_000 - 5150_000 + 1))
+                0, 5490_000 - 5150_000 + 1, POWER_CAP_NONE))
                 .containsExactlyElementsIn(lowerCoexUnsafeChannels);
 
         // Test channel 64 from above
@@ -152,7 +154,7 @@ public class CoexUtilsTest {
         upperCoexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 62));
 
         assertThat(getNeighboringCoexUnsafeChannels(5875_000,
-                0, 5875_000 - 5330_000 + 1))
+                0, 5875_000 - 5330_000 + 1, POWER_CAP_NONE))
                 .containsExactlyElementsIn(upperCoexUnsafeChannels);
     }
 
@@ -211,7 +213,7 @@ public class CoexUtilsTest {
         assertThat(get2gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(lowerCoexUnsafeChannels);
 
         // Test upper channels 7 to 14 with an overlap of 50%.
@@ -225,7 +227,7 @@ public class CoexUtilsTest {
         assertThat(get2gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(upperCoexUnsafeChannels);
 
         // Test middle channels 3 to 10 with an overlap of 50%.
@@ -239,7 +241,7 @@ public class CoexUtilsTest {
         assertThat(get2gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(middleCoexUnsafeChannels);
     }
 
@@ -263,7 +265,7 @@ public class CoexUtilsTest {
         assertThat(get5gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(lowerCoexUnsafeChannels);
 
         // Test upper channels 120 to 173 with an overlap of 50%.
@@ -287,7 +289,7 @@ public class CoexUtilsTest {
         assertThat(get5gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(upperCoexUnsafeChannels);
 
         // Test middle channels 64 to 100 with an overlap of 50%.
@@ -305,7 +307,7 @@ public class CoexUtilsTest {
         assertThat(get5gHarmonicCoexUnsafeChannels(
                 getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
                 getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
-                harmonicDeg, maxOverlap))
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
                 .containsExactlyElementsIn(middleCoexUnsafeChannels);
     }
 
@@ -326,7 +328,8 @@ public class CoexUtilsTest {
         }
         // Includes channel 6 but not channel 11
         assertThat(getIntermodCoexUnsafeChannels(ulFreqKhz, bandwidthKhz, dlFreqKhz, bandwidthKhz,
-                2, -1, maxOverlap, WIFI_BAND_24_GHZ)).containsExactlyElementsIn(coexUnsafeChannels);
+                2, -1, maxOverlap, WIFI_BAND_24_GHZ, POWER_CAP_NONE))
+                .containsExactlyElementsIn(coexUnsafeChannels);
     }
 
     /**
@@ -346,6 +349,7 @@ public class CoexUtilsTest {
         coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 58));
         coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 50));
         assertThat(getIntermodCoexUnsafeChannels(ulFreqKhz, bandwidthKhz, dlFreqKhz, bandwidthKhz,
-                -1, 1, maxOverlap, WIFI_BAND_5_GHZ)).containsExactlyElementsIn(coexUnsafeChannels);
+                -1, 1, maxOverlap, WIFI_BAND_5_GHZ, POWER_CAP_NONE))
+                .containsExactlyElementsIn(coexUnsafeChannels);
     }
 }

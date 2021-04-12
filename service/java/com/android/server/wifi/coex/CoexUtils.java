@@ -30,8 +30,10 @@ import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -339,9 +341,9 @@ public class CoexUtils {
     /**
      * Returns the CoexUnsafeChannels for the given cell channel and threshold.
      */
-    public static Set<CoexUnsafeChannel> getNeighboringCoexUnsafeChannels(
-            int cellFreqKhz, int cellBandwidthKhz, int thresholdKhz) {
-        Set<CoexUnsafeChannel> coexUnsafeChannels = new HashSet<>();
+    public static List<CoexUnsafeChannel> getNeighboringCoexUnsafeChannels(
+            int cellFreqKhz, int cellBandwidthKhz, int thresholdKhz, int powerCapDbm) {
+        List<CoexUnsafeChannel> coexUnsafeChannels = new ArrayList<>();
         final int unsafeLowerKhz = cellFreqKhz - (cellBandwidthKhz / 2) - thresholdKhz;
         final int unsafeUpperKhz = cellFreqKhz + (cellBandwidthKhz / 2) + thresholdKhz;
 
@@ -352,7 +354,8 @@ public class CoexUtils {
         // in the inclusive range of the lowest and highest overlapped channels.
         if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL) {
             for (int channel = lowest2gChannel; channel <= highest2gChannel; channel++) {
-                coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel));
+                coexUnsafeChannels.add(
+                        new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel, powerCapDbm));
             }
         }
 
@@ -373,15 +376,16 @@ public class CoexUtils {
                         // Dependent channel was already marked unsafe by another dependency channel
                         break;
                     }
-                    coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel));
+                    coexUnsafeChannels.add(
+                            new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel, powerCapDbm));
                     // Go to each dependent 40, 80, 160Mhz channel and mark them as unsafe.
                     // If a dependent doesn't exist, channel will be set to 0 and the loop ends.
                     channel = DEPENDENT_MAP_5_GHZ.get(channel, 0);
                 }
             }
             // 36 should also map to 34, but only maps to 38 in the dependent channel map.
-            if (overlapped5g20MhzChannels.contains(36)) {
-                coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 34));
+            if (overlapped5g20MhzChannels.contains(36) && !seen.contains(34)) {
+                coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 34, powerCapDbm));
             }
         }
 
@@ -392,9 +396,10 @@ public class CoexUtils {
      * Returns the 2.4GHz UnsafeChannels affected by the harmonic interference from a given uplink
      * cell channel.
      */
-    public static Set<CoexUnsafeChannel> get2gHarmonicCoexUnsafeChannels(
-            int ulFreqKhz, int ulBandwidthKhz, int harmonicDegree, int overlapPercentThreshold) {
-        Set<CoexUnsafeChannel> coexUnsafeChannels = new HashSet<>();
+    public static List<CoexUnsafeChannel> get2gHarmonicCoexUnsafeChannels(
+            int ulFreqKhz, int ulBandwidthKhz, int harmonicDegree, int overlapPercentThreshold,
+            int powerCapDbm) {
+        List<CoexUnsafeChannel> coexUnsafeChannels = new ArrayList<>();
         final int unsafeLowerKhz = (ulFreqKhz - (ulBandwidthKhz / 2)) * harmonicDegree;
         final int unsafeUpperKhz = (ulFreqKhz + (ulBandwidthKhz / 2)) * harmonicDegree;
 
@@ -417,7 +422,8 @@ public class CoexUtils {
             }
             // Mark every channel in between as unsafe
             for (int channel = lowest2gChannel; channel <= highest2gChannel; channel++) {
-                coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel));
+                coexUnsafeChannels.add(
+                        new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel, powerCapDbm));
             }
         }
         return coexUnsafeChannels;
@@ -428,9 +434,10 @@ public class CoexUtils {
      * Returns the 5GHz CoexUnsafeChannels affected by the harmonic interference from a given uplink
      * cell channel.
      */
-    public static Set<CoexUnsafeChannel> get5gHarmonicCoexUnsafeChannels(
-            int ulFreqKhz, int ulBandwidthKhz, int harmonicDegree, int overlapPercentThreshold) {
-        Set<CoexUnsafeChannel> coexUnsafeChannels = new HashSet<>();
+    public static List<CoexUnsafeChannel> get5gHarmonicCoexUnsafeChannels(
+            int ulFreqKhz, int ulBandwidthKhz, int harmonicDegree, int overlapPercentThreshold,
+            int powerCapDbm) {
+        List<CoexUnsafeChannel> coexUnsafeChannels = new ArrayList<>();
         final int unsafeLowerKhz = (ulFreqKhz - (ulBandwidthKhz / 2)) * harmonicDegree;
         final int unsafeUpperKhz = (ulFreqKhz + (ulBandwidthKhz / 2)) * harmonicDegree;
 
@@ -459,7 +466,8 @@ public class CoexUtils {
                     int overlapPercent = overlapPercents.get(channel);
                     // Add channel to unsafe channel set if overlap percent meets threshold.
                     if (overlapPercent >= overlapPercentThreshold) {
-                        coexUnsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel));
+                        coexUnsafeChannels.add(
+                                new CoexUnsafeChannel(WIFI_BAND_5_GHZ, channel, powerCapDbm));
                     }
                     // Pre-calculate the dependent channel overlap for the next iteration by adding
                     // half of each dependency channel percent.
@@ -485,10 +493,11 @@ public class CoexUtils {
      * Returns CoexUnsafeChannels of a given band affected by the intermod interference from a given
      * uplink and downlink cell channel.
      */
-    public static Set<CoexUnsafeChannel> getIntermodCoexUnsafeChannels(
+    public static List<CoexUnsafeChannel> getIntermodCoexUnsafeChannels(
             int ulFreqKhz, int ulBandwidthKhz, int dlFreqKhz, int dlBandwidthKhz,
-            int n, int m, int overlapPercentThreshold, @WifiAnnotations.WifiBandBasic int band) {
-        Set<CoexUnsafeChannel> coexUnsafeChannels = new HashSet<>();
+            int n, int m, int overlapPercentThreshold, @WifiAnnotations.WifiBandBasic int band,
+            int powerCapDbm) {
+        List<CoexUnsafeChannel> coexUnsafeChannels = new ArrayList<>();
         final int ulLowerKhz = (ulFreqKhz - (ulBandwidthKhz / 2));
         final int ulUpperKhz = (ulFreqKhz + (ulBandwidthKhz / 2));
         final int dlLowerKhz = (dlFreqKhz - (dlBandwidthKhz / 2));
@@ -512,7 +521,7 @@ public class CoexUtils {
                     + Math.max(m * wifiLowerKhz, m * wifiUpperKhz);
             if (getOverlapPercent(intermodLowerKhz, intermodUpperKhz, dlLowerKhz, dlUpperKhz)
                     >= overlapPercentThreshold) {
-                coexUnsafeChannels.add(new CoexUnsafeChannel(band, channel));
+                coexUnsafeChannels.add(new CoexUnsafeChannel(band, channel, powerCapDbm));
             }
         }
 
