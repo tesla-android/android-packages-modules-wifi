@@ -91,6 +91,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
     @Mock WifiNetworkFactory mWifiNetworkFactory;
     @Mock WifiGlobals mWifiGlobals;
+    @Mock WifiThreadRunner mWifiThreadRunner;
 
     WifiShellCommand mWifiShellCommand;
 
@@ -116,7 +117,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
         when(mContext.getSystemService(ConnectivityManager.class)).thenReturn(mConnectivityManager);
 
         mWifiShellCommand = new WifiShellCommand(mWifiInjector, mWifiService, mContext,
-                mWifiGlobals);
+                mWifiGlobals, mWifiThreadRunner);
 
         // by default emulate shell uid.
         BinderUtil.setUid(Process.SHELL_UID);
