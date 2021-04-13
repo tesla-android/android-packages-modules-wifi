@@ -3013,38 +3013,34 @@ public class WifiManager {
     }
 
     /**
-     * Query whether the device supports Station (STA) + Bridged access point (AP)
-     * concurrency or not.
-     *
-     * The bridged AP support means that the device supports AP + AP concurrency with the 2 APs
-     * bridged together.
+     * Query whether or not the device supports concurrency of Station (STA) + multiple access
+     * points (AP) (where the APs bridged together).
      *
      * See {@link SoftApConfiguration.Builder#setBands(int[])}
-     * or {@link SoftApConfiguration.Builder#setChannels(SparseIntArray)} to configure bridged AP
-     * when the bridged AP supported.
+     * or {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)} to configure
+     * bridged AP when the bridged AP supported.
      *
-     * @return true if this device supports STA + bridged AP concurrency, false otherwise.
+     * @return true if this device supports concurrency of STA + multiple APs which are bridged
+     *         together, false otherwise.
      */
     public boolean isStaBridgedApConcurrencySupported() {
         return isFeatureSupported(WIFI_FEATURE_STA_BRIDGED_AP);
     }
 
     /**
-     * Query whether the device supports Bridged Access point (AP) concurrency or not.
-     *
-     * The bridged AP support means that the device supports AP + AP concurrency with the 2 APs
-     * bridged together.
+     * Query whether or not the device supports multiple Access point (AP) which are bridged
+     * together.
      *
      * See {@link SoftApConfiguration.Builder#setBands(int[])}
-     * or {@link SoftApConfiguration.Builder#setChannels(SparseIntArray)} to configure bridged AP
-     * when the bridged AP supported.
+     * or {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)} to configure
+     * bridged AP when the bridged AP supported.
      *
-     * @return true if this device supports bridged AP concurrency, false otherwise.
+     * @return true if this device supports concurrency of multiple AP which bridged together,
+     *         false otherwise.
      */
     public boolean isBridgedApConcurrencySupported() {
         return isFeatureSupported(WIFI_FEATURE_BRIDGED_AP);
     }
-
 
     /**
      * Interface for Wi-Fi activity energy info listener. Should be implemented by applications and
@@ -4570,9 +4566,11 @@ public class WifiManager {
          *
          * When the Soft AP is configured in single AP mode, this callback is invoked
          * with the same {@link SoftApInfo} for all connected clients changes.
-         * When the Soft AP is configured in bridged mode, this callback is invoked with
-         * the corresponding {@link SoftApInfo} for the instance in which the connected clients
-         * changed.
+         * When the Soft AP is configured as multiple Soft AP instances (using
+         * {@link SoftApConfiguration.Builder#setBands(int[])} or
+         * {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)}), this
+         * callback is invoked with the corresponding {@link SoftApInfo} for the instance in which
+         * the connected clients changed.
          *
          * @param info The {@link SoftApInfo} of the AP.
          * @param clients The currently connected clients on the AP instance specified by
@@ -4582,14 +4580,16 @@ public class WifiManager {
                 @NonNull List<WifiClient> clients) {}
 
         /**
-         * Called when information of softap changes.
+         * Called when the Soft AP information changes.
          *
-         * Note: this API is only valid when the Soft AP is configured as a single AP
-         * - not as a bridged AP (2 Soft APs). When the Soft AP is configured as bridged AP
+         * Note: this API remains valid only when the Soft AP is configured as a single AP -
+         * not as multiple Soft APs (which are bridged to each other). When multiple Soft APs are
+         * configured (using {@link SoftApConfiguration.Builder#setBands(int[])} or
+         * {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)})
          * this callback will not be triggered -  use the
-         * {@link #onInfoChanged(List<SoftApInfo>)} callback in bridged AP mode.
+         * {@link #onInfoChanged(List<SoftApInfo>)} callback in that case.
          *
-         * @param softApInfo is the softap information. {@link SoftApInfo}
+         * @param softApInfo is the Soft AP information. {@link SoftApInfo}
          *
          * @deprecated This API is deprecated. Use {@link #onInfoChanged(List<SoftApInfo>)}
          * instead.
@@ -4600,31 +4600,38 @@ public class WifiManager {
         }
 
         /**
-         * Called when information of softap changes.
+         * Called when the Soft AP information changes.
          *
-         * The number of the information elements in the list depends on Soft AP configuration
-         * and state.
-         * For instance, an empty list will be returned when the Soft AP is disabled.
-         * One information element will be returned in the list when the Soft AP is configured
-         * as a single AP, and two information elements will be returned in the list
-         * when the Soft AP is configured in bridged mode.
+         * Returns information on all configured Soft AP instances. The number of the elements in
+         * the list depends on Soft AP configuration and state:
+         * <ul>
+         * <li>An empty list will be returned when the Soft AP is disabled.
+         * <li>One information element will be returned in the list when the Soft AP is configured
+         *     as a single AP or when a single Soft AP remains active.
+         * <li>Two information elements will be returned in the list when the multiple Soft APs are
+         *     configured and are active.
+         *     (configured using {@link SoftApConfiguration.Builder#setBands(int[])} or
+         *     {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)}).
+         * </ul>
          *
-         * Note: One of the Soft APs may be shut down independently of the other by the framework,
-         * for instance if no devices are connected to it for some duration.
-         * In that case, one information element will be returned in the list in bridged mode.
+         * Note: When multiple Soft AP instances are configured, one of the Soft APs may
+         * be shut down independently of the other by the framework. This can happen if no devices
+         * are connected to it for some duration. In that case, one information element will be
+         * returned.
          *
-         * See {@link #isBridgedApConcurrencySupported()} for the detail of the bridged AP.
+         * See {@link #isBridgedApConcurrencySupported()} for support info of multiple (bridged) AP.
          *
-         * @param softApInfoList is the list of the softap information elements. {@link SoftApInfo}
+         * @param softApInfoList is the list of the Soft AP information elements -
+         *        {@link SoftApInfo}.
          */
         default void onInfoChanged(@NonNull List<SoftApInfo> softApInfoList) {
             // Do nothing: can be updated to add SoftApInfo details (e.g. channel) to the UI.
         }
 
         /**
-         * Called when capability of softap changes.
+         * Called when capability of Soft AP changes.
          *
-         * @param softApCapability is the softap capability. {@link SoftApCapability}
+         * @param softApCapability is the Soft AP capability. {@link SoftApCapability}
          */
         default void onCapabilityChanged(@NonNull SoftApCapability softApCapability) {
             // Do nothing: can be updated to add SoftApCapability details (e.g. meximum supported
