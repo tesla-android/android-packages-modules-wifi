@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.wifi.V1_0.NanStatusType;
+import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_2.NanDataPathChannelInfo;
 import android.location.LocationManager;
 import android.net.wifi.WifiManager;
@@ -1751,7 +1752,10 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 }
                 case COMMAND_TYPE_DISABLE: {
                     mAwareIsDisabling = false;
-                    waitForResponse = mWifiAwareNativeApi.disable(mCurrentTransactionId);
+                    // Must trigger a state transition to execute the deferred connect command
+                    if (!mWifiAwareNativeApi.disable(mCurrentTransactionId)) {
+                        onDisableResponse(mCurrentTransactionId, WifiStatusCode.ERROR_UNKNOWN);
+                    }
                     break;
                 }
                 case COMMAND_TYPE_RECONFIGURE:

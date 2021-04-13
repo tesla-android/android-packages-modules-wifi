@@ -666,6 +666,7 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
 
         try {
             WifiStatus status = iface.disableRequest(transactionId);
+            mHal.releaseAware();
             if (status.code == WifiStatusCode.SUCCESS) {
                 return true;
             } else {
