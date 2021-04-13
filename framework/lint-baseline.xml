@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="5" by="lint 4.1.0" client="cli" variant="all" version="4.1.0">
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.aware.AwareResources`"
+        errorLine1="                    return new AwareResources(in.readInt(), in.readInt(), in.readInt());"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/aware/AwareResources.java"
+            line="148"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.ScanResult.InformationElement#CREATOR`"
+        errorLine1="                sr.informationElements = in.createTypedArray(InformationElement.CREATOR);"
+        errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/ScanResult.java"
+            line="1303"
+            column="62"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.WifiManager.AddNetworkResult#statusCode`"
+        errorLine1="            dest.writeInt(statusCode);"
+        errorLine2="                          ~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="1804"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.WifiManager.AddNetworkResult#networkId`"
+        errorLine1="            dest.writeInt(networkId);"
+        errorLine2="                          ~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="1805"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="                        return new AddNetworkResult(in.readInt(), in.readInt());"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="1812"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.WifiManager.AddNetworkResult#statusCode`"
+        errorLine1="            this.statusCode = statusCode;"
+        errorLine2="            ~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="1832"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.WifiManager.AddNetworkResult#networkId`"
+        errorLine1="            this.networkId = networkId;"
+        errorLine2="            ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="1833"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Method reference requires API level 31 (current min is 30): `callback::onSubsystemRestarting`"
+        errorLine1="                executor.execute(callback::onSubsystemRestarting);"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="3550"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Method reference requires API level 31 (current min is 30): `callback::onSubsystemRestarted`"
+        errorLine1="                executor.execute(callback::onSubsystemRestarted);"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="3565"
+            column="34"/>
+    </issue>
+
+</issues>
