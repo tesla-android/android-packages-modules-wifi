@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
-import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
@@ -55,6 +54,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -360,7 +360,7 @@ public class WifiP2pNativeTest extends WifiBaseTest {
     public void testP2pSetOperatingChannel() {
         when(mSupplicantP2pIfaceHalMock.setOperatingChannel(anyInt(), any()))
                 .thenReturn(true);
-        assertTrue(mWifiP2pNative.p2pSetOperatingChannel(65, new HashSet<CoexUnsafeChannel>()));
+        assertTrue(mWifiP2pNative.p2pSetOperatingChannel(65, Collections.emptyList()));
         verify(mSupplicantP2pIfaceHalMock).setOperatingChannel(eq(65), any());
     }
 

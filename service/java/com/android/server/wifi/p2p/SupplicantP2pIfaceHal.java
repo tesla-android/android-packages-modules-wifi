@@ -52,7 +52,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -1489,7 +1488,7 @@ public class SupplicantP2pIfaceHal {
      * @return true, if operation was successful.
      */
     public boolean setOperatingChannel(int operatingChannel,
-            @NonNull Set<CoexUnsafeChannel> unsafeChannels) {
+            @NonNull List<CoexUnsafeChannel> unsafeChannels) {
         synchronized (mLock) {
             if (!checkSupplicantP2pIfaceAndLogFailure("setOperatingChannel")) return false;
             if (null == unsafeChannels) return false;

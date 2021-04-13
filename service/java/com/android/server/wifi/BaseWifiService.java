@@ -372,16 +372,6 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public List<CoexUnsafeChannel> getCoexUnsafeChannels() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int getCoexRestrictions() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void registerCoexCallback(ICoexCallback callback) {
         throw new UnsupportedOperationException();
     }

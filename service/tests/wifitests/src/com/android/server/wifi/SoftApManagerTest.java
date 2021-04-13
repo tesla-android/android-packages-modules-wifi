@@ -87,11 +87,11 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 /** Unit tests for {@link SoftApManager}. */
 @SmallTest
@@ -2770,7 +2770,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
         // TEST_SUPPORTED_5G_CHANNELS = 36, 149,
         // mark to unsafe but it doesn't change to hard unsafe.
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)
         ));
@@ -2795,7 +2795,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
         // TEST_SUPPORTED_5G_CHANNELS = 36, 149, mark to unsafe.
         when(mCoexManager.getCoexRestrictions()).thenReturn(WifiManager.COEX_RESTRICTION_SOFTAP);
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)
         ));
@@ -2838,7 +2838,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
         // Test with soft unsafe channels
         // TEST_SUPPORTED_5G_CHANNELS = 36, 149, mark to unsafe.
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)
         ));
@@ -2883,7 +2883,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         // Test with hard unsafe channels
         when(mCoexManager.getCoexRestrictions()).thenReturn(WifiManager.COEX_RESTRICTION_SOFTAP);
         // TEST_SUPPORTED_5G_CHANNELS = 36, 149, mark to unsafe.
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36),
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 149)
         ));
@@ -2936,7 +2936,7 @@ public class SoftApManagerTest extends WifiBaseTest {
 
 
         // TEST_SUPPORTED_5G_CHANNELS = 36, 149, only mark 36 is unsafe.
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Set.of(
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(Arrays.asList(
                 new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36)
         ));
 

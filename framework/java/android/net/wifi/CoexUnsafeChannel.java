@@ -34,18 +34,14 @@ import java.util.Objects;
  * Data structure class representing a Wi-Fi channel that would cause interference to/receive
  * interference from the active cellular channels and should be avoided.
  *
- * If {@link #isPowerCapAvailable()} is {@code true}, then a valid power cap value is available
- * through {@link #getPowerCapDbm()} to be used if this channel cannot be avoided. If {@code false},
- * then {@link #getPowerCapDbm()} throws an IllegalStateException and the channel will not need to
- * cap its power.
- *
  * @hide
  */
 @SystemApi
 public final class CoexUnsafeChannel implements Parcelable {
+    public static final int POWER_CAP_NONE = Integer.MAX_VALUE;
+
     private @WifiAnnotations.WifiBandBasic int mBand;
     private int mChannel;
-    private boolean mIsPowerCapAvailable = false;
     private int mPowerCapDbm;
 
     /**
@@ -59,6 +55,7 @@ public final class CoexUnsafeChannel implements Parcelable {
         }
         mBand = band;
         mChannel = channel;
+        mPowerCapDbm = POWER_CAP_NONE;
     }
 
     /**
@@ -74,7 +71,7 @@ public final class CoexUnsafeChannel implements Parcelable {
         }
         mBand = band;
         mChannel = channel;
-        setPowerCapDbm(powerCapDbm);
+        mPowerCapDbm = powerCapDbm;
     }
 
     /** Returns the Wi-Fi band of this channel as one of {@link WifiAnnotations.WifiBandBasic} */
@@ -87,26 +84,12 @@ public final class CoexUnsafeChannel implements Parcelable {
         return mChannel;
     }
 
-    /** Returns {@code true} if {@link #getPowerCapDbm()} is a valid value, else {@code false} */
-    public boolean isPowerCapAvailable() {
-        return mIsPowerCapAvailable;
-    }
-
     /**
-     * Returns the power cap of this channel in dBm. Throws IllegalStateException if
-     * {@link #isPowerCapAvailable()} is {@code false}.
+     * Returns the power cap of this channel in dBm or {@link CoexUnsafeChannel#POWER_CAP_NONE}
+     * if the power cap is not specified.
      */
     public int getPowerCapDbm() {
-        if (!mIsPowerCapAvailable) {
-            throw new IllegalStateException("getPowerCapDbm called but power cap is unavailable");
-        }
         return mPowerCapDbm;
-    }
-
-    /** Set the power cap of this channel. */
-    public void setPowerCapDbm(int powerCapDbm) {
-        mIsPowerCapAvailable = true;
-        mPowerCapDbm = powerCapDbm;
     }
 
     @Override
@@ -116,13 +99,12 @@ public final class CoexUnsafeChannel implements Parcelable {
         CoexUnsafeChannel that = (CoexUnsafeChannel) o;
         return mBand == that.mBand
                 && mChannel == that.mChannel
-                && mIsPowerCapAvailable == that.mIsPowerCapAvailable
                 && mPowerCapDbm == that.mPowerCapDbm;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mBand, mChannel, mIsPowerCapAvailable, mPowerCapDbm);
+        return Objects.hash(mBand, mChannel, mPowerCapDbm);
     }
 
     @Override
@@ -138,7 +120,7 @@ public final class CoexUnsafeChannel implements Parcelable {
             sj.append("UNKNOWN BAND");
         }
         sj.append(", ").append(mChannel);
-        if (mIsPowerCapAvailable) {
+        if (mPowerCapDbm != POWER_CAP_NONE) {
             sj.append(", ").append(mPowerCapDbm).append("dBm");
         }
         sj.append('}');
@@ -156,10 +138,7 @@ public final class CoexUnsafeChannel implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(mBand);
         dest.writeInt(mChannel);
-        dest.writeBoolean(mIsPowerCapAvailable);
-        if (mIsPowerCapAvailable) {
-            dest.writeInt(mPowerCapDbm);
-        }
+        dest.writeInt(mPowerCapDbm);
     }
 
     /** Implement the Parcelable interface */
@@ -168,12 +147,8 @@ public final class CoexUnsafeChannel implements Parcelable {
                 public CoexUnsafeChannel createFromParcel(Parcel in) {
                     final int band = in.readInt();
                     final int channel = in.readInt();
-                    final boolean isPowerCapAvailable = in.readBoolean();
-                    if (isPowerCapAvailable) {
-                        final int powerCapDbm = in.readInt();
-                        return new CoexUnsafeChannel(band, channel, powerCapDbm);
-                    }
-                    return new CoexUnsafeChannel(band, channel);
+                    final int powerCapDbm = in.readInt();
+                    return new CoexUnsafeChannel(band, channel, powerCapDbm);
                 }
 
                 public CoexUnsafeChannel[] newArray(int size) {

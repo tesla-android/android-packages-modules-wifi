@@ -3394,7 +3394,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
                 mWifiGlobals);
         when(mIWifiChipV15.setCoexUnsafeChannels(any(), anyInt()))
                 .thenReturn(mWifiStatusSuccess);
-        final Set<CoexUnsafeChannel> unsafeChannels = new HashSet<>();
+        final List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_24_GHZ, 6));
         unsafeChannels.add(new CoexUnsafeChannel(WifiScanner.WIFI_BAND_5_GHZ, 36));
         final int restrictions = WifiManager.COEX_RESTRICTION_WIFI_DIRECT

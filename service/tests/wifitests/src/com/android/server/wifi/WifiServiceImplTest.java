@@ -207,7 +207,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -1508,42 +1507,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies that getCoexUnsafeChannels returns the value from
-     * {@link CoexManager#getCoexUnsafeChannels()}.
-     */
-    @Test
-    public void testGetCoexUnsafeChannelsReturnsValueFromCoexManager() {
-        assumeTrue(SdkLevel.isAtLeastS());
-        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
-        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
-        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36));
-        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(new HashSet<>(unsafeChannels));
-        mWifiThreadRunner.prepareForAutoDispatch();
-        mLooper.startAutoDispatch();
-        assertThat(mWifiServiceImpl.getCoexUnsafeChannels())
-                .containsExactlyElementsIn(unsafeChannels);
-        mLooper.stopAutoDispatch();
-        verify(mCoexManager).getCoexUnsafeChannels();
-    }
-
-    /**
-     * Verifies that getCoexRestrictions returns the value from
-     * {@link CoexManager#getCoexRestrictions()}.
-     */
-    @Test
-    public void testGetCoexRestrictionsReturnsValueFromCoexManager() {
-        assumeTrue(SdkLevel.isAtLeastS());
-        final int restrictions = COEX_RESTRICTION_WIFI_DIRECT | COEX_RESTRICTION_SOFTAP
-                | COEX_RESTRICTION_WIFI_AWARE;
-        when(mCoexManager.getCoexRestrictions()).thenReturn(restrictions);
-        mWifiThreadRunner.prepareForAutoDispatch();
-        mLooper.startAutoDispatch();
-        assertThat(mWifiServiceImpl.getCoexRestrictions()).isEqualTo(restrictions);
-        mLooper.stopAutoDispatch();
-        verify(mCoexManager).getCoexRestrictions();
-    }
-
-    /**
      * Test register and unregister callback will go to CoexManager;
      */
     @Test
@@ -1570,38 +1533,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
                         eq("WifiService"));
         try {
             mWifiServiceImpl.setCoexUnsafeChannels(new ArrayList<>(), 0);
-            fail("expected SecurityException");
-        } catch (SecurityException expected) { }
-    }
-
-    /**
-     * Verify that a call to getCoexUnsafeChannels throws a SecurityException if the caller does
-     * not have the WIFI_ACCESS_COEX_UNSAFE_CHANNELS permission.
-     */
-    @Test
-    public void testGetCoexUnsafeChannelsThrowsSecurityExceptionOnMissingPermissions() {
-        assumeTrue(SdkLevel.isAtLeastS());
-        doThrow(new SecurityException()).when(mContext)
-                .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
-                        eq("WifiService"));
-        try {
-            mWifiServiceImpl.getCoexUnsafeChannels();
-            fail("expected SecurityException");
-        } catch (SecurityException expected) { }
-    }
-
-    /**
-     * Verify that a call to getCoexRestrictions throws a SecurityException if the caller does
-     * not have the WIFI_ACCESS_COEX_UNSAFE_CHANNELS permission.
-     */
-    @Test
-    public void testGetCoexRestrictionsThrowsSecurityExceptionOnMissingPermissions() {
-        assumeTrue(SdkLevel.isAtLeastS());
-        doThrow(new SecurityException()).when(mContext)
-                .enforceCallingOrSelfPermission(eq(WIFI_ACCESS_COEX_UNSAFE_CHANNELS),
-                        eq("WifiService"));
-        try {
-            mWifiServiceImpl.getCoexRestrictions();
             fail("expected SecurityException");
         } catch (SecurityException expected) { }
     }

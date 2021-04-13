@@ -16,11 +16,13 @@
 
 package android.net.wifi;
 
+import android.net.wifi.CoexUnsafeChannel;
+
 /**
  * Interface for Wi-Fi/cellular coex callback.
  * @hide
  */
 oneway interface ICoexCallback
 {
-    void onCoexUnsafeChannelsChanged();
+    void onCoexUnsafeChannelsChanged(in List<CoexUnsafeChannel> unsafeChannels, int restrictions);
 }
