@@ -250,6 +250,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             }
             mMockLooper.dispatchAll();
         }
+        verify(mMockNativeManager, never()).releaseAware();
         for (int i = 0; i < numNdis; ++i) {
             collector.checkThat("interface deleted -- " + i, done[i], equalTo(true));
         }

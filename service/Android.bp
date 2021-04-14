@@ -58,6 +58,9 @@ java_library {
     plugins: ["java_api_finder"],
 
     sdk_version: "system_server_current",
+    lint: {
+    	baseline_filename: "lint-baseline-pre-jarjar.xml",
+    },
     libs: [
         "error_prone_annotations",
         "jsr305",

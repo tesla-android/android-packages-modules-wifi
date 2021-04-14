@@ -1229,30 +1229,30 @@ public class ActiveModeWarden {
             mExternalRequestListener = externalRequestListener;
         }
 
+        @WifiNative.MultiStaUseCase
+        private int getMultiStatUseCase() {
+            // Note: The use-case setting finds the first non-primary client mode manager to set
+            // the use-case to HAL. This does not extend to 3 STA concurrency when there are
+            // 2 secondary STA client mode managers.
+            for (ClientModeManager cmm : getClientModeManagers()) {
+                ClientRole clientRole = cmm.getRole();
+                if (clientRole == ROLE_CLIENT_LOCAL_ONLY
+                        || clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
+                    return WifiNative.DUAL_STA_NON_TRANSIENT_UNBIASED;
+                } else if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                    return WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY;
+                }
+            }
+            // if single STA, a safe default is PREFER_PRIMARY
+            return WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY;
+        }
+
         /**
          * Hardware needs to be configured for STA + STA before sending the callbacks to clients
          * letting them know that CM is ready for use.
          */
         private void configureHwForMultiStaIfNecessary() {
-            List<ClientModeManager> cmms = getClientModeManagers();
-            if (cmms.size() <= 1) {
-                // not multi sta.
-                return;
-            }
-            // Note: The use-case setting finds the first non-primary client mode manager to set
-            // the use-case to HAL. This does not extend to 3 STA concurrency when there are
-            // 2 secondary STA client mode managers.
-            for (ClientModeManager cmm : cmms) {
-                ClientRole clientRole = cmm.getRole();
-                if (clientRole == ROLE_CLIENT_LOCAL_ONLY
-                        || clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
-                    mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_NON_TRANSIENT_UNBIASED);
-                    break;
-                } else if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
-                    mWifiNative.setMultiStaUseCase(WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY);
-                    break;
-                }
-            }
+            mWifiNative.setMultiStaUseCase(getMultiStatUseCase());
             String primaryIfaceName = getPrimaryClientModeManager().getInterfaceName();
             // if no primary exists (occurs briefly during Make Before Break), don't update the
             // primary and keep the previous primary. Only update WifiNative when the new primary is

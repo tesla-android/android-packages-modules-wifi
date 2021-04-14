@@ -20,6 +20,7 @@ import static android.hardware.wifi.V1_0.NanCipherSuiteType.SHARED_KEY_128_MASK;
 import static android.hardware.wifi.V1_0.NanCipherSuiteType.SHARED_KEY_256_MASK;
 
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.eq;
@@ -551,6 +552,20 @@ public class WifiAwareNativeApiTest extends WifiBaseTest {
                 /* isOutOfBand */ true,
                 /* supportedCipherSuites */ 0,
                 /* expectedCipherSuite */ 0);
+    }
+
+    /**
+     * Validate disable Aware will pass to the NAN interface, and trigger releaseAware.
+     * @throws Exception
+     */
+    @Test
+    public void testDisableConfigRequest() throws Exception {
+        WifiStatus status = new WifiStatus();
+        status.code = WifiStatusCode.SUCCESS;
+        when(mIWifiNanIfaceMock.disableRequest(anyShort())).thenReturn(status);
+        assertTrue(mDut.disable((short) 10));
+        verify(mIWifiNanIfaceMock).disableRequest((short) 10);
+        verify(mWifiAwareNativeManagerMock).releaseAware();
     }
 
     // utilities

@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="5" by="lint 4.1.0" client="cli" variant="all" version="4.1.0">
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="        return ScanResult.convertChannelToFrequencyMhzIfSupported(channel,"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
+            line="130"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertFrequencyMhzToChannelIfSupported`"
+        errorLine1="                regulatoryList.add(ScanResult.convertFrequencyMhzToChannelIfSupported(freq));"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
+            line="369"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertFrequencyMhzToChannelIfSupported`"
+        errorLine1="                    ScanResult.convertFrequencyMhzToChannelIfSupported(freq),"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
+            line="568"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `java.util.Set#copyOf`"
+        errorLine1="        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.copyOf(allowlistSsids));"
+        errorLine2="                                                                     ~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/ClientModeImpl.java"
+            line="6491"
+            column="70"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback`"
+        errorLine1="    /* package */ class CoexTelephonyCallback extends TelephonyCallback implements"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexManager.java"
+            line="296"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback.PhysicalChannelConfigListener`"
+        errorLine1="            TelephonyCallback.PhysicalChannelConfigListener,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexManager.java"
+            line="297"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback.ActiveDataSubscriptionIdListener`"
+        errorLine1="            TelephonyCallback.ActiveDataSubscriptionIdListener {"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexManager.java"
+            line="298"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="        int centerFreqMhz = ScanResult.convertChannelToFrequencyMhzIfSupported(channel, band);"
+        errorLine2="                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="143"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getNetworkType`"
+        errorLine1="            this(config.getNetworkType(),"
+        errorLine2="                        ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="578"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getBand`"
+        errorLine1="                    config.getBand(),"
+        errorLine2="                           ~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="579"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getDownlinkFrequencyKhz`"
+        errorLine1="                    config.getDownlinkFrequencyKhz(),"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="580"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getCellBandwidthDownlinkKhz`"
+        errorLine1="                    config.getCellBandwidthDownlinkKhz(),"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="581"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getUplinkFrequencyKhz`"
+        errorLine1="                    config.getUplinkFrequencyKhz(),"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="582"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.PhysicalChannelConfig#getCellBandwidthUplinkKhz`"
+        errorLine1="                    config.getCellBandwidthUplinkKhz());"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/coex/CoexUtils.java"
+            line="583"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="                return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqIndex1,"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
+            line="283"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="                return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqIndex2,"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
+            line="298"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="            return ScanResult.convertChannelToFrequencyMhzIfSupported(mPrimaryChannel,"
+        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
+            line="396"
+            column="31"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="                    return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqSeg0,"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
+            line="409"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="                    return ScanResult.convertChannelToFrequencyMhzIfSupported(mCenterFreqSeg1,"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
+            line="426"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAllOis`"
+        errorLine1="        if (mConfig.getHomeSp().getMatchAllOis() != null) {"
+        errorLine2="                                ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointProvider.java"
+            line="865"
+            column="33"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAllOis`"
+        errorLine1="            if (matchOis(mConfig.getHomeSp().getMatchAllOis(), (RoamingConsortiumElement)"
+        errorLine2="                                             ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointProvider.java"
+            line="868"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAnyOis`"
+        errorLine1="        } else if (mConfig.getHomeSp().getMatchAnyOis() != null) {"
+        errorLine2="                                       ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointProvider.java"
+            line="876"
+            column="40"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAnyOis`"
+        errorLine1="            if (matchOis(mConfig.getHomeSp().getMatchAnyOis(), (RoamingConsortiumElement)"
+        errorLine2="                                             ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointProvider.java"
+            line="879"
+            column="46"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.PasspointConfiguration#setDecoratedIdentityPrefix`"
+        errorLine1="                        config.setDecoratedIdentityPrefix((String) value);"
+        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
+            line="249"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAllOis`"
+        errorLine1="        XmlUtil.writeNextValue(out, XML_TAG_MATCH_ALL_OIS, homeSp.getMatchAllOis());"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
+            line="298"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAnyOis`"
+        errorLine1="        XmlUtil.writeNextValue(out, XML_TAG_MATCH_ANY_OIS, homeSp.getMatchAnyOis());"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
+            line="299"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#setMatchAllOis`"
+        errorLine1="                    homeSp.setMatchAllOis((long[]) value);"
+        errorLine2="                           ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
+            line="543"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#setMatchAnyOis`"
+        errorLine1="                    homeSp.setMatchAnyOis((long[]) value);"
+        errorLine2="                           ~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
+            line="546"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertChannelToFrequencyMhzIfSupported`"
+        errorLine1="                int centerFreq = ScanResult.convertChannelToFrequencyMhzIfSupported("
+        errorLine2="                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/p2p/SupplicantP2pIfaceHal.java"
+            line="1510"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.aware.AwareResources`"
+        errorLine1="        return new AwareResources(numOfAvailableNdps, numOfAvailablePublishSessions,"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/aware/WifiAwareStateManager.java"
+            line="552"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback`"
+        errorLine1="    public final class UserDataEnabledChangedListener extends TelephonyCallback implements"
+        errorLine2="                                                              ~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiCarrierInfoManager.java"
+            line="242"
+            column="63"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.telephony.TelephonyManager#unregisterTelephonyCallback`"
+        errorLine1="                    .unregisterTelephonyCallback(this);"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiCarrierInfoManager.java"
+            line="270"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Class requires API level 31 (current min is 30): `android.os.BugreportManager`"
+        errorLine1="        BugreportManager bugreportManager = mContext.getSystemService(BugreportManager.class);"
+        errorLine2="                                                                      ~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiDiagnostics.java"
+            line="367"
+            column="71"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.WifiManager.AddNetworkResult#networkId`"
+        errorLine1="        return addOrUpdateNetworkInternal(config, packageName, callingUid).networkId;"
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2691"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="            return new AddNetworkResult("
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2698"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="                return new AddNetworkResult("
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2710"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="                return new AddNetworkResult("
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2727"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="            return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, 0);"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2731"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="            return new AddNetworkResult("
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2738"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="            return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, networkId);"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2752"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `new android.net.wifi.WifiManager.AddNetworkResult`"
+        errorLine1="        return new AddNetworkResult("
+        errorLine2="               ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
+            line="2754"
+            column="16"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.ScanResult#convertFrequencyMhzToChannelIfSupported`"
+        errorLine1="                        int apChannel = ScanResult.convertFrequencyMhzToChannelIfSupported("
+        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiShellCommand.java"
+            line="366"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `android.net.wifi.WifiNetworkSuggestion#getSubscriptionId`"
+        errorLine1="            if (suggestion.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiShellCommand.java"
+            line="1092"
+            column="28"/>
+    </issue>
+
+</issues>

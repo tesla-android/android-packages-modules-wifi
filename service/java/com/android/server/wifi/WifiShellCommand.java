@@ -153,6 +153,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
     private final WifiNetworkFactory mWifiNetworkFactory;
     private final SelfRecovery mSelfRecovery;
+    private final WifiThreadRunner mWifiThreadRunner;
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
 
     /**
@@ -195,8 +196,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     }
 
     WifiShellCommand(WifiInjector wifiInjector, WifiServiceImpl wifiService, Context context,
-            WifiGlobals wifiGlobals) {
+            WifiGlobals wifiGlobals, WifiThreadRunner wifiThreadRunner) {
         mWifiGlobals = wifiGlobals;
+        mWifiThreadRunner = wifiThreadRunner;
         mActiveModeWarden = wifiInjector.getActiveModeWarden();
         mPrimaryClientModeManager = mActiveModeWarden.getPrimaryClientModeManager();
         mWifiLockManager = wifiInjector.getWifiLockManager();
@@ -1223,18 +1225,19 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         final int sendMgmtFrameTimeoutMs = 1000;
 
         ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
-        mPrimaryClientModeManager.probeLink(new LinkProbeCallback() {
-            @Override
-            public void onAck(int elapsedTimeMs) {
-                queue.offer("Link probe succeeded after " + elapsedTimeMs + " ms");
-            }
+        mWifiThreadRunner.post(() ->
+                mPrimaryClientModeManager.probeLink(new LinkProbeCallback() {
+                    @Override
+                    public void onAck(int elapsedTimeMs) {
+                        queue.offer("Link probe succeeded after " + elapsedTimeMs + " ms");
+                    }
 
-            @Override
-            public void onFailure(int reason) {
-                queue.offer("Link probe failed with reason "
-                        + LinkProbeCallback.failureReasonToString(reason));
-            }
-        }, -1);
+                    @Override
+                    public void onFailure(int reason) {
+                        queue.offer("Link probe failed with reason "
+                                + LinkProbeCallback.failureReasonToString(reason));
+                    }
+                }, -1));
 
         // block until msg is received, or timed out
         String msg = queue.poll(sendMgmtFrameTimeoutMs + 1000, TimeUnit.MILLISECONDS);
