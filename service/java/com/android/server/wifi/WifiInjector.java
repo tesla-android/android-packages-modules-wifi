@@ -38,7 +38,6 @@ import android.os.HandlerExecutor;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
-import android.os.SystemProperties;
 import android.os.UserManager;
 import android.os.WorkSource;
 import android.provider.Settings.Secure;
@@ -453,7 +452,7 @@ public class WifiInjector {
                 mActiveModeWarden);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
-                mCmiMonitor, mWifiNative, SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE));
+                mCmiMonitor, mWifiNative, mSettingsConfigStore);
         mConnectionFailureNotifier = new ConnectionFailureNotifier(
                 mContext, mFrameworkFacade, mWifiConfigManager,
                 mWifiConnectivityManager, wifiHandler,
