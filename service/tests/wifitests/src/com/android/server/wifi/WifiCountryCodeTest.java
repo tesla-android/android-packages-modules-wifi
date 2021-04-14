@@ -18,11 +18,13 @@ package com.android.server.wifi;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
+import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_DEFAULT_COUNTRY_CODE;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.doAnswer;
 
+import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.Context;
 import android.telephony.TelephonyManager;
 
@@ -59,6 +61,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     @Mock ConcreteClientModeManager mClientModeManager;
     @Mock ClientModeImplMonitor mClientModeImplMonitor;
     @Mock WifiNative mWifiNative;
+    @Mock WifiSettingsConfigStore mSettingsConfigStore;
     private WifiCountryCode mWifiCountryCode;
 
     @Captor
@@ -89,6 +92,15 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         }).when(mClientModeManager).setCountryCode(
                     mSetCountryCodeCaptor.capture());
 
+        doAnswer(new AnswerWithArguments() {
+            public void answer(WifiSettingsConfigStore.Key<String> key, Object countryCode) {
+                when(mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE))
+                        .thenReturn((String) countryCode);
+            }
+        }).when(mSettingsConfigStore).put(eq(WIFI_DEFAULT_COUNTRY_CODE), any(String.class));
+
+        when(mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE)).thenReturn(mDefaultCountryCode);
+
         createWifiCountryCode();
     }
 
@@ -101,7 +113,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
                 mActiveModeWarden,
                 mClientModeImplMonitor,
                 mWifiNative,
-                mDefaultCountryCode);
+                mSettingsConfigStore);
         verify(mActiveModeWarden, atLeastOnce()).registerModeChangeCallback(
                     mModeChangeCallbackCaptor.capture());
         verify(mClientModeImplMonitor, atLeastOnce()).registerListener(
@@ -357,7 +369,8 @@ public class WifiCountryCodeTest extends WifiBaseTest {
 
         assertTrue(dumpCountryCodeStr.contains("mDriverCountryCode"));
         assertTrue(dumpCountryCodeStr.contains("mTelephonyCountryCode"));
-        assertTrue(dumpCountryCodeStr.contains("mDefaultCountryCode"));
+        assertTrue(dumpCountryCodeStr.contains("DefaultCountryCode(system property)"));
+        assertTrue(dumpCountryCodeStr.contains("DefaultCountryCode(config store)"));
         assertTrue(dumpCountryCodeStr.contains("mTelephonyCountryTimestamp"));
         assertTrue(dumpCountryCodeStr.contains("mDriverCountryTimestamp"));
         assertTrue(dumpCountryCodeStr.contains("mReadyTimestamp"));
@@ -375,6 +388,8 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         mWifiCountryCode.setDefaultCountryCode(TEST_COUNTRY_CODE);
         verify(mClientModeManager).setCountryCode(eq(TEST_COUNTRY_CODE));
         assertEquals(TEST_COUNTRY_CODE, mWifiCountryCode.getCountryCodeSentToDriver());
+        verify(mSettingsConfigStore).put(eq(WIFI_DEFAULT_COUNTRY_CODE), eq(TEST_COUNTRY_CODE));
+        assertEquals(TEST_COUNTRY_CODE, mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE));
     }
 
     /**
