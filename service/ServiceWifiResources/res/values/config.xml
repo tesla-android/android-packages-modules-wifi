@@ -646,4 +646,10 @@
          A value of -1 indicates no limit. If a max number is specified, then under-used configs will
          be deleted to make room for new configs.-->
     <integer translatable="false" name="config_wifiMaxNumWifiConfigurations">-1</integer>
+
+    <!-- Whether to allow Settings or SUW to create insecure Enterprise networks where server
+         certificate is not validated, by not specifying a Root CA certificate and/or server domain
+         name. It is STRONGLY RECOMMENDED to be set to false -->
+    <bool translatable="false" name="config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW">false</bool>
+
 </resources>

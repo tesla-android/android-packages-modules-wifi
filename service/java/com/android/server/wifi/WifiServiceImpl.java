@@ -2714,10 +2714,16 @@ public class WifiServiceImpl extends BaseWifiService {
 
         if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
                 && !config.enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
-            Log.e(TAG, "Enterprise network configuration is missing either a Root CA "
-                    + "or a domain name");
-            return new AddNetworkResult(
-                    AddNetworkResult.STATUS_INVALID_CONFIGURATION_ENTERPRISE, -1);
+            if (!(mContext.getResources().getBoolean(
+                    R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW)
+                    && isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid()))) {
+                Log.e(TAG, "Enterprise network configuration is missing either a Root CA "
+                        + "or a domain name");
+                return new AddNetworkResult(
+                        AddNetworkResult.STATUS_INVALID_CONFIGURATION_ENTERPRISE, -1);
+            }
+            Log.w(TAG, "Insecure Enterprise network " + config.SSID
+                    + " configured by Settings/SUW");
         }
 
         Log.i("addOrUpdateNetworkInternal", " uid = " + Binder.getCallingUid()
