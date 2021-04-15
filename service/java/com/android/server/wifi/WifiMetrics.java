@@ -4145,6 +4145,15 @@ public class WifiMetrics {
         line.append(",is_same_bssid_and_freq=" + entry.isSameBssidAndFreq);
         line.append(",device_mobility_state=" + entry.deviceMobilityState);
         line.append(",time_slice_duty_cycle_in_percent=" + entry.timeSliceDutyCycleInPercent);
+        if (entry.contentionTimeStats != null) {
+            for (ContentionTimeStats stat : entry.contentionTimeStats) {
+                line.append(",access_category=" + stat.accessCategory);
+                line.append(",contention_time_min_micros=" + stat.contentionTimeMinMicros);
+                line.append(",contention_time_max_micros=" + stat.contentionTimeMaxMicros);
+                line.append(",contention_time_avg_micros=" + stat.contentionTimeAvgMicros);
+                line.append(",contention_num_samples=" + stat.contentionNumSamples);
+            }
+        }
         line.append(",channel_utilization_ratio=" + entry.channelUtilizationRatio);
         line.append(",is_throughput_sufficient=" + entry.isThroughputSufficient);
         line.append(",is_wifi_scoring_enabled=" + entry.isWifiScoringEnabled);
