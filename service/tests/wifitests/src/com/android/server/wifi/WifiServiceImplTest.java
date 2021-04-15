@@ -672,7 +672,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         InOrder inorder = inOrder(mWifiMetrics);
         assertTrue(mWifiServiceImpl.setWifiEnabled(TEST_PACKAGE_NAME, true));
+        mLooper.dispatchAll();
         assertTrue(mWifiServiceImpl.setWifiEnabled(TEST_PACKAGE_NAME, false));
+        mLooper.dispatchAll();
         inorder.verify(mWifiMetrics).logUserActionEvent(UserActionEvent.EVENT_TOGGLE_WIFI_ON);
         inorder.verify(mWifiMetrics).incrementNumWifiToggles(eq(true), eq(true));
         inorder.verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_TOGGLE_WIFI_OFF),
@@ -4183,7 +4185,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETUP_WIZARD),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
+        mLooper.startAutoDispatch();
         mWifiServiceImpl.startSubscriptionProvisioning(mOsuProvider, mProvisioningCallback);
+        mLooper.stopAutoDispatch();
         verify(mClientModeManager).syncStartSubscriptionProvisioning(anyInt(),
                 eq(mOsuProvider), eq(mProvisioningCallback));
     }
@@ -5010,6 +5014,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         doThrow(new SecurityException()).when(mAppOpsManager)
                 .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
         assertTrue(mWifiServiceImpl.disconnect(TEST_PACKAGE_NAME));
+        mLooper.dispatchAll();
         verify(mClientModeManager).disconnect();
     }
 
@@ -5020,6 +5025,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testDisconnectWithChangeWifiStatePerm() throws Exception {
         assertFalse(mWifiServiceImpl.disconnect(TEST_PACKAGE_NAME));
+        mLooper.dispatchAll();
         verifyCheckChangePermission(TEST_PACKAGE_NAME);
         verify(mClientModeManager, never()).disconnect();
     }
