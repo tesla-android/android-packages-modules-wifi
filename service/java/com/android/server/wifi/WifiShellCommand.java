@@ -137,7 +137,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             sActiveRequests = new ConcurrentHashMap<>();
 
     private final ActiveModeWarden mActiveModeWarden;
-    private final ClientModeManager mPrimaryClientModeManager;
     private final WifiGlobals mWifiGlobals;
     private final WifiLockManager mWifiLockManager;
     private final WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
@@ -200,7 +199,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mWifiGlobals = wifiGlobals;
         mWifiThreadRunner = wifiThreadRunner;
         mActiveModeWarden = wifiInjector.getActiveModeWarden();
-        mPrimaryClientModeManager = mActiveModeWarden.getPrimaryClientModeManager();
         mWifiLockManager = wifiInjector.getWifiLockManager();
         mWifiNetworkSuggestionsManager = wifiInjector.getWifiNetworkSuggestionsManager();
         mWifiConfigManager = wifiInjector.getWifiConfigManager();
@@ -1226,7 +1224,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
 
         ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
         mWifiThreadRunner.post(() ->
-                mPrimaryClientModeManager.probeLink(new LinkProbeCallback() {
+                mActiveModeWarden.getPrimaryClientModeManager().probeLink(new LinkProbeCallback() {
                     @Override
                     public void onAck(int elapsedTimeMs) {
                         queue.offer("Link probe succeeded after " + elapsedTimeMs + " ms");
