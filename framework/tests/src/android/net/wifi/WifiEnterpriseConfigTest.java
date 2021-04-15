@@ -607,7 +607,7 @@ public class WifiEnterpriseConfigTest {
         assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig config = new WifiEnterpriseConfig();
 
-        assertEquals("", config.getDecoratedIdentityPrefix());
+        assertNull(config.getDecoratedIdentityPrefix());
         config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
         assertEquals(TEST_DECORATED_IDENTITY_PREFIX, config.getDecoratedIdentityPrefix());
     }
