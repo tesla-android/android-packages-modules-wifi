@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #
 # Copyright 2020, The Android Open Source Project
@@ -28,8 +28,8 @@ def is_in_aosp():
 
     for branch in branches:
         # current branch starts with a '*'
-        if branch.startswith('*'):
-            return '[aosp/' in branch
+        if branch.startswith(b'*'):
+            return b'[aosp/' in branch
 
     # otherwise assume in AOSP
     return True
