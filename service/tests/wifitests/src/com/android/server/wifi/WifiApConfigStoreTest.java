@@ -1093,4 +1093,35 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
                     .build();
         }
     }
+
+    @Test
+    public void testForceApBaneChannel() throws Exception {
+        int testBand = SoftApConfiguration.BAND_5GHZ; // Not default
+        int testChannal = 149;
+        WifiApConfigStore store = createWifiApConfigStore();
+        verifyDefaultApConfig(store.getApConfiguration(), TEST_DEFAULT_AP_SSID);
+        verify(mWifiConfigManager).saveToStore(true);
+
+        // Test to enable forced AP band
+        store.enableForceSoftApBandOrChannel(testBand, 0);
+        SoftApConfiguration expectedConfig = store.getApConfiguration();
+        assertEquals(expectedConfig.getBand(), testBand);
+        assertEquals(expectedConfig.getChannel(), 0);
+        // Disable forced AP band
+        store.disableForceSoftApBandOrChannel();
+        expectedConfig = store.getApConfiguration();
+        assertEquals(expectedConfig.getBand(), SoftApConfiguration.BAND_2GHZ);
+        assertEquals(expectedConfig.getChannel(), 0);
+
+        // Test to enable forced AP band
+        store.enableForceSoftApBandOrChannel(testBand, testChannal);
+        expectedConfig = store.getApConfiguration();
+        assertEquals(expectedConfig.getBand(), testBand);
+        assertEquals(expectedConfig.getChannel(), testChannal);
+        // Disable forced AP band
+        store.disableForceSoftApBandOrChannel();
+        expectedConfig = store.getApConfiguration();
+        assertEquals(expectedConfig.getBand(), SoftApConfiguration.BAND_2GHZ);
+        assertEquals(expectedConfig.getChannel(), 0);
+    }
 }

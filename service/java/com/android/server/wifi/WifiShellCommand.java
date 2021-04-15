@@ -142,7 +142,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     private final WifiConfigManager mWifiConfigManager;
     private final WifiNative mWifiNative;
-    private final HostapdHal mHostapdHal;
     private final CoexManager mCoexManager;
     private final WifiCountryCode mWifiCountryCode;
     private final WifiLastResortWatchdog mWifiLastResortWatchdog;
@@ -153,6 +152,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiNetworkFactory mWifiNetworkFactory;
     private final SelfRecovery mSelfRecovery;
     private final WifiThreadRunner mWifiThreadRunner;
+    private final WifiApConfigStore mWifiApConfigStore;
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
 
     /**
@@ -202,7 +202,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mWifiLockManager = wifiInjector.getWifiLockManager();
         mWifiNetworkSuggestionsManager = wifiInjector.getWifiNetworkSuggestionsManager();
         mWifiConfigManager = wifiInjector.getWifiConfigManager();
-        mHostapdHal = wifiInjector.getHostapdHal();
         mWifiNative = wifiInjector.getWifiNative();
         mCoexManager = wifiInjector.getCoexManager();
         mWifiCountryCode = wifiInjector.getWifiCountryCode();
@@ -213,6 +212,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
         mWifiNetworkFactory = wifiInjector.getWifiNetworkFactory();
         mSelfRecovery = wifiInjector.getSelfRecovery();
+        mWifiApConfigStore = wifiInjector.getWifiApConfigStore();
     }
 
     @Override
@@ -352,6 +352,31 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "send-link-probe": {
                     return sendLinkProbe(pw);
                 }
+                case "force-softap-band": {
+                    boolean forceBandEnabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
+                    if (forceBandEnabled) {
+                        String forcedBand = getNextArgRequired();
+                        if (forcedBand.equals("2")) {
+                            mWifiApConfigStore.enableForceSoftApBandOrChannel(
+                                    SoftApConfiguration.BAND_2GHZ, 0);
+                        } else if (forcedBand.equals("5")) {
+                            mWifiApConfigStore.enableForceSoftApBandOrChannel(
+                                    SoftApConfiguration.BAND_5GHZ, 0);
+                        } else if (forcedBand.equals("6")) {
+                            mWifiApConfigStore.enableForceSoftApBandOrChannel(
+                                    SoftApConfiguration.BAND_6GHZ, 0);
+                        } else {
+                            pw.println("Invalid argument to 'force-softap-band enabled' "
+                                    + "- must be a valid band integer (2|5|6)");
+                            return -1;
+                        }
+                        return 0;
+                    } else {
+                        mWifiApConfigStore.disableForceSoftApBandOrChannel();
+                        return 0;
+                    }
+
+                }
                 case "force-softap-channel": {
                     boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
                     if (enabled) {
@@ -394,10 +419,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                                     + " in a band supported by the device");
                             return -1;
                         }
-                        mHostapdHal.enableForceSoftApChannel(apChannel, band);
+                        mWifiApConfigStore.enableForceSoftApBandOrChannel(band, apChannel);
                         return 0;
                     } else {
-                        mHostapdHal.disableForceSoftApChannel();
+                        mWifiApConfigStore.disableForceSoftApBandOrChannel();
                         return 0;
                     }
                 }
@@ -1528,6 +1553,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Clears the user disabled networks list.");
         pw.println("  send-link-probe");
         pw.println("    Manually triggers a link probe.");
+        pw.println("  force-softap-band enabled <int> | disabled");
+        pw.println("    Forces soft AP band to 2|5|6");
         pw.println("  force-softap-channel enabled <int> | disabled");
         pw.println("    Sets whether soft AP channel is forced to <int> MHz");
         pw.println("    or left for normal   operation.");
