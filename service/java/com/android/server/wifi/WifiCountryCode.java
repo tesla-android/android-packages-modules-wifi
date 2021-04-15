@@ -16,9 +16,12 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_DEFAULT_COUNTRY_CODE;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
@@ -46,10 +49,12 @@ import java.util.Set;
  */
 public class WifiCountryCode {
     private static final String TAG = "WifiCountryCode";
+    private static final String BOOT_DEFAULT_WIFI_COUNTRY_CODE = "ro.boot.wificountrycode";
     private final Context mContext;
     private final TelephonyManager mTelephonyManager;
     private final ActiveModeWarden mActiveModeWarden;
     private final WifiNative mWifiNative;
+    private final WifiSettingsConfigStore mSettingsConfigStore;
     private List<ChangeListener> mListeners = new ArrayList<>();
     private boolean DBG = false;
     /**
@@ -67,7 +72,6 @@ public class WifiCountryCode {
             new ArrayMap<>();
     private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
 
-    private String mDefaultCountryCode = null;
     private String mTelephonyCountryCode = null;
     private String mOverrideCountryCode = null;
     private String mDriverCountryCode = null;
@@ -150,22 +154,30 @@ public class WifiCountryCode {
             ActiveModeWarden activeModeWarden,
             ClientModeImplMonitor clientModeImplMonitor,
             WifiNative wifiNative,
-            String oemDefaultCountryCode) {
+            @NonNull WifiSettingsConfigStore settingsConfigStore) {
         mContext = context;
         mTelephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         mActiveModeWarden = activeModeWarden;
         mWifiNative = wifiNative;
+        mSettingsConfigStore = settingsConfigStore;
 
         mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallbackInternal());
         clientModeImplMonitor.registerListener(new ClientModeListenerInternal());
         mWifiNative.registerCountryCodeEventListener(new CountryChangeListenerInternal());
 
-        if (!TextUtils.isEmpty(oemDefaultCountryCode)) {
-            mDefaultCountryCode = oemDefaultCountryCode.toUpperCase(Locale.US);
-        }
-
-        Log.d(TAG, "mDefaultCountryCode " + mDefaultCountryCode);
+        Log.d(TAG, "Default country code from system property "
+                + BOOT_DEFAULT_WIFI_COUNTRY_CODE + " is " + getOemDefaultCountryCode());
     }
+
+    /**
+     * Default country code stored in system property
+     * @return Country code if available, null otherwise.
+     */
+    public static String getOemDefaultCountryCode() {
+        String country = SystemProperties.get(BOOT_DEFAULT_WIFI_COUNTRY_CODE);
+        return WifiCountryCode.isValid(country) ? country.toUpperCase(Locale.US) : null;
+    }
+
     /**
      * Is this a valid country code
      * @param countryCode A 2-Character alphanumeric country code.
@@ -352,7 +364,9 @@ public class WifiCountryCode {
             return;
         }
 
-        mDefaultCountryCode = countryCode.toUpperCase(Locale.US);
+        mSettingsConfigStore.put(WIFI_DEFAULT_COUNTRY_CODE,
+                countryCode.toUpperCase(Locale.US));
+        Log.i(TAG, "Default country code updated in config store: " + countryCode);
 
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
@@ -370,7 +384,9 @@ public class WifiCountryCode {
         pw.println("mRevertCountryCodeOnCellularLoss: "
                 + mContext.getResources().getBoolean(
                         R.bool.config_wifi_revert_country_code_on_cellular_loss));
-        pw.println("mDefaultCountryCode: " + mDefaultCountryCode);
+        pw.println("DefaultCountryCode(system property): " + getOemDefaultCountryCode());
+        pw.println("DefaultCountryCode(config store): "
+                + mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE));
         pw.println("mDriverCountryCode: " + mDriverCountryCode);
         pw.println("mTelephonyCountryCode: " + mTelephonyCountryCode);
         pw.println("mTelephonyCountryTimestamp: " + mTelephonyCountryTimestamp);
@@ -405,7 +421,7 @@ public class WifiCountryCode {
         if (mTelephonyCountryCode != null) {
             return mTelephonyCountryCode;
         }
-        return mDefaultCountryCode;
+        return mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE);
     }
 
     private boolean setCountryCodeNative(String country) {

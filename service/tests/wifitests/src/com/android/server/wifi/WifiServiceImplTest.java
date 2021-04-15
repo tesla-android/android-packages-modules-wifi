@@ -7977,4 +7977,81 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatch();
         verify(mWifiNative).getUsableChannels(anyInt(), anyInt(), anyInt());
     }
+
+    /**
+     * Verify that if the caller has NETWORK_SETTINGS permission, and the overlay
+     * config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW is set, then it can add an
+     * insecure Enterprise network, with Root CA certificate not set and/or domain name not set.
+     */
+    @Test
+    public void testAddInsecureEnterpirseNetworkWithNetworkSettingsPerm() throws Exception {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        // First set flag to not allow
+        when(mResources.getBoolean(
+                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
+                .thenReturn(false);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
+                new NetworkUpdateResult(0));
+
+        // Create an insecure Enterprise network
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setCaPath(null);
+        config.enterpriseConfig.setDomainSuffixMatch(null);
+
+        // Verify operation fails
+        mLooper.startAutoDispatch();
+        assertEquals(-1, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any());
+
+        // Set flag to allow
+        when(mResources.getBoolean(
+                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
+                .thenReturn(true);
+
+        // Verify operation succeeds
+        mLooper.startAutoDispatch();
+        assertEquals(0, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiConfigManager).addOrUpdateNetwork(any(),  anyInt(), any());
+    }
+
+
+    /**
+     * Verify that if the caller does NOT have NETWORK_SETTINGS permission, then it cannot add an
+     * insecure Enterprise network, with Root CA certificate not set and/or domain name not set,
+     * regardless of the overlay config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW
+     * value.
+     */
+    @Test
+    public void testAddInsecureEnterpirseNetworkWithNoNetworkSettingsPerm() throws Exception {
+        // First set flag to not allow
+        when(mResources.getBoolean(
+                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
+                .thenReturn(false);
+
+        // Create an insecure Enterprise network
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.setCaPath(null);
+        config.enterpriseConfig.setDomainSuffixMatch(null);
+
+        // Verify operation fails
+        mLooper.startAutoDispatch();
+        assertEquals(-1, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any());
+
+        // Set flag to allow
+        when(mResources.getBoolean(
+                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
+                .thenReturn(true);
+
+        // Verify operation still fails
+        mLooper.startAutoDispatch();
+        assertEquals(-1, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any());
+    }
 }
