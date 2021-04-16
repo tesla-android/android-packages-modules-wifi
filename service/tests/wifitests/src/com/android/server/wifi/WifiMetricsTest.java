@@ -531,6 +531,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final long NUM_FILS_SUPPORTED_NETWORKS_SCAN_RESULTS = 2;
     private static final long NUM_11AX_NETWORKS_SCAN_RESULTS = 3;
     private static final long NUM_6G_NETWORKS_SCAN_RESULTS = 2;
+    private static final long NUM_6G_PSC_NETWORKS_SCAN_RESULTS = 1;
     private static final long NUM_BSSID_FILTERED_DUE_TO_MBO_ASSOC_DISALLOW_IND = 3;
     private static final long NUM_CONNECT_TO_MBO_SUPPORTED_NETWORKS = 4;
     private static final long NUM_CONNECT_TO_OCE_SUPPORTED_NETWORKS = 3;
@@ -540,11 +541,12 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final long NUM_CONNECT_REQUEST_WITH_FILS_AKM = 4;
     private static final long NUM_L2_CONNECTION_THROUGH_FILS_AUTHENTICATION = 3;
 
-    public static final int FEATURE_MBO = 1 << 0;
-    public static final int FEATURE_MBO_CELL_DATA_AWARE = 1 << 1;
-    public static final int FEATURE_OCE = 1 << 2;
-    public static final int FEATURE_11AX = 1 << 3;
-    public static final int FEATURE_6G = 1 << 4;
+    private static final int FEATURE_MBO = 1 << 0;
+    private static final int FEATURE_MBO_CELL_DATA_AWARE = 1 << 1;
+    private static final int FEATURE_OCE = 1 << 2;
+    private static final int FEATURE_11AX = 1 << 3;
+    private static final int FEATURE_6G = 1 << 4;
+    private static final int FEATURE_6G_PSC = 1 << 5;
 
     private ScanDetail buildMockScanDetail(boolean hidden, NetworkDetail.HSRelease hSRelease,
             String capabilities, int supportedFeatures) {
@@ -571,6 +573,9 @@ public class WifiMetricsTest extends WifiBaseTest {
         }
         if ((supportedFeatures & FEATURE_6G) != 0) {
             when(mockScanResult.is6GHz()).thenReturn(true);
+        }
+        if ((supportedFeatures & FEATURE_6G_PSC) != 0) {
+            when(mockScanResult.is6GhzPsc()).thenReturn(true);
         }
         return mockScanDetail;
     }
@@ -632,7 +637,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         mockScanDetails.add(buildMockScanDetail(false, null, "[WPA2-OWE-CCMP]",
                 FEATURE_MBO | FEATURE_MBO_CELL_DATA_AWARE | FEATURE_OCE));
         mockScanDetails.add(buildMockScanDetail(false, null, "[RSN-SUITE_B_192][MFPR]",
-                FEATURE_11AX | FEATURE_6G));
+                FEATURE_11AX | FEATURE_6G | FEATURE_6G_PSC));
         // WPA3 Enterprise transition network
         mockScanDetails.add(buildMockScanDetail(false, null,
                 "[WPA-EAP/SHA1+EAP/SHA256-CCMP][MFPC]", 0));
@@ -1170,7 +1175,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     /**
      * Assert that values in deserializedWifiMetrics match those set in 'setAndIncrementMetrics'
      */
-    public void assertDeserializedMetricsCorrect() throws Exception {
+    private void assertDeserializedMetricsCorrect() throws Exception {
         assertEquals("mDecodedProto.numSavedNetworks == NUM_SAVED_NETWORKS",
                 NUM_SAVED_NETWORKS, mDecodedProto.numSavedNetworks);
         assertEquals("mDecodedProto.numSavedNetworksWithMacRandomization == NUM_SAVED_NETWORKS-1",
@@ -1311,6 +1316,8 @@ public class WifiMetricsTest extends WifiBaseTest {
                 mDecodedProto.num11AxNetworkScanResults);
         assertEquals(NUM_6G_NETWORKS_SCAN_RESULTS * NUM_SCANS,
                 mDecodedProto.num6GNetworkScanResults);
+        assertEquals(NUM_6G_PSC_NETWORKS_SCAN_RESULTS * NUM_SCANS,
+                mDecodedProto.num6GPscNetworkScanResults);
         assertEquals(NUM_SCANS,
                 mDecodedProto.numScans);
         assertEquals(NUM_CONNECTIVITY_ONESHOT_SCAN_EVENT,

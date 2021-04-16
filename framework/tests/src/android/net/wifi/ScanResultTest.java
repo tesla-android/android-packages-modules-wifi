@@ -18,7 +18,9 @@ package android.net.wifi;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.validateMockitoUsage;
 
 import android.net.wifi.ScanResult.InformationElement;
@@ -123,6 +125,21 @@ public class ScanResultTest {
     @After
     public void cleanup() {
         validateMockitoUsage();
+    }
+
+    /**
+     * Verify the logic that determines whether a frequency is PSC.
+     */
+    @Test
+    public void testIs6GHzPsc() {
+        int test2G = 2412;
+        int test6GNonPsc = ScanResult.BAND_6_GHZ_PSC_START_MHZ
+                + ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ - 20;
+        int test6GPsc = ScanResult.BAND_6_GHZ_PSC_START_MHZ
+                + ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ;
+        assertFalse(ScanResult.is6GHzPsc(test2G));
+        assertFalse(ScanResult.is6GHzPsc(test6GNonPsc));
+        assertTrue(ScanResult.is6GHzPsc(test6GPsc));
     }
 
     /**
