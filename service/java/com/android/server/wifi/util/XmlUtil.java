@@ -881,6 +881,7 @@ public class XmlUtil {
                     == WifiConfiguration.RANDOMIZATION_PERSISTENT && !fromSuggestion) {
                 configuration.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
             }
+            configuration.convertLegacyFieldsToSecurityParamsIfNeeded();
             return Pair.create(configKeyInData, configuration);
         }
     }
