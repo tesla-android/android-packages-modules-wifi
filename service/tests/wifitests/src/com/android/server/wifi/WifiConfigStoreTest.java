@@ -34,6 +34,7 @@ import android.os.test.TestLooper;
 import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
+import com.android.internal.util.FastPrintWriter;
 import com.android.server.wifi.WifiConfigStore.StoreData;
 import com.android.server.wifi.WifiConfigStore.StoreFile;
 import com.android.server.wifi.util.ArrayUtils;
@@ -53,8 +54,11 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1149,5 +1153,19 @@ public class WifiConfigStoreTest extends WifiBaseTest {
         public void setHasAnyNewData(boolean hasAnyNewData) {
             mHasAnyNewData = hasAnyNewData;
         }
+    }
+
+    /**
+     * Verify dump will not crash when no UserStores set.
+     */
+    @Test
+    public void testDump() {
+        final FileDescriptor fd = new FileDescriptor();
+        final FileOutputStream fout = new FileOutputStream(fd);
+        final PrintWriter pw = new FastPrintWriter(fout);
+        mWifiConfigStore.dump(fd, pw, new String[0]);
+
+        mWifiConfigStore.setUserStores(mUserStores);
+        mWifiConfigStore.dump(fd, pw, new String[0]);
     }
 }
