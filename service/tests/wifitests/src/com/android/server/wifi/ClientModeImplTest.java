@@ -6092,7 +6092,7 @@ public class ClientModeImplTest extends WifiBaseTest {
             assertEquals(testSubscriberId, agentConfig.subscriberId);
         }, (cap) -> {
                 assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
-                assertEquals(Collections.singleton(DATA_SUBID), cap.getSubIds());
+                assertEquals(Collections.singleton(DATA_SUBID), cap.getSubscriptionIds());
             });
         // Verify VCN policy listener is registered
         inOrder.verify(vcnManager).addVcnNetworkPolicyChangeListener(any(),
@@ -6159,7 +6159,7 @@ public class ClientModeImplTest extends WifiBaseTest {
             assertEquals(null, agentConfig.subscriberId);
         }, (cap) -> {
                 assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED));
-                assertTrue(cap.getSubIds().isEmpty());
+                assertTrue(cap.getSubscriptionIds().isEmpty());
             });
 
         // Verify VCN policy listener is registered

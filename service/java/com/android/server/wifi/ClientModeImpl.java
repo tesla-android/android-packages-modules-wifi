@@ -3903,7 +3903,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
             if (mWifiInfo.getSubscriptionId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID
                     && mWifiInfo.isCarrierMerged()) {
-                builder.setSubIds(Collections.singleton(mWifiInfo.getSubscriptionId()));
+                builder.setSubscriptionIds(Collections.singleton(mWifiInfo.getSubscriptionId()));
             }
         }
 
