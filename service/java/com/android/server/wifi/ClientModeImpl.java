@@ -3925,7 +3925,20 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (vcnNetworkPolicy.isTeardownRequested()) {
             sendMessage(CMD_DISCONNECT);
         }
-        return vcnNetworkPolicy.getNetworkCapabilities();
+        final NetworkCapabilities vcnCapability = vcnNetworkPolicy.getNetworkCapabilities();
+        if (!vcnCapability.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED)) {
+            if (mVerboseLoggingEnabled) {
+                logd("NET_CAPABILITY_NOT_VCN_MANAGED is removed");
+            }
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VCN_MANAGED);
+        }
+        if (!vcnCapability.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            if (mVerboseLoggingEnabled) {
+                logd("NET_CAPABILITY_NOT_RESTRICTED is removed");
+            }
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+        return builder.build();
     }
 
     private void updateLinkBandwidth(NetworkCapabilities.Builder networkCapabilitiesBuilder) {

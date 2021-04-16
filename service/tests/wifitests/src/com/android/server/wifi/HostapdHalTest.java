@@ -1471,65 +1471,6 @@ public class HostapdHalTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies the successful addition of access point with Dual channel config
-     * and enabled the forced channel feature.
-     */
-    @Test
-    public void testAddAccessPointSuccess_DualBandConfigAndEnableForceApChannel() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS()); // dual band supported on S.
-        mResources.setBoolean(R.bool.config_wifi_softap_acs_supported, true);
-        when(mServiceManagerMock.getTransport(anyString(), anyString()))
-                .thenReturn(IServiceManager.Transport.HWBINDER);
-        mIHostapdMockV11 = mock(android.hardware.wifi.hostapd.V1_1.IHostapd.class);
-        mIHostapdMockV12 = mock(android.hardware.wifi.hostapd.V1_2.IHostapd.class);
-        mIHostapdMockV13 = mock(android.hardware.wifi.hostapd.V1_3.IHostapd.class);
-        mHostapdHal = new HostapdHalSpy();
-
-        executeAndValidateInitializationSequenceOnLastHIDL(false);
-
-        SparseIntArray dual_channels = new SparseIntArray(2);
-        dual_channels.put(SoftApConfiguration.BAND_5GHZ, 149);
-        dual_channels.put(SoftApConfiguration.BAND_2GHZ, 0);
-
-        Builder configurationBuilder = new SoftApConfiguration.Builder();
-        configurationBuilder.setSsid(NETWORK_SSID);
-        configurationBuilder.setHiddenSsid(false);
-        configurationBuilder.setPassphrase(NETWORK_PSK,
-                SoftApConfiguration.SECURITY_TYPE_WPA3_SAE);
-        configurationBuilder.setChannels(dual_channels);
-
-        when(mIHostapdMockV13.addAccessPoint_1_3(
-                mIfaceParamsCaptorV13.capture(), mNetworkParamsV13Captor.capture()))
-                .thenReturn(mStatusSuccess12);
-
-        mHostapdHal.enableForceSoftApChannel(11, SoftApConfiguration.BAND_2GHZ);
-        assertTrue(mHostapdHal.addAccessPoint(IFACE_NAME,
-                configurationBuilder.build(), true,
-                () -> mSoftApListener.onFailure()));
-        verify(mIHostapdMockV13).addAccessPoint_1_3(any(), any());
-
-        assertEquals(IFACE_NAME, mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.ifaceName);
-        assertTrue(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211N);
-        assertFalse(mIfaceParamsCaptorV13.getValue().V1_2.V1_1.V1_0.hwModeParams.enable80211AC);
-        assertEquals(mIfaceParamsCaptorV13.getValue().channelParamsList.size(), 1);
-        // 2.4G band
-        assertFalse(mIfaceParamsCaptorV13.getValue().channelParamsList.get(0).enableAcs);
-
-        assertEquals(mIfaceParamsCaptorV13.getValue().channelParamsList.get(0).V1_2.bandMask,
-                android.hardware.wifi.hostapd.V1_2.IHostapd.BandMask.BAND_2_GHZ);
-
-        assertEquals(mIfaceParamsCaptorV13.getValue().channelParamsList.get(0).channel, 11);
-
-        assertEquals(NativeUtil.stringToByteArrayList(NETWORK_SSID),
-                mNetworkParamsV13Captor.getValue().V1_2.V1_0.ssid);
-        assertFalse(mNetworkParamsV13Captor.getValue().V1_2.V1_0.isHidden);
-        assertEquals(android.hardware.wifi.hostapd.V1_2.IHostapd.EncryptionType.WPA3_SAE,
-                mNetworkParamsV13Captor.getValue().V1_2.encryptionType);
-        assertEquals(NETWORK_PSK, mNetworkParamsV13Captor.getValue().V1_2.passphrase);
-        assertEquals("", mNetworkParamsV13Captor.getValue().V1_2.V1_0.pskPassphrase);
-    }
-
-    /**
      * Verifies the successful addition of access point with metered SAE indication on the 80211ax
      * supported device.
      */

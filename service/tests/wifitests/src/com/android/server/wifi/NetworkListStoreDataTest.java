@@ -237,7 +237,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<boolean name=\"AppInstalledPrivateKey\" value=\"false\" />\n"
                     + "<null name=\"KeyChainAlias\" />\n"
                     + (SdkLevel.isAtLeastS()
-                    ? "<string name=\"DecoratedIdentityPrefix\"></string>\n" : "")
+                    ? "<null name=\"DecoratedIdentityPrefix\" />\n" : "")
                     + "</WifiEnterpriseConfiguration>\n"
                     + "</Network>\n";;
 

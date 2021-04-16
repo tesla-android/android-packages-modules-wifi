@@ -76,6 +76,9 @@ public class WifiApConfigStore {
     private final WifiConfigManager mWifiConfigManager;
     private final ActiveModeWarden mActiveModeWarden;
     private boolean mHasNewDataToSerialize = false;
+    private boolean mForceApChannel = false;
+    private int mForcedApBand;
+    private int mForcedApChannel;
 
     /**
      * Module to interact with the wifi config store.
@@ -138,6 +141,15 @@ public class WifiApConfigStore {
         if (!Objects.equals(mPersistentWifiApConfig, sanitizedPersistentconfig)) {
             Log.d(TAG, "persisted config was converted, need to resave it");
             persistConfigAndTriggerBackupManagerProxy(sanitizedPersistentconfig);
+        }
+        if (mForceApChannel) {
+            Log.d(TAG, "getApConfiguration: Band force to " + mForcedApBand
+                    + ", and channel force to " + mForcedApChannel);
+            return mForcedApChannel == 0
+                    ? new SoftApConfiguration.Builder(mPersistentWifiApConfig)
+                            .setBand(mForcedApBand).build()
+                    : new SoftApConfiguration.Builder(mPersistentWifiApConfig)
+                            .setChannel(mForcedApChannel, mForcedApBand).build();
         }
         return mPersistentWifiApConfig;
     }
@@ -608,5 +620,24 @@ public class WifiApConfigStore {
             }
         }
         return true;
+    }
+
+    /**
+     * Enable force-soft-AP-channel mode which takes effect when soft AP starts next time
+     *
+     * @param forcedApBand The forced band.
+     * @param forcedApChannel The forced IEEE channel number or 0 when forced AP band only.
+     */
+    public void enableForceSoftApBandOrChannel(@BandType int forcedApBand, int forcedApChannel) {
+        mForceApChannel = true;
+        mForcedApChannel = forcedApChannel;
+        mForcedApBand = forcedApBand;
+    }
+
+    /**
+     * Disable force-soft-AP-channel mode which take effect when soft AP starts next time
+     */
+    public void disableForceSoftApBandOrChannel() {
+        mForceApChannel = false;
     }
 }

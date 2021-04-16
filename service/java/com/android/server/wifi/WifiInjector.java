@@ -1032,4 +1032,8 @@ public class WifiInjector {
     public BuildProperties getBuildProperties() {
         return mBuildProperties;
     }
+
+    public DefaultClientModeManager getDefaultClientModeManager() {
+        return mDefaultClientModeManager;
+    }
 }

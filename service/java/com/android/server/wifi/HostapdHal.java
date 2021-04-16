@@ -72,9 +72,6 @@ public class HostapdHal {
     private boolean mVerboseLoggingEnabled = false;
     private final Context mContext;
     private final Handler mEventHandler;
-    private boolean mForceApChannel = false;
-    private int mForcedApBand;
-    private int mForcedApChannel;
 
     // Hostapd HAL interface objects
     private IServiceManager mIServiceManager = null;
@@ -372,23 +369,6 @@ public class HostapdHal {
     }
 
     /**
-     * Enable force-soft-AP-channel mode which takes effect when soft AP starts next time
-     * @param forcedApChannel The forced IEEE channel number
-     */
-    void enableForceSoftApChannel(int forcedApChannel, int forcedApBand) {
-        mForceApChannel = true;
-        mForcedApChannel = forcedApChannel;
-        mForcedApBand = forcedApBand;
-    }
-
-    /**
-     * Disable force-soft-AP-channel mode which take effect when soft AP starts next time
-     */
-    void disableForceSoftApChannel() {
-        mForceApChannel = false;
-    }
-
-    /**
      * Register the provided callback handler for SoftAp events.
      * <p>
      * Note that only one callback can be registered at a time - any registration overrides previous
@@ -427,10 +407,6 @@ public class HostapdHal {
                                   boolean isMetered, @NonNull Runnable onFailureListener) {
         synchronized (mLock) {
             final String methodStr = "addAccessPoint";
-            if (mForceApChannel) {
-                config = new SoftApConfiguration.Builder(config)
-                        .setChannel(mForcedApChannel, mForcedApBand).build();
-            }
             IHostapd.IfaceParams ifaceParamsV1_0 = prepareIfaceParamsV1_0(ifaceName, config);
             android.hardware.wifi.hostapd.V1_2.IHostapd.NetworkParams nwParamsV1_2 =
                     prepareNetworkParamsV1_2(config);

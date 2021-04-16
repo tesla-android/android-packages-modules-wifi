@@ -1618,10 +1618,11 @@ public class WifiEnterpriseConfig implements Parcelable {
      *
      * @return The decorated identity prefix
      */
-    public @NonNull String getDecoratedIdentityPrefix() {
+    public @Nullable String getDecoratedIdentityPrefix() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
         }
-        return getFieldValue(DECORATED_IDENTITY_PREFIX_KEY);
+        final String decoratedId = getFieldValue(DECORATED_IDENTITY_PREFIX_KEY);
+        return decoratedId.isEmpty() ? null : decoratedId;
     }
 }
