@@ -6308,6 +6308,20 @@ public class ClientModeImplTest extends WifiBaseTest {
         });
     }
 
+    /**
+     * Verify onCellularConnectivityChanged plumbs the information to the right locations.
+     */
+    @Test
+    public void testOnCellularConnectivityChanged() {
+        mCmi.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_AVAILABLE);
+        verify(mWifiConfigManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_AVAILABLE);
+
+        mCmi.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+        verify(mWifiConfigManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+    }
+
     private void setScreenState(boolean screenOn) {
         BroadcastReceiver broadcastReceiver = mScreenStateBroadcastReceiverCaptor.getValue();
         assertNotNull(broadcastReceiver);

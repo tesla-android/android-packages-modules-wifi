@@ -5448,6 +5448,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager).removeEphemeralCarrierNetworks();
         verify(mWifiNetworkSuggestionsManager).resetSimNetworkSuggestions();
         verify(mPasspointManager).resetSimPasspointNetwork();
+        verify(mWifiDataStall).resetPhoneStateListener();
     }
 
     /**

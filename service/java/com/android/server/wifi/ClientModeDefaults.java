@@ -167,6 +167,8 @@ public interface ClientModeDefaults extends ClientMode {
         return false;
     }
 
+    default void onCellularConnectivityChanged(@WifiDataStall.CellularDataStatusCode int status) {}
+
     default void probeLink(ClientMode.LinkProbeCallback callback, int mcs) {
         callback.onFailure(ClientMode.LinkProbeCallback.LINK_PROBE_ERROR_NOT_CONNECTED);
     }

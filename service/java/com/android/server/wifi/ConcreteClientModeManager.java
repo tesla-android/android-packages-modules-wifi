@@ -1284,6 +1284,11 @@ public class ConcreteClientModeManager implements ClientModeManager {
     }
 
     @Override
+    public void onCellularConnectivityChanged(@WifiDataStall.CellularDataStatusCode int status) {
+        getClientMode().onCellularConnectivityChanged(status);
+    }
+
+    @Override
     public void probeLink(LinkProbeCallback callback, int mcs) {
         getClientMode().probeLink(callback, mcs);
     }

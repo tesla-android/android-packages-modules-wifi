@@ -84,7 +84,7 @@ public class NonCarrierMergedNetworksStatusTracker {
     }
 
     /**
-     * Re-enable autojoin for all non-carrier-merged networks.
+     * Resets this class and re-enables auto-join for all non-carrier-merged networks.
      */
     public void clear() {
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
