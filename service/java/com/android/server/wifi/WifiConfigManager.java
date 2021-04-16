@@ -410,6 +410,16 @@ public class WifiConfigManager {
     }
 
     /**
+     * Update the cellular data availability of the default data SIM.
+     */
+    public void onCellularConnectivityChanged(@WifiDataStall.CellularDataStatusCode int status) {
+        localLog("onCellularConnectivityChanged:" + status);
+        if (status == WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE) {
+            stopRestrictingAutoJoinToSubscriptionId();
+        }
+    }
+
+    /**
      * Determine if the framework should perform enhanced MAC randomization when connecting
      * to the SSID or FQDN in the input WifiConfiguration.
      * @param config

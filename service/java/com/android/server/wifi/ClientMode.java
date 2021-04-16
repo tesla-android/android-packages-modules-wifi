@@ -145,6 +145,8 @@ public interface ClientMode {
 
     boolean isSupplicantTransientState();
 
+    void onCellularConnectivityChanged(@WifiDataStall.CellularDataStatusCode int status);
+
     /** Result callback for {@link #probeLink(LinkProbeCallback, int)} */
     interface LinkProbeCallback extends WifiNl80211Manager.SendMgmtFrameCallback {
 
