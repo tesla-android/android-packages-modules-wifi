@@ -512,6 +512,9 @@
     <!-- Network selection optimization at DEVICE_MOBILITY_STATE_HIGH_MVMT -->
     <bool translatable="false" name="config_wifiHighMovementNetworkSelectionOptimizationEnabled">true</bool>
 
+    <!-- Do a single scan when cell data loss is detected. -->
+    <bool translatable="false" name="config_wifiScanOnCellularDataLossEnabled">false</bool>
+
     <!-- Duration for the delayed scan used to verify access points are staying relatively stationary
     to the device at high mobility state. (default = 10 seconds) -->
     <integer translatable="false" name="config_wifiHighMovementNetworkSelectionOptimizationScanDelayMs">10000</integer>

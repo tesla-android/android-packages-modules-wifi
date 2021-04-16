@@ -30,6 +30,7 @@ import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.ClientModeImpl.CMD_PRE_DHCP_ACTION;
+import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_STA_FACTORY_MAC_ADDRESS;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -6320,6 +6321,23 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
         verify(mWifiConfigManager).onCellularConnectivityChanged(
                 WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+    }
+
+    /**
+     * Verify that when cellular data is lost and wifi is not connected, we force a connectivity
+     * scan.
+     */
+    @Test
+    public void testOnCellularConnectivityChangedForceConnectivityScan() throws Exception {
+        mResources.setBoolean(R.bool.config_wifiScanOnCellularDataLossEnabled, true);
+        // verify a connectivity scan is forced since wifi is not connected
+        mCmi.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+        verify(mWifiConnectivityManager).forceConnectivityScan(WIFI_WORK_SOURCE);
+
+        // verify that after wifi is connected, loss of cellular data will not trigger scans.
+        connect();
+        mCmi.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+        verify(mWifiConnectivityManager).forceConnectivityScan(WIFI_WORK_SOURCE);
     }
 
     private void setScreenState(boolean screenOn) {

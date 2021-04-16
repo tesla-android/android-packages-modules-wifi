@@ -6279,6 +6279,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     @Override
     public void onCellularConnectivityChanged(@WifiDataStall.CellularDataStatusCode int status) {
         mWifiConfigManager.onCellularConnectivityChanged(status);
+        // do a scan if no cell data and currently not connect to wifi
+        if (status == WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE
+                && getConnectedWifiConfigurationInternal() == null) {
+            if (mContext.getResources().getBoolean(
+                    R.bool.config_wifiScanOnCellularDataLossEnabled)) {
+                mWifiConnectivityManager.forceConnectivityScan(WIFI_WORK_SOURCE);
+            }
+        }
     }
 
     @Override
