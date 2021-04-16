@@ -2683,6 +2683,7 @@ public class WifiMetrics {
         int oceSupportedNetworks = 0;
         int filsSupportedNetworks = 0;
         int band6gNetworks = 0;
+        int band6gPscNetworks = 0;
         int standard11axNetworks = 0;
 
         for (ScanDetail scanDetail : scanDetails) {
@@ -2722,6 +2723,9 @@ public class WifiMetrics {
                 }
                 if (scanResult.is6GHz()) {
                     band6gNetworks++;
+                    if (scanResult.is6GhzPsc()) {
+                        band6gPscNetworks++;
+                    }
                 }
                 if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)
                         || ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
@@ -2765,6 +2769,7 @@ public class WifiMetrics {
             mWifiLogProto.numFilsSupportedNetworkScanResults += filsSupportedNetworks;
             mWifiLogProto.num11AxNetworkScanResults += standard11axNetworks;
             mWifiLogProto.num6GNetworkScanResults += band6gNetworks;
+            mWifiLogProto.num6GPscNetworkScanResults += band6gPscNetworks;
             mWifiLogProto.numScans++;
         }
     }
@@ -3678,6 +3683,8 @@ public class WifiMetrics {
                         + mWifiLogProto.num11AxNetworkScanResults);
                 pw.println("mWifiLogProto.num6GNetworkScanResults"
                         + mWifiLogProto.num6GNetworkScanResults);
+                pw.println("mWifiLogProto.num6GPscNetworkScanResults"
+                        + mWifiLogProto.num6GPscNetworkScanResults);
                 pw.println("mWifiLogProto.numBssidFilteredDueToMboAssocDisallowInd="
                         + mWifiLogProto.numBssidFilteredDueToMboAssocDisallowInd);
                 pw.println("mWifiLogProto.numConnectToNetworkSupportingMbo="

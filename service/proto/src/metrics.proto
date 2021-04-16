@@ -742,6 +742,9 @@ message WifiLog {
 
   // Bandwidth estimator stats.
   optional BandwidthEstimatorStats bandwidth_estimator_stats = 210;
+
+  // Total number of scan results from 6GHz PSC band
+  optional int32 num_6g_psc_network_scan_results = 211;
 }
 
 // Information that gets logged for every WiFi connection.
