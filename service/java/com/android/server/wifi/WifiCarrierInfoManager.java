@@ -610,7 +610,8 @@ public class WifiCarrierInfoManager {
         if (carrierConfigManager == null) {
             return;
         }
-
+        SparseArray<PersistableBundle> cachedCarrierConfigPerSubIdOld =
+                mCachedCarrierConfigPerSubId.clone();
         mCachedCarrierConfigPerSubId.clear();
         mImsiEncryptionRequired.clear();
         mImsiEncryptionInfoAvailable.clear();
@@ -633,6 +634,16 @@ public class WifiCarrierInfoManager {
                 }
             } else {
                 Log.e(TAG, "Carrier config is missing for: " + subId);
+            }
+            PersistableBundle bundleOld = cachedCarrierConfigPerSubIdOld.get(subId);
+            if (bundleOld != null && bundleOld.getBoolean(CarrierConfigManager
+                    .KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL)
+                    && !areMergedCarrierWifiNetworksAllowed(subId)) {
+                vlogd("Allow carrier merged change from true to false");
+                for (OnCarrierOffloadDisabledListener listener :
+                        mOnCarrierOffloadDisabledListeners) {
+                    listener.onCarrierOffloadDisabled(subId, true);
+                }
             }
 
             try {
