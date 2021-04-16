@@ -897,7 +897,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
@@ -923,7 +923,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
@@ -955,7 +955,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
@@ -994,7 +994,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
@@ -1053,7 +1053,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
@@ -1079,7 +1079,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
@@ -1110,7 +1110,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mInOrder.verify(mWifiVendorHal).startVendorHal();
         if (SdkLevel.isAtLeastS()) {
             mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-            mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
@@ -1217,7 +1217,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                         mIfaceCallback0, TEST_WORKSOURCE));
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
-        mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+        mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -1283,7 +1283,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                 mIfaceCallback0, TEST_WORKSOURCE, SoftApConfiguration.BAND_2GHZ, false));
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
-        mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+        mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
         mInOrder.verify(mHostapdHal).startDaemon();
@@ -1461,7 +1461,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
             mInOrder.verify(mWifiVendorHal).startVendorHal();
             if (SdkLevel.isAtLeastS()) {
                 mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-                mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+                mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
             }
         }
         if (!existingStaIface) {
@@ -1552,7 +1552,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
             mInOrder.verify(mWifiVendorHal).startVendorHal();
             if (SdkLevel.isAtLeastS()) {
                 mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-                mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+                mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
             }
         }
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
@@ -1642,7 +1642,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
             mInOrder.verify(mWifiVendorHal).startVendorHal();
             if (SdkLevel.isAtLeastS()) {
                 mInOrder.verify(mWifiVendorHal).setCoexUnsafeChannels(any(), anyInt());
-                mInOrder.verify(mWificondControl).registerCountryCodeChangeListener(any(), any());
+                mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
             }
         }
         if (!existingApIface) {

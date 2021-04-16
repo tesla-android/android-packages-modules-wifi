@@ -165,7 +165,7 @@ public class WifiNative {
     }
 
     private static class CountryCodeChangeListenerInternal implements
-            WifiNl80211Manager.CountryCodeChangeListener {
+            WifiNl80211Manager.CountryCodeChangedListener {
         private WifiCountryCode.ChangeListener mListener;
 
         public void setChangeListener(@NonNull WifiCountryCode.ChangeListener listener) {
@@ -173,7 +173,7 @@ public class WifiNative {
         }
 
         @Override
-        public void onChanged(String country) {
+        public void onCountryCodeChanged(String country) {
             Log.d(TAG, "onCountryCodeChanged: " + country);
             if (mListener != null) {
                 mListener.onDriverCountryCodeChanged(country);
@@ -480,13 +480,11 @@ public class WifiNative {
      * Helper method invoked to setup wificond related callback/listener.
      */
     private void registerWificondListenerIfNecessary() {
-        if (mCountryCodeChangeListener == null) {
-            mCountryCodeChangeListener = new CountryCodeChangeListenerInternal();
+        if (mCountryCodeChangeListener == null && SdkLevel.isAtLeastS()) {
             // The country code listener is a new API in S.
-            if (SdkLevel.isAtLeastS()) {
-                mWifiCondManager.registerCountryCodeChangeListener(Runnable::run,
-                        mCountryCodeChangeListener);
-            }
+            mCountryCodeChangeListener = new CountryCodeChangeListenerInternal();
+            mWifiCondManager.registerCountryCodeChangedListener(Runnable::run,
+                    mCountryCodeChangeListener);
         }
     }
 
@@ -3987,6 +3985,8 @@ public class WifiNative {
      */
     public void registerCountryCodeEventListener(WifiCountryCode.ChangeListener listener) {
         registerWificondListenerIfNecessary();
-        mCountryCodeChangeListener.setChangeListener(listener);
+        if (mCountryCodeChangeListener != null) {
+            mCountryCodeChangeListener.setChangeListener(listener);
+        }
     }
 }
