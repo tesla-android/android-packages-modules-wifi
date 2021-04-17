@@ -1234,14 +1234,14 @@ public class WifiScoreCard {
             long txBytes = mFrameworkFacade.getTotalTxBytes() - mFrameworkFacade.getMobileTxBytes();
             long rxBytes = mFrameworkFacade.getTotalRxBytes() - mFrameworkFacade.getMobileRxBytes();
             // Sometimes TrafficStats byte counts return invalid values
-            // Ignore two polls if it happens
+            // Ignore next two polls if it happens
             boolean trafficValid = txBytes >= mLastTxBytes && rxBytes >= mLastRxBytes;
             if (!mLastTrafficValid || !trafficValid) {
                 mLastTrafficValid = trafficValid;
-                mLastTxBytes = txBytes;
-                mLastRxBytes = rxBytes;
                 logv("invalid traffic count tx " + txBytes + " last " + mLastTxBytes
                         + " rx " + rxBytes + " last " + mLastRxBytes);
+                mLastTxBytes = txBytes;
+                mLastRxBytes = rxBytes;
                 return;
             }
 
@@ -1279,7 +1279,7 @@ public class WifiScoreCard {
                 return;
             }
 
-            int onTimeMs = newStats.on_time - oldStats.on_time;
+            int onTimeMs = getTotalRadioOnTimeMs(newStats) - getTotalRadioOnTimeMs(oldStats);
             if (onTimeMs <= RADIO_ON_TIME_MIN_MS
                     || onTimeMs > RADIO_ON_ELAPSED_TIME_DELTA_MAX_MS + elapsedTimeMs) {
                 return;
@@ -1306,6 +1306,17 @@ public class WifiScoreCard {
                     .append(" txKBThr ").append(mByteDeltaAccThr[LINK_TX] / 1024)
                     .append(" rxKBThr ").append(mByteDeltaAccThr[LINK_RX] / 1024)
                     .toString());
+        }
+
+        private int getTotalRadioOnTimeMs(@NonNull WifiLinkLayerStats stats) {
+            if (stats.radioStats != null && stats.radioStats.length > 0) {
+                int totalRadioOnTime = 0;
+                for (WifiLinkLayerStats.RadioStat stat : stats.radioStats) {
+                    totalRadioOnTime += stat.on_time;
+                }
+                return totalRadioOnTime;
+            }
+            return stats.on_time;
         }
 
         private int getBandIdx(ExtendedWifiInfo wifiInfo) {
