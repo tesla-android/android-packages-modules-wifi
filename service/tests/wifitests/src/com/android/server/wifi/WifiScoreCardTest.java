@@ -1593,12 +1593,20 @@ public class WifiScoreCardTest extends WifiBaseTest {
     }
 
     @Test
-    public void testLinkBandwidthOneBssidOneSignalLevelOneBand() {
+    public void testLinkBandwidthOneBssidOneSignalLevelOneBandTwoRadioStats() {
         mWifiInfo.setRssi(-70);
         mWifiInfo.setFrequency(2437);
         mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
         PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-        mNewLlStats.on_time = 100;
+        mNewLlStats.on_time = 120;
+        mOldLlStats.radioStats = new WifiLinkLayerStats.RadioStat[2];
+        mOldLlStats.radioStats[0] = new WifiLinkLayerStats.RadioStat();
+        mOldLlStats.radioStats[1] = new WifiLinkLayerStats.RadioStat();
+        mNewLlStats.radioStats = new WifiLinkLayerStats.RadioStat[2];
+        mNewLlStats.radioStats[0] = new WifiLinkLayerStats.RadioStat();
+        mNewLlStats.radioStats[1] = new WifiLinkLayerStats.RadioStat();
+        mNewLlStats.radioStats[0].on_time = 50;
+        mNewLlStats.radioStats[1].on_time = 50;
         mOldLlStats.timeStampInMs = 7_000;
         mNewLlStats.timeStampInMs = 10_000;
         long txBytes = 2_000_000L;
