@@ -4975,6 +4975,78 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         verify(mWifiNotificationManager).cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
     }
 
+    /**
+     * Verify we return the merged network suggestion matches the target FQDN when merged network is
+     * allowed .
+     */
+    @Test
+    public void testGetMergedPasspointSuggestionFromFqdn() {
+        when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
+                .thenReturn(true);
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(true);
+        PasspointConfiguration passpointConfiguration =
+                createTestConfigWithUserCredential(TEST_FQDN, TEST_FRIENDLY_NAME);
+        WifiConfiguration placeholderConfig = createPlaceholderConfigForPasspoint(TEST_FQDN,
+                passpointConfiguration.getUniqueId());
+        placeholderConfig.carrierMerged = true;
+        placeholderConfig.meteredOverride = WifiConfiguration.METERED_OVERRIDE_METERED;
+        placeholderConfig.FQDN = TEST_FQDN;
+        placeholderConfig.subscriptionId = TEST_SUBID;
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(placeholderConfig,
+                passpointConfiguration, true, false, true, true, DEFAULT_PRIORITY_GROUP);
+
+        when(mPasspointManager.addOrUpdateProvider(any(PasspointConfiguration.class),
+                anyInt(), anyString(), eq(true), eq(true))).thenReturn(true);
+        assertEquals(mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion), TEST_UID_1,
+                TEST_PACKAGE_1, TEST_FEATURE), WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+
+        Set<ExtendedWifiNetworkSuggestion> ewns =
+                mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(TEST_FQDN);
+        assertEquals(1, ewns.size());
+        assertEquals(networkSuggestion, ewns.iterator().next().wns);
+
+        // Change to disallow merged network, no matching suggestion should return.
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(false);
+        ewns = mWifiNetworkSuggestionsManager.getNetworkSuggestionsForFqdn(TEST_FQDN);
+        assertEquals(0, ewns.size());
+    }
+
+    /**
+     * Verify we return the merged network suggestion matches the target ScanDetail when merged
+     * network is allowed .
+     */
+    @Test
+    public void testGetMergedNetworkSuggestionsForScanDetail() {
+        when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
+                .thenReturn(true);
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(true);
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        ScanDetail scanDetail = createScanDetailForNetwork(config);
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                config, null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        config.subscriptionId = TEST_SUBID;
+        config.carrierMerged = true;
+        config.meteredOverride = WifiConfiguration.METERED_OVERRIDE_METERED;
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion), TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+
+        Set<ExtendedWifiNetworkSuggestion> ewns = mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail);
+        assertEquals(1, ewns.size());
+
+        // Change to disallow merged network, no matching suggestion should return.
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(false);
+        ewns = mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail);
+        assertEquals(0, ewns.size());
+    }
+
     private static WifiNetworkSuggestion createWifiNetworkSuggestion(WifiConfiguration config,
             PasspointConfiguration passpointConfiguration,
             boolean isAppInteractionRequired,

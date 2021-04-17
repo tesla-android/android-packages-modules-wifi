@@ -408,8 +408,7 @@ public class KnownBandsChannelHelper extends ChannelHelper {
                 return;
             }
             for (int freq : missingChannels) {
-                if ((freq - ScanResult.BAND_6_GHZ_PSC_START_MHZ)
-                        % ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ == 0) {
+                if (ScanResult.is6GHzPsc(freq)) {
                     mChannels.add(freq);
                     mAllBands |= WIFI_BAND_6_GHZ;
                 }
@@ -449,7 +448,6 @@ public class KnownBandsChannelHelper extends ChannelHelper {
     }
 
     @Override
-
     public KnownBandsChannelCollection createChannelCollection() {
         return new KnownBandsChannelCollection();
     }

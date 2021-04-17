@@ -18,6 +18,7 @@ package com.android.server.wifi;
 
 import static com.android.server.wifi.util.InformationElementUtil.BssLoad.CHANNEL_UTILIZATION_SCALE;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -26,6 +27,7 @@ import android.net.wifi.WifiManager.DeviceMobilityState;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.telephony.PhoneStateListener;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
@@ -36,6 +38,9 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
 import com.android.server.wifi.scanner.KnownBandsChannelHelper;
 import com.android.server.wifi.util.InformationElementUtil.BssLoad;
 import com.android.wifi.resources.R;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
  * Looks for Wifi data stalls
@@ -82,6 +87,18 @@ public class WifiDataStall {
     private boolean mPhoneStateListenerEnabled = false;
     private int mTxTputKbps = INVALID_THROUGHPUT;
     private int mRxTputKbps = INVALID_THROUGHPUT;
+
+    /** @hide */
+    @IntDef(prefix = { "CELLULAR_DATA_" }, value = {
+            CELLULAR_DATA_UNKNOWN,
+            CELLULAR_DATA_AVAILABLE,
+            CELLULAR_DATA_NOT_AVAILABLE,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface CellularDataStatusCode {}
+    public static final int CELLULAR_DATA_UNKNOWN = 0;
+    public static final int CELLULAR_DATA_AVAILABLE = 1;
+    public static final int CELLULAR_DATA_NOT_AVAILABLE = 2;
 
     private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
         @Override
@@ -150,14 +167,15 @@ public class WifiDataStall {
         mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(handler)) {
             @Override
             public void onDataConnectionStateChanged(int state, int networkType) {
-                if (state == TelephonyManager.DATA_CONNECTED) {
-                    mIsCellularDataAvailable = true;
-                } else if (state == TelephonyManager.DATA_DISCONNECTED) {
-                    mIsCellularDataAvailable = false;
-                } else {
+                if (state != TelephonyManager.DATA_CONNECTED
+                        && state != TelephonyManager.DATA_DISCONNECTED) {
                     Log.e(TAG, "onDataConnectionStateChanged unexpected State: " + state);
                     return;
                 }
+                mIsCellularDataAvailable = state == TelephonyManager.DATA_CONNECTED;
+                mActiveModeWarden.getPrimaryClientModeManager()
+                        .onCellularConnectivityChanged(mIsCellularDataAvailable
+                                ? CELLULAR_DATA_AVAILABLE : CELLULAR_DATA_NOT_AVAILABLE);
                 logd("Cellular Data: " + mIsCellularDataAvailable);
             }
         };
@@ -191,14 +209,34 @@ public class WifiDataStall {
         mRxTputKbps = INVALID_THROUGHPUT;
     }
 
-    /**
-     * Enable phone state listener
-     */
-    private void enablePhoneStateListener() {
+    private void createTelephonyManagerForDefaultDataSubIfNeeded() {
         if (mTelephonyManager == null) {
             mTelephonyManager = (TelephonyManager) mContext
                     .getSystemService(Context.TELEPHONY_SERVICE);
         }
+        int defaultSubscriptionId = SubscriptionManager.getDefaultDataSubscriptionId();
+        if (defaultSubscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                && defaultSubscriptionId != mTelephonyManager.getSubscriptionId()) {
+            mTelephonyManager = mTelephonyManager.createForSubscriptionId(
+                    SubscriptionManager.getDefaultDataSubscriptionId());
+        }
+    }
+
+    /**
+     * Reset the PhoneStateListener to listen on the default data SIM.
+     */
+    public void resetPhoneStateListener() {
+        disablePhoneStateListener();
+        mActiveModeWarden.getPrimaryClientModeManager()
+                .onCellularConnectivityChanged(CELLULAR_DATA_UNKNOWN);
+        enablePhoneStateListener();
+    }
+
+    /**
+     * Enable phone state listener
+     */
+    private void enablePhoneStateListener() {
+        createTelephonyManagerForDefaultDataSubIfNeeded();
         if (mTelephonyManager != null && !mPhoneStateListenerEnabled) {
             mPhoneStateListenerEnabled = true;
             mTelephonyManager.listen(mPhoneStateListener,

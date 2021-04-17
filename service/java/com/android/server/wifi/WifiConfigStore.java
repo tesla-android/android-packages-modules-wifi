@@ -61,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -813,6 +814,7 @@ public class WifiConfigStore {
         pw.println("Dump of WifiConfigStore");
         pw.println("WifiConfigStore - Store File Begin ----");
         Stream.of(mSharedStores, mUserStores)
+                .filter(Objects::nonNull)
                 .flatMap(List::stream)
                 .forEach((storeFile) -> {
                     pw.print("Name: " + storeFile.mFileName);

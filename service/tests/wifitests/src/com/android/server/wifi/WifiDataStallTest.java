@@ -80,6 +80,7 @@ public class WifiDataStallTest extends WifiBaseTest {
     @Mock WifiNative.ConnectionCapabilities mCapabilities;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ClientModeImplMonitor mClientModeImplMonitor;
+    @Mock ClientModeManager mClientModeManager;
 
     private ActiveModeWarden.ModeChangeCallback mModeChangeCallback;
     private PrimaryClientModeManagerChangedCallback mPrimaryModeChangeCallback;
@@ -98,6 +99,7 @@ public class WifiDataStallTest extends WifiBaseTest {
         TestLooper looper = new TestLooper();
         when(mContext.getResources()).thenReturn(mMockResources);
         when(mContext.getSystemService(Context.TELEPHONY_SERVICE)).thenReturn(mTelephonyManager);
+        when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mTelephonyManager);
 
         mMockResources.setInteger(
                 R.integer.config_wifiPollRssiIntervalMilliseconds,
@@ -163,6 +165,7 @@ public class WifiDataStallTest extends WifiBaseTest {
                 .thenReturn(50);
         when(mThroughputPredictor.predictRxThroughput(any(), anyInt(), anyInt(), anyInt()))
                 .thenReturn(150);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
 
         ArgumentCaptor<ActiveModeWarden.ModeChangeCallback> modeChangeCallbackArgumentCaptor =
                 ArgumentCaptor.forClass(ActiveModeWarden.ModeChangeCallback.class);
@@ -238,15 +241,52 @@ public class WifiDataStallTest extends WifiBaseTest {
         phoneStateListener.onDataConnectionStateChanged(TelephonyManager.DATA_CONNECTED,
                 TelephonyManager.NETWORK_TYPE_LTE);
         assertEquals(true, mWifiDataStall.isCellularDataAvailable());
+        verify(mClientModeManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_AVAILABLE);
         phoneStateListener.onDataConnectionStateChanged(
                 TelephonyManager.DATA_DISCONNECTED, TelephonyManager.NETWORK_TYPE_LTE);
         assertEquals(false, mWifiDataStall.isCellularDataAvailable());
+        verify(mClientModeManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
         setWifiEnabled(false);
         verify(mTelephonyManager, times(1)).listen(phoneStateListener,
                 PhoneStateListener.LISTEN_NONE);
         setWifiEnabled(false);
         verify(mTelephonyManager, times(1)).listen(phoneStateListener,
                 PhoneStateListener.LISTEN_NONE);
+    }
+
+    /**
+     * Verify that resetPhoneStateListener re-registers the phoneStateListener so that it is
+     * listening to changes to the default data subription.
+     */
+    @Test
+    public void testCellularDataListenerReset() throws Exception {
+        setWifiEnabled(false);
+        setWifiEnabled(true);
+
+        PhoneStateListener phoneStateListener = mockPhoneStateListener();
+        // Verify 0 unregister and 1 register call to TelephonyManager
+        verify(mTelephonyManager, never()).listen(phoneStateListener,
+                PhoneStateListener.LISTEN_NONE);
+        verify(mTelephonyManager, times(1)).listen(phoneStateListener,
+                PhoneStateListener.LISTEN_DATA_CONNECTION_STATE);
+
+        // Verify that resetPhoneStateListener will unregister the listener and the register it.
+        mWifiDataStall.resetPhoneStateListener();
+        verify(mTelephonyManager, times(1)).listen(phoneStateListener,
+                PhoneStateListener.LISTEN_NONE);
+        verify(mTelephonyManager, times(2)).listen(phoneStateListener,
+                PhoneStateListener.LISTEN_DATA_CONNECTION_STATE);
+        verify(mClientModeManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_UNKNOWN);
+
+        // Verify the phone state listener still works
+        phoneStateListener.onDataConnectionStateChanged(TelephonyManager.DATA_CONNECTED,
+                TelephonyManager.NETWORK_TYPE_LTE);
+        assertEquals(true, mWifiDataStall.isCellularDataAvailable());
+        verify(mClientModeManager).onCellularConnectivityChanged(
+                WifiDataStall.CELLULAR_DATA_AVAILABLE);
     }
 
     /**

@@ -423,6 +423,9 @@ public class WifiServiceImpl extends BaseWifiService {
                                 Log.d(TAG, "resetting networks as default data SIM is changed");
                                 resetCarrierNetworks(RESET_SIM_REASON_DEFAULT_DATA_SIM_CHANGED);
                                 mLastSubId = subId;
+                                mWifiThreadRunner.post(() -> {
+                                    mWifiDataStall.resetPhoneStateListener();
+                                });
                             }
                         }
                     },

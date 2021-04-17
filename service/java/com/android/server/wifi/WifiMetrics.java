@@ -2683,6 +2683,7 @@ public class WifiMetrics {
         int oceSupportedNetworks = 0;
         int filsSupportedNetworks = 0;
         int band6gNetworks = 0;
+        int band6gPscNetworks = 0;
         int standard11axNetworks = 0;
 
         for (ScanDetail scanDetail : scanDetails) {
@@ -2722,6 +2723,9 @@ public class WifiMetrics {
                 }
                 if (scanResult.is6GHz()) {
                     band6gNetworks++;
+                    if (scanResult.is6GhzPsc()) {
+                        band6gPscNetworks++;
+                    }
                 }
                 if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)
                         || ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
@@ -2765,6 +2769,7 @@ public class WifiMetrics {
             mWifiLogProto.numFilsSupportedNetworkScanResults += filsSupportedNetworks;
             mWifiLogProto.num11AxNetworkScanResults += standard11axNetworks;
             mWifiLogProto.num6GNetworkScanResults += band6gNetworks;
+            mWifiLogProto.num6GPscNetworkScanResults += band6gPscNetworks;
             mWifiLogProto.numScans++;
         }
     }
@@ -3678,6 +3683,8 @@ public class WifiMetrics {
                         + mWifiLogProto.num11AxNetworkScanResults);
                 pw.println("mWifiLogProto.num6GNetworkScanResults"
                         + mWifiLogProto.num6GNetworkScanResults);
+                pw.println("mWifiLogProto.num6GPscNetworkScanResults"
+                        + mWifiLogProto.num6GPscNetworkScanResults);
                 pw.println("mWifiLogProto.numBssidFilteredDueToMboAssocDisallowInd="
                         + mWifiLogProto.numBssidFilteredDueToMboAssocDisallowInd);
                 pw.println("mWifiLogProto.numConnectToNetworkSupportingMbo="
@@ -5504,6 +5511,22 @@ public class WifiMetrics {
                 return "DISCONNECT_RESET_SIM_NETWORKS";
             case StaEvent.DISCONNECT_MBB_NO_INTERNET:
                 return "DISCONNECT_MBB_NO_INTERNET";
+            case StaEvent.DISCONNECT_NETWORK_REMOVED:
+                return "DISCONNECT_NETWORK_REMOVED";
+            case StaEvent.DISCONNECT_NETWORK_METERED:
+                return "DISCONNECT_NETWORK_METERED";
+            case StaEvent.DISCONNECT_NETWORK_TEMPORARY_DISABLED:
+                return "DISCONNECT_NETWORK_TEMPORARY_DISABLED";
+            case StaEvent.DISCONNECT_NETWORK_PERMANENT_DISABLED:
+                return "DISCONNECT_NETWORK_PERMANENT_DISABLED";
+            case StaEvent.DISCONNECT_CARRIER_OFFLOAD_DISABLED:
+                return "DISCONNECT_CARRIER_OFFLOAD_DISABLED";
+            case StaEvent.DISCONNECT_PASSPOINT_TAC:
+                return "DISCONNECT_PASSPOINT_TAC";
+            case StaEvent.DISCONNECT_VCN_REQUEST:
+                return "DISCONNECT_VCN_REQUEST";
+            case StaEvent.DISCONNECT_UNKNOWN_NETWORK:
+                return "DISCONNECT_UNKNOWN_NETWORK";
             default:
                 return "DISCONNECT_UNKNOWN=" + frameworkDisconnectReason;
         }

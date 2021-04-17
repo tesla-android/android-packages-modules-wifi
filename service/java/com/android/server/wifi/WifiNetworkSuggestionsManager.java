@@ -1189,9 +1189,8 @@ public class WifiNetworkSuggestionsManager {
         for (WifiNetworkSuggestion suggestion : networkSuggestions) {
             WifiConfiguration wifiConfiguration = suggestion.wifiConfiguration;
             PasspointConfiguration passpointConfiguration = suggestion.passpointConfiguration;
-            if (!isAppWorkingAsCrossCarrierProvider && wifiConfiguration.carrierMerged
-                    && !mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(
-                    wifiConfiguration.subscriptionId)) {
+            if (wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
+                    wifiConfiguration.subscriptionId, packageName)) {
                 // Carrier must be explicitly configured as merged carrier offload enabled
                 return false;
             }
@@ -1705,6 +1704,10 @@ public class WifiNetworkSuggestionsManager {
                         ewns.perAppInfo.uid);
                 continue;
             }
+            if (ewns.wns.wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
+                    ewns.wns.wifiConfiguration.subscriptionId, ewns.perAppInfo.packageName)) {
+                continue;
+            }
             if (isSimBasedSuggestion(ewns)) {
                 mWifiCarrierInfoManager.sendImsiProtectionExemptionNotificationIfRequired(
                         getCarrierIdFromSuggestion(ewns));
@@ -1750,6 +1753,10 @@ public class WifiNetworkSuggestionsManager {
             if (!ewns.perAppInfo.isApproved(activeScorerPackage)) {
                 sendUserApprovalNotificationIfNotApproved(ewns.perAppInfo.packageName,
                         ewns.perAppInfo.uid);
+                continue;
+            }
+            if (ewns.wns.wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
+                    ewns.wns.wifiConfiguration.subscriptionId, ewns.perAppInfo.packageName)) {
                 continue;
             }
             if (isSimBasedSuggestion(ewns)) {
@@ -1851,6 +1858,10 @@ public class WifiNetworkSuggestionsManager {
                         mWifiCarrierInfoManager);
                 if (config.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID
                         && !mWifiCarrierInfoManager.isSimPresent(config.subscriptionId)) {
+                    continue;
+                }
+                if (config.carrierMerged && !areCarrierMergedSuggestionsAllowed(
+                        config.subscriptionId, ewns.perAppInfo.packageName)) {
                     continue;
                 }
                 WifiConfiguration wCmWifiConfig = mWifiConfigManager
@@ -2618,6 +2629,14 @@ public class WifiNetworkSuggestionsManager {
             }
         }
         listenersTracker.finishBroadcast();
+    }
+
+    private boolean areCarrierMergedSuggestionsAllowed(int subId, String packageName) {
+        if (isAppWorkingAsCrossCarrierProvider(packageName)) {
+            return true;
+        }
+
+        return mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId);
     }
 
     /**

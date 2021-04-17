@@ -337,6 +337,41 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     }
 
     /**
+     * Validate when KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL is change from true to false,
+     * carrier offload will disable for merged network.
+     */
+    @Test
+    public void receivedCarrierConfigChangedAllowMergedNetworkToFalse() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiCarrierInfoManager.addOnCarrierOffloadDisabledListener(
+                mOnCarrierOffloadDisabledListener);
+        PersistableBundle bundle = new PersistableBundle();
+        String key = CarrierConfigManager.KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL;
+        bundle.putBoolean(key, true);
+        when(mCarrierConfigManager.getConfigForSubId(DATA_SUBID)).thenReturn(bundle);
+        ArgumentCaptor<BroadcastReceiver> receiver =
+                ArgumentCaptor.forClass(BroadcastReceiver.class);
+        verify(mContext).registerReceiver(receiver.capture(), any(IntentFilter.class));
+
+        receiver.getValue().onReceive(mContext,
+                new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        assertTrue(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(DATA_SUBID));
+        verify(mOnCarrierOffloadDisabledListener, never()).onCarrierOffloadDisabled(anyInt(),
+                anyBoolean());
+
+        // When KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL change to false should send merged
+        // carrier offload disable callback.
+        PersistableBundle disallowedBundle = new PersistableBundle();
+        disallowedBundle.putBoolean(key, false);
+        when(mCarrierConfigManager.getConfigForSubId(DATA_SUBID)).thenReturn(disallowedBundle);
+        receiver.getValue().onReceive(mContext,
+                new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        assertFalse(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(DATA_SUBID));
+        verify(mOnCarrierOffloadDisabledListener).onCarrierOffloadDisabled(eq(DATA_SUBID),
+                eq(true));
+    }
+
+    /**
      * Verify the IMSI encryption is cleared when the configuration in CarrierConfig is removed.
      */
     @Test
