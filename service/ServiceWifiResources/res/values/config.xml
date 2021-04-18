@@ -635,9 +635,11 @@
     <bool translatable="false" name="config_wifiSaeH2eSupported">false</bool>
 
     <!-- Enable aggregation of Wifi link layer radio stats from all radios.
-         Defaults to true so that all full DBS capable devices report stats correctly in STA mode.
-         If false, fetch radio stats only from Radio 0. -->
-    <bool translatable="false" name="config_wifiLinkLayerAllRadiosStatsAggregationEnabled">true</bool>
+         Defaults to false will fetch radio stats only from Radio 0. This is to avoid
+         incorrect behavior due to driver/firmware returning bogus radio stats from other radios.
+         Note: Full DBS capable devices interested in radio stats from all the radios can enable this
+         configuration. -->
+    <bool translatable="false" name="config_wifiLinkLayerAllRadiosStatsAggregationEnabled">false</bool>
 
     <!-- Indicate the prefix of wifi p2p device name, the length should be between 1 ~ 28. -->
     <string translatable="false" name="config_wifiP2pDeviceNamePrefix">Android_</string>
