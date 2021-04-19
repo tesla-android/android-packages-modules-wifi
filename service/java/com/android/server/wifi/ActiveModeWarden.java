@@ -16,8 +16,6 @@
 
 package com.android.server.wifi;
 
-import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PAID;
-import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 import static android.net.wifi.WifiManager.IFACE_IP_MODE_LOCAL_ONLY;
 import static android.net.wifi.WifiManager.IFACE_IP_MODE_TETHERED;
 
@@ -35,8 +33,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.location.LocationManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkRequest;
 import android.net.wifi.ISubsystemRestartCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.SoftApCapability;
@@ -136,9 +132,6 @@ public class ActiveModeWarden {
     private WorkSource mLastPrimaryClientModeManagerRequestorWs = null;
     @Nullable
     private WorkSource mLastScanOnlyClientModeManagerRequestorWs = null;
-
-    @Nullable
-    private ConnectivityManager.NetworkCallback mNetworkCallback = null;
 
     /**
      * Called from WifiServiceImpl to register a callback for notifications from SoftApManager
@@ -1000,16 +993,6 @@ public class ActiveModeWarden {
         }
     }
 
-    /** Remove Make Before Break Network Request when the second CMM is no longer needed. */
-    public void removeNetworkRequestForMbb() {
-        // release NetworkRequest
-        if (mNetworkCallback != null) {
-            mContext.getSystemService(ConnectivityManager.class)
-                    .unregisterNetworkCallback(mNetworkCallback);
-            mNetworkCallback = null;
-        }
-    }
-
     /**
      * Method to switch all primary client mode manager mode of operation to ScanOnly mode.
      */
@@ -1319,16 +1302,8 @@ public class ActiveModeWarden {
         @Override
         public void onRoleChanged(@NonNull ConcreteClientModeManager clientModeManager) {
             onStartedOrRoleChanged(clientModeManager);
-            removeNetworkRequestForMbbIfNoSecondaryTransientCmm();
             invokeOnRoleChangedCallbacks(clientModeManager);
             onPrimaryChangedDueToStartedOrRoleChanged(clientModeManager);
-        }
-
-        private void removeNetworkRequestForMbbIfNoSecondaryTransientCmm() {
-            // If there are no CMMs with role SECONDARY_TRANSIENT, remove MBB NetworkRequest
-            if (getClientModeManagerInRole(ROLE_CLIENT_SECONDARY_TRANSIENT) == null) {
-                removeNetworkRequestForMbb();
-            }
         }
 
         private void onStoppedOrStartFailure(ConcreteClientModeManager clientModeManager) {
@@ -1336,7 +1311,6 @@ public class ActiveModeWarden {
             mGraveyard.inter(clientModeManager);
             updateClientScanMode();
             updateBatteryStats();
-            removeNetworkRequestForMbbIfNoSecondaryTransientCmm();
             if (clientModeManager == mLastPrimaryClientModeManager) {
                 // CMM was primary, but was stopped
                 invokeOnPrimaryClientModeManagerChangedCallbacks(
@@ -1988,25 +1962,6 @@ public class ActiveModeWarden {
                         requestInfo.requestorWs, requestInfo.clientRole)) {
                     // Can create an additional client mode manager.
                     Log.v(TAG, "Starting a new ClientModeManager");
-
-                    // TODO(b/177373513): hack to make ConnectivityService not immediately send
-                    //  CMD_UNWANTED to the new CMM by filing a NetworkRequest that only matches
-                    //  the secondary CMM (and not the primary CMM).
-                    if (requestInfo.clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
-                        // remove the previous NetworkRequest if it somehow wasn't removed already
-                        removeNetworkRequestForMbb();
-                        NetworkRequest networkRequest = new NetworkRequest.Builder()
-                                .addTransportType(TRANSPORT_WIFI)
-                                // Note: it seems only OEM_PAID works. OEM_PRIVATE NetworkRequests
-                                // don't seem to match OEM_PRIVATE networks correctly in
-                                // ConnectivityService.
-                                .addCapability(NET_CAPABILITY_OEM_PAID)
-                                .build();
-                        mNetworkCallback = new ConnectivityManager.NetworkCallback();
-                        mContext.getSystemService(ConnectivityManager.class)
-                                .requestNetwork(networkRequest, mNetworkCallback);
-                    }
-
                     startAdditionalClientModeManager(
                             requestInfo.clientRole,
                             requestInfo.listener, requestInfo.requestorWs);

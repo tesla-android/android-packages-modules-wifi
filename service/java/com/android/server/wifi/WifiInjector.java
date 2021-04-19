@@ -736,12 +736,11 @@ public class WifiInjector {
     public WifiNetworkAgent makeWifiNetworkAgent(
             @NonNull NetworkCapabilities nc,
             @NonNull LinkProperties linkProperties,
-            int score,
             @NonNull NetworkAgentConfig naConfig,
             @Nullable NetworkProvider provider,
             @NonNull WifiNetworkAgent.Callback callback) {
         return new WifiNetworkAgent(mContext, mWifiHandlerThread.getLooper(),
-                nc, linkProperties, score, naConfig, provider, callback);
+                nc, linkProperties, naConfig, provider, callback);
     }
 
     /**
