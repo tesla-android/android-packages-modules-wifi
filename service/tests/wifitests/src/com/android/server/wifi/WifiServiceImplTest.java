@@ -414,6 +414,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mContext.getContentResolver()).thenReturn(mContentResolver);
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mPackageManager.getPackageInfo(anyString(), anyInt())).thenReturn(mPackageInfo);
+        when(mPackageManager.checkSignatures(anyInt(), anyInt()))
+                .thenReturn(PackageManager.SIGNATURE_NO_MATCH);
         when(mWifiInjector.getWifiApConfigStore()).thenReturn(mWifiApConfigStore);
         doNothing().when(mFrameworkFacade).registerContentObserver(eq(mContext), any(),
                 anyBoolean(), any());
