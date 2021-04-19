@@ -43,7 +43,7 @@
     <string name="wifi_wakeup_onboarding_subtext" msgid="5705886295837387430">"तपाईं कुनै सुरक्षित गरिएको उच्च गुणस्तरीय नेटवर्कको नजिक हुनुभएको अवस्थामा"</string>
     <string name="wifi_wakeup_onboarding_action_disable" msgid="6209706680391785825">"फेरि सक्रिय नगर्नुहोला"</string>
     <string name="wifi_wakeup_enabled_title" msgid="5043486751612595850">"Wi‑Fi स्वतः सक्रिय गरियो"</string>
-    <string name="wifi_wakeup_enabled_content" msgid="3911262526267025882">"तपाईं कुनै सुरक्षित गरिएको नेटवर्क नजिकै हुनुहुन्छ: <xliff:g id="NETWORK_SSID">%1$s</xliff:g>"</string>
+    <string name="wifi_wakeup_enabled_content" msgid="3911262526267025882">"तपाईं कुनै सेभ गरिएको नेटवर्क नजिकै हुनुहुन्छ: <xliff:g id="NETWORK_SSID">%1$s</xliff:g>"</string>
     <string name="wifi_watchdog_network_disabled" msgid="5769226742956006362">"वाइ-फाइसँग जडान गर्न सकेन"</string>
     <string name="wifi_watchdog_network_disabled_detailed" msgid="1725243835135539125">" खराब इन्टरनेट जडान रहेको छ।"</string>
     <string name="wifi_connect_alert_title" msgid="2368200646665663612">"जडान अनुमति दिने हो?"</string>

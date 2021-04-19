@@ -39,7 +39,7 @@
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Uma uxhuma, amanethiwekhi we-Wi-Fi ye-<xliff:g id="CARRIERNAME">%s</xliff:g> angase akwazi ukufinyelela ku-ID yakho ehlukile ehlobene ne-SIM yakho. Lokhu kungase kuvumele ukuthi indawo yedivayisi yakho ilandelelwe."</string>
     <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_confirmation" msgid="2168947026413431603">"Xhuma"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_confirmation" msgid="5156881939985876066">"Ungaxhumi"</string>
-    <string name="wifi_wakeup_onboarding_title" msgid="3868826648004934540">"I-Wi-Fi izovuleka ngokuzenzakalela"</string>
+    <string name="wifi_wakeup_onboarding_title" msgid="3868826648004934540">"I-Wi-Fi izovuleka ngokuzenzekela"</string>
     <string name="wifi_wakeup_onboarding_subtext" msgid="5705886295837387430">"Uma useduze kwenethiwekhi yekhwalithi ephezulu elondoloziwe"</string>
     <string name="wifi_wakeup_onboarding_action_disable" msgid="6209706680391785825">"Ungaphindi uvule"</string>
     <string name="wifi_wakeup_enabled_title" msgid="5043486751612595850">"I-Wi‑Fi ivuleke ngokuzenzakalela"</string>
