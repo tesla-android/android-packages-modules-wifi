@@ -301,7 +301,6 @@ public class MakeBeforeBreakManager {
         } finally {
             // end the MBB attempt
             mMakeBeforeBreakInfo = null;
-            mActiveModeWarden.removeNetworkRequestForMbb();
         }
     }
 
