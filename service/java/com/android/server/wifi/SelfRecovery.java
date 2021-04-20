@@ -92,7 +92,8 @@ public class SelfRecovery {
 
             Log.e(TAG, "Restarting wifi for reason: " + reasonString);
             mActiveModeWarden.recoveryRestartWifi(mSelfRecoveryReason, reasonString,
-                    mSelfRecoveryReason != REASON_LAST_RESORT_WATCHDOG);
+                    mSelfRecoveryReason != REASON_LAST_RESORT_WATCHDOG
+                     && mSelfRecoveryReason != REASON_API_CALL);
 
             mDidWeTriggerSelfRecovery = false;
         }

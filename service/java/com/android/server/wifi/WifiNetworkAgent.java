@@ -72,11 +72,10 @@ public class WifiNetworkAgent extends NetworkAgent {
             @NonNull Looper looper,
             @NonNull NetworkCapabilities nc,
             @NonNull LinkProperties lp,
-            int score,
             @NonNull NetworkAgentConfig config,
             @Nullable NetworkProvider provider,
             @NonNull Callback wifiNetworkAgentCallback) {
-        super(context, looper, TAG, nc, lp, score, config, provider);
+        super(context, looper, TAG, nc, lp, ConnectedScore.WIFI_INITIAL_SCORE, config, provider);
         mCurrentNetworkCapabilities = nc;
         mCallback = wifiNetworkAgentCallback;
         register();
