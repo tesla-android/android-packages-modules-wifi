@@ -51,6 +51,7 @@ public class WifiGlobalsTest extends WifiBaseTest {
 
         mResources = new MockResources();
         mResources.setInteger(R.integer.config_wifiPollRssiIntervalMilliseconds, 3000);
+        mResources.setInteger(R.integer.config_wifiClientModeImplNumLogRecs, 200);
         when(mContext.getResources()).thenReturn(mResources);
 
         mWifiGlobals = new WifiGlobals(mContext);
@@ -114,5 +115,11 @@ public class WifiGlobalsTest extends WifiBaseTest {
         mWifiGlobals = new WifiGlobals(mContext);
         assertEquals(customPrefix, mWifiGlobals.getWifiP2pDeviceNamePrefix());
         assertEquals(customPostfixDigit, mWifiGlobals.getWifiP2pDeviceNamePostfixNumDigits());
+    }
+
+    /** Test that the number of log records is read from config overlay correctly. */
+    @Test
+    public void testNumLogRecsNormalIsSetCorrectly() throws Exception {
+        assertEquals(200, mWifiGlobals.getClientModeImplNumLogRecs());
     }
 }

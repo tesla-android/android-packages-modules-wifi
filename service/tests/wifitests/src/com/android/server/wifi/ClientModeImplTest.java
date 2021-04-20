@@ -546,6 +546,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mResources.setIntArray(R.array.config_wifiRssiLevelThresholds,
                 RssiUtilTest.RSSI_THRESHOLDS);
         mResources.setInteger(R.integer.config_wifiLinkBandwidthUpdateThresholdPercent, 25);
+        mResources.setInteger(R.integer.config_wifiClientModeImplNumLogRecs, 100);
         mResources.setBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming, true);
         when(mContext.getResources()).thenReturn(mResources);
 
@@ -586,6 +587,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.getClientModeImplNumLogRecs()).thenReturn(100);
         when(mWifiInjector.makeWifiNetworkAgent(any(), any(), any(), any(), any()))
                 .thenAnswer(new AnswerWithArguments() {
                     public WifiNetworkAgent answer(
@@ -2258,7 +2260,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     @Test
     public void verboseLogRecSizeIsGreaterThanNormalSize() {
-        assertTrue(LOG_REC_LIMIT_IN_VERBOSE_MODE > ClientModeImpl.NUM_LOG_RECS_NORMAL);
+        assertTrue(LOG_REC_LIMIT_IN_VERBOSE_MODE > mWifiGlobals.getClientModeImplNumLogRecs());
     }
 
     /**
@@ -2267,7 +2269,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void normalLogRecSizeIsUsedByDefault() {
         mCmi.enableVerboseLogging(false);
-        assertEquals(ClientModeImpl.NUM_LOG_RECS_NORMAL, mCmi.getLogRecMaxSize());
+        assertEquals(mWifiGlobals.getClientModeImplNumLogRecs(), mCmi.getLogRecMaxSize());
     }
 
     /**
@@ -2293,7 +2295,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     public void disablingVerboseLoggingUpdatesLogRecSize() {
         mCmi.enableVerboseLogging(true);
         mCmi.enableVerboseLogging(false);
-        assertEquals(ClientModeImpl.NUM_LOG_RECS_NORMAL, mCmi.getLogRecMaxSize());
+        assertEquals(mWifiGlobals.getClientModeImplNumLogRecs(), mCmi.getLogRecMaxSize());
     }
 
     @Test

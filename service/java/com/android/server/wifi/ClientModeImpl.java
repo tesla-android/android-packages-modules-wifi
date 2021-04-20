@@ -167,7 +167,6 @@ import java.util.stream.Collectors;
  */
 public class ClientModeImpl extends StateMachine implements ClientMode {
     private static final String NETWORKTYPE = "WIFI";
-    @VisibleForTesting public static final short NUM_LOG_RECS_NORMAL = 100;
     @VisibleForTesting public static final short NUM_LOG_RECS_VERBOSE_LOW_MEMORY = 200;
     @VisibleForTesting public static final short NUM_LOG_RECS_VERBOSE = 3000;
 
@@ -779,7 +778,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         setInitialState(mDisconnectedState);
 
-        setLogRecSize(NUM_LOG_RECS_NORMAL);
+        setLogRecSize(mWifiGlobals.getClientModeImplNumLogRecs());
         setLogOnlyTransitions(false);
 
         // Start the StateMachine
@@ -1091,7 +1090,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     ? NUM_LOG_RECS_VERBOSE_LOW_MEMORY : NUM_LOG_RECS_VERBOSE);
         } else {
             mVerboseLoggingEnabled = false;
-            setLogRecSize(NUM_LOG_RECS_NORMAL);
+            setLogRecSize(mWifiGlobals.getClientModeImplNumLogRecs());
         }
 
         mWifiScoreReport.enableVerboseLogging(mVerboseLoggingEnabled);
