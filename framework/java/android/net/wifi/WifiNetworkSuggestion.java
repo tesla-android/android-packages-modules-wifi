@@ -1331,8 +1331,13 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 .append(", isUnTrusted=").append(!wifiConfiguration.trusted)
                 .append(", isOemPaid=").append(wifiConfiguration.oemPaid)
                 .append(", isOemPrivate=").append(wifiConfiguration.oemPrivate)
-                .append(", isCarrierMerged").append(wifiConfiguration.carrierMerged)
+                .append(", isCarrierMerged=").append(wifiConfiguration.carrierMerged)
+                .append(", isHiddenSsid=").append(wifiConfiguration.hiddenSSID)
                 .append(", priorityGroup=").append(priorityGroup)
+                .append(", subscriptionId=").append(wifiConfiguration.subscriptionId)
+                .append(", carrierId=").append(wifiConfiguration.carrierId)
+                .append(", priority=").append(wifiConfiguration.priority)
+                .append(", meteredness=").append(wifiConfiguration.meteredOverride)
                 .append(" ]");
         return sb.toString();
     }
