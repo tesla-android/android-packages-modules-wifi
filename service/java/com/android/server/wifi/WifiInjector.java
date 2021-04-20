@@ -67,6 +67,7 @@ import com.android.server.wifi.util.SettingsMigrationDataHolder;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.server.wifi.util.WifiPermissionsWrapper;
 import com.android.server.wifi.util.WorkSourceHelper;
+import com.android.wifi.resources.R;
 
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -338,8 +339,13 @@ public class WifiInjector {
         mLruConnectionTracker = new LruConnectionTracker(MAX_RECENTLY_CONNECTED_NETWORK,
                 mContext);
         mWifiConnectivityHelper = new WifiConnectivityHelper(this);
+        int maxLinesLowRam = mContext.getResources().getInteger(
+                R.integer.config_wifiConnectivityLocalLogMaxLinesLowRam);
+        int maxLinesHighRam = mContext.getResources().getInteger(
+                R.integer.config_wifiConnectivityLocalLogMaxLinesHighRam);
         mConnectivityLocalLog = new LocalLog(
-                mContext.getSystemService(ActivityManager.class).isLowRamDevice() ? 256 : 512);
+                mContext.getSystemService(ActivityManager.class).isLowRamDevice() ? maxLinesLowRam
+                        : maxLinesHighRam);
         mWifiDiagnostics = new WifiDiagnostics(
                 mContext, this, mWifiNative, mBuildProperties,
                 new LastMileLogger(this), mClock, mWifiDiagnosticsHandlerThread.getLooper());
