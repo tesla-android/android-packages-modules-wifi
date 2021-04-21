@@ -1231,7 +1231,9 @@ public class WifiNetworkSuggestionsManager {
                         : passpointConfiguration.getSubscriptionId();
                 if (!mWifiCarrierInfoManager
                         .isSubIdMatchingCarrierId(subId, carrierId)) {
-                    Log.e(TAG, "Subscription ID doesn't match the carrier.");
+                    Log.e(TAG, "Subscription ID doesn't match the carrier. CarrierId:"
+                            + carrierId + ", subscriptionId:" + subId + ", NetworkSuggestion:"
+                            + suggestion);
                     return false;
                 }
             }
