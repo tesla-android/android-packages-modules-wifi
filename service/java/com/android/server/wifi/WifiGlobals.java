@@ -61,6 +61,8 @@ public class WifiGlobals {
     private final String mP2pDeviceNamePrefix;
     // This is read from the overlay, cache it after boot up.
     private final int mP2pDeviceNamePostfixNumDigits;
+    // This is read from the overlay, cache it after boot up.
+    private final int mClientModeImplNumLogRecs;
 
     // This is set by WifiManager#setVerboseLoggingEnabled(int).
     private boolean mIsShowKeyVerboseLoggingModeEnabled = false;
@@ -84,6 +86,8 @@ public class WifiGlobals {
                 .getString(R.string.config_wifiP2pDeviceNamePrefix);
         mP2pDeviceNamePostfixNumDigits = mContext.getResources()
                 .getInteger(R.integer.config_wifiP2pDeviceNamePostfixNumDigits);
+        mClientModeImplNumLogRecs = mContext.getResources()
+                .getInteger(R.integer.config_wifiClientModeImplNumLogRecs);
     }
 
     /** Get the interval between RSSI polls, in milliseconds. */
@@ -219,6 +223,10 @@ public class WifiGlobals {
         return mP2pDeviceNamePostfixNumDigits;
     }
 
+    /** Get the number of log records to maintain. */
+    public int getClientModeImplNumLogRecs() {
+        return mClientModeImplNumLogRecs;
+    }
 
     /** Dump method for debugging */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -234,5 +242,6 @@ public class WifiGlobals {
         pw.println("mIsWpa3SaeH2eSupported=" + mIsWpa3SaeH2eSupported);
         pw.println("mP2pDeviceNamePrefix=" + mP2pDeviceNamePrefix);
         pw.println("mP2pDeviceNamePostfixNumDigits=" + mP2pDeviceNamePostfixNumDigits);
+        pw.println("mClientModeImplNumLogRecs=" + mClientModeImplNumLogRecs);
     }
 }
