@@ -436,6 +436,9 @@ public class WifiCarrierInfoManager {
         @Override
         public void onSubscriptionsChanged() {
             mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
+            if (mVerboseLogEnabled) {
+                Log.v(TAG, "active subscription changes: " + mActiveSubInfos);
+            }
         }
     }
 
