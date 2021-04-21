@@ -112,7 +112,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
      * @throws Exception
      */
     @Test
-    public void onEapFailureWithDefinedErroCodeWithoutNotificationShown() throws Exception {
+    public void onEapFailureWithDefinedErrorCodeWithoutNotificationShown() throws Exception {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
         StatusBarNotification[] activeNotifications = new StatusBarNotification[1];
@@ -120,7 +120,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
                 mNotification, android.os.Process.myUserHandle(), 0);
         when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
         mWifiConfiguration.SSID = SSID_2;
-        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration);
+        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration, true);
         verify(mWifiNotificationManager).notify(eq(EapFailureNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
@@ -128,6 +128,25 @@ public class EapFailureNotifierTest extends WifiBaseTest {
                 eq(PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
         assertEquals(TEST_SETTINGS_PACKAGE, intent.getValue().getPackage());
         assertEquals(Settings.ACTION_WIFI_SETTINGS, intent.getValue().getAction());
+    }
+
+    /**
+     * Verify that a eap failure notification will not be generated with the following conditions :
+     * No eap failure notification of eap failure is displayed now.
+     * Error code is defined by carrier
+     * showNotification = false
+     */
+    @Test
+    public void onEapFailure_showNotificationFalse_notShown() throws Exception {
+        when(mFrameworkFacade.makeNotificationBuilder(any(),
+                eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
+        StatusBarNotification[] activeNotifications = new StatusBarNotification[1];
+        activeNotifications[0] = new StatusBarNotification("android", "", 56, "", 0, 0, 0,
+                mNotification, android.os.Process.myUserHandle(), 0);
+        when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
+        mWifiConfiguration.SSID = SSID_2;
+        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration, false);
+        verify(mWifiNotificationManager, never()).notify(anyInt(), any());
     }
 
     /**
@@ -148,7 +167,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
         mEapFailureNotifier.setCurrentShownSsid(SSID_1);
         mWifiConfiguration.SSID = SSID_2;
-        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration);
+        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration, true);
         verify(mWifiNotificationManager).notify(eq(EapFailureNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
@@ -176,7 +195,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
         mEapFailureNotifier.setCurrentShownSsid(SSID_1);
         mWifiConfiguration.SSID = SSID_1;
-        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration);
+        mEapFailureNotifier.onEapFailure(DEFINED_ERROR_CODE, mWifiConfiguration, true);
         verify(mFrameworkFacade, never()).makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS));
     }
@@ -195,7 +214,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
                 mNotification, android.os.Process.myUserHandle(), 0);
         when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
         mWifiConfiguration.SSID = SSID_1;
-        mEapFailureNotifier.onEapFailure(UNDEFINED_ERROR_CODE, mWifiConfiguration);
+        mEapFailureNotifier.onEapFailure(UNDEFINED_ERROR_CODE, mWifiConfiguration, true);
         verify(mFrameworkFacade, never()).makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS));
     }
