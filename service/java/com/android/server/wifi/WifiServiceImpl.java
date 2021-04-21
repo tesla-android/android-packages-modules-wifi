@@ -4262,8 +4262,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mLog.info("registerTrafficStateCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
-        mWifiThreadRunner.post(() ->
-                mWifiTrafficPoller.addCallback(callback));
+        mWifiThreadRunner.post(() -> mWifiTrafficPoller.addCallback(callback));
     }
 
     /**
@@ -4281,8 +4280,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mLog.info("unregisterTrafficStateCallback uid=%").c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
-        mWifiThreadRunner.post(() ->
-                mWifiTrafficPoller.removeCallback(callback));
+        mWifiThreadRunner.post(() -> mWifiTrafficPoller.removeCallback(callback));
     }
 
     private long getSupportedFeaturesInternal() {

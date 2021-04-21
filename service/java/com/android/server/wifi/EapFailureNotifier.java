@@ -62,9 +62,10 @@ public class EapFailureNotifier {
      * Invoked when EAP failure occurs.
      *
      * @param errorCode error code which delivers from supplicant
+     * @param showNotification whether to display the notification
      * @return true if the receiving error code is found in wifi resource
      */
-    public boolean onEapFailure(int errorCode, WifiConfiguration config) {
+    public boolean onEapFailure(int errorCode, WifiConfiguration config, boolean showNotification) {
         Resources res = getResourcesForSubId(mContext,
                 mWifiCarrierInfoManager.getBestMatchSubscriptionId(config));
         if (res == null) return false;
@@ -82,7 +83,9 @@ public class EapFailureNotifier {
             }
         }
 
-        showNotification(errorMessage, config.SSID);
+        if (showNotification) {
+            showNotification(errorMessage, config.SSID);
+        }
         return true;
     }
 
