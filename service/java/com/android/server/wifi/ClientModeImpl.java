@@ -5021,7 +5021,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 && config.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID)
                                 || (config.enterpriseConfig != null
                                 && config.enterpriseConfig.isAuthenticationSimBased()
-                                && !mWifiCarrierInfoManager.isSimPresent(mLastSubId)))) {
+                                && !mWifiCarrierInfoManager.isSimReady(mLastSubId)))) {
                             mWifiMetrics.logStaEvent(mInterfaceName,
                                     StaEvent.TYPE_FRAMEWORK_DISCONNECT,
                                     StaEvent.DISCONNECT_RESET_SIM_NETWORKS);

@@ -898,7 +898,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         when(mWifiCarrierInfoManager
                 .getBestMatchSubscriptionId(suggestions[0].wns.wifiConfiguration))
                 .thenReturn(TEST_SUB_ID);
-        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(false);
+        when(mWifiCarrierInfoManager.isSimReady(TEST_SUB_ID)).thenReturn(false);
         // Link the scan result with suggestions.
         linkScanDetailsWithNetworkSuggestions(scanDetails, suggestions);
         // setup config manager interactions.
@@ -944,7 +944,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         eapSimConfig.carrierId = TEST_CARRIER_ID;
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(eapSimConfig))
                 .thenReturn(TEST_SUB_ID);
-        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(true);
+        when(mWifiCarrierInfoManager.isSimReady(TEST_SUB_ID)).thenReturn(true);
         when(mWifiCarrierInfoManager.requiresImsiEncryption(TEST_SUB_ID)).thenReturn(true);
         when(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(TEST_SUB_ID)).thenReturn(false);
         // Link the scan result with suggestions.

@@ -283,7 +283,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
             return true;
         }
 
-        if (!mWifiCarrierInfoManager.isSimPresent(config.subscriptionId)) {
+        if (!mWifiCarrierInfoManager.isSimReady(config.subscriptionId)) {
             mLocalLog.log("SIM is not present for subId: " + config.subscriptionId);
             return false;
         }

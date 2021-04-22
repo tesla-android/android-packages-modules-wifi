@@ -4725,7 +4725,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
         when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(TEST_SUB_ID);
-        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(true);
+        when(mWifiCarrierInfoManager.isSimReady(TEST_SUB_ID)).thenReturn(true);
 
         mWifiServiceImpl.connect(null, TEST_NETWORK_ID, mActionListener);
         mLooper.dispatchAll();
@@ -4748,7 +4748,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
         when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(TEST_SUB_ID);
-        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(false);
+        when(mWifiCarrierInfoManager.isSimReady(TEST_SUB_ID)).thenReturn(false);
 
         mWifiServiceImpl.connect(null, TEST_NETWORK_ID, mActionListener);
         mLooper.dispatchAll();
@@ -4770,7 +4770,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
         when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(TEST_SUB_ID);
-        when(mWifiCarrierInfoManager.isSimPresent(TEST_SUB_ID)).thenReturn(false);
+        when(mWifiCarrierInfoManager.isSimReady(TEST_SUB_ID)).thenReturn(false);
         when(mWifiCarrierInfoManager.requiresImsiEncryption(TEST_SUB_ID)).thenReturn(true);
         when(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(TEST_SUB_ID)).thenReturn(false);
 
