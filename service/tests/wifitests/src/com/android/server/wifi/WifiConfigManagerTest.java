@@ -4088,11 +4088,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testRemoveSuggestionConfiguredNetwork() throws Exception {
         WifiConfiguration suggestedNetwork = WifiConfigurationTestUtil.createEphemeralNetwork();
+        suggestedNetwork.creatorUid = TEST_CREATOR_UID;
         suggestedNetwork.fromWifiNetworkSuggestion = true;
         verifyAddEphemeralNetworkToWifiConfigManager(suggestedNetwork);
 
-        assertTrue(mWifiConfigManager.removeSuggestionConfiguredNetwork(
-                suggestedNetwork.getProfileKeyInternal()));
+        assertTrue(mWifiConfigManager.removeSuggestionConfiguredNetwork(suggestedNetwork));
     }
 
     /**
