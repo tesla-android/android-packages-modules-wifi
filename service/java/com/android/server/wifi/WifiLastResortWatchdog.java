@@ -27,6 +27,7 @@ import android.os.Message;
 import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
+import android.util.LruCache;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -99,10 +100,8 @@ public class WifiLastResortWatchdog {
             new HashMap<>();
 
     /* List of failure BSSID */
-    private Set<String> mBssidFailureList = new HashSet<>();
+    private final Set<String> mBssidFailureList = new HashSet<>();
 
-    // Tracks: if ClientModeImpl is in ConnectedState
-    private boolean mWifiIsConnected = false;
     // Is Watchdog allowed to trigger now? Set to false after triggering. Set to true after
     // successfully connecting or a new network (SSID) becomes available to connect to.
     private boolean mWatchdogAllowedToTrigger = true;
@@ -112,7 +111,14 @@ public class WifiLastResortWatchdog {
     // If any connection failure happened after watchdog triggering restart then assume watchdog
     // did not fix the problem
     private boolean mWatchdogFixedWifi = true;
-    private long mLastStartConnectTime = 0;
+    /**
+     * int key: networkId
+     * long value: last time we started connecting to this network, in milliseconds since boot
+     *
+     * Limit size to 10 to prevent it from growing without bounds.
+     */
+    private final LruCache<Integer, Long> mNetworkIdToLastStartConnectTimeMillisSinceBoot =
+            new LruCache<>(10);
     private Boolean mWatchdogFeatureEnabled = null;
 
     private final WifiInjector mWifiInjector;
@@ -184,19 +190,23 @@ public class WifiLastResortWatchdog {
     /**
      * Refreshes when the last CMD_START_CONNECT is triggered.
      */
-    public void noteStartConnectTime() {
-        mHandler.post(() -> {
-            mLastStartConnectTime = mClock.getElapsedSinceBootMillis();
-        });
+    public void noteStartConnectTime(int networkId) {
+        mHandler.post(() ->
+                mNetworkIdToLastStartConnectTimeMillisSinceBoot.put(
+                        networkId, mClock.getElapsedSinceBootMillis()));
     }
 
     private void processMessage(Message msg) {
         switch (msg.what) {
             case WifiMonitor.NETWORK_CONNECTION_EVENT:
+                int networkId = msg.arg1;
                 // Trigger bugreport for successful connections that take abnormally long
+                Long lastStartConnectTimeNullable =
+                        mNetworkIdToLastStartConnectTimeMillisSinceBoot.get(networkId);
                 if (mDeviceConfigFacade.isAbnormalConnectionBugreportEnabled()
-                        && mLastStartConnectTime > 0) {
-                    long durationMs = mClock.getElapsedSinceBootMillis() - mLastStartConnectTime;
+                        && lastStartConnectTimeNullable != null) {
+                    long durationMs =
+                            mClock.getElapsedSinceBootMillis() - lastStartConnectTimeNullable;
                     long abnormalConnectionDurationMs =
                             mDeviceConfigFacade.getAbnormalConnectionDurationMs();
                     if (durationMs > abnormalConnectionDurationMs) {
@@ -211,7 +221,7 @@ public class WifiLastResortWatchdog {
                 }
                 // Should reset last connection time after each connection regardless if bugreport
                 // is enabled or not.
-                mLastStartConnectTime = 0;
+                mNetworkIdToLastStartConnectTimeMillisSinceBoot.remove(networkId);
                 break;
             default:
                 return;
@@ -317,9 +327,11 @@ public class WifiLastResortWatchdog {
      * exceeded a failure threshold for all available networks, and executes the last resort restart
      * @param bssid of the network that has failed connection, can be "any"
      * @param reason Message id from ClientModeImpl for this failure
+     * @param isConnected whether the ClientModeImpl is currently connected
      * @return true if watchdog triggers, returned for test visibility
      */
-    public boolean noteConnectionFailureAndTriggerIfNeeded(String ssid, String bssid, int reason) {
+    public boolean noteConnectionFailureAndTriggerIfNeeded(String ssid, String bssid, int reason,
+            boolean isConnected) {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "noteConnectionFailureAndTriggerIfNeeded: [" + ssid + ", " + bssid + ", "
                     + reason + "]");
@@ -334,7 +346,7 @@ public class WifiLastResortWatchdog {
             mWatchdogFixedWifi = false;
         }
         // Have we met conditions to trigger the Watchdog Wifi restart?
-        boolean isRestartNeeded = checkTriggerCondition();
+        boolean isRestartNeeded = checkTriggerCondition(isConnected);
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "isRestartNeeded = " + isRestartNeeded);
         }
@@ -368,7 +380,6 @@ public class WifiLastResortWatchdog {
     public void connectedStateTransition(boolean isEntering) {
         logv("connectedStateTransition: isEntering = " + isEntering);
 
-        mWifiIsConnected = isEntering;
         if (!isEntering) {
             return;
         }
@@ -546,11 +557,11 @@ public class WifiLastResortWatchdog {
      * of them, and have previously connected to at-least one of the available networks
      * @return is the trigger condition true
      */
-    private boolean checkTriggerCondition() {
+    private boolean checkTriggerCondition(boolean isConnected) {
         if (mVerboseLoggingEnabled) Log.v(TAG, "checkTriggerCondition.");
         // Don't check Watchdog trigger if wifi is in a connected state
         // (This should not occur, but we want to protect against any race conditions)
-        if (mWifiIsConnected) return false;
+        if (isConnected) return false;
         // Don't check Watchdog trigger if trigger is not enabled
         if (!mWatchdogAllowedToTrigger) return false;
 
@@ -639,6 +650,7 @@ public class WifiLastResortWatchdog {
     /**
      * Gets the buffer of recently available networks
      */
+    @VisibleForTesting
     Map<String, AvailableNetworkFailureCount> getRecentAvailableNetworks() {
         return mRecentAvailableNetworks;
     }
@@ -659,11 +671,11 @@ public class WifiLastResortWatchdog {
     /**
      * Prints all networks & counts within mRecentAvailableNetworks to string
      */
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("mWatchdogFeatureEnabled: ").append(getWifiWatchdogFeature());
         sb.append("\nmWatchdogAllowedToTrigger: ").append(mWatchdogAllowedToTrigger);
-        sb.append("\nmWifiIsConnected: ").append(mWifiIsConnected);
         sb.append("\nmRecentAvailableNetworks: ").append(mRecentAvailableNetworks.size());
         for (Map.Entry<String, AvailableNetworkFailureCount> entry
                 : mRecentAvailableNetworks.entrySet()) {
@@ -685,7 +697,8 @@ public class WifiLastResortWatchdog {
      * @param bssid bssid to check the failures for
      * @return true if sum of failure count is over FAILURE_THRESHOLD
      */
-    public boolean isOverFailureThreshold(String bssid) {
+    @VisibleForTesting
+    boolean isOverFailureThreshold(String bssid) {
         return (getFailureCount(bssid, FAILURE_CODE_ASSOCIATION)
                 + getFailureCount(bssid, FAILURE_CODE_AUTHENTICATION)
                 + getFailureCount(bssid, FAILURE_CODE_DHCP)) >= FAILURE_THRESHOLD;
@@ -696,7 +709,8 @@ public class WifiLastResortWatchdog {
      * BSSID and returns the SSID count
      * @param reason failure reason to get count for
      */
-    public int getFailureCount(String bssid, int reason) {
+    @VisibleForTesting
+    int getFailureCount(String bssid, int reason) {
         AvailableNetworkFailureCount availableNetworkFailureCount =
                 mRecentAvailableNetworks.get(bssid);
         if (availableNetworkFailureCount == null) {
@@ -742,16 +756,13 @@ public class WifiLastResortWatchdog {
         return mWatchdogFeatureEnabled;
     }
 
-    protected void enableVerboseLogging(int verbose) {
-        if (verbose > 0) {
-            mVerboseLoggingEnabled = true;
-        } else {
-            mVerboseLoggingEnabled = false;
-        }
+    /** Enable/disable verbose logging. */
+    public void enableVerboseLogging(int verbose) {
+        mVerboseLoggingEnabled = verbose > 0;
     }
 
     @VisibleForTesting
-    protected void setBugReportProbability(double newProbability) {
+    void setBugReportProbability(double newProbability) {
         mBugReportProbability = newProbability;
     }
 

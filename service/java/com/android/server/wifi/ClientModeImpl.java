@@ -2067,6 +2067,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
     }
 
+    /** Check whether this connection is the primary connection on the device. */
+    private boolean isPrimary() {
+        return mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY;
+    }
+
     private void handleScreenStateChanged(boolean screenOn) {
         mScreenOn = screenOn;
         if (mVerboseLoggingEnabled) {
@@ -2076,7 +2081,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             R.bool.config_wifiSuspendOptimizationsEnabled)
                     + " state " + getCurrentState().getName());
         }
-        if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+        if (isPrimary()) {
             // Only enable RSSI polling on primary STA, none of the secondary STA use-cases
             // can become the default route when other networks types that provide internet
             // connectivity (e.g. cellular) are available. So, no point in scoring
@@ -2513,7 +2518,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (config.fromWifiNetworkSpecifier || config.fromWifiNetworkSuggestion) {
             mWifiInfo.setRequestingPackageName(config.creatorName);
         }
-        mWifiInfo.setIsPrimary(mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY);
+        mWifiInfo.setIsPrimary(isPrimary());
         SecurityParams securityParams = config.getNetworkSelectionStatus()
                 .getCandidateSecurityParams();
         if (securityParams != null) {
@@ -2590,7 +2595,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (wifiConfig != null) {
             ScanResultMatchInfo matchInfo = ScanResultMatchInfo.fromWifiConfiguration(wifiConfig);
             // WakeupController should only care about the primary, internet providing network
-            if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+            if (isPrimary()) {
                 mWakeupController.setLastDisconnectInfo(matchInfo);
             }
             mWifiNetworkSuggestionsManager.handleDisconnect(
@@ -2780,7 +2785,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiDiagnostics.takeBugReport(bugTitle, bugDetail);
         }
         mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_STARTED);
-        mWrongPasswordNotifier.onNewConnectionAttempt();
+        if (isPrimary()) {
+            mWrongPasswordNotifier.onNewConnectionAttempt();
+        }
         removeMessages(CMD_DIAGS_CONNECT_TIMEOUT);
         sendMessageDelayed(CMD_DIAGS_CONNECT_TIMEOUT, DIAGS_CONNECT_TIMEOUT_MILLIS);
     }
@@ -2856,7 +2863,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 == WifiMetrics.ConnectionEvent.FAILURE_AUTHENTICATION_FAILURE
                 && level2FailureReason != WifiMetricsProto.ConnectionEvent.AUTH_FAILURE_WRONG_PSWD;
         if ((isAssociationRejection || isAuthenticationFailure)
-                && mWifiConfigManager.isInFlakyRandomizationSsidHotlist(mTargetNetworkId)) {
+                && mWifiConfigManager.isInFlakyRandomizationSsidHotlist(mTargetNetworkId)
+                && isPrimary()) {
             mConnectionFailureNotifier
                     .showFailedToConnectDueToNoRandomizedMacSupportNotification(mTargetNetworkId);
         }
@@ -3179,7 +3187,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         setMulticastFilter(true);
         registerForWifiMonitorEvents();
-        mWifiLastResortWatchdog.clearAllFailureCounts();
+        if (isPrimary()) {
+            mWifiLastResortWatchdog.clearAllFailureCounts();
+        }
         mWifiNative.setSupplicantLogLevel(mVerboseLoggingEnabled);
 
         // Initialize data structures
@@ -3385,9 +3395,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return getMacAddressFromBssidString(mLastBssid);
     }
 
-    void connectToNetwork(WifiConfiguration config) {
+    private void connectToNetwork(WifiConfiguration config) {
         if ((config != null) && mWifiNative.connectToNetwork(mInterfaceName, config)) {
-            mWifiLastResortWatchdog.noteStartConnectTime();
+            mWifiLastResortWatchdog.noteStartConnectTime(config.networkId);
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_CMD_START_CONNECT, config);
             mIsAutoRoaming = false;
             transitionTo(mL2ConnectingState);
@@ -3711,7 +3721,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mCachedPacketFilter = (byte[]) message.obj;
                     if (mContext.getResources().getBoolean(
                             R.bool.config_wifiEnableApfOnNonPrimarySta)
-                            || mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+                            || isPrimary()) {
                         mWifiNative.installPacketFilter(mInterfaceName, mCachedPacketFilter);
                     } else {
                         Log.v(TAG, "Not applying packet filter on non primary CMM");
@@ -3722,7 +3732,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     final byte[] packetFilter;
                     if (mContext.getResources().getBoolean(
                             R.bool.config_wifiEnableApfOnNonPrimarySta)
-                            || mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+                            || isPrimary()) {
                         packetFilter = mWifiNative.readPacketFilter(mInterfaceName);
                     } else {
                         Log.v(TAG, "Retrieving cached packet filter on non primary CMM");
@@ -4329,7 +4339,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 ? mTargetBssid : eventInfo.bssid;
                         mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                                 getConnectingSsidInternal(), bssid,
-                                WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION);
+                                WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION,
+                                isConnected());
                     }
                     clearNetworkCachedDataIfNeeded(
                             getConnectingWifiConfigurationInternal(), eventInfo.reasonCode);
@@ -4486,7 +4497,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             .ASSOCIATION_REJECTION_AP_UNABLE_TO_HANDLE_NEW_STA) {
                         mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                                 getConnectingSsidInternal(), bssid,
-                                WifiLastResortWatchdog.FAILURE_CODE_ASSOCIATION);
+                                WifiLastResortWatchdog.FAILURE_CODE_ASSOCIATION,
+                                isConnected());
                     }
                     transitionTo(mDisconnectedState); // End of connection attempt.
                     break;
@@ -4507,13 +4519,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (isPermanentWrongPasswordFailure(mTargetNetworkId, reasonCode)) {
                         disableReason = WifiConfiguration.NetworkSelectionStatus
                                 .DISABLED_BY_WRONG_PASSWORD;
-                        if (targetedNetwork != null) {
+                        if (targetedNetwork != null && isPrimary()) {
                             mWrongPasswordNotifier.onWrongPasswordError(targetedNetwork.SSID);
                         }
                     } else if (reasonCode == WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE) {
                         if (targetedNetwork != null && targetedNetwork.enterpriseConfig != null
                                 && targetedNetwork.enterpriseConfig.isAuthenticationSimBased()) {
-                            if (mEapFailureNotifier.onEapFailure(errorCode, targetedNetwork)) {
+                            // only show EAP failure notification if primary
+                            if (mEapFailureNotifier
+                                    .onEapFailure(errorCode, targetedNetwork, isPrimary())) {
                                 disableReason = WifiConfiguration.NetworkSelectionStatus
                                     .DISABLED_AUTHENTICATION_PRIVATE_EAP_ERROR;
                                 mWifiBlocklistMonitor.loadCarrierConfigsForDisableReasonInfos();
@@ -4562,7 +4576,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                                 getConnectingSsidInternal(),
                                 (mLastBssid == null) ? mTargetBssid : mLastBssid,
-                                WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION);
+                                WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION,
+                                isConnected());
                     }
                     transitionTo(mDisconnectedState); // End of connection attempt.
                     break;
@@ -4710,8 +4725,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             final boolean explicitlySelected;
             // Non primary CMMs is never user selected. This prevents triggering the No Internet
             // dialog for those networks, which is difficult to handle.
-            if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY
-                    && isRecentlySelectedByTheUser(config)) {
+            if (isPrimary() && isRecentlySelectedByTheUser(config)) {
                 // If explicitlySelected is true, the network was selected by the user via Settings
                 // or QuickSettings. If this network has Internet access, switch to it. Otherwise,
                 // switch to it only if the user confirms that they really want to switch, or has
@@ -4838,7 +4852,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                             getConnectingSsidInternal(),
                             (mLastBssid == null) ? mTargetBssid : mLastBssid,
-                            WifiLastResortWatchdog.FAILURE_CODE_DHCP);
+                            WifiLastResortWatchdog.FAILURE_CODE_DHCP,
+                            isConnected());
                     break;
                 }
                 case CMD_IP_CONFIGURATION_SUCCESSFUL: {
@@ -4868,7 +4883,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                             getConnectingSsidInternal(),
                             (mLastBssid == null) ? mTargetBssid : mLastBssid,
-                            WifiLastResortWatchdog.FAILURE_CODE_DHCP);
+                            WifiLastResortWatchdog.FAILURE_CODE_DHCP,
+                            isConnected());
                     break;
                 }
                 case CMD_IP_REACHABILITY_LOST: {
@@ -4932,8 +4948,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                         if (mVerboseLoggingEnabled) sendRssiChangeBroadcast(mWifiInfo.getRssi());
-                        mWifiTrafficPoller.notifyOnDataActivity(mWifiInfo.txSuccess,
-                                mWifiInfo.rxSuccess);
+                        if (isPrimary()) {
+                            mWifiTrafficPoller.notifyOnDataActivity(
+                                    mWifiInfo.txSuccess, mWifiInfo.rxSuccess);
+                        }
                     } else {
                         // Polling has completed
                     }
@@ -5013,8 +5031,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             mWifiNative.removeNetworkCachedData(mLastNetworkId);
                             // remove network so that supplicant's PMKSA cache is cleared
                             mWifiNative.removeAllNetworks(mInterfaceName);
-                            mSimRequiredNotifier.showSimRequiredNotification(
-                                    config, mLastSimBasedConnectionCarrierName);
+                            if (isPrimary()) {
+                                mSimRequiredNotifier.showSimRequiredNotification(
+                                        config, mLastSimBasedConnectionCarrierName);
+                            }
                         }
                     }
                     break;
@@ -5181,7 +5201,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectingSsidInternal(),
                             !isValidBssid(eventInfo.bssid)
                             ? mTargetBssid : eventInfo.bssid,
-                            WifiLastResortWatchdog.FAILURE_CODE_DHCP);
+                            WifiLastResortWatchdog.FAILURE_CODE_DHCP,
+                            isConnected());
                     handleStatus = NOT_HANDLED;
                     break;
                 }

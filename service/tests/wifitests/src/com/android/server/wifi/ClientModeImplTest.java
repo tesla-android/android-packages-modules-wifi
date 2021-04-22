@@ -600,6 +600,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         return mWifiNetworkAgent;
                     }
                 });
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
 
         initializeCmi();
         // Retrieve factory MAC address on first bootup.
@@ -628,7 +629,6 @@ public class ClientModeImplTest extends WifiBaseTest {
                 mCmi.setShouldReduceNetworkScore(shouldReduceNetworkScore);
             }
         }).when(mClientModeManager).setShouldReduceNetworkScore(anyBoolean());
-        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         doAnswer(new AnswerWithArguments() {
             public void answer(ClientModeManager manager, QueuedBroadcast broadcast) {
                 broadcast.send();
@@ -1911,7 +1911,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Verifies that WifiLastResortWatchdog be notified
         // by DHCP failure
         verify(mWifiLastResortWatchdog, times(2)).noteConnectionFailureAndTriggerIfNeeded(
-                TEST_SSID, TEST_BSSID_STR, WifiLastResortWatchdog.FAILURE_CODE_DHCP);
+                eq(TEST_SSID), eq(TEST_BSSID_STR),
+                eq(WifiLastResortWatchdog.FAILURE_CODE_DHCP), anyBoolean());
         verify(mWifiBlocklistMonitor, times(2)).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_DHCP_FAILURE), anyInt());
         verify(mWifiBlocklistMonitor, times(2)).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
@@ -2059,7 +2060,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mEapFailureNotifier).onEapFailure(
-                WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED, config);
+                WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED, config, true);
         verify(mDataTelephonyManager).resetCarrierKeysForImsiEncryption();
         mockSession.finishMocking();
         verify(mDeviceConfigFacade).isAbnormalConnectionFailureBugreportEnabled();
@@ -3648,7 +3649,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         ISupplicantStaIfaceCallback.StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA, false));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA),
                 anyInt());
@@ -3669,7 +3670,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         .StatusCode.DENIED_INSUFFICIENT_BANDWIDTH, false));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA),
                 anyInt());
@@ -3690,7 +3691,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new AssocRejectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_ASSOCIATION_REJECTION), anyInt());
         verify(mWifiMetrics).incrementNumOfCarrierWifiConnectionNonAuthFailure();
@@ -3713,7 +3714,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_WRONG_PASSWORD), anyInt());
     }
@@ -3735,7 +3736,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE);
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_EAP_FAILURE), anyInt());
     }
@@ -3756,7 +3757,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 WifiManager.ERROR_AUTH_FAILURE_TIMEOUT);
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog).noteConnectionFailureAndTriggerIfNeeded(
-                anyString(), anyString(), anyInt());
+                anyString(), anyString(), anyInt(), anyBoolean());
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(eq(TEST_BSSID_STR),
                 eq(TEST_SSID), eq(WifiBlocklistMonitor.REASON_AUTHENTICATION_FAILURE), anyInt());
     }
@@ -4627,7 +4628,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         assertEquals("DisconnectedState", getCurrentState().getName());
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
-                TEST_SSID, TEST_BSSID_STR, WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION);
+                eq(TEST_SSID), eq(TEST_BSSID_STR),
+                eq(WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION), anyBoolean());
 
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         mLooper.dispatchAll();
@@ -4639,7 +4641,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         assertEquals("DisconnectedState", getCurrentState().getName());
         verify(mWifiLastResortWatchdog).noteConnectionFailureAndTriggerIfNeeded(
-                TEST_SSID, TEST_BSSID_STR, WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION);
+                eq(TEST_SSID), eq(TEST_BSSID_STR),
+                eq(WifiLastResortWatchdog.FAILURE_CODE_AUTHENTICATION), anyBoolean());
 
     }
 
@@ -4756,7 +4759,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         assertEquals("DisconnectedState", getCurrentState().getName());
         verify(mWifiLastResortWatchdog).noteConnectionFailureAndTriggerIfNeeded(
-                TEST_SSID, TEST_BSSID_STR, WifiLastResortWatchdog.FAILURE_CODE_DHCP);
+                eq(TEST_SSID), eq(TEST_BSSID_STR),
+                eq(WifiLastResortWatchdog.FAILURE_CODE_DHCP), anyBoolean());
     }
 
     /**
@@ -5902,7 +5906,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         config.getNetworkSelectionStatus().setHasEverConnected(true);
         config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
         when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
-        when(mEapFailureNotifier.onEapFailure(anyInt(), eq(config))).thenReturn(true);
+        when(mEapFailureNotifier.onEapFailure(anyInt(), eq(config), anyBoolean())).thenReturn(true);
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
                 WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
@@ -5910,8 +5914,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         );
         mLooper.dispatchAll();
 
-        verify(mEapFailureNotifier).onEapFailure(
-                DEFINED_ERROR_CODE, config);
+        verify(mEapFailureNotifier).onEapFailure(DEFINED_ERROR_CODE, config, true);
         verify(mWifiBlocklistMonitor).loadCarrierConfigsForDisableReasonInfos();
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
                 eq(WifiConfiguration.NetworkSelectionStatus
@@ -6246,6 +6249,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
         connect();
 
+        verify(mWifiScoreReport).onRoleChanged(ROLE_CLIENT_PRIMARY);
+
         byte[] filter = new byte[20];
         new Random().nextBytes(filter);
         mIpClientCallback.installPacketFilter(filter);
@@ -6265,7 +6270,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         mCmi.onRoleChanged();
         verify(mWifiNative).installPacketFilter(WIFI_IFACE_NAME, filter);
-        verify(mWifiScoreReport).onRoleChanged(ROLE_CLIENT_PRIMARY);
+        verify(mWifiScoreReport, times(2)).onRoleChanged(ROLE_CLIENT_PRIMARY);
     }
 
 
@@ -6400,9 +6405,12 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void verifyRssiPollOnSecondaryCmm() throws Exception {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        mCmi.onRoleChanged();
         setScreenState(true);
         connect();
         clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);
+
+        verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
 
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(new WifiLinkLayerStats());
 
@@ -6416,6 +6424,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void verifyRssiPollOnOnRoleChangeToPrimary() throws Exception {
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        mCmi.onRoleChanged();
         setScreenState(true);
         connect();
         clearInvocations(mWifiNative, mWifiMetrics, mWifiDataStall);

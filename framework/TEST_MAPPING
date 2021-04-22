@@ -1,12 +1,14 @@
 {
-  "presubmit": [
-    {
-      "name": "FrameworksWifiApiTests"
-    },
+  "presubmit-large": [
     {
       // run service unit tests for API changes (since API changes can break service, but not the
       // other way around)
       "name": "FrameworksWifiTests"
+    }
+  ],
+  "presubmit": [
+    {
+      "name": "FrameworksWifiApiTests"
     }
   ],
   "mainline-presubmit": [

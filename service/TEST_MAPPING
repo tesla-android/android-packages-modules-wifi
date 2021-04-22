@@ -1,8 +1,10 @@
 {
-  "presubmit": [
+  "presubmit-large": [
     {
       "name": "FrameworksWifiTests"
-    },
+    }
+  ],
+  "presubmit": [
     {
       "name": "CtsBackupHostTestCases",
       "options": [
