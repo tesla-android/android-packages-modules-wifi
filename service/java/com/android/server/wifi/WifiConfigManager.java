@@ -1706,16 +1706,16 @@ public class WifiConfigManager {
     }
 
     /**
-     * Removes the suggestion network configuration matched with {@code configKey} provided.
-     *
-     * @param configKey Config Key for the corresponding network suggestion.
+     * Removes the suggestion network configuration matched with WifiConfiguration provided.
+     * @param suggestion WifiConfiguration for suggestion which needs to remove
      * @return true if a network was removed, false otherwise.
      */
-    public boolean removeSuggestionConfiguredNetwork(@NonNull String configKey) {
-        WifiConfiguration config = getInternalConfiguredNetwork(configKey);
+    public boolean removeSuggestionConfiguredNetwork(@NonNull WifiConfiguration suggestion) {
+        WifiConfiguration config = getInternalConfiguredNetwork(
+                suggestion.getProfileKeyInternal());
         if (config != null && config.ephemeral && config.fromWifiNetworkSuggestion) {
             Log.d(TAG, "Removing suggestion network config " + config.getProfileKeyInternal());
-            return removeNetwork(config.networkId, config.creatorUid, config.creatorName);
+            return removeNetwork(config.networkId, suggestion.creatorUid, suggestion.creatorName);
         }
         return false;
     }

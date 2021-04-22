@@ -2162,7 +2162,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mWifiStateTracker).updateState(eq(WifiStateTracker.DISCONNECTED));
-        verify(mWifiNetworkSuggestionsManager).handleDisconnect(any(), any());
         assertEquals("DisconnectedState", getCurrentState().getName());
         verify(mCmiMonitor).onConnectionEnd(mClientModeManager);
         inOrderWifiLockManager.verify(mWifiLockManager)

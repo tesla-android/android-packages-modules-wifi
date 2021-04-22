@@ -2598,8 +2598,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (isPrimary()) {
                 mWakeupController.setLastDisconnectInfo(matchInfo);
             }
-            mWifiNetworkSuggestionsManager.handleDisconnect(
-                    wifiConfig, getConnectedBssidInternal());
         }
         stopRssiMonitoringOffload();
 
