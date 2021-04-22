@@ -70,7 +70,7 @@ public class SavedNetworkNominatorTest extends WifiBaseTest {
         mSavedNetworkNominator = new SavedNetworkNominator(mWifiConfigManager,
                 mPasspointNetworkNominateHelper, mLocalLog, mWifiCarrierInfoManager,
                 mWifiPermissionsUtil, mWifiNetworkSuggestionsManager);
-        when(mWifiCarrierInfoManager.isSimPresent(anyInt())).thenReturn(true);
+        when(mWifiCarrierInfoManager.isSimReady(anyInt())).thenReturn(true);
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any())).thenReturn(VALID_SUBID);
         when(mWifiCarrierInfoManager.requiresImsiEncryption(VALID_SUBID)).thenReturn(true);
         when(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(anyInt())).thenReturn(true);
@@ -158,7 +158,7 @@ public class SavedNetworkNominatorTest extends WifiBaseTest {
         savedConfigs[0].carrierId = TEST_CARRIER_ID;
         // SIM is absent
         when(mWifiCarrierInfoManager.getMatchingSubId(TEST_CARRIER_ID)).thenReturn(INVALID_SUBID);
-        when(mWifiCarrierInfoManager.isSimPresent(eq(INVALID_SUBID))).thenReturn(false);
+        when(mWifiCarrierInfoManager.isSimReady(eq(INVALID_SUBID))).thenReturn(false);
 
         mSavedNetworkNominator.nominateNetworks(
                 scanDetails, false, true, true, mOnConnectableListener);

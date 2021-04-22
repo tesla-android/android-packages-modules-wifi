@@ -1979,7 +1979,7 @@ public class WifiConfiguration implements Parcelable {
             reasons.append(DISABLED_AUTHENTICATION_NO_CREDENTIALS,
                     new DisableReasonInfo(
                             "NETWORK_SELECTION_DISABLED_AUTHENTICATION_NO_CREDENTIALS",
-                            1,
+                            3,
                             DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT));
 
             reasons.append(DISABLED_NO_INTERNET_PERMANENT,

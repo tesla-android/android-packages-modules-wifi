@@ -1836,7 +1836,7 @@ public class WifiNetworkSuggestionsManager {
                 WifiConfiguration config = ewns.createInternalWifiConfiguration(
                         mWifiCarrierInfoManager);
                 if (config.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID
-                        && !mWifiCarrierInfoManager.isSimPresent(config.subscriptionId)) {
+                        && !mWifiCarrierInfoManager.isSimReady(config.subscriptionId)) {
                     continue;
                 }
                 if (config.carrierMerged && !areCarrierMergedSuggestionsAllowed(
@@ -1866,7 +1866,7 @@ public class WifiNetworkSuggestionsManager {
         }
         if (config.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
             int subId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(config);
-            if (!mWifiCarrierInfoManager.isSimPresent(subId)) {
+            if (!mWifiCarrierInfoManager.isSimReady(subId)) {
                 return false;
             }
         }

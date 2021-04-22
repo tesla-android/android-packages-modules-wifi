@@ -4856,7 +4856,7 @@ public class WifiServiceImpl extends BaseWifiService {
             if (configuration.enterpriseConfig != null
                     && configuration.enterpriseConfig.isAuthenticationSimBased()) {
                 int subId = mWifiCarrierInfoManager.getBestMatchSubscriptionId(configuration);
-                if (!mWifiCarrierInfoManager.isSimPresent(subId)) {
+                if (!mWifiCarrierInfoManager.isSimReady(subId)) {
                     Log.e(TAG, "connect to SIM-based config=" + configuration
                             + "while SIM is absent");
                     wrapper.sendFailure(WifiManager.ERROR);
