@@ -40,6 +40,7 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.BatteryStatsManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -428,8 +429,17 @@ public class ActiveModeWarden {
             return false;
         }
         if (clientRole == ROLE_CLIENT_LOCAL_ONLY) {
-            return mContext.getResources().getBoolean(
-                    R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled);
+            if (!mContext.getResources().getBoolean(
+                    R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled)) {
+                return false;
+            }
+            final int uid = requestorWs.getUid(0);
+            final String packageName = requestorWs.getPackageName(0);
+            // For peer to peer use-case, only allow secondary STA if the app is targeting S SDK
+            // or is a system app to provide backward compatibility.
+            return mWifiPermissionsUtil.isSystem(packageName, uid)
+                    || !mWifiPermissionsUtil.isTargetSdkLessThan(
+                            packageName, Build.VERSION_CODES.S, uid);
         }
         if (clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT) {
             return mContext.getResources().getBoolean(
