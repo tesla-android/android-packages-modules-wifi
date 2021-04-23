@@ -409,7 +409,7 @@ public class WifiLockManager {
         updateOpMode();
     }
 
-    private void setBlameHiPerfLocks(boolean shouldBlame) {
+    private synchronized void setBlameHiPerfLocks(boolean shouldBlame) {
         for (WifiLock lock : mWifiLocks) {
             if (lock.mMode == WifiManager.WIFI_MODE_FULL_HIGH_PERF) {
                 setBlameHiPerfWs(lock.getWorkSource(), shouldBlame);
@@ -841,7 +841,7 @@ public class WifiLockManager {
         }
     }
 
-    protected void dump(PrintWriter pw) {
+    protected synchronized void dump(PrintWriter pw) {
         pw.println("Locks acquired: "
                 + mFullHighPerfLocksAcquired + " full high perf, "
                 + mFullLowLatencyLocksAcquired + " full low latency");
