@@ -471,7 +471,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
             if (!passpointConfig.validate()) {
                 throw new IllegalArgumentException("Passpoint configuration is invalid");
             }
-            mPasspointConfiguration = passpointConfig;
+            mPasspointConfiguration = new PasspointConfiguration(passpointConfig);
             return this;
         }
 
