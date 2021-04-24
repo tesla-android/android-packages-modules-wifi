@@ -6060,9 +6060,8 @@ public class WifiManager {
     public void enableVerboseLogging(@VerboseLoggingLevel int verbose) {
         try {
             mService.enableVerboseLogging(verbose);
-        } catch (Exception e) {
-            //ignore any failure here
-            Log.e(TAG, "enableVerboseLogging " + e.toString());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
         }
     }
 

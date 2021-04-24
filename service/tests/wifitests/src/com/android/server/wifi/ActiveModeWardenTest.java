@@ -68,6 +68,7 @@ import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.BatteryStatsManager;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
@@ -125,7 +126,9 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     private static final int TEST_WIFI_RECOVERY_DELAY_MS = 2000;
     private static final int TEST_AP_FREQUENCY = 2412;
     private static final int TEST_AP_BANDWIDTH = SoftApInfo.CHANNEL_WIDTH_20MHZ;
-    private static final WorkSource TEST_WORKSOURCE = new WorkSource();
+    private static final int TEST_UID = 435546654;
+    private static final String TEST_PACKAGE = "com.test";
+    private static final WorkSource TEST_WORKSOURCE = new WorkSource(TEST_UID, TEST_PACKAGE);
 
     TestLooper mLooper;
     @Mock WifiInjector mWifiInjector;
@@ -222,6 +225,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 any(WifiServiceImpl.SoftApCallbackInternal.class), any(), any(), any(),
                 anyBoolean());
         when(mWifiNative.initialize()).thenReturn(true);
+        when(mWifiPermissionsUtil.isSystem(TEST_PACKAGE, TEST_UID)).thenReturn(true);
 
         mActiveModeWarden = createActiveModeWarden();
         mActiveModeWarden.start();
@@ -2905,6 +2909,38 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 TEST_WORKSOURCE, ROLE_CLIENT_LOCAL_ONLY));
 
         requestAdditionalClientModeManagerWhenConnectingToPrimaryBssid(ROLE_CLIENT_LOCAL_ONLY);
+    }
+
+    @Test
+    public void requestRemoveLocalOnlyClientModeManagerWhenNotSystemAppAndTargetSdkLessThanS()
+            throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled))
+                .thenReturn(true);
+        when(mWifiPermissionsUtil.isSystem(TEST_PACKAGE, TEST_UID)).thenReturn(false);
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(
+                TEST_PACKAGE, Build.VERSION_CODES.S, TEST_UID))
+                .thenReturn(true);
+        assertFalse(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_LOCAL_ONLY));
+        requestRemoveAdditionalClientModeManagerWhenNotAllowed(ROLE_CLIENT_LOCAL_ONLY);
+    }
+
+    @Test
+    public void requestRemoveLocalOnlyClientModeManagerWhenNotSystemAppAndTargetSdkEqualToS()
+            throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled))
+                .thenReturn(true);
+        when(mWifiPermissionsUtil.isSystem(TEST_PACKAGE, TEST_UID)).thenReturn(false);
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(
+                TEST_PACKAGE, Build.VERSION_CODES.S, TEST_UID))
+                .thenReturn(false);
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_LOCAL_ONLY));
+        requestRemoveAdditionalClientModeManager(ROLE_CLIENT_LOCAL_ONLY);
     }
 
     @Test

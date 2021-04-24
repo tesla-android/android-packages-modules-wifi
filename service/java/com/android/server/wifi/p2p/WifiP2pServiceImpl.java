@@ -3960,6 +3960,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void handleGroupCreationFailure() {
+            // A group is formed, but the tethering request is not proceed.
+            if (null != mGroup) {
+                // Clear any timeout that was set. This is essential for devices
+                // that reuse the main p2p interface for a created group.
+                mWifiNative.setP2pGroupIdle(mGroup.getInterface(), 0);
+                mWifiNative.p2pGroupRemove(mGroup.getInterface());
+                mGroup = null;
+            }
             resetWifiP2pInfo();
             mDetailedState = NetworkInfo.DetailedState.FAILED;
             sendP2pConnectionChangedBroadcast();

@@ -23,6 +23,7 @@ import android.annotation.Nullable;
 import android.net.MacAddress;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.os.Build.VERSION_CODES;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.PatternMatcher;
@@ -38,10 +39,10 @@ import java.util.Objects;
  * {@link WifiNetworkSpecifier.Builder} class to create an instance.
  * <p>
  * On devices which support concurrent connections (indicated via
- * {@link WifiManager#isStaConcurrencyForLocalOnlyConnectionsSupported()}, these local only
- * connections may be brought up as a secondary concurrent connection (primary
- * connection will be used for networks with internet connectivity available to the user and all
- * apps).
+ * {@link WifiManager#isStaConcurrencyForLocalOnlyConnectionsSupported()} and if the initiating app
+ * targets SDK &ge; {@link VERSION_CODES#S} or is a system app, these local only connections may be
+ * brought up as a secondary concurrent connection (primary connection will be used for networks
+ * with internet connectivity available to the user and all apps).
  * </p>
  */
 public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parcelable {

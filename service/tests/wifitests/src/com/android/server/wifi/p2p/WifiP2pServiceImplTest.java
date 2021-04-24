@@ -4364,4 +4364,36 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         assertEquals(WifiP2pManager.SET_WFD_INFO_FAILED, message.what);
         assertEquals(WifiP2pManager.ERROR, message.arg1);
     }
+
+    /**
+     * Verify that P2P group is removed during group creating failure.
+     */
+    @Test
+    public void testGroupCreatingFailureDueToTethering() throws Exception {
+        when(mWifiNative.p2pGroupAdd(anyBoolean())).thenReturn(true);
+        when(mWifiNative.p2pGroupRemove(eq(IFACE_NAME_P2P))).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCanAccessWifiDirect(eq("testPkg1"), eq("testFeature"),
+                anyInt(), anyBoolean())).thenReturn(true);
+
+        WifiP2pGroup group = new WifiP2pGroup();
+        group.setNetworkId(WifiP2pGroup.NETWORK_ID_PERSISTENT);
+        group.setNetworkName("DIRECT-xy-NEW");
+        group.setOwner(new WifiP2pDevice("thisDeviceMac"));
+        group.setIsGroupOwner(true);
+        group.setInterface(IFACE_NAME_P2P);
+
+        forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
+        mLooper.dispatchAll();
+        sendCreateGroupMsg(mClientMessenger, WifiP2pGroup.NETWORK_ID_TEMPORARY, null);
+        mLooper.dispatchAll();
+
+        sendGroupStartedMsg(group);
+        mLooper.dispatchAll();
+
+        mLooper.moveTimeForward(120 * 1000 * 2);
+        mLooper.dispatchAll();
+
+        verify(mWifiNative).p2pGroupRemove(group.getInterface());
+    }
 }

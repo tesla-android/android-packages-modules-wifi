@@ -1484,6 +1484,10 @@ public class WifiNetworkSuggestionTest {
                 .build();
         assertTrue(suggestion.isCarrierMerged());
         assertTrue(suggestion.getPasspointConfig().isCarrierMerged());
+        assertEquals(1, suggestion.getPasspointConfig().getSubscriptionId());
+
+        passpointConfiguration.setSubscriptionId(4);
+        assertEquals(1, suggestion.getPasspointConfig().getSubscriptionId());
     }
 
     /**
