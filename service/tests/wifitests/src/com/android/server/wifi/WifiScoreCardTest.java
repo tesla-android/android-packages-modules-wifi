@@ -142,6 +142,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mWifiInfo.setSSID(TEST_SSID_1);
         mWifiInfo.setBSSID(TEST_BSSID_1.toString());
         mWifiInfo.setNetworkId(TEST_NETWORK_CONFIG_ID);
+        mWifiInfo.setMaxSupportedTxLinkSpeedMbps(866);
+        mWifiInfo.setMaxSupportedRxLinkSpeedMbps(866);
         millisecondsPass(0);
         mWifiScoreCard = new WifiScoreCard(mClock, "some seed", mDeviceConfigFacade,
                 mFrameworkFacade, mContext);
@@ -1765,6 +1767,53 @@ public class WifiScoreCardTest extends WifiBaseTest {
 
         assertEquals(0, stats.statsAbove2G.tx.level.length);
         assertEquals(0, stats.statsAbove2G.rx.level.length);
+    }
+
+
+    @Test
+    public void testLinkBandwidthLargeByteCountReturnNonNegativeValue() {
+        mWifiInfo.setRssi(-70);
+        mWifiInfo.setMaxSupportedRxLinkSpeedMbps(200_000);
+        mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
+        PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
+        mWifiInfo.setFrequency(5210);
+        mWifiScoreCard.noteIpConfiguration(mWifiInfo);
+        mOldLlStats.timeStampInMs = 7_000;
+        mNewLlStats.timeStampInMs = 10_000;
+        long txBytes = 8_000_000_000L;
+        long rxBytes = 16_000_000_000L;
+        int [] reportedKbps = new int[]{400_000, 300_000};
+        int [] l2Kbps = new int[]{800_000, 700_000};
+
+        // Report a small on_time so that the calculated BW overflows at 5G
+        mNewLlStats.on_time = 10;
+        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR + 2; i++) {
+            addTotalBytes(txBytes, rxBytes);
+            millisecondsPass(3_000);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
+        }
+        // Report a larger on_time so that the calculated BW won't overflows at 2G
+        mWifiInfo.setFrequency(2412);
+        mNewLlStats.on_time = 1000;
+        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR + 2; i++) {
+            addTotalBytes(txBytes, rxBytes);
+            millisecondsPass(3_000);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+            perNetwork.updateBwMetrics(reportedKbps, l2Kbps);
+        }
+
+        // Report cold start BW for Tx because the calculated value is higher than
+        // maxSupportedTxLinkSpeedMbps.
+        assertEquals(10_000, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(128_000_000, perNetwork.getRxLinkBandwidthKbps());
+
+        BandwidthEstimatorStats stats = mWifiScoreCard.dumpBandwidthEstimatorStats();
+        assertEquals(0, stats.statsAbove2G.tx.level.length);
+        assertEquals(0, stats.statsAbove2G.rx.level.length);
+        assertEquals(0, stats.stats2G.tx.level.length);
+        assertEquals(1, stats.stats2G.rx.level.length);
+        assertEquals(128_000_000, stats.stats2G.rx.level[0].avgBandwidthKbps);
     }
 
     @Test
