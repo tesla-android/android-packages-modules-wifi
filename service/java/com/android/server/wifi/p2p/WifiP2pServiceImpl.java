@@ -1613,7 +1613,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         if (!blocked && mDiscoveryPostponed) {
                             mDiscoveryPostponed = false;
-                            mWifiNative.p2pFind(DISCOVER_TIMEOUT_S);
+                            if (mWifiNative.p2pFind(DISCOVER_TIMEOUT_S)) {
+                                sendP2pDiscoveryChangedBroadcast(true);
+                            }
                         }
                         if (blocked && mWifiChannel != null) {
                             mWifiChannel.replyToMessage(message, message.arg2);
@@ -1678,6 +1680,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (mWifiNative.p2pFind(DISCOVER_TIMEOUT_S)) {
+                            sendP2pDiscoveryChangedBroadcast(true);
                             mWifiP2pMetrics.incrementServiceScans();
                             replyToMessage(message, WifiP2pManager.DISCOVER_SERVICES_SUCCEEDED);
                         } else {
