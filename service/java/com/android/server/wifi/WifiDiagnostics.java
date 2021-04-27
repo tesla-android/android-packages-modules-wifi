@@ -257,10 +257,11 @@ public class WifiDiagnostics {
      * Inform the diagnostics module of a connection event.
      * @param event The type of connection event (see CONNECTION_EVENT_* constants)
      */
-    public synchronized void reportConnectionEvent(byte event) {
+    public synchronized void reportConnectionEvent(byte event,
+            ClientModeManager clientModeManager) {
         mLastMileLogger.reportConnectionEvent(event);
         if (event == CONNECTION_EVENT_FAILED || event == CONNECTION_EVENT_TIMEOUT) {
-            mPacketFatesForLastFailure = fetchPacketFates();
+            mPacketFatesForLastFailure = new PacketFates(clientModeManager);
         }
     }
 
@@ -805,42 +806,56 @@ public class WifiDiagnostics {
     }
 
     /** Packet fate reporting */
-    private ArrayList<WifiNative.FateReport> mPacketFatesForLastFailure;
+    private PacketFates mPacketFatesForLastFailure;
 
-    private ArrayList<WifiNative.FateReport> fetchPacketFates() {
-        // TODO(b/159944009): this may need to monitor all client ifaces, not just the primary one
-        ClientModeManager primaryManager =
-                mWifiInjector.getActiveModeWarden().getPrimaryClientModeManager();
-        ArrayList<WifiNative.FateReport> mergedFates = new ArrayList<>();
-        mergedFates.addAll(primaryManager.getTxPktFates());
-        mergedFates.addAll(primaryManager.getRxPktFates());
-        mergedFates.sort(Comparator.comparing(fateReport -> fateReport.mDriverTimestampUSec));
-        return mergedFates;
+    static class PacketFates {
+        public final String clientModeManagerInfo;
+        @NonNull public final List<WifiNative.FateReport> mergedFates;
+
+        PacketFates(ClientModeManager clientModeManager) {
+            clientModeManagerInfo = clientModeManager.toString();
+            mergedFates = new ArrayList<WifiNative.FateReport>();
+            mergedFates.addAll(clientModeManager.getTxPktFates());
+            mergedFates.addAll(clientModeManager.getRxPktFates());
+            mergedFates.sort(Comparator.comparing(fateReport -> fateReport.mDriverTimestampUSec));
+        }
+    }
+
+    private @NonNull List<PacketFates> fetchPacketFatesForAllClientIfaces() {
+        List<ClientModeManager> clientModeManagers =
+                mWifiInjector.getActiveModeWarden().getClientModeManagers();
+        List<PacketFates> packetFates = new ArrayList<>();
+        for (ClientModeManager cm : clientModeManagers) {
+            packetFates.add(new PacketFates(cm));
+        }
+        return packetFates;
     }
 
     private void dumpPacketFates(PrintWriter pw) {
         dumpPacketFatesInternal(pw, "Last failed connection fates", mPacketFatesForLastFailure,
                 isVerboseLoggingEnabled());
-        dumpPacketFatesInternal(pw, "Latest fates", fetchPacketFates(), isVerboseLoggingEnabled());
+        for (PacketFates fates : fetchPacketFatesForAllClientIfaces()) {
+            dumpPacketFatesInternal(pw, "Latest fates", fates, isVerboseLoggingEnabled());
+        }
     }
 
     private static void dumpPacketFatesInternal(PrintWriter pw, String description,
-            ArrayList<WifiNative.FateReport> fates, boolean verbose) {
-        if (fates == null) {
+            PacketFates packetFates, boolean verbose) {
+        if (packetFates == null) {
             pw.format("No fates fetched for \"%s\"\n", description);
             return;
         }
-
-        if (fates.size() == 0) {
+        if (packetFates.mergedFates.size() == 0) {
             pw.format("HAL provided zero fates for \"%s\"\n", description);
             return;
         }
 
         pw.format("--------------------- %s ----------------------\n", description);
+        pw.format("ClientModeManagerInfo=%s ---------------\n", packetFates.clientModeManagerInfo);
 
         StringBuilder verboseOutput = new StringBuilder();
         pw.print(WifiNative.FateReport.getTableHeader());
-        for (WifiNative.FateReport fate : fates) {
+        for (WifiNative.FateReport fate : packetFates.mergedFates) {
             pw.print(fate.toTableRowString());
             if (verbose) {
                 // Important: only print Personally Identifiable Information (PII) if verbose
