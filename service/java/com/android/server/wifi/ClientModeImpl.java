@@ -2782,7 +2782,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             String bugDetail = "Detect abnormal overlapping connection";
             mWifiDiagnostics.takeBugReport(bugTitle, bugDetail);
         }
-        mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_STARTED);
+        mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_STARTED,
+                mClientModeManager);
         if (isPrimary()) {
             mWrongPasswordNotifier.onNewConnectionAttempt();
         }
@@ -2800,7 +2801,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 break;
             default:
                 removeMessages(CMD_DIAGS_CONNECT_TIMEOUT);
-                mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_FAILED);
+                mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_FAILED,
+                        mClientModeManager);
         }
     }
 
@@ -3751,7 +3753,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
                 case CMD_DIAGS_CONNECT_TIMEOUT: {
                     mWifiDiagnostics.reportConnectionEvent(
-                            WifiDiagnostics.CONNECTION_EVENT_TIMEOUT);
+                            WifiDiagnostics.CONNECTION_EVENT_TIMEOUT, mClientModeManager);
                     break;
                 }
                 case WifiP2pServiceImpl.P2P_CONNECTION_CHANGED:
@@ -5457,7 +5459,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 // stop collect last-mile stats since validation fail
                                 removeMessages(CMD_DIAGS_CONNECT_TIMEOUT);
                                 mWifiDiagnostics.reportConnectionEvent(
-                                        WifiDiagnostics.CONNECTION_EVENT_FAILED);
+                                        WifiDiagnostics.CONNECTION_EVENT_FAILED,
+                                        mClientModeManager);
                                 mWifiConfigManager.incrementNetworkNoInternetAccessReports(
                                         config.networkId);
                                 // If this was not recently selected by the user, update network
@@ -5495,7 +5498,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         // stop collect last-mile stats since validation pass
                         removeMessages(CMD_DIAGS_CONNECT_TIMEOUT);
                         mWifiDiagnostics.reportConnectionEvent(
-                                WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED);
+                                WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED, mClientModeManager);
                         mWifiScoreCard.noteValidationSuccess(mWifiInfo);
                         mWifiBlocklistMonitor.handleNetworkValidationSuccess(mLastBssid,
                                 mWifiInfo.getSSID());
