@@ -342,7 +342,7 @@ package android.net.wifi {
   public final class WifiAvailableChannel implements android.os.Parcelable {
     ctor public WifiAvailableChannel(int, int);
     method public int describeContents();
-    method public int getFrequencyInMhz();
+    method public int getFrequencyMhz();
     method public int getOperationalModes();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiAvailableChannel> CREATOR;
