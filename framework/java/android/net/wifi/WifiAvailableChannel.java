@@ -138,7 +138,7 @@ public final class WifiAvailableChannel implements Parcelable {
     /**
      * Get the channel frequency in MHz.
      */
-    public int getFrequencyInMhz() {
+    public int getFrequencyMhz() {
         return mFrequency;
     }
 
