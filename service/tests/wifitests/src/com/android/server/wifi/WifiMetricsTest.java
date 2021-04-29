@@ -510,10 +510,16 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final String OPEN_NET_NOTIFIER_TAG = OpenNetworkNotifier.TAG;
 
     private static final int NUM_SOFT_AP_EVENT_ENTRIES = 3;
+    private static final int NUM_SOFT_AP_EVENT_ENTRIES_FOR_BRIDGED_AP = 4;
     private static final int NUM_SOFT_AP_ASSOCIATED_STATIONS = 3;
-    private static final int SOFT_AP_CHANNEL_FREQUENCY = 2437;
-    private static final int SOFT_AP_CHANNEL_BANDWIDTH = SoftApConnectedClientsEvent.BANDWIDTH_20;
-    private static final int SOFT_AP_GENERATION = ScanResult.WIFI_STANDARD_11N;
+    private static final int SOFT_AP_CHANNEL_FREQUENCY_2G = 2437;
+    private static final int SOFT_AP_CHANNEL_BANDWIDTH_2G =
+            SoftApConnectedClientsEvent.BANDWIDTH_20;
+    private static final int SOFT_AP_GENERATION_2G = ScanResult.WIFI_STANDARD_11N;
+    private static final int SOFT_AP_CHANNEL_FREQUENCY_5G = 5180;
+    private static final int SOFT_AP_CHANNEL_BANDWIDTH_5G =
+            SoftApConnectedClientsEvent.BANDWIDTH_80;
+    private static final int SOFT_AP_GENERATION_5G = ScanResult.WIFI_STANDARD_11AC;
     private static final int SOFT_AP_MAX_CLIENT_SETTING = 10;
     private static final int SOFT_AP_MAX_CLIENT_CAPABILITY = 16;
     private static final long SOFT_AP_SHUTDOWN_TIMEOUT_SETTING = 10_000;
@@ -1086,23 +1092,35 @@ public class WifiMetricsTest extends WifiBaseTest {
     }
 
     private void addSoftApEventsToMetrics() {
-        // Total number of events recorded is NUM_SOFT_AP_EVENT_ENTRIES in both modes
+        SoftApInfo testSoftApInfo_2G = new SoftApInfo();
+        testSoftApInfo_2G.setFrequency(SOFT_AP_CHANNEL_FREQUENCY_2G);
+        testSoftApInfo_2G.setBandwidth(SOFT_AP_CHANNEL_BANDWIDTH_2G);
+        testSoftApInfo_2G.setWifiStandard(SOFT_AP_GENERATION_2G);
+        SoftApInfo testSoftApInfo_5G = new SoftApInfo();
+        testSoftApInfo_5G.setFrequency(SOFT_AP_CHANNEL_FREQUENCY_5G);
+        testSoftApInfo_5G.setBandwidth(SOFT_AP_CHANNEL_BANDWIDTH_5G);
+        testSoftApInfo_5G.setWifiStandard(SOFT_AP_GENERATION_5G);
 
+        // Total number of events recorded is NUM_SOFT_AP_EVENT_ENTRIES in both modes
         mWifiMetrics.addSoftApUpChangedEvent(true, WifiManager.IFACE_IP_MODE_TETHERED,
-                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING);
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, false);
         mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(NUM_SOFT_AP_ASSOCIATED_STATIONS,
-                WifiManager.IFACE_IP_MODE_TETHERED);
+                NUM_SOFT_AP_ASSOCIATED_STATIONS, WifiManager.IFACE_IP_MODE_TETHERED,
+                testSoftApInfo_2G);
+
+        // Should be dropped.
         mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(NUM_SOFT_AP_ASSOCIATED_STATIONS,
-                WifiManager.IFACE_IP_MODE_UNSPECIFIED);  // Should be dropped.
+                NUM_SOFT_AP_ASSOCIATED_STATIONS, WifiManager.IFACE_IP_MODE_UNSPECIFIED,
+                testSoftApInfo_2G);
+
         mWifiMetrics.addSoftApUpChangedEvent(false, WifiManager.IFACE_IP_MODE_TETHERED,
-                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING);
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, false);
+
+
+
         // Channel switch info should be added to the last Soft AP UP event in the list
-        SoftApInfo testSoftApInfo = new SoftApInfo();
-        testSoftApInfo.setFrequency(SOFT_AP_CHANNEL_FREQUENCY);
-        testSoftApInfo.setBandwidth(SOFT_AP_CHANNEL_BANDWIDTH);
-        testSoftApInfo.setWifiStandard(SOFT_AP_GENERATION);
-        mWifiMetrics.addSoftApChannelSwitchedEvent(testSoftApInfo,
-                WifiManager.IFACE_IP_MODE_TETHERED);
+        mWifiMetrics.addSoftApChannelSwitchedEvent(new ArrayList<>() {{ add(testSoftApInfo_2G); }},
+                WifiManager.IFACE_IP_MODE_TETHERED, false);
         SoftApConfiguration testSoftApConfig = new SoftApConfiguration.Builder()
                 .setSsid("Test_Metric_SSID")
                 .setMaxNumberOfClients(SOFT_AP_MAX_CLIENT_SETTING)
@@ -1110,32 +1128,54 @@ public class WifiMetricsTest extends WifiBaseTest {
                 .setClientControlByUserEnabled(SOFT_AP_CLIENT_CONTROL_ENABLE)
                 .build();
         mWifiMetrics.updateSoftApConfiguration(testSoftApConfig,
-                WifiManager.IFACE_IP_MODE_TETHERED);
+                WifiManager.IFACE_IP_MODE_TETHERED, false);
         SoftApCapability testSoftApCapability = new SoftApCapability(0);
         testSoftApCapability.setMaxSupportedClients(SOFT_AP_MAX_CLIENT_CAPABILITY);
         mWifiMetrics.updateSoftApCapability(testSoftApCapability,
-                WifiManager.IFACE_IP_MODE_TETHERED);
+                WifiManager.IFACE_IP_MODE_TETHERED, false);
 
         mWifiMetrics.addSoftApUpChangedEvent(true, WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
-                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING);
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, false);
         mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(NUM_SOFT_AP_ASSOCIATED_STATIONS,
-                WifiManager.IFACE_IP_MODE_LOCAL_ONLY);
+                NUM_SOFT_AP_ASSOCIATED_STATIONS, WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
+                testSoftApInfo_2G);
+
         // Should be dropped.
         mWifiMetrics.addSoftApUpChangedEvent(false, WifiManager.IFACE_IP_MODE_CONFIGURATION_ERROR,
-                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING);
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, false);
         mWifiMetrics.addSoftApUpChangedEvent(false, WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
-                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING);
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, false);
+
+        // Bridged mode test, total NUM_SOFT_AP_EVENT_ENTRIES_FOR_BRIDGED_AP events for bridged mode
+        mWifiMetrics.addSoftApUpChangedEvent(true, WifiManager.IFACE_IP_MODE_TETHERED,
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, true);
+        mWifiMetrics.addSoftApChannelSwitchedEvent(new ArrayList<>() {{
+                    add(testSoftApInfo_2G);
+                    add(testSoftApInfo_5G);
+                }},
+                WifiManager.IFACE_IP_MODE_TETHERED, true);
+
+        mWifiMetrics.updateSoftApConfiguration(testSoftApConfig,
+                WifiManager.IFACE_IP_MODE_TETHERED, true);
+        mWifiMetrics.updateSoftApCapability(testSoftApCapability,
+                WifiManager.IFACE_IP_MODE_TETHERED, true);
+
+        mWifiMetrics.addSoftApInstanceDownEventInDualMode(WifiManager.IFACE_IP_MODE_TETHERED,
+                testSoftApInfo_5G);
+        mWifiMetrics.addSoftApUpChangedEvent(false, WifiManager.IFACE_IP_MODE_TETHERED,
+                SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING, true);
     }
 
     private void verifySoftApEventsStoredInProto() {
-        assertEquals(NUM_SOFT_AP_EVENT_ENTRIES,
+        // Tethered mode includes single AP and dual AP test.
+        assertEquals(NUM_SOFT_AP_EVENT_ENTRIES + NUM_SOFT_AP_EVENT_ENTRIES_FOR_BRIDGED_AP,
                 mDecodedProto.softApConnectedClientsEventsTethered.length);
         assertEquals(SoftApConnectedClientsEvent.SOFT_AP_UP,
                 mDecodedProto.softApConnectedClientsEventsTethered[0].eventType);
         assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[0].numConnectedClients);
-        assertEquals(SOFT_AP_CHANNEL_FREQUENCY,
+        assertEquals(SOFT_AP_CHANNEL_FREQUENCY_2G,
                 mDecodedProto.softApConnectedClientsEventsTethered[0].channelFrequency);
-        assertEquals(SOFT_AP_CHANNEL_BANDWIDTH,
+        assertEquals(SOFT_AP_CHANNEL_BANDWIDTH_2G,
                 mDecodedProto.softApConnectedClientsEventsTethered[0].channelBandwidth);
         assertEquals(SOFT_AP_MAX_CLIENT_SETTING,
                 mDecodedProto.softApConnectedClientsEventsTethered[0]
@@ -1159,6 +1199,56 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(SoftApConnectedClientsEvent.SOFT_AP_DOWN,
                 mDecodedProto.softApConnectedClientsEventsTethered[2].eventType);
         assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[2].numConnectedClients);
+
+        // Verify the bridged AP metrics
+        assertEquals(SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP,
+                mDecodedProto.softApConnectedClientsEventsTethered[3].eventType);
+        assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[3].numConnectedClients);
+        assertEquals(SOFT_AP_CHANNEL_FREQUENCY_2G,
+                mDecodedProto.softApConnectedClientsEventsTethered[3].channelFrequency);
+        assertEquals(SOFT_AP_CHANNEL_BANDWIDTH_2G,
+                mDecodedProto.softApConnectedClientsEventsTethered[3].channelBandwidth);
+        assertEquals(SOFT_AP_MAX_CLIENT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[3]
+                .maxNumClientsSettingInSoftapConfiguration);
+        assertEquals(SOFT_AP_MAX_CLIENT_CAPABILITY,
+                mDecodedProto.softApConnectedClientsEventsTethered[3]
+                .maxNumClientsSettingInSoftapCapability);
+        assertEquals(SOFT_AP_SHUTDOWN_TIMEOUT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[3]
+                .shutdownTimeoutSettingInSoftapConfiguration);
+        assertEquals(SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[3]
+                .defaultShutdownTimeoutSetting);
+        assertEquals(SOFT_AP_CLIENT_CONTROL_ENABLE,
+                mDecodedProto.softApConnectedClientsEventsTethered[3].clientControlIsEnabled);
+        assertEquals(SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP,
+                mDecodedProto.softApConnectedClientsEventsTethered[4].eventType);
+        assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[4].numConnectedClients);
+        assertEquals(SOFT_AP_CHANNEL_FREQUENCY_5G,
+                mDecodedProto.softApConnectedClientsEventsTethered[4].channelFrequency);
+        assertEquals(SOFT_AP_CHANNEL_BANDWIDTH_5G,
+                mDecodedProto.softApConnectedClientsEventsTethered[4].channelBandwidth);
+        assertEquals(SOFT_AP_MAX_CLIENT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[4]
+                .maxNumClientsSettingInSoftapConfiguration);
+        assertEquals(SOFT_AP_MAX_CLIENT_CAPABILITY,
+                mDecodedProto.softApConnectedClientsEventsTethered[4]
+                .maxNumClientsSettingInSoftapCapability);
+        assertEquals(SOFT_AP_SHUTDOWN_TIMEOUT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[4]
+                .shutdownTimeoutSettingInSoftapConfiguration);
+        assertEquals(SOFT_AP_SHUTDOWN_TIMEOUT_DEFAULT_SETTING,
+                mDecodedProto.softApConnectedClientsEventsTethered[4]
+                .defaultShutdownTimeoutSetting);
+        assertEquals(SOFT_AP_CLIENT_CONTROL_ENABLE,
+                mDecodedProto.softApConnectedClientsEventsTethered[4].clientControlIsEnabled);
+        assertEquals(SoftApConnectedClientsEvent.DUAL_AP_ONE_INSTANCE_DOWN,
+                mDecodedProto.softApConnectedClientsEventsTethered[5].eventType);
+        assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[5].numConnectedClients);
+        assertEquals(SoftApConnectedClientsEvent.SOFT_AP_DOWN,
+                mDecodedProto.softApConnectedClientsEventsTethered[6].eventType);
+        assertEquals(0, mDecodedProto.softApConnectedClientsEventsTethered[6].numConnectedClients);
 
         assertEquals(SoftApConnectedClientsEvent.SOFT_AP_UP,
                 mDecodedProto.softApConnectedClientsEventsLocalOnly[0].eventType);
