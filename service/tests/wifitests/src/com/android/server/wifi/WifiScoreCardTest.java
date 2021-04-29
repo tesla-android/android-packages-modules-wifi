@@ -1756,14 +1756,14 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(2, stats.stats2G.rx.level[0].signalLevel);
         assertEquals(BANDWIDTH_STATS_COUNT_THR - 1, stats.stats2G.rx.level[0].count);
         assertEquals(280_000, stats.stats2G.rx.level[0].avgBandwidthKbps);
-        assertEquals(150, stats.stats2G.rx.level[0].l2NrmsePercent);
-        assertEquals(7, stats.stats2G.rx.level[0].bandwidthEstNrmsePercent);
+        assertEquals(150, stats.stats2G.rx.level[0].l2ErrorPercent);
+        assertEquals(7, stats.stats2G.rx.level[0].bandwidthEstErrorPercent);
 
         assertEquals(2, stats.stats2G.tx.level[0].signalLevel);
         assertEquals(BANDWIDTH_STATS_COUNT_THR - 1, stats.stats2G.tx.level[0].count);
         assertEquals(240_000, stats.stats2G.tx.level[0].avgBandwidthKbps);
-        assertEquals(233, stats.stats2G.tx.level[0].l2NrmsePercent);
-        assertEquals(66, stats.stats2G.tx.level[0].bandwidthEstNrmsePercent);
+        assertEquals(233, stats.stats2G.tx.level[0].l2ErrorPercent);
+        assertEquals(66, stats.stats2G.tx.level[0].bandwidthEstErrorPercent);
 
         assertEquals(0, stats.statsAbove2G.tx.level.length);
         assertEquals(0, stats.statsAbove2G.rx.level.length);
