@@ -3241,10 +3241,10 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         verify(mWifiDiagnostics, never()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_STARTED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_STARTED), any());
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_STARTED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_STARTED), any());
     }
 
     /**
@@ -3261,7 +3261,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(ClientModeImpl.DIAGS_CONNECT_TIMEOUT_MILLIS);
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT));
+                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT), any());
     }
 
     /**
@@ -3277,14 +3277,14 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(ClientModeImpl.DIAGS_CONNECT_TIMEOUT_MILLIS - 1000);
         mLooper.dispatchAll();
         verify(mWifiDiagnostics, never()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT));
+                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT), any());
     }
 
     private void verifyConnectionEventTimeoutDoesNotOccur() {
         mLooper.moveTimeForward(ClientModeImpl.DIAGS_CONNECT_TIMEOUT_MILLIS);
         mLooper.dispatchAll();
         verify(mWifiDiagnostics, never()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT));
+                eq(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT), any());
     }
 
     /**
@@ -3305,10 +3305,10 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new AssocRejectEventInfo(TEST_SSID, TEST_BSSID_STR,
                         ISupplicantStaIfaceCallback.StatusCode.AP_UNABLE_TO_HANDLE_NEW_STA, false));
         verify(mWifiDiagnostics, never()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 mClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, TEST_BSSID_STR,
@@ -3354,7 +3354,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 mClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_AUTHENTICATION_FAILURE, TEST_BSSID_STR,
@@ -3761,7 +3761,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         .getScanResult());
         testDhcpFailure();
         verify(mWifiDiagnostics, atLeastOnce()).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
         verify(mWifiConnectivityManager, atLeastOnce()).handleConnectionAttemptEnded(
                 mClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_DHCP, TEST_BSSID_STR, TEST_SSID);
@@ -3794,7 +3794,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED), any());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 mClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_NONE, TEST_BSSID_STR, TEST_SSID);
@@ -6005,7 +6005,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 eq(WifiConfiguration.RECENT_FAILURE_NETWORK_NOT_FOUND));
 
         verify(mWifiDiagnostics).reportConnectionEvent(
-                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED));
+                eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
         verify(mWifiConnectivityManager).handleConnectionAttemptEnded(
                 mClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND, TEST_BSSID_STR, TEST_SSID);
