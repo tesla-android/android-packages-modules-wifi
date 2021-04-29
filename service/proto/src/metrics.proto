@@ -3806,10 +3806,10 @@ message BandwidthEstimatorStats {
     // Average network layer bandwidth in kbps based on TrafficStats byte count and radio on time
     // of link layer stats.
     optional uint32 avg_bandwidth_kbps = 3;
-    // Normalized root mean square error (NRMSE) of layer 2 link bandwidth in percent
-    optional uint32 l2_nrmse_percent = 4;
-    // Normalized root mean square error (NRMSE) of network layer bandwidth estimation in percent
-    optional uint32 bandwidth_est_nrmse_percent = 5;
+    // Error of layer 2 link bandwidth in percent
+    optional uint32 l2_error_percent = 4;
+    // Error of network layer bandwidth estimation in percent
+    optional uint32 bandwidth_est_error_percent = 5;
   }
 
   // Bandwidth stats of each link
