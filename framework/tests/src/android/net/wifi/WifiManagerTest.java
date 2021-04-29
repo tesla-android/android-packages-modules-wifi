@@ -1222,6 +1222,32 @@ public class WifiManagerTest {
     }
 
     /*
+     * Verify client-provided callback is being called through callback proxy when registration.
+     */
+    @Test
+    public void softApCallbackProxyCallsOnRegistrationAndApStartedWithClientsConnected()
+            throws Exception {
+        ArgumentCaptor<ISoftApCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISoftApCallback.Stub.class);
+        mWifiManager.registerSoftApCallback(new HandlerExecutor(mHandler), mSoftApCallback);
+        verify(mWifiService).registerSoftApCallback(callbackCaptor.capture());
+        // Prepare test info and clients
+        initTestInfoAndAddToTestMap(1);
+        List<WifiClient> clientList = initWifiClientAndAddToTestMap(TEST_AP_INSTANCES[0], 1, 0);
+        // Trigger callback with registration in AP started and clients connected.
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, true);
+
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onConnectedClientsChanged(clientList);
+        verify(mSoftApCallback).onConnectedClientsChanged(mTestApInfo1, clientList);
+        verify(mSoftApCallback).onInfoChanged(mTestApInfo1);
+        verify(mSoftApCallback).onInfoChanged(Mockito.argThat((List<SoftApInfo> infos) ->
+                        infos.contains(mTestApInfo1)));
+    }
+
+    /*
      * Verify client-provided callback is being called through callback proxy
      */
     @Test
