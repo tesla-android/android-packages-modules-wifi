@@ -21,6 +21,7 @@ import static android.net.wifi.WifiConfiguration.MeteredOverride;
 import static java.lang.StrictMath.toIntExact;
 
 import android.annotation.IntDef;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -67,7 +68,6 @@ import android.util.SparseArray;
 import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.aware.WifiAwareMetrics;
 import com.android.server.wifi.hotspot2.ANQPNetworkKey;
 import com.android.server.wifi.hotspot2.NetworkDetail;
@@ -2861,22 +2861,47 @@ public class WifiMetrics {
     /**
      * Adds a record indicating the current up state of soft AP
      */
-    public void addSoftApUpChangedEvent(boolean isUp, int mode, long defaultShutdownTimeoutMillis) {
+    public void addSoftApUpChangedEvent(boolean isUp, int mode, long defaultShutdownTimeoutMillis,
+            boolean isBridged) {
+        int numOfEventNeedToAdd = isBridged && isUp ? 2 : 1;
+        for (int i = 0; i < numOfEventNeedToAdd; i++) {
+            SoftApConnectedClientsEvent event = new SoftApConnectedClientsEvent();
+            if (isUp) {
+                event.eventType = isBridged ? SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP
+                        : SoftApConnectedClientsEvent.SOFT_AP_UP;
+            } else {
+                event.eventType = SoftApConnectedClientsEvent.SOFT_AP_DOWN;
+            }
+            event.numConnectedClients = 0;
+            event.defaultShutdownTimeoutSetting = defaultShutdownTimeoutMillis;
+            addSoftApConnectedClientsEvent(event, mode);
+        }
+    }
+
+    /**
+     * Adds a record indicating the one of the dual AP instances is down.
+     */
+    public void addSoftApInstanceDownEventInDualMode(int mode, @NonNull SoftApInfo info) {
         SoftApConnectedClientsEvent event = new SoftApConnectedClientsEvent();
-        event.eventType = isUp ? SoftApConnectedClientsEvent.SOFT_AP_UP :
-                SoftApConnectedClientsEvent.SOFT_AP_DOWN;
-        event.numConnectedClients = 0;
-        event.defaultShutdownTimeoutSetting = defaultShutdownTimeoutMillis;
+        event.eventType = SoftApConnectedClientsEvent.DUAL_AP_ONE_INSTANCE_DOWN;
+        event.channelFrequency = info.getFrequency();
+        event.channelBandwidth = info.getBandwidth();
+        event.generation = info.getWifiStandardInternal();
         addSoftApConnectedClientsEvent(event, mode);
     }
 
     /**
      * Adds a record for current number of associated stations to soft AP
      */
-    public void addSoftApNumAssociatedStationsChangedEvent(int numStations, int mode) {
+    public void addSoftApNumAssociatedStationsChangedEvent(int numTotalStations,
+            int numStationsOnCurrentFrequency, int mode, @NonNull SoftApInfo info) {
         SoftApConnectedClientsEvent event = new SoftApConnectedClientsEvent();
         event.eventType = SoftApConnectedClientsEvent.NUM_CLIENTS_CHANGED;
-        event.numConnectedClients = numStations;
+        event.channelFrequency = info.getFrequency();
+        event.channelBandwidth = info.getBandwidth();
+        event.generation = info.getWifiStandardInternal();
+        event.numConnectedClients = numTotalStations;
+        event.numConnectedClientsOnCurrentFrequency = numStationsOnCurrentFrequency;
         addSoftApConnectedClientsEvent(event, mode);
     }
 
@@ -2909,8 +2934,16 @@ public class WifiMetrics {
     /**
      * Updates current soft AP events with channel info
      */
-    public void addSoftApChannelSwitchedEvent(SoftApInfo info, int mode) {
+    public void addSoftApChannelSwitchedEvent(List<SoftApInfo> infos, int mode, boolean isBridged) {
         synchronized (mLock) {
+            int numOfEventNeededToUpdate = infos.size();
+            if (isBridged && numOfEventNeededToUpdate == 1) {
+                // Ignore the channel info update when only 1 info in bridged mode because it means
+                // that one of the instance was been shutdown.
+                return;
+            }
+            int apUpEvent = isBridged ? SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP
+                    : SoftApConnectedClientsEvent.SOFT_AP_UP;
             List<SoftApConnectedClientsEvent> softApEventList;
             switch (mode) {
                 case WifiManager.IFACE_IP_MODE_TETHERED:
@@ -2923,16 +2956,15 @@ public class WifiMetrics {
                     return;
             }
 
-            for (int index = softApEventList.size() - 1; index >= 0; index--) {
+            for (int index = softApEventList.size() - 1;
+                    index >= 0 && numOfEventNeededToUpdate != 0; index--) {
                 SoftApConnectedClientsEvent event = softApEventList.get(index);
-
-                if (event != null && event.eventType == SoftApConnectedClientsEvent.SOFT_AP_UP) {
-                    event.channelFrequency = info.getFrequency();
-                    event.channelBandwidth = info.getBandwidth();
-                    if (SdkLevel.isAtLeastS()) {
-                        event.generation = info.getWifiStandard();
-                    }
-                    break;
+                if (event != null && event.eventType == apUpEvent) {
+                    int infoIndex = numOfEventNeededToUpdate - 1;
+                    event.channelFrequency = infos.get(infoIndex).getFrequency();
+                    event.channelBandwidth = infos.get(infoIndex).getBandwidth();
+                    event.generation = infos.get(infoIndex).getWifiStandardInternal();
+                    numOfEventNeededToUpdate--;
                 }
             }
         }
@@ -2941,7 +2973,7 @@ public class WifiMetrics {
     /**
      * Updates current soft AP events with softap configuration
      */
-    public void updateSoftApConfiguration(SoftApConfiguration config, int mode) {
+    public void updateSoftApConfiguration(SoftApConfiguration config, int mode, boolean isBridged) {
         synchronized (mLock) {
             List<SoftApConnectedClientsEvent> softApEventList;
             switch (mode) {
@@ -2955,16 +2987,20 @@ public class WifiMetrics {
                     return;
             }
 
-            for (int index = softApEventList.size() - 1; index >= 0; index--) {
-                SoftApConnectedClientsEvent event = softApEventList.get(index);
+            int numOfEventNeededToUpdate = isBridged ? 2 : 1;
+            int apUpEvent = isBridged ? SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP
+                    : SoftApConnectedClientsEvent.SOFT_AP_UP;
 
-                if (event != null && event.eventType == SoftApConnectedClientsEvent.SOFT_AP_UP) {
+            for (int index = softApEventList.size() - 1;
+                    index >= 0 && numOfEventNeededToUpdate != 0; index--) {
+                SoftApConnectedClientsEvent event = softApEventList.get(index);
+                if (event != null && event.eventType == apUpEvent) {
                     event.maxNumClientsSettingInSoftapConfiguration =
                             config.getMaxNumberOfClients();
                     event.shutdownTimeoutSettingInSoftapConfiguration =
                             config.getShutdownTimeoutMillis();
                     event.clientControlIsEnabled = config.isClientControlByUserEnabled();
-                    break;
+                    numOfEventNeededToUpdate--;
                 }
             }
         }
@@ -2973,7 +3009,7 @@ public class WifiMetrics {
     /**
      * Updates current soft AP events with softap capability
      */
-    public void updateSoftApCapability(SoftApCapability capability, int mode) {
+    public void updateSoftApCapability(SoftApCapability capability, int mode, boolean isBridged) {
         synchronized (mLock) {
             List<SoftApConnectedClientsEvent> softApEventList;
             switch (mode) {
@@ -2987,12 +3023,17 @@ public class WifiMetrics {
                     return;
             }
 
-            for (int index = softApEventList.size() - 1; index >= 0; index--) {
+            int numOfEventNeededToUpdate = isBridged ? 2 : 1;
+            int apUpEvent = isBridged ? SoftApConnectedClientsEvent.DUAL_AP_BOTH_INSTANCES_UP
+                    : SoftApConnectedClientsEvent.SOFT_AP_UP;
+
+            for (int index = softApEventList.size() - 1;
+                    index >= 0 && numOfEventNeededToUpdate != 0; index--) {
                 SoftApConnectedClientsEvent event = softApEventList.get(index);
-                if (event != null && event.eventType == SoftApConnectedClientsEvent.SOFT_AP_UP) {
+                if (event != null && event.eventType == apUpEvent) {
                     event.maxNumClientsSettingInSoftapCapability =
                             capability.getMaxSupportedClients();
-                    break;
+                    numOfEventNeededToUpdate--;
                 }
             }
         }
@@ -3893,6 +3934,8 @@ public class WifiMetrics {
                     eventLine.append("event_type=" + event.eventType);
                     eventLine.append(",time_stamp_millis=" + event.timeStampMillis);
                     eventLine.append(",num_connected_clients=" + event.numConnectedClients);
+                    eventLine.append(",num_connected_clients_on_current_frequency="
+                            + event.numConnectedClientsOnCurrentFrequency);
                     eventLine.append(",channel_frequency=" + event.channelFrequency);
                     eventLine.append(",channel_bandwidth=" + event.channelBandwidth);
                     eventLine.append(",generation=" + event.generation);
@@ -3913,6 +3956,8 @@ public class WifiMetrics {
                     eventLine.append("event_type=" + event.eventType);
                     eventLine.append(",time_stamp_millis=" + event.timeStampMillis);
                     eventLine.append(",num_connected_clients=" + event.numConnectedClients);
+                    eventLine.append(",num_connected_clients_on_current_frequency="
+                            + event.numConnectedClientsOnCurrentFrequency);
                     eventLine.append(",channel_frequency=" + event.channelFrequency);
                     eventLine.append(",channel_bandwidth=" + event.channelBandwidth);
                     eventLine.append(",generation=" + event.generation);

@@ -1843,14 +1843,27 @@ message SoftApConnectedClientsEvent {
   // Soft AP event Types
   enum SoftApEventType {
 
-    // Soft AP is Up and ready for use
+    // Soft AP in single AP mode is Up and ready for use.
+    // The sequence of the events in single AP mode:
+    // SOFT_AP_UP -> ... (ex:NUM_CLIENTS_CHANGED) -> SOFT_AP_DOWN
     SOFT_AP_UP = 0;
 
-    // Soft AP is Down
+    // Soft AP in single/dual AP mode is Down.
     SOFT_AP_DOWN = 1;
 
-    // Number of connected soft AP clients has changed
+    // Number of connected soft AP clients has changed.
     NUM_CLIENTS_CHANGED = 2;
+
+    // Soft AP in dual AP mode is Up and ready for use.
+    // There are two DUAL_AP_BOTH_INSTANCES_UP events in dual AP mode for
+    // storing each instance information.
+    // The sequence of the events in dual AP mode:
+    // DUAL_AP_BOTH_INSTANCES_UP -> DUAL_AP_BOTH_INSTANCES_UP
+    // ... (ex: DUAL_AP_ONE_INSTANCE_DOWN or NUM_CLIENTS_CHANGED) -> SOFT_AP_DOWN
+    DUAL_AP_BOTH_INSTANCES_UP = 3;
+
+    // One of the dual AP instance is Down.
+    DUAL_AP_ONE_INSTANCE_DOWN = 4;
   }
 
   // Soft AP channel bandwidth types
@@ -1917,6 +1930,14 @@ message SoftApConnectedClientsEvent {
 
   // The operational mode of the AP
   optional Generation generation = 11;
+
+  // Number of connected clients on current frequency if event_type is NUM_CLIENTS_CHANGED,
+  // otherwise zero. On dual AP, it may be different from num_connected_clients
+  // because there are two instances and num_connected_clients is used to record
+  // total number of the clients. But num_connected_clients_on_current_frequency
+  // is used to record the number of the clients on specific instance. (depends
+  // on channel_frequency)
+  optional int32 num_connected_clients_on_current_frequency = 12;
 }
 
 // Power stats for Wifi
@@ -3785,10 +3806,10 @@ message BandwidthEstimatorStats {
     // Average network layer bandwidth in kbps based on TrafficStats byte count and radio on time
     // of link layer stats.
     optional uint32 avg_bandwidth_kbps = 3;
-    // Normalized root mean square error (NRMSE) of layer 2 link bandwidth in percent
-    optional uint32 l2_nrmse_percent = 4;
-    // Normalized root mean square error (NRMSE) of network layer bandwidth estimation in percent
-    optional uint32 bandwidth_est_nrmse_percent = 5;
+    // Error of layer 2 link bandwidth in percent
+    optional uint32 l2_error_percent = 4;
+    // Error of network layer bandwidth estimation in percent
+    optional uint32 bandwidth_est_error_percent = 5;
   }
 
   // Bandwidth stats of each link

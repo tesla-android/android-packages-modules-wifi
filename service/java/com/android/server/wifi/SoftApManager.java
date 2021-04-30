@@ -1041,8 +1041,9 @@ public class SoftApManager implements ActiveModeManager {
                             + "from pending disconnectionlist");
                 }
 
+                String apInstanceIdentifier = client.getApInstanceIdentifier();
                 List clientList = mConnectedClientWithApInfoMap.computeIfAbsent(
-                        client.getApInstanceIdentifier(), k -> new ArrayList<>());
+                        apInstanceIdentifier, k -> new ArrayList<>());
                 int index = clientList.indexOf(client);
 
                 if ((index != -1) == isConnected) {
@@ -1066,9 +1067,9 @@ public class SoftApManager implements ActiveModeManager {
                 }
 
                 // Update clients list.
-                mConnectedClientWithApInfoMap.put(client.getApInstanceIdentifier(), clientList);
+                mConnectedClientWithApInfoMap.put(apInstanceIdentifier, clientList);
                 SoftApInfo currentInfoWithClientsChanged = mCurrentSoftApInfoMap
-                        .get(client.getApInstanceIdentifier());
+                        .get(apInstanceIdentifier);
                 Log.d(getTag(), "The connected wifi stations have changed with count: "
                         + clientList.size() + ": " + clientList + " on the AP which info is "
                         + currentInfoWithClientsChanged);
@@ -1082,7 +1083,10 @@ public class SoftApManager implements ActiveModeManager {
                 }
 
                 mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(
-                        getConnectedClientList().size(), mApConfig.getTargetMode());
+                        getConnectedClientList().size(),
+                        mConnectedClientWithApInfoMap.get(apInstanceIdentifier).size(),
+                        mApConfig.getTargetMode(),
+                        mCurrentSoftApInfoMap.get(apInstanceIdentifier));
 
                 scheduleTimeoutMessages();
             }
@@ -1100,20 +1104,31 @@ public class SoftApManager implements ActiveModeManager {
                             mConnectedClientWithApInfoMap, isBridgedMode());
                     return;
                 }
-
-                if (apInfo.equals(mCurrentSoftApInfoMap.get(apInfo.getApInstanceIdentifier()))) {
+                String changedInstance = apInfo.getApInstanceIdentifier();
+                if (apInfo.equals(mCurrentSoftApInfoMap.get(changedInstance))) {
                     if (isRemoved) {
-                        mCurrentSoftApInfoMap.remove(apInfo.getApInstanceIdentifier());
-                        mConnectedClientWithApInfoMap.remove(apInfo.getApInstanceIdentifier());
+                        boolean isClientConnected =
+                                mConnectedClientWithApInfoMap.get(changedInstance).size() > 0;
+                        mCurrentSoftApInfoMap.remove(changedInstance);
+                        mConnectedClientWithApInfoMap.remove(changedInstance);
                         mSoftApCallback.onConnectedClientsOrInfoChanged(mCurrentSoftApInfoMap,
                                 mConnectedClientWithApInfoMap, isBridgedMode());
+                        if (isClientConnected) {
+                            mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(
+                                    getConnectedClientList().size(), 0,
+                                    mApConfig.getTargetMode(), apInfo);
+                        }
+                        if (isBridgedMode()) {
+                            mWifiMetrics.addSoftApInstanceDownEventInDualMode(
+                                    mApConfig.getTargetMode(), apInfo);
+                        }
                     }
                     return;
                 }
 
                 // Make sure an empty client list is created when info updated
                 List clientList = mConnectedClientWithApInfoMap.computeIfAbsent(
-                        apInfo.getApInstanceIdentifier(), k -> new ArrayList<>());
+                        changedInstance, k -> new ArrayList<>());
 
                 if (clientList.size() != 0) {
                     Log.e(getTag(), "The info: " + apInfo
@@ -1126,7 +1141,7 @@ public class SoftApManager implements ActiveModeManager {
                 boolean waitForAnotherSoftApInfoInBridgedMode =
                         isBridgedMode() && mCurrentSoftApInfoMap.size() == 0;
 
-                mCurrentSoftApInfoMap.put(apInfo.getApInstanceIdentifier(), new SoftApInfo(apInfo));
+                mCurrentSoftApInfoMap.put(changedInstance, new SoftApInfo(apInfo));
                 if (!waitForAnotherSoftApInfoInBridgedMode) {
                     mSoftApCallback.onConnectedClientsOrInfoChanged(mCurrentSoftApInfoMap,
                             mConnectedClientWithApInfoMap, isBridgedMode());
@@ -1135,9 +1150,9 @@ public class SoftApManager implements ActiveModeManager {
                 // ignore invalid freq and softap disable case for metrics
                 if (apInfo.getFrequency() > 0
                         && apInfo.getBandwidth() != SoftApInfo.CHANNEL_WIDTH_INVALID) {
-                    // TODO: b/173999527 Update the metrics in bridged AP mode.
-                    mWifiMetrics.addSoftApChannelSwitchedEvent(new SoftApInfo(apInfo),
-                            mApConfig.getTargetMode());
+                    mWifiMetrics.addSoftApChannelSwitchedEvent(
+                            new ArrayList<>(mCurrentSoftApInfoMap.values()),
+                            mApConfig.getTargetMode(), isBridgedMode());
                     updateUserBandPreferenceViolationMetricsIfNeeded(apInfo);
                 }
             }
@@ -1165,12 +1180,12 @@ public class SoftApManager implements ActiveModeManager {
                     sendMessage(CMD_INTERFACE_DOWN);
                 }
                 mWifiMetrics.addSoftApUpChangedEvent(isUp, mApConfig.getTargetMode(),
-                        mDefaultShutdownTimeoutMillis);
+                        mDefaultShutdownTimeoutMillis, isBridgedMode());
                 if (isUp) {
                     mWifiMetrics.updateSoftApConfiguration(mApConfig.getSoftApConfiguration(),
-                            mApConfig.getTargetMode());
+                            mApConfig.getTargetMode(), isBridgedMode());
                     mWifiMetrics.updateSoftApCapability(mCurrentSoftApCapability,
-                            mApConfig.getTargetMode());
+                            mApConfig.getTargetMode(), isBridgedMode());
                 }
             }
 
@@ -1207,13 +1222,18 @@ public class SoftApManager implements ActiveModeManager {
                 mCoexManager.unregisterCoexListener(mCoexListener);
                 if (getConnectedClientList().size() != 0) {
                     Log.d(getTag(), "Resetting num stations on stop");
+                    for (List<WifiClient> it : mConnectedClientWithApInfoMap.values()) {
+                        if (it.size() != 0) {
+                            mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(
+                                    0, 0, mApConfig.getTargetMode(), mCurrentSoftApInfoMap
+                                            .get(it.get(0).getApInstanceIdentifier()));
+                        }
+                    }
                     mConnectedClientWithApInfoMap.clear();
                     if (mSoftApCallback != null) {
                         mSoftApCallback.onConnectedClientsOrInfoChanged(mCurrentSoftApInfoMap,
                                 mConnectedClientWithApInfoMap, isBridgedMode());
                     }
-                    mWifiMetrics.addSoftApNumAssociatedStationsChangedEvent(
-                            0, mApConfig.getTargetMode());
                 }
                 mPendingDisconnectClients.clear();
                 cancelTimeoutMessage();
@@ -1222,7 +1242,7 @@ public class SoftApManager implements ActiveModeManager {
                 // Need this here since we are exiting |Started| state and won't handle any
                 // future CMD_INTERFACE_STATUS_CHANGED events after this point
                 mWifiMetrics.addSoftApUpChangedEvent(false, mApConfig.getTargetMode(),
-                        mDefaultShutdownTimeoutMillis);
+                        mDefaultShutdownTimeoutMillis, isBridgedMode());
                 updateApState(WifiManager.WIFI_AP_STATE_DISABLED,
                         WifiManager.WIFI_AP_STATE_DISABLING, 0);
 
@@ -1370,7 +1390,7 @@ public class SoftApManager implements ActiveModeManager {
                             SoftApCapability capability = (SoftApCapability) message.obj;
                             mCurrentSoftApCapability = new SoftApCapability(capability);
                             mWifiMetrics.updateSoftApCapability(mCurrentSoftApCapability,
-                                    mApConfig.getTargetMode());
+                                    mApConfig.getTargetMode(), isBridgedMode());
                             updateClientConnection();
                         }
                         break;
@@ -1420,7 +1440,7 @@ public class SoftApManager implements ActiveModeManager {
                             }
                             mWifiMetrics.updateSoftApConfiguration(
                                     mApConfig.getSoftApConfiguration(),
-                                    mApConfig.getTargetMode());
+                                    mApConfig.getTargetMode(), isBridgedMode());
                         } else {
                             Log.d(getTag(), "Ignore the config: " + newConfig
                                     + " update since it requires restart");

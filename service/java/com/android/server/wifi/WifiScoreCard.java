@@ -128,14 +128,9 @@ public class WifiScoreCard {
     private final FrameworkFacade mFrameworkFacade;
     private final Context mContext;
     private final LocalLog mLocalLog = new LocalLog(256);
-    // Normalized square error (NSE) of L2 BW report
-    private final long[][][] mL2Nse =
+    private final long[][][] mL2ErrorAccPercent =
             new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-    // Normalized square error (NSE) of internal version of BW estimation
-    private final long[][][] mBwEstIntNse =
-            new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-    // Normalized square error (NSE) of external version of BW estimation
-    private final long[][][] mBwEstExtNse =
+    private final long[][][] mBwEstErrorAccPercent =
             new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
     private final int[][][] mBwEstValue =
             new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
@@ -1486,9 +1481,8 @@ public class WifiScoreCard {
             int bwEstExtErrPercent = calculateErrorPercent(reportedKbps, bwSampleKbps);
             int bwEstIntErrPercent = calculateErrorPercent(mFilterKbps[link], bwSampleKbps);
             int l2ErrPercent = calculateErrorPercent(l2Kbps, bwSampleKbps);
-            mBwEstExtNse[mBandIdx][link][mSignalLevel] += bwEstExtErrPercent * bwEstExtErrPercent;
-            mBwEstIntNse[mBandIdx][link][mSignalLevel] += bwEstIntErrPercent * bwEstIntErrPercent;
-            mL2Nse[mBandIdx][link][mSignalLevel] += l2ErrPercent * l2ErrPercent;
+            mBwEstErrorAccPercent[mBandIdx][link][mSignalLevel] += Math.abs(bwEstExtErrPercent);
+            mL2ErrorAccPercent[mBandIdx][link][mSignalLevel] += Math.abs(l2ErrPercent);
             mBwEstValue[mBandIdx][link][mSignalLevel] = mAvgUsedKbps[link];
             mBwEstCount[mBandIdx][link][mSignalLevel]++;
             StringBuilder sb = new StringBuilder();
@@ -2540,22 +2534,21 @@ public class WifiScoreCard {
         stats.signalLevel = level;
         stats.count = count;
         stats.avgBandwidthKbps = mBwEstValue[bandIdx][linkIdx][level];
-        stats.l2NrmsePercent = calculateNrmse(mL2Nse[bandIdx][linkIdx][level], count);
-        stats.bandwidthEstNrmsePercent =
-                calculateNrmse(mBwEstExtNse[bandIdx][linkIdx][level], count);
+        stats.l2ErrorPercent = calculateAvgError(
+                mL2ErrorAccPercent[bandIdx][linkIdx][level], count);
+        stats.bandwidthEstErrorPercent = calculateAvgError(
+                mBwEstErrorAccPercent[bandIdx][linkIdx][level], count);
 
         // reset counters for next run
         mBwEstCount[bandIdx][linkIdx][level] = 0;
         mBwEstValue[bandIdx][linkIdx][level] = 0;
-        mL2Nse[bandIdx][linkIdx][level] = 0;
-        mBwEstExtNse[bandIdx][linkIdx][level] = 0;
-        mBwEstIntNse[bandIdx][linkIdx][level] = 0;
+        mL2ErrorAccPercent[bandIdx][linkIdx][level] = 0;
+        mBwEstErrorAccPercent[bandIdx][linkIdx][level] = 0;
         return stats;
     }
 
-    // Calculate the normalized root mean square error (NRMSE)
-    private int calculateNrmse(long nse, int count) {
-        return (count > 0 && nse >= 0) ? (int) Math.sqrt(nse / count) : 0;
+    private int calculateAvgError(long errorAccPercent, int count) {
+        return (count > 0) ? (int) (errorAccPercent / count) : 0;
     }
 
     /**
@@ -2579,12 +2572,10 @@ public class WifiScoreCard {
                 printValues(mBwEstCount[i][j], pw);
                 pw.println(" AvgKbps");
                 printValues(mBwEstValue[i][j], pw);
-                pw.println(" Internal NRMSE");
-                printAvgStats(mBwEstIntNse[i][j], mBwEstCount[i][j], pw);
-                pw.println(" External NRMSE");
-                printAvgStats(mBwEstExtNse[i][j], mBwEstCount[i][j], pw);
-                pw.println(" L2 NRMSE");
-                printAvgStats(mL2Nse[i][j], mBwEstCount[i][j], pw);
+                pw.println(" BwEst error");
+                printAvgStats(mBwEstErrorAccPercent[i][j], mBwEstCount[i][j], pw);
+                pw.println(" L2 error");
+                printAvgStats(mL2ErrorAccPercent[i][j], mBwEstCount[i][j], pw);
             }
         }
         pw.println();
@@ -2601,7 +2592,7 @@ public class WifiScoreCard {
     private void printAvgStats(long[] stats, int[] count, PrintWriter pw) {
         StringBuilder sb = new StringBuilder();
         for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
-            sb.append(" " + calculateNrmse(stats[k], count[k]));
+            sb.append(" " + calculateAvgError(stats[k], count[k]));
         }
         pw.println(sb.toString());
     }
