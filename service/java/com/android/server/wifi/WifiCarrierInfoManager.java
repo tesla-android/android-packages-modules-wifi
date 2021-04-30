@@ -492,7 +492,6 @@ public class WifiCarrierInfoManager {
 
         mSubscriptionManager.addOnSubscriptionsChangedListener(new HandlerExecutor(mHandler),
                 new SubscriptionChangeListener());
-        mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
         onCarrierConfigChanged(context);
 
         // Monitor for carrier config changes.
@@ -503,7 +502,7 @@ public class WifiCarrierInfoManager {
             public void onReceive(Context context, Intent intent) {
                 if (CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED
                         .equals(intent.getAction())) {
-                    onCarrierConfigChanged(context);
+                    mHandler.post(() -> onCarrierConfigChanged(context));
                 }
             }
         }, filter);
@@ -512,7 +511,7 @@ public class WifiCarrierInfoManager {
                 new ContentObserver(handler) {
                     @Override
                     public void onChange(boolean selfChange) {
-                        onCarrierConfigChanged(context);
+                        mHandler.post(() -> onCarrierConfigChanged(context));
                     }
                 });
     }
