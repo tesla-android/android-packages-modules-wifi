@@ -978,6 +978,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                                 "-r non_persistent MAC randomization not supported before S");
                     }
                 }
+            } else if (option.equals("-h")) {
+                configuration.hiddenSSID = true;
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
@@ -1107,6 +1109,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             } else if (option.equals("-c")) {
                 int carrierId = Integer.parseInt(getNextArgRequired());
                 suggestionBuilder.setCarrierId(carrierId);
+            } else if (option.equals("-h")) {
+                suggestionBuilder.setIsHiddenSsid(true);
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
@@ -1404,6 +1408,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
+        pw.println("    -h - Mark the network hidden.");
         pw.println("    -b <bssid> - Set specific BSSID.");
         pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
@@ -1420,6 +1425,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
+        pw.println("    -h - Mark the network hidden.");
         pw.println("    -b <bssid> - Set specific BSSID.");
         pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
@@ -1453,6 +1459,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -o - Mark the suggestion oem paid.");
         pw.println("    -p - Mark the suggestion oem private.");
         pw.println("    -m - Mark the suggestion metered.");
+        pw.println("    -h - Mark the network hidden.");
         pw.println("    -s - Share the suggestion with user.");
         pw.println("    -d - Mark the suggestion autojoin disabled.");
         pw.println("    -b <bssid> - Set specific BSSID.");
