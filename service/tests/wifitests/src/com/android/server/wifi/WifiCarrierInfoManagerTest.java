@@ -360,6 +360,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
         receiver.getValue().onReceive(mContext,
                 new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mLooper.dispatchAll();
         assertTrue(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(DATA_SUBID));
         verify(mOnCarrierOffloadDisabledListener, never()).onCarrierOffloadDisabled(anyInt(),
                 anyBoolean());
@@ -372,6 +373,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(mCarrierConfigManager.getConfigForSubId(DATA_SUBID)).thenReturn(disallowedBundle);
         receiver.getValue().onReceive(mContext,
                 new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mLooper.dispatchAll();
         assertFalse(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(DATA_SUBID));
         verify(mOnCarrierOffloadDisabledListener).onCarrierOffloadDisabled(eq(DATA_SUBID),
                 eq(true));
@@ -392,6 +394,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
         receiver.getValue().onReceive(mContext,
                 new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mLooper.dispatchAll();
 
         assertTrue(mWifiCarrierInfoManager.requiresImsiEncryption(DATA_SUBID));
         assertTrue(mWifiCarrierInfoManager.requiresImsiEncryption(NON_DATA_SUBID));
@@ -402,6 +405,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(generateTestCarrierConfig(false));
         receiver.getValue().onReceive(mContext,
                 new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
+        mLooper.dispatchAll();
 
         assertFalse(mWifiCarrierInfoManager.requiresImsiEncryption(DATA_SUBID));
         assertFalse(mWifiCarrierInfoManager.requiresImsiEncryption(NON_DATA_SUBID));
@@ -428,6 +432,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         ContentObserver observer = observerCaptor.getValue();
 
         observer.onChange(false);
+        mLooper.dispatchAll();
 
         assertTrue(mWifiCarrierInfoManager.requiresImsiEncryption(DATA_SUBID));
         assertFalse(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(DATA_SUBID));
@@ -436,6 +441,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(mock(ImsiEncryptionInfo.class));
 
         observer.onChange(false);
+        mLooper.dispatchAll();
 
         assertTrue(mWifiCarrierInfoManager.requiresImsiEncryption(DATA_SUBID));
         assertTrue(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(DATA_SUBID));
@@ -463,6 +469,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         ContentObserver observer = observerCaptor.getValue();
 
         observer.onChange(false);
+        mLooper.dispatchAll();
 
         assertTrue(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(DATA_SUBID));
         assertTrue(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(NON_DATA_SUBID));
@@ -473,6 +480,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .getCarrierInfoForImsiEncryption(TelephonyManager.KEY_TYPE_WLAN)).thenReturn(null);
 
         observer.onChange(false);
+        mLooper.dispatchAll();
 
         assertFalse(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(DATA_SUBID));
         assertFalse(mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(NON_DATA_SUBID));
