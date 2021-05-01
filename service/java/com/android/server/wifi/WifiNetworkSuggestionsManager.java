@@ -227,6 +227,16 @@ public class WifiNetworkSuggestionsManager {
         }
 
         /**
+         * Needed when a normal App became carrier privileged when SIM insert
+         */
+        public void setCarrierId(int carrierId) {
+            if (this.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                this.carrierId = carrierId;
+            }
+            // else ignored.
+        }
+
+        /**
          * Returns true if this app has the necessary approvals to place network suggestions.
          */
         private boolean isApproved(@Nullable String activeScorerPkg) {
@@ -889,7 +899,9 @@ public class WifiNetworkSuggestionsManager {
             Log.e(TAG, "Invalid suggestion add from app: " + packageName);
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID;
         }
-        if (!validateCarrierNetworkSuggestions(networkSuggestions, uid, packageName)) {
+        int carrierId = mWifiCarrierInfoManager
+                .getCarrierIdForPackageWithCarrierPrivileges(packageName);
+        if (!validateCarrierNetworkSuggestions(networkSuggestions, uid, packageName, carrierId)) {
             Log.e(TAG, "bad wifi suggestion from app: " + packageName);
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED;
         }
@@ -899,8 +911,6 @@ public class WifiNetworkSuggestionsManager {
             WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(wns.wifiConfiguration);
         });
 
-        int carrierId = mWifiCarrierInfoManager
-                .getCarrierIdForPackageWithCarrierPrivileges(packageName);
         final String activeScorerPackage = mNetworkScoreManager.getActiveScorerPackage();
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);
         if (perAppInfo == null) {
@@ -918,7 +928,7 @@ public class WifiNetworkSuggestionsManager {
                 perAppInfo.hasUserApproved = true;
             } else if (carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Setting the carrier privileged app approved");
-                perAppInfo.carrierId = carrierId;
+                perAppInfo.setCarrierId(carrierId);
                 mWifiMetrics.incrementNetworkSuggestionApiUsageNumOfAppInType(
                         APP_TYPE_CARRIER_PRIVILEGED);
             } else if (perAppInfo.packageName.equals(activeScorerPackage)) {
@@ -940,6 +950,8 @@ public class WifiNetworkSuggestionsManager {
         }
         // If PerAppInfo is upgrade from pre-R, uid may not be set.
         perAppInfo.setUid(uid);
+        // If App became carrier privileged, set the carrier Id.
+        perAppInfo.setCarrierId(carrierId);
         Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions =
                 convertToExtendedWnsSet(networkSuggestions, perAppInfo);
         boolean isLowRamDevice = mActivityManager.isLowRamDevice();
@@ -1152,14 +1164,13 @@ public class WifiNetworkSuggestionsManager {
     }
 
     private boolean validateCarrierNetworkSuggestions(
-            List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName) {
+            List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName,
+            int provisionerCarrierId) {
         boolean isAppWorkingAsCrossCarrierProvider = isAppWorkingAsCrossCarrierProvider(
                 packageName);
         boolean isCrossCarrierProvisioner =
                 mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(uid)
                         || isAppWorkingAsCrossCarrierProvider;
-        int provisionerCarrierId = mWifiCarrierInfoManager
-                .getCarrierIdForPackageWithCarrierPrivileges(packageName);
 
         for (WifiNetworkSuggestion suggestion : networkSuggestions) {
             WifiConfiguration wifiConfiguration = suggestion.wifiConfiguration;
