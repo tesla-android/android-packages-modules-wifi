@@ -78,6 +78,7 @@ java_defaults {
         "android.hardware.wifi-V1.0-java-constants",
         "modules-utils-build",
         "modules-utils-os",
+        "androidx.annotation_annotation",
     ],
     libs: [
         "unsupportedappusage", // for android.compat.annotation.UnsupportedAppUsage
