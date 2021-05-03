@@ -1620,7 +1620,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 R.bool.config_wifiSuspendOptimizationsEnabled));
         pw.println("mSuspendOptNeedsDisabled " + mSuspendOptNeedsDisabled);
         dumpIpClient(fd, pw, args);
-        mLinkProbeManager.dump(fd, pw, args);
         pw.println("WifiScoreReport:");
         mWifiScoreReport.dump(fd, pw, args);
         pw.println();
@@ -1709,11 +1708,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     sb.append(" ").append((AssocRejectEventInfo) msg.obj);
                 }
                 break;
-            case WifiMonitor.NETWORK_CONNECTION_EVENT:
+            case WifiMonitor.NETWORK_CONNECTION_EVENT: {
+                NetworkConnectionEventInfo connectionInfo = (NetworkConnectionEventInfo) msg.obj;
                 sb.append(" ");
-                sb.append(Integer.toString(msg.arg1));
+                sb.append(connectionInfo.networkId);
                 sb.append(" ");
-                sb.append(Integer.toString(msg.arg2));
+                sb.append(connectionInfo.isFilsConnection);
                 sb.append(" ").append(mLastBssid);
                 sb.append(" nid=").append(mLastNetworkId);
                 config = getConnectedWifiConfigurationInternal();
@@ -1725,6 +1725,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     sb.append(" last=").append(key);
                 }
                 break;
+            }
             case WifiMonitor.TARGET_BSSID_EVENT:
             case WifiMonitor.ASSOCIATED_BSSID_EVENT:
                 sb.append(" ");
@@ -3178,7 +3179,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_HIGH_PERF, true);
 
-        mWifiStateTracker.updateState(WifiStateTracker.INVALID);
+        mWifiStateTracker.updateState(mInterfaceName, WifiStateTracker.INVALID);
         mIpClientCallbacks = new IpClientCallbacksImpl();
         mFacade.makeIpClient(mContext, mInterfaceName, mIpClientCallbacks);
         if (!mIpClientCallbacks.awaitCreation()) {
@@ -4247,12 +4248,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
                 case WifiMonitor.NETWORK_CONNECTION_EVENT: {
                     if (mVerboseLoggingEnabled) log("Network connection established");
-                    mLastNetworkId = message.arg1;
-                    mSentHLPs = message.arg2 == 1;
+                    NetworkConnectionEventInfo connectionInfo =
+                            (NetworkConnectionEventInfo) message.obj;
+                    mLastNetworkId = connectionInfo.networkId;
+                    mSentHLPs = connectionInfo.isFilsConnection;
                     if (mSentHLPs) mWifiMetrics.incrementL2ConnectionThroughFilsAuthCount();
                     mWifiConfigManager.clearRecentFailureReason(mLastNetworkId);
-                    mLastBssid = (String) message.obj;
-                    int reasonCode = message.arg2;
+                    mLastBssid = connectionInfo.bssid;
                     // TODO: This check should not be needed after ClientModeImpl refactor.
                     // Currently, the last connected network configuration is left in
                     // wpa_supplicant, this may result in wpa_supplicant initiating connection
@@ -4684,6 +4686,24 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     mWifiConfigManager.updateNetworkTransitionDisable(message.arg1, message.arg2);
                     break;
                 }
+                case WifiMonitor.NETWORK_CONNECTION_EVENT: {
+                    NetworkConnectionEventInfo connectionInfo =
+                            (NetworkConnectionEventInfo) message.obj;
+                    String quotedOrHexConnectingSsid = getConnectingSsidInternal();
+                    String quotedOrHexConnectedSsid = NativeUtil.encodeSsid(
+                            NativeUtil.byteArrayToArrayList(connectionInfo.wifiSsid.getOctets()));
+                    if (quotedOrHexConnectingSsid != null
+                            && !quotedOrHexConnectingSsid.equals(quotedOrHexConnectedSsid)) {
+                        // possibly a NETWORK_CONNECTION_EVENT for a successful roam on the previous
+                        // network while connecting to a new network, ignore it.
+                        Log.d(TAG, "Connecting to ssid=" + quotedOrHexConnectingSsid + ", but got "
+                                + "NETWORK_CONNECTION_EVENT for ssid=" + quotedOrHexConnectedSsid
+                                + ", ignoring");
+                        break;
+                    }
+                    handleStatus = NOT_HANDLED;
+                    break;
+                }
                 default: {
                     handleStatus = NOT_HANDLED;
                     break;
@@ -4713,7 +4733,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         public void enter() {
             mRssiPollToken++;
             if (mEnableRssiPolling) {
-                mLinkProbeManager.resetOnNewConnection();
+                if (isPrimary()) {
+                    mLinkProbeManager.resetOnNewConnection();
+                }
                 sendMessage(CMD_RSSI_POLL, mRssiPollToken, 0);
             }
             sendNetworkChangeBroadcast(DetailedState.CONNECTING);
@@ -4813,7 +4835,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
             }
             mWifiMetrics.setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
-            mWifiStateTracker.updateState(WifiStateTracker.DISCONNECTED);
+            mWifiStateTracker.updateState(mInterfaceName, WifiStateTracker.DISCONNECTED);
             // Inform WifiLockManager
             mWifiLockManager.updateWifiClientConnected(mClientModeManager, false);
             mLastConnectionCapabilities = null;
@@ -4911,12 +4933,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     break;
                 }
                 case WifiMonitor.NETWORK_CONNECTION_EVENT: {
-                    mWifiInfo.setBSSID((String) message.obj);
-                    mLastNetworkId = message.arg1;
+                    NetworkConnectionEventInfo connectionInfo =
+                            (NetworkConnectionEventInfo) message.obj;
+                    mWifiInfo.setBSSID(connectionInfo.bssid);
+                    mLastNetworkId = connectionInfo.networkId;
                     mWifiInfo.setNetworkId(mLastNetworkId);
                     mWifiInfo.setMacAddress(mWifiNative.getMacAddress(mInterfaceName));
-                    if (!Objects.equals(mLastBssid, message.obj)) {
-                        mLastBssid = (String) message.obj;
+                    if (!Objects.equals(mLastBssid, connectionInfo.bssid)) {
+                        mLastBssid = connectionInfo.bssid;
                         sendNetworkChangeBroadcastWithCurrentState();
                     }
                     if (mIsLinkedNetworkRoaming) {
@@ -4944,7 +4968,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (message.arg1 == mRssiPollToken) {
                         updateLinkLayerStatsRssiDataStallScoreReport();
                         mWifiScoreCard.noteSignalPoll(mWifiInfo);
-                        mLinkProbeManager.updateConnectionStats(mWifiInfo, mInterfaceName);
+                        if (isPrimary()) {
+                            mLinkProbeManager.updateConnectionStats(mWifiInfo, mInterfaceName);
+                        }
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
                         if (mVerboseLoggingEnabled) sendRssiChangeBroadcast(mWifiInfo.getRssi());
@@ -4964,7 +4990,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (mEnableRssiPolling) {
                         // First poll
                         mLastSignalLevel = -1;
-                        mLinkProbeManager.resetOnScreenTurnedOn();
+                        if (isPrimary()) {
+                            mLinkProbeManager.resetOnScreenTurnedOn();
+                        }
                         updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
                         sendMessageDelayed(obtainMessage(CMD_RSSI_POLL, mRssiPollToken, 0),
                                 mWifiGlobals.getPollRssiIntervalMillis());
@@ -5322,8 +5350,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         if (mVerboseLoggingEnabled) {
                             log("roaming and Network connection established");
                         }
-                        mLastNetworkId = message.arg1;
-                        mLastBssid = (String) message.obj;
+                        NetworkConnectionEventInfo connectionInfo =
+                                (NetworkConnectionEventInfo) message.obj;
+                        mLastNetworkId = connectionInfo.networkId;
+                        mLastBssid = connectionInfo.bssid;
                         mWifiInfo.setBSSID(mLastBssid);
                         mWifiInfo.setNetworkId(mLastNetworkId);
                         sendNetworkChangeBroadcastWithCurrentState();
@@ -5417,7 +5447,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
             mTargetNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
             mWifiLastResortWatchdog.connectedStateTransition(true);
-            mWifiStateTracker.updateState(WifiStateTracker.CONNECTED);
+            mWifiStateTracker.updateState(mInterfaceName, WifiStateTracker.CONNECTED);
             // Inform WifiLockManager
             mWifiLockManager.updateWifiClientConnected(mClientModeManager, true);
             WifiConfiguration config = getConnectedWifiConfigurationInternal();

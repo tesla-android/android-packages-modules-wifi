@@ -185,7 +185,7 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
             if (newState == State.COMPLETED) {
                 mWifiMonitor.broadcastNetworkConnectionEvent(
                         mIfaceName, mStaIfaceHal.getCurrentNetworkId(mIfaceName), filsHlpSent,
-                        bssidStr);
+                        wifiSsid, bssidStr);
             } else if (newState == State.ASSOCIATING) {
                 mCurrentSsid = NativeUtil.encodeSsid(ssid);
             }
