@@ -26,7 +26,6 @@ import java.util.Objects;
  * Stores supplicant state change information passed from WifiMonitor to
  * a state machine. ClientModeImpl, SupplicantStateTracker and WpsStateMachine
  * are example state machines that handle it.
- * @hide
  */
 public class StateChangeResult {
     StateChangeResult(int networkId, @NonNull WifiSsid wifiSsid, @NonNull String bssid,

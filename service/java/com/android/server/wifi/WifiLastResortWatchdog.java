@@ -198,8 +198,9 @@ public class WifiLastResortWatchdog {
 
     private void processMessage(Message msg) {
         switch (msg.what) {
-            case WifiMonitor.NETWORK_CONNECTION_EVENT:
-                int networkId = msg.arg1;
+            case WifiMonitor.NETWORK_CONNECTION_EVENT: {
+                NetworkConnectionEventInfo connectionInfo = (NetworkConnectionEventInfo) msg.obj;
+                int networkId = connectionInfo.networkId;
                 // Trigger bugreport for successful connections that take abnormally long
                 Long lastStartConnectTimeNullable =
                         mNetworkIdToLastStartConnectTimeMillisSinceBoot.get(networkId);
@@ -223,6 +224,7 @@ public class WifiLastResortWatchdog {
                 // is enabled or not.
                 mNetworkIdToLastStartConnectTimeMillisSinceBoot.remove(networkId);
                 break;
+            }
             default:
                 return;
         }

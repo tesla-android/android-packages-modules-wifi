@@ -441,16 +441,20 @@ public class WifiMonitorTest extends WifiBaseTest {
         mWifiMonitor.registerHandler(
                 WLAN_IFACE_NAME, WifiMonitor.NETWORK_CONNECTION_EVENT, mHandlerSpy);
         int networkId = NETWORK_ID;
+        WifiSsid wifiSsid = WifiSsid.createFromByteArray(new byte[]{'a', 'b', 'c'});
         String bssid = BSSID;
-        mWifiMonitor.broadcastNetworkConnectionEvent(WLAN_IFACE_NAME, networkId, false, bssid);
+        mWifiMonitor.broadcastNetworkConnectionEvent(WLAN_IFACE_NAME, networkId, false,
+                wifiSsid, bssid);
         mLooper.dispatchAll();
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mHandlerSpy).handleMessage(messageCaptor.capture());
         assertEquals(WifiMonitor.NETWORK_CONNECTION_EVENT, messageCaptor.getValue().what);
-        assertEquals(networkId, messageCaptor.getValue().arg1);
-        assertEquals(0, messageCaptor.getValue().arg2);
-        assertEquals(bssid, (String) messageCaptor.getValue().obj);
+        NetworkConnectionEventInfo info = (NetworkConnectionEventInfo) messageCaptor.getValue().obj;
+        assertEquals(networkId, info.networkId);
+        assertFalse(info.isFilsConnection);
+        assertEquals(wifiSsid, info.wifiSsid);
+        assertEquals(bssid, info.bssid);
     }
 
     /**
@@ -610,16 +614,20 @@ public class WifiMonitorTest extends WifiBaseTest {
         mWifiMonitor.registerHandler(
                 WLAN_IFACE_NAME, WifiMonitor.NETWORK_CONNECTION_EVENT, mHandlerSpy);
         int networkId = NETWORK_ID;
+        WifiSsid wifiSsid = WifiSsid.createFromByteArray(new byte[]{'a', 'b', 'c'});
         String bssid = BSSID;
-        mWifiMonitor.broadcastNetworkConnectionEvent(WLAN_IFACE_NAME, networkId, true, bssid);
+        mWifiMonitor.broadcastNetworkConnectionEvent(WLAN_IFACE_NAME, networkId, true,
+                wifiSsid, bssid);
         mLooper.dispatchAll();
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mHandlerSpy).handleMessage(messageCaptor.capture());
         assertEquals(WifiMonitor.NETWORK_CONNECTION_EVENT, messageCaptor.getValue().what);
-        assertEquals(networkId, messageCaptor.getValue().arg1);
-        assertEquals(1, messageCaptor.getValue().arg2);
-        assertEquals(bssid, (String) messageCaptor.getValue().obj);
+        NetworkConnectionEventInfo info = (NetworkConnectionEventInfo) messageCaptor.getValue().obj;
+        assertEquals(networkId, info.networkId);
+        assertTrue(info.isFilsConnection);
+        assertEquals(wifiSsid, info.wifiSsid);
+        assertEquals(bssid, info.bssid);
     }
 
     /**

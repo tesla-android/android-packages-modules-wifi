@@ -78,6 +78,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
     private static final int DEFAULT_ABNORMAL_CONNECTION_DURATION_MS = 30000;
     private static final int TEST_NETWORK_ID = 47;
     private static final int TEST_NETWORK_ID_2 = 54;
+    private static final WifiSsid TEST_WIFI_SSID =
+            WifiSsid.createFromByteArray(new byte[]{'a', 'b', 'c'});
 
     @Before
     public void setUp() throws Exception {
@@ -2235,7 +2237,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
                 (long) DEFAULT_ABNORMAL_CONNECTION_DURATION_MS);
         Handler handler = mHandlerCaptor.getValue();
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics, never()).takeBugReport(anyString(), anyString());
 
@@ -2245,7 +2248,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn(
                 2L * DEFAULT_ABNORMAL_CONNECTION_DURATION_MS + 1);
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
 
@@ -2254,7 +2258,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn(
                 4L * DEFAULT_ABNORMAL_CONNECTION_DURATION_MS);
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
     }
@@ -2274,13 +2279,15 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn(
                 2L * DEFAULT_ABNORMAL_CONNECTION_DURATION_MS + 1);
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID_2, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID_2, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics, never()).takeBugReport(anyString(), anyString());
 
         // network1 connected after a long time, should trigger BR
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
     }
@@ -2302,7 +2309,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
         when(mClock.getElapsedSinceBootMillis()).thenReturn((long) testDurationMs + 2);
         Handler handler = mHandlerCaptor.getValue();
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
     }
@@ -2324,7 +2332,8 @@ public class WifiLastResortWatchdogTest extends WifiBaseTest {
                 (long) DEFAULT_ABNORMAL_CONNECTION_DURATION_MS + 2);
         Handler handler = mHandlerCaptor.getValue();
         handler.sendMessage(handler.obtainMessage(
-                WifiMonitor.NETWORK_CONNECTION_EVENT, TEST_NETWORK_ID, 0, null));
+                WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(TEST_NETWORK_ID, TEST_WIFI_SSID, null, false)));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics, never()).takeBugReport(anyString(), anyString());
     }
