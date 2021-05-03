@@ -486,8 +486,9 @@ public class ApConfigUtil {
                     availableChannelFreqsList.add(convertChannelToFrequency(channel, band));
                 }
                 // Only remove hard unsafe channels
-                if ((coexManager.getCoexRestrictions()
-                                & WifiManager.COEX_RESTRICTION_SOFTAP) != 0) {
+                if (SdkLevel.isAtLeastS()
+                        && (coexManager.getCoexRestrictions() & WifiManager.COEX_RESTRICTION_SOFTAP)
+                        != 0) {
                     availableChannelFreqsList.removeAll(getUnsafeChannelFreqsFromCoex(coexManager));
                 }
                 if (availableChannelFreqsList.size() == 0) {
