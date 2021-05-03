@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+
 import android.annotation.NonNull;
 import android.content.Context;
 import android.content.Intent;
@@ -244,7 +246,9 @@ public class SupplicantStateTracker extends StateMachine {
     private void sendSupplicantStateChangedBroadcast(
             SupplicantState state, boolean failedAuth, int reasonCode) {
         int supplState = supplicantStateToBatteryStatsSupplicantState(state);
-        mBatteryStatsManager.reportWifiSupplicantStateChanged(supplState, failedAuth);
+        if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+            mBatteryStatsManager.reportWifiSupplicantStateChanged(supplState, failedAuth);
+        }
         String summary = "broadcast=SUPPLICANT_STATE_CHANGED_ACTION"
                 + " state=" + state
                 + " failedAuth=" + failedAuth

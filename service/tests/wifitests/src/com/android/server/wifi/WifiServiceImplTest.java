@@ -375,6 +375,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock SelfRecovery mSelfRecovery;
     @Mock LastCallerInfoManager mLastCallerInfoManager;
     @Mock BuildProperties mBuildProperties;
+    @Mock LinkProbeManager mLinkProbeManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -408,6 +409,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getMakeBeforeBreakManager()).thenReturn(mMakeBeforeBreakManager);
         when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
         when(mWifiInjector.getBuildProperties()).thenReturn(mBuildProperties);
+        when(mWifiInjector.getLinkProbeManager()).thenReturn(mLinkProbeManager);
         when(mHandlerThread.getThreadHandler()).thenReturn(new Handler(mLooper.getLooper()));
         when(mHandlerThread.getLooper()).thenReturn(mLooper.getLooper());
         when(mContext.getResources()).thenReturn(mResources);

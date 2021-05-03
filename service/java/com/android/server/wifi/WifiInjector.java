@@ -1053,4 +1053,8 @@ public class WifiInjector {
     public DefaultClientModeManager getDefaultClientModeManager() {
         return mDefaultClientModeManager;
     }
+
+    public LinkProbeManager getLinkProbeManager() {
+        return mLinkProbeManager;
+    }
 }
