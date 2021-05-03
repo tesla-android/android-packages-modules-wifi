@@ -246,7 +246,9 @@ public class PasspointXmlUtils {
                         config.setOemPrivate((boolean) value);
                         break;
                     case XML_TAG_DECORATED_IDENTITY_PREFIX:
-                        config.setDecoratedIdentityPrefix((String) value);
+                        if (SdkLevel.isAtLeastS()) {
+                            config.setDecoratedIdentityPrefix((String) value);
+                        }
                         break;
                     default:
                         throw new XmlPullParserException("Unknown value under "
