@@ -38,6 +38,8 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
@@ -211,9 +213,6 @@ public class WifiAwareManager {
      *         or not (false).
      */
     public boolean isDeviceAttached() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         try {
             return mService.isDeviceAttached();
         } catch (RemoteException e) {
@@ -229,6 +228,7 @@ public class WifiAwareManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public void enableInstantCommunicationMode(boolean enable) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -246,6 +246,7 @@ public class WifiAwareManager {
      * @see Characteristics#isInstantCommunicationModeSupported()
      * @return true if it is enabled, false otherwise.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public boolean isInstantCommunicationModeEnabled() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -288,9 +289,6 @@ public class WifiAwareManager {
      * @return An object specifying the currently available resource of the Wi-Fi Aware service.
      */
     public @Nullable AwareResources getAvailableAwareResources() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         try {
             return mService.getAvailableAwareResources();
         } catch (RemoteException e) {
@@ -784,9 +782,6 @@ public class WifiAwareManager {
                                     (byte[]) msg.obj);
                             break;
                         case CALLBACK_MATCH_EXPIRED:
-                            if (!SdkLevel.isAtLeastS()) {
-                                break;
-                            }
                             mOriginalCallback
                                     .onServiceLost(new PeerHandle(msg.arg1),
                                             WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE);
