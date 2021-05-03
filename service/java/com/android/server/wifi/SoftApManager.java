@@ -90,7 +90,8 @@ public class SoftApManager implements ActiveModeManager {
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
     private final WifiNative mWifiNative;
-    private final CoexManager mCoexManager;
+    // This will only be null if SdkLevel is not at least S
+    @Nullable private final CoexManager mCoexManager;
     private final ClientModeImplMonitor mCmiMonitor;
     private final ActiveModeWarden mActiveModeWarden;
     private final SoftApNotifier mSoftApNotifier;
@@ -1203,8 +1204,9 @@ public class SoftApManager implements ActiveModeManager {
                 mSoftApBridgedModeIdleInstanceTimeoutMessage = new WakeupMessage(mContext, handler,
                         SOFT_AP_SEND_MESSAGE_IDLE_IN_BRIDGED_MODE_TIMEOUT_TAG,
                         SoftApStateMachine.CMD_NO_ASSOCIATED_STATIONS_TIMEOUT_ON_ONE_INSTANCE);
-
-                mCoexManager.registerCoexListener(mCoexListener);
+                if (SdkLevel.isAtLeastS()) {
+                    mCoexManager.registerCoexListener(mCoexListener);
+                }
                 mSarManager.setSapWifiState(WifiManager.WIFI_AP_STATE_ENABLED);
                 Log.d(getTag(), "Resetting connected clients on start");
                 mConnectedClientWithApInfoMap.clear();
@@ -1218,8 +1220,9 @@ public class SoftApManager implements ActiveModeManager {
                 if (!mIfaceIsDestroyed) {
                     stopSoftAp();
                 }
-
-                mCoexManager.unregisterCoexListener(mCoexListener);
+                if (SdkLevel.isAtLeastS()) {
+                    mCoexManager.unregisterCoexListener(mCoexListener);
+                }
                 if (getConnectedClientList().size() != 0) {
                     Log.d(getTag(), "Resetting num stations on stop");
                     for (List<WifiClient> it : mConnectedClientWithApInfoMap.values()) {

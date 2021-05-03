@@ -539,10 +539,11 @@ public class CoexUtils {
         private final int mDownlinkBandwidthKhz;
         private final int mUplinkFreqKhz;
         private final int mUplinkBandwidthKhz;
+        private final int mSubId;
 
         public CoexCellChannel(@Annotation.NetworkType int rat, int band,
                 int downlinkFreqKhz, int downlinkBandwidthKhz,
-                int uplinkFreqKhz, int uplinkBandwidthKhz) {
+                int uplinkFreqKhz, int uplinkBandwidthKhz, int subId) {
             if (band < 1 || band > 261) {
                 Log.wtf(TAG, "Band is " + band + " but should be a value from 1 to 261");
             }
@@ -574,18 +575,21 @@ public class CoexUtils {
             mDownlinkBandwidthKhz = downlinkBandwidthKhz;
             mUplinkFreqKhz = uplinkFreqKhz;
             mUplinkBandwidthKhz = uplinkBandwidthKhz;
+            mSubId = subId;
         }
 
         /**
-         * Constructor to extract coex cell channel info from PhysicalChannelConfiguration
+         * Constructor to extract coex cell channel info from PhysicalChannelConfig
          */
-        public CoexCellChannel(@android.annotation.NonNull PhysicalChannelConfig config) {
+        public CoexCellChannel(
+                @android.annotation.NonNull PhysicalChannelConfig config, int subId) {
             this(config.getNetworkType(),
                     config.getBand(),
                     config.getDownlinkFrequencyKhz(),
                     config.getCellBandwidthDownlinkKhz(),
                     config.getUplinkFrequencyKhz(),
-                    config.getCellBandwidthUplinkKhz());
+                    config.getCellBandwidthUplinkKhz(),
+                    subId);
         }
 
         public @Annotation.NetworkType int getRat() {
@@ -612,6 +616,10 @@ public class CoexUtils {
             return mUplinkBandwidthKhz;
         }
 
+        public int getSubId() {
+            return mSubId;
+        }
+
         @java.lang.Override
         public String toString() {
             return "CoexCellChannel{"
@@ -621,6 +629,7 @@ public class CoexUtils {
                     + ", dlBandwidthKhz=" + mDownlinkBandwidthKhz
                     + ", ulFreqKhz=" + mUplinkFreqKhz
                     + ", ulBandwidthKhz=" + mUplinkBandwidthKhz
+                    + ", subId=" + mSubId
                     + '}';
         }
     }
