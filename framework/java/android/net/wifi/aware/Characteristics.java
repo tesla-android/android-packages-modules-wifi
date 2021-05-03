@@ -17,9 +17,12 @@
 package android.net.wifi.aware;
 
 import android.annotation.IntDef;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -93,6 +96,7 @@ public final class Characteristics implements Parcelable {
      * defined as per Wi-Fi Alliance (WFA) Wi-Fi Aware specifications version 3.1 Section 12.3.
      * @return True if supported, false otherwise.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public boolean isInstantCommunicationModeSupported() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();

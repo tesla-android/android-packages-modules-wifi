@@ -24,9 +24,12 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -331,6 +334,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * Calling {@link ConnectivityManager#unregisterNetworkCallback(ConnectivityManager.NetworkCallback)}
          * will terminate all connections.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         public Builder(@NonNull PublishDiscoverySession publishDiscoverySession) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
