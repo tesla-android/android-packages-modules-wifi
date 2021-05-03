@@ -540,8 +540,9 @@ public class WifiMonitor {
      * @param bssid BSSID of the access point.
      */
     public void broadcastNetworkConnectionEvent(String iface, int networkId, boolean filsHlpSent,
-            String bssid) {
-        sendMessage(iface, NETWORK_CONNECTION_EVENT, networkId, filsHlpSent ? 1 : 0, bssid);
+            WifiSsid ssid, String bssid) {
+        sendMessage(iface, NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(networkId, ssid, bssid, filsHlpSent));
     }
 
     /**
