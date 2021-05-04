@@ -259,12 +259,11 @@ public class WifiDiagnostics {
      */
     public synchronized void reportConnectionEvent(byte event,
             ClientModeManager clientModeManager) {
-        mLastMileLogger.reportConnectionEvent(event);
+        mLastMileLogger.reportConnectionEvent(clientModeManager.getInterfaceName(), event);
         if (event == CONNECTION_EVENT_FAILED || event == CONNECTION_EVENT_TIMEOUT) {
             mPacketFatesForLastFailure = new PacketFates(clientModeManager);
         }
     }
-
 
     /**
      * Synchronously capture bug report data.
