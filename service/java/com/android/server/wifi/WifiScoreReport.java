@@ -26,9 +26,12 @@ import android.net.wifi.WifiConnectedSessionInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.nl80211.WifiNl80211Manager;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
@@ -71,10 +74,6 @@ public class WifiScoreReport {
 
     // Cache of the last score
     private int mLegacyIntScore = ConnectedScore.WIFI_INITIAL_SCORE;
-    // Builder for NetworkScore. Primary by default, unless mShouldReduceNetworkScore is true
-    // to make it lose against the primary STA.
-    private final NetworkScore.Builder mScoreBuilder =
-            new NetworkScore.Builder().setLegacyInt(mLegacyIntScore).setTransportPrimary(true);
 
     /**
      * If true, indicates that the associated {@link ClientModeImpl} instance is lingering
@@ -234,11 +233,15 @@ public class WifiScoreReport {
             // Send `legacyInt` and `exiting` to NetworkScore, but don't update mLegacyIntScore
             // and don't change any other fields. All we want to do is relay to ConnectivityService
             // whether the current network is usable.
-            mNetworkAgent.sendNetworkScore(
-                    getScoreBuilder()
-                            .setLegacyInt(score)
-                            .setExiting(score < ConnectedScore.WIFI_TRANSITION_SCORE)
-                            .build());
+            if (SdkLevel.isAtLeastS()) {
+                mNetworkAgent.sendNetworkScore(
+                        getScoreBuilder()
+                                .setLegacyInt(score)
+                                .setExiting(score < ConnectedScore.WIFI_TRANSITION_SCORE)
+                                .build());
+            } else  {
+                mNetworkAgent.sendNetworkScore(score);
+            }
         }
 
         @Override
@@ -936,14 +939,14 @@ public class WifiScoreReport {
         }
     }
 
-    /**
-     * Get cached score
-     */
+    /** Get cached score */
     @VisibleForTesting
+    @RequiresApi(Build.VERSION_CODES.S)
     public NetworkScore getScore() {
         return getScoreBuilder().build();
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private NetworkScore.Builder getScoreBuilder() {
         // We should force keep connected for a MBB CMM which is not lingering.
         boolean shouldForceKeepConnected =
@@ -953,11 +956,24 @@ public class WifiScoreReport {
                 shouldForceKeepConnected
                         ? NetworkScore.KEEP_CONNECTED_FOR_HANDOVER
                         : NetworkScore.KEEP_CONNECTED_NONE;
-        return mScoreBuilder
+        return new NetworkScore.Builder()
                 .setLegacyInt(mShouldReduceNetworkScore ? LINGERING_SCORE : mLegacyIntScore)
                 .setTransportPrimary(mCurrentRole == ActiveModeManager.ROLE_CLIENT_PRIMARY)
                 .setExiting(mLegacyIntScore < ConnectedScore.WIFI_TRANSITION_SCORE)
                 .setKeepConnectedReason(keepConnectedReason);
+    }
+
+    /** Get legacy int score. */
+    @VisibleForTesting
+    public int getLegacyIntScore() {
+        // When S Wifi module is run on R:
+        // - mShouldReduceNetworkScore is useless since MBB doesn't exist on R, so there isn't any
+        //   forced lingering.
+        // - mIsUsable can't be set as notifyStatusUpdate() for external scorer didn't exist on R
+        //   SDK (assume that only R platform + S Wifi module + R external scorer is possible,
+        //   and R platform + S Wifi module + S external scorer is not possible)
+        // Thus, it's ok to return the raw int score on R.
+        return mLegacyIntScore;
     }
 
     private void revertToDefaultConnectedScorer() {
@@ -976,7 +992,12 @@ public class WifiScoreReport {
         if (mNetworkAgent == null) {
             return;
         }
-        mNetworkAgent.sendNetworkScore(getScore());
+        if (SdkLevel.isAtLeastS()) {
+            // NetworkScore was introduced in S
+            mNetworkAgent.sendNetworkScore(getScore());
+        } else {
+            mNetworkAgent.sendNetworkScore(getLegacyIntScore());
+        }
     }
 
     /** Called when the owner {@link ConcreteClientModeManager}'s role changes. */
