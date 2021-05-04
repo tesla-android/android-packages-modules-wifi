@@ -547,6 +547,7 @@ public class WifiInjector {
         mWifiCarrierInfoManager.enableVerboseLogging(verbose);
 
         boolean verboseBool = verbose > 0;
+        Log.i(TAG, "enableVerboseLogging(" + verbose + "): " + verboseBool);
         mCountryCode.enableVerboseLogging(verboseBool);
         mWifiDiagnostics.enableVerboseLogging(verboseBool);
         mWifiMonitor.enableVerboseLogging(verboseBool);
@@ -567,6 +568,8 @@ public class WifiInjector {
         if (SdkLevel.isAtLeastS()) {
             mCoexManager.enableVerboseLogging(verboseBool);
         }
+        mWifiPermissionsWrapper.enableVerboseLogging(verboseBool);
+        mWifiPermissionsUtil.enableVerboseLogging(verboseBool);
     }
 
     public UserManager getUserManager() {
