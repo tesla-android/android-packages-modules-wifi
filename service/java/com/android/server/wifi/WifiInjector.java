@@ -164,7 +164,8 @@ public class WifiInjector {
     private final PropertyService mPropertyService = new SystemPropertyService();
     private final BuildProperties mBuildProperties = new SystemBuildProperties();
     private final WifiBackupRestore mWifiBackupRestore;
-    private final CoexManager mCoexManager;
+    // This will only be null if SdkLevel is not at least S
+    @Nullable private final CoexManager mCoexManager;
     private final SoftApBackupRestore mSoftApBackupRestore;
     private final WifiMulticastLockManager mWifiMulticastLockManager;
     private final WifiConfigStore mWifiConfigStore;
@@ -310,8 +311,15 @@ public class WifiInjector {
         mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor);
         mWifiP2pNative = new WifiP2pNative(mWifiCondManager, mWifiNative,
                 mWifiVendorHal, mSupplicantP2pIfaceHal, mHalDeviceManager, mPropertyService);
-        mCoexManager = new CoexManager(mContext, mWifiNative, makeTelephonyManager(),
-                mContext.getSystemService(CarrierConfigManager.class), wifiHandler);
+        SubscriptionManager subscriptionManager =
+                mContext.getSystemService(SubscriptionManager.class);
+        if (SdkLevel.isAtLeastS()) {
+            mCoexManager = new CoexManager(mContext, mWifiNative, makeTelephonyManager(),
+                    subscriptionManager, mContext.getSystemService(CarrierConfigManager.class),
+                    wifiHandler);
+        } else {
+            mCoexManager = null;
+        }
 
         // Now get instances of all the objects that depend on the HandlerThreads
         mWifiTrafficPoller = new WifiTrafficPoller(mContext);
@@ -327,8 +335,6 @@ public class WifiInjector {
         // New config store
         mWifiConfigStore = new WifiConfigStore(mContext, wifiHandler, mClock, mWifiMetrics,
                 WifiConfigStore.createSharedFiles(mFrameworkFacade.isNiapModeOn(mContext)));
-        SubscriptionManager subscriptionManager =
-                mContext.getSystemService(SubscriptionManager.class);
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(makeTelephonyManager(),
                 subscriptionManager, this, mFrameworkFacade, mContext,
                 mWifiConfigStore, wifiHandler, mWifiMetrics, mClock);
@@ -558,7 +564,9 @@ public class WifiInjector {
         mWifiNetworkSelector.enableVerboseLogging(verboseBool);
         mMakeBeforeBreakManager.setVerboseLoggingEnabled(verboseBool);
         mBroadcastQueue.setVerboseLoggingEnabled(verboseBool);
-        mCoexManager.enableVerboseLogging(verboseBool);
+        if (SdkLevel.isAtLeastS()) {
+            mCoexManager.enableVerboseLogging(verboseBool);
+        }
     }
 
     public UserManager getUserManager() {
@@ -890,7 +898,11 @@ public class WifiInjector {
         return mWifiP2pNative;
     }
 
-    public CoexManager getCoexManager() {
+    /**
+     * Returns a single instance of CoexManager for injection.
+     * This will be null if SdkLevel is not at least S.
+     */
+    @Nullable public CoexManager getCoexManager() {
         return mCoexManager;
     }
 
@@ -1040,5 +1052,9 @@ public class WifiInjector {
 
     public DefaultClientModeManager getDefaultClientModeManager() {
         return mDefaultClientModeManager;
+    }
+
+    public LinkProbeManager getLinkProbeManager() {
+        return mLinkProbeManager;
     }
 }

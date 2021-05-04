@@ -34,6 +34,7 @@ import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,13 +49,15 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ICoexCallback;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
-import android.os.test.TestLooper;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
 import android.telephony.PhysicalChannelConfig;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
 
@@ -71,7 +74,6 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.BufferedReader;
@@ -100,26 +102,42 @@ public class CoexManagerTest extends WifiBaseTest {
     private static final String FILEPATH_LTE_40_OVERRIDE = "assets/coex_lte_40_override.xml";
     private static final String FILEPATH_LTE_27_HARMONIC = "assets/coex_lte_27_harmonic.xml";
     private static final String FILEPATH_LTE_7_INTERMOD = "assets/coex_lte_7_intermod.xml";
-    private static final int SUB_ID = 0;
-    private static final int SUB_ID_UNRESTRICTED = 1;
-    private static final int SUB_ID_RESTRICTED = 2;
 
     @Mock private Context mMockContext;
     @Mock private Resources mMockResources;
     @Mock private WifiNative mMockWifiNative;
-    @Mock private TelephonyManager mMockTelephonyManager;
+    @Mock private TelephonyManager mMockDefaultTelephonyManager;
+    @Mock private SubscriptionManager mMockSubscriptionManager;
+    private List<SubscriptionInfo> mSubscriptionInfos = new ArrayList<>();
     @Mock private CarrierConfigManager mMockCarrierConfigManager;
     private PersistableBundle mUnrestrictedBundle = new PersistableBundle();
     private PersistableBundle mRestrictedBundle = new PersistableBundle();
-    private TestLooper mTestLooper;
 
+    private final ArgumentCaptor<CoexManager.CoexOnSubscriptionsChangedListener>
+            mCoexSubscriptionsListenerCaptor = ArgumentCaptor.forClass(
+                    CoexManager.CoexOnSubscriptionsChangedListener.class);
     private final ArgumentCaptor<BroadcastReceiver> mBroadcastReceiverCaptor =
             ArgumentCaptor.forClass(BroadcastReceiver.class);
 
+    /**
+     * Set up TelephonyManager and SubscriptionManager mocks for the given subId before creating
+     * a CoexManager. Returns the mock TelephonyManager corresponding to the given subId.
+     */
+    private TelephonyManager setUpSubIdMocks(int subId) {
+        TelephonyManager telephonyManager = mock(TelephonyManager.class);
+        when(mMockDefaultTelephonyManager.createForSubscriptionId(subId))
+                .thenReturn(telephonyManager);
+        SubscriptionInfo subscriptionInfo = mock(SubscriptionInfo.class);
+        when(subscriptionInfo.getSubscriptionId()).thenReturn(subId);
+        mSubscriptionInfos.add(subscriptionInfo);
+        return telephonyManager;
+    }
+
     private CoexManager createCoexManager() {
+        Looper.prepare();
         final CoexManager coexManager = new CoexManager(mMockContext, mMockWifiNative,
-                mMockTelephonyManager,
-                mMockCarrierConfigManager, new Handler(mTestLooper.getLooper()));
+                mMockDefaultTelephonyManager, mMockSubscriptionManager, mMockCarrierConfigManager,
+                new Handler(Looper.myLooper()));
         coexManager.enableVerboseLogging(true);
         return coexManager;
     }
@@ -127,7 +145,7 @@ public class CoexManagerTest extends WifiBaseTest {
     private PhysicalChannelConfig createMockPhysicalChannelConfig(
             @Annotation.NetworkType int rat, int band,
             int dlFreqKhz, int dlBandwidthKhz, int ulFreqKhz, int ulBandwidthKhz) {
-        PhysicalChannelConfig config = Mockito.mock(PhysicalChannelConfig.class);
+        PhysicalChannelConfig config = mock(PhysicalChannelConfig.class);
         when(config.getNetworkType()).thenReturn(rat);
         when(config.getBand()).thenReturn(band);
         when(config.getDownlinkFrequencyKhz()).thenReturn(dlFreqKhz);
@@ -164,10 +182,8 @@ public class CoexManagerTest extends WifiBaseTest {
                 .thenReturn(true);
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn("");
-        when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID_UNRESTRICTED))
-                .thenReturn(mUnrestrictedBundle);
-        when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID_RESTRICTED))
-                .thenReturn(mRestrictedBundle);
+        when(mMockSubscriptionManager.getAvailableSubscriptionInfoList())
+                .thenReturn(mSubscriptionInfos);
         mUnrestrictedBundle.putBoolean(CarrierConfigManager.Wifi
                 .KEY_AVOID_5GHZ_SOFTAP_FOR_LAA_BOOL, false);
         mUnrestrictedBundle.putBoolean(CarrierConfigManager.Wifi
@@ -176,7 +192,6 @@ public class CoexManagerTest extends WifiBaseTest {
                 .KEY_AVOID_5GHZ_SOFTAP_FOR_LAA_BOOL, true);
         mRestrictedBundle.putBoolean(CarrierConfigManager.Wifi
                 .KEY_AVOID_5GHZ_WIFI_DIRECT_FOR_LAA_BOOL, true);
-        mTestLooper = new TestLooper();
     }
 
     /**
@@ -261,8 +276,8 @@ public class CoexManagerTest extends WifiBaseTest {
      */
     @Test
     public void testRegisteredCoexListener_setCoexUnsafeChannels_listenerIsNotified() {
-        CoexManager.CoexListener listener1 = Mockito.mock(CoexManager.CoexListener.class);
-        CoexManager.CoexListener listener2 = Mockito.mock(CoexManager.CoexListener.class);
+        CoexManager.CoexListener listener1 = mock(CoexManager.CoexListener.class);
+        CoexManager.CoexListener listener2 = mock(CoexManager.CoexListener.class);
         CoexManager coexManager = createCoexManager();
         coexManager.registerCoexListener(listener1);
         coexManager.registerCoexListener(listener2);
@@ -284,8 +299,8 @@ public class CoexManagerTest extends WifiBaseTest {
      */
     @Test
     public void testUnregisteredCoexListener_setCoexUnsafeChannels_listenerIsNotNotified() {
-        CoexManager.CoexListener listener1 = Mockito.mock(CoexManager.CoexListener.class);
-        CoexManager.CoexListener listener2 = Mockito.mock(CoexManager.CoexListener.class);
+        CoexManager.CoexListener listener1 = mock(CoexManager.CoexListener.class);
+        CoexManager.CoexListener listener2 = mock(CoexManager.CoexListener.class);
         CoexManager coexManager = createCoexManager();
         coexManager.registerCoexListener(listener1);
         coexManager.registerCoexListener(listener2);
@@ -310,10 +325,10 @@ public class CoexManagerTest extends WifiBaseTest {
     @Test
     public void testRegisteredRemoteCoexCallback_setCoexUnsafeChannels_callbackIsNotified()
             throws RemoteException {
-        ICoexCallback remoteCallback1 = Mockito.mock(ICoexCallback.class);
-        when(remoteCallback1.asBinder()).thenReturn(Mockito.mock(IBinder.class));
-        ICoexCallback remoteCallback2 = Mockito.mock(ICoexCallback.class);
-        when(remoteCallback2.asBinder()).thenReturn(Mockito.mock(IBinder.class));
+        ICoexCallback remoteCallback1 = mock(ICoexCallback.class);
+        when(remoteCallback1.asBinder()).thenReturn(mock(IBinder.class));
+        ICoexCallback remoteCallback2 = mock(ICoexCallback.class);
+        when(remoteCallback2.asBinder()).thenReturn(mock(IBinder.class));
         CoexManager coexManager = createCoexManager();
         coexManager.registerRemoteCoexCallback(remoteCallback1);
         coexManager.registerRemoteCoexCallback(remoteCallback2);
@@ -339,10 +354,10 @@ public class CoexManagerTest extends WifiBaseTest {
     @Test
     public void testUnregisteredRemoteCoexCallback_setCoexUnsafeChannels_callbackIsNotNotified()
             throws RemoteException {
-        ICoexCallback remoteCallback1 = Mockito.mock(ICoexCallback.class);
-        when(remoteCallback1.asBinder()).thenReturn(Mockito.mock(IBinder.class));
-        ICoexCallback remoteCallback2 = Mockito.mock(ICoexCallback.class);
-        when(remoteCallback2.asBinder()).thenReturn(Mockito.mock(IBinder.class));
+        ICoexCallback remoteCallback1 = mock(ICoexCallback.class);
+        when(remoteCallback1.asBinder()).thenReturn(mock(IBinder.class));
+        ICoexCallback remoteCallback2 = mock(ICoexCallback.class);
+        when(remoteCallback2.asBinder()).thenReturn(mock(IBinder.class));
         CoexManager coexManager = createCoexManager();
         coexManager.registerRemoteCoexCallback(remoteCallback1);
         coexManager.registerRemoteCoexCallback(remoteCallback2);
@@ -372,9 +387,13 @@ public class CoexManagerTest extends WifiBaseTest {
         // config_wifiDefaultCoexAlgorithm defaults to true
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
 
-        verify(mMockTelephonyManager, times(1))
+        verify(telephonyManager, times(1))
                 .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
     }
 
@@ -389,23 +408,10 @@ public class CoexManagerTest extends WifiBaseTest {
                 .thenReturn(false);
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         createCoexManager();
 
-        verify(mMockTelephonyManager, never())
-                .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
-    }
-
-    /**
-     * Verifies that readTableFromXml returns false if the coex table XML is missing or malformed.
-     */
-    @Test
-    public void testTelephonyCallback_missingOrMalformedXml_doesNotRegisterWithTelephony()
-            throws Exception {
-        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
-                .thenReturn(createFileFromResource(FILEPATH_MALFORMED).getCanonicalPath());
-        CoexManager coexManager = createCoexManager();
-
-        verify(mMockTelephonyManager, times(0))
+        verify(telephonyManager, never())
                 .registerTelephonyCallback(any(Executor.class), any(TelephonyCallback.class));
     }
 
@@ -418,10 +424,14 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(any(Executor.class),
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
                 telephonyCallbackCaptor.capture());
 
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
@@ -446,11 +456,15 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbackCaptor.capture());
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 5150_000, 10_000, 0, 0)
@@ -475,11 +489,15 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_27_HARMONIC).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbackCaptor.capture());
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 27,
@@ -503,11 +521,15 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_7_INTERMOD).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbackCaptor.capture());
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 7,
@@ -531,13 +553,17 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbaclCaptor.capture());
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
-        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 2000_000, 0, 0)
         ));
 
@@ -555,13 +581,17 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbaclCaptor =
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbaclCaptor.capture());
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
 
-        telephonyCallbaclCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 5150_000, 2000_000, 0, 0)
         ));
 
@@ -579,15 +609,20 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(any(Executor.class),
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
                 telephonyCallbackCaptor.capture());
 
         // Mock channels set.
         coexManager.setMockCellChannels(Arrays.asList(
-                new CoexUtils.CoexCellChannel(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)));
+                new CoexUtils.CoexCellChannel(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID)));
         // Real channels changed.
         telephonyCallbackCaptor.getValue()
                 .onPhysicalChannelConfigChanged(Collections.emptyList());
@@ -616,7 +651,20 @@ public class CoexManagerTest extends WifiBaseTest {
             throws Exception {
         when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
                 .thenReturn(createFileFromResource(FILEPATH_LTE_40_OVERRIDE).getCanonicalPath());
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor.capture());
+
+        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
+        ));
+
         List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 11));
@@ -628,43 +676,55 @@ public class CoexManagerTest extends WifiBaseTest {
         }
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 50));
         unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 114));
-        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbackCaptor.capture());
-
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
-                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
-        ));
-
         assertThat(coexManager.getCoexUnsafeChannels()).containsExactlyElementsIn(unsafeChannels);
     }
 
     /**
      * Verifies that CoexManager returns the full list of 5GHz CoexUnsafeChannels and SoftAP and
-     * Wifi Direct restrictions if LAA is active and the active subscription ID has LAA restriction
+     * Wifi Direct restrictions if LAA is active for a subscription that has LAA restriction
      * carrier configs set.
      */
     @Test
     public void testGetCoexUnsafeChannels_LAA_restrict5gSoftApAndWifiDirect()
             throws Exception {
-        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
-                .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
-        when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID_RESTRICTED))
+        when(mMockCarrierConfigManager.getConfigForSubId(0))
+                .thenReturn(mUnrestrictedBundle);
+        when(mMockCarrierConfigManager.getConfigForSubId(1))
                 .thenReturn(mRestrictedBundle);
+        final TelephonyManager telephonyManager0 = setUpSubIdMocks(0);
+        final TelephonyManager telephonyManager1 = setUpSubIdMocks(1);
         CoexManager coexManager = createCoexManager();
-        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor0 =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
-                any(Executor.class), telephonyCallbackCaptor.capture());
+        verify(telephonyManager0).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor0.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor1 =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(telephonyManager1).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor1.capture());
 
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+        // Unrestricted sub id gets an LAA channel
+        telephonyCallbackCaptor0.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(
                         NETWORK_TYPE_LTE, AccessNetworkConstants.EutranBand.BAND_46,
                         5150_000, 1_000, 0, 0)
         ));
-        telephonyCallbackCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID_RESTRICTED);
 
+        // Unrestricted sub id LAA channel does not trigger the 5g band restriction.
+        assertThat(coexManager.getCoexUnsafeChannels()).isEmpty();
+        assertThat(coexManager.getCoexRestrictions()).isEqualTo(0);
+
+        // Restricted sub id gets an LAA channel
+        telephonyCallbackCaptor1.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+                createMockPhysicalChannelConfig(
+                        NETWORK_TYPE_LTE, AccessNetworkConstants.EutranBand.BAND_46,
+                        5150_000, 1_000, 0, 0)
+        ));
+
+        // Restricted sub id LAA channel triggers 5g band restriction.
         assertThat(coexManager.getCoexUnsafeChannels().stream()
                 .filter(unsafeChannel -> unsafeChannel.getBand() == WIFI_BAND_5_GHZ)
                 .map(unsafeChannel -> unsafeChannel.getChannel()).collect(Collectors.toList()))
@@ -679,14 +739,17 @@ public class CoexManagerTest extends WifiBaseTest {
      * Verifies that carrier configs changing will update the unsafe channels
      */
     @Test
-    public void testGetCoexUnsafeChannels_carrierConfigsChanged_updatesUnsafeChannels()
-            throws Exception {
-        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
-                .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
+    public void testGetCoexUnsafeChannels_carrierConfigsChanged_updatesUnsafeChannels() {
+        // Start with no restrictions in the carrier config
+        when(mMockCarrierConfigManager.getConfigForSubId(0)).thenReturn(mUnrestrictedBundle);
+        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
         CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
         final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
                 ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(mMockTelephonyManager).registerTelephonyCallback(
+        verify(telephonyManager).registerTelephonyCallback(
                 any(Executor.class), telephonyCallbackCaptor.capture());
         verify(mMockContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 any(IntentFilter.class), eq(null), any(Handler.class));
@@ -695,11 +758,9 @@ public class CoexManagerTest extends WifiBaseTest {
                         NETWORK_TYPE_LTE, AccessNetworkConstants.EutranBand.BAND_46,
                         5150_000, 1_000, 0, 0)
         ));
-        when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mUnrestrictedBundle);
-        telephonyCallbackCaptor.getValue().onActiveDataSubscriptionIdChanged(SUB_ID);
 
-        // Update the carrier configs
-        when(mMockCarrierConfigManager.getConfigForSubId(SUB_ID)).thenReturn(mRestrictedBundle);
+        // Update the carrier config to have restrictions
+        when(mMockCarrierConfigManager.getConfigForSubId(0)).thenReturn(mRestrictedBundle);
         Intent intent = new Intent();
         intent.setAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mBroadcastReceiverCaptor.getValue().onReceive(mMockContext, intent);
@@ -713,5 +774,44 @@ public class CoexManagerTest extends WifiBaseTest {
                 .isNotEqualTo(0);
         assertThat(coexManager.getCoexRestrictions() & COEX_RESTRICTION_WIFI_DIRECT)
                 .isNotEqualTo(0);
+    }
+
+    /**
+     * Verifies that unsafe channels are calculated on the aggregated cell channels of each sub id.
+     */
+    @Test
+    public void testGetCoexUnsafeChannels_multipleSubIds_combineUnsafeChannels() throws Exception {
+        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
+                .thenReturn(createFileFromResource(FILEPATH_LTE_46_NEIGHBORING).getCanonicalPath());
+        final TelephonyManager telephonyManager0 = setUpSubIdMocks(0);
+        final TelephonyManager telephonyManager1 = setUpSubIdMocks(1);
+        CoexManager coexManager = createCoexManager();
+        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
+                any(), mCoexSubscriptionsListenerCaptor.capture());
+        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor0 =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(telephonyManager0).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor0.capture());
+        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor1 =
+                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
+        verify(telephonyManager1).registerTelephonyCallback(any(Executor.class),
+                telephonyCallbackCaptor1.capture());
+
+
+        // Add a PhysicalChannelConfig for one sub id to conflict with the lower half of 5g
+        telephonyCallbackCaptor0.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 5000_000, 1000_000, 0, 0)
+        ));
+        // Add a PhysicalChannelConfig for another sub id to conflict with the upper half of 5g
+        telephonyCallbackCaptor1.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
+                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 46, 6000_000, 1000_000, 0, 0)
+        ));
+
+        // The PhysicalChannelConfigs for both sub ids should cause the entire 5g to be unsafe
+        // excluding the default channel.
+        assertThat(coexManager.getCoexUnsafeChannels()).hasSize(CHANNEL_SET_5_GHZ.size() - 1);
+        assertThat(coexManager.getCoexUnsafeChannels()).doesNotContain(
+                new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36, -50));
     }
 }
