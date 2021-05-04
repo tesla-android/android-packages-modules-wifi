@@ -745,6 +745,21 @@ message WifiLog {
 
   // Total number of scan results from 6GHz PSC band
   optional int32 num_6g_psc_network_scan_results = 211;
+
+  // Total number of Passpoint connections with a venue URL
+  optional int32 total_number_of_passpoint_connections_with_venue_url = 212;
+
+  // Total number of Passpoint connections with a T&C URL
+  optional int32 total_number_of_passpoint_connections_with_terms_and_conditions_url = 213;
+
+  // Total number of user accepted and T&C process completed successfully
+  optional int32 total_number_of_passpoint_acceptance_of_terms_and_conditions = 214;
+
+  // Total number of Passpoint profiles with decorated identity prefix
+  optional int32 total_number_of_passpoint_profiles_with_decorated_identity = 215;
+
+  // Scope of Passpoint deauth-imminent notification: ESS or BSS
+  repeated Int32Count passpoint_deauth_imminent_scope = 216;
 }
 
 // Information that gets logged for every WiFi connection.
