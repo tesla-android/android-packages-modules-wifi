@@ -43,6 +43,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.MacAddressUtil;
 import com.android.server.wifi.NetworkUpdateResult;
@@ -166,6 +167,11 @@ public class PasspointManager {
                 // Query failed or the request wasn't originated from us (not tracked by the
                 // request manager). Nothing to be done.
                 return;
+            }
+
+            if (anqpElements.containsKey(Constants.ANQPElementType.ANQPVenueUrl)) {
+                // Venue URL ANQP is requested and received only after the network is connected
+                mWifiMetrics.incrementTotalNumberOfPasspointConnectionsWithVenueUrl();
             }
 
             // Add new entry to the cache.
@@ -544,6 +550,9 @@ public class PasspointManager {
         }
         if (metricsSubscriptionExpiration) {
             mWifiMetrics.incrementNumPasspointProviderWithSubscriptionExpiration();
+        }
+        if (SdkLevel.isAtLeastS() && config.getDecoratedIdentityPrefix() != null) {
+            mWifiMetrics.incrementTotalNumberOfPasspointProfilesWithDecoratedIdentity();
         }
         mWifiMetrics.incrementNumPasspointProviderInstallSuccess();
         return true;
@@ -1515,6 +1524,7 @@ public class PasspointManager {
 
         blockProvider(config.getProfileKeyInternal(), event.getBssid(), event.isEss(),
                 event.getDelay());
+        mWifiMetrics.incrementPasspointDeauthImminentScope(event.isEss());
     }
 
     /**
