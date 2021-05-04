@@ -98,6 +98,7 @@ import android.system.OsConstants;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 
@@ -6553,7 +6554,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             allowlistSsids.add(config.SSID);
         }
         mWifiBlocklistMonitor.setAllowlistSsids(config.SSID, allowlistSsids);
-        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.copyOf(allowlistSsids));
+        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(new ArraySet<>(allowlistSsids));
     }
 
     private boolean checkAndHandleLinkedNetworkRoaming(String associatedBssid) {
