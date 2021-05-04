@@ -3684,6 +3684,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectedWifiConfigurationInternal());
                     break;
                 case WifiMonitor.HS20_TERMS_AND_CONDITIONS_ACCEPTANCE_REQUIRED_EVENT:
+                    mWifiMetrics
+                            .incrementTotalNumberOfPasspointConnectionsWithTermsAndConditionsUrl();
                     mTermsAndConditionsUrl = mPasspointManager
                             .handleTermsAndConditionsEvent((WnmData) message.obj,
                             getConnectedWifiConfigurationInternal());
@@ -5550,6 +5552,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 LinkProperties newLp = new LinkProperties(mLinkProperties);
                                 addPasspointInfoToLinkProperties(newLp);
                                 sendMessage(CMD_UPDATE_LINKPROPERTIES, newLp);
+                                mWifiMetrics
+                                        .incrementTotalNumberOfPasspointAcceptanceOfTermsAndConditions();
                             }
                             if (retrieveConnectedNetworkDefaultGateway()) {
                                 updateLinkedNetworks(config);
