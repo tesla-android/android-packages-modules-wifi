@@ -245,17 +245,6 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.PasspointConfiguration#setDecoratedIdentityPrefix`"
-        errorLine1="                        config.setDecoratedIdentityPrefix((String) value);"
-        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
-            line="249"
-            column="32"/>
-    </issue>
-
-    <issue
-        id="NewApi"
         message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.pps.HomeSp#getMatchAllOis`"
         errorLine1="        XmlUtil.writeNextValue(out, XML_TAG_MATCH_ALL_OIS, homeSp.getMatchAllOis());"
         errorLine2="                                                                  ~~~~~~~~~~~~~~">
