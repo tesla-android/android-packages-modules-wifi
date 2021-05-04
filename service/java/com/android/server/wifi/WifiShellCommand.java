@@ -117,6 +117,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             "get-country-code",
             "help",
             "-h",
+            "is-verbose-logging",
             "list-scan-results",
             "list-networks",
             "list-suggestions",
@@ -226,7 +227,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             final int uid = Binder.getCallingUid();
             if (uid != Process.ROOT_UID) {
                 throw new SecurityException(
-                        "Uid " + uid + " does not have access to " + cmd + " wifi command");
+                        "Uid " + uid + " does not have access to " + cmd + " wifi command "
+                                + "(or such command doesn't exist)");
             }
         }
 
@@ -661,6 +663,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "set-verbose-logging": {
                     boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
                     mWifiService.enableVerboseLogging(enabled ? 1 : 0);
+                    return 0;
+                }
+                case "is-verbose-logging": {
+                    int enabled = mWifiService.getVerboseLoggingLevel();
+                    pw.println(enabled > 0 ? "enabled" : "disabled");
                     return 0;
                 }
                 case "start-restricting-auto-join-to-subscription-id": {
@@ -1437,6 +1444,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Current wifi status");
         pw.println("  set-verbose-logging enabled|disabled ");
         pw.println("    Set the verbose logging enabled or disabled");
+        pw.println("  is-verbose-logging");
+        pw.println("    Check whether verbose logging enabled or disabled");
         pw.println("  start-restricting-auto-join-to-subscription-id subId");
         pw.println("    temporarily disable all wifi networks except merged carrier networks with"
                 + " the given subId");
