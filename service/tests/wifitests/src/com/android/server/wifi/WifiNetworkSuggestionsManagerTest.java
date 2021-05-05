@@ -4918,6 +4918,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
      */
     @Test
     public void testGetMergedPasspointSuggestionFromFqdn() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
                 .thenReturn(true);
         when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
@@ -4956,6 +4957,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
      */
     @Test
     public void testGetMergedNetworkSuggestionsForScanDetail() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
                 .thenReturn(true);
         when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
