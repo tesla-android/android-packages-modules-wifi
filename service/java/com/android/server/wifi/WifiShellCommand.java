@@ -1101,9 +1101,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 }
             } else if (option.equals("-a")) {
                 if (SdkLevel.isAtLeastS()) {
-                    isCarrierMerged = true;
+                    suggestionBuilder.setCarrierMerged(true);
                 } else {
-                    pw.println("-a option is not supported before S");
+                    throw new IllegalArgumentException("-a option is not supported before S");
                 }
             } else if (option.equals("-i")) {
                 if (SdkLevel.isAtLeastS()) {
@@ -1124,13 +1124,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             option = getNextOption();
         }
         WifiNetworkSuggestion suggestion = suggestionBuilder.build();
-        if (isCarrierMerged) {
-            if (suggestion.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                pw.println("Carrier merged network must have valid subscription Id");
-                return null;
-            }
-            suggestion.wifiConfiguration.carrierMerged = true;
-        }
         return suggestion;
     }
 
