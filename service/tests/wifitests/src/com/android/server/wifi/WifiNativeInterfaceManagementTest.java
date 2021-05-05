@@ -1217,7 +1217,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                         mIfaceCallback0, TEST_WORKSOURCE));
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
-        mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
+        }
         mInOrder.verify(mSupplicantStaIfaceHal).isInitializationStarted();
         mInOrder.verify(mSupplicantStaIfaceHal).initialize();
         mInOrder.verify(mSupplicantStaIfaceHal).startDaemon();
@@ -1283,7 +1285,9 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
                 mIfaceCallback0, TEST_WORKSOURCE, SoftApConfiguration.BAND_2GHZ, false));
 
         mInOrder.verify(mWifiVendorHal).isVendorHalSupported();
-        mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
+        if (SdkLevel.isAtLeastS()) {
+            mInOrder.verify(mWificondControl).registerCountryCodeChangedListener(any(), any());
+        }
         mInOrder.verify(mHostapdHal).isInitializationStarted();
         mInOrder.verify(mHostapdHal).initialize();
         mInOrder.verify(mHostapdHal).startDaemon();
