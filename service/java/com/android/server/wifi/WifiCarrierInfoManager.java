@@ -40,6 +40,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.PersistableBundle;
@@ -57,6 +58,8 @@ import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.view.WindowManager;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
@@ -248,6 +251,7 @@ public class WifiCarrierInfoManager {
      * Implement of {@link TelephonyCallback.DataEnabledListener}
      */
     @VisibleForTesting
+    @RequiresApi(Build.VERSION_CODES.S)
     public final class UserDataEnabledChangedListener extends TelephonyCallback implements
             TelephonyCallback.DataEnabledListener {
         private final int mSubscriptionId;
