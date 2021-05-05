@@ -311,28 +311,6 @@
 
     <issue
         id="NewApi"
-        message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback`"
-        errorLine1="    public final class UserDataEnabledChangedListener extends TelephonyCallback implements"
-        errorLine2="                                                              ~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiCarrierInfoManager.java"
-            line="242"
-            column="63"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `android.telephony.TelephonyManager#unregisterTelephonyCallback`"
-        errorLine1="                    .unregisterTelephonyCallback(this);"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiCarrierInfoManager.java"
-            line="270"
-            column="22"/>
-    </issue>
-
-    <issue
-        id="NewApi"
         message="Class requires API level 31 (current min is 30): `android.os.BugreportManager`"
         errorLine1="        BugreportManager bugreportManager = mContext.getSystemService(BugreportManager.class);"
         errorLine2="                                                                      ~~~~~~~~~~~~~~~~">
@@ -439,17 +417,6 @@
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiShellCommand.java"
             line="366"
             column="52"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `android.net.wifi.WifiNetworkSuggestion#getSubscriptionId`"
-        errorLine1="            if (suggestion.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiShellCommand.java"
-            line="1092"
-            column="28"/>
     </issue>
 
 </issues>
