@@ -206,6 +206,8 @@ public class WifiMetrics {
     public static final int MAX_WIFI_USABILITY_STATS_PER_TYPE_TO_UPLOAD = 2;
     public static final int NUM_WIFI_USABILITY_STATS_ENTRIES_PER_WIFI_GOOD = 100;
     public static final int MIN_WIFI_GOOD_USABILITY_STATS_PERIOD_MS = 1000 * 3600; // 1 hour
+    public static final int PASSPOINT_DEAUTH_IMMINENT_SCOPE_ESS = 0;
+    public static final int PASSPOINT_DEAUTH_IMMINENT_SCOPE_BSS = 1;
     // Histogram for WifiConfigStore IO duration times. Indicates the following 5 buckets (in ms):
     //   < 50
     //   [50, 100)
@@ -275,6 +277,7 @@ public class WifiMetrics {
     private ScanMetrics mScanMetrics;
     private WifiChannelUtilization mWifiChannelUtilization;
     private WifiSettingsStore mWifiSettingsStore;
+    private IntCounter mPasspointDeauthImminentScope = new IntCounter();
 
     /**
      * Metrics are stored within an instance of the WifiLog proto during runtime,
@@ -3816,9 +3819,24 @@ public class WifiMetrics {
                         + mInstalledPasspointProfileTypeForR2);
 
                 pw.println("mWifiLogProto.passpointProvisionStats.numProvisionSuccess="
-                            + mNumProvisionSuccess);
+                        + mNumProvisionSuccess);
                 pw.println("mWifiLogProto.passpointProvisionStats.provisionFailureCount:"
-                            + mPasspointProvisionFailureCounts);
+                        + mPasspointProvisionFailureCounts);
+                pw.println("mWifiLogProto.totalNumberOfPasspointConnectionsWithVenueUrl="
+                        + mWifiLogProto.totalNumberOfPasspointConnectionsWithVenueUrl);
+                pw.println(
+                        "mWifiLogProto.totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl="
+                                + mWifiLogProto
+                                .totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl);
+                pw.println(
+                        "mWifiLogProto"
+                                + ".totalNumberOfPasspointAcceptanceOfTermsAndConditions="
+                                + mWifiLogProto
+                                .totalNumberOfPasspointAcceptanceOfTermsAndConditions);
+                pw.println("mWifiLogProto.totalNumberOfPasspointProfilesWithDecoratedIdentity="
+                        + mWifiLogProto.totalNumberOfPasspointProfilesWithDecoratedIdentity);
+                pw.println("mWifiLogProto.passpointDeauthImminentScope="
+                        + mPasspointDeauthImminentScope.toString());
 
                 pw.println("mWifiLogProto.numRadioModeChangeToMcc="
                         + mWifiLogProto.numRadioModeChangeToMcc);
@@ -4872,6 +4890,7 @@ public class WifiMetrics {
             mWifiLogProto.firstConnectAfterBootStats = mFirstConnectAfterBootStats;
             mWifiLogProto.wifiToWifiSwitchStats = mWifiToWifiSwitchStats;
             mWifiLogProto.bandwidthEstimatorStats = mWifiScoreCard.dumpBandwidthEstimatorStats();
+            mWifiLogProto.passpointDeauthImminentScope = mPasspointDeauthImminentScope.toProto();
         }
     }
 
@@ -5101,6 +5120,7 @@ public class WifiMetrics {
             mCarrierWifiMetrics.clear();
             mFirstConnectAfterBootStats = null;
             mWifiToWifiSwitchStats.clear();
+            mPasspointDeauthImminentScope.clear();
         }
     }
 
@@ -7990,5 +8010,51 @@ public class WifiMetrics {
                 + ",makeBeforeBreakLingerCompletedCount="
                 + stats.makeBeforeBreakLingerCompletedCount
                 + "}";
+    }
+
+    /**
+     * Increment number of number of Passpoint connections with a venue URL
+     */
+    public void incrementTotalNumberOfPasspointConnectionsWithVenueUrl() {
+        synchronized (mLock) {
+            mWifiLogProto.totalNumberOfPasspointConnectionsWithVenueUrl++;
+        }
+    }
+
+    /**
+     * Increment number of number of Passpoint connections with a T&C URL
+     */
+    public void incrementTotalNumberOfPasspointConnectionsWithTermsAndConditionsUrl() {
+        synchronized (mLock) {
+            mWifiLogProto.totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl++;
+        }
+    }
+
+    /**
+     * Increment number of successful acceptance of Passpoint T&C
+     */
+    public void incrementTotalNumberOfPasspointAcceptanceOfTermsAndConditions() {
+        synchronized (mLock) {
+            mWifiLogProto.totalNumberOfPasspointAcceptanceOfTermsAndConditions++;
+        }
+    }
+
+    /**
+     * Increment number of Passpoint profiles with decorated identity prefix
+     */
+    public void incrementTotalNumberOfPasspointProfilesWithDecoratedIdentity() {
+        synchronized (mLock) {
+            mWifiLogProto.totalNumberOfPasspointProfilesWithDecoratedIdentity++;
+        }
+    }
+
+    /**
+     * Increment number of Passpoint Deauth-Imminent notification scope
+     */
+    public void incrementPasspointDeauthImminentScope(boolean isEss) {
+        synchronized (mLock) {
+            mPasspointDeauthImminentScope.increment(isEss ? PASSPOINT_DEAUTH_IMMINENT_SCOPE_ESS
+                    : PASSPOINT_DEAUTH_IMMINENT_SCOPE_BSS);
+        }
     }
 }

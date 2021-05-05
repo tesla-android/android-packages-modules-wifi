@@ -17,6 +17,8 @@
 package com.android.server.wifi;
 
 
+import android.util.ArrayMap;
+
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.util.FileUtils;
 
@@ -26,6 +28,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 
 /**
  * Provides a facility for capturing kernel trace events related to Wifi control and data paths.
@@ -52,23 +55,32 @@ public class LastMileLogger {
      * Informs LastMileLogger that a connection event has occurred.
      * @param event an event defined in WifiDiagnostics
      */
-    public void reportConnectionEvent(byte event) {
-        switch (event) {
-            case WifiDiagnostics.CONNECTION_EVENT_STARTED:
-                enableTracing();
-                return;
-            case WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED:
-                disableTracing();
-                return;
-            case WifiDiagnostics.CONNECTION_EVENT_FAILED:
-                disableTracing();
-                mLastMileLogForLastFailure = readTrace();
-                return;
-            case WifiDiagnostics.CONNECTION_EVENT_TIMEOUT:
-                disableTracing();
-                mLastMileLogForLastFailure = readTrace();
-                return;
+    public void reportConnectionEvent(String ifaceName, byte event) {
+        boolean wasTracingEnabled = anyConnectionInProgress();
+
+        mIfaceToConnectionStatus.put(ifaceName, event);
+
+        boolean shouldTracingBeEnabled = anyConnectionInProgress();
+
+        if (!wasTracingEnabled && shouldTracingBeEnabled) {
+            enableTracing();
+        } else if (wasTracingEnabled && !shouldTracingBeEnabled) {
+            disableTracing();
         }
+
+        if (event == WifiDiagnostics.CONNECTION_EVENT_FAILED
+                || event == WifiDiagnostics.CONNECTION_EVENT_TIMEOUT) {
+            mLastMileLogForLastFailure = readTrace();
+        }
+    }
+
+    private boolean anyConnectionInProgress() {
+        for (byte status : mIfaceToConnectionStatus.values()) {
+            if (status == WifiDiagnostics.CONNECTION_EVENT_STARTED) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -94,13 +106,17 @@ public class LastMileLogger {
     private static final String WIFI_EVENT_RELEASE_PATH_DEBUGFS =
             "/sys/kernel/debug/tracing/instances/wifi/free_buffer";
 
-
     private String mEventBufferPath;
     private String mEventEnablePath;
     private String mEventReleasePath;
     private WifiLog mLog;
     private byte[] mLastMileLogForLastFailure;
     private FileInputStream mLastMileTraceHandle;
+    /**
+     * String key: iface name
+     * byte value: Connection status, one of WifiDiagnostics.CONNECTION_EVENT_*
+     */
+    private final Map<String, Byte> mIfaceToConnectionStatus = new ArrayMap<>();
 
     private void initLastMileLogger(WifiInjector injector, String bufferPath, String enablePath,
                           String releasePath) {

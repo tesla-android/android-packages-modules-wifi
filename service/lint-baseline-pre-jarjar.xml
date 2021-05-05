@@ -36,17 +36,6 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): `java.util.Set#copyOf`"
-        errorLine1="        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.copyOf(allowlistSsids));"
-        errorLine2="                                                                     ~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/ClientModeImpl.java"
-            line="6491"
-            column="70"/>
-    </issue>
-
-    <issue
-        id="NewApi"
         message="Class requires API level 31 (current min is 30): `android.telephony.TelephonyCallback`"
         errorLine1="    /* package */ class CoexTelephonyCallback extends TelephonyCallback implements"
         errorLine2="                                                      ~~~~~~~~~~~~~~~~~">
@@ -252,17 +241,6 @@
             file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointProvider.java"
             line="879"
             column="46"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `android.net.wifi.hotspot2.PasspointConfiguration#setDecoratedIdentityPrefix`"
-        errorLine1="                        config.setDecoratedIdentityPrefix((String) value);"
-        errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/hotspot2/PasspointXmlUtils.java"
-            line="249"
-            column="32"/>
     </issue>
 
     <issue

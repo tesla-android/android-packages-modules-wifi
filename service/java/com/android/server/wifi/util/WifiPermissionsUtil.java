@@ -50,8 +50,6 @@ import java.util.Arrays;
 public class WifiPermissionsUtil {
     private static final String TAG = "WifiPermissionsUtil";
 
-    private static final boolean DEBUG = false;
-
     private static final int APP_INFO_FLAGS_SYSTEM_APP =
             ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP;
     private final WifiPermissionsWrapper mWifiPermissionsWrapper;
@@ -63,6 +61,7 @@ public class WifiPermissionsUtil {
     @GuardedBy("mLock")
     private LocationManager mLocationManager;
     private WifiLog mLog;
+    private boolean mVerboseLoggingEnabled;
 
     public WifiPermissionsUtil(WifiPermissionsWrapper wifiPermissionsWrapper,
             Context context, UserManager userManager, WifiInjector wifiInjector) {
@@ -261,6 +260,11 @@ public class WifiPermissionsUtil {
         // If neither caller or app has location access, there is no need to check
         // any other permissions. Deny access to scan results.
         if (!canCallingUidAccessLocation && !canAppPackageUseLocation) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
+                        + "canCallingUidAccessLocation=" + canCallingUidAccessLocation
+                        + ", canAppPackageUseLocation=" + canAppPackageUseLocation);
+            }
             throw new SecurityException("UID " + uid + " has no location permission");
         }
         // Check if Wifi Scan request is an operation allowed for this App.
@@ -270,6 +274,11 @@ public class WifiPermissionsUtil {
         // If the User or profile is current, permission is granted
         // Otherwise, uid must have INTERACT_ACROSS_USERS_FULL permission.
         if (!isCurrentProfile(uid) && !checkInteractAcrossUsersFull(uid)) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
+                        + "isCurrentProfile=" + isCurrentProfile(uid)
+                        + ", checkInteractAcrossUsersFull=" + checkInteractAcrossUsersFull(uid));
+            }
             throw new SecurityException("UID " + uid + " profile not permitted");
         }
     }
@@ -606,7 +615,7 @@ public class WifiPermissionsUtil {
             return false;
         }
         Pair<UserHandle, ComponentName> deviceOwner = getDeviceOwner();
-        if (DEBUG) Log.d(TAG, "deviceOwner:" + deviceOwner);
+        if (mVerboseLoggingEnabled) Log.v(TAG, "deviceOwner:" + deviceOwner);
 
         // no device owner
         if (deviceOwner == null) return false;
@@ -630,7 +639,9 @@ public class WifiPermissionsUtil {
         // finally, check uid
         String deviceOwnerPackageName = deviceOwner.second.getPackageName();
         String[] packageNames = mContext.getPackageManager().getPackagesForUid(uid);
-        if (DEBUG) Log.d(TAG, "Packages for uid " + uid + ":" + Arrays.toString(packageNames));
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "Packages for uid " + uid + ":" + Arrays.toString(packageNames));
+        }
         if (packageNames == null) {
             Log.w(TAG, "isDeviceOwner(): could not find packages for uid " + uid);
             return false;
@@ -703,4 +714,10 @@ public class WifiPermissionsUtil {
         return isCurrentProfile || isDeviceOwner(uid);
     }
 
+    /**
+     * Sets the verbose logging level.
+     */
+    public void enableVerboseLogging(boolean enabled) {
+        mVerboseLoggingEnabled = enabled;
+    }
 }

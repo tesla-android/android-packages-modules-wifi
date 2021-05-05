@@ -6326,4 +6326,49 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
     }
+
+    @Test
+    public void testPasspointConnectionMetrics() throws Exception {
+        // initially all 0
+        dumpProtoAndDeserialize();
+
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointConnectionsWithVenueUrl);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointAcceptanceOfTermsAndConditions);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointProfilesWithDecoratedIdentity);
+        assertEquals(0, mDecodedProto.passpointDeauthImminentScope.length);
+
+        // increment everything
+        mWifiMetrics.incrementTotalNumberOfPasspointConnectionsWithVenueUrl();
+        mWifiMetrics.incrementTotalNumberOfPasspointConnectionsWithTermsAndConditionsUrl();
+        mWifiMetrics.incrementTotalNumberOfPasspointAcceptanceOfTermsAndConditions();
+        mWifiMetrics.incrementTotalNumberOfPasspointProfilesWithDecoratedIdentity();
+        mWifiMetrics.incrementPasspointDeauthImminentScope(true);
+        mWifiMetrics.incrementPasspointDeauthImminentScope(false);
+        mWifiMetrics.incrementPasspointDeauthImminentScope(false);
+
+        dumpProtoAndDeserialize();
+
+        Int32Count[] expectedDeauthImminentScope = {
+                buildInt32Count(WifiMetrics.PASSPOINT_DEAUTH_IMMINENT_SCOPE_ESS, 1),
+                buildInt32Count(WifiMetrics.PASSPOINT_DEAUTH_IMMINENT_SCOPE_BSS, 2),
+        };
+
+        assertEquals(1, mDecodedProto.totalNumberOfPasspointConnectionsWithVenueUrl);
+        assertEquals(1, mDecodedProto.totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl);
+        assertEquals(1, mDecodedProto.totalNumberOfPasspointAcceptanceOfTermsAndConditions);
+        assertEquals(1, mDecodedProto.totalNumberOfPasspointProfilesWithDecoratedIdentity);
+        assertKeyCountsEqual(expectedDeauthImminentScope,
+                mDecodedProto.passpointDeauthImminentScope);
+
+        // dump again
+        dumpProtoAndDeserialize();
+
+        // everything should be reset
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointConnectionsWithVenueUrl);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointConnectionsWithTermsAndConditionsUrl);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointAcceptanceOfTermsAndConditions);
+        assertEquals(0, mDecodedProto.totalNumberOfPasspointProfilesWithDecoratedIdentity);
+        assertEquals(0, mDecodedProto.passpointDeauthImminentScope.length);
+    }
 }

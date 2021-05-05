@@ -134,6 +134,7 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
 
         List<ClientModeManager> clientModeManagerList = List.of(mClientModeManager,
                 mClientModeManager2);
+        when(mClientModeManager.getInterfaceName()).thenReturn(STA_IF_NAME);
 
         mResources = new MockResources();
         mResources.setInteger(R.integer.config_wifi_logger_ring_buffer_default_size_limit_kb,
@@ -370,7 +371,8 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
         mWifiDiagnostics.startLogging(STA_IF_NAME);
         mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_STARTED,
                 mClientModeManager);
-        verify(mLastMileLogger).reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_STARTED);
+        verify(mLastMileLogger).reportConnectionEvent(
+                STA_IF_NAME, WifiDiagnostics.CONNECTION_EVENT_STARTED);
     }
 
     @Test
@@ -380,7 +382,8 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
         mWifiDiagnostics.startLogging(STA_IF_NAME);
         mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED,
                 mClientModeManager);
-        verify(mLastMileLogger).reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED);
+        verify(mLastMileLogger).reportConnectionEvent(
+                STA_IF_NAME, WifiDiagnostics.CONNECTION_EVENT_SUCCEEDED);
     }
 
     @Test
@@ -390,7 +393,8 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
         mWifiDiagnostics.startLogging(STA_IF_NAME);
         mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_FAILED,
                 mClientModeManager);
-        verify(mLastMileLogger).reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_FAILED);
+        verify(mLastMileLogger).reportConnectionEvent(
+                STA_IF_NAME, WifiDiagnostics.CONNECTION_EVENT_FAILED);
     }
 
     /**
@@ -403,7 +407,8 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
         mWifiDiagnostics.startLogging(STA_IF_NAME);
         mWifiDiagnostics.reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT,
                 mClientModeManager);
-        verify(mLastMileLogger).reportConnectionEvent(WifiDiagnostics.CONNECTION_EVENT_TIMEOUT);
+        verify(mLastMileLogger).reportConnectionEvent(
+                STA_IF_NAME, WifiDiagnostics.CONNECTION_EVENT_TIMEOUT);
     }
 
     /**
