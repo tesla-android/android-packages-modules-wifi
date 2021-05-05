@@ -5780,6 +5780,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         expectRegisterNetworkAgent((agentConfig) -> { },
                 (cap) -> {
                     assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID));
+                    assertFalse(cap.hasCapability(NetworkCapabilities
+                            .NET_CAPABILITY_NOT_RESTRICTED));
                 });
     }
     @Test
@@ -5791,6 +5793,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         expectRegisterNetworkAgent((agentConfig) -> { },
                 (cap) -> {
                     assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID));
+                    assertTrue(cap.hasCapability(NetworkCapabilities
+                            .NET_CAPABILITY_NOT_RESTRICTED));
                 });
     }
 
@@ -5803,6 +5807,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         expectRegisterNetworkAgent((agentConfig) -> { },
                 (cap) -> {
                     assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE));
+                    assertFalse(cap.hasCapability(NetworkCapabilities
+                            .NET_CAPABILITY_NOT_RESTRICTED));
                 });
     }
 
@@ -5815,6 +5821,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         expectRegisterNetworkAgent((agentConfig) -> { },
                 (cap) -> {
                     assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE));
+                    assertTrue(cap.hasCapability(NetworkCapabilities
+                            .NET_CAPABILITY_NOT_RESTRICTED));
                 });
     }
 
