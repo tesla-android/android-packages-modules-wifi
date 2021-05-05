@@ -185,6 +185,7 @@ public class SoftApManagerTest extends WifiBaseTest {
     final ArgumentCaptor<WifiNative.SoftApListener> mSoftApListenerCaptor =
             ArgumentCaptor.forClass(WifiNative.SoftApListener.class);
 
+    // CoexListener will only be captured if SdkLevel is at least S
     private final ArgumentCaptor<CoexManager.CoexListener> mCoexListenerCaptor =
             ArgumentCaptor.forClass(CoexManager.CoexListener.class);
 
@@ -1975,7 +1976,9 @@ public class SoftApManagerTest extends WifiBaseTest {
                 expectedConfig.getBands().length > 1);
         verify(mWifiMetrics).updateSoftApCapability(softApConfig.getCapability(),
                 softApConfig.getTargetMode(), expectedConfig.getBands().length > 1);
-        verify(mCoexManager).registerCoexListener(mCoexListenerCaptor.capture());
+        if (SdkLevel.isAtLeastS()) {
+            verify(mCoexManager).registerCoexListener(mCoexListenerCaptor.capture());
+        }
     }
 
     private void checkApStateChangedBroadcast(Intent intent, int expectedCurrentState,
