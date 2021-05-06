@@ -19,7 +19,6 @@ package android.net.wifi.rtt;
 import static junit.framework.Assert.fail;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -36,8 +35,6 @@ import android.os.Parcel;
 import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
-
-import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -155,9 +152,7 @@ public class WifiRttManagerTest {
         builder.addAccessPoints(scanResults2and3);
         builder.addWifiAwarePeer(mac1);
         builder.addWifiAwarePeer(peerHandle1);
-        if (SdkLevel.isAtLeastS()) {
-            builder.setRttBurstSize(4);
-        }
+        builder.setRttBurstSize(4);
         RangingRequest request = builder.build();
 
         Parcel parcelW = Parcel.obtain();
@@ -178,7 +173,6 @@ public class WifiRttManagerTest {
      */
     @Test
     public void test802llmcCapableAccessPointFailsForNon11mcBuilderMethods() {
-        assumeTrue(SdkLevel.isAtLeastS());
         ScanResult scanResult1 = new ScanResult();
         scanResult1.BSSID = "AA:BB:CC:DD:EE:FF";
         scanResult1.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
@@ -214,7 +208,6 @@ public class WifiRttManagerTest {
      */
     @Test
     public void testRangingRequestSetBurstSize() {
-        assumeTrue(SdkLevel.isAtLeastS());
         ScanResult scanResult = new ScanResult();
         scanResult.BSSID = "AA:BB:CC:DD:EE:FF";
         scanResult.setFlag(ScanResult.FLAG_80211mc_RESPONDER);
@@ -234,7 +227,6 @@ public class WifiRttManagerTest {
      */
     @Test
     public void testRangingRequestMinBurstSizeIsEnforced() {
-        assumeTrue(SdkLevel.isAtLeastS());
         ScanResult scanResult = new ScanResult();
         scanResult.BSSID = "AA:BB:CC:DD:EE:FF";
 
@@ -253,7 +245,6 @@ public class WifiRttManagerTest {
      */
     @Test
     public void testRangingRequestMaxBurstSizeIsEnforced() {
-        assumeTrue(SdkLevel.isAtLeastS());
         ScanResult scanResult = new ScanResult();
         scanResult.BSSID = "AA:BB:CC:DD:EE:FF";
 
@@ -291,18 +282,15 @@ public class WifiRttManagerTest {
 
         // verify request
         request.enforceValidity(true);
-        if (SdkLevel.isAtLeastS()) {
-            // confirm rtt burst size is set correctly to default value
-            assertEquals(request.getRttBurstSize(), RangingRequest.getDefaultRttBurstSize());
-            // confirm the number of peers in the request is the max number of peers
-            List<ResponderConfig> rttPeers = request.getRttResponders();
-            int numRttPeers = rttPeers.size();
-            assertEquals(RangingRequest.getMaxPeers(), numRttPeers);
-            // confirm each peer has the correct mac address
-            for (int i = 0; i < numRttPeers - 1; ++i) {
-                assertEquals("AA:BB:CC:DD:EE:FF", rttPeers.get(i).macAddress.toString()
-                        .toUpperCase());
-            }
+        // confirm rtt burst size is set correctly to default value
+        assertEquals(request.getRttBurstSize(), RangingRequest.getDefaultRttBurstSize());
+        // confirm the number of peers in the request is the max number of peers
+        List<ResponderConfig> rttPeers = request.getRttResponders();
+        int numRttPeers = rttPeers.size();
+        assertEquals(RangingRequest.getMaxPeers(), numRttPeers);
+        // confirm each peer has the correct mac address
+        for (int i = 0; i < numRttPeers - 1; ++i) {
+            assertEquals("AA:BB:CC:DD:EE:FF", rttPeers.get(i).macAddress.toString().toUpperCase());
             assertEquals("00:01:02:03:04:05",
                     rttPeers.get(numRttPeers - 1).macAddress.toString().toUpperCase());
         }

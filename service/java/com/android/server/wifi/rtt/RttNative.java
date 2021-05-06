@@ -40,7 +40,6 @@ import android.os.Handler;
 import android.os.RemoteException;
 import android.util.Log;
 
-import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager;
 import com.android.server.wifi.util.NativeUtil;
 
@@ -389,12 +388,6 @@ public class RttNative {
         // Skipping any configurations which have an error (printing out a message).
         // The caller will only get results for valid configurations.
         for (ResponderConfig responder: request.mRttPeers) {
-            if (!SdkLevel.isAtLeastS() && !isCalledFromPrivilegedContext) {
-                if (!responder.supports80211mc) {
-                    Log.e(TAG, "Invalid responder: does not support 802.11mc");
-                    continue;
-                }
-            }
             RttConfig config = new RttConfig();
 
             System.arraycopy(responder.macAddress.toByteArray(), 0, config.addr, 0,
@@ -477,12 +470,6 @@ public class RttNative {
         // Skipping any configurations which have an error (printing out a message).
         // The caller will only get results for valid configurations.
         for (ResponderConfig responder: request.mRttPeers) {
-            if (!SdkLevel.isAtLeastS() && !isCalledFromPrivilegedContext) {
-                if (!responder.supports80211mc) {
-                    Log.e(TAG, "Invalid responder: does not support 802.11mc");
-                    continue;
-                }
-            }
 
             android.hardware.wifi.V1_4.RttConfig config =
                     new android.hardware.wifi.V1_4.RttConfig();

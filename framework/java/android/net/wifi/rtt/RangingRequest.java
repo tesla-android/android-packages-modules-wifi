@@ -30,8 +30,6 @@ import android.os.Handler;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.android.modules.utils.build.SdkLevel;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -71,9 +69,6 @@ public final class RangingRequest implements Parcelable {
      * @return the RTT burst size used by default
      */
     public static int getDefaultRttBurstSize() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return DEFAULT_RTT_BURST_SIZE;
     }
 
@@ -83,9 +78,6 @@ public final class RangingRequest implements Parcelable {
      * @return the minimum RTT burst size that can be used
      */
     public static int getMinRttBurstSize() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return MIN_RTT_BURST_SIZE;
     }
 
@@ -95,9 +87,6 @@ public final class RangingRequest implements Parcelable {
      * @return the maximum RTT burst size that can be used
      */
     public static int getMaxRttBurstSize() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return MAX_RTT_BURST_SIZE;
     }
 
@@ -123,9 +112,6 @@ public final class RangingRequest implements Parcelable {
     @SystemApi
     @NonNull
     public List<ResponderConfig> getRttResponders() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return mRttPeers;
     }
 
@@ -135,9 +121,6 @@ public final class RangingRequest implements Parcelable {
      * @return the RTT burst size used
      */
     public int getRttBurstSize() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return mRttBurstSize;
     }
 
@@ -185,14 +168,8 @@ public final class RangingRequest implements Parcelable {
                 throw new IllegalArgumentException("Invalid Responder specification");
             }
         }
-        if (SdkLevel.isAtLeastS()) {
-            if (mRttBurstSize < getMinRttBurstSize() || mRttBurstSize > getMaxRttBurstSize()) {
-                throw new IllegalArgumentException("RTT burst size is out of range");
-            }
-        } else {
-            if (mRttBurstSize != DEFAULT_RTT_BURST_SIZE) {
-                throw new IllegalArgumentException("RTT burst size is not the default value");
-            }
+        if (mRttBurstSize < getMinRttBurstSize() || mRttBurstSize > getMaxRttBurstSize()) {
+            throw new IllegalArgumentException("RTT burst size is out of range");
         }
     }
 
@@ -218,9 +195,6 @@ public final class RangingRequest implements Parcelable {
          */
         @NonNull
         public Builder setRttBurstSize(int rttBurstSize) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             if (rttBurstSize < MIN_RTT_BURST_SIZE || rttBurstSize > MAX_RTT_BURST_SIZE) {
                 throw new IllegalArgumentException("RTT burst size out of range.");
             }
@@ -299,9 +273,6 @@ public final class RangingRequest implements Parcelable {
          */
         @NonNull
         public Builder addNon80211mcCapableAccessPoint(@NonNull ScanResult apInfo) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             if (apInfo == null) {
                 throw new IllegalArgumentException("Null ScanResult!");
             }
@@ -337,9 +308,6 @@ public final class RangingRequest implements Parcelable {
          */
         @NonNull
         public Builder addNon80211mcCapableAccessPoints(@NonNull List<ScanResult> apInfos) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             if (apInfos == null) {
                 throw new IllegalArgumentException("Null list of ScanResults!");
             }
