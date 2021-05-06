@@ -3870,11 +3870,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (SdkLevel.isAtLeastS()) {
             if (mWifiInfo.isOemPaid()) {
                 builder.addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID);
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             } else {
                 builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID);
             }
             if (mWifiInfo.isOemPrivate()) {
                 builder.addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE);
+                builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
             } else {
                 builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE);
             }
