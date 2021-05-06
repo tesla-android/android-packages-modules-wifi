@@ -25,8 +25,6 @@ import android.net.wifi.aware.PeerHandle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.android.modules.utils.build.SdkLevel;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
@@ -362,9 +360,6 @@ public final class RangingResult implements Parcelable {
      * exception.
      */
     public boolean is80211mcMeasurement() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (mStatus != STATUS_SUCCESS) {
             throw new IllegalStateException(
                     "is80211mcMeasurementResult(): invoked on an invalid result: getStatus()="
