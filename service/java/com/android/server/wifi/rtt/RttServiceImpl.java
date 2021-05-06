@@ -55,7 +55,6 @@ import android.util.SparseIntArray;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.BasicShellCommandHandler;
-import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
@@ -1115,11 +1114,6 @@ public class RttServiceImpl extends IWifiRttManager.Stub {
                     }
 
                     int errorCode = RangingResult.STATUS_FAIL;
-
-                    if (!SdkLevel.isAtLeastS() && !isCalledFromPrivilegedContext
-                            && !peer.supports80211mc) {
-                        errorCode = RangingResult.STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC;
-                    }
 
                     if (peer.peerHandle == null) {
                         finalResults.add(
