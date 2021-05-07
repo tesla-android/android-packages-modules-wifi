@@ -2983,7 +2983,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
             when(linkedNetworkHandle.select()).thenReturn(true);
             mDut.setStaNetworkMockable(linkedNetworkHandle);
             final HashMap<String, WifiConfiguration> linkedNetworks = new HashMap<>();
-            linkedNetworks.put(roamingConfig.getProfileKeyInternal(), roamingConfig);
+            linkedNetworks.put(roamingConfig.getProfileKey(), roamingConfig);
             assertTrue(mDut.updateLinkedNetworks(
                     WLAN0_IFACE_NAME, connectedNetworkId, linkedNetworks));
         }
