@@ -195,7 +195,7 @@ public class PasspointNetworkNominateHelper {
             config.meteredHint = true;
         }
         WifiConfiguration existingNetwork = mWifiConfigManager.getConfiguredNetwork(
-                config.getProfileKeyInternal());
+                config.getProfileKey());
         if (existingNetwork != null) {
             WifiConfiguration.NetworkSelectionStatus status =
                     existingNetwork.getNetworkSelectionStatus();

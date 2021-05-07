@@ -359,7 +359,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
         }
         if (mVerboseLoggingEnabled) {
-            logd(dbg + " clearTargetBssid " + bssid + " key=" + config.getProfileKeyInternal());
+            logd(dbg + " clearTargetBssid " + bssid + " key=" + config.getProfileKey());
         }
         mTargetBssid = bssid;
         return mWifiNative.setNetworkBSSID(mInterfaceName, bssid);
@@ -384,7 +384,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
         if (mVerboseLoggingEnabled) {
             Log.d(getTag(), "setTargetBssid set to " + bssid + " key="
-                    + config.getProfileKeyInternal());
+                    + config.getProfileKey());
         }
         mTargetBssid = bssid;
         config.getNetworkSelectionStatus().setNetworkSelectionBSSID(bssid);
@@ -1687,7 +1687,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 sb.append(cnm.result.getNetworkId());
                 config = mWifiConfigManager.getConfiguredNetwork(cnm.result.getNetworkId());
                 if (config != null) {
-                    sb.append(" ").append(config.getProfileKeyInternal());
+                    sb.append(" ").append(config.getProfileKey());
                     sb.append(" nid=").append(config.networkId);
                     if (config.hiddenSSID) {
                         sb.append(" hidden");
@@ -1719,7 +1719,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 sb.append(" nid=").append(mLastNetworkId);
                 config = getConnectedWifiConfigurationInternal();
                 if (config != null) {
-                    sb.append(" ").append(config.getProfileKeyInternal());
+                    sb.append(" ").append(config.getProfileKey());
                 }
                 key = mWifiConfigManager.getLastSelectedNetworkConfigKey();
                 if (key != null) {
@@ -1790,7 +1790,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 sb.append(Integer.toString(msg.arg2));
                 config = mWifiConfigManager.getConfiguredNetwork(msg.arg1);
                 if (config != null) {
-                    sb.append(" targetConfigKey=").append(config.getProfileKeyInternal());
+                    sb.append(" targetConfigKey=").append(config.getProfileKey());
                     sb.append(" BSSID=" + config.BSSID);
                 }
                 if (mTargetBssid != null) {
@@ -1799,7 +1799,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 sb.append(" roam=").append(Boolean.toString(mIsAutoRoaming));
                 config = getConnectedWifiConfigurationInternal();
                 if (config != null) {
-                    sb.append(" currentConfigKey=").append(config.getProfileKeyInternal());
+                    sb.append(" currentConfigKey=").append(config.getProfileKey());
                 }
                 break;
             case CMD_START_ROAM:
@@ -3292,7 +3292,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             WifiConfiguration currentNetwork = getConnectedWifiConfigurationInternal();
             if (currentNetwork != null && currentNetwork.isPasspoint()) {
                 mPasspointManager.onPasspointNetworkConnected(
-                        currentNetwork.getProfileKeyInternal());
+                        currentNetwork.getProfileKey());
             }
         }
     }
@@ -5626,7 +5626,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     logd("CMD_START_ROAM sup state "
                             + " my state " + getCurrentState().getName()
                             + " nid=" + Integer.toString(netId)
-                            + " config " + config.getProfileKeyInternal()
+                            + " config " + config.getProfileKey()
                             + " targetRoamBSSID " + mTargetBssid);
 
                     reportConnectionAttemptStart(config, mTargetBssid,
@@ -6188,7 +6188,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         != WifiConfiguration.RANDOMIZATION_NONE
                         && mWifiGlobals.isConnectedMacRandomizationEnabled();
         if (mVerboseLoggingEnabled) {
-            final String key = config.getProfileKeyInternal();
+            final String key = config.getProfileKey();
             log("startIpClient netId=" + Integer.toString(mLastNetworkId)
                     + " " + key + " "
                     + " roam=" + mIsAutoRoaming

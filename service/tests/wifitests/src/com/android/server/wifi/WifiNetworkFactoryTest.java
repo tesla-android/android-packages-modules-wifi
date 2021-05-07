@@ -1354,7 +1354,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Have a saved network with the same configuration.
         WifiConfiguration matchingSavedNetwork = new WifiConfiguration(mSelectedNetwork);
         matchingSavedNetwork.networkId = TEST_NETWORK_ID_1;
-        when(mWifiConfigManager.getConfiguredNetwork(mSelectedNetwork.getProfileKeyInternal()))
+        when(mWifiConfigManager.getConfiguredNetwork(mSelectedNetwork.getProfileKey()))
                 .thenReturn(matchingSavedNetwork);
 
         // Now trigger user selection to one of the network.
@@ -2047,7 +2047,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         wcmNetwork.shared = false;
         wcmNetwork.fromWifiNetworkSpecifier = true;
         wcmNetwork.ephemeral = true;
-        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKey()))
                 .thenReturn(wcmNetwork);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         // verify we canceled the timeout alarm.
@@ -2092,7 +2092,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         wcmNetwork.shared = false;
         wcmNetwork.fromWifiNetworkSpecifier = true;
         wcmNetwork.ephemeral = true;
-        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKey()))
                 .thenReturn(wcmNetwork);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         // Verify that we triggered a disconnect.
@@ -2138,7 +2138,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         wcmNetwork.shared = false;
         wcmNetwork.fromWifiNetworkSpecifier = true;
         wcmNetwork.ephemeral = true;
-        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKey()))
                 .thenReturn(wcmNetwork);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         // Verify that we triggered a disconnect.
@@ -2229,7 +2229,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         wcmNetwork.shared = false;
         wcmNetwork.fromWifiNetworkSpecifier = true;
         wcmNetwork.ephemeral = true;
-        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKeyInternal()))
+        when(mWifiConfigManager.getConfiguredNetwork(wcmNetwork.getProfileKey()))
                 .thenReturn(wcmNetwork);
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
         // Verify that we triggered a disconnect.
@@ -3564,7 +3564,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         @Override
         public boolean matches(WifiConfiguration otherConfig) {
             if (otherConfig == null) return false;
-            return mConfig.getProfileKeyInternal().equals(otherConfig.getProfileKeyInternal());
+            return mConfig.getProfileKey().equals(otherConfig.getProfileKey());
         }
     }
 

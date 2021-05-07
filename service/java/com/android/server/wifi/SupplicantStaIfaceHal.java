@@ -971,7 +971,7 @@ public class SupplicantStaIfaceHal {
                 Log.e(TAG, "Exception while saving config params: " + config, e);
             }
             if (!saveSuccess) {
-                loge("Failed to save variables for: " + config.getProfileKeyInternal());
+                loge("Failed to save variables for: " + config.getProfileKey());
                 if (!removeAllNetworks(ifaceName)) {
                     loge("Failed to remove all networks on failure.");
                 }
@@ -994,7 +994,7 @@ public class SupplicantStaIfaceHal {
      */
     public boolean connectToNetwork(@NonNull String ifaceName, @NonNull WifiConfiguration config) {
         synchronized (mLock) {
-            logd("connectToNetwork " + config.getProfileKeyInternal());
+            logd("connectToNetwork " + config.getProfileKey());
             WifiConfiguration currentConfig = getCurrentNetworkLocalConfig(ifaceName);
             if (WifiConfigurationUtil.isSameNetwork(config, currentConfig)) {
                 String networkSelectionBSSID = config.getNetworkSelectionStatus()
@@ -1025,7 +1025,7 @@ public class SupplicantStaIfaceHal {
                         addNetworkAndSaveConfig(ifaceName, config);
                 if (pair == null) {
                     loge("Failed to add/save network configuration: " + config
-                            .getProfileKeyInternal());
+                            .getProfileKey());
                     return false;
                 }
                 mCurrentNetworkRemoteHandles.put(ifaceName, pair.first);
@@ -1035,7 +1035,7 @@ public class SupplicantStaIfaceHal {
                     checkSupplicantStaNetworkAndLogFailure(ifaceName, "connectToNetwork");
             if (networkHandle == null) {
                 loge("No valid remote network handle for network configuration: "
-                        + config.getProfileKeyInternal());
+                        + config.getProfileKey());
                 return false;
             }
 
@@ -1050,7 +1050,7 @@ public class SupplicantStaIfaceHal {
             }
 
             if (!networkHandle.select()) {
-                loge("Failed to select network configuration: " + config.getProfileKeyInternal());
+                loge("Failed to select network configuration: " + config.getProfileKey());
                 return false;
             }
             return true;
@@ -1088,12 +1088,12 @@ public class SupplicantStaIfaceHal {
                 return connectToNetwork(ifaceName, config);
             }
             String bssid = config.getNetworkSelectionStatus().getNetworkSelectionBSSID();
-            logd("roamToNetwork" + config.getProfileKeyInternal() + " (bssid " + bssid + ")");
+            logd("roamToNetwork" + config.getProfileKey() + " (bssid " + bssid + ")");
 
             SupplicantStaNetworkHal networkHandle =
                     checkSupplicantStaNetworkAndLogFailure(ifaceName, "roamToNetwork");
             if (networkHandle == null || !networkHandle.setBssid(bssid)) {
-                loge("Failed to set new bssid on network: " + config.getProfileKeyInternal());
+                loge("Failed to set new bssid on network: " + config.getProfileKey());
                 return false;
             }
             if (!reassociate(ifaceName)) {
