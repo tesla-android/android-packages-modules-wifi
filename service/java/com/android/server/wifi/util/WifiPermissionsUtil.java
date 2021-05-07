@@ -152,6 +152,10 @@ public class WifiPermissionsUtil {
         }
         if (mWifiPermissionsWrapper.getUidPermission(permissionType, uid)
                 == PackageManager.PERMISSION_DENIED) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "checkCallersLocationPermission(" + pkgName + "): uid " + uid
+                        + " doesn't have permission " + permissionType);
+            }
             return false;
         }
 
@@ -160,11 +164,27 @@ public class WifiPermissionsUtil {
         boolean isFineLocationAllowed = noteAppOpAllowed(
                 AppOpsManager.OPSTR_FINE_LOCATION, pkgName, featureId, uid, message);
         if (isFineLocationAllowed) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "checkCallersLocationPermission(" + pkgName + "): ok because uid " + uid
+                        + " has app-op " + AppOpsManager.OPSTR_FINE_LOCATION);
+            }
             return true;
         }
         if (coarseForTargetSdkLessThanQ && isTargetSdkLessThanQ) {
-            return noteAppOpAllowed(AppOpsManager.OPSTR_COARSE_LOCATION, pkgName, featureId, uid,
-                    message);
+            boolean allowed = noteAppOpAllowed(AppOpsManager.OPSTR_COARSE_LOCATION, pkgName,
+                    featureId, uid, message);
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "checkCallersLocationPermission(" + pkgName + "): returning " + allowed
+                        + " because uid " + uid + (allowed ? "has" : "doesn't have") + " app-op "
+                        + AppOpsManager.OPSTR_COARSE_LOCATION);
+            }
+            return allowed;
+        }
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "checkCallersLocationPermission(" + pkgName + "): returning false for " + uid
+                    + ": coarseForTargetSdkLessThanQ=" + coarseForTargetSdkLessThanQ
+                    + ", isTargetSdkLessThanQ=" + isTargetSdkLessThanQ);
+
         }
         return false;
     }
@@ -246,6 +266,10 @@ public class WifiPermissionsUtil {
 
         // Location mode must be enabled
         if (!isLocationModeEnabled()) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
+                        + "location is disabled");
+            }
             // Location mode is disabled, scan results cannot be returned
             throw new SecurityException("Location mode is disabled for the device");
         }
@@ -269,14 +293,19 @@ public class WifiPermissionsUtil {
         }
         // Check if Wifi Scan request is an operation allowed for this App.
         if (!isScanAllowedbyApps(pkgName, featureId, uid)) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
+                        + "doesn't have app-op " + AppOpsManager.OPSTR_WIFI_SCAN);
+            }
             throw new SecurityException("UID " + uid + " has no wifi scan permission");
         }
         // If the User or profile is current, permission is granted
         // Otherwise, uid must have INTERACT_ACROSS_USERS_FULL permission.
-        if (!isCurrentProfile(uid) && !checkInteractAcrossUsersFull(uid)) {
+        boolean isCurrentProfile = isCurrentProfile(uid);
+        if (!isCurrentProfile && !checkInteractAcrossUsersFull(uid)) {
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
-                        + "isCurrentProfile=" + isCurrentProfile(uid)
+                        + "isCurrentProfile=" + isCurrentProfile
                         + ", checkInteractAcrossUsersFull=" + checkInteractAcrossUsersFull(uid));
             }
             throw new SecurityException("UID " + uid + " profile not permitted");
@@ -643,7 +672,8 @@ public class WifiPermissionsUtil {
             Log.v(TAG, "Packages for uid " + uid + ":" + Arrays.toString(packageNames));
         }
         if (packageNames == null) {
-            Log.w(TAG, "isDeviceOwner(): could not find packages for uid " + uid);
+            Log.w(TAG, "isDeviceOwner(): could not find packages for packageName="
+                    + deviceOwnerPackageName + " uid=" + uid);
             return false;
         }
         for (String packageName : packageNames) {
