@@ -36,7 +36,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
@@ -752,7 +751,7 @@ public class WifiConfigurationTest {
     }
 
     /**
-     * Verifies that getProfileKeyInternal returns the correct String for networks of
+     * Verifies that getProfileKey returns the correct String for networks of
      * various different security types, the result should be stable.
      */
     @Test
@@ -880,18 +879,8 @@ public class WifiConfigurationTest {
     }
 
     @Test
-    public void testGetProfileKeyInPreS() {
+    public void testGetProfileKeyOnR() {
         assumeFalse(SdkLevel.isAtLeastS());
-        WifiConfiguration config = new WifiConfiguration();
-        try {
-            config.getProfileKey();
-            fail("Expected UnsupportedOperationException");
-        } catch (UnsupportedOperationException expected) {
-        }
-    }
-
-    @Test
-    public void testGetProfileKeyInternal() {
         WifiConfiguration config = new WifiConfiguration();
         final String mSsid = "TestAP";
         config.SSID = mSsid;
@@ -899,11 +888,7 @@ public class WifiConfigurationTest {
         config.subscriptionId = TEST_SUB_ID;
         config.creatorName = TEST_PACKAGE_NAME;
 
-        if (SdkLevel.isAtLeastS()) {
-            assertEquals(config.getProfileKey(), config.getProfileKeyInternal());
-        } else {
-            assertEquals(config.getKey(), config.getProfileKeyInternal());
-        }
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.NONE] , config.getProfileKey());
     }
 
     private String createProfileKey(String ssid, String keyMgmt, String providerName,

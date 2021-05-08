@@ -1045,7 +1045,7 @@ public class WifiBlocklistMonitor {
         } else {
             setNetworkSelectionPermanentlyDisabled(config, reason);
         }
-        localLog("setNetworkSelectionStatus: configKey=" + config.getProfileKeyInternal()
+        localLog("setNetworkSelectionStatus: configKey=" + config.getProfileKey()
                 + " networkStatus=" + networkStatus.getNetworkStatusString() + " disableReason="
                 + networkStatus.getNetworkSelectionDisableReasonString());
     }
@@ -1057,7 +1057,7 @@ public class WifiBlocklistMonitor {
         NetworkSelectionStatus status = config.getNetworkSelectionStatus();
         if (status.getNetworkSelectionStatus()
                 != NetworkSelectionStatus.NETWORK_SELECTION_ENABLED) {
-            localLog("setNetworkSelectionEnabled: configKey=" + config.getProfileKeyInternal()
+            localLog("setNetworkSelectionEnabled: configKey=" + config.getProfileKey()
                     + " old networkStatus=" + status.getNetworkStatusString()
                     + " disableReason=" + status.getNetworkSelectionDisableReasonString());
         }

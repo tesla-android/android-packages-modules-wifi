@@ -3832,18 +3832,19 @@ public class WifiVendorHal {
                 if (iWifiChipV15 == null) {
                     return null;
                 }
-                ArrayList<WifiAvailableChannel> results = new ArrayList<>();
+                Mutable<List<WifiAvailableChannel>> answer = new Mutable<>();
                 iWifiChipV15.getUsableChannels(
                         makeWifiBandFromFrameworkBand(band),
                         frameworkToHalIfaceMode(mode),
                         frameworkToHalUsableFilter(filter), (status, channels) -> {
                             if (!ok(status)) return;
+                            answer.value = new ArrayList<>();
                             for (WifiUsableChannel ch : channels) {
-                                results.add(new WifiAvailableChannel(ch.channel,
+                                answer.value.add(new WifiAvailableChannel(ch.channel,
                                         frameworkFromHalIfaceMode(ch.ifaceModeMask)));
                             }
                         });
-                return results;
+                return answer.value;
             } catch (RemoteException e) {
                 handleRemoteException(e);
                 return null;

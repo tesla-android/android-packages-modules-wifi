@@ -4147,7 +4147,7 @@ public class WifiServiceImpl extends BaseWifiService {
                                         .getNetworkId();
                         if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
                             Log.e(TAG, "Restore network failed: "
-                                    + configuration.getProfileKeyInternal());
+                                    + configuration.getProfileKey());
                             continue;
                         }
                         // Enable all networks restored.

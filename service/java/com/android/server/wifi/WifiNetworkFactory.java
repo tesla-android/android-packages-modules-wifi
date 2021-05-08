@@ -899,7 +899,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     // If the network already exists, just return the network ID of the existing network.
     private int addNetworkToWifiConfigManager(@NonNull WifiConfiguration network) {
         WifiConfiguration existingSavedNetwork =
-                mWifiConfigManager.getConfiguredNetwork(network.getProfileKeyInternal());
+                mWifiConfigManager.getConfiguredNetwork(network.getProfileKey());
         if (existingSavedNetwork != null) {
             if (WifiConfigurationUtil.hasCredentialChanged(existingSavedNetwork, network)) {
                 // TODO (b/142035508): What if the user has a saved network with different
@@ -927,7 +927,7 @@ public class WifiNetworkFactory extends NetworkFactory {
 
         if (network == null) return;
         WifiConfiguration wcmNetwork =
-                mWifiConfigManager.getConfiguredNetwork(network.getProfileKeyInternal());
+                mWifiConfigManager.getConfiguredNetwork(network.getProfileKey());
         if (wcmNetwork == null) {
             Log.e(TAG, "Network not present in config manager");
             return;
