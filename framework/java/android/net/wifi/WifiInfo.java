@@ -39,6 +39,8 @@ import android.os.Parcelable;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.Inet4AddressUtils;
 
@@ -921,6 +923,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @see WifiNetworkSuggestion.Builder#setOemPaid(boolean).
      * {@hide}
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public boolean isOemPaid() {
         if (!SdkLevel.isAtLeastS()) {
@@ -939,6 +942,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @see WifiNetworkSuggestion.Builder#setOemPrivate(boolean).
      * {@hide}
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public boolean isOemPrivate() {
         if (!SdkLevel.isAtLeastS()) {
@@ -960,6 +964,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * {@hide}
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public boolean isCarrierMerged() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -1049,6 +1054,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @see WifiNetworkSuggestion.Builder#setSubscriptionId(int)
      * @see android.telephony.SubscriptionInfo#getSubscriptionId()
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public int getSubscriptionId() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
