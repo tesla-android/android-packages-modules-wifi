@@ -1571,8 +1571,6 @@ public class WifiNetworkSuggestionTest {
      */
     @Test
     public void testSetCarrierId() {
-        assumeTrue(SdkLevel.isAtLeastS());
-
         WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
                 .setWpa2Passphrase(TEST_PRESHARED_KEY)
