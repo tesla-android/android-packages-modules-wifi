@@ -20,10 +20,13 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -1025,6 +1028,7 @@ public class WifiEnterpriseConfig implements Parcelable {
      * @param alias key pair alias
      * @see android.app.admin.DevicePolicyManager#grantKeyPairToWifiAuth(String)
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public void setClientKeyPairAlias(@NonNull String alias) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -1035,6 +1039,7 @@ public class WifiEnterpriseConfig implements Parcelable {
     /**
      * Get KeyChain alias to use for client authentication.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public @Nullable String getClientKeyPairAlias() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
