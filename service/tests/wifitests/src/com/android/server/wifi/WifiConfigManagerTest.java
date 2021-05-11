@@ -6561,14 +6561,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
 
         WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
-        assertFalse(configBefore.getSecurityParams(disabledType).isEnabled());
+        assertFalse(configAfter.getSecurityParams(disabledType).isEnabled());
     }
 
     /**
      * Verify Transition Disable Indication for the PSK/SAE configuration.
      */
     @Test
-    public void testSaeTransitionDisableIndication() {
+    public void testPskSaeTransitionDisableIndication() {
         verifyTransitionDisableIndicationForSecurityType(
                 WifiConfigurationTestUtil.createPskNetwork(),
                 WifiMonitor.TDI_USE_WPA3_PERSONAL);
@@ -6588,7 +6588,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * Verify Transition Disable Indication for Open/OWE configuration.
      */
     @Test
-    public void testOpenOweEnterpriseValidationTransitionDisableIndication() {
+    public void testOpenOweValidationTransitionDisableIndication() {
         verifyTransitionDisableIndicationForSecurityType(
                 WifiConfigurationTestUtil.createOpenNetwork(),
                 WifiMonitor.TDI_USE_ENHANCED_OPEN);
