@@ -356,7 +356,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         public @NonNull Builder setWpa2EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");
@@ -386,7 +386,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         public @NonNull Builder setWpa3EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");
@@ -409,7 +409,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         public @NonNull Builder setWpa3EnterpriseStandardModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");

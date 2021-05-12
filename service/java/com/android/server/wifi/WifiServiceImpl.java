@@ -2736,7 +2736,7 @@ public class WifiServiceImpl extends BaseWifiService {
             return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, 0);
         }
 
-        if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
+        if (config.isEnterprise() && config.enterpriseConfig.isEapMethodServerCertUsed()
                 && !config.enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
             if (!(mContext.getResources().getBoolean(
                     R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW)
