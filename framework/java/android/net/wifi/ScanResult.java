@@ -27,6 +27,8 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
@@ -274,24 +276,28 @@ public final class ScanResult implements Parcelable {
      * Cipher suite: GCMP_128
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int CIPHER_GCMP_128 = 6;
     /**
      * @hide
      * Cipher suite: BIP_GMAC_128
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int CIPHER_BIP_GMAC_128 = 7;
     /**
      * @hide
      * Cipher suite: BIP_GMAC_256
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int CIPHER_BIP_GMAC_256 = 8;
     /**
      * @hide
      * Cipher suite: BIP_CMAC_256
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int CIPHER_BIP_CMAC_256 = 9;
 
     /**
