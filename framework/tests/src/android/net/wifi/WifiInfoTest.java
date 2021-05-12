@@ -63,202 +63,248 @@ public class WifiInfoTest {
     private static final int TEST_NETWORK_ID2 = 6;
     private static final int TEST_SUB_ID = 1;
 
-    /**
-     *  Verify parcel write/read with WifiInfo.
-     */
-    @Test
-    public void testWifiInfoParcelWriteReadWithNoRedactions() throws Exception {
-        WifiInfo writeWifiInfo = new WifiInfo();
-        writeWifiInfo.txSuccess = TEST_TX_SUCCESS;
-        writeWifiInfo.txRetries = TEST_TX_RETRIES;
-        writeWifiInfo.txBad = TEST_TX_BAD;
-        writeWifiInfo.rxSuccess = TEST_RX_SUCCESS;
-        writeWifiInfo.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
-        writeWifiInfo.setBSSID(TEST_BSSID);
-        writeWifiInfo.setNetworkId(TEST_NETWORK_ID);
-        writeWifiInfo.setTrusted(true);
-        writeWifiInfo.setOemPaid(true);
-        writeWifiInfo.setOemPrivate(true);
-        writeWifiInfo.setCarrierMerged(true);
-        writeWifiInfo.setOsuAp(true);
-        writeWifiInfo.setFQDN(TEST_FQDN);
-        writeWifiInfo.setProviderFriendlyName(TEST_PROVIDER_NAME);
-        writeWifiInfo.setRequestingPackageName(TEST_PACKAGE_NAME);
-        writeWifiInfo.setWifiStandard(TEST_WIFI_STANDARD);
-        writeWifiInfo.setMaxSupportedTxLinkSpeedMbps(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS);
-        writeWifiInfo.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
-        writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
-        List<ScanResult.InformationElement> informationElements = generateIes();
-        writeWifiInfo.setInformationElements(informationElements);
-        writeWifiInfo.setIsPrimary(true);
-        writeWifiInfo.setMacAddress(TEST_BSSID);
+    private WifiInfo makeWifiInfoForNoRedactions(
+            List<ScanResult.InformationElement> informationElements) {
+        WifiInfo info = new WifiInfo();
+        info.txSuccess = TEST_TX_SUCCESS;
+        info.txRetries = TEST_TX_RETRIES;
+        info.txBad = TEST_TX_BAD;
+        info.rxSuccess = TEST_RX_SUCCESS;
+        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setBSSID(TEST_BSSID);
+        info.setNetworkId(TEST_NETWORK_ID);
+        info.setTrusted(true);
+        info.setOemPaid(true);
+        info.setOemPrivate(true);
+        info.setCarrierMerged(true);
+        info.setOsuAp(true);
+        info.setFQDN(TEST_FQDN);
+        info.setProviderFriendlyName(TEST_PROVIDER_NAME);
+        info.setRequestingPackageName(TEST_PACKAGE_NAME);
+        info.setWifiStandard(TEST_WIFI_STANDARD);
+        info.setMaxSupportedTxLinkSpeedMbps(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS);
+        info.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
+        info.setSubscriptionId(TEST_SUB_ID);
+        info.setInformationElements(informationElements);
+        info.setIsPrimary(true);
+        info.setMacAddress(TEST_BSSID);
+        return info;
+    }
 
-        // Make a copy which allows parcelling of location sensitive data.
-        WifiInfo writeWifiInfoCopy = writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_NONE);
-
-        Parcel parcel = Parcel.obtain();
-        writeWifiInfoCopy.writeToParcel(parcel, 0);
-        // Rewind the pointer to the head of the parcel.
-        parcel.setDataPosition(0);
-        WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
-
-        assertNotNull(readWifiInfo);
-        assertEquals(TEST_TX_SUCCESS, readWifiInfo.txSuccess);
-        assertEquals(TEST_TX_RETRIES, readWifiInfo.txRetries);
-        assertEquals(TEST_TX_BAD, readWifiInfo.txBad);
-        assertEquals(TEST_RX_SUCCESS, readWifiInfo.rxSuccess);
-        assertEquals("\"" + TEST_SSID + "\"", readWifiInfo.getSSID());
-        assertEquals(TEST_BSSID, readWifiInfo.getBSSID());
-        assertEquals(TEST_NETWORK_ID, readWifiInfo.getNetworkId());
-        assertTrue(readWifiInfo.isTrusted());
-        assertTrue(readWifiInfo.isOsuAp());
-        assertTrue(readWifiInfo.isPasspointAp());
-        assertEquals(TEST_PACKAGE_NAME, readWifiInfo.getRequestingPackageName());
-        assertEquals(TEST_FQDN, readWifiInfo.getPasspointFqdn());
-        assertEquals(TEST_PROVIDER_NAME, readWifiInfo.getPasspointProviderFriendlyName());
-        assertEquals(TEST_WIFI_STANDARD, readWifiInfo.getWifiStandard());
-        assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS,
-                readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
-        assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
-                readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
-        assertEquals(TEST_BSSID, readWifiInfo.getMacAddress());
+    private void assertNoRedaction(WifiInfo info,
+            List<ScanResult.InformationElement> informationElements) {
+        assertEquals(TEST_TX_SUCCESS, info.txSuccess);
+        assertEquals(TEST_TX_RETRIES, info.txRetries);
+        assertEquals(TEST_TX_BAD, info.txBad);
+        assertEquals(TEST_RX_SUCCESS, info.rxSuccess);
+        assertEquals("\"" + TEST_SSID + "\"", info.getSSID());
+        assertEquals(TEST_BSSID, info.getBSSID());
+        assertEquals(TEST_NETWORK_ID, info.getNetworkId());
+        assertTrue(info.isTrusted());
+        assertTrue(info.isOsuAp());
+        assertTrue(info.isPasspointAp());
+        assertEquals(TEST_PACKAGE_NAME, info.getRequestingPackageName());
+        assertEquals(TEST_FQDN, info.getPasspointFqdn());
+        assertEquals(TEST_PROVIDER_NAME, info.getPasspointProviderFriendlyName());
+        assertEquals(TEST_WIFI_STANDARD, info.getWifiStandard());
+        assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS, info.getMaxSupportedTxLinkSpeedMbps());
+        assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS, info.getMaxSupportedRxLinkSpeedMbps());
+        assertEquals(TEST_BSSID, info.getMacAddress());
         if (SdkLevel.isAtLeastS()) {
-            assertTrue(readWifiInfo.isOemPaid());
-            assertTrue(readWifiInfo.isOemPrivate());
-            assertTrue(readWifiInfo.isCarrierMerged());
-            assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
-            assertEquals(2, readWifiInfo.getInformationElements().size());
+            assertTrue(info.isOemPaid());
+            assertTrue(info.isOemPrivate());
+            assertTrue(info.isCarrierMerged());
+            assertEquals(TEST_SUB_ID, info.getSubscriptionId());
+            assertEquals(2, info.getInformationElements().size());
             assertEquals(informationElements.get(0).id,
-                    readWifiInfo.getInformationElements().get(0).id);
+                    info.getInformationElements().get(0).id);
             assertEquals(informationElements.get(0).idExt,
-                    readWifiInfo.getInformationElements().get(0).idExt);
+                    info.getInformationElements().get(0).idExt);
             assertArrayEquals(informationElements.get(0).bytes,
-                    readWifiInfo.getInformationElements().get(0).bytes);
+                    info.getInformationElements().get(0).bytes);
             assertEquals(informationElements.get(1).id,
-                    readWifiInfo.getInformationElements().get(1).id);
+                    info.getInformationElements().get(1).id);
             assertEquals(informationElements.get(1).idExt,
-                    readWifiInfo.getInformationElements().get(1).idExt);
+                    info.getInformationElements().get(1).idExt);
             assertArrayEquals(informationElements.get(1).bytes,
-                    readWifiInfo.getInformationElements().get(1).bytes);
-            assertTrue(readWifiInfo.isPrimary());
+                    info.getInformationElements().get(1).bytes);
+            assertTrue(info.isPrimary());
         }
     }
 
     /**
-     *  Verify parcel write/read with WifiInfo.
+     *  Verify redaction of WifiInfo with REDACT_NONE.
      */
     @Test
-    public void testWifiInfoParcelWriteReadWithoutLocationSensitiveInfo() throws Exception {
-        WifiInfo writeWifiInfo = new WifiInfo();
-        writeWifiInfo.txSuccess = TEST_TX_SUCCESS;
-        writeWifiInfo.txRetries = TEST_TX_RETRIES;
-        writeWifiInfo.txBad = TEST_TX_BAD;
-        writeWifiInfo.rxSuccess = TEST_RX_SUCCESS;
-        writeWifiInfo.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
-        writeWifiInfo.setBSSID(TEST_BSSID);
-        writeWifiInfo.setNetworkId(TEST_NETWORK_ID);
-        writeWifiInfo.setTrusted(true);
-        writeWifiInfo.setOemPaid(true);
-        writeWifiInfo.setOemPrivate(true);
-        writeWifiInfo.setCarrierMerged(true);
-        writeWifiInfo.setOsuAp(true);
-        writeWifiInfo.setFQDN(TEST_FQDN);
-        writeWifiInfo.setProviderFriendlyName(TEST_PROVIDER_NAME);
-        writeWifiInfo.setRequestingPackageName(TEST_PACKAGE_NAME);
-        writeWifiInfo.setWifiStandard(TEST_WIFI_STANDARD);
-        writeWifiInfo.setMaxSupportedTxLinkSpeedMbps(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS);
-        writeWifiInfo.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
-        writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
-        writeWifiInfo.setInformationElements(generateIes());
-        writeWifiInfo.setIsPrimary(true);
-        writeWifiInfo.setMacAddress(TEST_BSSID);
+    public void testWifiInfoRedactNoRedactions() throws Exception {
+        List<ScanResult.InformationElement> informationElements = generateIes();
+        WifiInfo writeWifiInfo = makeWifiInfoForNoRedactions(informationElements);
 
-        WifiInfo writeWifiInfoCopy =
+        // Make a copy which allows parcelling of location sensitive data.
+        WifiInfo redactedWifiInfo = writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_NONE);
+
+        Parcel parcel = Parcel.obtain();
+        redactedWifiInfo.writeToParcel(parcel, 0);
+        // Rewind the pointer to the head of the parcel.
+        parcel.setDataPosition(0);
+        WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
+
+        assertNoRedaction(redactedWifiInfo, informationElements);
+        assertNoRedaction(readWifiInfo, informationElements);
+
+        if (SdkLevel.isAtLeastS()) {
+            // equals() was only introduced in S.
+            assertEquals(readWifiInfo, redactedWifiInfo);
+        }
+    }
+
+    private WifiInfo makeWifiInfoForLocationSensitiveRedaction() {
+        WifiInfo info = new WifiInfo();
+        info.txSuccess = TEST_TX_SUCCESS;
+        info.txRetries = TEST_TX_RETRIES;
+        info.txBad = TEST_TX_BAD;
+        info.rxSuccess = TEST_RX_SUCCESS;
+        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setBSSID(TEST_BSSID);
+        info.setNetworkId(TEST_NETWORK_ID);
+        info.setTrusted(true);
+        info.setOemPaid(true);
+        info.setOemPrivate(true);
+        info.setCarrierMerged(true);
+        info.setOsuAp(true);
+        info.setFQDN(TEST_FQDN);
+        info.setProviderFriendlyName(TEST_PROVIDER_NAME);
+        info.setRequestingPackageName(TEST_PACKAGE_NAME);
+        info.setWifiStandard(TEST_WIFI_STANDARD);
+        info.setMaxSupportedTxLinkSpeedMbps(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS);
+        info.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
+        info.setSubscriptionId(TEST_SUB_ID);
+        info.setInformationElements(generateIes());
+        info.setIsPrimary(true);
+        info.setMacAddress(TEST_BSSID);
+        return info;
+    }
+
+    private void assertLocationSensitiveRedaction(WifiInfo info) {
+        assertNotNull(info);
+        assertEquals(TEST_TX_SUCCESS, info.txSuccess);
+        assertEquals(TEST_TX_RETRIES, info.txRetries);
+        assertEquals(TEST_TX_BAD, info.txBad);
+        assertEquals(TEST_RX_SUCCESS, info.rxSuccess);
+        assertEquals(WifiManager.UNKNOWN_SSID, info.getSSID());
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getBSSID());
+        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, info.getNetworkId());
+        assertTrue(info.isTrusted());
+        assertTrue(info.isOsuAp());
+        assertFalse(info.isPasspointAp()); // fqdn & friendly name is masked.
+        assertEquals(TEST_PACKAGE_NAME, info.getRequestingPackageName());
+        assertNull(info.getPasspointFqdn());
+        assertNull(info.getPasspointProviderFriendlyName());
+        assertEquals(TEST_WIFI_STANDARD, info.getWifiStandard());
+        assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS, info.getMaxSupportedTxLinkSpeedMbps());
+        assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS, info.getMaxSupportedRxLinkSpeedMbps());
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getMacAddress());
+        if (SdkLevel.isAtLeastS()) {
+            assertTrue(info.isOemPaid());
+            assertTrue(info.isOemPrivate());
+            assertTrue(info.isCarrierMerged());
+            assertEquals(TEST_SUB_ID, info.getSubscriptionId());
+            assertNull(info.getInformationElements());
+            assertTrue(info.isPrimary());
+        }
+    }
+
+    /**
+     *  Verify redaction of WifiInfo with REDACT_FOR_ACCESS_FINE_LOCATION.
+     */
+    @Test
+    public void testWifiInfoRedactLocationSensitiveInfo() throws Exception {
+        WifiInfo writeWifiInfo = makeWifiInfoForLocationSensitiveRedaction();
+
+        WifiInfo redactedWifiInfo =
                 writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoCopy.writeToParcel(parcel, 0);
+        redactedWifiInfo.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
 
-        assertNotNull(readWifiInfo);
-        assertEquals(TEST_TX_SUCCESS, readWifiInfo.txSuccess);
-        assertEquals(TEST_TX_RETRIES, readWifiInfo.txRetries);
-        assertEquals(TEST_TX_BAD, readWifiInfo.txBad);
-        assertEquals(TEST_RX_SUCCESS, readWifiInfo.rxSuccess);
-        assertEquals(WifiManager.UNKNOWN_SSID, readWifiInfo.getSSID());
-        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getBSSID());
-        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, readWifiInfo.getNetworkId());
-        assertTrue(readWifiInfo.isTrusted());
-        assertTrue(readWifiInfo.isOsuAp());
-        assertFalse(readWifiInfo.isPasspointAp()); // fqdn & friendly name is masked.
-        assertEquals(TEST_PACKAGE_NAME, readWifiInfo.getRequestingPackageName());
-        assertNull(readWifiInfo.getPasspointFqdn());
-        assertNull(readWifiInfo.getPasspointProviderFriendlyName());
-        assertEquals(TEST_WIFI_STANDARD, readWifiInfo.getWifiStandard());
-        assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS,
-                readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
-        assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
-                readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
-        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getMacAddress());
+        assertLocationSensitiveRedaction(redactedWifiInfo);
+        assertLocationSensitiveRedaction(readWifiInfo);
+
         if (SdkLevel.isAtLeastS()) {
-            assertTrue(readWifiInfo.isOemPaid());
-            assertTrue(readWifiInfo.isOemPrivate());
-            assertTrue(readWifiInfo.isCarrierMerged());
-            assertEquals(TEST_SUB_ID, readWifiInfo.getSubscriptionId());
-            assertNull(readWifiInfo.getInformationElements());
-            assertTrue(readWifiInfo.isPrimary());
+            // equals() was only introduced in S.
+            assertEquals(redactedWifiInfo, readWifiInfo);
         }
     }
 
     /**
-     *  Verify parcel write/read with WifiInfo.
+     *  Verify redaction of WifiInfo with REDACT_FOR_LOCAL_MAC_ADDRESS.
      */
     @Test
-    public void testWifiInfoParcelWriteReadWithoutLocalMacAddressInfo() throws Exception {
+    public void testWifiInfoRedactLocalMacAddressInfo() throws Exception {
         WifiInfo writeWifiInfo = new WifiInfo();
         writeWifiInfo.setMacAddress(TEST_BSSID);
 
-        WifiInfo writeWifiInfoCopy =
+        WifiInfo redactedWifiInfo =
                 writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoCopy.writeToParcel(parcel, 0);
+        redactedWifiInfo.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
 
+        assertNotNull(redactedWifiInfo);
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, redactedWifiInfo.getMacAddress());
+
         assertNotNull(readWifiInfo);
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getMacAddress());
+
+        if (SdkLevel.isAtLeastS()) {
+            // equals() was only introduced in S.
+            assertEquals(redactedWifiInfo, readWifiInfo);
+        }
+    }
+
+    private void assertIsPrimaryThrowsSecurityException(WifiInfo info) {
+        try {
+            // Should generate a security exception if caller does not have network settings
+            // permission.
+            info.isPrimary();
+            fail();
+        } catch (SecurityException e) { /* pass */ }
     }
 
     /**
-     *  Verify parcel write/read with WifiInfo.
+     *  Verify redaction of WifiInfo with REDACT_FOR_NETWORK_SETTINGS.
      */
     @Test
-    public void testWifiInfoParcelWriteReadWithoutNetworkSettingsInfo() throws Exception {
+    public void testWifiInfoRedactNetworkSettingsInfo() throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
 
         WifiInfo writeWifiInfo = new WifiInfo();
         writeWifiInfo.setIsPrimary(true);
 
-        WifiInfo writeWifiInfoCopy =
+        WifiInfo redactedWifiInfo =
                 writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoCopy.writeToParcel(parcel, 0);
+        redactedWifiInfo.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
 
+        assertNotNull(redactedWifiInfo);
+        assertIsPrimaryThrowsSecurityException(redactedWifiInfo);
         assertNotNull(readWifiInfo);
-        try {
-            // Should generate a security exception if caller does not have network settings
-            // permission.
-            readWifiInfo.isPrimary();
-            fail();
-        } catch (SecurityException e) { /* pass */ }
+        assertIsPrimaryThrowsSecurityException(readWifiInfo);
+
+        if (SdkLevel.isAtLeastS()) {
+            // equals() was only introduced in S.
+            assertEquals(redactedWifiInfo, readWifiInfo);
+        }
     }
 
     @Test
@@ -269,42 +315,57 @@ public class WifiInfoTest {
                 | NetworkCapabilities.REDACT_FOR_NETWORK_SETTINGS, redactions);
     }
 
+    private WifiInfo makeWifiInfoForLocationSensitiveAndLocalMacAddressRedaction() {
+        WifiInfo info = new WifiInfo();
+        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setBSSID(TEST_BSSID);
+        info.setNetworkId(TEST_NETWORK_ID);
+        info.setFQDN(TEST_FQDN);
+        info.setProviderFriendlyName(TEST_PROVIDER_NAME);
+        info.setInformationElements(generateIes());
+        info.setMacAddress(TEST_BSSID);
+        return info;
+    }
+
+    private void assertLocationSensitiveAndLocalMacAddressRedaction(WifiInfo info) {
+        assertNotNull(info);
+        assertEquals(WifiManager.UNKNOWN_SSID, info.getSSID());
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getBSSID());
+        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, info.getNetworkId());
+        assertNull(info.getPasspointFqdn());
+        assertNull(info.getPasspointProviderFriendlyName());
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getMacAddress());
+        assertNull(info.getInformationElements());
+    }
+
     @Test
-    public void testWifiInfoParcelWriteReadWithoutLocationAndLocalMacAddressSensitiveInfo()
+    public void testWifiInfoRedactLocationAndLocalMacAddressSensitiveInfo()
             throws Exception {
         assumeTrue(SdkLevel.isAtLeastS());
 
-        WifiInfo writeWifiInfo = new WifiInfo();
-        writeWifiInfo.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
-        writeWifiInfo.setBSSID(TEST_BSSID);
-        writeWifiInfo.setNetworkId(TEST_NETWORK_ID);
-        writeWifiInfo.setFQDN(TEST_FQDN);
-        writeWifiInfo.setProviderFriendlyName(TEST_PROVIDER_NAME);
-        writeWifiInfo.setInformationElements(generateIes());
-        writeWifiInfo.setMacAddress(TEST_BSSID);
+        WifiInfo writeWifiInfo = makeWifiInfoForLocationSensitiveAndLocalMacAddressRedaction();
 
-        WifiInfo writeWifiInfoCopy =
+        WifiInfo redactedWifiInfo =
                 writeWifiInfo.makeCopy(NetworkCapabilities.REDACT_FOR_ACCESS_FINE_LOCATION
                         | NetworkCapabilities.REDACT_FOR_LOCAL_MAC_ADDRESS);
 
         Parcel parcel = Parcel.obtain();
-        writeWifiInfoCopy.writeToParcel(parcel, 0);
+        redactedWifiInfo.writeToParcel(parcel, 0);
         // Rewind the pointer to the head of the parcel.
         parcel.setDataPosition(0);
         WifiInfo readWifiInfo = WifiInfo.CREATOR.createFromParcel(parcel);
 
-        assertNotNull(readWifiInfo);
-        assertEquals(WifiManager.UNKNOWN_SSID, readWifiInfo.getSSID());
-        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getBSSID());
-        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, readWifiInfo.getNetworkId());
-        assertNull(readWifiInfo.getPasspointFqdn());
-        assertNull(readWifiInfo.getPasspointProviderFriendlyName());
-        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, readWifiInfo.getMacAddress());
-        assertNull(readWifiInfo.getInformationElements());
+        assertLocationSensitiveAndLocalMacAddressRedaction(redactedWifiInfo);
+        assertLocationSensitiveAndLocalMacAddressRedaction(readWifiInfo);
+
+        if (SdkLevel.isAtLeastS()) {
+            // equals() was only introduced in S.
+            assertEquals(redactedWifiInfo, readWifiInfo);
+        }
     }
 
     /**
-     *  Verify parcel write/read with WifiInfo.
+     *  Verify parcel write/read with null information elements.
      */
     @Test
     public void testWifiInfoParcelWriteReadWithNullInfoElements() throws Exception {
@@ -325,7 +386,7 @@ public class WifiInfoTest {
     }
 
     /**
-     *  Verify parcel write/read with WifiInfo.
+     *  Verify parcel write/read with empty information elements.
      */
     @Test
     public void testWifiInfoParcelWriteReadWithEmptyInfoElements() throws Exception {
