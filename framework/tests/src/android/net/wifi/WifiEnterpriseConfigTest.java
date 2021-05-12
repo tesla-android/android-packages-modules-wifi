@@ -560,7 +560,6 @@ public class WifiEnterpriseConfigTest {
 
     @Test
     public void testIsEnterpriseConfigServerCertNotEnabled() {
-        assumeTrue(SdkLevel.isAtLeastS());
         WifiEnterpriseConfig baseConfig = new WifiEnterpriseConfig();
         baseConfig.setEapMethod(Eap.PEAP);
         baseConfig.setPhase2Method(Phase2.MSCHAPV2);
@@ -586,19 +585,16 @@ public class WifiEnterpriseConfigTest {
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithPeap() {
-        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.PEAP);
     }
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithTls() {
-        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.TLS);
     }
 
     @Test
     public void testIsEnterpriseConfigServerCertEnabledWithTTLS() {
-        assumeTrue(SdkLevel.isAtLeastS());
         testIsEnterpriseConfigServerCertEnabled(Eap.TTLS);
     }
 
