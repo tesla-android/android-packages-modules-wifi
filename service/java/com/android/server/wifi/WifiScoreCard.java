@@ -70,6 +70,7 @@ import com.android.server.wifi.util.IntHistogram;
 import com.android.server.wifi.util.LruList;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.RssiUtil;
+import com.android.wifi.resources.R;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -968,7 +969,6 @@ public class WifiScoreCard {
     static final int BANDWIDTH_STATS_COUNT_THR = 5;
     private static final int TIME_CONSTANT_LARGE_SEC = 6;
     private static final int TIME_CONSTANT_SMALL_SEC = 6;
-    private static final int POLL_MIN_INTERVAL_MS = 3000;
     // If RSSI changes by more than the below value, update BW filter with small time constant
     private static final int RSSI_DELTA_THR_DB = 8;
     private static final int FILTER_SCALE = 128;
@@ -978,7 +978,7 @@ public class WifiScoreCard {
     private static final int LOW_BW_TO_AVG_BW_RATIO_NUM = 3;
     private static final int LOW_BW_TO_AVG_BW_RATIO_DEN = 8;
     // radio on time below the following value is ignored.
-    static final int RADIO_ON_TIME_MIN_MS = 10;
+    static final int RADIO_ON_TIME_MIN_MS = 200;
     static final int RADIO_ON_ELAPSED_TIME_DELTA_MAX_MS = 200;
     static final int NUM_SIGNAL_LEVEL = 5;
     static final int LINK_TX = 0;
@@ -1345,8 +1345,10 @@ public class WifiScoreCard {
         }
 
         private int getByteDeltaAccThr(int link) {
+            int maxTimeDeltaMs = mContext.getResources().getInteger(
+                    R.integer.config_wifiPollRssiIntervalMilliseconds);
             int lowBytes = calculateByteCountThreshold(getAvgUsedLinkBandwidthKbps(link),
-                    POLL_MIN_INTERVAL_MS);
+                    maxTimeDeltaMs);
             // Start with a predefined value
             int deltaAccThr = LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE[mSignalLevel] * 1024;
             if (lowBytes > 0) {
@@ -1417,6 +1419,12 @@ public class WifiScoreCard {
             if (mAvgUsedKbps[link] > 0) {
                 return mAvgUsedKbps[link];
             }
+
+            int avgBwAdjSignalKbps = getAvgUsedBandwidthAdjacentThreeLevelKbps(link);
+            if (avgBwAdjSignalKbps > 0) {
+                return avgBwAdjSignalKbps;
+            }
+
             // Fall back to a cold-start value
             return LINK_BANDWIDTH_INIT_KBPS[mBandIdx][link][mSignalLevel];
         }
@@ -1436,6 +1444,25 @@ public class WifiScoreCard {
             if (count >= BANDWIDTH_STATS_COUNT_THR) {
                 return (int) (value / count);
             }
+
+            return -1;
+        }
+
+        private int getAvgUsedBandwidthAdjacentThreeLevelKbps(int link) {
+            int count = 0;
+            long value = 0;
+            for (int i = -1; i <= 1; i++) {
+                int currLevel = mSignalLevel + i;
+                if (currLevel < 0 || currLevel >= NUM_SIGNAL_LEVEL) {
+                    continue;
+                }
+                count += mBandwidthStatsCount[mBandIdx][link][currLevel];
+                value += mBandwidthStatsValue[mBandIdx][link][currLevel];
+            }
+            if (count >= BANDWIDTH_STATS_COUNT_THR) {
+                return (int) (value / count);
+            }
+
             return -1;
         }
 
