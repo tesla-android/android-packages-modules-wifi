@@ -21,8 +21,11 @@ import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -227,9 +230,6 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * @hide
      */
     public void setR2DeviceInfo(int r2DeviceInfo) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         mR2DeviceInfo = r2DeviceInfo;
     }
 
@@ -275,6 +275,7 @@ public final class WifiP2pWfdInfo implements Parcelable {
      * {@link #DEVICE_TYPE_SOURCE_OR_PRIMARY_SINK}
      * @return true if the device type was successfully set, false otherwise
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public boolean setR2DeviceType(@DeviceType int deviceType) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();

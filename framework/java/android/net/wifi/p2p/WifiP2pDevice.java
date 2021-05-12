@@ -24,6 +24,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -233,7 +235,7 @@ public class WifiP2pDevice implements Parcelable {
                     wfdInfo = new WifiP2pWfdInfo(parseHex(str.substring(0,4)),
                             parseHex(str.substring(4,8)),
                             parseHex(str.substring(8,12)));
-                    if (match.group(11) != null) {
+                    if (match.group(11) != null && SdkLevel.isAtLeastS()) {
                         String r2str = match.group(12);
                         if (null == r2str) break;
                         wfdInfo.setR2DeviceType(parseHex(r2str.substring(0, 4)));
