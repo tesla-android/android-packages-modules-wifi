@@ -66,6 +66,8 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.ParceledListSlice;
@@ -2978,6 +2980,7 @@ public class WifiManager {
      *
      * @return {@code true} if supported, {@code false} otherwise.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public boolean is60GHzBandSupported() {
         try {
             return mService.is60GHzBandSupported();
