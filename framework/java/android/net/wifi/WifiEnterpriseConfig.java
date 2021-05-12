@@ -1487,18 +1487,6 @@ public class WifiEnterpriseConfig implements Parcelable {
      * @return True if configuration requires a CA certification, false otherwise.
      */
     public boolean isEapMethodServerCertUsed() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
-        return isTlsBasedEapMethod();
-    }
-
-    /**
-     * A helper method to check if the EAP method of enterprise config is one of the target types.
-     * @return true if EAP method of enterprise config is one the target types, false otherwise.
-     * @hide
-     */
-    public boolean isTlsBasedEapMethod() {
         return mEapMethod == Eap.PEAP || mEapMethod == Eap.TLS || mEapMethod == Eap.TTLS;
     }
     /**
@@ -1518,9 +1506,6 @@ public class WifiEnterpriseConfig implements Parcelable {
      * @see #isEapMethodServerCertUsed()
      */
     public boolean isServerCertValidationEnabled() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (!isEapMethodServerCertUsed()) {
             throw new IllegalStateException("Configuration doesn't use server certificates for "
                     + "authentication");

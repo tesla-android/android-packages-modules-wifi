@@ -250,7 +250,7 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
             boolean untrustedNetworkAllowed, boolean oemPaidNetworkAllowed,
             boolean oemPrivateNetworkAllowed) {
         // Ignore insecure enterprise config.
-        if (config.isEnterprise() && config.enterpriseConfig.isTlsBasedEapMethod()
+        if (config.isEnterprise() && config.enterpriseConfig.isEapMethodServerCertUsed()
                 && !config.enterpriseConfig
                 .isMandatoryParameterSetForServerCertValidation()) {
             mLocalLog.log("Ignoring insecure enterprise network: " + config);
