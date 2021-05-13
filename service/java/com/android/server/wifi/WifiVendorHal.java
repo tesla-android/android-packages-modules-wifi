@@ -3783,22 +3783,22 @@ public class WifiVendorHal {
      */
     private @WifiAvailableChannel.OpMode int frameworkFromHalIfaceMode(int halMode) {
         int mode = 0;
-        if ((mode & WifiIfaceMode.IFACE_MODE_STA) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_STA) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_STA;
         }
-        if ((mode & WifiIfaceMode.IFACE_MODE_SOFTAP) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_SOFTAP) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_SAP;
         }
-        if ((mode & WifiIfaceMode.IFACE_MODE_P2P_CLIENT) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_P2P_CLIENT) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI;
         }
-        if ((mode & WifiIfaceMode.IFACE_MODE_P2P_GO) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_P2P_GO) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO;
         }
-        if ((mode & WifiIfaceMode.IFACE_MODE_NAN) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_NAN) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_WIFI_AWARE;
         }
-        if ((mode & WifiIfaceMode.IFACE_MODE_TDLS) != 0) {
+        if ((halMode & WifiIfaceMode.IFACE_MODE_TDLS) != 0) {
             mode |= WifiAvailableChannel.OP_MODE_TDLS;
         }
         return mode;
