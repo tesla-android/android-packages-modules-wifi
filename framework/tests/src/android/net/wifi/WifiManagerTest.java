@@ -3061,7 +3061,6 @@ public class WifiManagerTest {
      */
     @Test
     public void setWifiScoringEnabledGoesToWifiServiceImpl() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setWifiScoringEnabled(true);
         verify(mWifiService).setWifiScoringEnabled(true);
     }
