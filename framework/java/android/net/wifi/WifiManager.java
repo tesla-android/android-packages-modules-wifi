@@ -5327,6 +5327,7 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
     public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
         try {
             mService.startRestrictingAutoJoinToSubscriptionId(subscriptionId);
@@ -5344,6 +5345,7 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
     public void stopRestrictingAutoJoinToSubscriptionId() {
         try {
             mService.stopRestrictingAutoJoinToSubscriptionId();
