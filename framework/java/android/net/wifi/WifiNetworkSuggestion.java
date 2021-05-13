@@ -610,9 +610,6 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         public @NonNull Builder setMacRandomizationSetting(
                 @MacRandomizationSetting int macRandomizationSetting) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             switch (macRandomizationSetting) {
                 case RANDOMIZATION_PERSISTENT:
                 case RANDOMIZATION_NON_PERSISTENT:
