@@ -356,7 +356,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         public @NonNull Builder setWpa2EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");
@@ -386,7 +386,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         public @NonNull Builder setWpa3EnterpriseConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");
@@ -408,11 +408,8 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         public @NonNull Builder setWpa3EnterpriseStandardModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             checkNotNull(enterpriseConfig);
-            if (enterpriseConfig.isTlsBasedEapMethod()
+            if (enterpriseConfig.isEapMethodServerCertUsed()
                     && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                 throw new IllegalArgumentException("Enterprise configuration mandates server "
                         + "certificate but validation is not enabled.");
@@ -437,9 +434,6 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         public @NonNull Builder setWpa3Enterprise192BitModeConfig(
                 @NonNull WifiEnterpriseConfig enterpriseConfig) {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             checkNotNull(enterpriseConfig);
             if (enterpriseConfig.getEapMethod() != WifiEnterpriseConfig.Eap.TLS) {
                 throw new IllegalArgumentException("The 192-bit mode network type must be TLS");
@@ -901,6 +895,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
          *        default is false.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         public @NonNull Builder setIsWpa3SaeH2eOnlyModeEnabled(boolean enable) {
             if (!SdkLevel.isAtLeastS()) {
                 throw new UnsupportedOperationException();
