@@ -21,9 +21,9 @@ package {
 apex_defaults {
     name: "com.android.wifi-defaults",
     androidManifest: ":com.android.wifi-androidManifest",
+    bootclasspath_fragments: ["com.android.wifi-bootclasspath-fragment"],
     java_libs: [
         "service-wifi",
-        "framework-wifi",
     ],
     // from build rule `cacerts_wfa`
     prebuilts: [
@@ -69,4 +69,11 @@ sdk {
     java_sdk_libs: [
         "framework-wifi",
     ],
+}
+
+// Encapsulate the contributions made by the com.android.wifi to the bootclasspath.
+bootclasspath_fragment {
+    name: "com.android.wifi-bootclasspath-fragment",
+    contents: ["framework-wifi"],
+    apex_available: ["com.android.wifi"],
 }
