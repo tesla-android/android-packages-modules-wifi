@@ -1082,7 +1082,7 @@ public class WifiNetworkSuggestionsManager {
                 }
                 if (config.isEnterprise()) {
                     final WifiEnterpriseConfig enterpriseConfig = config.enterpriseConfig;
-                    if (enterpriseConfig.isTlsBasedEapMethod()
+                    if (enterpriseConfig.isEapMethodServerCertUsed()
                             && !enterpriseConfig.isMandatoryParameterSetForServerCertValidation()) {
                         Log.e(TAG, "Insecure enterprise suggestion is invalid.");
                         return false;

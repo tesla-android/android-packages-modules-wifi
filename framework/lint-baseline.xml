@@ -100,4 +100,48 @@
             column="34"/>
     </issue>
 
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): CIPHER_GCMP_128 [NewApi]"
+        errorLine1="        ScanResult.CIPHER_GCMP_128,"
+        errorLine2="                   ~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
+            line="126"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_GMAC_128 [NewApi]"
+        errorLine1="        ScanResult.CIPHER_BIP_GMAC_128,"
+        errorLine2="                   ~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
+            line="127"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_GMAC_256 [NewApi]"
+        errorLine1="        ScanResult.CIPHER_BIP_GMAC_256,"
+        errorLine2="                   ~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
+            line="128"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_CMAC_256 [NewApi]"
+        errorLine1="        ScanResult.CIPHER_BIP_CMAC_256,"
+        errorLine2="                   ~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
+            line="129"
+            column="20"/>
+    </issue>
+
 </issues>
