@@ -671,11 +671,19 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     return 0;
                 }
                 case "start-restricting-auto-join-to-subscription-id": {
+                    if (!SdkLevel.isAtLeastS()) {
+                        pw.println("This feature is only supported on SdkLevel S or later.");
+                        return -1;
+                    }
                     int subId = Integer.parseInt(getNextArgRequired());
                     mWifiService.startRestrictingAutoJoinToSubscriptionId(subId);
                     return 0;
                 }
                 case "stop-restricting-auto-join-to-subscription-id": {
+                    if (!SdkLevel.isAtLeastS()) {
+                        pw.println("This feature is only supported on SdkLevel S or later.");
+                        return -1;
+                    }
                     mWifiService.stopRestrictingAutoJoinToSubscriptionId();
                     return 0;
                 }

@@ -19,7 +19,7 @@
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/ScanResult.java"
-            line="1303"
+            line="1324"
             column="62"/>
     </issue>
 
@@ -30,7 +30,7 @@
         errorLine2="                          ~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="1804"
+            line="1805"
             column="27"/>
     </issue>
 
@@ -41,7 +41,7 @@
         errorLine2="                          ~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="1805"
+            line="1806"
             column="27"/>
     </issue>
 
@@ -52,7 +52,7 @@
         errorLine2="                               ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="1812"
+            line="1813"
             column="32"/>
     </issue>
 
@@ -63,7 +63,7 @@
         errorLine2="            ~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="1832"
+            line="1833"
             column="13"/>
     </issue>
 
@@ -74,7 +74,7 @@
         errorLine2="            ~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="1833"
+            line="1834"
             column="13"/>
     </issue>
 
@@ -85,7 +85,7 @@
         errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="3550"
+            line="3547"
             column="34"/>
     </issue>
 
@@ -96,7 +96,7 @@
         errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
-            line="3565"
+            line="3562"
             column="34"/>
     </issue>
 
@@ -110,6 +110,16 @@
             line="126"
             column="20"/>
     </issue>
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
+        errorLine1="            WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiScanner.java"
+            line="213"
+            column="13"/>
+    </issue>
 
     <issue
         id="NewApi"
@@ -120,6 +130,16 @@
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
             line="127"
             column="20"/>
+    </issue>
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED`"
+        errorLine1="            WIFI_RNR_ENABLED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiScanner.java"
+            line="214"
+            column="13"/>
     </issue>
 
     <issue
@@ -132,6 +152,16 @@
             line="128"
             column="20"/>
     </issue>
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_NOT_NEEDED`"
+        errorLine1="            WIFI_RNR_NOT_NEEDED})"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiScanner.java"
+            line="215"
+            column="13"/>
+    </issue>
 
     <issue
         id="NewApi"
@@ -142,6 +172,16 @@
             file="packages/modules/Wifi/framework/java/android/net/wifi/WifiAnnotations.java"
             line="129"
             column="20"/>
+    </issue>
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
+        errorLine1="        private int mRnrSetting = WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED;"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiScanner.java"
+            line="364"
+            column="35"/>
     </issue>
 
 </issues>
