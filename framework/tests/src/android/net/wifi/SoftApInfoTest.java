@@ -117,8 +117,8 @@ public class SoftApInfoTest {
             assertEquals(info.getBssid(), TEST_AP_MAC);
             assertEquals(info.getWifiStandard(), TEST_WIFI_STANDARD);
             assertEquals(info.getApInstanceIdentifier(), TEST_AP_INSTANCE);
-            assertEquals(info.getAutoShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLIS);
         }
+        assertEquals(info.getAutoShutdownTimeoutMillis(), TEST_SHUTDOWN_TIMEOUT_MILLIS);
     }
 
 }
