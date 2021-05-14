@@ -5327,6 +5327,7 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
     public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
         try {
             mService.startRestrictingAutoJoinToSubscriptionId(subscriptionId);
@@ -5344,6 +5345,7 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
     public void stopRestrictingAutoJoinToSubscriptionId() {
         try {
             mService.stopRestrictingAutoJoinToSubscriptionId();
@@ -7516,6 +7518,7 @@ public class WifiManager {
          *                 may be sent to ConnectivityService and used for setting default network.
          *                 Populated by connected network scorer in applications.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         default void notifyStatusUpdate(int sessionId, boolean isUsable) {}
 
         /**
@@ -7527,6 +7530,7 @@ public class WifiManager {
          * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         default void requestNudOperation(int sessionId) {}
 
         /**
@@ -7536,6 +7540,7 @@ public class WifiManager {
          * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         default void blocklistCurrentBssid(int sessionId) {}
     }
 
@@ -8010,9 +8015,6 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public boolean setWifiScoringEnabled(boolean enabled) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "setWifiScoringEnabled: " + enabled);
         }

@@ -122,6 +122,8 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.ParceledListSlice;
@@ -2918,6 +2920,7 @@ public class WifiServiceImpl extends BaseWifiService {
      *                       disabled.
      */
     @Override
+    @RequiresApi(Build.VERSION_CODES.S)
     public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -2943,6 +2946,7 @@ public class WifiServiceImpl extends BaseWifiService {
      * See {@link android.net.wifi.WifiManager#stopRestrictingAutoJoinToSubscriptionId()}
      */
     @Override
+    @RequiresApi(Build.VERSION_CODES.S)
     public void stopRestrictingAutoJoinToSubscriptionId() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
