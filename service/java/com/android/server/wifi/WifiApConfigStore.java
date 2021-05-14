@@ -181,7 +181,9 @@ public class WifiApConfigStore {
             int[] dual_bands = new int[] {
                     SoftApConfiguration.BAND_2GHZ,
                     SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
-            configBuilder.setBands(dual_bands);
+            if (SdkLevel.isAtLeastS()) {
+                configBuilder.setBands(dual_bands);
+            }
             Log.i(TAG, "Device support bridged AP, upgrade band setting to bridged configuration");
         }
         return configBuilder.build();
@@ -297,7 +299,8 @@ public class WifiApConfigStore {
         SoftApConfiguration.Builder convertedConfigBuilder =
                 new SoftApConfiguration.Builder(config);
         int[] bands = config.getBands();
-        if (bands.length > 1) {
+        // The bands length should always 1 in R. Adding SdkLevel.isAtLeastS for lint check only.
+        if (bands.length > 1 && SdkLevel.isAtLeastS()) {
             // Consider 2.4G instance may be shutdown, i.e. only left 5G instance. If the 5G
             // configuration is 5G band only, it will cause that driver can't switch channel from
             // 5G to 2.4G when coexistence happene. Always append 2.4G into band configuration to
