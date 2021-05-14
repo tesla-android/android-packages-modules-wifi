@@ -33,9 +33,7 @@ import android.util.Log;
 
 import com.android.server.wifi.ActiveModeWarden.PrimaryClientModeManagerChangedCallback;
 import com.android.server.wifi.WifiNative.ConnectionCapabilities;
-import com.android.server.wifi.proto.WifiStatsLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
-import com.android.server.wifi.scanner.KnownBandsChannelHelper;
 import com.android.server.wifi.util.InformationElementUtil.BssLoad;
 import com.android.wifi.resources.R;
 
@@ -435,8 +433,6 @@ public class WifiDataStall {
         if (timeDeltaLastTwoPollsMs > 0 && timeDeltaLastTwoPollsMs <= maxTimeDeltaMs) {
             mWifiMetrics.incrementConnectionDuration(timeDeltaLastTwoPollsMs,
                     mIsThroughputSufficient, mIsCellularDataAvailable);
-            reportWifiHealthStat(currFrequency, timeDeltaLastTwoPollsMs, mIsThroughputSufficient,
-                    mIsCellularDataAvailable);
         }
 
         boolean possibleDataStallTx = isTxTputLow
@@ -590,17 +586,6 @@ public class WifiDataStall {
             boolean isTrafficHigh, boolean lastIsTputSufficient) {
         boolean possibleFalseInsufficient = (!isTrafficHigh && !isTputSufficient);
         return  possibleFalseInsufficient ? lastIsTputSufficient : isTputSufficient;
-    }
-
-    /**
-     * Report the latest Wifi connection health to statsd
-     */
-    private void reportWifiHealthStat(int frequency, int timeDeltaLastTwoPollsMs,
-            boolean isThroughputSufficient,
-            boolean isCellularDataAvailable) {
-        int band = KnownBandsChannelHelper.getBand(frequency);
-        WifiStatsLog.write(WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, timeDeltaLastTwoPollsMs,
-                isThroughputSufficient,  isCellularDataAvailable, band);
     }
 
     private void logd(String string) {

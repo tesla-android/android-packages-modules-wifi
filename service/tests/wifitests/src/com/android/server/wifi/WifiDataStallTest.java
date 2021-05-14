@@ -41,9 +41,7 @@ import android.telephony.TelephonyManager;
 
 import androidx.test.filters.SmallTest;
 
-import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.server.wifi.ActiveModeWarden.PrimaryClientModeManagerChangedCallback;
-import com.android.server.wifi.proto.WifiStatsLog;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
 import com.android.wifi.resources.R;
 
@@ -53,7 +51,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.MockitoSession;
-import org.mockito.quality.Strictness;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiDataStall}.
@@ -660,48 +657,6 @@ public class WifiDataStallTest extends WifiBaseTest {
                 mCapabilities, mOldLlStats, mNewLlStats, mWifiInfo);
         verify(mWifiMetrics, never()).incrementConnectionDuration(
                 10000, false, false);
-        setWifiEnabled(false);
-    }
-
-    /**
-     * Check statsd logging
-     */
-    @Test
-    public void testWifiStatsLogWrite() throws Exception {
-        mWifiDataStall.enableVerboseLogging(true);
-        setWifiEnabled(true);
-        PhoneStateListener phoneStateListener = mockPhoneStateListener();
-        phoneStateListener.onDataConnectionStateChanged(TelephonyManager.DATA_CONNECTED,
-                TelephonyManager.NETWORK_TYPE_LTE);
-        // static mocking for WifiStatsLog
-        mSession = ExtendedMockito.mockitoSession()
-                .strictness(Strictness.LENIENT)
-                .mockStatic(WifiStatsLog.class)
-                .startMocking();
-        mNewLlStats.timeStampInMs = mOldLlStats.timeStampInMs + 3000;
-        when(mWifiInfo.getFrequency()).thenReturn(5850);
-        mWifiDataStall.checkDataStallAndThroughputSufficiency(
-                mCapabilities, mOldLlStats, mNewLlStats, mWifiInfo);
-        ExtendedMockito.verify(() -> WifiStatsLog.write(
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 3000, true, true,
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_HIGH));
-
-        mNewLlStats.timeStampInMs = mOldLlStats.timeStampInMs + 2000;
-        when(mWifiInfo.getFrequency()).thenReturn(6850);
-        mWifiDataStall.checkDataStallAndThroughputSufficiency(
-                mCapabilities, mOldLlStats, mNewLlStats, mWifiInfo);
-        ExtendedMockito.verify(() -> WifiStatsLog.write(
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 2000, true, true,
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_MIDDLE));
-
-        mNewLlStats.timeStampInMs = mOldLlStats.timeStampInMs + 1000;
-        when(mWifiInfo.getFrequency()).thenReturn(1850);
-        mWifiDataStall.checkDataStallAndThroughputSufficiency(
-                mCapabilities, mOldLlStats, mNewLlStats, mWifiInfo);
-        ExtendedMockito.verify(() -> WifiStatsLog.write(
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 1000, true, true,
-                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__UNKNOWN));
-        mSession.finishMocking();
         setWifiEnabled(false);
     }
 }
