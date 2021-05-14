@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -24,6 +25,8 @@ import android.os.Handler;
 import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -37,6 +40,7 @@ import org.mockito.MockitoAnnotations;
 public class ExternalScoreUpdateObserverProxyTest extends WifiBaseTest {
     private static final int TEST_SESSION_ID = 7;
     private static final int TEST_SCORE = 7;
+    private static final boolean TEST_STATUS = true;
 
     TestLooper mLooper = new TestLooper();
     @Mock WifiManager.ScoreUpdateObserver mCallback;
@@ -69,6 +73,34 @@ public class ExternalScoreUpdateObserverProxyTest extends WifiBaseTest {
 
         mExternalScoreUpdateObserverProxy.notifyScoreUpdate(TEST_SESSION_ID, TEST_SCORE);
         mExternalScoreUpdateObserverProxy.triggerUpdateOfWifiUsabilityStats(TEST_SESSION_ID);
+        mLooper.dispatchAll();
+
+        verifyNoMoreInteractions(mCallback);
+    }
+
+    @Test
+    public void testCallbackForApiInS() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mExternalScoreUpdateObserverProxy.registerCallback(mCallback);
+
+        mExternalScoreUpdateObserverProxy.notifyStatusUpdate(TEST_SESSION_ID, TEST_STATUS);
+        mLooper.dispatchAll();
+        verify(mCallback).notifyStatusUpdate(TEST_SESSION_ID, TEST_STATUS);
+
+        mExternalScoreUpdateObserverProxy.requestNudOperation(TEST_SESSION_ID);
+        mLooper.dispatchAll();
+        verify(mCallback).requestNudOperation(TEST_SESSION_ID);
+
+        mExternalScoreUpdateObserverProxy.blocklistCurrentBssid(TEST_SESSION_ID);
+        mLooper.dispatchAll();
+        verify(mCallback).blocklistCurrentBssid(TEST_SESSION_ID);
+
+        // Unregister the callback
+        mExternalScoreUpdateObserverProxy.unregisterCallback(mCallback);
+
+        mExternalScoreUpdateObserverProxy.notifyStatusUpdate(TEST_SESSION_ID, TEST_STATUS);
+        mExternalScoreUpdateObserverProxy.requestNudOperation(TEST_SESSION_ID);
+        mExternalScoreUpdateObserverProxy.blocklistCurrentBssid(TEST_SESSION_ID);
         mLooper.dispatchAll();
 
         verifyNoMoreInteractions(mCallback);

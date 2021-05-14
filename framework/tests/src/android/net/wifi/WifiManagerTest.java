@@ -2194,6 +2194,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testStartRestrictAutoJoinToSubscriptionId() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.startRestrictingAutoJoinToSubscriptionId(1);
         verify(mWifiService).startRestrictingAutoJoinToSubscriptionId(1);
     }
@@ -2203,6 +2204,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testStopTemporarilyDisablingAllNonCarrierMergedWifi() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.stopRestrictingAutoJoinToSubscriptionId();
         verify(mWifiService).stopRestrictingAutoJoinToSubscriptionId();
     }
@@ -3061,7 +3063,6 @@ public class WifiManagerTest {
      */
     @Test
     public void setWifiScoringEnabledGoesToWifiServiceImpl() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setWifiScoringEnabled(true);
         verify(mWifiService).setWifiScoringEnabled(true);
     }
