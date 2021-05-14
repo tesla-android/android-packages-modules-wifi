@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -1015,4 +1016,29 @@ public class WifiConfigurationUtil {
             }
         }
     }
+
+    /**
+     * Convert multi-type configurations to a list of configurations with a single security type,
+     * where a configuration with multiple security configurations will be converted to multiple
+     * Wi-Fi configurations with a single security type..
+     *
+     * @param configs the list of multi-type configurations.
+     * @return a list of Wi-Fi configurations with a single security type,
+     *         that may contain multiple configurations with the same network ID.
+     */
+    public static List<WifiConfiguration> convertMultiTypeConfigsToLegacyConfigs(
+            List<WifiConfiguration> configs) {
+        List<WifiConfiguration> legacyConfigs = new ArrayList<>();
+        for (WifiConfiguration config : configs) {
+            for (SecurityParams params: config.getSecurityParamsList()) {
+                if (!params.isEnabled()) continue;
+                if (shouldOmitAutoUpgradeParams(params)) continue;
+                WifiConfiguration legacyConfig = new WifiConfiguration(config);
+                legacyConfig.setSecurityParams(params);
+                legacyConfigs.add(legacyConfig);
+            }
+        }
+        return legacyConfigs;
+    }
+
 }

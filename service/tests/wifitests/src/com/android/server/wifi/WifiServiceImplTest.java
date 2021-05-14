@@ -131,6 +131,7 @@ import android.net.wifi.ITrafficStateCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApInfo;
 import android.net.wifi.WifiClient;
@@ -8064,5 +8065,186 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertEquals(-1, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
         verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any());
+    }
+
+    private List<WifiConfiguration> setupMultiTypeConfigs(
+            long featureFlags, boolean saeAutoUpgradeEnabled,
+            boolean oweAutoUpgradeEnabled, boolean wpa3EnterpriseAutoUpgradeEnabled) {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(featureFlags);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(saeAutoUpgradeEnabled);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(oweAutoUpgradeEnabled);
+        when(mWifiGlobals.isWpa3EnterpriseUpgradeEnabled())
+                .thenReturn(wpa3EnterpriseAutoUpgradeEnabled);
+
+        List<WifiConfiguration> multiTypeConfigs  = new ArrayList<>();
+        multiTypeConfigs.add(WifiConfigurationTestUtil.createOpenNetwork());
+        multiTypeConfigs.add(WifiConfigurationTestUtil.createPskNetwork());
+        multiTypeConfigs.add(WifiConfigurationTestUtil.createEapNetwork());
+        return multiTypeConfigs;
+    }
+
+    private boolean isSecurityParamsSupported(SecurityParams params, long wifiFeatures) {
+        switch (params.getSecurityType()) {
+            case WifiConfiguration.SECURITY_TYPE_SAE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_WPA3_SAE);
+            case WifiConfiguration.SECURITY_TYPE_OWE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_OWE);
+        }
+        return true;
+    }
+
+    private boolean shouldOmitAutoUpgradeParams(SecurityParams params,
+            boolean saeAutoUpgradeEnabled, boolean oweAutoUpgradeEnabled,
+            boolean wpa3EnterpriseAutoUpgradeEnabled) {
+        if (!params.isAddedByAutoUpgrade()) return false;
+
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+            return !saeAutoUpgradeEnabled;
+        }
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) {
+            return !oweAutoUpgradeEnabled;
+        }
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE)) {
+            return !wpa3EnterpriseAutoUpgradeEnabled;
+        }
+        return false;
+    }
+
+    private List<WifiConfiguration> generateExpectedConfigs(
+            List<WifiConfiguration> testConfigs,
+            boolean saeAutoUpgradeEnabled, boolean oweAutoUpgradeEnabled,
+            boolean wpa3EnterpriseAutoUpgradeEnabled) {
+        WifiConfiguration tmpConfig;
+        List<WifiConfiguration> expectedConfigs = new ArrayList<>();
+        tmpConfig = new WifiConfiguration(testConfigs.get(0));
+        tmpConfig.setSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_OPEN));
+        expectedConfigs.add(tmpConfig);
+        if (oweAutoUpgradeEnabled) {
+            tmpConfig = new WifiConfiguration(testConfigs.get(0));
+            tmpConfig.setSecurityParams(
+                    SecurityParams.createSecurityParamsBySecurityType(
+                            WifiConfiguration.SECURITY_TYPE_OWE));
+            expectedConfigs.add(tmpConfig);
+        }
+        tmpConfig = new WifiConfiguration(testConfigs.get(1));
+        tmpConfig.setSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        expectedConfigs.add(tmpConfig);
+        if (saeAutoUpgradeEnabled) {
+            tmpConfig = new WifiConfiguration(testConfigs.get(1));
+            tmpConfig.setSecurityParams(
+                    SecurityParams.createSecurityParamsBySecurityType(
+                            WifiConfiguration.SECURITY_TYPE_SAE));
+            expectedConfigs.add(tmpConfig);
+        }
+        tmpConfig = new WifiConfiguration(testConfigs.get(2));
+        tmpConfig.setSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_EAP));
+        expectedConfigs.add(tmpConfig);
+        if (wpa3EnterpriseAutoUpgradeEnabled) {
+            tmpConfig = new WifiConfiguration(testConfigs.get(2));
+            tmpConfig.setSecurityParams(
+                    SecurityParams.createSecurityParamsBySecurityType(
+                            WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+            expectedConfigs.add(tmpConfig);
+        }
+        return expectedConfigs;
+    }
+
+    /**
+     * verify multi-type configs are converted to legacy configs in getConfiguredNetworks
+     * and getPrivilegedConfiguredNetworks when auto-upgrade is enabled.
+     */
+    @Test
+    public void testGetConfiguredNetworksForMultiTypeConfigs() {
+        long featureFlags = WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE;
+        List<WifiConfiguration> testConfigs = setupMultiTypeConfigs(
+                featureFlags, true, true, true);
+        when(mWifiConfigManager.getSavedNetworks(anyInt()))
+                .thenReturn(testConfigs);
+        when(mWifiConfigManager.getConfiguredNetworksWithPasswords())
+                .thenReturn(testConfigs);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        mLooper.startAutoDispatch();
+        ParceledListSlice<WifiConfiguration> configs =
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
+        ParceledListSlice<WifiConfiguration> privilegedConfigs =
+                mWifiServiceImpl.getPrivilegedConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        List<WifiConfiguration> expectedConfigs = generateExpectedConfigs(
+                testConfigs, true, true, true);
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, configs.getList());
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, privilegedConfigs.getList());
+    }
+
+    /**
+     * verify multi-type configs are converted to legacy configs in getConfiguredNetworks
+     * and getPrivilegedConfiguredNetworks when auto-upgrade is not enabled.
+     */
+    @Test
+    public void testGetConfiguredNetworksForMultiTypeConfigsWithoutAutoUpgradeEnabled() {
+        long featureFlags = WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE;
+        List<WifiConfiguration> testConfigs = setupMultiTypeConfigs(
+                featureFlags, false, false, false);
+        when(mWifiConfigManager.getSavedNetworks(anyInt()))
+                .thenReturn(testConfigs);
+        when(mWifiConfigManager.getConfiguredNetworksWithPasswords())
+                .thenReturn(testConfigs);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        mLooper.startAutoDispatch();
+        ParceledListSlice<WifiConfiguration> configs =
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
+        ParceledListSlice<WifiConfiguration> privilegedConfigs =
+                mWifiServiceImpl.getPrivilegedConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        List<WifiConfiguration> expectedConfigs = generateExpectedConfigs(
+                testConfigs, false, false, false);
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, configs.getList());
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, privilegedConfigs.getList());
+    }
+
+    /**
+     * verify multi-type configs are converted to legacy configs in getConfiguredNetworks
+     * and getPrivilegedConfiguredNetworks when security types are not supported.
+     */
+    @Test
+    public void testGetConfiguredNetworksForMultiTypeConfigsWithoutHwSupport() {
+        long featureFlags = 0L;
+        List<WifiConfiguration> testConfigs = setupMultiTypeConfigs(
+                featureFlags, true, true, true);
+        when(mWifiConfigManager.getSavedNetworks(anyInt()))
+                .thenReturn(testConfigs);
+        when(mWifiConfigManager.getConfiguredNetworksWithPasswords())
+                .thenReturn(testConfigs);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        mLooper.startAutoDispatch();
+        ParceledListSlice<WifiConfiguration> configs =
+                mWifiServiceImpl.getConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID, false);
+        ParceledListSlice<WifiConfiguration> privilegedConfigs =
+                mWifiServiceImpl.getPrivilegedConfiguredNetworks(TEST_PACKAGE, TEST_FEATURE_ID);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        List<WifiConfiguration> expectedConfigs = generateExpectedConfigs(
+                testConfigs, true, true, true);
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, configs.getList());
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigs, privilegedConfigs.getList());
     }
 }
