@@ -3590,7 +3590,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         wifiConfigurationList = mWifiNetworkSuggestionsManager
                 .getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(scanResults);
         assertEquals(1, wifiConfigurationList.size());
-        assertEquals(networkSuggestion3.wifiConfiguration, wifiConfigurationList.get(0));
+        networkSuggestion3.wifiConfiguration.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        WifiConfigurationTestUtil.assertConfigurationEqual(
+                networkSuggestion3.wifiConfiguration, wifiConfigurationList.get(0));
     }
 
     /**
@@ -3641,7 +3643,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         List<WifiConfiguration> wifiConfigurationList = mWifiNetworkSuggestionsManager
                 .getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(scanResults);
         assertEquals(1, wifiConfigurationList.size());
-        assertEquals(networkSuggestion1.wifiConfiguration, wifiConfigurationList.get(0));
+        networkSuggestion1.wifiConfiguration.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        WifiConfigurationTestUtil.assertConfigurationEqual(
+                networkSuggestion1.wifiConfiguration, wifiConfigurationList.get(0));
     }
 
     class WifiConfigMatcher implements ArgumentMatcher<WifiConfiguration> {
@@ -3673,6 +3677,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
             when(mWifiConfigManager.getConfiguredNetwork(config.getProfileKey()))
                     .thenReturn(config);
         }
+        when(mWifiConfigManager.getConfiguredNetworks()).thenReturn(Arrays.asList(configs));
     }
 
     /**
