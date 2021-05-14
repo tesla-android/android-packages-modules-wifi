@@ -2528,11 +2528,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // As a result, P2P sends a unicast intent to tether service to trigger
                             // the whole flow before entering GroupCreatedState.
                             setWifiP2pInfoOnGroupFormation(null);
-                            String tetheringServicePackage = findTetheringServicePackage();
-                            if (!TextUtils.isEmpty(tetheringServicePackage)) {
-                                sendP2pTetherRequestBroadcast(tetheringServicePackage);
-                            } else {
-                                loge("No valid tethering service, remove " + mGroup);
+                            if (!sendP2pTetherRequestBroadcast()) {
+                                loge("Cannot start tethering, remove " + mGroup);
                                 mWifiNative.p2pGroupRemove(mGroup.getInterface());
                             }
                             break;
@@ -3060,6 +3057,12 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 resetWifiP2pInfo();
                 mDetailedState = NetworkInfo.DetailedState.DISCONNECTED;
                 sendP2pConnectionChangedBroadcast();
+                // When location mode is off, tethering service cannot receive regular
+                // p2p connection changed event to stop tethering, send a
+                // dedicated update to stop it.
+                if (!mWifiPermissionsUtil.isLocationModeEnabled()) {
+                    sendP2pTetherRequestBroadcast();
+                }
             }
         }
 
@@ -3255,8 +3258,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             return null;
         }
 
-        private void sendP2pTetherRequestBroadcast(String tetheringServicePackage) {
-            if (mVerboseLoggingEnabled) logd("sending p2p tether request broadcast");
+        private boolean sendP2pTetherRequestBroadcast() {
+            String tetheringServicePackage = findTetheringServicePackage();
+            if (TextUtils.isEmpty(tetheringServicePackage)) return false;
+            Log.i(TAG, "sending p2p tether request broadcast to "
+                    + tetheringServicePackage);
 
             Intent intent = new Intent(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
             intent.setPackage(tetheringServicePackage);
@@ -3269,6 +3275,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             Context context = mContext.createContextAsUser(UserHandle.ALL, 0);
             context.sendBroadcastWithMultiplePermissions(
                     intent, RECEIVER_PERMISSIONS_FOR_BROADCAST);
+            return true;
         }
 
         private void sendP2pPersistentGroupsChangedBroadcast() {
