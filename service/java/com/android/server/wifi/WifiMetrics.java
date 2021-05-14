@@ -7374,6 +7374,10 @@ public class WifiMetrics {
         synchronized (mLock) {
             mConnectionDurationStats.incrementDurationCount(timeDeltaLastTwoPollsMs,
                     isThroughputSufficient, isCellularDataAvailable, mWifiWins);
+
+            int band = KnownBandsChannelHelper.getBand(mLastPollFreq);
+            WifiStatsLog.write(WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, timeDeltaLastTwoPollsMs,
+                    isThroughputSufficient || !mWifiWins,  isCellularDataAvailable, band);
         }
     }
 
