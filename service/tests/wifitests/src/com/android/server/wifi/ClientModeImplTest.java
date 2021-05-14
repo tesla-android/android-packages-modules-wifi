@@ -3628,6 +3628,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void testOceRssiBasedAssociationRejectionUpdatesRecentAssociationFailureStatus()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         initializeAndAddNetworkAndVerifySuccess();
         AssociationRejectionData assocRejectData = new AssociationRejectionData();
         assocRejectData.ssid = NativeUtil.decodeSsid(TEST_SSID);
@@ -3652,6 +3653,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void testMboAssocDisallowedIndInAssocRejectUpdatesRecentAssociationFailureStatus()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         initializeAndAddNetworkAndVerifySuccess();
         AssociationRejectionData assocRejectData = new AssociationRejectionData();
         assocRejectData.ssid = NativeUtil.decodeSsid(TEST_SSID);
@@ -6081,6 +6083,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Test
     public void testNetworkNotFoundEventUpdatesAssociationFailureStatus()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         for (int i = 0; i < ClientModeImpl.NETWORK_NOT_FOUND_EVENT_THRESHOLD; i++) {

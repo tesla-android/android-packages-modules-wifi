@@ -6654,6 +6654,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1 = 0;
 
     /**
@@ -6662,6 +6663,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1 = 1;
 
     /**
@@ -6670,6 +6672,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1 = 2;
 
 
@@ -6679,6 +6682,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1 = 3;
 
 
@@ -6688,6 +6692,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1 = 4;
 
 
@@ -6697,6 +6702,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1 = 5;
 
     /** @hide */
@@ -6838,6 +6844,7 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
     public void startEasyConnectAsEnrolleeResponder(@Nullable String deviceInfo,
             @EasyConnectCryptographyCurve int curve,
             @NonNull @CallbackExecutor Executor executor,
@@ -6941,6 +6948,10 @@ public class WifiManager {
         @Override
         public void onBootstrapUriGenerated(@NonNull String uri) {
             Log.d(TAG, "Easy Connect onBootstrapUriGenerated callback");
+            if (!SdkLevel.isAtLeastS()) {
+                Log.e(TAG, "Easy Connect bootstrap URI callback supported only on S+");
+                return;
+            }
             Binder.clearCallingIdentity();
             mExecutor.execute(() -> {
                 mEasyConnectStatusCallback.onBootstrapUriGenerated(Uri.parse(uri));

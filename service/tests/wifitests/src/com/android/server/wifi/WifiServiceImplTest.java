@@ -7821,7 +7821,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetOverrideCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
-        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
                         eq("WifiService"));
@@ -7836,7 +7835,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetOverrideCountryCode() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiServiceImpl.setOverrideCountryCode(TEST_COUNTRY_CODE);
         mLooper.dispatchAll();
         verify(mWifiCountryCode).setOverrideCountryCode(TEST_COUNTRY_CODE);
@@ -7848,7 +7846,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testClearOverrideCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
-        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
                         eq("WifiService"));
@@ -7863,7 +7860,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testClearOverrideCountryCode() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiServiceImpl.clearOverrideCountryCode();
         mLooper.dispatchAll();
         verify(mWifiCountryCode).clearOverrideCountryCode();
@@ -7875,7 +7871,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetDefaultCountryCodeThrowsSecurityExceptionOnMissingPermissions() {
-        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(MANAGE_WIFI_COUNTRY_CODE),
                         eq("WifiService"));
@@ -7890,7 +7885,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testSetDefaultCountryCode() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
         mWifiServiceImpl.setDefaultCountryCode(TEST_COUNTRY_CODE);
         mLooper.dispatchAll();
         verify(mWifiCountryCode).setDefaultCountryCode(TEST_COUNTRY_CODE);
