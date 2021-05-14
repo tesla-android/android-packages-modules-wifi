@@ -3368,7 +3368,11 @@ public class WifiConfiguration implements Parcelable {
             key = SSID + KeyMgmt.strings[KeyMgmt.WPA_PSK];
         } else if (allowedKeyManagement.get(KeyMgmt.WPA_EAP)
                 || allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.WPA_EAP];
+            if (!requirePmf) {
+                key = SSID + KeyMgmt.strings[KeyMgmt.WPA_EAP];
+            } else {
+                key = SSID + "WPA3_EAP";
+            }
         } else if (wepTxKeyIndex >= 0 && wepTxKeyIndex < wepKeys.length
                 && wepKeys[wepTxKeyIndex] != null) {
             key = SSID + "WEP";
@@ -3878,7 +3882,11 @@ public class WifiConfiguration implements Parcelable {
             key = KeyMgmt.strings[KeyMgmt.WPA_PSK];
         } else if (allowedKeyManagement.get(KeyMgmt.WPA_EAP)
                 || allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
-            key = KeyMgmt.strings[KeyMgmt.WPA_EAP];
+            if (!requirePmf) {
+                key = KeyMgmt.strings[KeyMgmt.WPA_EAP];
+            } else {
+                key = "WPA3_EAP";
+            }
         } else if (wepTxKeyIndex >= 0 && wepTxKeyIndex < wepKeys.length
                 && wepKeys[wepTxKeyIndex] != null) {
             key = "WEP";
