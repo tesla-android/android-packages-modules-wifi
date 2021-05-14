@@ -184,4 +184,169 @@
             column="35"/>
     </issue>
 
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_URI_GENERATION`"
+        errorLine1="            EASY_CONNECT_EVENT_FAILURE_URI_GENERATION,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/EasyConnectStatusCallback.java"
+            line="198"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL`"
+        errorLine1="            EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/EasyConnectStatusCallback.java"
+            line="199"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED`"
+        errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2685"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED`"
+        errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2686"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED`"
+        errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2687"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED`"
+        errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2688"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI`"
+        errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2689"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION`"
+        errorLine1="            RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2690"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_NETWORK_NOT_FOUND`"
+        errorLine1="            RECENT_FAILURE_NETWORK_NOT_FOUND"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiConfiguration.java"
+            line="2691"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6708"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6709"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6710"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6711"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6712"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1`"
+        errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1,"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiManager.java"
+            line="6713"
+            column="13"/>
+    </issue>
+
 </issues>
