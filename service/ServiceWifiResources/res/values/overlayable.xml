@@ -169,7 +169,6 @@
           <item type="bool" name="config_wifiSaeUpgradeEnabled" />
           <item type="bool" name="config_wifiSaeUpgradeOffloadEnabled" />
           <item type="bool" name="config_wifiOweUpgradeEnabled" />
-          <item type="bool" name="config_wifiWpa3EnterpriseUpgradeEnabled" />
           <item type="integer" name="config_wifiMaxNativeFailureSelfRecoveryPerHour" />
           <item type="bool" name="config_wifiIgnoreOpenSavedNetworkWhenSecureSuggestionAvailable" />
           <item type="bool" name="config_wifiSoftapAcsIncludeDfs" />

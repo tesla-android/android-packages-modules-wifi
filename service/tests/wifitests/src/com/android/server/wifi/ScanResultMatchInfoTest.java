@@ -66,7 +66,6 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
                 WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE);
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
-        when(mWifiGlobals.isWpa3EnterpriseUpgradeEnabled()).thenReturn(true);
     }
 
     /**
@@ -333,7 +332,7 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
     @Test
     public void testEqualityRulesForPskToSaeUpgrade() {
         verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createPskNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createPskSaeNetwork("\"Upgrade\""),
                 WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\""),
                 true);
     }
@@ -345,9 +344,9 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
     public void testEqualityRulesForPskToSaeUpgradeWithOverlayDisable() {
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(false);
         verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createPskNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createPskSaeNetwork("\"Upgrade\""),
                 WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\""),
-                false);
+                true);
     }
 
     /**
@@ -359,6 +358,7 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
                 WifiConfigurationTestUtil.createSaeNetwork("\"Downgrade\"");
         WifiConfiguration wifiConfigurationPsk =
                 WifiConfigurationTestUtil.createPskNetwork("\"Downgrade\"");
+        wifiConfigurationPsk.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
         ScanDetail scanDetailPsk = createScanDetailForNetwork(wifiConfigurationPsk,
                 "AC:AB:AD:AE:AF:FC");
 
@@ -378,7 +378,7 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
     @Test
     public void testEqualityRulesForOpenToOweUpgrade() {
         verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createOpenNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createOpenOweNetwork("\"Upgrade\""),
                 WifiConfigurationTestUtil.createOweNetwork("\"Upgrade\""),
                 true);
     }
@@ -390,9 +390,9 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
     public void testEqualityRulesForOpenToOweUpgradeWithOverlayDisable() {
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(false);
         verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createOpenNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createOpenOweNetwork("\"Upgrade\""),
                 WifiConfigurationTestUtil.createOweNetwork("\"Upgrade\""),
-                false);
+                true);
     }
 
     /**
@@ -404,6 +404,7 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
                 WifiConfigurationTestUtil.createOweNetwork("\"Downgrade\"");
         WifiConfiguration wifiConfigurationOpen =
                 WifiConfigurationTestUtil.createOpenNetwork("\"Downgrade\"");
+        wifiConfigurationOpen.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
         ScanDetail scanDetailOpen = createScanDetailForNetwork(wifiConfigurationOpen,
                 "AC:AB:AD:AE:AF:FC");
 
@@ -418,28 +419,12 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
         assertFalse(key2.equals(key1));
     }
 
-    /**
-     * Tests equality properties for WPA2 Enterprise to WPA3 Enterprise upgrades
-     */
     @Test
     public void testEqualityRulesForWpa2EnterpriseToWpa3EnterpriseUpgrade() {
         verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createEapNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createWpa2Wpa3EnterpriseNetwork("\"Upgrade\""),
                 WifiConfigurationTestUtil.createWpa3EnterpriseNetwork("\"Upgrade\""),
                 true);
-    }
-
-    /**
-     * Tests equality properties for WPA2 Enterprise to WPA3 Enterprise upgrades
-     * when feature is disabled
-     */
-    @Test
-    public void testEqualityRulesForWpa2EnterpriseToWpa3EnterpriseUpgradeWithOverlayDisable() {
-        when(mWifiGlobals.isWpa3EnterpriseUpgradeEnabled()).thenReturn(false);
-        verifyUpgradeMatching(
-                WifiConfigurationTestUtil.createEapNetwork("\"Upgrade\""),
-                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork("\"Upgrade\""),
-                false);
     }
 
     /**

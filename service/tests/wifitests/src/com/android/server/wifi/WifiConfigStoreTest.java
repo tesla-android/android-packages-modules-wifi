@@ -598,7 +598,7 @@ public class WifiConfigStoreTest extends WifiBaseTest {
         // Setup network list store data.
         NetworkListStoreData networkList = new NetworkListUserStoreData(mContext);
         mWifiConfigStore.registerStoreData(networkList);
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenOweNetwork();
         openNetwork.creatorName = TEST_CREATOR_NAME;
         openNetwork.setIpConfiguration(
                 WifiConfigurationTestUtil.createDHCPIpConfigurationWithNoProxy());

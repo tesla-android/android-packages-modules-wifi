@@ -52,8 +52,6 @@ public class WifiGlobals {
     // This is read from the overlay, cache it after boot up.
     private final boolean mIsOweUpgradeEnabled;
     // This is read from the overlay, cache it after boot up.
-    private final boolean mIsWpa3EnterpriseUpgradeEnabled;
-    // This is read from the overlay, cache it after boot up.
     private final boolean mFlushAnqpCacheOnWifiToggleOffEvent;
     // This is read from the overlay, cache it after boot up.
     private final boolean mIsWpa3SaeH2eSupported;
@@ -76,8 +74,6 @@ public class WifiGlobals {
                 .getBoolean(R.bool.config_wifiSaeUpgradeOffloadEnabled);
         mIsOweUpgradeEnabled = mContext.getResources()
                 .getBoolean(R.bool.config_wifiOweUpgradeEnabled);
-        mIsWpa3EnterpriseUpgradeEnabled = mContext.getResources()
-                .getBoolean(R.bool.config_wifiWpa3EnterpriseUpgradeEnabled);
         mFlushAnqpCacheOnWifiToggleOffEvent = mContext.getResources()
                 .getBoolean(R.bool.config_wifiFlushAnqpCacheOnWifiToggleOffEvent);
         mIsWpa3SaeH2eSupported = mContext.getResources()
@@ -177,15 +173,6 @@ public class WifiGlobals {
     }
 
     /**
-     * Help method to check if WPA3 Enterprise auto-upgrade is enabled.
-     *
-     * @return boolean true if auto-upgrade is enabled, false otherwise.
-     */
-    public boolean isWpa3EnterpriseUpgradeEnabled() {
-        return mIsWpa3EnterpriseUpgradeEnabled;
-    }
-
-    /**
      * Help method to check if the setting to flush ANQP cache when Wi-Fi is toggled off.
      *
      * @return boolean true to flush ANQP cache on Wi-Fi toggle off event, false otherwise.
@@ -237,7 +224,6 @@ public class WifiGlobals {
         pw.println("mIsWpa3SaeUpgradeEnabled=" + mIsWpa3SaeUpgradeEnabled);
         pw.println("mIsWpa3SaeUpgradeOffloadEnabled=" + mIsWpa3SaeUpgradeOffloadEnabled);
         pw.println("mIsOweUpgradeEnabled=" + mIsOweUpgradeEnabled);
-        pw.println("mIsWpa3EnterpriseUpgradeEnabled=" + mIsWpa3EnterpriseUpgradeEnabled);
         pw.println("mFlushAnqpCacheOnWifiToggleOffEvent=" + mFlushAnqpCacheOnWifiToggleOffEvent);
         pw.println("mIsWpa3SaeH2eSupported=" + mIsWpa3SaeH2eSupported);
         pw.println("mP2pDeviceNamePrefix=" + mP2pDeviceNamePrefix);
