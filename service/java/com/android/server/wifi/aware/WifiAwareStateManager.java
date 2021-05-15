@@ -455,7 +455,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 if (action.equals(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)) {
                     if (mSettableParameters.get(PARAM_ON_IDLE_DISABLE_AWARE) != 0) {
                         if (mPowerManager.isDeviceIdleMode()) {
-                            disableUsage();
+                            disableUsage(false);
                         } else {
                             enableUsage();
                         }
@@ -475,7 +475,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 if (wifiPermissionsUtil.isLocationModeEnabled()) {
                     enableUsage();
                 } else {
-                    disableUsage();
+                    disableUsage(false);
                 }
             }
         }, intentFilter);
@@ -491,7 +491,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 if (isEnabled) {
                     enableUsage();
                 } else {
-                    disableUsage();
+                    disableUsage(false);
                 }
             }
         }, intentFilter);
@@ -856,10 +856,12 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
     /**
      * Disable usage of Aware. Terminates all existing clients with onAwareDown().
+     * @param markAsAvailable mark the Aware service as available to all app or not.
      */
-    public void disableUsage() {
+    public void disableUsage(boolean markAsAvailable) {
         Message msg = mSm.obtainMessage(MESSAGE_TYPE_COMMAND);
         msg.arg1 = COMMAND_TYPE_DISABLE_USAGE;
+        msg.arg2 = markAsAvailable ? 1 : 0;
         mSm.sendMessage(msg);
     }
 
@@ -1876,7 +1878,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     waitForResponse = false;
                     break;
                 case COMMAND_TYPE_DISABLE_USAGE:
-                    disableUsageLocal(mCurrentTransactionId);
+                    disableUsageLocal(mCurrentTransactionId, msg.arg2 == 1);
                     waitForResponse = false;
                     break;
                 case COMMAND_TYPE_GET_CAPABILITIES:
@@ -2539,6 +2541,11 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         WifiAwareClientState client = mClients.get(clientId);
         if (client == null) {
             Log.e(TAG, "publishLocal: no client exists for clientId=" + clientId);
+            try {
+                callback.onSessionConfigFail(NanStatusType.INTERNAL_FAILURE);
+            } catch (RemoteException e) {
+                Log.w(TAG, "publishLocal onSessionConfigFail(): RemoteException (FYI): " + e);
+            }
             return false;
         }
 
@@ -2593,6 +2600,11 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
         WifiAwareClientState client = mClients.get(clientId);
         if (client == null) {
+            try {
+                callback.onSessionConfigFail(NanStatusType.INTERNAL_FAILURE);
+            } catch (RemoteException e) {
+                Log.w(TAG, "subscribeLocal onSessionConfigFail(): RemoteException (FYI): " + e);
+            }
             Log.e(TAG, "subscribeLocal: no client exists for clientId=" + clientId);
             return false;
         }
@@ -2678,7 +2690,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mAwareMetrics.recordEnableUsage();
     }
 
-    private void disableUsageLocal(short transactionId) {
+    private void disableUsageLocal(short transactionId, boolean markAsAvailable) {
         if (VDBG) {
             Log.v(TAG, "disableUsageLocal: transactionId=" + transactionId + ", mUsageEnabled="
                     + mUsageEnabled);
@@ -2689,11 +2701,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
         onAwareDownLocal();
 
-        mUsageEnabled = false;
+        mUsageEnabled = markAsAvailable;
         deferDisableAware();
-
-        sendAwareStateChangedBroadcast(false);
-
+        sendAwareStateChangedBroadcast(markAsAvailable);
         mAwareMetrics.recordDisableUsage();
     }
 

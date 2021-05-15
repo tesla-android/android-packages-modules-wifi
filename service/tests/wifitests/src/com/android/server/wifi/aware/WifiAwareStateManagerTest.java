@@ -428,7 +428,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         collector.checkThat("usage enabled", mDut.isUsageEnabled(), equalTo(true));
 
         // (2) disable usage and validate state
-        mDut.disableUsage();
+        mDut.disableUsage(false);
         mMockLooper.dispatchAll();
         collector.checkThat("usage disabled", mDut.isUsageEnabled(), equalTo(false));
         validateCorrectAwareStatusChangeBroadcast(inOrder);
@@ -487,7 +487,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         collector.checkThat("num of clients", sparseArrayCaptor.getValue().size(), equalTo(1));
 
         // (3) disable usage & verify callbacks
-        mDut.disableUsage();
+        mDut.disableUsage(false);
         mMockLooper.dispatchAll();
         collector.checkThat("usage disabled", mDut.isUsageEnabled(), equalTo(false));
         validateCorrectAwareStatusChangeBroadcast(inOrder);
@@ -508,7 +508,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrderM.verify(mAwareMetricsMock).recordAttachStatus(NanStatusType.INTERNAL_FAILURE);
 
         // (5) disable usage again and validate that not much happens
-        mDut.disableUsage();
+        mDut.disableUsage(false);
         mMockLooper.dispatchAll();
         collector.checkThat("usage disabled", mDut.isUsageEnabled(), equalTo(false));
 
@@ -3824,7 +3824,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         collector.checkThat("num of clients", sparseArrayCaptor.getValue().size(), equalTo(1));
 
         // (3) Placing a disableUsage -> enabledUsage -> connect sequence
-        mDut.disableUsage();
+        mDut.disableUsage(false);
         mDut.enableUsage();
         mDut.connect(clientId, uid, pid, callingPackage, callingFeature, mockCallback,
                 configRequest, false);
