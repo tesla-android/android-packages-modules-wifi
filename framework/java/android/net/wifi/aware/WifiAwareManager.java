@@ -120,8 +120,9 @@ public class WifiAwareManager {
     private static final boolean VDBG = false; // STOPSHIP if true
 
     /**
-     * Broadcast intent action to indicate that the state of Wi-Fi Aware availability has changed.
-     * Use the {@link #isAvailable()} to query the current status.
+     * Broadcast intent action to indicate that the state of Wi-Fi Aware availability has changed
+     * and all active Aware sessions are no longer usable. Use the {@link #isAvailable()} to query
+     * the current status.
      * This broadcast is <b>not</b> sticky, use the {@link #isAvailable()} API after registering
      * the broadcast to check the current state of Wi-Fi Aware.
      * <p>Note: The broadcast is only delivered to registered receivers - no manifest registered
