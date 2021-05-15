@@ -137,7 +137,7 @@ public class WifiAwareNativeManagerTest extends WifiBaseTest {
         when(mHalDeviceManager.isStarted()).thenReturn(false);
         mManagerStatusListenerCaptor.getValue().onStatusChanged();
 
-        mInOrder.verify(mWifiAwareStateManagerMock).disableUsage();
+        mInOrder.verify(mWifiAwareStateManagerMock).disableUsage(true);
 
         // 3. onStatusChange (ready/started) + available -> enableUsage
         when(mHalDeviceManager.isStarted()).thenReturn(true);
@@ -233,7 +233,7 @@ public class WifiAwareNativeManagerTest extends WifiBaseTest {
         // 3. interface gets destroyed
         mDestroyedListenerCaptor.getValue().onDestroyed("nan0");
 
-        mInOrder.verify(mWifiAwareStateManagerMock).disableUsage();
+        mInOrder.verify(mWifiAwareStateManagerMock).disableUsage(true);
         assertNull("Interface non-null!", mDut.getWifiNanIface());
 
         // 4. a release doesn't do much
