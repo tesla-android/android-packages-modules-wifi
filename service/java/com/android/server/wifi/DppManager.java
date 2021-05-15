@@ -39,6 +39,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.build.SdkLevel;
@@ -445,11 +447,15 @@ public class DppManager {
 
         String info = deviceInfo == null ? "" : deviceInfo;
         // Generate a QR code based bootstrap info
-        WifiNative.DppBootstrapQrCodeInfo bootstrapInfo =
-                mWifiNative.generateDppBootstrapInfoForResponder(mClientIfaceName, deviceInfo,
-                convertEasyConnectCryptographyCurveToHidlDppCurve(curve));
+        WifiNative.DppBootstrapQrCodeInfo bootstrapInfo = null;
+        if (SdkLevel.isAtLeastS()) {
+            bootstrapInfo =
+                    mWifiNative.generateDppBootstrapInfoForResponder(mClientIfaceName, deviceInfo,
+                            convertEasyConnectCryptographyCurveToHidlDppCurve(curve));
+        }
 
-        if (bootstrapInfo.bootstrapId < 0 || TextUtils.isEmpty(bootstrapInfo.uri)) {
+        if (bootstrapInfo == null || bootstrapInfo.bootstrapId < 0
+                || TextUtils.isEmpty(bootstrapInfo.uri)) {
             Log.e(TAG, "DPP request to generate URI failed");
             onFailure(DppFailureCode.URI_GENERATION);
             return;
@@ -866,8 +872,13 @@ public class DppManager {
                     break;
 
                 case DppFailureCode.URI_GENERATION:
-                    dppFailureCode = EasyConnectStatusCallback
-                            .EASY_CONNECT_EVENT_FAILURE_URI_GENERATION;
+                    if (SdkLevel.isAtLeastS()) {
+                        dppFailureCode = EasyConnectStatusCallback
+                                .EASY_CONNECT_EVENT_FAILURE_URI_GENERATION;
+                    } else {
+                        dppFailureCode = EasyConnectStatusCallback
+                                .EASY_CONNECT_EVENT_FAILURE_GENERIC;
+                    }
                     break;
 
                 case DppFailureCode.FAILURE:
@@ -924,6 +935,7 @@ public class DppManager {
         return true;
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private int convertEasyConnectCryptographyCurveToHidlDppCurve(
             @WifiManager.EasyConnectCryptographyCurve int curve) {
         switch (curve) {

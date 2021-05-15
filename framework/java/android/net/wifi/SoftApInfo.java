@@ -20,8 +20,11 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.net.MacAddress;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.util.Preconditions;
 import com.android.modules.utils.build.SdkLevel;
@@ -178,6 +181,7 @@ public final class SoftApInfo implements Parcelable {
     /**
      * Get the MAC address (BSSID) of the AP. Null when AP disabled.
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @Nullable
     public MacAddress getBssid() {
         if (!SdkLevel.isAtLeastS()) {
@@ -226,6 +230,7 @@ public final class SoftApInfo implements Parcelable {
      * Get the operational mode of the AP.
      * @return valid values from {@link ScanResult}'s {@code WIFI_STANDARD_}
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public @WifiAnnotations.WifiStandard int getWifiStandard() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -282,9 +287,6 @@ public final class SoftApInfo implements Parcelable {
      * {@see SoftApConfiguration#isAutoShutdownEnabled()}
      */
     public long getAutoShutdownTimeoutMillis() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         return mIdleShutdownTimeoutMillis;
     }
 

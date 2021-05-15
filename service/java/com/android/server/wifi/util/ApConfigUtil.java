@@ -847,7 +847,8 @@ public class ApConfigUtil {
             return false;
         }
 
-        if (config.getBands().length > 1) {
+        // The bands length should always 1 in R. Adding SdkLevel.isAtLeastS for lint check only.
+        if (config.getBands().length > 1 && SdkLevel.isAtLeastS()) {
             int[] bands = config.getBands();
             if ((bands[0] & SoftApConfiguration.BAND_6GHZ) != 0
                     || (bands[0] & SoftApConfiguration.BAND_60GHZ) != 0

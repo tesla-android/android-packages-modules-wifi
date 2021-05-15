@@ -83,6 +83,7 @@ import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.BatteryStatsManager;
+import android.os.Build;
 import android.os.ConditionVariable;
 import android.os.HandlerExecutor;
 import android.os.IBinder;
@@ -101,6 +102,8 @@ import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.IState;
@@ -4449,9 +4452,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 mTargetWifiConfiguration.networkId,
                                 WifiConfiguration.NetworkSelectionStatus
                                         .DISABLED_NETWORK_NOT_FOUND);
-                        mWifiConfigManager.setRecentFailureAssociationStatus(
-                                mTargetWifiConfiguration.networkId,
-                                WifiConfiguration.RECENT_FAILURE_NETWORK_NOT_FOUND);
+                        if (SdkLevel.isAtLeastS()) {
+                            mWifiConfigManager.setRecentFailureAssociationStatus(
+                                    mTargetWifiConfiguration.networkId,
+                                    WifiConfiguration.RECENT_FAILURE_NETWORK_NOT_FOUND);
+                        }
                         reportConnectionAttemptEnd(
                                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_NOT_FOUND,
                                 WifiMetricsProto.ConnectionEvent.HLF_NONE,
@@ -6591,6 +6596,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return true;
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private @WifiConfiguration.RecentFailureReason int
             mboAssocDisallowedReasonCodeToWifiConfigurationRecentFailureReason(
             @MboOceConstants.MboAssocDisallowedReasonCode int reasonCode) {
@@ -6637,11 +6643,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return;
         }
 
-        if (assocRejectEventInfo.mboAssocDisallowedInfo != null) {
-            reason = mboAssocDisallowedReasonCodeToWifiConfigurationRecentFailureReason(
-                    assocRejectEventInfo.mboAssocDisallowedInfo.mReasonCode);
-        } else if (assocRejectEventInfo.oceRssiBasedAssocRejectInfo != null) {
-            reason = WifiConfiguration.RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION;
+        if (SdkLevel.isAtLeastS()) {
+            if (assocRejectEventInfo.mboAssocDisallowedInfo != null) {
+                reason = mboAssocDisallowedReasonCodeToWifiConfigurationRecentFailureReason(
+                        assocRejectEventInfo.mboAssocDisallowedInfo.mReasonCode);
+            } else if (assocRejectEventInfo.oceRssiBasedAssocRejectInfo != null) {
+                reason = WifiConfiguration.RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION;
+            }
         }
 
         mWifiConfigManager.setRecentFailureAssociationStatus(netId, reason);
