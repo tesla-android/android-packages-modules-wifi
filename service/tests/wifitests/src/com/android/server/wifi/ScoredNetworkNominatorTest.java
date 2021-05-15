@@ -107,7 +107,6 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
                 WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE);
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
-        when(mWifiGlobals.isWpa3EnterpriseUpgradeEnabled()).thenReturn(true);
 
         when(mFrameworkFacade.getStringSetting(mContext,
                 SETTINGS_GLOBAL_USE_OPEN_WIFI_PACKAGE))

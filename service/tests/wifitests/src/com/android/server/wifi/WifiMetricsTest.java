@@ -646,10 +646,10 @@ public class WifiMetricsTest extends WifiBaseTest {
                 FEATURE_11AX | FEATURE_6G | FEATURE_6G_PSC));
         // WPA3 Enterprise transition network
         mockScanDetails.add(buildMockScanDetail(false, null,
-                "[WPA-EAP/SHA1+EAP/SHA256-CCMP][MFPC]", 0));
+                "[RSN-EAP/SHA1+EAP/SHA256-CCMP][MFPC]", 0));
         // WPA3 Enterprise only network
         mockScanDetails.add(buildMockScanDetail(false, null,
-                "[WPA-EAP/SHA256-CCMP][MFPR][MFPC]", 0));
+                "[RSN-EAP/SHA256-CCMP][MFPR][MFPC]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-PSK-SMS4-SMS4]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-CERT-SMS4-SMS4]", 0));
         mockScanDetails.add(buildMockScanDetail(false, null, "[WAPI-WAPI-CERT-SMS4-SMS4]", 0));

@@ -139,7 +139,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA3 Enterprise transition network
-        scanResult.capabilities = "[EAP/SHA1+EAP/SHA256][MFPC]";
+        scanResult.capabilities = "[RSN-EAP/SHA1+EAP/SHA256][MFPC]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
@@ -148,7 +148,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
         assertTrue(config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
 
         // WPA3 Enterprise only network
-        scanResult.capabilities = "[EAP/SHA256][MFPC][MFPR]";
+        scanResult.capabilities = "[RSN-EAP/SHA256][MFPC][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
@@ -156,14 +156,14 @@ public class ScanResultUtilTest extends WifiBaseTest {
 
         // Neither a valid WPA3 Enterprise transition network nor WPA3 Enterprise only network
         // Fallback to WPA2 Enterprise
-        scanResult.capabilities = "[EAP/SHA1+EAP/SHA256][MFPC][MFPR]";
+        scanResult.capabilities = "[RSN-EAP/SHA1+EAP/SHA256][MFPC][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA3 Enterprise only network
-        scanResult.capabilities = "[SUITE_B_192][MFPR]";
+        scanResult.capabilities = "[RSN-SUITE_B_192][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
         assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
