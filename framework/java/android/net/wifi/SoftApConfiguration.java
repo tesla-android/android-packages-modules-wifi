@@ -22,11 +22,14 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.net.MacAddress;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.Preconditions;
@@ -596,6 +599,7 @@ public final class SoftApConfiguration implements Parcelable {
      *
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public @NonNull SparseIntArray getChannels() {
         if (!SdkLevel.isAtLeastS()) {
@@ -695,6 +699,7 @@ public final class SoftApConfiguration implements Parcelable {
      *
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     @MacRandomizationSetting
     public int getMacRandomizationSetting() {
@@ -718,6 +723,7 @@ public final class SoftApConfiguration implements Parcelable {
      * See also {@link Builder#setBridgedModeOpportunisticShutdownEnabled(boolean}}
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public boolean isBridgedModeOpportunisticShutdownEnabled() {
         if (!SdkLevel.isAtLeastS()) {
@@ -749,6 +755,7 @@ public final class SoftApConfiguration implements Parcelable {
      * See also {@link Builder#setIeee80211axEnabled(boolean}}
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public boolean isIeee80211axEnabled() {
         if (!SdkLevel.isAtLeastS()) {
@@ -767,6 +774,7 @@ public final class SoftApConfiguration implements Parcelable {
      *
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
     public boolean isUserConfiguration() {
         if (!SdkLevel.isAtLeastS()) {
@@ -1095,6 +1103,7 @@ public final class SoftApConfiguration implements Parcelable {
          * @throws IllegalArgumentException when more than 2 bands are set or an invalid band type
          *                                  is provided.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         @NonNull
         public Builder setBands(@NonNull int[] bands) {
             if (!SdkLevel.isAtLeastS()) {
@@ -1201,6 +1210,7 @@ public final class SoftApConfiguration implements Parcelable {
          * @throws IllegalArgumentException when more than 2 channels are set or the invalid
          *                                  channel or band type is configured.
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         @NonNull
         public Builder setChannels(@NonNull SparseIntArray channels) {
             if (!SdkLevel.isAtLeastS()) {
@@ -1421,6 +1431,7 @@ public final class SoftApConfiguration implements Parcelable {
          *
          * @see #setBssid(MacAddress)
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         @NonNull
         public Builder setMacRandomizationSetting(
                 @MacRandomizationSetting int macRandomizationSetting) {
@@ -1462,6 +1473,7 @@ public final class SoftApConfiguration implements Parcelable {
          * @return Builder for chaining.
          *
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         @NonNull
         public Builder setBridgedModeOpportunisticShutdownEnabled(boolean enable) {
             if (!SdkLevel.isAtLeastS()) {
@@ -1489,6 +1501,7 @@ public final class SoftApConfiguration implements Parcelable {
          * @return Builder for chaining.
          *
          */
+        @RequiresApi(Build.VERSION_CODES.S)
         @NonNull
         public Builder setIeee80211axEnabled(boolean enable) {
             if (!SdkLevel.isAtLeastS()) {

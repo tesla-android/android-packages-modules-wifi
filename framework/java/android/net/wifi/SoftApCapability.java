@@ -24,8 +24,6 @@ import android.net.wifi.SoftApConfiguration.BandType;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.android.modules.utils.build.SdkLevel;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Arrays;
@@ -236,9 +234,6 @@ public final class SoftApCapability implements Parcelable {
      */
     @NonNull
     public int[] getSupportedChannelList(@BandType int band) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         switch (band) {
             case SoftApConfiguration.BAND_2GHZ:
                 return mSupportedChannelListIn24g;

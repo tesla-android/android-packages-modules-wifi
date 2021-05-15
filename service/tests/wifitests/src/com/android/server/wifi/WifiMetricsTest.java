@@ -6371,4 +6371,24 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(0, mDecodedProto.totalNumberOfPasspointProfilesWithDecoratedIdentity);
         assertEquals(0, mDecodedProto.passpointDeauthImminentScope.length);
     }
+
+    @Test
+    public void testWifiStatsHealthStatWrite() throws Exception {
+        WifiInfo wifiInfo = mock(WifiInfo.class);
+        when(wifiInfo.getFrequency()).thenReturn(5810);
+        mWifiMetrics.incrementWifiScoreCount("",  60);
+        mWifiMetrics.handlePollResult(wifiInfo);
+        mWifiMetrics.incrementConnectionDuration(3000, true, true);
+        ExtendedMockito.verify(() -> WifiStatsLog.write(
+                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 3000, true, true,
+                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_HIGH));
+
+        when(wifiInfo.getFrequency()).thenReturn(2412);
+        mWifiMetrics.incrementWifiScoreCount("",  30);
+        mWifiMetrics.handlePollResult(wifiInfo);
+        mWifiMetrics.incrementConnectionDuration(2000, false, true);
+        ExtendedMockito.verify(() -> WifiStatsLog.write(
+                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 2000, true, true,
+                WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_2G));
+    }
 }

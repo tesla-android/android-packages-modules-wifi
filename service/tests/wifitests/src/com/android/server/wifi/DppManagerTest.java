@@ -1028,6 +1028,7 @@ public class DppManagerTest extends WifiBaseTest {
     @Test
     public void testStartDppAsEnrolleeResponderFailGenerateQrCode() throws Exception {
         // Fail to generate QR code
+        assumeTrue(SdkLevel.isAtLeastS());
         WifiNative.DppBootstrapQrCodeInfo bootStrapInfo =
                 new WifiNative.DppBootstrapQrCodeInfo();
         when(mWifiNative.generateDppBootstrapInfoForResponder(
@@ -1046,6 +1047,7 @@ public class DppManagerTest extends WifiBaseTest {
     @Test
     public void testStartDppAsEnrolleeResponderFailStart() throws Exception {
         // Fail to start
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mWifiNative.startDppEnrolleeResponder(anyString(), anyInt())).thenReturn(false);
 
         assertFalse(mDppManager.isSessionInProgress());
@@ -1060,6 +1062,7 @@ public class DppManagerTest extends WifiBaseTest {
 
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectly() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         assertFalse(mDppManager.isSessionInProgress());
         mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
@@ -1074,6 +1077,7 @@ public class DppManagerTest extends WifiBaseTest {
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectlyAndRejectConcurrentRequest()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         assertFalse(mDppManager.isSessionInProgress());
         mDppManager.startDppAsEnrolleeResponder(0, TEST_INTERFACE_NAME, mBinder, mDeviceInfo,
                 EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1, mDppCallback);
@@ -1095,6 +1099,7 @@ public class DppManagerTest extends WifiBaseTest {
 
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectlyOnSuccessCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<WifiNative.DppEventCallback> dppEventCallbackCaptor =
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
@@ -1141,6 +1146,7 @@ public class DppManagerTest extends WifiBaseTest {
 
     @Test
     public void testStartDppAsEnrolleeResponderStartCorrectlyOnFailureCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<WifiNative.DppEventCallback> dppEventCallbackCaptor =
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
@@ -1177,6 +1183,7 @@ public class DppManagerTest extends WifiBaseTest {
     @Test
     public void testDppStopSessionInResponderMode() throws Exception {
         // Check that nothing happens if UID is incorrect
+        assumeTrue(SdkLevel.isAtLeastS());
         ArgumentCaptor<WifiNative.DppEventCallback> dppEventCallbackCaptor =
                 ArgumentCaptor.forClass(
                         WifiNative.DppEventCallback.class);
