@@ -3937,7 +3937,7 @@ public class WifiConfiguration implements Parcelable {
      * @hide
      */
     public static String getSecurityTypeName(@SecurityType int securityType) {
-        if (securityType < SECURITY_TYPE_OPEN || SECURITY_TYPE_NUM > securityType) {
+        if (securityType < SECURITY_TYPE_OPEN || SECURITY_TYPE_NUM < securityType) {
             return "unknown";
         }
         return SECURITY_TYPE_NAMES[securityType];
