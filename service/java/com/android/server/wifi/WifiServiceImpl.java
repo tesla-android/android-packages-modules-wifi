@@ -1056,6 +1056,7 @@ public class WifiServiceImpl extends BaseWifiService {
      *                     uses of the specified channels.
      */
     @Override
+    @RequiresApi(Build.VERSION_CODES.S)
     public void setCoexUnsafeChannels(
             @NonNull List<CoexUnsafeChannel> unsafeChannels, int restrictions) {
         if (!SdkLevel.isAtLeastS()) {
@@ -1077,6 +1078,7 @@ public class WifiServiceImpl extends BaseWifiService {
     /**
      * See {@link WifiManager#registerCoexCallback(WifiManager.CoexCallback)}
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public void registerCoexCallback(@NonNull ICoexCallback callback) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -1095,6 +1097,7 @@ public class WifiServiceImpl extends BaseWifiService {
     /**
      * See {@link WifiManager#unregisterCoexCallback(WifiManager.CoexCallback)}
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public void unregisterCoexCallback(@NonNull ICoexCallback callback) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
