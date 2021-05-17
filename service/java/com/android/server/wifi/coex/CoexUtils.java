@@ -23,10 +23,13 @@ import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
 import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiAnnotations;
+import android.os.Build;
 import android.telephony.Annotation;
 import android.telephony.PhysicalChannelConfig;
 import android.util.Log;
 import android.util.SparseIntArray;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 
@@ -42,6 +45,7 @@ import java.util.TreeSet;
 /**
  * Class containing the unsafe channel algorithms and other utility methods for Wi-Fi/Cellular coex.
  */
+@RequiresApi(Build.VERSION_CODES.S)
 public class CoexUtils {
     public static final String TAG = "CoexUtils";
 

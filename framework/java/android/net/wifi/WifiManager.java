@@ -3759,6 +3759,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int COEX_RESTRICTION_WIFI_DIRECT = 0x1 << 0;
 
     /**
@@ -3769,6 +3770,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int COEX_RESTRICTION_SOFTAP = 0x1 << 1;
 
     /**
@@ -3779,9 +3781,11 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public static final int COEX_RESTRICTION_WIFI_AWARE = 0x1 << 2;
 
     /** @hide */
+    @RequiresApi(Build.VERSION_CODES.S)
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(flag = true, prefix = {"COEX_RESTRICTION_"}, value = {
             COEX_RESTRICTION_WIFI_DIRECT,
@@ -3818,6 +3822,7 @@ public class WifiManager {
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
     public void setCoexUnsafeChannels(
             @NonNull List<CoexUnsafeChannel> unsafeChannels, @CoexRestriction int restrictions) {
         if (unsafeChannels == null) {
@@ -3843,6 +3848,7 @@ public class WifiManager {
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
     public void registerCoexCallback(
             @NonNull @CallbackExecutor Executor executor, @NonNull CoexCallback callback) {
         if (executor == null) throw new IllegalArgumentException("executor must not be null");
@@ -3865,6 +3871,7 @@ public class WifiManager {
      */
     @SystemApi
     @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
     public void unregisterCoexCallback(@NonNull CoexCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback must not be null");
         CoexCallback.CoexCallbackProxy proxy = callback.getProxy();
@@ -3884,6 +3891,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
     public abstract static class CoexCallback {
         private final CoexCallbackProxy mCoexCallbackProxy;
 
