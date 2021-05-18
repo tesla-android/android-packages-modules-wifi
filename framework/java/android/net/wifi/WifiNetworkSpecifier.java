@@ -20,9 +20,13 @@ import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.net.ConnectivityManager;
+import android.net.ConnectivityManager.NetworkCallback;
 import android.net.MacAddress;
+import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.net.wifi.ScanResult.WifiBand;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.PatternMatcher;
@@ -34,18 +38,63 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * Network specifier object used to request a local Wi-Fi network. Apps should use the
+ * Network specifier object used to request a Wi-Fi network. Apps should use the
  * {@link WifiNetworkSpecifier.Builder} class to create an instance.
  * <p>
- * On devices which support concurrent connections (indicated via
+ * This specifier can be used to request a local-only connection on devices that support concurrent
+ * connections (indicated via
  * {@link WifiManager#isStaConcurrencyForLocalOnlyConnectionsSupported()} and if the initiating app
- * targets SDK &ge; {@link android.os.Build.VERSION_CODES#S} or is a system app, these local only
+ * targets SDK &ge; {@link android.os.Build.VERSION_CODES#S} or is a system app. These local-only
  * connections may be brought up as a secondary concurrent connection (primary connection will be
  * used for networks with internet connectivity available to the user and all apps).
+ * </p>
+ * <p>
+ * This specifier can also be used to listen for connected Wi-Fi networks on a particular band.
+ * Additionally, some devices may support requesting a connection to a particular band. If the
+ * device does not support such a request, it will send {@link NetworkCallback#onUnavailable()}
+ * upon request to the callback passed to
+ * {@link ConnectivityManager#requestNetwork(NetworkRequest, NetworkCallback)} or equivalent.
+ * See {@link Builder#build()} for details.
  * </p>
  */
 public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parcelable {
     private static final String TAG = "WifiNetworkSpecifier";
+
+    /**
+     * Returns the band for a given frequency in MHz.
+     * @hide
+     */
+    @WifiBand public static int getBand(final int freqMHz) {
+        if (ScanResult.is24GHz(freqMHz)) {
+            return ScanResult.WIFI_BAND_24_GHZ;
+        } else if (ScanResult.is5GHz(freqMHz)) {
+            return ScanResult.WIFI_BAND_5_GHZ;
+        } else if (ScanResult.is6GHz(freqMHz)) {
+            return ScanResult.WIFI_BAND_6_GHZ;
+        } else if (ScanResult.is60GHz(freqMHz)) {
+            return ScanResult.WIFI_BAND_60_GHZ;
+        }
+        return ScanResult.UNSPECIFIED;
+    }
+
+    /**
+     * Validates that the passed band is a valid band
+     * @param band the band to check
+     * @return true if the band is valid, false otherwise
+     * @hide
+     */
+    public static boolean validateBand(@WifiBand int band) {
+        switch (band) {
+            case ScanResult.UNSPECIFIED:
+            case ScanResult.WIFI_BAND_24_GHZ:
+            case ScanResult.WIFI_BAND_5_GHZ:
+            case ScanResult.WIFI_BAND_6_GHZ:
+            case ScanResult.WIFI_BAND_60_GHZ:
+                return true;
+            default:
+                return false;
+        }
+    }
 
     /**
      * Builder used to create {@link WifiNetworkSpecifier} objects.
@@ -112,6 +161,10 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
          * SSID-specific probe request must be used for scans.
          */
         private boolean mIsHiddenSSID;
+        /**
+         * The requested band for this connection, or BAND_UNSPECIFIED.
+         */
+        @WifiBand private int mBand;
 
         public Builder() {
             mSsidPatternMatcher = null;
@@ -122,6 +175,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
             mWpa2EnterpriseConfig = null;
             mWpa3EnterpriseConfig = null;
             mIsHiddenSSID = false;
+            mBand = ScanResult.UNSPECIFIED;
         }
 
         /**
@@ -353,6 +407,23 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
             return this;
         }
 
+        /**
+         * Specifies the band requested for this network.
+         *
+         * Only a single band can be requested. An app can file multiple callbacks concurrently
+         * if they need to know about multiple bands.
+         *
+         * @param band The requested band.
+         * @return Instance of {@link Builder} to enable chaining of the builder method.
+         */
+        public @NonNull Builder setBand(@WifiBand int band) {
+            if (!validateBand(band)) {
+                throw new IllegalArgumentException("Unexpected band in setBand : " + band);
+            }
+            mBand = band;
+            return this;
+        }
+
         private void setSecurityParamsInWifiConfiguration(
                 @NonNull WifiConfiguration configuration) {
             if (!TextUtils.isEmpty(mWpa2PskPassphrase)) { // WPA-PSK network.
@@ -462,14 +533,27 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
         }
 
         /**
-         * Create a specifier object used to request a local Wi-Fi network. The generated
+         * Create a specifier object used to request a Wi-Fi network. The generated
          * {@link NetworkSpecifier} should be used in
          * {@link NetworkRequest.Builder#setNetworkSpecifier(NetworkSpecifier)} when building
-         * the {@link NetworkRequest}. These specifiers can only be used to request a local wifi
-         * network (i.e no internet capability). So, the device will not switch it's default route
-         * to wifi if there are other transports (cellular for example) available.
+         * the {@link NetworkRequest}.
+         *
          *<p>
-         * Note: Apps can set a combination of network match params:
+         * When using with {@link ConnectivityManager#requestNetwork(NetworkRequest,
+         * NetworkCallback)} or variants, note that some devices may not support requesting a
+         * network with all combinations of specifier members. For example, some devices may only
+         * support requesting local-only networks (networks without the
+         * {@link NetworkCapabilities#NET_CAPABILITY_INTERNET} capability), or not support
+         * requesting a particular band. However, there are no restrictions when using
+         * {@link ConnectivityManager#registerNetworkCallback(NetworkRequest, NetworkCallback)}
+         * or other similar methods which monitor but do not request networks.
+         *
+         * If the device can't support a request, the app will receive a call to
+         * {@link NetworkCallback#onUnavailable()}.
+         *</p>
+         *
+         *<p>
+         * When requesting a local-only network, apps can set a combination of network match params:
          * <li> SSID Pattern using {@link #setSsidPattern(PatternMatcher)} OR Specific SSID using
          * {@link #setSsid(String)}. </li>
          * AND/OR
@@ -479,6 +563,12 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
          * The system will find the set of networks matching the request and present the user
          * with a system dialog which will allow the user to select a specific Wi-Fi network to
          * connect to or to deny the request.
+         *
+         * To protect user privacy, some limitations to the ability of matching patterns apply.
+         * In particular, when the system brings up a network to satisfy a {@link NetworkRequest}
+         * from some app, the system reserves the right to decline matching the SSID pattern to
+         * the real SSID of the network for other apps than the app that requested the network, and
+         * not send those callbacks even if the SSID matches the requested pattern.
          *</p>
          *
          * For example:
@@ -512,15 +602,15 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
          * @throws IllegalStateException on invalid params set.
          */
         public @NonNull WifiNetworkSpecifier build() {
-            if (!hasSetAnyPattern()) {
+            if (!hasSetAnyPattern() && mBand == ScanResult.UNSPECIFIED) {
                 throw new IllegalStateException("one of setSsidPattern/setSsid/setBssidPattern/"
-                        + "setBssid should be invoked for specifier");
+                        + "setBssid/setBand should be invoked for specifier");
             }
             setMatchAnyPatternIfUnset();
             if (hasSetMatchNonePattern()) {
                 throw new IllegalStateException("cannot set match-none pattern for specifier");
             }
-            if (hasSetMatchAllPattern()) {
+            if (hasSetMatchAllPattern() && mBand == ScanResult.UNSPECIFIED) {
                 throw new IllegalStateException("cannot set match-all pattern for specifier");
             }
             if (mIsHiddenSSID && mSsidPatternMatcher.getType() != PatternMatcher.PATTERN_LITERAL) {
@@ -532,6 +622,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
             return new WifiNetworkSpecifier(
                     mSsidPatternMatcher,
                     mBssidPatternMatcher,
+                    mBand,
                     buildWifiConfiguration());
         }
     }
@@ -548,6 +639,11 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
      * @hide
      */
     public final Pair<MacAddress, MacAddress> bssidPatternMatcher;
+
+    /**
+     * The band for this Wi-Fi network.
+     */
+    @WifiBand private final int mBand;
 
     /**
      * Security credentials for the network.
@@ -568,6 +664,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
     /** @hide */
     public WifiNetworkSpecifier(@NonNull PatternMatcher ssidPatternMatcher,
                                 @NonNull Pair<MacAddress, MacAddress> bssidPatternMatcher,
+                                @WifiBand int band,
                                 @NonNull WifiConfiguration wifiConfiguration) {
         checkNotNull(ssidPatternMatcher);
         checkNotNull(bssidPatternMatcher);
@@ -575,7 +672,15 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
 
         this.ssidPatternMatcher = ssidPatternMatcher;
         this.bssidPatternMatcher = bssidPatternMatcher;
+        this.mBand = band;
         this.wifiConfiguration = wifiConfiguration;
+    }
+
+    /**
+     * The band for this Wi-Fi network specifier.
+     */
+    @WifiBand public int getBand() {
+        return mBand;
     }
 
     public static final @NonNull Creator<WifiNetworkSpecifier> CREATOR =
@@ -587,8 +692,9 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
                     MacAddress mask = in.readParcelable(null);
                     Pair<MacAddress, MacAddress> bssidPatternMatcher =
                             Pair.create(baseAddress, mask);
+                    int band = in.readInt();
                     WifiConfiguration wifiConfiguration = in.readParcelable(null);
-                    return new WifiNetworkSpecifier(ssidPatternMatcher, bssidPatternMatcher,
+                    return new WifiNetworkSpecifier(ssidPatternMatcher, bssidPatternMatcher, band,
                             wifiConfiguration);
                 }
 
@@ -608,6 +714,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
         dest.writeParcelable(ssidPatternMatcher, flags);
         dest.writeParcelable(bssidPatternMatcher.first, flags);
         dest.writeParcelable(bssidPatternMatcher.second, flags);
+        dest.writeInt(mBand);
         dest.writeParcelable(wifiConfiguration, flags);
     }
 
@@ -615,7 +722,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
     public int hashCode() {
         return Objects.hash(
                 ssidPatternMatcher.getPath(), ssidPatternMatcher.getType(), bssidPatternMatcher,
-                wifiConfiguration.allowedKeyManagement);
+                mBand, wifiConfiguration.allowedKeyManagement);
     }
 
     @Override
@@ -633,6 +740,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
                     lhs.ssidPatternMatcher.getType())
                 && Objects.equals(this.bssidPatternMatcher,
                     lhs.bssidPatternMatcher)
+                && this.mBand == lhs.mBand
                 && Objects.equals(this.wifiConfiguration.allowedKeyManagement,
                     lhs.wifiConfiguration.allowedKeyManagement);
     }
@@ -645,6 +753,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
                 .append(", BSSID Match pattern=").append(bssidPatternMatcher)
                 .append(", SSID=").append(wifiConfiguration.SSID)
                 .append(", BSSID=").append(wifiConfiguration.BSSID)
+                .append(", band=").append(mBand)
                 .append("]")
                 .toString();
     }
