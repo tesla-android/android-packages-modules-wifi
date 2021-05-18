@@ -53,6 +53,7 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
+import android.net.wifi.WifiSsid;
 import android.os.Binder;
 import android.os.Process;
 import android.os.RemoteException;
@@ -73,11 +74,13 @@ import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ClientMode.LinkProbeCallback;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.coex.CoexUtils;
+import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.ArrayUtils;
 import com.android.server.wifi.util.ScanResultUtil;
 
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -547,6 +550,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     }
                     return 0;
                 case "settings-reset":
+                    mWifiNative.stopFakingScanDetails();
+                    mWifiNative.resetFakeScanDetails();
                     mWifiService.factoryReset(SHELL_PACKAGE_NAME);
                     return 0;
                 case "list-scan-results":
@@ -923,6 +928,56 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     mSelfRecovery.trigger(REASON_API_CALL);
                     return 0;
                 }
+                case "add-fake-scan": {
+                    String ssid = getNextArgRequired();
+                    String bssid = getNextArgRequired();
+                    String capabilities = getNextArgRequired();
+                    int frequency;
+                    int dbm;
+                    String freqStr = getNextArgRequired();
+                    try {
+                        frequency = Integer.parseInt(freqStr);
+                    } catch (NumberFormatException e) {
+                        pw.println(
+                                "Invalid frequency argument to 'add-fake-scan' "
+                                        + "- must be an integer: " + freqStr);
+                        return -1;
+                    }
+                    if (frequency <= 0) {
+                        pw.println("Invalid frequency argument to 'add-fake-scan' - must be a "
+                                + "positive integer: " + freqStr);
+                    }
+                    String dbmString = getNextArgRequired();
+                    try {
+                        dbm = Integer.parseInt(dbmString);
+                    } catch (NumberFormatException e) {
+                        pw.println(
+                                "Invalid dbm argument to 'add-fake-scan' "
+                                        + "- must be an integer: " + dbmString);
+                        return -1;
+                    }
+                    ScanResult.InformationElement ieSSid = new ScanResult.InformationElement(
+                            ScanResult.InformationElement.EID_SSID,
+                            0,
+                            ssid.getBytes(StandardCharsets.UTF_8));
+                    ScanResult.InformationElement[] ies =
+                            new ScanResult.InformationElement[]{ieSSid};
+                    ScanDetail sd = new ScanDetail(new NetworkDetail(bssid, ies, null, frequency),
+                            WifiSsid.createFromAsciiEncoded(ssid), bssid, capabilities, dbm,
+                            frequency, SystemClock.elapsedRealtime() * 1000, ies, null, null);
+                    mWifiNative.addFakeScanDetail(sd);
+                    return 0;
+                }
+                case "reset-fake-scans":
+                    mWifiNative.resetFakeScanDetails();
+                    return 0;
+                case "start-faking-scans":
+                    mWifiNative.startFakingScanDetails();
+                    mWifiService.startScan(SHELL_PACKAGE_NAME, null); // to trigger update
+                    return 0;
+                case "stop-faking-scans":
+                    mWifiNative.stopFakingScanDetails();
+                    return 0;
                 default:
                     return handleDefaultCommands(cmd);
             }
@@ -1645,6 +1700,33 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 + " approval will be deleted, it is the same as uninstalling this app.");
         pw.println("  trigger-recovery");
         pw.println("    Trigger Wi-Fi subsystem restart.");
+        pw.println("  start-faking-scans");
+        pw.println("    Start faking scan results into the framework (configured with "
+                + "'add-fake-scan'), stop with 'stop-faking-scans'.");
+        pw.println("  stop-faking-scans");
+        pw.println("    Stop faking scan results - started with 'start-faking-scans'.");
+        pw.println("  add-fake-scan <ssid> <bssid> <capabilities> <frequency> <dbm>");
+        pw.println("    Add a fake scan result to be used when enabled via `start-faking-scans'.");
+        pw.println("    Example WPA2: add-fake-scan fakeWpa2 80:01:02:03:04:05 "
+                + "\"[WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS]\" 2412 -55");
+        pw.println("    Example WPA3: add-fake-scan fakeWpa3 80:01:02:03:04:06 "
+                + "\"[RSN-SAE+FT/SAE-CCMP][ESS]\" 2412 -55");
+        pw.println(
+                "    Example Open: add-fake-scan fakeOpen 80:01:02:03:04:07 \"[ESS]\" 2412 -55");
+        pw.println("    Example OWE: add-fake-scan fakeOwe 80:01:02:03:04:08 \"[RSN-OWE-CCMP]\" "
+                + "2412 -55");
+        pw.println(
+                "    Example WPA2/WPA3 transition mode: add-fake-scan fakeWpa2t3 80:01:02:03:04:09 "
+                        + "\"[WPA2-PSK-CCMP][RSN-PSK+SAE-CCMP][ESS][MFPC]\" 2412 -55");
+        pw.println(
+                "    Example Open/OWE transition mode: add-fake-scan fakeOpenOwe 80:01:02:03:04:0A "
+                        + "\"[RSN-OWE_TRANSITION-CCMP][ESS]\" 2412 -55");
+        pw.println(
+                "    Example Passpoint: add-fake-scan fakePasspoint 80:01:02:03:04:0B "
+                        + "\"[WPA2-EAP/SHA1-CCMP][RSN-EAP/SHA1-CCMP][ESS][MFPR][MFPC]"
+                        + "[PASSPOINT]\" 2412 -55");
+        pw.println("  reset-fake-scans");
+        pw.println("    Resets all fake scan results added by 'add-fake-scan'.");
     }
 
     @Override
