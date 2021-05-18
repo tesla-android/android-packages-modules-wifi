@@ -80,6 +80,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
     @Mock private NetdWrapper mNetdWrapper;
     @Mock private PropertyService mPropertyService;
     @Mock private WifiMetrics mWifiMetrics;
+    @Mock BuildProperties mBuildProperties;
     @Mock private WifiInjector mWifiInjector;
 
     @Mock private WifiNative.StatusListener mStatusListener;
@@ -131,6 +132,10 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         when(mWifiVendorHal.removeApIface(any())).thenReturn(true);
         when(mWifiVendorHal.replaceStaIfaceRequestorWs(any(), any())).thenReturn(true);
 
+        when(mBuildProperties.isEngBuild()).thenReturn(false);
+        when(mBuildProperties.isUserdebugBuild()).thenReturn(false);
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+
         when(mWificondControl.setupInterfaceForClientMode(any(), any(), any(), any())).thenReturn(
                 true);
         when(mWificondControl.setupInterfaceForSoftApMode(any())).thenReturn(true);
@@ -168,7 +173,7 @@ public class WifiNativeInterfaceManagementTest extends WifiBaseTest {
         mWifiNative = new WifiNative(
                 mWifiVendorHal, mSupplicantStaIfaceHal, mHostapdHal, mWificondControl,
                 mWifiMonitor, mPropertyService, mWifiMetrics,
-                new Handler(mLooper.getLooper()), null, mWifiInjector);
+                new Handler(mLooper.getLooper()), null, mBuildProperties, mWifiInjector);
         mWifiNative.initialize();
         mWifiNative.registerStatusListener(mStatusListener);
 

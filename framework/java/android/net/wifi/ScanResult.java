@@ -970,6 +970,13 @@ public final class ScanResult implements Parcelable {
         public InformationElement() {
         }
 
+        /** @hide */
+        public InformationElement(int id, int idExt, byte[] bytes) {
+            this.id = id;
+            this.idExt = idExt;
+            this.bytes = bytes.clone();
+        }
+
         public InformationElement(@NonNull InformationElement rhs) {
             this.id = rhs.id;
             this.idExt = rhs.idExt;

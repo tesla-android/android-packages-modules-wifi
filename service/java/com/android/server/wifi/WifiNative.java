@@ -93,6 +93,7 @@ public class WifiNative {
     private final WifiMetrics mWifiMetrics;
     private final Handler mHandler;
     private final Random mRandom;
+    private final BuildProperties mBuildProperties;
     private final WifiInjector mWifiInjector;
     private NetdWrapper mNetdWrapper;
     private boolean mVerboseLoggingEnabled = false;
@@ -100,12 +101,14 @@ public class WifiNative {
     private final List<CoexUnsafeChannel> mCachedCoexUnsafeChannels = new ArrayList<>();
     private int mCachedCoexRestrictions;
     private CountryCodeChangeListenerInternal mCountryCodeChangeListener;
+    private boolean mUseFakeScanDetails;
+    private final ArrayList<ScanDetail> mFakeScanDetails = new ArrayList<>();
 
     public WifiNative(WifiVendorHal vendorHal,
                       SupplicantStaIfaceHal staIfaceHal, HostapdHal hostapdHal,
                       WifiNl80211Manager condManager, WifiMonitor wifiMonitor,
                       PropertyService propertyService, WifiMetrics wifiMetrics,
-                      Handler handler, Random random,
+                      Handler handler, Random random, BuildProperties buildProperties,
                       WifiInjector wifiInjector) {
         mWifiVendorHal = vendorHal;
         mSupplicantStaIfaceHal = staIfaceHal;
@@ -116,6 +119,7 @@ public class WifiNative {
         mWifiMetrics = wifiMetrics;
         mHandler = handler;
         mRandom = random;
+        mBuildProperties = buildProperties;
         mWifiInjector = wifiInjector;
     }
 
@@ -1572,8 +1576,64 @@ public class WifiNative {
      * Returns an empty ArrayList on failure.
      */
     public ArrayList<ScanDetail> getScanResults(@NonNull String ifaceName) {
+        if (mUseFakeScanDetails) {
+            synchronized (mFakeScanDetails) {
+                ArrayList<ScanDetail> copy = new ArrayList<>();
+                for (ScanDetail sd: mFakeScanDetails) {
+                    sd.getScanResult().ifaceName = ifaceName;
+                    // otherwise the fake will be too old
+                    sd.getScanResult().timestamp = SystemClock.elapsedRealtime() * 1000;
+
+                    // clone the ScanResult (which was updated above) so that each call gets a
+                    // unique timestamp
+                    copy.add(new ScanDetail(new ScanResult(sd.getScanResult()),
+                            sd.getNetworkDetail()));
+                }
+                return copy;
+            }
+        }
         return convertNativeScanResults(ifaceName, mWifiCondManager.getScanResults(
                 ifaceName, WifiNl80211Manager.SCAN_TYPE_SINGLE_SCAN));
+    }
+
+    /**
+     * Start faking scan results - using information provided via
+     * {@link #addFakeScanDetail(ScanDetail)}. Stop with {@link #stopFakingScanDetails()}.
+     */
+    public void startFakingScanDetails() {
+        if (mBuildProperties.isUserBuild()) {
+            Log.wtf(TAG, "Can't fake scan results in a user build!");
+            return;
+        }
+        Log.d(TAG, "Starting faking scan results - " + mFakeScanDetails);
+        mUseFakeScanDetails = true;
+    }
+
+    /**
+     * Add fake scan result. Fakes are not used until activated via
+     * {@link #startFakingScanDetails()}.
+     * @param fakeScanDetail
+     */
+    public void addFakeScanDetail(@NonNull ScanDetail fakeScanDetail) {
+        synchronized (mFakeScanDetails) {
+            mFakeScanDetails.add(fakeScanDetail);
+        }
+    }
+
+    /**
+     * Reset the fake scan result list updated via {@link #addFakeScanDetail(ScanDetail)} .}
+     */
+    public void resetFakeScanDetails() {
+        synchronized (mFakeScanDetails) {
+            mFakeScanDetails.clear();
+        }
+    }
+
+    /**
+     * Stop faking scan results. Started with {@link #startFakingScanDetails()}.
+     */
+    public void stopFakingScanDetails() {
+        mUseFakeScanDetails = false;
     }
 
     /**
