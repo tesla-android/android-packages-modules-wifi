@@ -312,6 +312,24 @@ public class CoexUtilsTest {
     }
 
     /**
+     * Verifies that get5gHarmonicCoexUnsafeChannels returns no channels if the interference lands
+     * in between channel 68 and 96, even though it is in the middle of the band.
+     */
+    @Test
+    public void testGet5gHarmonicCoexUnsafeChannels_betweenChan68andChan96_returnsNoChannels() {
+        final int unsafeLowerKhz = getUpperFreqKhz(68, WIFI_BAND_5_GHZ);
+        final int unsafeUpperKhz = getLowerFreqKhz(96, WIFI_BAND_5_GHZ);
+        final int harmonicDeg = 2;
+        final int maxOverlap = 50;
+
+        assertThat(get5gHarmonicCoexUnsafeChannels(
+                getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
+                getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
+                .isEmpty();
+    }
+
+    /**
      * Verifies that getIntermodCoexUnsafeChannels returns the correct subset of 2.4GHz channels
      * for the example channel 3350 of LTE Band 7.
      */

@@ -356,7 +356,8 @@ public class CoexUtils {
         final int highest2gChannel = get2gHighestOverlapChannel(unsafeUpperKhz);
         // If the interference has a valid overlap over the 2.4GHz band, mark every channel
         // in the inclusive range of the lowest and highest overlapped channels.
-        if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL) {
+        if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL
+                && lowest2gChannel <= highest2gChannel) {
             for (int channel = lowest2gChannel; channel <= highest2gChannel; channel++) {
                 coexUnsafeChannels.add(
                         new CoexUnsafeChannel(WIFI_BAND_24_GHZ, channel, powerCapDbm));
@@ -368,7 +369,8 @@ public class CoexUtils {
         final int lowest5gChannel = get5gLowestOverlap20MhzChannel(unsafeLowerKhz);
         // If the interference has a valid overlap over the 5GHz band, mark every channel
         // in the inclusive range of the lowest and highest overlapped channels.
-        if (lowest5gChannel != INVALID_CHANNEL && highest5gChannel != INVALID_CHANNEL) {
+        if (lowest5gChannel != INVALID_CHANNEL && highest5gChannel != INVALID_CHANNEL
+                && lowest5gChannel <= highest5gChannel) {
             final Set<Integer> overlapped5g20MhzChannels = CHANNEL_SET_5_GHZ_20_MHZ.subSet(
                     lowest5gChannel, true,
                     highest5gChannel, true);
@@ -409,7 +411,8 @@ public class CoexUtils {
 
         int lowest2gChannel = get2gLowestOverlapChannel(unsafeLowerKhz);
         int highest2gChannel = get2gHighestOverlapChannel(unsafeUpperKhz);
-        if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL) {
+        if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL
+                && lowest2gChannel <= highest2gChannel) {
             // Find lowest channel at max overlap
             while (getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
                     getLowerFreqKhz(lowest2gChannel, WIFI_BAND_24_GHZ),
@@ -447,7 +450,8 @@ public class CoexUtils {
 
         final int lowest5gChannel = get5gLowestOverlap20MhzChannel(unsafeLowerKhz);
         final int highest5gChannel = get5gHighestOverlap20MhzChannel(unsafeUpperKhz);
-        if (lowest5gChannel != INVALID_CHANNEL && highest5gChannel != INVALID_CHANNEL) {
+        if (lowest5gChannel != INVALID_CHANNEL && highest5gChannel != INVALID_CHANNEL
+                && lowest5gChannel <= highest5gChannel) {
             Map<Integer, Integer> overlapPercents = new HashMap<>();
             // Find lowest 20MHz overlap channel
             overlapPercents.put(lowest5gChannel, getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
