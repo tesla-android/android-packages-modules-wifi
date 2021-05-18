@@ -187,7 +187,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         setUpResources(mResources);
-        mWifiInfo = new ExtendedWifiInfo(mWifiGlobals);
+        mWifiInfo = new ExtendedWifiInfo(mWifiGlobals, TEST_IFACE_NAME);
         mWifiInfo.setFrequency(2412);
         mWifiInfo.setBSSID(TEST_BSSID);
         mLooper = new TestLooper();
