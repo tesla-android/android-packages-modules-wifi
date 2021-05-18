@@ -690,7 +690,7 @@ public class WifiServiceImpl extends BaseWifiService {
             // There is no explicit disconnection event in clientModeImpl during shutdown.
             // Call resetConnectionState() so that connection duration is calculated
             // before memory store write triggered by mMemoryStoreImpl.stop().
-            mWifiScoreCard.resetConnectionState();
+            mWifiScoreCard.resetAllConnectionStates();
             mMemoryStoreImpl.stop();
         });
     }
