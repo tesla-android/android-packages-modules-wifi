@@ -25,6 +25,7 @@ import android.net.MacAddress;
 import android.net.MatchAllNetworkSpecifier;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.net.wifi.ScanResult.WifiBand;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -40,10 +41,31 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
      */
     private final WifiConfiguration mWifiConfiguration;
 
-    public WifiNetworkAgentSpecifier(@NonNull WifiConfiguration wifiConfiguration) {
+    /**
+     * Band, as one of the ScanResult.WIFI_BAND_* constants.
+     */
+    @WifiBand private final int mBand;
+
+    /**
+     * Whether to match P2P requests.
+     *
+     * When matching against an instance of WifiNetworkSpecifier, simply matching SSID or
+     * BSSID patterns would let apps know if a given WiFi network's (B)SSID matches a pattern
+     * by simply filing a NetworkCallback with that pattern. Also, apps asking for a match on
+     * (B)SSID are apps requesting a P2P network, which involves protection with UI shown by
+     * the system, and the WifiNetworkSpecifiers for these P2P networks should never match
+     * an Internet-providing network to avoid calling back these apps on a network that happens
+     * to match their requested pattern but has not been brought up for them.
+     */
+    private final boolean mMatchLocalOnlySpecifiers;
+
+    public WifiNetworkAgentSpecifier(@NonNull WifiConfiguration wifiConfiguration,
+            @WifiBand int band, boolean matchLocalOnlySpecifiers) {
         checkNotNull(wifiConfiguration);
 
         mWifiConfiguration = wifiConfiguration;
+        mBand = band;
+        mMatchLocalOnlySpecifiers = matchLocalOnlySpecifiers;
     }
 
     /**
@@ -54,7 +76,10 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
                 @Override
                 public WifiNetworkAgentSpecifier createFromParcel(@NonNull Parcel in) {
                     WifiConfiguration wifiConfiguration = in.readParcelable(null);
-                    return new WifiNetworkAgentSpecifier(wifiConfiguration);
+                    int band = in.readInt();
+                    boolean matchLocationSensitiveFields = in.readBoolean();
+                    return new WifiNetworkAgentSpecifier(wifiConfiguration, band,
+                            matchLocationSensitiveFields);
                 }
 
                 @Override
@@ -71,6 +96,8 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
         dest.writeParcelable(mWifiConfiguration, flags);
+        dest.writeInt(mBand);
+        dest.writeBoolean(mMatchLocalOnlySpecifiers);
     }
 
     @Override
@@ -104,6 +131,13 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
         checkNotNull(this.mWifiConfiguration.BSSID);
         checkNotNull(this.mWifiConfiguration.allowedKeyManagement);
 
+        if (!mMatchLocalOnlySpecifiers) {
+            // Specifiers that match non-local-only networks only match against the band.
+            return ns.getBand() == mBand;
+        }
+        if (ns.getBand() != ScanResult.UNSPECIFIED && ns.getBand() != mBand) {
+            return false;
+        }
         final String ssidWithQuotes = this.mWifiConfiguration.SSID;
         checkState(ssidWithQuotes.startsWith("\"") && ssidWithQuotes.endsWith("\""));
         final String ssidWithoutQuotes = ssidWithQuotes.substring(1, ssidWithQuotes.length() - 1);
@@ -128,7 +162,9 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
         return Objects.hash(
                 mWifiConfiguration.SSID,
                 mWifiConfiguration.BSSID,
-                mWifiConfiguration.allowedKeyManagement);
+                mWifiConfiguration.allowedKeyManagement,
+                mBand,
+                mMatchLocalOnlySpecifiers);
     }
 
     @Override
@@ -143,7 +179,9 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
         return Objects.equals(this.mWifiConfiguration.SSID, lhs.mWifiConfiguration.SSID)
                 && Objects.equals(this.mWifiConfiguration.BSSID, lhs.mWifiConfiguration.BSSID)
                 && Objects.equals(this.mWifiConfiguration.allowedKeyManagement,
-                    lhs.mWifiConfiguration.allowedKeyManagement);
+                    lhs.mWifiConfiguration.allowedKeyManagement)
+                && mBand == lhs.mBand
+                && mMatchLocalOnlySpecifiers == lhs.mMatchLocalOnlySpecifiers;
     }
 
     @Override
@@ -152,6 +190,8 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
         sb.append("WifiConfiguration=")
                 .append(", SSID=").append(mWifiConfiguration.SSID)
                 .append(", BSSID=").append(mWifiConfiguration.BSSID)
+                .append(", band=").append(mBand)
+                .append(", matchLocationSensitiveFields=").append(mMatchLocalOnlySpecifiers)
                 .append("]");
         return sb.toString();
     }

@@ -20,6 +20,7 @@ import static android.net.wifi.WifiManager.ALL_ZEROS_MAC_ADDRESS;
 
 import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
 
+import android.annotation.SuppressLint;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.StaticIpConfiguration;
@@ -751,6 +752,12 @@ public class WifiConfigurationUtil {
         return false;
     }
 
+    // TODO: b/177434707 calls inside same module are safe
+    @SuppressLint("NewApi")
+    private static int getBand(WifiNetworkSpecifier s) {
+        return s.getBand();
+    }
+
     /**
      * Validate the configuration received from an external application inside
      * {@link WifiNetworkSpecifier}.
@@ -758,15 +765,16 @@ public class WifiConfigurationUtil {
      * This method checks for the following parameters:
      * 1. {@link WifiNetworkSpecifier#ssidPatternMatcher}
      * 2. {@link WifiNetworkSpecifier#bssidPatternMatcher}
-     * 3. {@link WifiConfiguration#SSID}
-     * 4. {@link WifiConfiguration#BSSID}
-     * 5. {@link WifiConfiguration#preSharedKey}
-     * 6. {@link WifiConfiguration#allowedKeyManagement}
-     * 7. {@link WifiConfiguration#allowedProtocols}
-     * 8. {@link WifiConfiguration#allowedAuthAlgorithms}
-     * 9. {@link WifiConfiguration#allowedGroupCiphers}
-     * 10. {@link WifiConfiguration#allowedPairwiseCiphers}
-     * 11. {@link WifiConfiguration#getIpConfiguration()}
+     * 3. {@link WifiNetworkSpecifier#getBand()}
+     * 4. {@link WifiConfiguration#SSID}
+     * 5. {@link WifiConfiguration#BSSID}
+     * 6. {@link WifiConfiguration#preSharedKey}
+     * 7. {@link WifiConfiguration#allowedKeyManagement}
+     * 8. {@link WifiConfiguration#allowedProtocols}
+     * 9. {@link WifiConfiguration#allowedAuthAlgorithms}
+     * 10. {@link WifiConfiguration#allowedGroupCiphers}
+     * 11. {@link WifiConfiguration#allowedPairwiseCiphers}
+     * 12. {@link WifiConfiguration#getIpConfiguration()}
      *
      * @param specifier Instance of {@link WifiNetworkSpecifier}.
      * @return true if the parameters are valid, false otherwise.
@@ -782,6 +790,9 @@ public class WifiConfigurationUtil {
         }
         if (isMatchAllNetworkSpecifier(specifier)) {
             Log.e(TAG, "validateNetworkSpecifier failed : match-all specifier");
+            return false;
+        }
+        if (!WifiNetworkSpecifier.validateBand(getBand(specifier))) {
             return false;
         }
         WifiConfiguration config = specifier.wifiConfiguration;

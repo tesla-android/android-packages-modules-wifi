@@ -25,6 +25,7 @@ import static java.lang.Math.toIntExact;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
@@ -646,6 +647,12 @@ public class WifiNetworkFactory extends NetworkFactory {
         return false;
     }
 
+    // TODO: b/177434707 calls inside same module are safe
+    @SuppressLint("NewApi")
+    private static int getBand(WifiNetworkSpecifier s) {
+        return s.getBand();
+    }
+
     boolean isRequestWithWifiNetworkSpecifierValid(NetworkRequest networkRequest) {
         // Request cannot have internet capability since such a request can never be fulfilled.
         // (NetworkAgent for connection with WifiNetworkSpecifier will not have internet capability)
@@ -672,6 +679,10 @@ public class WifiNetworkFactory extends NetworkFactory {
             return false;
         }
         WifiNetworkSpecifier wns = (WifiNetworkSpecifier) networkRequest.getNetworkSpecifier();
+        if (getBand(wns) != ScanResult.UNSPECIFIED) {
+            Log.e(TAG, "Requesting specific frequency bands is not yet supported. Rejecting");
+            return false;
+        }
         if (!WifiConfigurationUtil.validateNetworkSpecifier(wns)) {
             Log.e(TAG, "Invalid wifi network specifier: " + wns + ". Rejecting ");
             return false;
@@ -790,7 +801,8 @@ public class WifiNetworkFactory extends NetworkFactory {
             mActiveSpecificNetworkRequest = networkRequest;
             WifiNetworkSpecifier wns = (WifiNetworkSpecifier) ns;
             mActiveSpecificNetworkRequestSpecifier = new WifiNetworkSpecifier(
-                    wns.ssidPatternMatcher, wns.bssidPatternMatcher, wns.wifiConfiguration);
+                    wns.ssidPatternMatcher, wns.bssidPatternMatcher, ScanResult.UNSPECIFIED,
+                    wns.wifiConfiguration);
             mWifiMetrics.incrementNetworkRequestApiNumRequest();
 
             if (!triggerConnectIfUserApprovedMatchFound()) {
@@ -999,6 +1011,9 @@ public class WifiNetworkFactory extends NetworkFactory {
         // TODO (b/142035508): Use a more generic mechanism to fix this.
         networkToConnect.shared = false;
         networkToConnect.fromWifiNetworkSpecifier = true;
+
+        // TODO(b/188021807): Implement the band request from the specifier on the network to
+        // connect.
 
         // Store the user selected network.
         mUserSelectedNetwork = networkToConnect;

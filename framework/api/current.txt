@@ -559,6 +559,7 @@ package android.net.wifi {
 
   public final class WifiNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     method public int describeContents();
+    method public int getBand();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiNetworkSpecifier> CREATOR;
   }
@@ -566,6 +567,7 @@ package android.net.wifi {
   public static final class WifiNetworkSpecifier.Builder {
     ctor public WifiNetworkSpecifier.Builder();
     method @NonNull public android.net.wifi.WifiNetworkSpecifier build();
+    method @NonNull public android.net.wifi.WifiNetworkSpecifier.Builder setBand(int);
     method @NonNull public android.net.wifi.WifiNetworkSpecifier.Builder setBssid(@NonNull android.net.MacAddress);
     method @NonNull public android.net.wifi.WifiNetworkSpecifier.Builder setBssidPattern(@NonNull android.net.MacAddress, @NonNull android.net.MacAddress);
     method @NonNull public android.net.wifi.WifiNetworkSpecifier.Builder setIsEnhancedOpen(boolean);
