@@ -3735,6 +3735,8 @@ public class WifiMetrics {
                         + mWifiLogProto.numConnectToNetworkSupportingMbo);
                 pw.println("mWifiLogProto.numConnectToNetworkSupportingOce="
                         + mWifiLogProto.numConnectToNetworkSupportingOce);
+                pw.println("mWifiLogProto.numSteeringRequest="
+                        + mWifiLogProto.numSteeringRequest);
                 pw.println("mWifiLogProto.numForceScanDueToSteeringRequest="
                         + mWifiLogProto.numForceScanDueToSteeringRequest);
                 pw.println("mWifiLogProto.numMboCellularSwitchRequest="
@@ -7413,6 +7415,15 @@ public class WifiMetrics {
     public void incrementNetworkSelectionFilteredBssidCountDueToMboAssocDisallowInd() {
         synchronized (mLock) {
             mWifiLogProto.numBssidFilteredDueToMboAssocDisallowInd++;
+        }
+    }
+
+    /**
+     * Increment number of times BSS transition management request frame is received from the AP.
+     */
+    public void incrementSteeringRequestCount() {
+        synchronized (mLock) {
+            mWifiLogProto.numSteeringRequest++;
         }
     }
 
