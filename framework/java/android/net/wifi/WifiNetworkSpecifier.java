@@ -20,6 +20,7 @@ import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.SystemApi;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.MacAddress;
@@ -32,6 +33,8 @@ import android.os.Parcelable;
 import android.os.PatternMatcher;
 import android.text.TextUtils;
 import android.util.Pair;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
@@ -767,5 +770,15 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
         // Specific requests are checked for equality although testing for equality of 2 patterns do
         // not make much sense!
         return equals(other);
+    }
+
+    /** @hide */
+    @Override
+    @SystemApi
+    @Nullable
+    public NetworkSpecifier redact() {
+        if (!SdkLevel.isAtLeastS()) return this;
+
+        return new Builder().setBand(mBand).build();
     }
 }

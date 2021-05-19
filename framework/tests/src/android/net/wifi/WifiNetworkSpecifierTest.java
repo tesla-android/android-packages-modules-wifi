@@ -860,4 +860,30 @@ public class WifiNetworkSpecifierTest {
         assertFalse(specifier2.canBeSatisfiedBy(specifier1));
         assertFalse(specifier1.canBeSatisfiedBy(specifier2));
     }
+
+    /**
+     * Test WifiNetworkSpecifier redaction.
+     */
+    @Test
+    public void testRedact() {
+        WifiConfiguration wifiConfiguration = new WifiConfiguration();
+        wifiConfiguration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+        wifiConfiguration.preSharedKey = TEST_PRESHARED_KEY;
+
+        WifiNetworkSpecifier specifier =
+                new WifiNetworkSpecifier(new PatternMatcher(TEST_SSID, PATTERN_LITERAL),
+                        Pair.create(MacAddress.fromString(TEST_BSSID_OUI_BASE_ADDRESS),
+                                MacAddress.fromString(TEST_BSSID_OUI_MASK)),
+                        ScanResult.WIFI_BAND_5_GHZ,
+                        wifiConfiguration);
+
+        final NetworkSpecifier redacted = specifier.redact();
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(
+                    new WifiNetworkSpecifier.Builder().setBand(ScanResult.WIFI_BAND_5_GHZ).build(),
+                    redacted);
+        } else {
+            assertTrue(redacted == specifier);
+        }
+    }
 }
