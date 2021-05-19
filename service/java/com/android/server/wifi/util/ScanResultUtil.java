@@ -81,11 +81,16 @@ public class ScanResultUtil {
 
     /**
      * Helper method to check if the provided |scanResult| corresponds to a EAP network or not.
-     * This checks if the provided capabilities string contains EAP/SHA1 encryption type,
-     * and no Management Frame Protection Required string, or not.
+     * This checks these conditions:
+     * - Enable EAP/SHA1 or EAP/SHA256 AKM.
+     * - Not a WPA3 Enterprise only network.
+     * - Not a WPA3 Enterprise transition network.
      */
     public static boolean isScanResultForEapNetwork(ScanResult scanResult) {
-        return scanResult.capabilities.contains("EAP/SHA1");
+        return (scanResult.capabilities.contains("EAP/SHA1")
+                        || scanResult.capabilities.contains("EAP/SHA256"))
+                && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
+                && !isScanResultForWpa3EnterpriseTransitionNetwork(scanResult);
     }
 
     private static boolean isScanResultForPmfMandatoryNetwork(ScanResult scanResult) {
@@ -141,12 +146,16 @@ public class ScanResultUtil {
      *
      * See Section 3.3 WPA3-Enterprise transition mode in WPA3 Specification
      * - Enable at least EAP/SHA1 and EAP/SHA256 AKM suites.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
      * - Management Frame Protection Capable is set.
      * - Management Frame Protection Required is not set.
      */
     public static boolean isScanResultForWpa3EnterpriseTransitionNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA1")
                 && scanResult.capabilities.contains("EAP/SHA256")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
                 && !isScanResultForPmfMandatoryNetwork(scanResult)
                 && isScanResultForPmfCapableNetwork(scanResult);
     }
@@ -158,12 +167,16 @@ public class ScanResultUtil {
      * See Section 3.2 WPA3-Enterprise only mode in WPA3 Specification
      * - Enable at least EAP/SHA256 AKM suite.
      * - Not enable EAP/SHA1 AKM suite.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
      * - Management Frame Protection Capable is set.
      * - Management Frame Protection Required is set.
      */
     public static boolean isScanResultForWpa3EnterpriseOnlyNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA256")
                 && !scanResult.capabilities.contains("EAP/SHA1")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
                 && isScanResultForPmfMandatoryNetwork(scanResult)
                 && isScanResultForPmfCapableNetwork(scanResult);
     }
@@ -171,10 +184,17 @@ public class ScanResultUtil {
     /**
      * Helper method to check if the provided |scanResult| corresponds to a WPA3-Enterprise 192-bit
      * mode network or not.
-     * This checks if the provided capabilities string contains SUITE-B-192 encryption type or not.
+     * This checks if the provided capabilities comply these conditions:
+     * - Enable SUITE-B-192 AKM.
+     * - Not enable EAP/SHA1 AKM suite.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
+     * - Management Frame Protection Required is set.
      */
     public static boolean isScanResultForEapSuiteBNetwork(ScanResult scanResult) {
         return scanResult.capabilities.contains("SUITE_B_192")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
                 && isScanResultForPmfMandatoryNetwork(scanResult);
     }
 

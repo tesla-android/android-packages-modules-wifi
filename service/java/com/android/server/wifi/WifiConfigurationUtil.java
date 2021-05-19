@@ -939,9 +939,6 @@ public class WifiConfigurationUtil {
         if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) {
             return !wifiGlobals.isOweUpgradeEnabled();
         }
-        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE)) {
-            return !wifiGlobals.isWpa3EnterpriseUpgradeEnabled();
-        }
         return false;
     }
 
@@ -966,7 +963,6 @@ public class WifiConfigurationUtil {
     public static boolean isSecurityParamsValid(SecurityParams params) {
         if (!params.isEnabled()) return false;
         if (!isSecurityParamsSupported(params)) return false;
-        if (shouldOmitAutoUpgradeParams(params)) return false;
         return true;
     }
 
