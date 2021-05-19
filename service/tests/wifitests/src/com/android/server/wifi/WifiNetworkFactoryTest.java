@@ -363,6 +363,25 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     }
 
     /**
+     * Validates that requests that specify a frequency band are rejected.
+     */
+    @Test
+    public void testHandleAcceptNetworkRequestWithBand() throws Exception {
+        WifiNetworkSpecifier specifier = new WifiNetworkSpecifier.Builder()
+                .setBand(ScanResult.WIFI_BAND_5_GHZ)
+                .build();
+        mNetworkCapabilities.setNetworkSpecifier(specifier);
+        mNetworkRequest = new NetworkRequest.Builder()
+                .setCapabilities(mNetworkCapabilities)
+                .build();
+
+        // request should be rejected and released.
+        assertFalse(mWifiNetworkFactory.acceptRequest(mNetworkRequest));
+        mLooper.dispatchAll();
+        verify(mConnectivityManager).declareNetworkRequestUnfulfillable(any());
+    }
+
+    /**
      * Validates handling of acceptNetwork with a network specifier with invalid uid/package name.
      */
     @Test
@@ -3432,7 +3451,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mNetworkCapabilities.setRequestorUid(uid);
         mNetworkCapabilities.setRequestorPackageName(packageName);
         mNetworkCapabilities.setNetworkSpecifier(
-                new WifiNetworkSpecifier(ssidPatternMatch, bssidPatternMatch, wifiConfiguration));
+                new WifiNetworkSpecifier(ssidPatternMatch, bssidPatternMatch,
+                        ScanResult.UNSPECIFIED, wifiConfiguration));
         mNetworkRequest = new NetworkRequest.Builder()
                 .setCapabilities(mNetworkCapabilities)
                 .build();

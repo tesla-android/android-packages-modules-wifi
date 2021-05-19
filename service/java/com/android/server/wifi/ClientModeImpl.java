@@ -78,6 +78,7 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkAgentSpecifier;
+import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
@@ -3847,10 +3848,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     private WifiNetworkAgentSpecifier createNetworkAgentSpecifier(
-            @NonNull WifiConfiguration currentWifiConfiguration, @Nullable String currentBssid) {
-        currentWifiConfiguration.BSSID = currentBssid;
+            @NonNull WifiConfiguration currentWifiConfiguration, @Nullable String currentBssid,
+            boolean matchLocationSensitiveInformation) {
+        // Defensive copy to avoid mutating the passed argument
+        final WifiConfiguration conf = new WifiConfiguration(currentWifiConfiguration);
+        conf.BSSID = currentBssid;
         WifiNetworkAgentSpecifier wns =
-                new WifiNetworkAgentSpecifier(currentWifiConfiguration);
+                new WifiNetworkAgentSpecifier(conf,
+                        WifiNetworkSpecifier.getBand(mWifiInfo.getFrequency()),
+                        matchLocationSensitiveInformation);
         return wns;
     }
 
@@ -3922,10 +3928,18 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (mNetworkFactory.isSpecificRequestInProgress(currentWifiConfiguration, currentBssid)) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-            // Fill up the network agent specifier for this connection.
-            builder.setNetworkSpecifier(createNetworkAgentSpecifier(
-                    currentWifiConfiguration, getConnectedBssidInternal()));
+            // Fill up the network agent specifier for this connection, allowing NetworkCallbacks
+            // to match local-only specifiers in requests. TODO(b/187921303): a third-party app can
+            // observe this location-sensitive information by registering a NetworkCallback.
+            builder.setNetworkSpecifier(createNetworkAgentSpecifier(currentWifiConfiguration,
+                    getConnectedBssidInternal(), true /* matchLocalOnlySpecifiers */));
+        } else {
+            // Fill up the network agent specifier for this connection, without allowing
+            // NetworkCallbacks to match local-only specifiers in requests.
+            builder.setNetworkSpecifier(createNetworkAgentSpecifier(currentWifiConfiguration,
+                    getConnectedBssidInternal(), false /* matchLocalOnlySpecifiers */));
         }
+
         updateLinkBandwidth(builder);
         final NetworkCapabilities networkCapabilities = builder.build();
         if (mVcnManager == null || !currentWifiConfiguration.carrierMerged) {
