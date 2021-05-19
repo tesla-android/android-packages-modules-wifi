@@ -760,6 +760,9 @@ message WifiLog {
 
   // Scope of Passpoint deauth-imminent notification: ESS or BSS
   repeated Int32Count passpoint_deauth_imminent_scope = 216;
+
+  // Total number of steering requests from AP
+  optional int32 num_steering_request = 217;
 }
 
 // Information that gets logged for every WiFi connection.

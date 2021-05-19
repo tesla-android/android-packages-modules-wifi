@@ -6026,6 +6026,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
 
+        mWifiMetrics.incrementSteeringRequestCount();
+
         if ((frameData.mBssTmDataFlagsMask
                 & MboOceConstants.BTM_DATA_FLAG_MBO_CELL_DATA_CONNECTION_PREFERENCE_INCLUDED)
                 != 0) {
