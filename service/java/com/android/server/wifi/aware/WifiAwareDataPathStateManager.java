@@ -967,6 +967,7 @@ public class WifiAwareDataPathStateManager {
             }
 
             mNetworkRequestsCache.put(networkSpecifier, nnri);
+            mAwareMetrics.recordNdpRequestType(networkSpecifier.type);
 
             return true;
         }

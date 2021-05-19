@@ -307,6 +307,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // (2) provide a request
         mDut.onDataPathRequestNotification(pubSubId, peerDiscoveryMac, ndpId, null);
@@ -345,6 +346,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // do not create a data-path!
         verify(mMockNative, never()).initiateDataPath(anyShort(), anyInt(), anyInt(), anyInt(),
@@ -378,6 +380,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // do not create a data-path!
         verify(mMockNative, never()).initiateDataPath(anyShort(), anyInt(), anyInt(), anyInt(),
@@ -415,6 +418,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB);
 
         // (2) delete interface(s)
         mDut.deleteAllDataPathInterfaces();
@@ -501,6 +506,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             reqNetworkMsg.arg1 = 0;
             messenger.send(reqNetworkMsg);
             mMockLooper.dispatchAll();
+            inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB);
             inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(),
                     eq(requestorId + i),
                     eq(CHANNEL_NOT_REQUESTED), anyInt(), eq(peerDiscoveryMac),
@@ -607,6 +614,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             messenger.send(reqNetworkMsg);
         }
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(anyInt());
 
         // (3) verify the start NDP HAL request
         inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(), eq(0),
@@ -668,6 +676,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             reqNetworkMsg.arg1 = 0;
             messenger.send(reqNetworkMsg);
         }
+
         nrs[numRequestsPre + numRequestsPost] = getSessionNetworkRequest(
                 clientId + numRequestsPre + numRequestsPost, ddepi.mSessionId, ddepi.mPeerHandle,
                 null, null, false, 11);
@@ -677,6 +686,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         messenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // (9) unregister all requests
         for (int i = 2; i < numRequestsPre + numRequestsPost + 1; ++i) {
@@ -746,6 +756,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             reqNetworkMsg.arg1 = 0;
             messenger.send(reqNetworkMsg);
             mMockLooper.dispatchAll();
+            inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB);
 
             if (i < numNdis) {
                 inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(), eq(0),
@@ -831,6 +843,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             reqNetworkMsg.arg1 = 0;
             messenger.send(reqNetworkMsg);
             mMockLooper.dispatchAll();
+            inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB);
 
             if (i < numNdis) {
                 inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(), eq(0),
@@ -920,6 +934,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             reqNetworkMsg.arg1 = 0;
             messenger.send(reqNetworkMsg);
             mMockLooper.dispatchAll();
+            inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB);
 
             inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(), eq(0),
                     eq(CHANNEL_NOT_REQUESTED), anyInt(), eq(peerDiscoveryMac),
@@ -969,6 +985,9 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         messenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB);
+
         // It should be reject as interface already has a request to this peer.
         verifyRequestDeclaredUnfullfillable(nr);
 
@@ -1324,6 +1343,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // consequences of failure:
         //   Responder (publisher): responds with a rejection to any data-path requests
@@ -1385,6 +1405,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
+
 
         // consequences of failure:
         //   Responder (publisher): responds with a rejection to any data-path requests
@@ -1446,6 +1468,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock, never()).recordNdpRequestType(anyInt());
 
         // consequences of failure:
         //   Responder (publisher): responds with a rejection to any data-path requests
@@ -1530,6 +1553,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(anyInt());
         inOrder.verify(mMockNative).initiateDataPath(transactionId.capture(),
                 eq(useDirect ? 0 : requestorId),
                 eq(CHANNEL_NOT_REQUESTED), anyInt(), eq(peerDiscoveryMac),
@@ -1691,6 +1715,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(anyInt());
 
         // (2) get request & respond (if legacy)
         mDut.onDataPathRequestNotification(pubSubId, peerDiscoveryMac, ndpId, null);
@@ -2175,6 +2200,8 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         reqNetworkMsg.arg1 = 0;
         res.mMessenger.send(reqNetworkMsg);
         mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordNdpRequestType(
+                WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER);
         boolean firstSuccess = true;
 
         for (int i = 0; i < ndpAttemptsCount; i++) {
