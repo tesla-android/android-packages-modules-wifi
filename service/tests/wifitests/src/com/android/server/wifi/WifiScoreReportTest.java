@@ -1501,7 +1501,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             ArgumentCaptor<NetworkScore> scoreCaptor = ArgumentCaptor.forClass(NetworkScore.class);
             verify(mNetworkAgent, times(2)).sendNetworkScore(scoreCaptor.capture());
             NetworkScore ns = scoreCaptor.getValue();
-            assertEquals(51, ns.getLegacyInt());
+            assertEquals(60, ns.getLegacyInt());
             assertFalse(ns.isExiting());
             assertTrue(ns.isTransportPrimary());
         }
@@ -1514,7 +1514,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             ArgumentCaptor<NetworkScore> scoreCaptor = ArgumentCaptor.forClass(NetworkScore.class);
             verify(mNetworkAgent, times(3)).sendNetworkScore(scoreCaptor.capture());
             NetworkScore ns = scoreCaptor.getValue();
-            assertEquals(49, ns.getLegacyInt());
+            assertEquals(60, ns.getLegacyInt());
             assertTrue(ns.isExiting());
             assertTrue(ns.isTransportPrimary());
         }
