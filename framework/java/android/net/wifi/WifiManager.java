@@ -1489,9 +1489,6 @@ public class WifiManager {
     @RequiresPermission(ACCESS_WIFI_STATE)
     @NonNull
     public List<WifiConfiguration> getCallerConfiguredNetworks() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         try {
             ParceledListSlice<WifiConfiguration> parceledList =
                     mService.getConfiguredNetworks(mContext.getOpPackageName(),
