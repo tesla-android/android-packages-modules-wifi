@@ -129,11 +129,8 @@ public class WifiScoreReport {
                 return;
             }
             long millis = mClock.getWallClockMillis();
-            if (SdkLevel.isAtLeastS()) {
-                mLegacyIntScore = score;
-                updateWifiMetrics(millis, -1);
-                return;
-            }
+            // TODO(b/171571687): Check the Sdk level and score is used for metric collection only
+            // in S.
             if (score < ConnectedScore.WIFI_TRANSITION_SCORE) {
                 if (mLegacyIntScore >= ConnectedScore.WIFI_TRANSITION_SCORE) {
                     mLastScoreBreachLowTimeMillis = millis;
@@ -221,9 +218,6 @@ public class WifiScoreReport {
                 return;
             }
             if (mNetworkAgent == null) {
-                return;
-            }
-            if (mShouldReduceNetworkScore) {
                 return;
             }
             int score = isUsable ? ConnectedScore.WIFI_TRANSITION_SCORE + 1 :
@@ -681,8 +675,9 @@ public class WifiScoreReport {
         if (deltaMillis < NUD_THROTTLE_MILLIS) {
             return false;
         }
-        if (SdkLevel.isAtLeastS() && mWifiConnectedNetworkScorerHolder != null) {
-            return mWifiConnectedNetworkScorerHolder.getShouldCheckIpLayerOnce();
+        if (SdkLevel.isAtLeastS() && mWifiConnectedNetworkScorerHolder != null
+                && mWifiConnectedNetworkScorerHolder.getShouldCheckIpLayerOnce()) {
+            return true;
         }
         int nud = mScoringParams.getNudKnob();
         if (nud == 0) {
