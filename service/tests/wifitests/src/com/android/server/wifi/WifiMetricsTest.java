@@ -541,6 +541,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final long NUM_BSSID_FILTERED_DUE_TO_MBO_ASSOC_DISALLOW_IND = 3;
     private static final long NUM_CONNECT_TO_MBO_SUPPORTED_NETWORKS = 4;
     private static final long NUM_CONNECT_TO_OCE_SUPPORTED_NETWORKS = 3;
+    private static final long NUM_STEERING_REQUEST = 3;
     private static final long NUM_FORCE_SCAN_DUE_TO_STEERING_REQUEST = 2;
     private static final long NUM_MBO_CELLULAR_SWITCH_REQUEST = 3;
     private static final long NUM_STEERING_REQUEST_INCLUDING_MBO_ASSOC_RETRY_DELAY = 3;
@@ -1052,6 +1053,9 @@ public class WifiMetricsTest extends WifiBaseTest {
 
         for (int i = 0; i < NUM_BSSID_FILTERED_DUE_TO_MBO_ASSOC_DISALLOW_IND; i++) {
             mWifiMetrics.incrementNetworkSelectionFilteredBssidCountDueToMboAssocDisallowInd();
+        }
+        for (int i = 0; i < NUM_STEERING_REQUEST; i++) {
+            mWifiMetrics.incrementSteeringRequestCount();
         }
         for (int i = 0; i < NUM_FORCE_SCAN_DUE_TO_STEERING_REQUEST; i++) {
             mWifiMetrics.incrementForceScanCountDueToSteeringRequest();
@@ -1574,6 +1578,8 @@ public class WifiMetricsTest extends WifiBaseTest {
                 mDecodedProto.healthMonitorMetrics.numNetworkSufficientRecentPrevStats);
         assertEquals(NUM_BSSID_FILTERED_DUE_TO_MBO_ASSOC_DISALLOW_IND,
                 mDecodedProto.numBssidFilteredDueToMboAssocDisallowInd);
+        assertEquals(NUM_STEERING_REQUEST,
+                mDecodedProto.numSteeringRequest);
         assertEquals(NUM_FORCE_SCAN_DUE_TO_STEERING_REQUEST,
                 mDecodedProto.numForceScanDueToSteeringRequest);
         assertEquals(NUM_MBO_CELLULAR_SWITCH_REQUEST,
