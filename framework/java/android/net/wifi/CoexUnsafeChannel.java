@@ -23,8 +23,11 @@ import static android.net.wifi.WifiScanner.WIFI_BAND_6_GHZ;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -37,6 +40,7 @@ import java.util.Objects;
  * @hide
  */
 @SystemApi
+@RequiresApi(Build.VERSION_CODES.S)
 public final class CoexUnsafeChannel implements Parcelable {
     public static final int POWER_CAP_NONE = Integer.MAX_VALUE;
 
