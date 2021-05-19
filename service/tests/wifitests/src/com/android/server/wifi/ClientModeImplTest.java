@@ -536,7 +536,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         mFrameworkFacade = getFrameworkFacade();
         mContext = getContext();
-        mWifiInfo = new ExtendedWifiInfo(mWifiGlobals);
+        mWifiInfo = new ExtendedWifiInfo(mWifiGlobals, WIFI_IFACE_NAME);
 
         when(mWifiGlobals.isConnectedMacRandomizationEnabled()).thenReturn(true);
         mResources = getMockResources();
@@ -605,7 +605,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 DeviceConfigFacade.DEFAULT_OVERLAPPING_CONNECTION_DURATION_THRESHOLD_MS);
         when(mWifiScoreCard.detectAbnormalConnectionFailure(anyString()))
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
-        when(mWifiScoreCard.detectAbnormalDisconnection())
+        when(mWifiScoreCard.detectAbnormalDisconnection(any()))
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
         when(mPerNetwork.getRecentStats()).thenReturn(mPerNetworkRecentStats);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
@@ -2180,7 +2180,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     @Test
     public void disconnect() throws Exception {
-        when(mWifiScoreCard.detectAbnormalDisconnection())
+        when(mWifiScoreCard.detectAbnormalDisconnection(any()))
                 .thenReturn(WifiHealthMonitor.REASON_SHORT_CONNECTION_NONLOCAL);
         InOrder inOrderWifiLockManager = inOrder(mWifiLockManager);
         connect();
@@ -2201,7 +2201,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mCmiMonitor).onConnectionEnd(mClientModeManager);
         inOrderWifiLockManager.verify(mWifiLockManager)
                 .updateWifiClientConnected(mClientModeManager, false);
-        verify(mWifiScoreCard).detectAbnormalDisconnection();
+        verify(mWifiScoreCard).detectAbnormalDisconnection(WIFI_IFACE_NAME);
         verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
         verify(mWifiNative).disableNetwork(WIFI_IFACE_NAME);
         // Set MAC address thrice - once at bootup, once for new connection, once for disconnect.
@@ -3535,7 +3535,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         false));
         mLooper.dispatchAll();
         verify(mWifiScoreCard).noteConnectionFailure(any(), anyInt(), anyString(), anyInt());
-        verify(mWifiScoreCard).resetConnectionState();
+        verify(mWifiScoreCard).resetConnectionState(WIFI_IFACE_NAME);
         // Verify that the WifiBlocklistMonitor is notified of a non-locally generated disconnect
         // that occurred mid connection attempt.
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(anyString(), anyString(),
@@ -3560,7 +3560,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                         false));
         mLooper.dispatchAll();
         verify(mWifiScoreCard).noteConnectionFailure(any(), anyInt(), anyString(), anyInt());
-        verify(mWifiScoreCard).resetConnectionState();
+        verify(mWifiScoreCard).resetConnectionState(WIFI_IFACE_NAME);
         verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(anyString(), anyString(),
                 eq(WifiBlocklistMonitor.REASON_NONLOCAL_DISCONNECT_CONNECTING), anyInt());
         verify(mWifiConfigManager).updateNetworkSelectionStatus(FRAMEWORK_NETWORK_ID,
@@ -3925,13 +3925,13 @@ public class ClientModeImplTest extends WifiBaseTest {
         disconnect();
         mLooper.dispatchAll();
 
-        verify(mWifiScoreCard, times(1)).resetConnectionState();
+        verify(mWifiScoreCard, times(1)).resetConnectionState(WIFI_IFACE_NAME);
         verify(mWifiScoreCard, never()).noteWifiDisabled(any());
 
         // disabling while disconnected should note wifi disabled
         mCmi.stop();
         mLooper.dispatchAll();
-        verify(mWifiScoreCard, times(2)).resetConnectionState();
+        verify(mWifiScoreCard, times(2)).resetConnectionState(WIFI_IFACE_NAME);
     }
 
     /**
@@ -3949,7 +3949,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mWifiScoreCard).noteWifiDisabled(any());
-        verify(mWifiScoreCard).resetConnectionState();
+        verify(mWifiScoreCard).resetConnectionState(WIFI_IFACE_NAME);
     }
 
     /**
@@ -5503,7 +5503,7 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void testNetworkCachedDataIsClearedIf4WayHandshakeFailure() throws Exception {
-        when(mWifiScoreCard.detectAbnormalDisconnection())
+        when(mWifiScoreCard.detectAbnormalDisconnection(any()))
                 .thenReturn(WifiHealthMonitor.REASON_SHORT_CONNECTION_NONLOCAL);
         InOrder inOrderWifiLockManager = inOrder(mWifiLockManager);
         connect();

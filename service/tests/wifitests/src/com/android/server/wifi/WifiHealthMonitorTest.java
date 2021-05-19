@@ -81,6 +81,7 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
     static final WifiSsid TEST_SSID_2 = WifiSsid.createFromAsciiEncoded("Poe's Place");
     static final MacAddress TEST_BSSID_1 = MacAddress.fromString("aa:bb:cc:dd:ee:ff");
     private static final long CURRENT_ELAPSED_TIME_MS = 1000;
+    private static final String WIFI_IFACE_NAME = "wlanTest";
 
     private WifiScoreCard mWifiScoreCard;
     private WifiHealthMonitor mWifiHealthMonitor;
@@ -149,7 +150,7 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
         mBlobs.clear();
         mConfiguredNetworks = new ArrayList<>();
         mMilliSecondsSinceBoot = 0;
-        mWifiInfo = new ExtendedWifiInfo(mock(WifiGlobals.class));
+        mWifiInfo = new ExtendedWifiInfo(mock(WifiGlobals.class), WIFI_IFACE_NAME);
         mWifiInfo.setBSSID(TEST_BSSID_1.toString());
         mWifiInfo.setSSID(TEST_SSID_1);
         // Add 1st configuration
@@ -336,9 +337,9 @@ public class WifiHealthMonitorTest extends WifiBaseTest {
         mWifiScoreCard.noteSignalPoll(mWifiInfo);
         millisecondsPass(2000);
         int disconnectionReason = 0;
-        mWifiScoreCard.noteNonlocalDisconnect(disconnectionReason);
+        mWifiScoreCard.noteNonlocalDisconnect(WIFI_IFACE_NAME, disconnectionReason);
         millisecondsPass(10);
-        mWifiScoreCard.resetConnectionState();
+        mWifiScoreCard.resetAllConnectionStates();
     }
 
     private void makeRecentStatsWithSufficientConnectionAttempt() {

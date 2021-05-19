@@ -718,7 +718,7 @@ public class WifiInjector {
             @NonNull String ifaceName,
             @NonNull ConcreteClientModeManager clientModeManager,
             boolean verboseLoggingEnabled) {
-        ExtendedWifiInfo wifiInfo = new ExtendedWifiInfo(mWifiGlobals);
+        ExtendedWifiInfo wifiInfo = new ExtendedWifiInfo(mWifiGlobals, ifaceName);
         SupplicantStateTracker supplicantStateTracker = new SupplicantStateTracker(
                 mContext, mWifiConfigManager, mBatteryStats, mWifiHandlerThread.getLooper(),
                 mWifiMonitor, ifaceName, clientModeManager, mBroadcastQueue);

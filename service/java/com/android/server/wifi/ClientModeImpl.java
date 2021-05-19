@@ -1430,7 +1430,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private void checkAbnormalDisconnectionAndTakeBugReport() {
         if (mDeviceConfigFacade.isAbnormalDisconnectionBugreportEnabled()) {
-            int reasonCode = mWifiScoreCard.detectAbnormalDisconnection();
+            int reasonCode = mWifiScoreCard.detectAbnormalDisconnection(mInterfaceName);
             if (reasonCode != WifiHealthMonitor.REASON_NO_FAILURE) {
                 String bugTitle = "Wi-Fi BugReport";
                 String bugDetail = "Detect abnormal "
@@ -2651,7 +2651,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mLastSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mLastSimBasedConnectionCarrierName = null;
         checkAbnormalDisconnectionAndTakeBugReport();
-        mWifiScoreCard.resetConnectionState();
+        mWifiScoreCard.resetConnectionState(mInterfaceName);
         updateLayer2Information();
     }
 
@@ -4377,7 +4377,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 ? WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN :
                                 WifiMetricsProto.ConnectionEvent.DISCONNECTION_NON_LOCAL;
                         if (!eventInfo.locallyGenerated) {
-                            mWifiScoreCard.noteNonlocalDisconnect(eventInfo.reasonCode);
+                            mWifiScoreCard.noteNonlocalDisconnect(
+                                    mInterfaceName, eventInfo.reasonCode);
                         }
                         reportConnectionAttemptEnd(
                                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_DISCONNECTION,
@@ -5602,7 +5603,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
                     if (!eventInfo.locallyGenerated) {
                         // ignore disconnects initiated by wpa_supplicant.
-                        mWifiScoreCard.noteNonlocalDisconnect(eventInfo.reasonCode);
+                        mWifiScoreCard.noteNonlocalDisconnect(mInterfaceName, eventInfo.reasonCode);
                         int rssi = mWifiInfo.getRssi();
                         mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfo.getBSSID(),
                                 mWifiInfo.getSSID(),
