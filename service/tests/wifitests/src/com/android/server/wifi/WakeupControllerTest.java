@@ -501,6 +501,48 @@ public class WakeupControllerTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that saved networks suggestions ignore captive portal without validated network.
+     */
+    @Test
+    public void getGoodSavedNetworksAndSuggestionsIgnoreInvalidatedCaptivePortal() {
+        String ssid1 = "ssid 1";
+        String quotedSsid1 = ScanResultUtil.createQuotedSSID(ssid1);
+
+        // saved captive portal config without validated network
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork(quotedSsid1);
+        openNetwork.getNetworkSelectionStatus().setHasEverConnected(true);
+        openNetwork.getNetworkSelectionStatus().setHasNeverDetectedCaptivePortal(false);
+        openNetwork.validatedInternetAccess = false;
+        when(mWifiConfigManager.getSavedNetworks(anyInt()))
+                .thenReturn(Arrays.asList(openNetwork));
+
+        initializeWakeupController(true);
+        mWakeupController.start();
+        verify(mWifiInjector, never()).getWifiScanner();
+    }
+
+    /**
+     * Verify that saved networks suggestions include captive portal with validated network.
+     */
+    @Test
+    public void getGoodSavedNetworksAndSuggestionsIncludeValidatedCaptivePortal() {
+        String ssid1 = "ssid 1";
+        String quotedSsid1 = ScanResultUtil.createQuotedSSID(ssid1);
+
+        // saved captive portal config with validated network
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork(quotedSsid1);
+        openNetwork.getNetworkSelectionStatus().setHasEverConnected(true);
+        openNetwork.getNetworkSelectionStatus().setHasNeverDetectedCaptivePortal(false);
+        openNetwork.validatedInternetAccess = true;
+        when(mWifiConfigManager.getSavedNetworks(anyInt()))
+                .thenReturn(Arrays.asList(openNetwork));
+
+        initializeWakeupController(true);
+        mWakeupController.start();
+        verify(mWifiInjector).getWifiScanner();
+    }
+
+    /**
      * Verify that start filters out DFS channels.
      */
     @Test
