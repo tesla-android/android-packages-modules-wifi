@@ -503,7 +503,7 @@ public class WifiNetworkAgentSpecifierTest {
 
     private WifiNetworkAgentSpecifier createDefaultNetworkAgentSpecifier() {
         return new WifiNetworkAgentSpecifier(createDefaultWifiConfiguration(),
-                ScanResult.WIFI_BAND_5_GHZ, false);
+                ScanResult.WIFI_BAND_5_GHZ, true);
     }
 
 }
