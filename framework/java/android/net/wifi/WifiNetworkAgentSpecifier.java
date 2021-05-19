@@ -77,9 +77,9 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
                 public WifiNetworkAgentSpecifier createFromParcel(@NonNull Parcel in) {
                     WifiConfiguration wifiConfiguration = in.readParcelable(null);
                     int band = in.readInt();
-                    boolean matchLocationSensitiveFields = in.readBoolean();
+                    boolean matchLocalOnlySpecifiers = in.readBoolean();
                     return new WifiNetworkAgentSpecifier(wifiConfiguration, band,
-                            matchLocationSensitiveFields);
+                            matchLocalOnlySpecifiers);
                 }
 
                 @Override
@@ -191,7 +191,7 @@ public final class WifiNetworkAgentSpecifier extends NetworkSpecifier implements
                 .append(", SSID=").append(mWifiConfiguration.SSID)
                 .append(", BSSID=").append(mWifiConfiguration.BSSID)
                 .append(", band=").append(mBand)
-                .append(", matchLocationSensitiveFields=").append(mMatchLocalOnlySpecifiers)
+                .append(", mMatchLocalOnlySpecifiers=").append(mMatchLocalOnlySpecifiers)
                 .append("]");
         return sb.toString();
     }
