@@ -6132,15 +6132,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // When a connecting request comes from network request or adding a network via
         // API directly, there might be no scan result to know the proper security params.
         // In this case, we use the first available security params to have a try first.
-        if (null == selectedConfig || selectedConfig.networkId != config.networkId) {
-            Log.i(getTag(), "Cannot select a candidate security params from scan results,"
-                    + "try to select the first available security params.");
-            config.getNetworkSelectionStatus().setCandidateSecurityParams(
-                    config.getSecurityParamsList().stream()
-                            .filter(WifiConfigurationUtil::isSecurityParamsValid)
-                            .findFirst()
-                            .orElse(null));
-        }
+        Log.i(getTag(), "Cannot select a candidate security params from scan results,"
+                + "try to select the first available security params.");
+        SecurityParams defaultParams = config.getSecurityParamsList().stream()
+                .filter(WifiConfigurationUtil::isSecurityParamsValid)
+                .findFirst().orElse(null);
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(defaultParams);
+        // populate the target security params to the internal configuration manually,
+        // and then wifi info could retrieve this information.
+        mWifiConfigManager.setNetworkCandidateScanResult(
+                config.networkId, null, 0, defaultParams);
     }
 
     /**

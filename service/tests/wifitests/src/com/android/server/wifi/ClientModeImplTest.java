@@ -848,8 +848,13 @@ public class ClientModeImplTest extends WifiBaseTest {
         config.setRandomizedMacAddress(TEST_LOCAL_MAC_ADDRESS);
         config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
         config.getNetworkSelectionStatus().setHasEverConnected(mTestNetworkParams.hasEverConnected);
+        assertEquals(null, config.getNetworkSelectionStatus().getCandidateSecurityParams());
         setupAndStartConnectSequence(config);
         validateSuccessfulConnectSequence(config);
+        assertEquals(config.getSecurityParamsList().stream()
+                        .filter(WifiConfigurationUtil::isSecurityParamsValid)
+                        .findFirst().orElse(null),
+                config.getNetworkSelectionStatus().getCandidateSecurityParams());
     }
 
     /**
