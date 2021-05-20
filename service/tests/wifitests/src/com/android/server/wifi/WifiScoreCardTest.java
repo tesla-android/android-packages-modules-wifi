@@ -192,6 +192,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
         // Disable FW alert time check by default
         when(mDeviceConfigFacade.getHealthMonitorFwAlertValidTimeMs()).thenReturn(-1);
         when(mDeviceConfigFacade.getBugReportThresholdExtraRatio()).thenReturn(1);
+        when(mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec()).thenReturn(6);
+        when(mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte()).thenReturn(4000);
         mWifiScoreCard.enableVerboseLogging(true);
         when(mFrameworkFacade.getMobileRxBytes()).thenReturn(0L);
         when(mFrameworkFacade.getMobileTxBytes()).thenReturn(0L);
