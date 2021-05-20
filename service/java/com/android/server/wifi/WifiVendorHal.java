@@ -76,6 +76,7 @@ import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
 import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
@@ -659,6 +660,9 @@ public class WifiVendorHal {
                     @NonNull List<android.net.wifi.CoexUnsafeChannel> frameworkUnsafeChannels) {
         final ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel> hidlList =
                 new ArrayList<>();
+        if (!SdkLevel.isAtLeastS()) {
+            return hidlList;
+        }
         for (android.net.wifi.CoexUnsafeChannel frameworkUnsafeChannel : frameworkUnsafeChannels) {
             final android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel hidlUnsafeChannel =
                     new android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel();
@@ -696,6 +700,9 @@ public class WifiVendorHal {
 
     private int frameworkCoexRestrictionsToHidl(@WifiManager.CoexRestriction int restrictions) {
         int hidlRestrictions = 0;
+        if (!SdkLevel.isAtLeastS()) {
+            return hidlRestrictions;
+        }
         if ((restrictions & WifiManager.COEX_RESTRICTION_WIFI_DIRECT) != 0) {
             hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.WIFI_DIRECT;
         }

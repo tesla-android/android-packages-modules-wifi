@@ -361,7 +361,9 @@ public class WakeupController {
                     || config.noInternetAccessExpected
                     || !config.getNetworkSelectionStatus().hasEverConnected()
                     || !config.allowAutojoin
-                    || config.getNetworkSelectionStatus().isNetworkPermanentlyDisabled()) {
+                    || config.getNetworkSelectionStatus().isNetworkPermanentlyDisabled()
+                    || (!config.getNetworkSelectionStatus().hasNeverDetectedCaptivePortal()
+                    && !config.validatedInternetAccess)) {
                 continue;
             }
             goodNetworks.add(ScanResultMatchInfo.fromWifiConfiguration(config));

@@ -1652,7 +1652,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testMultipleUpdatesSingleNetwork() {
-        WifiConfiguration network = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network);
 
         // Now add |wepKeys| to the network. We don't need to update the |allowedKeyManagement|
@@ -1714,7 +1714,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testUpdateSingleNetworkWithNullValues() {
-        WifiConfiguration network = WifiConfigurationTestUtil.createEapNetwork();
+        WifiConfiguration network = WifiConfigurationTestUtil.createWpa2Wpa3EnterpriseNetwork();
         verifyAddNetworkToWifiConfigManager(network);
 
         // Save a copy of the original network for comparison.
@@ -5949,13 +5949,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testScanComparator() {
-        WifiConfiguration network1 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network1);
-        WifiConfiguration network2 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network2);
-        WifiConfiguration network3 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network3);
-        WifiConfiguration network4 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network4 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network4);
 
         // Connect two network in order, network3 --> network2

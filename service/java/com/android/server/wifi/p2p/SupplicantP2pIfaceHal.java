@@ -43,6 +43,7 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ArrayUtils;
 import com.android.server.wifi.util.NativeUtil;
 
@@ -1505,15 +1506,17 @@ public class SupplicantP2pIfaceHal {
                 ranges.add(range1);
                 ranges.add(range2);
             }
-            for (CoexUnsafeChannel cuc: unsafeChannels) {
-                int centerFreq = ScanResult.convertChannelToFrequencyMhzIfSupported(
-                        cuc.getChannel(), cuc.getBand());
-                ISupplicantP2pIface.FreqRange range = new ISupplicantP2pIface.FreqRange();
-                // The range boundaries are inclusive in native frequency inclusion check.
-                // Minusing one to avoid affecting neighbors.
-                range.min = centerFreq - 5 - 1;
-                range.max = centerFreq + 5 - 1;
-                ranges.add(range);
+            if (SdkLevel.isAtLeastS()) {
+                for (CoexUnsafeChannel cuc: unsafeChannels) {
+                    int centerFreq = ScanResult.convertChannelToFrequencyMhzIfSupported(
+                            cuc.getChannel(), cuc.getBand());
+                    ISupplicantP2pIface.FreqRange range = new ISupplicantP2pIface.FreqRange();
+                    // The range boundaries are inclusive in native frequency inclusion check.
+                    // Minusing one to avoid affecting neighbors.
+                    range.min = centerFreq - 5 - 1;
+                    range.max = centerFreq + 5 - 1;
+                    ranges.add(range);
+                }
             }
             SupplicantResult<Void> result = new SupplicantResult(
                     "setDisallowedFrequencies(" + ranges + ")");

@@ -86,7 +86,6 @@ public class WifiCandidatesTest extends WifiBaseTest {
                 WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE);
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
-        when(mWifiGlobals.isWpa3EnterpriseUpgradeEnabled()).thenReturn(true);
 
         mWifiCandidates = new WifiCandidates(mWifiScoreCard, mContext);
         mConfig1 = WifiConfigurationTestUtil.createOpenNetwork();

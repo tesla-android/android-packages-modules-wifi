@@ -1320,7 +1320,14 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 .append("SSID=").append(wifiConfiguration.SSID)
                 .append(", BSSID=").append(wifiConfiguration.BSSID)
                 .append(", FQDN=").append(wifiConfiguration.FQDN)
-                .append(", isAppInteractionRequired=").append(isAppInteractionRequired)
+                .append(", SecurityParams=");
+        wifiConfiguration.getSecurityParamsList().stream()
+                .forEach(param -> {
+                    sb.append(" ");
+                    sb.append(WifiConfiguration.getSecurityTypeName(param.getSecurityType()));
+                    if (param.isAddedByAutoUpgrade()) sb.append("^");
+                });
+        sb.append(", isAppInteractionRequired=").append(isAppInteractionRequired)
                 .append(", isUserInteractionRequired=").append(isUserInteractionRequired)
                 .append(", isCredentialSharedWithUser=").append(isUserAllowedToManuallyConnect)
                 .append(", isInitialAutoJoinEnabled=").append(isInitialAutoJoinEnabled)

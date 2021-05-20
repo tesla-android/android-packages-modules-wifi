@@ -760,6 +760,9 @@ message WifiLog {
 
   // Scope of Passpoint deauth-imminent notification: ESS or BSS
   repeated Int32Count passpoint_deauth_imminent_scope = 216;
+
+  // Total number of steering requests from AP
+  optional int32 num_steering_request = 217;
 }
 
 // Information that gets logged for every WiFi connection.
@@ -1688,6 +1691,9 @@ message WifiAwareLog {
   // enabled which did not trigger ranging
   optional int32 num_matches_without_ranging_for_ranging_enabled_subscribes = 49;
 
+  // Total number of different types of NDP requests
+  repeated NdpRequestTypeHistogramBucket histogram_ndp_request_type = 50;
+
   // Histogram bucket for Wi-Fi Aware logs. Range is [start, end)
   message HistogramBucket {
     // lower range of the bucket (inclusive)
@@ -1755,6 +1761,32 @@ message WifiAwareLog {
 
     // number of samples in the bucket
     optional int32 count = 2;
+  }
+
+  enum NdpRequestTypeEnum {
+    // Unknown Type
+    NETWORK_SPECIFIER_TYPE_UNKNOWN = 0;
+
+    // TYPE: in band, specific peer: role, client_id, session_id, peer_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_IB = 1;
+
+    // TYPE: in band, any peer: role, client_id, session_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_IB_ANY_PEER = 2;
+
+    //TYPE: out-of-band: role, client_id, peer_mac, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_OOB = 3;
+
+    //TYPE: out-of-band, any peer: role, client_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_OOB_ANY_PEER = 4;
+
+  }
+
+  message NdpRequestTypeHistogramBucket {
+    // request type defining the bucket
+    optional NdpRequestTypeEnum ndp_request_type = 1;
+    // number of samples in the bucket
+    optional int32 count = 2;
+
   }
 }
 

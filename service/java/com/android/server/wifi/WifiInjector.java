@@ -306,7 +306,7 @@ public class WifiInjector {
         mWifiNative = new WifiNative(
                 mWifiVendorHal, mSupplicantStaIfaceHal, mHostapdHal, mWifiCondManager,
                 mWifiMonitor, mPropertyService, mWifiMetrics,
-                wifiHandler, new Random(), this);
+                wifiHandler, new Random(), mBuildProperties, this);
         mWifiP2pMonitor = new WifiP2pMonitor();
         mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor);
         mWifiP2pNative = new WifiP2pNative(mWifiCondManager, mWifiNative,
@@ -718,7 +718,7 @@ public class WifiInjector {
             @NonNull String ifaceName,
             @NonNull ConcreteClientModeManager clientModeManager,
             boolean verboseLoggingEnabled) {
-        ExtendedWifiInfo wifiInfo = new ExtendedWifiInfo(mWifiGlobals);
+        ExtendedWifiInfo wifiInfo = new ExtendedWifiInfo(mWifiGlobals, ifaceName);
         SupplicantStateTracker supplicantStateTracker = new SupplicantStateTracker(
                 mContext, mWifiConfigManager, mBatteryStats, mWifiHandlerThread.getLooper(),
                 mWifiMonitor, ifaceName, clientModeManager, mBroadcastQueue);
