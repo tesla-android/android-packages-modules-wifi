@@ -1010,17 +1010,15 @@ public class WifiScoreCard {
     // TODO: b/178641307 move the following parameters to config.xml
     // Array dimension : int [NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
     static final int[][][] LINK_BANDWIDTH_INIT_KBPS =
-            {{{500, 2500, 10000, 10000, 10000}, {500, 2500, 10000, 30000, 30000}},
-            {{1500, 7500, 10000, 10000, 10000}, {1500, 7500, 30000, 30000, 30000}}};
+            {{{500, 2500, 10000, 12000, 12000}, {500, 2500, 10000, 30000, 30000}},
+            {{1500, 7500, 12000, 12000, 12000}, {1500, 7500, 30000, 60000, 60000}}};
     // To be used in link bandwidth estimation, each TrafficStats poll sample needs to be above
     // the following values. Defined per signal level.
-    // int [NUM_SIGNAL_LEVEL]
-    static final int[] LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE = {200, 500, 750, 1000, 1000};
-    // Byte threshold may be raised if average used BW is high but no more than the following value
-    static final int BYTE_DELTA_ACC_THRESHOLD_MAX_KB = 4000;
+    // int [NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
+    static final int[][] LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE =
+            {{200, 500, 750, 1000, 1000}, {200, 500, 1000, 2500, 2500}};
     // To be used in the long term avg, each count needs to be above the following value
     static final int BANDWIDTH_STATS_COUNT_THR = 5;
-    private static final int TIME_CONSTANT_LARGE_SEC = 6;
     private static final int TIME_CONSTANT_SMALL_SEC = 6;
     // If RSSI changes by more than the below value, update BW filter with small time constant
     private static final int RSSI_DELTA_THR_DB = 8;
@@ -1038,7 +1036,7 @@ public class WifiScoreCard {
     static final int LINK_RX = 1;
     private static final int NUM_LINK_BAND = 2;
     private static final int NUM_LINK_DIRECTION = 2;
-    private static final long BW_UPDATE_TIME_RESET_MS = TIME_CONSTANT_LARGE_SEC * 1000 * -10;
+    private static final long BW_UPDATE_TIME_RESET_MS = TIME_CONSTANT_SMALL_SEC * 1000 * -10;
     private static final int MAX_ERROR_PERCENT = 100 * 100;
     private static final int EXTRA_SAMPLE_BW_FILTERING = 2;
     /**
@@ -1404,11 +1402,12 @@ public class WifiScoreCard {
             int lowBytes = calculateByteCountThreshold(getAvgUsedLinkBandwidthKbps(link),
                     maxTimeDeltaMs);
             // Start with a predefined value
-            int deltaAccThr = LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE[mSignalLevel] * 1024;
+            int deltaAccThr = LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE[link][mSignalLevel] * 1024;
             if (lowBytes > 0) {
                 // Raise the threshold if the avg usage BW is high
                 deltaAccThr = Math.max(lowBytes, deltaAccThr);
-                deltaAccThr = Math.min(deltaAccThr, BYTE_DELTA_ACC_THRESHOLD_MAX_KB * 1024);
+                deltaAccThr = Math.min(deltaAccThr, mDeviceConfigFacade
+                        .getTrafficStatsThresholdMaxKbyte() * 1024);
             }
             return deltaAccThr;
         }
@@ -1437,7 +1436,7 @@ public class WifiScoreCard {
                     || mBandwidthUpdateBandIdx != mBandIdx) {
                 timeConstantSec = TIME_CONSTANT_SMALL_SEC;
             } else {
-                timeConstantSec = TIME_CONSTANT_LARGE_SEC;
+                timeConstantSec = mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec();
             }
             // Update timestamp for next iteration
             if (mBandwidthSampleValid[link]) {

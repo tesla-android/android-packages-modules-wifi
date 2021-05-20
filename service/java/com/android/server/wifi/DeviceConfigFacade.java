@@ -144,6 +144,9 @@ public class DeviceConfigFacade {
     // Default RSSI threshold in dBm above which low score is not sent to connectivity service
     // when external scorer takes action.
     static final int DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM = -67;
+    // Maximum traffic stats threshold for link bandwidth estimator
+    static final int DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB = 8000;
+    static final int DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC = 6;
     // Cached values of fields updated via updateDeviceConfigFlags()
     private boolean mIsAbnormalConnectionBugreportEnabled;
     private int mAbnormalConnectionDurationMs;
@@ -199,6 +202,8 @@ public class DeviceConfigFacade {
     private int mMinConfirmationDurationSendHighScoreMs;
     private int mRssiThresholdNotSendLowScoreToCsDbm;
     private boolean mAllowEnhancedMacRandomizationOnOpenSsids;
+    private int mTrafficStatsThresholdMaxKbyte;
+    private int mBandwidthEstimatorLargeTimeConstantSec;
 
     public DeviceConfigFacade(Context context, Handler handler, WifiMetrics wifiMetrics) {
         mContext = context;
@@ -365,6 +370,12 @@ public class DeviceConfigFacade {
                 DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
         mAllowEnhancedMacRandomizationOnOpenSsids = DeviceConfig.getBoolean(NAMESPACE,
                 "allow_enhanced_mac_randomization_on_open_ssids", false);
+        mTrafficStatsThresholdMaxKbyte = DeviceConfig.getInt(NAMESPACE,
+                "traffic_stats_threshold_max_kbyte", DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB);
+        mBandwidthEstimatorLargeTimeConstantSec = DeviceConfig.getInt(NAMESPACE,
+                "bandwidth_estimator_time_constant_large_sec",
+                DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC);
+
     }
 
     private Set<String> getUnmodifiableSetQuoted(String key) {
@@ -765,4 +776,19 @@ public class DeviceConfigFacade {
     public boolean allowEnhancedMacRandomizationOnOpenSsids() {
         return mAllowEnhancedMacRandomizationOnOpenSsids;
     }
+
+    /**
+     * Gets traffic stats maximum threshold in KByte
+     */
+    public int getTrafficStatsThresholdMaxKbyte() {
+        return mTrafficStatsThresholdMaxKbyte;
+    }
+
+    /**
+     * Gets bandwidth estimator large time constant in second
+     */
+    public int getBandwidthEstimatorLargeTimeConstantSec() {
+        return mBandwidthEstimatorLargeTimeConstantSec;
+    }
+
 }
