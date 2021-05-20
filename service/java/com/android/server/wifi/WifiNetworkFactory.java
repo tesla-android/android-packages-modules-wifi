@@ -61,6 +61,7 @@ import android.os.UserHandle;
 import android.os.WorkSource;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
@@ -873,29 +874,31 @@ public class WifiNetworkFactory extends NetworkFactory {
     }
 
     /**
-     * Return true if the specific network request is being processed if connected to the requested
+     * Return the uid of the specific network request being processed if connected to the requested
      * network.
      *
      * @param connectedNetwork WifiConfiguration corresponding to the connected network.
-     * @return true if the specific request is in progress, else false.
+     * @return Pair of uid & package name of the specific request (if any), else <-1, "">.
      */
-    public boolean isSpecificRequestInProgress(
+    public Pair<Integer, String> getSpecificNetworkRequestUidAndPackageName(
             @NonNull WifiConfiguration connectedNetwork, @NonNull String connectedBssid) {
         if (mUserSelectedNetwork == null || connectedNetwork == null) {
-            return false;
+            return Pair.create(Process.INVALID_UID, "");
         }
         if (!isUserSelectedNetwork(connectedNetwork, connectedBssid)) {
             Log.w(TAG, "Connected to unknown network " + connectedNetwork + ":" + connectedBssid
                     + ". Ignoring...");
-            return false;
+            return Pair.create(Process.INVALID_UID, "");
         }
         if (mConnectedSpecificNetworkRequestSpecifier != null) {
-            return true;
+            return Pair.create(mConnectedSpecificNetworkRequest.getRequestorUid(),
+                    mConnectedSpecificNetworkRequest.getRequestorPackageName());
         }
         if (mActiveSpecificNetworkRequestSpecifier != null) {
-            return true;
+            return Pair.create(mActiveSpecificNetworkRequest.getRequestorUid(),
+                    mActiveSpecificNetworkRequest.getRequestorPackageName());
         }
-        return false;
+        return Pair.create(Process.INVALID_UID, "");
     }
 
     // Helper method to add the provided network configuration to WifiConfigManager, if it does not
