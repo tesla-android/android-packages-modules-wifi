@@ -3970,8 +3970,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.stop();
         mLooper.dispatchAll();
         verify(mIpClient).shutdown();
-        verify(mWifiConfigManager).removeAllEphemeralOrPasspointConfiguredNetworks();
-        verify(mWifiConfigManager).clearUserTemporarilyDisabledList();
     }
 
     /**
@@ -6290,27 +6288,6 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
         verify(mWifiMetrics).logStaEvent(anyString(), eq(StaEvent.TYPE_FRAMEWORK_DISCONNECT),
                 eq(StaEvent.DISCONNECT_CARRIER_OFFLOAD_DISABLED));
-    }
-
-    /**
-     * Verifies that the ANQP cache is not flushed when the configuration does not permit it.
-     */
-    @Test
-    public void testAnqpFlushCacheSkippedIfNotConfigured() throws Exception {
-        when(mWifiGlobals.flushAnqpCacheOnWifiToggleOffEvent()).thenReturn(false);
-        testWifiInfoCleanedUpEnteringExitingConnectableState();
-        verify(mPasspointManager, never()).clearAnqpRequestsAndFlushCache();
-    }
-
-    /**
-     * Verifies that the ANQP cache is flushed when the configuration requires it.
-     */
-    @Test
-    public void testAnqpFlushCacheDoneIfConfigured() throws Exception {
-        when(mWifiGlobals.flushAnqpCacheOnWifiToggleOffEvent()).thenReturn(true);
-        testWifiInfoCleanedUpEnteringExitingConnectableState();
-        verify(mPasspointManager, times(1))
-                .clearAnqpRequestsAndFlushCache();
     }
 
     @Test
