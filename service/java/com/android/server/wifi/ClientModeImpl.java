@@ -3269,15 +3269,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         deregisterForWifiMonitorEvents(); // uses mInterfaceName, must call before nulling out
         // TODO: b/79504296 This broadcast has been deprecated and should be removed
         sendSupplicantConnectionChangedBroadcast(false);
-
-        // Remove any ephemeral or Passpoint networks, flush ANQP cache
-        mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks();
-        mWifiConfigManager.clearUserTemporarilyDisabledList();
-
-        // Flush ANQP cache if configured to do so
-        if (mWifiGlobals.flushAnqpCacheOnWifiToggleOffEvent()) {
-            mPasspointManager.clearAnqpRequestsAndFlushCache();
-        }
     }
 
     /**
