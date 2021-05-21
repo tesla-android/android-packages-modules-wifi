@@ -339,6 +339,9 @@ public class CoexUtils {
         if (overlapWidthKhz < 0) {
             overlapWidthKhz = 0;
         }
+        if (victimBandwidthKhz == 0) {
+            return 0;
+        }
         return overlapWidthKhz * 100 / victimBandwidthKhz;
     }
 
@@ -413,18 +416,18 @@ public class CoexUtils {
         int highest2gChannel = get2gHighestOverlapChannel(unsafeUpperKhz);
         if (lowest2gChannel != INVALID_CHANNEL && highest2gChannel != INVALID_CHANNEL
                 && lowest2gChannel <= highest2gChannel) {
-            // Find lowest channel at max overlap
-            while (getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
+            // Find lowest channel at max overlap, or invalid channel 15 if the threshold is not met
+            while (lowest2gChannel <= 14 && getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
                     getLowerFreqKhz(lowest2gChannel, WIFI_BAND_24_GHZ),
-                    getUpperFreqKhz(lowest2gChannel, WIFI_BAND_24_GHZ)) < overlapPercentThreshold
-                    && lowest2gChannel <= highest2gChannel) {
+                    getUpperFreqKhz(lowest2gChannel, WIFI_BAND_24_GHZ))
+                    < overlapPercentThreshold) {
                 lowest2gChannel++;
             }
-            // Find highest channel at max overlap
-            while (getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
+            // Find highest channel at max overlap, or invalid channel 0 if the threshold is not met
+            while (highest2gChannel >= 1 && getOverlapPercent(unsafeLowerKhz, unsafeUpperKhz,
                     getLowerFreqKhz(highest2gChannel, WIFI_BAND_24_GHZ),
-                    getUpperFreqKhz(highest2gChannel, WIFI_BAND_24_GHZ)) < overlapPercentThreshold
-                    && highest2gChannel >= lowest2gChannel) {
+                    getUpperFreqKhz(highest2gChannel, WIFI_BAND_24_GHZ))
+                    < overlapPercentThreshold) {
                 highest2gChannel--;
             }
             // Mark every channel in between as unsafe
