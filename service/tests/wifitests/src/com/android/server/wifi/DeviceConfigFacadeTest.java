@@ -217,6 +217,10 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM,
                 mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
         assertEquals(false, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(DeviceConfigFacade.DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB,
+                mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
+        assertEquals(DeviceConfigFacade.DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC,
+                mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec());
     }
 
     /**
@@ -336,6 +340,10 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         when(DeviceConfig.getBoolean(anyString(),
                 eq("allow_enhanced_mac_randomization_on_open_ssids"),
                 anyBoolean())).thenReturn(true);
+        when(DeviceConfig.getInt(anyString(), eq("traffic_stats_threshold_max_kbyte"),
+                anyInt())).thenReturn(5000);
+        when(DeviceConfig.getInt(anyString(), eq("bandwidth_estimator_time_constant_large_sec"),
+                anyInt())).thenReturn(30);
         mOnPropertiesChangedListenerCaptor.getValue().onPropertiesChanged(null);
 
         // Verifying fields are updated to the new values
@@ -399,5 +407,7 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(1000, mDeviceConfigFacade.getMinConfirmationDurationSendHighScoreMs());
         assertEquals(-70, mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
         assertEquals(true, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(5000, mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
+        assertEquals(30, mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec());
     }
 }
