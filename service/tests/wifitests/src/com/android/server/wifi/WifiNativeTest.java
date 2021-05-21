@@ -251,6 +251,7 @@ public class WifiNativeTest extends WifiBaseTest {
     @Mock private WifiInjector mWifiInjector;
     @Mock private NetdWrapper mNetdWrapper;
     @Mock private CoexManager mCoexManager;
+    @Mock BuildProperties mBuildProperties;
     @Mock private WifiNative.InterfaceCallback mInterfaceCallback;
 
     ArgumentCaptor<WifiNl80211Manager.ScanEventCallback> mScanCallbackCaptor =
@@ -269,6 +270,10 @@ public class WifiNativeTest extends WifiBaseTest {
         when(mWifiVendorHal.startVendorHalAp()).thenReturn(true);
         when(mWifiVendorHal.createStaIface(any(), any())).thenReturn(WIFI_IFACE_NAME);
 
+        when(mBuildProperties.isEngBuild()).thenReturn(false);
+        when(mBuildProperties.isUserdebugBuild()).thenReturn(false);
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+
         when(mWificondControl.setupInterfaceForClientMode(any(), any(), any(), any())).thenReturn(
                 true);
 
@@ -284,7 +289,7 @@ public class WifiNativeTest extends WifiBaseTest {
         mWifiNative = new WifiNative(
                 mWifiVendorHal, mStaIfaceHal, mHostapdHal, mWificondControl,
                 mWifiMonitor, mPropertyService, mWifiMetrics,
-                mHandler, mRandom, mWifiInjector);
+                mHandler, mRandom, mBuildProperties, mWifiInjector);
         mWifiNative.initialize();
     }
 

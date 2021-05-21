@@ -78,6 +78,7 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkAgentSpecifier;
+import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
@@ -1429,7 +1430,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private void checkAbnormalDisconnectionAndTakeBugReport() {
         if (mDeviceConfigFacade.isAbnormalDisconnectionBugreportEnabled()) {
-            int reasonCode = mWifiScoreCard.detectAbnormalDisconnection();
+            int reasonCode = mWifiScoreCard.detectAbnormalDisconnection(mInterfaceName);
             if (reasonCode != WifiHealthMonitor.REASON_NO_FAILURE) {
                 String bugTitle = "Wi-Fi BugReport";
                 String bugDetail = "Detect abnormal "
@@ -2650,7 +2651,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mLastSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mLastSimBasedConnectionCarrierName = null;
         checkAbnormalDisconnectionAndTakeBugReport();
-        mWifiScoreCard.resetConnectionState();
+        mWifiScoreCard.resetConnectionState(mInterfaceName);
         updateLayer2Information();
     }
 
@@ -3847,10 +3848,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     private WifiNetworkAgentSpecifier createNetworkAgentSpecifier(
-            @NonNull WifiConfiguration currentWifiConfiguration, @Nullable String currentBssid) {
-        currentWifiConfiguration.BSSID = currentBssid;
+            @NonNull WifiConfiguration currentWifiConfiguration, @Nullable String currentBssid,
+            boolean matchLocationSensitiveInformation) {
+        // Defensive copy to avoid mutating the passed argument
+        final WifiConfiguration conf = new WifiConfiguration(currentWifiConfiguration);
+        conf.BSSID = currentBssid;
         WifiNetworkAgentSpecifier wns =
-                new WifiNetworkAgentSpecifier(currentWifiConfiguration);
+                new WifiNetworkAgentSpecifier(conf,
+                        WifiNetworkSpecifier.getBand(mWifiInfo.getFrequency()),
+                        matchLocationSensitiveInformation);
         return wns;
     }
 
@@ -3922,10 +3928,18 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         if (mNetworkFactory.isSpecificRequestInProgress(currentWifiConfiguration, currentBssid)) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-            // Fill up the network agent specifier for this connection.
-            builder.setNetworkSpecifier(createNetworkAgentSpecifier(
-                    currentWifiConfiguration, getConnectedBssidInternal()));
+            // Fill up the network agent specifier for this connection, allowing NetworkCallbacks
+            // to match local-only specifiers in requests. TODO(b/187921303): a third-party app can
+            // observe this location-sensitive information by registering a NetworkCallback.
+            builder.setNetworkSpecifier(createNetworkAgentSpecifier(currentWifiConfiguration,
+                    getConnectedBssidInternal(), true /* matchLocalOnlySpecifiers */));
+        } else {
+            // Fill up the network agent specifier for this connection, without allowing
+            // NetworkCallbacks to match local-only specifiers in requests.
+            builder.setNetworkSpecifier(createNetworkAgentSpecifier(currentWifiConfiguration,
+                    getConnectedBssidInternal(), false /* matchLocalOnlySpecifiers */));
         }
+
         updateLinkBandwidth(builder);
         final NetworkCapabilities networkCapabilities = builder.build();
         if (mVcnManager == null || !currentWifiConfiguration.carrierMerged) {
@@ -4363,7 +4377,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 ? WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN :
                                 WifiMetricsProto.ConnectionEvent.DISCONNECTION_NON_LOCAL;
                         if (!eventInfo.locallyGenerated) {
-                            mWifiScoreCard.noteNonlocalDisconnect(eventInfo.reasonCode);
+                            mWifiScoreCard.noteNonlocalDisconnect(
+                                    mInterfaceName, eventInfo.reasonCode);
                         }
                         reportConnectionAttemptEnd(
                                 WifiMetrics.ConnectionEvent.FAILURE_NETWORK_DISCONNECTION,
@@ -5588,7 +5603,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
                     if (!eventInfo.locallyGenerated) {
                         // ignore disconnects initiated by wpa_supplicant.
-                        mWifiScoreCard.noteNonlocalDisconnect(eventInfo.reasonCode);
+                        mWifiScoreCard.noteNonlocalDisconnect(mInterfaceName, eventInfo.reasonCode);
                         int rssi = mWifiInfo.getRssi();
                         mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfo.getBSSID(),
                                 mWifiInfo.getSSID(),
@@ -6011,6 +6026,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
 
+        mWifiMetrics.incrementSteeringRequestCount();
+
         if ((frameData.mBssTmDataFlagsMask
                 & MboOceConstants.BTM_DATA_FLAG_MBO_CELL_DATA_CONNECTION_PREFERENCE_INCLUDED)
                 != 0) {
@@ -6115,15 +6132,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // When a connecting request comes from network request or adding a network via
         // API directly, there might be no scan result to know the proper security params.
         // In this case, we use the first available security params to have a try first.
-        if (null == selectedConfig || selectedConfig.networkId != config.networkId) {
-            Log.i(getTag(), "Cannot select a candidate security params from scan results,"
-                    + "try to select the first available security params.");
-            config.getNetworkSelectionStatus().setCandidateSecurityParams(
-                    config.getSecurityParamsList().stream()
-                            .filter(WifiConfigurationUtil::isSecurityParamsValid)
-                            .findFirst()
-                            .orElse(null));
-        }
+        Log.i(getTag(), "Cannot select a candidate security params from scan results,"
+                + "try to select the first available security params.");
+        SecurityParams defaultParams = config.getSecurityParamsList().stream()
+                .filter(WifiConfigurationUtil::isSecurityParamsValid)
+                .findFirst().orElse(null);
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(defaultParams);
+        // populate the target security params to the internal configuration manually,
+        // and then wifi info could retrieve this information.
+        mWifiConfigManager.setNetworkCandidateScanResult(
+                config.networkId, null, 0, defaultParams);
     }
 
     /**

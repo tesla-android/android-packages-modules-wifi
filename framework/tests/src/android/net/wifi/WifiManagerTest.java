@@ -2190,6 +2190,15 @@ public class WifiManagerTest {
     }
 
     /**
+     * Verify the call to getCallerConfiguredNetworks goes to WifiServiceImpl.
+     */
+    @Test
+    public void testGetCallerConfiguredNetworks() throws Exception {
+        mWifiManager.getCallerConfiguredNetworks();
+        verify(mWifiService).getConfiguredNetworks(any(), any(), eq(true));
+    }
+
+    /**
      * Verify the call to startRestrictingAutoJoinToSubscriptionId goes to WifiServiceImpl.
      */
     @Test

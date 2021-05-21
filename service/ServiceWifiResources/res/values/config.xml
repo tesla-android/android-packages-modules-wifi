@@ -553,9 +553,6 @@
     <!-- Enable Open to OWE auto-upgrade -->
     <bool translatable="false" name="config_wifiOweUpgradeEnabled">true</bool>
 
-    <!-- Enable WPA2 Enterprise to WPA3 Enterprise auto-upgrade -->
-    <bool translatable="false" name="config_wifiWpa3EnterpriseUpgradeEnabled">true</bool>
-
     <!-- Number of self recoveries to be attempted per hour. Any fatal errors beyond this will
          cause the wifi stack to turn wifi off and wait for user input.
          Set to 0 to turn off recovery attempts and always turn off wifi on failures -->
