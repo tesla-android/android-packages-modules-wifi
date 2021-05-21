@@ -2897,12 +2897,14 @@ public class WifiMetrics {
      * Adds a record for current number of associated stations to soft AP
      */
     public void addSoftApNumAssociatedStationsChangedEvent(int numTotalStations,
-            int numStationsOnCurrentFrequency, int mode, @NonNull SoftApInfo info) {
+            int numStationsOnCurrentFrequency, int mode, @Nullable SoftApInfo info) {
         SoftApConnectedClientsEvent event = new SoftApConnectedClientsEvent();
         event.eventType = SoftApConnectedClientsEvent.NUM_CLIENTS_CHANGED;
-        event.channelFrequency = info.getFrequency();
-        event.channelBandwidth = info.getBandwidth();
-        event.generation = info.getWifiStandardInternal();
+        if (info != null) {
+            event.channelFrequency = info.getFrequency();
+            event.channelBandwidth = info.getBandwidth();
+            event.generation = info.getWifiStandardInternal();
+        }
         event.numConnectedClients = numTotalStations;
         event.numConnectedClientsOnCurrentFrequency = numStationsOnCurrentFrequency;
         addSoftApConnectedClientsEvent(event, mode);
