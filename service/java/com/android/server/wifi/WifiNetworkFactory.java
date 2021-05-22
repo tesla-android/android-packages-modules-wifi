@@ -1745,13 +1745,12 @@ public class WifiNetworkFactory extends NetworkFactory {
         mActiveMatchedScanResults.putAll(matchedScanResults
                 .stream()
                 .collect(Collectors.toMap(
-                        scanResult -> scanResult.BSSID, scanResult -> scanResult)));
+                        scanResult -> scanResult.BSSID, scanResult -> scanResult, (a, b) -> a)));
         // Weed out any stale cached scan results.
         long currentTimeInMillis = mClock.getElapsedSinceBootMillis();
         mActiveMatchedScanResults.entrySet().removeIf(
                 e -> ((currentTimeInMillis - (e.getValue().timestamp / 1000))
                         >= CACHED_SCAN_RESULTS_MAX_AGE_IN_MILLIS));
-
     }
 
     /**
