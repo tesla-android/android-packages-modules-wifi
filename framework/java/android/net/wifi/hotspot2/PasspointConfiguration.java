@@ -28,6 +28,7 @@ import android.net.wifi.hotspot2.pps.Credential;
 import android.net.wifi.hotspot2.pps.HomeSp;
 import android.net.wifi.hotspot2.pps.Policy;
 import android.net.wifi.hotspot2.pps.UpdateParameter;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -36,6 +37,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -1095,6 +1098,7 @@ public final class PasspointConfiguration implements Parcelable {
      *
      * @param decoratedIdentityPrefix The prefix to add to the outer/anonymous identity
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public void setDecoratedIdentityPrefix(@Nullable String decoratedIdentityPrefix) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -1111,6 +1115,7 @@ public final class PasspointConfiguration implements Parcelable {
      *
      * @return The decorated identity prefix
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public @Nullable String getDecoratedIdentityPrefix() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
