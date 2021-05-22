@@ -3269,15 +3269,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         deregisterForWifiMonitorEvents(); // uses mInterfaceName, must call before nulling out
         // TODO: b/79504296 This broadcast has been deprecated and should be removed
         sendSupplicantConnectionChangedBroadcast(false);
-
-        // Remove any ephemeral or Passpoint networks, flush ANQP cache
-        mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks();
-        mWifiConfigManager.clearUserTemporarilyDisabledList();
-
-        // Flush ANQP cache if configured to do so
-        if (mWifiGlobals.flushAnqpCacheOnWifiToggleOffEvent()) {
-            mPasspointManager.clearAnqpRequestsAndFlushCache();
-        }
     }
 
     /**
@@ -3924,10 +3915,16 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
         }
 
+        Pair<Integer, String> specificRequestUidAndPackageName =
+                mNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
+                        currentWifiConfiguration, currentBssid);
         // There is an active specific request.
-        if (mNetworkFactory.isSpecificRequestInProgress(currentWifiConfiguration, currentBssid)) {
+        if (specificRequestUidAndPackageName.first != Process.INVALID_UID) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            // Fill up the uid/packageName for this connection.
+            builder.setRequestorUid(specificRequestUidAndPackageName.first);
+            builder.setRequestorPackageName(specificRequestUidAndPackageName.second);
             // Fill up the network agent specifier for this connection, allowing NetworkCallbacks
             // to match local-only specifiers in requests. TODO(b/187921303): a third-party app can
             // observe this location-sensitive information by registering a NetworkCallback.
