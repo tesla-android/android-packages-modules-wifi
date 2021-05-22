@@ -245,6 +245,19 @@ public class CoexUtilsTest {
                 .containsExactlyElementsIn(middleCoexUnsafeChannels);
     }
 
+    @Test
+    public void testGet2gHarmonicUnsafeChannels_overlapDoesNotMeetThreshold_returnsNoChannels() {
+        final int harmonicDeg = 3;
+        final int maxOverlap = 100;
+        int unsafeUpperKhz = getUpperFreqKhz(14, WIFI_BAND_24_GHZ);
+        int unsafeLowerKhz = unsafeUpperKhz - 5_000;
+        assertThat(get2gHarmonicCoexUnsafeChannels(
+                getHarmonicUlFreqKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
+                getHarmonicUlBandwidthKhz(unsafeLowerKhz, unsafeUpperKhz, harmonicDeg),
+                harmonicDeg, maxOverlap, POWER_CAP_NONE))
+                .isEmpty();
+    }
+
     /**
      * Verifies that get5gHarmonicCoexUnsafeChannels returns the correct subset of 5GHz channels
      * from interference above, below, and in the middle of the band.
