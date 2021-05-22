@@ -1288,9 +1288,6 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 wifiConfiguration.subscriptionId, wifiConfiguration.carrierId);
     }
 
-    /**
-     * Equals for network suggestions.
-     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
