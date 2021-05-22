@@ -936,9 +936,6 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public void registerSubsystemRestartCallback(ISubsystemRestartCallback callback) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         enforceAccessPermission();
         if (isVerboseLoggingEnabled()) {
             mLog.info("registerSubsystemRestartCallback uid=%").c(Binder.getCallingUid()).flush();
@@ -953,9 +950,6 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public void unregisterSubsystemRestartCallback(ISubsystemRestartCallback callback) {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         enforceAccessPermission();
         if (isVerboseLoggingEnabled()) {
             mLog.info("registerSubsystemRestartCallback uid=%").c(Binder.getCallingUid()).flush();
@@ -969,9 +963,6 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @Override
     public void restartWifiSubsystem() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         enforceRestartWifiSubsystemPermission();
         if (isVerboseLoggingEnabled()) {
             mLog.info("restartWifiSubsystem uid=%").c(Binder.getCallingUid()).flush();
