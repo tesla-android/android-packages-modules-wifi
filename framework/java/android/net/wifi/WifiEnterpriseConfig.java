@@ -1592,6 +1592,7 @@ public class WifiEnterpriseConfig implements Parcelable {
      *
      * @param decoratedIdentityPrefix The prefix to add to the outer/anonymous identity
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public void setDecoratedIdentityPrefix(@Nullable String decoratedIdentityPrefix) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -1608,6 +1609,7 @@ public class WifiEnterpriseConfig implements Parcelable {
      *
      * @return The decorated identity prefix
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     public @Nullable String getDecoratedIdentityPrefix() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
