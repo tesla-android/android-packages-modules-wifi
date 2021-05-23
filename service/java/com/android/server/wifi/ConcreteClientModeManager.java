@@ -771,6 +771,16 @@ public class ConcreteClientModeManager implements ClientModeManager {
             }
 
             @Override
+            public void exit() {
+                // Sometimes the wifi handler thread may become blocked that the statemachine
+                // will exit in the IdleState without first entering StartedState. Trigger a
+                // cleanup here in case the above sequence happens. This the statemachine was
+                // started normally this will will not send a duplicate broadcast since mIsStopped
+                // will get set to false the first time the exit happens.
+                cleanupOnQuitIfApplicable();
+            }
+
+            @Override
             public boolean processMessage(Message message) {
                 switch (message.what) {
                     case CMD_START:

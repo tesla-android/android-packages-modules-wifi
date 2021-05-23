@@ -3293,8 +3293,6 @@ public class WifiManagerTest {
      */
     @Test
     public void testIsPasspointTermsAndConditionsSupported() throws Exception {
-        assumeTrue(SdkLevel.isAtLeastS());
-
         when(mWifiService.getSupportedFeatures())
                 .thenReturn(new Long(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS));
         assertTrue(mWifiManager.isPasspointTermsAndConditionsSupported());
