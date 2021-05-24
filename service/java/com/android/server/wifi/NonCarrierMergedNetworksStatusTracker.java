@@ -68,9 +68,10 @@ public class NonCarrierMergedNetworksStatusTracker {
      * Add a SSID or FQDN to the temporary disabled list for the given timer duration. The SSID
      * or FQDN will be re-enabled when after it is out of range for the specified duration.
      */
-    public void temporarilyDisableNetwork(WifiConfiguration config, long timerDurationMs) {
+    public void temporarilyDisableNetwork(WifiConfiguration config, long timerDurationMs,
+            long maxDisableDurationMs) {
         String key = getKeyFromConfig(config);
-        mTemporarilyDisabledNonCarrierMergedList.add(key, timerDurationMs);
+        mTemporarilyDisabledNonCarrierMergedList.add(key, timerDurationMs, maxDisableDurationMs);
         mTemporarilyDisabledNonCarrierMergedListAtStart.add(key);
     }
 

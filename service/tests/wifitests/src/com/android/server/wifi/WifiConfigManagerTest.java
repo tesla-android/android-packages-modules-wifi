@@ -5032,6 +5032,36 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertFalse(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
     }
 
+    @Test
+    public void testMaxDisableDurationEnableDisabledNetwork() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        List<WifiConfiguration> networks = new ArrayList<>();
+        networks.add(openNetwork);
+        verifyAddNetworkToWifiConfigManager(openNetwork);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
+                networks, retrievedNetworks);
+
+        // Disable the network.
+        long maxDisableDuration = ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES
+                * 60 * 1000;
+        when(mClock.getWallClockMillis()).thenReturn(0L);
+        String network = openNetwork.SSID;
+        mWifiConfigManager.userTemporarilyDisabledNetwork(network, TEST_UPDATE_UID);
+
+        // Verify that the network is disabled.
+        assertTrue(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+
+        // Before the maxDisableDuration, the network should still be disabled.
+        when(mClock.getWallClockMillis()).thenReturn(maxDisableDuration);
+        assertTrue(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+
+        // After the maxDisableDuration, the network should be enabled.
+        when(mClock.getWallClockMillis()).thenReturn(maxDisableDuration + 1);
+        assertFalse(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+    }
+
     /**
      * Verify that when startRestrictingAutoJoinToSubscriptionId is called, all
      * non-carrier-merged networks are disabled for a duration, and non-carrier-merged networks

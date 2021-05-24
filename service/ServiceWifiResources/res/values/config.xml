@@ -331,8 +331,11 @@
     <integer translatable="false"
              name="config_wifiAllNonCarrierMergedWifiMinDisableDurationMinutes">30</integer>
 
-    <!-- The maximum duration in minutes that all non-carrier-merged wifi becomes disabled when
-    WifiManager#startRestrictingAutoJoinToSubscriptionId is called. -->
+    <!-- Configures 2 things:
+    1. The maximum duration in minutes that all non-carrier-merged wifi becomes disabled when
+    WifiManager#startRestrictingAutoJoinToSubscriptionId is called.
+    2. The maximum duration in minutes that a network is disabled when the user manually
+    triggers the "disconnect" feature.-->
     <integer translatable="false"
              name="config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes">480</integer>
 
