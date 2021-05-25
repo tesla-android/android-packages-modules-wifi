@@ -55,9 +55,12 @@ public class WifiLinkLayerStats {
     public long contentionTimeMinBeInUsec;
     /** WME Best Effort Access Category data packet max contention time in microseconds */
     public long contentionTimeMaxBeInUsec;
-    /** WME Best Effort Access Category data packet avg contention time in microseconds */
+    /** WME Best Effort Access Category data packet average contention time in microseconds */
     public long contentionTimeAvgBeInUsec;
-    /** WME Best Effort Access Category number of data packets used for contention statistics */
+    /**
+     * WME Best Effort Access Category number of data packets used for deriving the min, the max,
+     * and the average contention time
+     */
     public long contentionNumSamplesBe;
 
     /** WME Background Access Category received mpdu */
@@ -72,9 +75,12 @@ public class WifiLinkLayerStats {
     public long contentionTimeMinBkInUsec;
     /** WME Background Access Category data packet max contention time in microseconds */
     public long contentionTimeMaxBkInUsec;
-    /** WME Background Access Category data packet avg contention time in microseconds */
+    /** WME Background Access Category data packet average contention time in microseconds */
     public long contentionTimeAvgBkInUsec;
-    /** WME Background Access Category number of data packets used for contention statistics */
+    /**
+     * WME Background Access Category number of data packets used for deriving the min, the max,
+     * and the average contention time
+     */
     public long contentionNumSamplesBk;
 
     /** WME Video Access Category received mpdu */
@@ -89,9 +95,12 @@ public class WifiLinkLayerStats {
     public long contentionTimeMinViInUsec;
     /** WME Video Access Category data packet max contention time in microseconds */
     public long contentionTimeMaxViInUsec;
-    /** WME Video Access Category data packet avg contention time in microseconds */
+    /** WME Video Access Category data packet average contention time in microseconds */
     public long contentionTimeAvgViInUsec;
-    /** WME Video Access Category number of data packets used for contention statistics */
+    /**
+     * WME Video Access Category number of data packets used for deriving the min, the max, and
+     * the average contention time
+     */
     public long contentionNumSamplesVi;
 
     /** WME Voice Access Category received mpdu */
@@ -106,9 +115,12 @@ public class WifiLinkLayerStats {
     public long contentionTimeMinVoInUsec;
     /** WME Voice Access Category data packet max contention time in microseconds */
     public long contentionTimeMaxVoInUsec;
-    /** WME Voice Access Category data packet avg contention time in microseconds */
+    /** WME Voice Access Category data packet average contention time in microseconds */
     public long contentionTimeAvgVoInUsec;
-    /** WME Voice Access Category number of data packets used for contention statistics */
+    /**
+     * WME Voice Access Category number of data packets used for deriving the min, the max, and
+     * the average contention time
+     */
     public long contentionNumSamplesVo;
 
     /**
@@ -120,7 +132,7 @@ public class WifiLinkLayerStats {
      */
     public int tx_time;
     /**
-     * Cumulative milliseconds per level of active transmission
+     * Cumulative milliseconds per radio transmit power level of active transmission
      */
     public int[] tx_time_per_level;
     /**
