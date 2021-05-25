@@ -144,7 +144,8 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
                 TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS,
+                TEST_MAX_DISABLE_ALL_DURATION);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -169,7 +170,8 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
                 TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS,
+                TEST_MAX_DISABLE_ALL_DURATION);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -197,7 +199,8 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
                 TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS,
+                TEST_MAX_DISABLE_ALL_DURATION);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
 
@@ -215,7 +218,8 @@ public class NonCarrierMergedNetworksStatusTrackerTest extends WifiBaseTest {
         mNonCarrierMergedNetworksStatusTracker.disableAllNonCarrierMergedNetworks(
                 TEST_SUBSCRIPTION_ID, TEST_MIN_DISABLE_ALL_DURATION, TEST_MAX_DISABLE_ALL_DURATION);
         mNonCarrierMergedNetworksStatusTracker.temporarilyDisableNetwork(
-                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS);
+                mTestNonCarrierMergedNetwork, TEST_MIN_DURATION_NOT_SEEN_IN_SCANS,
+                TEST_MAX_DISABLE_ALL_DURATION);
         assertTrue(mNonCarrierMergedNetworksStatusTracker.isNetworkDisabled(
                 mTestNonCarrierMergedNetwork));
         mNonCarrierMergedNetworksStatusTracker.update(Collections.EMPTY_SET);
