@@ -92,6 +92,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
     @Mock WifiNetworkFactory mWifiNetworkFactory;
     @Mock WifiGlobals mWifiGlobals;
     @Mock WifiThreadRunner mWifiThreadRunner;
+    @Mock ScanRequestProxy mScanRequestProxy;
 
     WifiShellCommand mWifiShellCommand;
 
@@ -114,6 +115,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
         when(mWifiInjector.getWifiLastResortWatchdog()).thenReturn(mWifiLastResortWatchdog);
         when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
         when(mWifiInjector.getWifiNetworkFactory()).thenReturn(mWifiNetworkFactory);
+        when(mWifiInjector.getScanRequestProxy()).thenReturn(mScanRequestProxy);
         when(mContext.getSystemService(ConnectivityManager.class)).thenReturn(mConnectivityManager);
 
         mWifiShellCommand = new WifiShellCommand(mWifiInjector, mWifiService, mContext,
@@ -827,5 +829,23 @@ public class WifiShellCommandTest extends WifiBaseTest {
         assertEquals(-1, mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"connect-network", "ssid1234", "open", "-r", "non_persistent"}));
+    }
+
+    @Test
+    public void testEnableScanning() {
+        BinderUtil.setUid(Process.ROOT_UID);
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"enable-scanning", "enabled"});
+        verify(mScanRequestProxy).enableScanning(true, false);
+    }
+
+    @Test
+    public void testEnableScanningWithHiddenNetworkOption() {
+        BinderUtil.setUid(Process.ROOT_UID);
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"enable-scanning", "enabled", "-h"});
+        verify(mScanRequestProxy).enableScanning(true, true);
     }
 }

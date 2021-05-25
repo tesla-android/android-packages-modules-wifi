@@ -158,6 +158,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiThreadRunner mWifiThreadRunner;
     private final WifiApConfigStore mWifiApConfigStore;
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
+    private final ScanRequestProxy mScanRequestProxy;
 
     /**
      * Used for shell command testing of scorer.
@@ -217,6 +218,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mWifiNetworkFactory = wifiInjector.getWifiNetworkFactory();
         mSelfRecovery = wifiInjector.getSelfRecovery();
         mWifiApConfigStore = wifiInjector.getWifiApConfigStore();
+        mScanRequestProxy = wifiInjector.getScanRequestProxy();
     }
 
     @Override
@@ -978,6 +980,21 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "stop-faking-scans":
                     mWifiNative.stopFakingScanDetails();
                     return 0;
+                case "enable-scanning":
+                    boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
+                    boolean hiddenEnabled = false;
+                    String option = getNextOption();
+                    if (option != null) {
+                        if (option.equals("-h")) {
+                            hiddenEnabled = true;
+                        } else {
+                            pw.println("Invalid argument to 'enable-scanning' "
+                                    + "- only allowed option is '-h'");
+                            return -1;
+                        }
+                    }
+                    mScanRequestProxy.enableScanning(enabled, hiddenEnabled);
+                    return 0;
                 default:
                     return handleDefaultCommands(cmd);
             }
@@ -1727,6 +1744,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         + "[PASSPOINT]\" 2412 -55");
         pw.println("  reset-fake-scans");
         pw.println("    Resets all fake scan results added by 'add-fake-scan'.");
+        pw.println("  enable-scanning enabled|disabled [-h]");
+        pw.println("    Sets whether all scanning should be enabled or disabled");
+        pw.println("    -h - Enable scanning for hidden networks.");
     }
 
     @Override
