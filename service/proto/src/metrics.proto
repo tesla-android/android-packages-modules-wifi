@@ -943,6 +943,26 @@ message RouterFingerPrint {
   optional int32 max_supported_rx_link_speed_mbps = 14;
 }
 
+enum ClientRole {
+  // default/Invalid role
+  ROLE_UNKNOWN = 0;
+
+  // STA created for scans only.
+  ROLE_CLIENT_SCAN_ONLY = 1;
+
+  // secondary STA used for make before break.
+  ROLE_CLIENT_SECONDARY_TRANSIENT = 2;
+
+  // secondary STA created for local connection (no internet connectivity).
+  ROLE_CLIENT_LOCAL_ONLY = 3;
+
+  // primary STA.
+  ROLE_CLIENT_PRIMARY = 4;
+
+  // Long lived secondary STA used for restricted use cases
+  ROLE_CLIENT_SECONDARY_LONG_LIVED = 5;
+}
+
 message ConnectionEvent {
 
   // Roam Type.
@@ -1152,6 +1172,10 @@ message ConnectionEvent {
   // The wireless interface name e.g. "wlan0", "wlan1". Used to distinguish which event stream this
   // ConnectionEvent belongs to when multiple interfaces are active concurrently.
   optional string interface_name = 27;
+
+  // The role of the wireless interface at the start of the connection.
+  // Gives more information on what purpose this interface is used for.
+  optional ClientRole interface_role = 29;
 }
 
 // Number of occurrences of a specific RSSI poll rssi value
@@ -1546,6 +1570,10 @@ message StaEvent {
   // The wireless interface name e.g. "wlan0", "wlan1". Used to distinguish which event stream this
   // StaEvent belongs to when multiple interfaces are active concurrently.
   optional string interface_name = 27;
+
+  // The role of the wireless interface
+  // Gives more information on what purpose this interface is used for.
+  optional ClientRole interface_role = 28;
 }
 
 // Wi-Fi Aware metrics

@@ -1210,7 +1210,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             long mRxPkts = mFacade.getRxPackets(mInterfaceName);
             mWifiInfo.updatePacketRates(mTxPkts, mRxPkts, mLastLinkLayerStatsUpdate);
         }
-        mWifiMetrics.incrementWifiLinkLayerUsageStats(stats);
+        mWifiMetrics.incrementWifiLinkLayerUsageStats(mInterfaceName, stats);
         return stats;
     }
 
@@ -2240,7 +2240,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         /*
          * Increment various performance metrics
          */
-        mWifiMetrics.handlePollResult(mWifiInfo);
+        mWifiMetrics.handlePollResult(mInterfaceName, mWifiInfo);
         return stats;
     }
 
@@ -2588,7 +2588,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      *                         defined in /frameworks/proto_logging/stats/atoms.proto
      */
     private void handleNetworkDisconnect(boolean newConnectionInProgress, int disconnectReason) {
-        mWifiMetrics.reportNetworkDisconnect(disconnectReason,
+        mWifiMetrics.reportNetworkDisconnect(mInterfaceName, disconnectReason,
                 mWifiInfo.getRssi(),
                 mWifiInfo.getLinkSpeed());
 
@@ -3449,7 +3449,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             sendNetworkChangeBroadcast(DetailedState.DISCONNECTED);
 
             // Inform metrics that Wifi is Enabled (but not yet connected)
-            mWifiMetrics.setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+            mWifiMetrics.setWifiState(mInterfaceName, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_WIFI_ENABLED);
             mWifiScoreCard.noteSupplicantStateChanged(mWifiInfo);
         }
@@ -3457,7 +3457,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         @Override
         public void exit() {
             // Inform metrics that Wifi is being disabled (Toggled, airplane enabled, etc)
-            mWifiMetrics.setWifiState(WifiMetricsProto.WifiLog.WIFI_DISABLED);
+            mWifiMetrics.setWifiState(mInterfaceName, WifiMetricsProto.WifiLog.WIFI_DISABLED);
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_WIFI_DISABLED);
 
             if (!mWifiNative.removeAllNetworks(mInterfaceName)) {
@@ -4831,7 +4831,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // from this point on and having the BSSID specified in the network block would
             // cause the roam to faile and the device to disconnect
             clearTargetBssid("L2ConnectedState");
-            mWifiMetrics.setWifiState(WifiMetricsProto.WifiLog.WIFI_ASSOCIATED);
+            mWifiMetrics.setWifiState(mInterfaceName, WifiMetricsProto.WifiLog.WIFI_ASSOCIATED);
             mWifiScoreCard.noteNetworkAgentCreated(mWifiInfo,
                     mNetworkAgent.getNetwork().getNetId());
             mWifiBlocklistMonitor.handleBssidConnectionSuccess(mLastBssid, mWifiInfo.getSSID());
@@ -4856,7 +4856,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     sb.append(" ").append(mLastBssid);
                 }
             }
-            mWifiMetrics.setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+            mWifiMetrics.setWifiState(mInterfaceName, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
             mWifiStateTracker.updateState(mInterfaceName, WifiStateTracker.DISCONNECTED);
             // Inform WifiLockManager
             mWifiLockManager.updateWifiClientConnected(mClientModeManager, false);
@@ -4935,9 +4935,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (mVerboseLoggingEnabled && message.obj != null) log((String) message.obj);
                     mWifiDiagnostics.triggerBugReportDataCapture(
                             WifiDiagnostics.REPORT_REASON_REACHABILITY_LOST);
-                    mWifiMetrics.logWifiIsUnusableEvent(
+                    mWifiMetrics.logWifiIsUnusableEvent(mInterfaceName,
                             WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
-                    mWifiMetrics.addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
+                    mWifiMetrics.addToWifiUsabilityStatsList(mInterfaceName,
+                            WifiUsabilityStats.LABEL_BAD,
                             WifiUsabilityStats.TYPE_IP_REACHABILITY_LOST, -1);
                     if (mWifiGlobals.getIpReachabilityDisconnectEnabled()) {
                         handleIpReachabilityLost();
@@ -5152,11 +5153,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         private WifiLinkLayerStats updateLinkLayerStatsRssiDataStallScoreReport() {
             // Get Info and continue polling
             WifiLinkLayerStats stats = updateLinkLayerStatsRssiSpeedFrequencyCapabilities();
-            mWifiMetrics.updateWifiUsabilityStatsEntries(mWifiInfo, stats);
+            mWifiMetrics.updateWifiUsabilityStatsEntries(mInterfaceName, mWifiInfo, stats);
             // checkDataStallAndThroughputSufficiency() should be called before
             // mWifiScoreReport.calculateAndReportScore() which needs the latest throughput
             int statusDataStall = mWifiDataStall.checkDataStallAndThroughputSufficiency(
-                    mLastConnectionCapabilities, mLastLinkLayerStats, stats, mWifiInfo);
+                    mInterfaceName, mLastConnectionCapabilities, mLastLinkLayerStats, stats,
+                    mWifiInfo);
             if (mDataStallTriggerTimeMs == -1
                     && statusDataStall != WifiIsUnusableEvent.TYPE_UNKNOWN) {
                 mDataStallTriggerTimeMs = mClock.getElapsedSinceBootMillis();
@@ -5167,7 +5169,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         - mDataStallTriggerTimeMs;
                 if (elapsedTime >= DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS) {
                     mDataStallTriggerTimeMs = -1;
-                    mWifiMetrics.addToWifiUsabilityStatsList(
+                    mWifiMetrics.addToWifiUsabilityStatsList(mInterfaceName,
                             WifiUsabilityStats.LABEL_BAD,
                             convertToUsabilityStatsTriggerType(mLastStatusDataStall),
                             -1);
