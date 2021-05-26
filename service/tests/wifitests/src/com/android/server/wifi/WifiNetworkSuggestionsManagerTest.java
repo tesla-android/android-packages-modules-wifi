@@ -4991,6 +4991,27 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertEquals(0, ewns.size());
     }
 
+    @Test
+    public void testIncompleteEnterpriseNetworkSuggestion() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        // EAP method is kept as Eap.NONE - should not crash, but return invalid
+        WifiNetworkSuggestion networkSuggestion1 = createWifiNetworkSuggestion(
+                config, null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+
+        List<WifiNetworkSuggestion> networkSuggestionList =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion1);
+                }};
+        when(mWifiKeyStore.updateNetworkKeys(eq(networkSuggestion1.wifiConfiguration), any()))
+                .thenReturn(true);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+    }
+
     private static WifiNetworkSuggestion createWifiNetworkSuggestion(WifiConfiguration config,
             PasspointConfiguration passpointConfiguration,
             boolean isAppInteractionRequired,
