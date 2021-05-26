@@ -684,6 +684,18 @@ public class WifiConfigurationUtil {
                 && !validatePassword(config.preSharedKey, isAdd, true)) {
             return false;
         }
+
+        if ((config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)
+                || config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE))
+                && !config.isEnterprise()) {
+            return false;
+        }
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT)
+                && (!config.isEnterprise()
+                || config.enterpriseConfig.getEapMethod() != WifiEnterpriseConfig.Eap.TLS)) {
+            return false;
+        }
+
         // b/153435438: Added to deal with badly formed WifiConfiguration from apps.
         if (config.preSharedKey != null && !config.needsPreSharedKey()) {
             Log.e(TAG, "preSharedKey set with an invalid KeyMgmt, resetting KeyMgmt to WPA_PSK");
@@ -929,10 +941,16 @@ public class WifiConfigurationUtil {
      *
      * @param config the wifi configuration to be checked.
      */
-    public static void addUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
-        addOpenUpgradableSecurityTypeIfNecessary(config);
-        addPskUpgradableSecurityTypeIfNecessary(config);
-        addEapUpgradableSecurityTypeIfNecessary(config);
+    public static boolean addUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        try {
+            addOpenUpgradableSecurityTypeIfNecessary(config);
+            addPskUpgradableSecurityTypeIfNecessary(config);
+            addEapUpgradableSecurityTypeIfNecessary(config);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Failed to add upgradable security type");
+            return false;
+        }
+        return true;
     }
 
     /**
