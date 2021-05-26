@@ -6549,4 +6549,48 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
     }
+
+    @Test
+    public void testClientModeImplWhenIpClientIsNotReady() throws Exception {
+        WifiConfiguration config = mConnectedNetwork;
+        config.networkId = FRAMEWORK_NETWORK_ID;
+        config.setRandomizedMacAddress(TEST_LOCAL_MAC_ADDRESS);
+        config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
+        config.getNetworkSelectionStatus().setHasEverConnected(mTestNetworkParams.hasEverConnected);
+        assertNull(config.getNetworkSelectionStatus().getCandidateSecurityParams());
+
+        mFrameworkFacade = mock(FrameworkFacade.class);
+        ArgumentCaptor<IpClientCallbacks> captor = ArgumentCaptor.forClass(IpClientCallbacks.class);
+        // reset mWifiNative since initializeCmi() was called in setup()
+        resetWifiNative();
+
+        // reinitialize ClientModeImpl with IpClient is not ready.
+        initializeCmi();
+        verify(mFrameworkFacade).makeIpClient(any(), anyString(), captor.capture());
+
+        // Manually connect should fail.
+        IActionListener connectActionListener = mock(IActionListener.class);
+        mCmi.connectNetwork(
+                new NetworkUpdateResult(config.networkId),
+                new ActionListenerWrapper(connectActionListener),
+                Binder.getCallingUid());
+        mLooper.dispatchAll();
+        verify(connectActionListener).onFailure(WifiManager.ERROR);
+        verify(mWifiConfigManager, never())
+                .getConfiguredNetworkWithoutMasking(eq(config.networkId));
+        verify(mWifiNative, never()).connectToNetwork(eq(WIFI_IFACE_NAME), eq(config));
+
+        // Auto connect should also fail
+        mCmi.startConnectToNetwork(config.networkId, MANAGED_PROFILE_UID, config.BSSID);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager, never())
+                .getConfiguredNetworkWithoutMasking(eq(config.networkId));
+        verify(mWifiNative, never()).connectToNetwork(eq(WIFI_IFACE_NAME), eq(config));
+
+        // Make IpClient ready connection should succeed.
+        captor.getValue().onIpClientCreated(mIpClient);
+        mLooper.dispatchAll();
+
+        triggerConnect();
+    }
 }
