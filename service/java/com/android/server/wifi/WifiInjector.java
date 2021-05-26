@@ -436,6 +436,7 @@ public class WifiInjector {
                 mWifiNative, mDefaultClientModeManager, mBatteryStats, mWifiDiagnostics,
                 mContext, mSettingsStore, mFrameworkFacade, mWifiPermissionsUtil, mWifiMetrics,
                 mExternalScoreUpdateObserverProxy, mDppManager);
+        mWifiMetrics.setActiveModeWarden(mActiveModeWarden);
         mWifiHealthMonitor = new WifiHealthMonitor(mContext, this, mClock, mWifiConfigManager,
             mWifiScoreCard, wifiHandler, mWifiNative, l2KeySeed, mDeviceConfigFacade,
             mActiveModeWarden);
