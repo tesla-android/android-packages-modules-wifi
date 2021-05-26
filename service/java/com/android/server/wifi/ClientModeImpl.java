@@ -783,7 +783,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         setInitialState(mDisconnectedState);
 
-        setLogRecSize(mWifiGlobals.getClientModeImplNumLogRecs());
         setLogOnlyTransitions(false);
 
         // Start the StateMachine
