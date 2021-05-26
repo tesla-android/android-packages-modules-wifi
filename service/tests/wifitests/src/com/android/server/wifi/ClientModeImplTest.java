@@ -2594,7 +2594,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Set CMI to CONNECT_MODE and verify state, and wifi enabled in ConnectivityManager
         initializeCmi();
         inOrderMetrics.verify(mWifiMetrics)
-                .setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+                .setWifiState(WIFI_IFACE_NAME, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_ENABLED);
         assertNull(wifiInfo.getBSSID());
@@ -2609,7 +2609,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.stop();
         mLooper.dispatchAll();
 
-        inOrderMetrics.verify(mWifiMetrics).setWifiState(WifiMetricsProto.WifiLog.WIFI_DISABLED);
+        inOrderMetrics.verify(mWifiMetrics).setWifiState(WIFI_IFACE_NAME,
+                WifiMetricsProto.WifiLog.WIFI_DISABLED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_DISABLED);
         assertNull(wifiInfo.getBSSID());
@@ -2641,7 +2642,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeCmi();
 
         inOrderMetrics.verify(mWifiMetrics)
-                .setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+                .setWifiState(WIFI_IFACE_NAME, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_ENABLED);
         assertEquals("DisconnectedState", getCurrentState().getName());
@@ -4444,9 +4445,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(newLLStats);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, oldLLStats, newLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(newLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, newLLStats);
     }
 
     /**
@@ -4461,26 +4462,28 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         WifiLinkLayerStats stats = new WifiLinkLayerStats();
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(stats);
-        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any()))
+        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(),
+                any(), any(), any(), any()))
                 .thenReturn(WifiIsUnusableEvent.TYPE_UNKNOWN);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).updateWifiUsabilityStatsEntries(any(), eq(stats));
-        verify(mWifiMetrics, never()).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
-                eq(anyInt()), eq(-1));
+        verify(mWifiMetrics).updateWifiUsabilityStatsEntries(any(), any(), eq(stats));
+        verify(mWifiMetrics, never()).addToWifiUsabilityStatsList(any(),
+                WifiUsabilityStats.LABEL_BAD, eq(anyInt()), eq(-1));
 
-        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any()))
+        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any(),
+                any()))
                 .thenReturn(WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX);
         when(mClock.getElapsedSinceBootMillis()).thenReturn(10L);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics, times(2)).updateWifiUsabilityStatsEntries(any(), eq(stats));
+        verify(mWifiMetrics, times(2)).updateWifiUsabilityStatsEntries(any(), any(), eq(stats));
         when(mClock.getElapsedSinceBootMillis())
                 .thenReturn(10L + ClientModeImpl.DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
-                WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX, -1);
+        verify(mWifiMetrics).addToWifiUsabilityStatsList(WIFI_IFACE_NAME,
+                WifiUsabilityStats.LABEL_BAD, WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX, -1);
     }
 
     /**
@@ -4764,9 +4767,10 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_LOST);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).logWifiIsUnusableEvent(
+        verify(mWifiMetrics).logWifiIsUnusableEvent(WIFI_IFACE_NAME,
                 WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
-        verify(mWifiMetrics).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
+        verify(mWifiMetrics).addToWifiUsabilityStatsList(WIFI_IFACE_NAME,
+                WifiUsabilityStats.LABEL_BAD,
                 WifiUsabilityStats.TYPE_IP_REACHABILITY_LOST, -1);
     }
 
@@ -6440,9 +6444,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
 
         WifiLinkLayerStats newLLStats = new WifiLinkLayerStats();
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(newLLStats);
@@ -6450,9 +6454,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiNative, times(2)).getWifiLinkLayerStats(WIFI_IFACE_NAME);
 
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, oldLLStats, newLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(newLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, newLLStats);
 
         // Now set the screen state to false & move time forward, ensure no more link layer stats
         // collection.
@@ -6512,9 +6516,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
     }
 
     @Test
@@ -6529,9 +6533,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
 
         // Now invoke role change, that should stop rssi polling on the secondary.
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);

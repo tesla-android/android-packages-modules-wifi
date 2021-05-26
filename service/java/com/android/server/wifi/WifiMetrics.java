@@ -448,6 +448,8 @@ public class WifiMetrics {
     private final DppMetrics mDppMetrics;
 
     private final WifiMonitor mWifiMonitor;
+    private ActiveModeWarden mActiveModeWarden;
+    private final Map<String, ActiveModeManager.ClientRole> mIfaceToRoleMap = new ArrayMap<>();
 
     /** WifiConfigStore read duration histogram. */
     private SparseIntArray mWifiConfigStoreReadDurationHistogram = new SparseIntArray();
@@ -1288,6 +1290,8 @@ public class WifiMetrics {
                         + mConnectionEvent.numConsecutiveConnectionFailure);
                 sb.append(", isOsuProvisioned=" + mConnectionEvent.isOsuProvisioned);
                 sb.append(" interfaceName=").append(mConnectionEvent.interfaceName);
+                sb.append(" interfaceRole=").append(
+                        clientRoleEnumToString(mConnectionEvent.interfaceRole));
                 return sb.toString();
             }
         }
@@ -1557,13 +1561,66 @@ public class WifiMetrics {
         mWifiSettingsStore = wifiSettingsStore;
     }
 
+    /** Sets internal ActiveModeWarden member */
+    public void setActiveModeWarden(ActiveModeWarden activeModeWarden) {
+        mActiveModeWarden = activeModeWarden;
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
+    }
+
+    /**
+     * Implements callbacks that set the internal ifaceName to ClientRole mapping.
+     */
+    @VisibleForTesting
+    private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            if (!(activeModeManager instanceof ConcreteClientModeManager)) {
+                return;
+            }
+            synchronized (mLock) {
+                ConcreteClientModeManager clientModeManager =
+                        (ConcreteClientModeManager) activeModeManager;
+                mIfaceToRoleMap.put(clientModeManager.getInterfaceName(),
+                        clientModeManager.getRole());
+            }
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            if (!(activeModeManager instanceof ConcreteClientModeManager)) {
+                return;
+            }
+            synchronized (mLock) {
+                ConcreteClientModeManager clientModeManager =
+                        (ConcreteClientModeManager) activeModeManager;
+                mIfaceToRoleMap.remove(clientModeManager.getInterfaceName());
+            }
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            if (!(activeModeManager instanceof ConcreteClientModeManager)) {
+                return;
+            }
+            synchronized (mLock) {
+                ConcreteClientModeManager clientModeManager =
+                        (ConcreteClientModeManager) activeModeManager;
+                mIfaceToRoleMap.put(clientModeManager.getInterfaceName(),
+                        clientModeManager.getRole());
+            }
+        }
+    }
+
     /**
      * Increment cumulative counters for link layer stats.
      * @param newStats
      */
-    public void incrementWifiLinkLayerUsageStats(WifiLinkLayerStats newStats) {
+    public void incrementWifiLinkLayerUsageStats(String ifaceName, WifiLinkLayerStats newStats) {
         // This is only collected for primary STA currently because RSSI polling is disabled for
         // non-primary STAs.
+        if (!isPrimary(ifaceName)) {
+            return;
+        }
         if (newStats == null) {
             return;
         }
@@ -1688,6 +1745,7 @@ public class WifiMetrics {
             currentConnectionEvent = new ConnectionEvent();
             mCurrentConnectionEventPerIface.put(ifaceName, currentConnectionEvent);
             currentConnectionEvent.mConnectionEvent.interfaceName = ifaceName;
+            currentConnectionEvent.mConnectionEvent.interfaceRole = convertIfaceToEnum(ifaceName);
             currentConnectionEvent.mConnectionEvent.startTimeMillis =
                     mClock.getWallClockMillis();
             currentConnectionEvent.mConnectionEvent.startTimeSinceBootMillis =
@@ -1931,8 +1989,12 @@ public class WifiMetrics {
      * @param rssi Last seen RSSI.
      * @param linkSpeed Last seen link speed.
      */
-    public void reportNetworkDisconnect(int disconnectReason, int rssi, int linkSpeed) {
+    public void reportNetworkDisconnect(String ifaceName, int disconnectReason, int rssi,
+            int linkSpeed) {
         synchronized (mLock) {
+            if (!isPrimary(ifaceName)) {
+                return;
+            }
             WifiStatsLog.write(WifiStatsLog.WIFI_CONNECTION_STATE_CHANGED,
                     false,
                     mCurrentSession != null ? mCurrentSession.mBand : 0,
@@ -2425,7 +2487,10 @@ public class WifiMetrics {
     /**
      * Increment various poll related metrics, and cache performance data for StaEvent logging
      */
-    public void handlePollResult(WifiInfo wifiInfo) {
+    public void handlePollResult(String ifaceName, WifiInfo wifiInfo) {
+        if (!isPrimary(ifaceName)) {
+            return;
+        }
         mLastPollRssi = wifiInfo.getRssi();
         mLastPollLinkSpeed = wifiInfo.getLinkSpeed();
         mLastPollFreq = wifiInfo.getFrequency();
@@ -3467,10 +3532,10 @@ public class WifiMetrics {
     }
 
     /** Log firmware alert related metrics */
-    public void logFirmwareAlert(int errorCode) {
+    public void logFirmwareAlert(String ifaceName, int errorCode) {
         incrementAlertReasonCount(errorCode);
-        logWifiIsUnusableEvent(WifiIsUnusableEvent.TYPE_FIRMWARE_ALERT, errorCode);
-        addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
+        logWifiIsUnusableEvent(ifaceName, WifiIsUnusableEvent.TYPE_FIRMWARE_ALERT, errorCode);
+        addToWifiUsabilityStatsList(ifaceName, WifiUsabilityStats.LABEL_BAD,
                 WifiUsabilityStats.TYPE_FIRMWARE_ALERT, errorCode);
     }
 
@@ -5137,16 +5202,23 @@ public class WifiMetrics {
         }
     }
 
+    private boolean isPrimary(String ifaceName) {
+        return mIfaceToRoleMap.get(ifaceName) == ActiveModeManager.ROLE_CLIENT_PRIMARY;
+    }
+
     /**
      *  Set wifi state (WIFI_UNKNOWN, WIFI_DISABLED, WIFI_DISCONNECTED, WIFI_ASSOCIATED)
      */
-    public void setWifiState(int wifiState) {
+    public void setWifiState(String ifaceName, int wifiState) {
         synchronized (mLock) {
             mWifiState = wifiState;
-            mWifiWins = (wifiState == WifiMetricsProto.WifiLog.WIFI_ASSOCIATED);
-            mWifiWinsUsabilityScore = (wifiState == WifiMetricsProto.WifiLog.WIFI_ASSOCIATED);
-            if (wifiState == WifiMetricsProto.WifiLog.WIFI_DISCONNECTED
-                    || wifiState == WifiMetricsProto.WifiLog.WIFI_DISABLED) {
+            // set wifi priority over setting when any STA gets connected.
+            if (wifiState == WifiMetricsProto.WifiLog.WIFI_ASSOCIATED) {
+                mWifiWins = true;
+                mWifiWinsUsabilityScore = true;
+            }
+            if (isPrimary(ifaceName) && (wifiState == WifiMetricsProto.WifiLog.WIFI_DISCONNECTED
+                    || wifiState == WifiMetricsProto.WifiLog.WIFI_DISABLED)) {
                 mWifiStatusBuilder = new WifiStatusBuilder();
             }
         }
@@ -5286,6 +5358,7 @@ public class WifiMetrics {
             return;
         }
         staEvent.interfaceName = ifaceName;
+        staEvent.interfaceRole = convertIfaceToEnum(ifaceName);
         staEvent.startTimeMillis = mClock.getElapsedSinceBootMillis();
         staEvent.lastRssi = mLastPollRssi;
         staEvent.lastFreq = mLastPollFreq;
@@ -5546,7 +5619,41 @@ public class WifiMetrics {
         if (event.totalTxBytes > 0) sb.append(" totalTxBytes=").append(event.totalTxBytes);
         if (event.totalRxBytes > 0) sb.append(" totalRxBytes=").append(event.totalRxBytes);
         sb.append(" interfaceName=").append(event.interfaceName);
+        sb.append(" interfaceRole=").append(clientRoleEnumToString(event.interfaceRole));
         return sb.toString();
+    }
+
+    private int convertIfaceToEnum(String ifaceName) {
+        ActiveModeManager.ClientRole role = mIfaceToRoleMap.get(ifaceName);
+        if (role == ActiveModeManager.ROLE_CLIENT_SCAN_ONLY) {
+            return WifiMetricsProto.ROLE_CLIENT_SCAN_ONLY;
+        } else if (role == ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT) {
+            return WifiMetricsProto.ROLE_CLIENT_SECONDARY_TRANSIENT;
+        } else if (role == ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY) {
+            return WifiMetricsProto.ROLE_CLIENT_LOCAL_ONLY;
+        } else if (role == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+            return WifiMetricsProto.ROLE_CLIENT_PRIMARY;
+        } else if (role == ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED) {
+            return WifiMetricsProto.ROLE_CLIENT_SECONDARY_LONG_LIVED;
+        }
+        return WifiMetricsProto.ROLE_UNKNOWN;
+    }
+
+    private static String clientRoleEnumToString(int role) {
+        switch (role) {
+            case WifiMetricsProto.ROLE_CLIENT_SCAN_ONLY:
+                return "ROLE_CLIENT_SCAN_ONLY";
+            case WifiMetricsProto.ROLE_CLIENT_SECONDARY_TRANSIENT:
+                return "ROLE_CLIENT_SECONDARY_TRANSIENT";
+            case WifiMetricsProto.ROLE_CLIENT_LOCAL_ONLY:
+                return "ROLE_CLIENT_LOCAL_ONLY";
+            case WifiMetricsProto.ROLE_CLIENT_PRIMARY:
+                return "ROLE_CLIENT_PRIMARY";
+            case WifiMetricsProto.ROLE_CLIENT_SECONDARY_LONG_LIVED:
+                return "ROLE_CLIENT_SECONDARY_LONG_LIVED";
+            default:
+                return "ROLE_UNKNOWN";
+        }
     }
 
     private static String authFailureReasonToString(int authFailureReason) {
@@ -5918,17 +6025,22 @@ public class WifiMetrics {
     /**
      * Log a WifiIsUnusableEvent
      * @param triggerType WifiIsUnusableEvent.type describing the event
+     * @param ifaceName name of the interface.
      */
-    public void logWifiIsUnusableEvent(int triggerType) {
-        logWifiIsUnusableEvent(triggerType, -1);
+    public void logWifiIsUnusableEvent(String ifaceName, int triggerType) {
+        logWifiIsUnusableEvent(ifaceName, triggerType, -1);
     }
 
     /**
      * Log a WifiIsUnusableEvent
      * @param triggerType WifiIsUnusableEvent.type describing the event
      * @param firmwareAlertCode WifiIsUnusableEvent.firmwareAlertCode for firmware alert code
+     * @param ifaceName name of the interface.
      */
-    public void logWifiIsUnusableEvent(int triggerType, int firmwareAlertCode) {
+    public void logWifiIsUnusableEvent(String ifaceName, int triggerType, int firmwareAlertCode) {
+        if (!isPrimary(ifaceName)) {
+            return;
+        }
         mScoreBreachLowTimeMillis = -1;
         if (!mContext.getResources().getBoolean(R.bool.config_wifiIsUnusableEventMetricsEnabled)) {
             return;
@@ -5986,8 +6098,10 @@ public class WifiMetrics {
      * into an internal ring buffer.
      * @param info
      * @param stats
+     * @param ifaceName
      */
-    public void updateWifiUsabilityStatsEntries(WifiInfo info, WifiLinkLayerStats stats) {
+    public void updateWifiUsabilityStatsEntries(String ifaceName, WifiInfo info,
+            WifiLinkLayerStats stats) {
         // This is only collected for primary STA currently because RSSI polling is disabled for
         // non-primary STAs.
         synchronized (mLock) {
@@ -6191,7 +6305,7 @@ public class WifiMetrics {
             mWifiUsabilityStatsEntriesList.add(wifiUsabilityStatsEntry);
             mWifiUsabilityStatsCounter++;
             if (mWifiUsabilityStatsCounter >= NUM_WIFI_USABILITY_STATS_ENTRIES_PER_WIFI_GOOD) {
-                addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_GOOD,
+                addToWifiUsabilityStatsList(ifaceName, WifiUsabilityStats.LABEL_GOOD,
                         WifiUsabilityStats.TYPE_UNKNOWN, -1);
             }
             if (mScoreBreachLowTimeMillis != -1) {
@@ -6199,7 +6313,7 @@ public class WifiMetrics {
                 if (elapsedTime >= MIN_SCORE_BREACH_TO_GOOD_STATS_WAIT_TIME_MS) {
                     mScoreBreachLowTimeMillis = -1;
                     if (elapsedTime <= VALIDITY_PERIOD_OF_SCORE_BREACH_LOW_MS) {
-                        addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_GOOD,
+                        addToWifiUsabilityStatsList(ifaceName, WifiUsabilityStats.LABEL_GOOD,
                                 WifiUsabilityStats.TYPE_UNKNOWN, -1);
                     }
                 }
@@ -6491,8 +6605,12 @@ public class WifiMetrics {
      * @param firmwareAlertCode the firmware alert code when the stats was triggered by a
      *        firmware alert
      */
-    public void addToWifiUsabilityStatsList(int label, int triggerType, int firmwareAlertCode) {
+    public void addToWifiUsabilityStatsList(String ifaceName, int label, int triggerType,
+            int firmwareAlertCode) {
         synchronized (mLock) {
+            if (!isPrimary(ifaceName)) {
+                return;
+            }
             if (mWifiUsabilityStatsEntriesList.isEmpty() || !mScreenOn) {
                 return;
             }
