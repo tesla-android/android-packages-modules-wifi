@@ -1007,10 +1007,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         } else {
             assertNull(wifiInfo.getPasspointProviderFriendlyName());
         }
-        if (SdkLevel.isAtLeastS()) {
-            assertEquals(Arrays.asList(scanResult.informationElements),
+        assertEquals(Arrays.asList(scanResult.informationElements),
                     wifiInfo.getInformationElements());
-        }
         expectRegisterNetworkAgent((na) -> {
             if (!mConnectedNetwork.carrierMerged) {
                 assertNull(na.subscriberId);

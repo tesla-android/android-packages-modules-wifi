@@ -19,8 +19,11 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -35,6 +38,7 @@ import java.util.Objects;
  *
  * @hide
  */
+@RequiresApi(Build.VERSION_CODES.S)
 @SystemApi
 public final class WifiAvailableChannel implements Parcelable {
 
