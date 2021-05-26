@@ -349,4 +349,15 @@
             column="13"/>
     </issue>
 
+    <issue
+        id="NewApi"
+        message="Field requires API level 31 (current min is 30): `android.net.wifi.ScanResult.InformationElement#CREATOR`"
+        errorLine1="                        ScanResult.InformationElement.CREATOR);"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/framework/java/android/net/wifi/WifiInfo.java"
+            line="1333"
+            column="25"/>
+    </issue>
+
 </issues>
