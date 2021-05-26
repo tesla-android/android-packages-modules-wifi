@@ -712,9 +712,6 @@ public class WifiScanner {
          * </p>
          */
         public @WifiBand int getScannedBands() {
-            if (!SdkLevel.isAtLeastS()) {
-                throw new UnsupportedOperationException();
-            }
             return getScannedBandsInternal();
         }
 
