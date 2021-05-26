@@ -16,8 +16,32 @@
 
 package com.android.server.wifi;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.validateMockitoUsage;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import android.annotation.Nullable;
 import android.app.ActivityManager;
@@ -1726,7 +1750,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         network.allowedKeyManagement.clear();
         network.allowedPairwiseCiphers.clear();
         network.allowedGroupCiphers.clear();
-        network.enterpriseConfig = null;
 
         // Update the network.
         NetworkUpdateResult result = updateNetworkToWifiConfigManager(network);
@@ -1747,6 +1770,22 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationEqualForConfigManagerAddOrUpdate(
                 originalNetwork,
                 mWifiConfigManager.getConfiguredNetworkWithPassword(originalNetwork.networkId));
+
+        // Save a copy of the original network for comparison.
+        network = new WifiConfiguration(originalNetwork);
+
+        // Now set all the public fields to null including enterprise config and try updating the
+        // network.
+        network.allowedAuthAlgorithms.clear();
+        network.allowedProtocols.clear();
+        network.allowedKeyManagement.clear();
+        network.allowedPairwiseCiphers.clear();
+        network.allowedGroupCiphers.clear();
+        network.enterpriseConfig = null;
+
+        // Update the network.
+        result = updateNetworkToWifiConfigManager(network);
+        assertTrue(result.getNetworkId() == WifiConfiguration.INVALID_NETWORK_ID);
     }
 
     /**
@@ -7041,5 +7080,33 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         assertEquals(0,
                 mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+    }
+
+    /**
+     * Verifies the addition of a network with incomplete security parameters using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)} does not cause a crash.
+     */
+    @Test
+    public void testAddIncompleteEnterpriseConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        // EAP method is kept as Eap.NONE - should not crash, but return invalid ID
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() == WifiConfiguration.INVALID_NETWORK_ID);
+
+        // Now add this network correctly
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        result = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        // Now try to update
+        config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        config.networkId = result.getNetworkId();
+        NetworkUpdateResult updateResult = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() == updateResult.getNetworkId());
     }
 }
