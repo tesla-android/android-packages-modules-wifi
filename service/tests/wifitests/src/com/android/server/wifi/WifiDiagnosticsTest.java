@@ -775,7 +775,7 @@ public class WifiDiagnosticsTest extends WifiBaseTest {
         assertEquals(ALERT_REASON_CODE, alertReport.errorCode);
         assertArrayEquals(ALERT_DATA, alertReport.alertData);
 
-        verify(mWifiMetrics).logFirmwareAlert(ALERT_REASON_CODE);
+        verify(mWifiMetrics).logFirmwareAlert(anyString(), eq(ALERT_REASON_CODE));
         verify(mWifiScoreCard).noteFirmwareAlert(ALERT_REASON_CODE);
     }
 
