@@ -147,6 +147,9 @@ java_sdk_library {
         // Created by jarjar rules.
         "com.android.wifi.x",
     ],
+    lint: {
+        strict_updatability_linting: true,
+    },
 }
 
 // defaults for tests that need to build against framework-wifi's @hide APIs
