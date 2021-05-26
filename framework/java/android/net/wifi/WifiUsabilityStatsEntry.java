@@ -161,7 +161,7 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
          * @param timeMin The minimum data packet contention time
          * @param timeMax The maximum data packet contention time
          * @param timeAvg The average data packet contention time
-         * @param numSamples The number of samples used to get the reported statistics
+         * @param numSamples The number of samples used to get the reported contention time
          */
         public ContentionTimeStats(long timeMin, long timeMax, long timeAvg, long numSamples) {
             this.mContentionTimeMinMicros = timeMin;
@@ -214,7 +214,10 @@ public final class WifiUsabilityStatsEntry implements Parcelable {
             return mContentionTimeAvgMicros;
         }
 
-        /** Number of data packets used for contention statistics */
+        /**
+         * Number of data packets used for deriving the min, the max, and the average
+         * contention time
+         */
         public long getContentionNumSamples() {
             return mContentionNumSamples;
         }
