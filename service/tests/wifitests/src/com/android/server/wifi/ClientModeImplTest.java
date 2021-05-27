@@ -1007,10 +1007,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         } else {
             assertNull(wifiInfo.getPasspointProviderFriendlyName());
         }
-        if (SdkLevel.isAtLeastS()) {
-            assertEquals(Arrays.asList(scanResult.informationElements),
+        assertEquals(Arrays.asList(scanResult.informationElements),
                     wifiInfo.getInformationElements());
-        }
         expectRegisterNetworkAgent((na) -> {
             if (!mConnectedNetwork.carrierMerged) {
                 assertNull(na.subscriberId);
@@ -2594,7 +2592,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Set CMI to CONNECT_MODE and verify state, and wifi enabled in ConnectivityManager
         initializeCmi();
         inOrderMetrics.verify(mWifiMetrics)
-                .setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+                .setWifiState(WIFI_IFACE_NAME, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_ENABLED);
         assertNull(wifiInfo.getBSSID());
@@ -2609,7 +2607,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.stop();
         mLooper.dispatchAll();
 
-        inOrderMetrics.verify(mWifiMetrics).setWifiState(WifiMetricsProto.WifiLog.WIFI_DISABLED);
+        inOrderMetrics.verify(mWifiMetrics).setWifiState(WIFI_IFACE_NAME,
+                WifiMetricsProto.WifiLog.WIFI_DISABLED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_DISABLED);
         assertNull(wifiInfo.getBSSID());
@@ -2641,7 +2640,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeCmi();
 
         inOrderMetrics.verify(mWifiMetrics)
-                .setWifiState(WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
+                .setWifiState(WIFI_IFACE_NAME, WifiMetricsProto.WifiLog.WIFI_DISCONNECTED);
         inOrderMetrics.verify(mWifiMetrics)
                 .logStaEvent(WIFI_IFACE_NAME, StaEvent.TYPE_WIFI_ENABLED);
         assertEquals("DisconnectedState", getCurrentState().getName());
@@ -4444,9 +4443,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(newLLStats);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, oldLLStats, newLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(newLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, newLLStats);
     }
 
     /**
@@ -4461,26 +4460,28 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         WifiLinkLayerStats stats = new WifiLinkLayerStats();
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(stats);
-        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any()))
+        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(),
+                any(), any(), any(), any()))
                 .thenReturn(WifiIsUnusableEvent.TYPE_UNKNOWN);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).updateWifiUsabilityStatsEntries(any(), eq(stats));
-        verify(mWifiMetrics, never()).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
-                eq(anyInt()), eq(-1));
+        verify(mWifiMetrics).updateWifiUsabilityStatsEntries(any(), any(), eq(stats));
+        verify(mWifiMetrics, never()).addToWifiUsabilityStatsList(any(),
+                WifiUsabilityStats.LABEL_BAD, eq(anyInt()), eq(-1));
 
-        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any()))
+        when(mWifiDataStall.checkDataStallAndThroughputSufficiency(any(), any(), any(), any(),
+                any()))
                 .thenReturn(WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX);
         when(mClock.getElapsedSinceBootMillis()).thenReturn(10L);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics, times(2)).updateWifiUsabilityStatsEntries(any(), eq(stats));
+        verify(mWifiMetrics, times(2)).updateWifiUsabilityStatsEntries(any(), any(), eq(stats));
         when(mClock.getElapsedSinceBootMillis())
                 .thenReturn(10L + ClientModeImpl.DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS);
         mCmi.sendMessage(ClientModeImpl.CMD_RSSI_POLL, 1);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
-                WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX, -1);
+        verify(mWifiMetrics).addToWifiUsabilityStatsList(WIFI_IFACE_NAME,
+                WifiUsabilityStats.LABEL_BAD, WifiIsUnusableEvent.TYPE_DATA_STALL_BAD_TX, -1);
     }
 
     /**
@@ -4764,9 +4765,10 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_LOST);
         mLooper.dispatchAll();
-        verify(mWifiMetrics).logWifiIsUnusableEvent(
+        verify(mWifiMetrics).logWifiIsUnusableEvent(WIFI_IFACE_NAME,
                 WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
-        verify(mWifiMetrics).addToWifiUsabilityStatsList(WifiUsabilityStats.LABEL_BAD,
+        verify(mWifiMetrics).addToWifiUsabilityStatsList(WIFI_IFACE_NAME,
+                WifiUsabilityStats.LABEL_BAD,
                 WifiUsabilityStats.TYPE_IP_REACHABILITY_LOST, -1);
     }
 
@@ -6440,9 +6442,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
 
         WifiLinkLayerStats newLLStats = new WifiLinkLayerStats();
         when(mWifiNative.getWifiLinkLayerStats(any())).thenReturn(newLLStats);
@@ -6450,9 +6452,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiNative, times(2)).getWifiLinkLayerStats(WIFI_IFACE_NAME);
 
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, oldLLStats, newLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(newLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, newLLStats);
 
         // Now set the screen state to false & move time forward, ensure no more link layer stats
         // collection.
@@ -6512,9 +6514,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
     }
 
     @Test
@@ -6529,9 +6531,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.moveTimeForward(mWifiGlobals.getPollRssiIntervalMillis());
         mLooper.dispatchAll();
         verify(mWifiNative).getWifiLinkLayerStats(WIFI_IFACE_NAME);
-        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(
+        verify(mWifiDataStall).checkDataStallAndThroughputSufficiency(WIFI_IFACE_NAME,
                 mConnectionCapabilities, null, oldLLStats, mWifiInfo);
-        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(oldLLStats);
+        verify(mWifiMetrics).incrementWifiLinkLayerUsageStats(WIFI_IFACE_NAME, oldLLStats);
 
         // Now invoke role change, that should stop rssi polling on the secondary.
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
@@ -6544,5 +6546,49 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verifyNoMoreInteractions(mWifiNative, mWifiMetrics, mWifiDataStall);
+    }
+
+    @Test
+    public void testClientModeImplWhenIpClientIsNotReady() throws Exception {
+        WifiConfiguration config = mConnectedNetwork;
+        config.networkId = FRAMEWORK_NETWORK_ID;
+        config.setRandomizedMacAddress(TEST_LOCAL_MAC_ADDRESS);
+        config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
+        config.getNetworkSelectionStatus().setHasEverConnected(mTestNetworkParams.hasEverConnected);
+        assertNull(config.getNetworkSelectionStatus().getCandidateSecurityParams());
+
+        mFrameworkFacade = mock(FrameworkFacade.class);
+        ArgumentCaptor<IpClientCallbacks> captor = ArgumentCaptor.forClass(IpClientCallbacks.class);
+        // reset mWifiNative since initializeCmi() was called in setup()
+        resetWifiNative();
+
+        // reinitialize ClientModeImpl with IpClient is not ready.
+        initializeCmi();
+        verify(mFrameworkFacade).makeIpClient(any(), anyString(), captor.capture());
+
+        // Manually connect should fail.
+        IActionListener connectActionListener = mock(IActionListener.class);
+        mCmi.connectNetwork(
+                new NetworkUpdateResult(config.networkId),
+                new ActionListenerWrapper(connectActionListener),
+                Binder.getCallingUid());
+        mLooper.dispatchAll();
+        verify(connectActionListener).onFailure(WifiManager.ERROR);
+        verify(mWifiConfigManager, never())
+                .getConfiguredNetworkWithoutMasking(eq(config.networkId));
+        verify(mWifiNative, never()).connectToNetwork(eq(WIFI_IFACE_NAME), eq(config));
+
+        // Auto connect should also fail
+        mCmi.startConnectToNetwork(config.networkId, MANAGED_PROFILE_UID, config.BSSID);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager, never())
+                .getConfiguredNetworkWithoutMasking(eq(config.networkId));
+        verify(mWifiNative, never()).connectToNetwork(eq(WIFI_IFACE_NAME), eq(config));
+
+        // Make IpClient ready connection should succeed.
+        captor.getValue().onIpClientCreated(mIpClient);
+        mLooper.dispatchAll();
+
+        triggerConnect();
     }
 }

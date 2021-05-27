@@ -1275,8 +1275,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
         dest.writeInt(mMaxSupportedRxLinkSpeed);
         dest.writeString(mPasspointUniqueId);
         dest.writeInt(mSubscriptionId);
+        dest.writeTypedList(mInformationElements);
         if (SdkLevel.isAtLeastS()) {
-            dest.writeTypedList(mInformationElements);
             dest.writeInt(mIsPrimary);
         }
         dest.writeInt(mSecurityType);
@@ -1329,9 +1329,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 info.mMaxSupportedRxLinkSpeed = in.readInt();
                 info.mPasspointUniqueId = in.readString();
                 info.mSubscriptionId = in.readInt();
+                info.mInformationElements = in.createTypedArrayList(
+                        ScanResult.InformationElement.CREATOR);
                 if (SdkLevel.isAtLeastS()) {
-                    info.mInformationElements = in.createTypedArrayList(
-                            ScanResult.InformationElement.CREATOR);
                     info.mIsPrimary = in.readInt();
                 }
                 info.mSecurityType = in.readInt();
@@ -1387,9 +1387,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
     @Nullable
     @SuppressWarnings("NullableCollection")
     public List<ScanResult.InformationElement> getInformationElements() {
-        if (!SdkLevel.isAtLeastS()) {
-            throw new UnsupportedOperationException();
-        }
         if (mInformationElements == null) return null;
         return new ArrayList<>(mInformationElements);
     }
@@ -1416,6 +1413,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      *
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @RequiresPermission(Manifest.permission.NETWORK_SETTINGS)
     @SystemApi
     public boolean isPrimary() {

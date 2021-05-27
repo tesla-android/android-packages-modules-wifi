@@ -319,6 +319,7 @@ public class WifiDataStall {
      * non-primary STAs.
      */
     public int checkDataStallAndThroughputSufficiency(
+            @NonNull String ifaceName,
             @NonNull ConnectionCapabilities connectionCapabilities,
             @Nullable WifiLinkLayerStats oldStats,
             @Nullable WifiLinkLayerStats newStats,
@@ -444,13 +445,14 @@ public class WifiDataStall {
         boolean dataStallTx = isTxTrafficHigh ? possibleDataStallTx : mDataStallTx;
         boolean dataStallRx = isRxTrafficHigh ? possibleDataStallRx : mDataStallRx;
 
-        return detectConsecutiveTwoDataStalls(timeDeltaLastTwoPollsMs, dataStallTx, dataStallRx);
+        return detectConsecutiveTwoDataStalls(ifaceName, timeDeltaLastTwoPollsMs, dataStallTx,
+                dataStallRx);
     }
 
     // Data stall event is triggered if there are consecutive Tx and/or Rx data stalls
     // 1st data stall should be preceded by no data stall
     // Reset mDataStallStartTimeMs to -1 if currently there is no Tx or Rx data stall
-    private int detectConsecutiveTwoDataStalls(int timeDeltaLastTwoPollsMs,
+    private int detectConsecutiveTwoDataStalls(String ifaceName, int timeDeltaLastTwoPollsMs,
             boolean dataStallTx, boolean dataStallRx) {
         if (timeDeltaLastTwoPollsMs >= MAX_MS_DELTA_FOR_DATA_STALL) {
             return WifiIsUnusableEvent.TYPE_UNKNOWN;
@@ -463,7 +465,8 @@ public class WifiDataStall {
                 mDataStallStartTimeMs = mClock.getElapsedSinceBootMillis();
                 if (mDeviceConfigFacade.getDataStallDurationMs() == 0) {
                     mDataStallStartTimeMs = -1;
-                    int result = calculateUsabilityEventType(mDataStallTx, mDataStallRx);
+                    int result = calculateUsabilityEventType(ifaceName, mDataStallTx,
+                            mDataStallRx);
                     mDataStallRx = false;
                     mDataStallTx = false;
                     return result;
@@ -473,7 +476,8 @@ public class WifiDataStall {
                 if (elapsedTime >= mDeviceConfigFacade.getDataStallDurationMs()) {
                     mDataStallStartTimeMs = -1;
                     if (elapsedTime <= VALIDITY_PERIOD_OF_DATA_STALL_START_MS) {
-                        int result = calculateUsabilityEventType(mDataStallTx, mDataStallRx);
+                        int result = calculateUsabilityEventType(ifaceName, mDataStallTx,
+                                mDataStallRx);
                         mDataStallRx = false;
                         mDataStallTx = false;
                         return result;
@@ -504,7 +508,8 @@ public class WifiDataStall {
         }
         return (int) (txRetriesDelta * 100 / txAttempts);
     }
-    private int calculateUsabilityEventType(boolean dataStallTx, boolean dataStallRx) {
+    private int calculateUsabilityEventType(String ifaceName, boolean dataStallTx,
+            boolean dataStallRx) {
         int result = WifiIsUnusableEvent.TYPE_UNKNOWN;
         if (dataStallTx && dataStallRx) {
             result = WifiIsUnusableEvent.TYPE_DATA_STALL_BOTH;
@@ -513,7 +518,7 @@ public class WifiDataStall {
         } else if (dataStallRx) {
             result = WifiIsUnusableEvent.TYPE_DATA_STALL_TX_WITHOUT_RX;
         }
-        mWifiMetrics.logWifiIsUnusableEvent(result);
+        mWifiMetrics.logWifiIsUnusableEvent(ifaceName, result);
         return result;
     }
 

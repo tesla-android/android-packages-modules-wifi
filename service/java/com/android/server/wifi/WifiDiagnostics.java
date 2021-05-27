@@ -152,6 +152,7 @@ public class WifiDiagnostics {
 
     /** Interfaces started logging */
     private final Set<String> mActiveInterfaces = new ArraySet<>();
+    private String mLatestIfaceLogged = "";
 
     public WifiDiagnostics(
             Context context, WifiInjector wifiInjector,
@@ -195,6 +196,7 @@ public class WifiDiagnostics {
         }
 
         mActiveInterfaces.add(ifaceName);
+        mLatestIfaceLogged = ifaceName;
 
         Log.d(TAG, "startLogging() iface list is " + mActiveInterfaces
                 + " after adding " + ifaceName);
@@ -521,7 +523,10 @@ public class WifiDiagnostics {
 
     synchronized void onWifiAlert(int errorCode, @NonNull byte[] buffer) {
         triggerAlertDataCapture(errorCode, buffer);
-        mWifiMetrics.logFirmwareAlert(errorCode);
+        // TODO b/166309727 This currently assumes that the firmware alert comes from latest
+        // interface that started logging, as the callback does not tell us which interface
+        // caused the alert.
+        mWifiMetrics.logFirmwareAlert(mLatestIfaceLogged, errorCode);
         mWifiInjector.getWifiScoreCard().noteFirmwareAlert(errorCode);
     }
 

@@ -905,11 +905,14 @@ public class WifiNetworkSuggestionsManager {
             Log.e(TAG, "bad wifi suggestion from app: " + packageName);
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED;
         }
-
-        networkSuggestions.forEach(wns -> {
+        for (WifiNetworkSuggestion wns : networkSuggestions) {
             wns.wifiConfiguration.convertLegacyFieldsToSecurityParamsIfNeeded();
-            WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(wns.wifiConfiguration);
-        });
+            if (!WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(
+                    wns.wifiConfiguration)) {
+                Log.e(TAG, "Invalid suggestion add from app: " + packageName);
+                return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID;
+            }
+        }
 
         final String activeScorerPackage = mNetworkScoreManager.getActiveScorerPackage();
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);

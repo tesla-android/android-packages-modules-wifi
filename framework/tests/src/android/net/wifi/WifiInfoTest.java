@@ -110,24 +110,24 @@ public class WifiInfoTest {
         assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS, info.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS, info.getMaxSupportedRxLinkSpeedMbps());
         assertEquals(TEST_BSSID, info.getMacAddress());
+        assertEquals(2, info.getInformationElements().size());
+        assertEquals(informationElements.get(0).id,
+                info.getInformationElements().get(0).id);
+        assertEquals(informationElements.get(0).idExt,
+                info.getInformationElements().get(0).idExt);
+        assertArrayEquals(informationElements.get(0).bytes,
+                info.getInformationElements().get(0).bytes);
+        assertEquals(informationElements.get(1).id,
+                info.getInformationElements().get(1).id);
+        assertEquals(informationElements.get(1).idExt,
+                info.getInformationElements().get(1).idExt);
+        assertArrayEquals(informationElements.get(1).bytes,
+                info.getInformationElements().get(1).bytes);
         if (SdkLevel.isAtLeastS()) {
             assertTrue(info.isOemPaid());
             assertTrue(info.isOemPrivate());
             assertTrue(info.isCarrierMerged());
             assertEquals(TEST_SUB_ID, info.getSubscriptionId());
-            assertEquals(2, info.getInformationElements().size());
-            assertEquals(informationElements.get(0).id,
-                    info.getInformationElements().get(0).id);
-            assertEquals(informationElements.get(0).idExt,
-                    info.getInformationElements().get(0).idExt);
-            assertArrayEquals(informationElements.get(0).bytes,
-                    info.getInformationElements().get(0).bytes);
-            assertEquals(informationElements.get(1).id,
-                    info.getInformationElements().get(1).id);
-            assertEquals(informationElements.get(1).idExt,
-                    info.getInformationElements().get(1).idExt);
-            assertArrayEquals(informationElements.get(1).bytes,
-                    info.getInformationElements().get(1).bytes);
             assertTrue(info.isPrimary());
         }
     }
@@ -204,12 +204,12 @@ public class WifiInfoTest {
         assertEquals(TEST_MAX_SUPPORTED_TX_LINK_SPEED_MBPS, info.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS, info.getMaxSupportedRxLinkSpeedMbps());
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getMacAddress());
+        assertNull(info.getInformationElements());
         if (SdkLevel.isAtLeastS()) {
             assertTrue(info.isOemPaid());
             assertTrue(info.isOemPrivate());
             assertTrue(info.isCarrierMerged());
             assertEquals(TEST_SUB_ID, info.getSubscriptionId());
-            assertNull(info.getInformationElements());
             assertTrue(info.isPrimary());
         }
     }

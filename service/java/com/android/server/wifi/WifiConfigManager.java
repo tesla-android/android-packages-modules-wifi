@@ -1297,7 +1297,9 @@ public class WifiConfigManager {
                             existingInternalConfig, config, uid, packageName);
         }
 
-        WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(newInternalConfig);
+        if (!WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(newInternalConfig)) {
+            return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
+        }
 
         // Only add networks with proxy settings if the user has permission to
         if (WifiConfigurationUtil.hasProxyChanged(existingInternalConfig, newInternalConfig)
