@@ -1128,6 +1128,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      * Verify that the restartWifiSubsystem fails w/o the NETWORK_AIRPLANE_MODE permission.
      */
     @Test public void testRestartWifiSubsystemWithoutPermission() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext).enforceCallingOrSelfPermission(
                 eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM), eq("WifiService"));
 
@@ -1145,6 +1146,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRegisterSubsystemRestartThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
                         eq("WifiService"));
@@ -1160,6 +1162,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testUnregisterSubsystemRestartThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastS());
         doThrow(new SecurityException()).when(mContext)
                 .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
                         eq("WifiService"));
@@ -1175,6 +1178,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRegisterUnregisterSubsystemRestartCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mCoexCallback.asBinder()).thenReturn(mAppBinder);
         mWifiServiceImpl.registerSubsystemRestartCallback(mSubsystemRestartCallback);
         mLooper.dispatchAll();
@@ -1189,6 +1193,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRestartWifiSubsystem() {
+        assumeTrue(SdkLevel.isAtLeastS());
         when(mContext.checkPermission(eq(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM),
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
