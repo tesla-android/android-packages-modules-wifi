@@ -1,7 +1,5 @@
-set noparent
-
-dysu@google.com
 etancohen@google.com
+kumaranand@google.com
 satk@google.com
 
 include platform/packages/modules/common:/MODULES_OWNERS  # see go/mainline-owners-policy

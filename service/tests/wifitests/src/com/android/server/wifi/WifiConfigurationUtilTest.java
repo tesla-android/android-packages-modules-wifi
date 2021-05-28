@@ -1153,4 +1153,24 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         wapiCertConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_CERT);
         assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(wapiCertConfig));
     }
+
+
+    /**
+     * Verify that the validate method fails to validate WifiConfiguration with malformed
+     * enterprise configuration
+     */
+    @Test
+    public void testValidateNegativeCases_MalformedEnterpriseConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        // EAP method is kept as Eap.NONE - should not crash, but return invalid ID
+        assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
+        assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+    }
 }
