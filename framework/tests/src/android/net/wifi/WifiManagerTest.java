@@ -424,6 +424,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRestartWifiSubsystem() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.restartWifiSubsystem();
         verify(mWifiService).restartWifiSubsystem();
     }
@@ -434,6 +435,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRegisterSubsystemRestartTrackingCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mRestartCallbackMethodRun = 0; // none
         ArgumentCaptor<ISubsystemRestartCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ISubsystemRestartCallback.Stub.class);
