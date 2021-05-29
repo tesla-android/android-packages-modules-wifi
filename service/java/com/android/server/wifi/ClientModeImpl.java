@@ -177,7 +177,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private static final String TAG = "WifiClientModeImpl";
 
-    private static final int IPCLIENT_STARTUP_TIMEOUT_MS = 5 * 1000;
+    private static final int IPCLIENT_STARTUP_TIMEOUT_MS = 2_000;
     private static final int IPCLIENT_SHUTDOWN_TIMEOUT_MS = 60_000; // 60 seconds
     @VisibleForTesting public static final long CONNECTING_WATCHDOG_TIMEOUT_MS = 30_000; // 30 secs.
     @VisibleForTesting
