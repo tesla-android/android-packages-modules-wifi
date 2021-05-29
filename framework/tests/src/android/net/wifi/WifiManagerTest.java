@@ -424,6 +424,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRestartWifiSubsystem() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.restartWifiSubsystem();
         verify(mWifiService).restartWifiSubsystem();
     }
@@ -434,6 +435,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testRegisterSubsystemRestartTrackingCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mRestartCallbackMethodRun = 0; // none
         ArgumentCaptor<ISubsystemRestartCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ISubsystemRestartCallback.Stub.class);
@@ -3306,6 +3308,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testSetOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setOverrideCountryCode(TEST_COUNTRY_CODE);
         verify(mWifiService).setOverrideCountryCode(eq(TEST_COUNTRY_CODE));
     }
@@ -3315,6 +3318,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testClearOverrideCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.clearOverrideCountryCode();
         verify(mWifiService).clearOverrideCountryCode();
     }
@@ -3324,6 +3328,7 @@ public class WifiManagerTest {
      */
     @Test
     public void testSetDefaultCountryCode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mWifiManager.setDefaultCountryCode(TEST_COUNTRY_CODE);
         verify(mWifiService).setDefaultCountryCode(eq(TEST_COUNTRY_CODE));
     }
