@@ -20,7 +20,6 @@ import static com.android.internal.util.Preconditions.checkNotNull;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.annotation.SystemApi;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.MacAddress;
@@ -774,7 +773,6 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
 
     /** @hide */
     @Override
-    @SystemApi
     @Nullable
     public NetworkSpecifier redact() {
         if (!SdkLevel.isAtLeastS()) return this;
