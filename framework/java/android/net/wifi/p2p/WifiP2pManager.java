@@ -1417,7 +1417,7 @@ public class WifiP2pManager {
      * {@link ActionListener#onSuccess} or {@link ActionListener#onFailure}.
      * @hide
      */
-    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
+    @UnsupportedAppUsage(trackingBug = 185141982)
     public void startWps(Channel c, WpsInfo wps, ActionListener listener) {
         checkChannel(c);
         c.mAsyncChannel.sendMessage(START_WPS, 0, c.putListener(listener), wps);
