@@ -45,6 +45,7 @@ import android.util.SparseArray;
 import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.GeneralUtil.Mutable;
 import com.android.server.wifi.util.WorkSourceHelper;
 
@@ -1980,6 +1981,9 @@ public class HalDeviceManager {
     private static boolean allowedToDelete(
             int requestedIfaceType, @RequestorWsPriority int newRequestorWsPriority,
             int existingIfaceType, @RequestorWsPriority int existingRequestorWsPriority) {
+        if (!SdkLevel.isAtLeastS()) {
+            return allowedToDeleteForR(requestedIfaceType, existingIfaceType);
+        }
         // If the new request is higher priority than existing priority, then the new requestor
         // wins. This is because at all other priority levels (except privileged), existing caller
         // wins if both the requests are at the same priority level.
@@ -1998,6 +2002,40 @@ public class HalDeviceManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Returns true if we're allowed to delete the existing interface type for the requested
+     * interface type.
+     *
+     * Rules - applies in order:
+     *
+     * General rules:
+     * 1. No interface will be destroyed for a requested interface of the same type
+     *
+     * Type-specific rules (but note that the general rules are applied first):
+     * 2. Request for AP or STA will destroy any other interface
+     * 3. Request for P2P will destroy NAN-only
+     * 4. Request for NAN will destroy P2P-only
+     */
+    private static boolean allowedToDeleteForR(int requestedIfaceType, int existingIfaceType) {
+        // rule 1
+        if (existingIfaceType == requestedIfaceType) {
+            return false;
+        }
+
+        // rule 2
+        if (requestedIfaceType == IfaceType.P2P) {
+            return existingIfaceType == IfaceType.NAN;
+        }
+
+        // rule 3
+        if (requestedIfaceType == IfaceType.NAN) {
+            return existingIfaceType == IfaceType.P2P;
+        }
+
+        // rule 4, the requestIfaceType is either AP or STA
+        return true;
     }
 
     /**
