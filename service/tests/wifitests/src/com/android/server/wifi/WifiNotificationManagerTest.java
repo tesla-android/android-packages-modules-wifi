@@ -27,6 +27,7 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.UserHandle;
+import android.service.notification.StatusBarNotification;
 
 import androidx.test.filters.SmallTest;
 
@@ -52,6 +53,7 @@ public class WifiNotificationManagerTest extends WifiBaseTest {
     @Mock private NotificationManager mNotificationManagerForAnotherUser;
     @Mock private Notification mNotification;
     @Mock private Resources mResources;
+    @Mock private StatusBarNotification mStatusBarNotification;
 
     @Before
     public void setUp() throws Exception {
@@ -97,10 +99,15 @@ public class WifiNotificationManagerTest extends WifiBaseTest {
         verify(mNotificationManager).notify(eq(NOTIFICATION_TAG), eq(TEST_MESSAGE_ID), any());
         verify(mNotificationManagerForAnotherUser, never()).notify(anyString(), anyInt(), any());
         clearInvocations(mNotificationManager);
+        when(mNotificationManager.getActiveNotifications())
+                .thenReturn(new StatusBarNotification[]{mStatusBarNotification});
+        when(mStatusBarNotification.getTag()).thenReturn(NOTIFICATION_TAG);
+        when(mStatusBarNotification.getId()).thenReturn(TEST_MESSAGE_ID);
         // Test user switch
         when(mContext.createPackageContextAsUser(anyString(), anyInt(), any()))
                 .thenReturn(mContextForAnotherUser);
         mWifiNotificationManager.createNotificationChannels();
+        verify(mNotificationManager).cancel(eq(NOTIFICATION_TAG), eq(TEST_MESSAGE_ID));
         verify(mNotificationManagerForAnotherUser).createNotificationChannels(any());
         mWifiNotificationManager.notify(TEST_MESSAGE_ID, mNotification);
         verify(mNotificationManagerForAnotherUser).notify(eq(NOTIFICATION_TAG), eq(TEST_MESSAGE_ID),
