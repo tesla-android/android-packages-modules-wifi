@@ -887,7 +887,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 WifiManager.WIFI_STATE_UNKNOWN);
                         if (wifistate == WifiManager.WIFI_STATE_ENABLED) {
                             mIsWifiEnabled = true;
-                            checkAndReEnableP2p();
                         } else {
                             mIsWifiEnabled = false;
                             // Teardown P2P if it's up already.
@@ -1478,32 +1477,38 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 }
             }
 
+            private boolean setupInterface() {
+                if (!mIsWifiEnabled) {
+                    Log.e(TAG, "Ignore P2P enable since wifi is " + mIsWifiEnabled);
+                    return false;
+                }
+                WorkSource requestorWs = createMergedRequestorWs();
+                mInterfaceName = mWifiNative.setupInterface((String ifaceName) -> {
+                    sendMessage(DISABLE_P2P);
+                    checkAndSendP2pStateChangedBroadcast();
+                }, getHandler(), requestorWs);
+                if (mInterfaceName == null) {
+                    Log.e(TAG, "Failed to setup interface for P2P");
+                    return false;
+                }
+                setupInterfaceFeatures(mInterfaceName);
+                try {
+                    mNetdWrapper.setInterfaceUp(mInterfaceName);
+                } catch (IllegalStateException ie) {
+                    loge("Unable to change interface settings: " + ie);
+                }
+                registerForWifiMonitorEvents();
+                return true;
+            }
+
             @Override
             public boolean processMessage(Message message) {
                 if (mVerboseLoggingEnabled) logd(getName() + message.toString());
                 switch (message.what) {
                     case ENABLE_P2P:
-                        if (!mIsWifiEnabled) {
-                            Log.e(TAG, "Ignore P2P enable since wifi is " + mIsWifiEnabled);
-                            break;
+                        if (setupInterface()) {
+                            transitionTo(mInactiveState);
                         }
-                        WorkSource requestorWs = createMergedRequestorWs();
-                        mInterfaceName = mWifiNative.setupInterface((String ifaceName) -> {
-                            sendMessage(DISABLE_P2P);
-                            checkAndSendP2pStateChangedBroadcast();
-                        }, getHandler(), requestorWs);
-                        if (mInterfaceName == null) {
-                            Log.e(TAG, "Failed to setup interface for P2P");
-                            break;
-                        }
-                        setupInterfaceFeatures(mInterfaceName);
-                        try {
-                            mNetdWrapper.setInterfaceUp(mInterfaceName);
-                        } catch (IllegalStateException ie) {
-                            loge("Unable to change interface settings: " + ie);
-                        }
-                        registerForWifiMonitorEvents();
-                        transitionTo(mInactiveState);
                         break;
                     case REMOVE_CLIENT_INFO:
                         if (!(message.obj instanceof IBinder)) {
@@ -1520,7 +1525,31 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     default:
-                        return NOT_HANDLED;
+                        // only handle commands from clients.
+                        if (message.what < Protocol.BASE_WIFI_P2P_MANAGER
+                                || Protocol.BASE_WIFI_P2P_SERVICE <= message.what) {
+                            return NOT_HANDLED;
+                        }
+                        // If P2P is not ready, it might be disabled due
+                        // to another interface, ex. turn on softap from
+                        // the quicksettings.
+                        // As the new priority scheme, the foreground app
+                        // might be able to use P2P, so just try to enable
+                        // it.
+                        // Check & re-enable P2P if needed.
+                        // P2P interface will be created if all of the below are true:
+                        // a) Wifi is enabled.
+                        // b) There is at least 1 client app which invoked initialize().
+                        if (mVerboseLoggingEnabled) {
+                            Log.d(TAG, "Wifi enabled=" + mIsWifiEnabled + ", Number of clients="
+                                    + mDeathDataByBinder.size());
+                        }
+                        if (!mIsWifiEnabled) return NOT_HANDLED;
+                        if (mDeathDataByBinder.isEmpty()) return NOT_HANDLED;
+                        if (!setupInterface()) return NOT_HANDLED;
+                        deferMessage(message);
+                        transitionTo(mInactiveState);
+                        break;
                 }
                 return HANDLED;
             }
@@ -3149,18 +3178,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             pw.println("mSavedPeerConfig " + mSavedPeerConfig);
             pw.println("mGroups" + mGroups);
             pw.println();
-        }
-
-        // Check & re-enable P2P if needed.
-        // P2P interface will be created if all of the below are true:
-        // a) Wifi is enabled.
-        // b) There is at least 1 client app which invoked initialize().
-        private void checkAndReEnableP2p() {
-            Log.d(TAG, "Wifi enabled=" + mIsWifiEnabled + ", Number of clients="
-                    + mDeathDataByBinder.size());
-            if (mIsWifiEnabled && !mDeathDataByBinder.isEmpty()) {
-                sendMessage(ENABLE_P2P);
-            }
         }
 
         private void checkAndSendP2pStateChangedBroadcast() {
