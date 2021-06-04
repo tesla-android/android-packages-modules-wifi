@@ -20,6 +20,7 @@ import android.annotation.LongDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration.BandType;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -78,9 +79,9 @@ public final class SoftApCapability implements Parcelable {
      *
      * <p>
      * Check feature support before invoking
-     * {@link SoftApConfiguration.Builder#setBssid(MadAddress)} or
+     * {@link SoftApConfiguration.Builder#setBssid(MacAddress)} or
      * {@link SoftApConfiguration.Builder#setMacRandomizationSetting(int)} with
-     * {@link SoftApConfiguration.RANDOMIZATION_PERSISTENT}
+     * {@link SoftApConfiguration#RANDOMIZATION_PERSISTENT}
      */
     public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 1 << 3;
 
@@ -189,9 +190,9 @@ public final class SoftApCapability implements Parcelable {
      * Set supported channel list in target band type.
      *
      * @param band One of the following band types:
-     * {@link SoftApConfiguation#BAND_2GHZ}, {@link SoftApConfiguation#BAND_5GHZ},
-     * {@link SoftApConfiguation#BAND_6GHZ}, or {@link SoftApConfiguation#BAND_60GHZ}.
-     * @param  supportedChannelList supported channel list in target band
+     * {@link SoftApConfiguration#BAND_2GHZ}, {@link SoftApConfiguration#BAND_5GHZ},
+     * {@link SoftApConfiguration#BAND_6GHZ}, or {@link SoftApConfiguration#BAND_60GHZ}.
+     * @param supportedChannelList supported channel list in target band
      * @return true if band and supportedChannelList are valid, otherwise false.
      *
      * @throws IllegalArgumentException when band type is invalid.
@@ -223,11 +224,11 @@ public final class SoftApCapability implements Parcelable {
      * Returns a list of the supported channels in the given band.
      * The result depends on the on the country code that has been set.
      * Can be used to set the channel of the AP with the
-     * {@link SoftapConfiguration.Builder#setChannel(int, int)} API.
+     * {@link SoftApConfiguration.Builder#setChannel(int, int)} API.
      *
      * @param band One of the following band types:
-     * {@link SoftApConfiguation#BAND_2GHZ}, {@link SoftApConfiguation#BAND_5GHZ},
-     * {@link SoftApConfiguation#BAND_6GHZ}, {@link SoftApConfiguation#BAND_60GHZ}.
+     * {@link SoftApConfiguration#BAND_2GHZ}, {@link SoftApConfiguration#BAND_5GHZ},
+     * {@link SoftApConfiguration#BAND_6GHZ}, {@link SoftApConfiguration#BAND_60GHZ}.
      * @return List of supported channels for the band.
      *
      * @throws IllegalArgumentException when band type is invalid.

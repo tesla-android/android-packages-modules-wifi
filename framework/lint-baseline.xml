@@ -102,7 +102,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): CIPHER_GCMP_128 [NewApi]"
+        message="Call requires API level 31 (current min is 30): CIPHER_GCMP_128 [NewApi]"
         errorLine1="        ScanResult.CIPHER_GCMP_128,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -112,7 +112,7 @@
     </issue>
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
+        message="Call requires API level 31 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
         errorLine1="            WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -123,7 +123,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_GMAC_128 [NewApi]"
+        message="Call requires API level 31 (current min is 30): CIPHER_BIP_GMAC_128 [NewApi]"
         errorLine1="        ScanResult.CIPHER_BIP_GMAC_128,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -133,7 +133,7 @@
     </issue>
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED`"
+        message="Call requires API level 31 (current min is 30): `WIFI_RNR_ENABLED`"
         errorLine1="            WIFI_RNR_ENABLED,"
         errorLine2="            ~~~~~~~~~~~~~~~~">
         <location
@@ -144,7 +144,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_GMAC_256 [NewApi]"
+        message="Call requires API level 31 (current min is 30): CIPHER_BIP_GMAC_256 [NewApi]"
         errorLine1="        ScanResult.CIPHER_BIP_GMAC_256,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -154,7 +154,7 @@
     </issue>
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_NOT_NEEDED`"
+        message="Call requires API level 31 (current min is 30): `WIFI_RNR_NOT_NEEDED`"
         errorLine1="            WIFI_RNR_NOT_NEEDED})"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~">
         <location
@@ -165,7 +165,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): CIPHER_BIP_CMAC_256 [NewApi]"
+        message="Call requires API level 31 (current min is 30): CIPHER_BIP_CMAC_256 [NewApi]"
         errorLine1="        ScanResult.CIPHER_BIP_CMAC_256,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -175,7 +175,7 @@
     </issue>
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
+        message="Call requires API level 31 (current min is 30): `WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED`"
         errorLine1="        private int mRnrSetting = WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED;"
         errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -186,7 +186,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_URI_GENERATION`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_URI_GENERATION`"
         errorLine1="            EASY_CONNECT_EVENT_FAILURE_URI_GENERATION,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -197,7 +197,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL`"
         errorLine1="            EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -208,7 +208,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED`"
         errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_UNSPECIFIED,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -219,7 +219,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED`"
         errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_MAX_NUM_STA_ASSOCIATED,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -230,7 +230,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED`"
         errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -241,7 +241,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED`"
         errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AUTH_SERVER_OVERLOADED,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -252,7 +252,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI`"
         errorLine1="            RECENT_FAILURE_MBO_ASSOC_DISALLOWED_INSUFFICIENT_RSSI,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -263,7 +263,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION`"
         errorLine1="            RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -274,7 +274,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `RECENT_FAILURE_NETWORK_NOT_FOUND`"
+        message="Call requires API level 31 (current min is 30): `RECENT_FAILURE_NETWORK_NOT_FOUND`"
         errorLine1="            RECENT_FAILURE_NETWORK_NOT_FOUND"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -285,7 +285,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -296,7 +296,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -307,7 +307,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -318,7 +318,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -329,7 +329,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -340,7 +340,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 10000 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1`"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1`"
         errorLine1="            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1,"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
