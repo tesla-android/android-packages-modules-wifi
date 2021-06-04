@@ -21,7 +21,9 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
 
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_EAP;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_NONE;
+import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_OWE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_PSK;
+import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_SAE;
 import static com.android.server.wifi.WifiNetworkSelector.experimentIdFromIdentifier;
 
 import static org.hamcrest.Matchers.*;
@@ -59,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiNetworkSelector}.
@@ -2351,5 +2354,77 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
                 .isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
         assertFalse(networkSelectorChoice.getNetworkSelectionStatus().getCandidateSecurityParams()
                 .isRequirePmf());
+    }
+
+    @Test
+    public void verifySecurityParamsSelectionForPskSaeConfigAndSaeScan() {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(WIFI_FEATURE_WPA3_SAE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        setupMultiConfigAndSingleScanAndVerify("[RSN-SAE-CCMP][ESS][MFPR]",
+                SECURITY_PSK | SECURITY_SAE, WifiConfiguration.SECURITY_TYPE_SAE);
+    }
+
+    @Test
+    public void verifySecurityParamsSelectionForPskSaeConfigAndSaeScanNegative() {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(~WIFI_FEATURE_WPA3_SAE);
+        setupMultiConfigAndSingleScanAndVerify("[RSN-SAE-CCMP][ESS][MFPR]",
+                SECURITY_PSK | SECURITY_SAE, -1);
+    }
+
+    @Test
+    public void verifySecurityParamsSelectionForOpenOweConfigAndOweScan() {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
+        setupMultiConfigAndSingleScanAndVerify("[OWE-SAE-CCMP][ESS][MFPR]",
+                SECURITY_NONE | SECURITY_OWE, WifiConfiguration.SECURITY_TYPE_OWE);
+    }
+
+    @Test
+    public void verifySecurityParamsSelectionForOpenOweConfigAndOweScanNegative() {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(~WIFI_FEATURE_OWE);
+        setupMultiConfigAndSingleScanAndVerify("[OWE-SAE-CCMP][ESS][MFPR]",
+                SECURITY_NONE | SECURITY_OWE, -1);
+    }
+
+    private void setupMultiConfigAndSingleScanAndVerify(String capabilities, int securityTypes,
+            int expectedSecurityParamType) {
+        String[] ssids = {"\"Some SSID\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3"};
+        int[] freqs = {2437};
+        String[] caps = {capabilities};
+        int[] levels = {mThresholdMinimumRssi2G + RSSI_BUMP};
+        int[] securities = {securityTypes};
+
+        // Let PlaceholderNominator return all networks.
+        mPlaceholderNominator.setNetworkIndexToReturn(PlaceholderNominator.RETURN_ALL_INDEX);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        Set<String> blocklist = new HashSet<>();
+        WifiConfiguration[] savedConfigs = scanDetailsAndConfigs.getWifiConfigs();
+        when(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(any()))
+                .thenReturn(savedConfigs[0]);
+        savedConfigs[0].getNetworkSelectionStatus()
+                .setSeenInLastQualifiedNetworkSelection(true);
+
+        mWifiNetworkSelector.registerNetworkNominator(
+                new AllNetworkNominator(scanDetailsAndConfigs));
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true);
+        assertNotNull(candidates);
+        if (expectedSecurityParamType == -1) {
+            assertEquals(0, candidates.size());
+        } else {
+            assertEquals(1, candidates.size());
+            WifiConfiguration network = mWifiNetworkSelector.selectNetwork(candidates);
+
+            assertNotNull(network);
+            assertEquals(network.getSecurityParams(expectedSecurityParamType),
+                    network.getNetworkSelectionStatus().getCandidateSecurityParams());
+        }
     }
 }
