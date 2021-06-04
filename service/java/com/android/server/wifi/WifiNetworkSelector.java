@@ -818,6 +818,8 @@ public class WifiNetworkSelector {
             registeredNominator.update(scanDetails);
         }
 
+        updateCandidatesSecurityParams(scanDetails);
+
         // Shall we start network selection at all?
         if (!isNetworkSelectionNeeded(scanDetails, cmmStates)) {
             return null;
@@ -1281,5 +1283,23 @@ public class WifiNetworkSelector {
         mWifiChannelUtilization = wifiChannelUtilization;
         mWifiGlobals = wifiGlobals;
         mScanRequestProxy = scanRequestProxy;
+    }
+
+    private void updateCandidatesSecurityParams(List<ScanDetail> scanDetails) {
+        for (ScanDetail scanDetail : scanDetails) {
+            WifiConfiguration network =
+                    mWifiConfigManager.getSavedNetworkForScanDetail(scanDetail);
+            if (network == null || network.getSecurityParamsList().size() < 2) continue;
+
+            List<SecurityParams> scanResultParamsList = ScanResultUtil
+                    .generateSecurityParamsListFromScanResult(scanDetail.getScanResult());
+            if (scanResultParamsList == null) continue;
+
+            SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(network,
+                    scanResultParamsList);
+            if (params == null) continue;
+
+            network.getNetworkSelectionStatus().setCandidateSecurityParams(params);
+        }
     }
 }
