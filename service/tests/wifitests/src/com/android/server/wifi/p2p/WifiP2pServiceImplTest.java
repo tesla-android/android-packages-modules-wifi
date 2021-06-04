@@ -969,11 +969,17 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // Force to back disable state for next test
         mockEnterDisabledState();
 
+        // wifi off / on won't initialize the p2p interface.
         simulateWifiStateChange(true);
         mLooper.dispatchAll();
+        verify(mWifiNative, times(1)).setupInterface(any(), any(), any());
+        verify(mNetdWrapper, times(1)).setInterfaceUp(anyString());
+        verify(mWifiMonitor, atLeastOnce()).registerHandler(anyString(), anyInt(), any());
+
+        // Lazy initialization is done once receiving a command.
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_P2P_STATE);
         verify(mWifiNative, times(2)).setupInterface(any(), any(), any());
         verify(mNetdWrapper, times(2)).setInterfaceUp(anyString());
-        verify(mWifiMonitor, atLeastOnce()).registerHandler(anyString(), anyInt(), any());
     }
 
     /**
