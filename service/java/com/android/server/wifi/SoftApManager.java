@@ -99,7 +99,7 @@ public class SoftApManager implements ActiveModeManager {
     @VisibleForTesting
     static final long SOFT_AP_PENDING_DISCONNECTION_CHECK_DELAY_MS = 1000;
 
-    private final String mCountryCode;
+    private String mCountryCode;
 
     private final SoftApStateMachine mStateMachine;
 
@@ -513,6 +513,22 @@ public class SoftApManager implements ActiveModeManager {
         return SUCCESS;
     }
 
+    /**
+     * Dynamic update the country code when Soft AP enabled.
+     *
+     * @param countryCode 2 byte ASCII string. For ex: US, CA.
+     * @return true if request is sent successfully, false otherwise.
+     */
+    public boolean updateCountryCode(@NonNull String countryCode) {
+        if (ApConfigUtil.isSoftApDynamicCountryCodeSupported(mContext)
+                && mCurrentSoftApCapability.areFeaturesSupported(
+                        SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)) {
+            mStateMachine.sendMessage(SoftApStateMachine.CMD_UPDATE_COUNTRY_CODE, countryCode);
+            return true;
+        }
+        return false;
+    }
+
     private int setCountryCode() {
         int band = mApConfig.getSoftApConfiguration().getBand();
         if (TextUtils.isEmpty(mCountryCode)) {
@@ -524,7 +540,6 @@ public class SoftApManager implements ActiveModeManager {
             // Absence of country code is not fatal for 2Ghz & Any band options.
             return SUCCESS;
         }
-
         if (!mWifiNative.setApCountryCode(
                 mApInterfaceName, mCountryCode.toUpperCase(Locale.ROOT))) {
             if (band == SoftApConfiguration.BAND_5GHZ) {
@@ -708,6 +723,7 @@ public class SoftApManager implements ActiveModeManager {
         public static final int CMD_NO_ASSOCIATED_STATIONS_TIMEOUT_ON_ONE_INSTANCE = 13;
         public static final int CMD_SAFE_CHANNEL_FREQUENCY_CHANGED = 14;
         public static final int CMD_HANDLE_WIFI_CONNECTED = 15;
+        public static final int CMD_UPDATE_COUNTRY_CODE = 16;
 
         private final State mIdleState = new IdleState();
         private final State mStartedState = new StartedState();
@@ -870,6 +886,12 @@ public class SoftApManager implements ActiveModeManager {
                         mTimeoutEnabled = newConfig.isAutoShutdownEnabled();
                         mBridgedModeOpportunisticsShutdownTimeoutEnabled =
                                 newConfig.isBridgedModeOpportunisticShutdownEnabledInternal();
+                        break;
+                    case CMD_UPDATE_COUNTRY_CODE:
+                        String countryCode = (String) message.obj;
+                        if (!TextUtils.isEmpty(countryCode)) {
+                            mCountryCode = countryCode;
+                        }
                         break;
                     default:
                         // Ignore all other commands.
@@ -1447,6 +1469,17 @@ public class SoftApManager implements ActiveModeManager {
                         } else {
                             Log.d(getTag(), "Ignore the config: " + newConfig
                                     + " update since it requires restart");
+                        }
+                        break;
+                    case CMD_UPDATE_COUNTRY_CODE:
+                        String countryCode = (String) message.obj;
+                        if (!TextUtils.isEmpty(countryCode)
+                                && !TextUtils.equals(mCountryCode, countryCode)
+                                && mWifiNative.setApCountryCode(
+                                mApInterfaceName, countryCode.toUpperCase(Locale.ROOT))) {
+                            Log.i(getTag(), "Update country code when Soft AP enabled from "
+                                    + mCountryCode + " to " + countryCode);
+                            mCountryCode = countryCode;
                         }
                         break;
                     case CMD_FORCE_DISCONNECT_PENDING_CLIENTS:

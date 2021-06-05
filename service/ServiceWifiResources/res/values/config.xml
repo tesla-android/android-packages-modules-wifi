@@ -306,6 +306,9 @@
     <!-- Indicates that STA + bridged AP concurrency mode is supported on this device -->
     <bool translatable="false" name="config_wifiStaWithBridgedSoftApConcurrencySupported">false</bool>
 
+    <!-- Indicates that dynamic country code update in AP mode is supported on this device -->
+    <bool translatable="false" name="config_wifiSoftApDynamicCountryCodeUpdateSupported">false</bool>
+
     <!-- list of SSIDs to enable aggressive MAC randomization on -->
     <string-array translatable="false" name="config_wifi_aggressive_randomization_ssid_allowlist">
         <!-- SSIDs are expected in quoted format:
