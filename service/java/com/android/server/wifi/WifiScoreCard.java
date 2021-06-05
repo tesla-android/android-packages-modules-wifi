@@ -134,8 +134,8 @@ public class WifiScoreCard {
             new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
     private final long[][][] mBwEstErrorAccPercent =
             new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
-    private final int[][][] mBwEstValue =
-            new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
+    private final long[][][] mBwEstValue =
+            new long[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
     private final int[][][] mBwEstCount =
             new int[NUM_LINK_BAND][NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL];
 
@@ -1373,6 +1373,7 @@ public class WifiScoreCard {
 
         private void updateBandwidthSample(long bytesDelta, int link, int onTimeMs,
                 int maxSupportedLinkSpeedMbps) {
+            checkAndPossiblyResetBandwidthStats(link, maxSupportedLinkSpeedMbps);
             if (bytesDelta < mByteDeltaAccThr[link]) {
                 return;
             }
@@ -1393,6 +1394,26 @@ public class WifiScoreCard {
                 perBssid.changed = true;
                 perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] += linkBandwidthKbps;
                 perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel]++;
+            }
+        }
+
+        private void checkAndPossiblyResetBandwidthStats(int link, int maxSupportedLinkSpeedMbps) {
+            if (getAvgUsedLinkBandwidthKbps(link) > (maxSupportedLinkSpeedMbps * 1000)) {
+                resetBandwidthStats(link);
+            }
+        }
+
+        private void resetBandwidthStats(int link) {
+            changed = true;
+            // Reset SSID level stats
+            mBandwidthStatsValue[mBandIdx][link][mSignalLevel] = 0;
+            mBandwidthStatsCount[mBandIdx][link][mSignalLevel] = 0;
+            // Reset BSSID level stats
+            PerBssid perBssid = lookupBssid(ssid, mBssid);
+            if (perBssid != mPlaceholderPerBssid) {
+                perBssid.changed = true;
+                perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] = 0;
+                perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel] = 0;
             }
         }
 
@@ -1563,7 +1584,7 @@ public class WifiScoreCard {
             int l2ErrPercent = calculateErrorPercent(l2Kbps, bwSampleKbps);
             mBwEstErrorAccPercent[mBandIdx][link][mSignalLevel] += Math.abs(bwEstExtErrPercent);
             mL2ErrorAccPercent[mBandIdx][link][mSignalLevel] += Math.abs(l2ErrPercent);
-            mBwEstValue[mBandIdx][link][mSignalLevel] = mAvgUsedKbps[link];
+            mBwEstValue[mBandIdx][link][mSignalLevel] += bwSampleKbps;
             mBwEstCount[mBandIdx][link][mSignalLevel]++;
             StringBuilder sb = new StringBuilder();
             logv(sb.append(link)
@@ -2613,10 +2634,10 @@ public class WifiScoreCard {
         BandwidthEstimatorStats.PerLevel stats = new BandwidthEstimatorStats.PerLevel();
         stats.signalLevel = level;
         stats.count = count;
-        stats.avgBandwidthKbps = mBwEstValue[bandIdx][linkIdx][level];
-        stats.l2ErrorPercent = calculateAvgError(
+        stats.avgBandwidthKbps = calculateAvg(mBwEstValue[bandIdx][linkIdx][level], count);
+        stats.l2ErrorPercent = calculateAvg(
                 mL2ErrorAccPercent[bandIdx][linkIdx][level], count);
-        stats.bandwidthEstErrorPercent = calculateAvgError(
+        stats.bandwidthEstErrorPercent = calculateAvg(
                 mBwEstErrorAccPercent[bandIdx][linkIdx][level], count);
 
         // reset counters for next run
@@ -2627,8 +2648,8 @@ public class WifiScoreCard {
         return stats;
     }
 
-    private int calculateAvgError(long errorAccPercent, int count) {
-        return (count > 0) ? (int) (errorAccPercent / count) : 0;
+    private int calculateAvg(long acc, int count) {
+        return (count > 0) ? (int) (acc / count) : 0;
     }
 
     /**
@@ -2654,7 +2675,7 @@ public class WifiScoreCard {
                 pw.println(" Count");
                 printValues(mBwEstCount[i][j], pw);
                 pw.println(" AvgKbps");
-                printValues(mBwEstValue[i][j], pw);
+                printAvgStats(mBwEstValue[i][j], mBwEstCount[i][j], pw);
                 pw.println(" BwEst error");
                 printAvgStats(mBwEstErrorAccPercent[i][j], mBwEstCount[i][j], pw);
                 pw.println(" L2 error");
@@ -2675,7 +2696,7 @@ public class WifiScoreCard {
     private void printAvgStats(long[] stats, int[] count, PrintWriter pw) {
         StringBuilder sb = new StringBuilder();
         for (int k = 0; k < NUM_SIGNAL_LEVEL; k++) {
-            sb.append(" " + calculateAvgError(stats[k], count[k]));
+            sb.append(" " + calculateAvg(stats[k], count[k]));
         }
         pw.println(sb.toString());
     }
