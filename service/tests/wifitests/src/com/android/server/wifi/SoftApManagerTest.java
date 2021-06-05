@@ -3105,4 +3105,46 @@ public class SoftApManagerTest extends WifiBaseTest {
         verify(mCallback, times(3)).onConnectedClientsOrInfoChanged(
                 mTestSoftApInfoMap, mTestWifiClientsMap, true);
     }
+
+    @Test
+    public void testUpdateCountryCodeWhenConfigDisabled() throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported))
+                .thenReturn(false);
+        SoftApModeConfiguration apConfig =
+                new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_TETHERED, null,
+                mTestSoftApCapability);
+        startSoftApAndVerifyEnabled(apConfig);
+        reset(mWifiNative);
+        mSoftApManager.updateCountryCode(TEST_COUNTRY_CODE + "TW");
+        mLooper.dispatchAll();
+        verify(mWifiNative, never()).setApCountryCode(any(), any());
+    }
+
+    @Test
+    public void testUpdateCountryCodeWhenConfigEnabled() throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported))
+                .thenReturn(true);
+        SoftApModeConfiguration apConfig =
+                new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_TETHERED, null,
+                mTestSoftApCapability);
+        startSoftApAndVerifyEnabled(apConfig);
+        reset(mWifiNative);
+        mSoftApManager.updateCountryCode(TEST_COUNTRY_CODE + "TW");
+        mLooper.dispatchAll();
+        verify(mWifiNative).setApCountryCode(any(), any());
+    }
+
+    @Test
+    public void testUpdateSameCountryCodeWhenConfigEnabled() throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported))
+                .thenReturn(true);
+        SoftApModeConfiguration apConfig =
+                new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_TETHERED, null,
+                mTestSoftApCapability);
+        startSoftApAndVerifyEnabled(apConfig);
+        reset(mWifiNative);
+        mSoftApManager.updateCountryCode(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mWifiNative, never()).setApCountryCode(any(), any());
+    }
 }
