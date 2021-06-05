@@ -103,6 +103,8 @@ public class WifiConfigStoreEncryptionUtil {
             reportException(e, "encrypt had a padding problem");
         } catch (IllegalBlockSizeException e) {
             reportException(e, "encrypt had an illegal block size");
+        } catch (Exception e) {
+            reportException(e, "exception caught");
         }
         return encryptedData;
     }
@@ -135,6 +137,8 @@ public class WifiConfigStoreEncryptionUtil {
             reportException(e, "decrypt had an invalid key");
         } catch (InvalidAlgorithmParameterException e) {
             reportException(e, "decrypt had an invalid algorithm parameter");
+        } catch (Exception e) {
+            reportException(e, "exception caught");
         }
         return decryptedData;
     }
@@ -180,6 +184,8 @@ public class WifiConfigStoreEncryptionUtil {
             reportException(e, "getOrCreateSecretKey had an unrecoverable entry exception.");
         } catch (ProviderException e) {
             reportException(e, "getOrCreateSecretKey had a provider exception.");
+        } catch (Exception e) {
+            reportException(e, "exception caught");
         }
         return secretKey;
     }
@@ -187,5 +193,4 @@ public class WifiConfigStoreEncryptionUtil {
     private void reportException(Exception exception, String error) {
         Log.wtf(TAG, "An irrecoverable key store error was encountered: " + error, exception);
     }
-
 }
