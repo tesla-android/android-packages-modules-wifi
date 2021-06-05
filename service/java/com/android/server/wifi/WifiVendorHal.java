@@ -1982,6 +1982,32 @@ public class WifiVendorHal {
     }
 
     /**
+     * Get the names of the bridged AP instances.
+     *
+     * @param ifaceName Name of the bridged interface.
+     * @return A list which contains the names of the bridged AP instances.
+     */
+    @Nullable
+    public List<String> getBridgedApInstances(@NonNull String ifaceName) {
+        synchronized (sLock) {
+            try {
+                Mutable<List<String>> instancesResp  = new Mutable<>();
+                android.hardware.wifi.V1_5.IWifiApIface ap15 =
+                        getWifiApIfaceForV1_5Mockable(ifaceName);
+                if (ap15 == null) return null;
+                ap15.getBridgedInstances((status, instances) -> {
+                    if (!ok(status)) return;
+                    instancesResp.value = new ArrayList<>(instances);
+                });
+                return instancesResp.value;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            }
+        }
+    }
+
+    /**
      * Set country code for this AP iface.
      *
      * @param ifaceName Name of the interface.

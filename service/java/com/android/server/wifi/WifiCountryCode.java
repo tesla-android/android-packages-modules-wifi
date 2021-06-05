@@ -28,6 +28,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -38,7 +39,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -68,7 +68,7 @@ public class WifiCountryCode {
      * country code changes (value = true).
      * - When the ClientModeManager instance is destroyed, it is removed from this map.
      */
-    private final Map<ConcreteClientModeManager, Boolean> mCmmToReadyForChangeMap =
+    private final Map<ActiveModeManager, Boolean> mAmmToReadyForChangeMap =
             new ArrayMap<>();
     private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
 
@@ -83,18 +83,19 @@ public class WifiCountryCode {
     private class ModeChangeCallbackInternal implements ActiveModeWarden.ModeChangeCallback {
         @Override
         public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
-            if (activeModeManager.getRole() instanceof ActiveModeManager.ClientRole) {
+            if (activeModeManager.getRole() instanceof ActiveModeManager.ClientRole
+                    || activeModeManager instanceof SoftApManager) {
                 // Add this CMM for tracking. Interface is up and HAL is initialized at this point.
                 // If this device runs the 1.5 HAL version, use the IWifiChip.setCountryCode()
                 // to set the country code.
-                mCmmToReadyForChangeMap.put((ConcreteClientModeManager) activeModeManager, true);
+                mAmmToReadyForChangeMap.put(activeModeManager, true);
                 evaluateAllCmmStateAndApplyIfAllReady();
             }
         }
 
         @Override
         public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
-            if (mCmmToReadyForChangeMap.remove(activeModeManager) != null) {
+            if (mAmmToReadyForChangeMap.remove(activeModeManager) != null) {
                 // Remove this CMM from tracking.
                 evaluateAllCmmStateAndApplyIfAllReady();
             }
@@ -108,7 +109,7 @@ public class WifiCountryCode {
                 // versions (since the IWifiChip.setCountryCode() was only added in the 1.5 HAL
                 // version, before that we need to wait till supplicant is up for country code
                 // change.
-                mCmmToReadyForChangeMap.put((ConcreteClientModeManager) activeModeManager, true);
+                mAmmToReadyForChangeMap.put(activeModeManager, true);
                 evaluateAllCmmStateAndApplyIfAllReady();
             }
         }
@@ -117,21 +118,21 @@ public class WifiCountryCode {
     private class ClientModeListenerInternal implements ClientModeImplListener {
         @Override
         public void onConnectionStart(@NonNull ConcreteClientModeManager clientModeManager) {
-            if (mCmmToReadyForChangeMap.get(clientModeManager) == null) {
+            if (mAmmToReadyForChangeMap.get(clientModeManager) == null) {
                 Log.wtf(TAG, "Connection start received from unknown client mode manager");
             }
             // connection start. CMM not ready for country code change.
-            mCmmToReadyForChangeMap.put(clientModeManager, false);
+            mAmmToReadyForChangeMap.put(clientModeManager, false);
             evaluateAllCmmStateAndApplyIfAllReady();
         }
 
         @Override
         public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
-            if (mCmmToReadyForChangeMap.get(clientModeManager) == null) {
+            if (mAmmToReadyForChangeMap.get(clientModeManager) == null) {
                 Log.wtf(TAG, "Connection end received from unknown client mode manager");
             }
             // connection end. CMM ready for country code change.
-            mCmmToReadyForChangeMap.put(clientModeManager, true);
+            mAmmToReadyForChangeMap.put(clientModeManager, true);
             evaluateAllCmmStateAndApplyIfAllReady();
         }
 
@@ -140,11 +141,21 @@ public class WifiCountryCode {
     private class CountryChangeListenerInternal implements ChangeListener {
         @Override
         public void onDriverCountryCodeChanged(String country) {
-            if (Objects.equals(country, mReceivedDriverCountryCode)) {
+            if (TextUtils.equals(country, mReceivedDriverCountryCode)) {
                 return;
             }
             Log.i(TAG, "Receive onDriverCountryCodeChanged " + country);
             mReceivedDriverCountryCode = country;
+            updateDriverCountryCodeAndNotifyListener(country);
+        }
+
+        @Override
+        public void onSetCountryCodeSucceeded(String country) {
+            Log.i(TAG, "Receive onSetCountryCodeSucceeded " + country);
+            // The driver country code updated, don't need to trigger again.
+            if (TextUtils.equals(country, mReceivedDriverCountryCode)) {
+                return;
+            }
             updateDriverCountryCodeAndNotifyListener(country);
         }
     }
@@ -193,9 +204,19 @@ public class WifiCountryCode {
      */
     public interface ChangeListener {
         /**
-         * Called when country code set to native layer successful.
+         * Called when receiving country code changed from driver.
          */
         void onDriverCountryCodeChanged(String countryCode);
+
+        /**
+         * Called when country code set to native layer successful, framework sends event to
+         * force country code changed.
+         *
+         * Reason: The country code change listener from wificond rely on driver supported
+         * NL80211_CMD_REG_CHANGE/NL80211_CMD_WIPHY_REG_CHANGE. Trigger update country code
+         * to listener here for non-supported platform.
+         */
+        default void onSetCountryCodeSucceeded(String country) {}
     }
 
     /**
@@ -231,15 +252,15 @@ public class WifiCountryCode {
      * @return true if there are active CMM's and all are ready for country code change.
      */
     private boolean isReady() {
-        return !mCmmToReadyForChangeMap.isEmpty()
-                && mCmmToReadyForChangeMap.values().stream().allMatch(r -> r);
+        return !mAmmToReadyForChangeMap.isEmpty()
+                && mAmmToReadyForChangeMap.values().stream().allMatch(r -> r);
     }
 
     /**
      * Check all active CMM instances and apply country code change if ready.
      */
     private void evaluateAllCmmStateAndApplyIfAllReady() {
-        Log.d(TAG, "evaluateAllCmmStateAndApplyIfAllReady: " + mCmmToReadyForChangeMap);
+        Log.d(TAG, "evaluateAllCmmStateAndApplyIfAllReady: " + mAmmToReadyForChangeMap);
         if (isReady()) {
             mReadyTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
             // We are ready to set country code now.
@@ -394,7 +415,7 @@ public class WifiCountryCode {
         pw.println("mDriverCountryTimestamp: " + mDriverCountryTimestamp);
         pw.println("mReadyTimestamp: " + mReadyTimestamp);
         pw.println("isReady: " + isReady());
-        pw.println("mCmmToReadyForChangeMap: " + mCmmToReadyForChangeMap);
+        pw.println("mAmmToReadyForChangeMap: " + mAmmToReadyForChangeMap);
     }
 
     private void updateCountryCode() {
@@ -425,23 +446,47 @@ public class WifiCountryCode {
     }
 
     private boolean setCountryCodeNative(String country) {
-        Set<ConcreteClientModeManager> cmms = mCmmToReadyForChangeMap.keySet();
-
-        // Set the country code using one of the active client mode managers. Since
-        // country code is a chip level global setting, it can be set as long
-        // as there is at least one active interface to communicate to Wifi chip
-        for (ConcreteClientModeManager cm : cmms) {
-            if (cm.setCountryCode(country)) {
-                Log.d(TAG, "Succeeded to set country code to: " + country);
-                // The country code change listener from wificond rely on driver supported
-                // NL80211_CMD_REG_CHANGE/NL80211_CMD_WIPHY_REG_CHANGE. Trigger update country code
-                // to listener here for non-supported platform.
-                updateDriverCountryCodeAndNotifyListener(country);
-                return true;
+        Set<ActiveModeManager> amms = mAmmToReadyForChangeMap.keySet();
+        boolean isConcreteClientModeManagerUpdated = false;
+        boolean anyAmmConfigured = false;
+        for (ActiveModeManager am : amms) {
+            if (!isConcreteClientModeManagerUpdated && am instanceof ConcreteClientModeManager) {
+                // Set the country code using one of the active mode managers. Since
+                // country code is a chip level global setting, it can be set as long
+                // as there is at least one active interface to communicate to Wifi chip
+                ConcreteClientModeManager cm = (ConcreteClientModeManager) am;
+                if (!cm.setCountryCode(country)) {
+                    Log.d(TAG, "Failed to set country code (ConcreteClientModeManager) to "
+                            + country);
+                } else {
+                    isConcreteClientModeManagerUpdated = true;
+                    anyAmmConfigured = true;
+                    // Start from S, frameworks support country code callback from wificond,
+                    // move "notify the lister" to CountryChangeListenerInternal.
+                    if (!SdkLevel.isAtLeastS()) {
+                        updateDriverCountryCodeAndNotifyListener(country);
+                    }
+                }
+            } else if (am instanceof SoftApManager) {
+                // The API:updateCountryCode in SoftApManager is asynchronous, it requires a new
+                // callback support in S to trigger "updateDriverCountryCodeAndNotifyListener" for
+                // the new S API: SoftApCapability#getSupportedChannelList(band).
+                // It requires:
+                // 1. a new overlay configuration which is introduced from S.
+                // 2. wificond support in S for S API: SoftApCapability#getSupportedChannelList
+                // Any case if device supported to set country code in R,
+                // the new S API: SoftApCapability#getSupportedChannelList(band) still doesn't work
+                // normally in R build when wifi disabled.
+                SoftApManager sm = (SoftApManager) am;
+                if (!sm.updateCountryCode(country)) {
+                    Log.d(TAG, "Can't set country code (SoftApManager) to "
+                            + country + " (Device doesn't support it)");
+                } else {
+                    anyAmmConfigured = true;
+                }
             }
         }
-        Log.d(TAG, "Failed to set country code to: " + country);
-        return false;
+        return anyAmmConfigured;
     }
 
     private void updateDriverCountryCodeAndNotifyListener(String country) {
