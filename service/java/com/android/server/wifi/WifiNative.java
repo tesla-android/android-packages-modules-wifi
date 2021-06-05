@@ -176,6 +176,13 @@ public class WifiNative {
             mListener = listener;
         }
 
+        public void onSetCountryCodeSucceeded(String country) {
+            Log.d(TAG, "onSetCountryCodeSucceeded: " + country);
+            if (mListener != null) {
+                mListener.onSetCountryCodeSucceeded(country);
+            }
+        }
+
         @Override
         public void onCountryCodeChanged(String country) {
             Log.d(TAG, "onCountryCodeChanged: " + country);
@@ -935,6 +942,24 @@ public class WifiNative {
         }
     }
 
+    /**
+     * Get list of instance name from this bridged AP iface.
+     *
+     * @param ifaceName Name of the bridged interface.
+     * @return list of instance name when succeed, otherwise null.
+     */
+    @Nullable
+    private List<String> getBridgedApInstances(@NonNull String ifaceName) {
+        synchronized (mLock) {
+            if (mWifiVendorHal.isVendorHalSupported()) {
+                return mWifiVendorHal.getBridgedApInstances(ifaceName);
+            } else {
+                Log.i(TAG, "Vendor Hal not supported, ignoring getBridgedApInstances.");
+                return null;
+            }
+        }
+    }
+
     // For devices that don't support the vendor HAL, we will not support any concurrency.
     // So simulate the HalDeviceManager behavior by triggering the destroy listener for
     // the interface.
@@ -1261,8 +1286,19 @@ public class WifiNative {
                 mWifiMetrics.incrementNumSetupSoftApInterfaceFailureDueToHal();
                 return null;
             }
-            if (!mHostapdHal.isApInfoCallbackSupported()
-                    && !mWifiCondManager.setupInterfaceForSoftApMode(iface.name)) {
+            String ifaceInstanceName = iface.name;
+            if (isBridged) {
+                List<String> instances = getBridgedApInstances(iface.name);
+                if (instances == null || instances.size() == 0) {
+                    Log.e(TAG, "Failed to get bridged AP instances" + iface.name);
+                    teardownInterface(iface.name);
+                    mWifiMetrics.incrementNumSetupSoftApInterfaceFailureDueToHal();
+                    return null;
+                }
+                // Always select first instance as wificond interface.
+                ifaceInstanceName = instances.get(0);
+            }
+            if (!mWifiCondManager.setupInterfaceForSoftApMode(ifaceInstanceName)) {
                 Log.e(TAG, "Failed to setup iface in wificond on " + iface);
                 teardownInterface(iface.name);
                 mWifiMetrics.incrementNumSetupSoftApInterfaceFailureDueToWificond();
@@ -2220,7 +2256,13 @@ public class WifiNative {
      * @return true if request is sent successfully, false otherwise.
      */
     public boolean setStaCountryCode(@NonNull String ifaceName, String countryCode) {
-        return mSupplicantStaIfaceHal.setCountryCode(ifaceName, countryCode);
+        if (mSupplicantStaIfaceHal.setCountryCode(ifaceName, countryCode)) {
+            if (mCountryCodeChangeListener != null) {
+                mCountryCodeChangeListener.onSetCountryCodeSucceeded(countryCode);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -3358,7 +3400,13 @@ public class WifiNative {
      * @return true for success
      */
     public boolean setApCountryCode(@NonNull String ifaceName, String countryCode) {
-        return mWifiVendorHal.setApCountryCode(ifaceName, countryCode);
+        if (mWifiVendorHal.setApCountryCode(ifaceName, countryCode)) {
+            if (mCountryCodeChangeListener != null) {
+                mCountryCodeChangeListener.onSetCountryCodeSucceeded(countryCode);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -3367,7 +3415,13 @@ public class WifiNative {
      * @return true for success
      */
     public boolean setChipCountryCode(String countryCode) {
-        return mWifiVendorHal.setChipCountryCode(countryCode);
+        if (mWifiVendorHal.setChipCountryCode(countryCode)) {
+            if (mCountryCodeChangeListener != null) {
+                mCountryCodeChangeListener.onSetCountryCodeSucceeded(countryCode);
+            }
+            return true;
+        }
+        return false;
     }
 
     //---------------------------------------------------------------------------------
