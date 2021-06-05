@@ -3567,6 +3567,70 @@ public class WifiVendorHalTest extends WifiBaseTest {
     }
 
     /**
+     * Verifies getBridgedApInstances() success.
+     */
+    @Test
+    public void testGetBridgedApInstancesSuccess() throws Exception {
+        doAnswer(new AnswerWithArguments() {
+            public void answer(
+                    android.hardware.wifi.V1_5.IWifiApIface.getBridgedInstancesCallback cb)
+                    throws RemoteException {
+                cb.onValues(mWifiStatusSuccess,
+                        new ArrayList<String>() {{ add(TEST_IFACE_NAME_1); }});
+            }
+        }).when(mIWifiApIfaceV15).getBridgedInstances(any(
+                android.hardware.wifi.V1_5.IWifiApIface.getBridgedInstancesCallback.class));
+        mWifiVendorHal = spy(mWifiVendorHal);
+        when(mWifiVendorHal.getWifiApIfaceForV1_5Mockable(TEST_IFACE_NAME_1))
+                .thenReturn(mIWifiApIfaceV15);
+
+        assertNotNull(mWifiVendorHal.getBridgedApInstances(TEST_IFACE_NAME_1));
+        verify(mIWifiApIfaceV15).getBridgedInstances(any());
+    }
+
+    /**
+     * Verifies getBridgedApInstances() can handle failure status.
+     */
+    @Test
+    public void testGetBridgedApInstancesFailDueToStatusFailure() throws Exception {
+        doAnswer(new AnswerWithArguments() {
+            public void answer(
+                    android.hardware.wifi.V1_5.IWifiApIface.getBridgedInstancesCallback cb)
+                    throws RemoteException {
+                cb.onValues(mWifiStatusFailure, null);
+            }
+        }).when(mIWifiApIfaceV15).getBridgedInstances(any(
+                android.hardware.wifi.V1_5.IWifiApIface.getBridgedInstancesCallback.class));
+
+        mWifiVendorHal = spy(mWifiVendorHal);
+        when(mWifiVendorHal.getWifiApIfaceForV1_5Mockable(TEST_IFACE_NAME_1))
+                .thenReturn(mIWifiApIfaceV15);
+        assertNull(mWifiVendorHal.getBridgedApInstances(TEST_IFACE_NAME_1));
+        verify(mIWifiApIfaceV15).getBridgedInstances(any());
+    }
+
+    /**
+     * Verifies getBridgedApInstances() can handle RemoteException.
+     */
+    @Test
+    public void testGetBridgedApInstancesFailDueToRemoteException() throws Exception {
+        mWifiVendorHal = spy(mWifiVendorHal);
+        when(mWifiVendorHal.getWifiApIfaceForV1_5Mockable(TEST_IFACE_NAME_1))
+                .thenReturn(mIWifiApIfaceV15);
+        doThrow(new RemoteException()).when(mIWifiApIfaceV15).getBridgedInstances(any());
+        assertNull(mWifiVendorHal.getBridgedApInstances(TEST_IFACE_NAME_1));
+        verify(mIWifiApIfaceV15).getBridgedInstances(any());
+    }
+
+    /**
+     * Verifies getBridgedApInstances() does not crash with older HALs.
+     */
+    @Test
+    public void testGetBridgedApInstancesNotCrashOnOlderHal() throws Exception {
+        assertNull(mWifiVendorHal.getBridgedApInstances(TEST_IFACE_NAME));
+    }
+
+    /**
      * Verifies isSetMacAddressSupported().
      */
     @Test
