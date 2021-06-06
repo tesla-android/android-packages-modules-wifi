@@ -1041,6 +1041,11 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(null), eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verify(mDppMetrics).updateDppFailure(eq(EasyConnectStatusCallback
+                .EASY_CONNECT_EVENT_FAILURE_URI_GENERATION));
+        verify(mDppMetrics).updateDppOperationTime(anyInt());
+        verifyNoMoreInteractions(mDppMetrics);
         assertFalse(mDppManager.isSessionInProgress());
     }
 
@@ -1057,6 +1062,10 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_GENERIC));
+        verify(mDppMetrics).updateDppOperationTime(anyInt());
+        verifyNoMoreInteractions(mDppMetrics);
         assertFalse(mDppManager.isSessionInProgress());
     }
 
@@ -1071,6 +1080,8 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
         verify(mWifiNative).startDppEnrolleeResponder(eq(TEST_INTERFACE_NAME),
                 eq(TEST_LISTEN_CHANNEL));
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verifyNoMoreInteractions(mDppMetrics);
         assertTrue(mDppManager.isSessionInProgress());
     }
 
@@ -1094,6 +1105,9 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(null), eq(new int[0]));
         verify(mDppCallbackConcurrent, never()).onSuccess(anyInt());
         verify(mDppCallbackConcurrent, never()).onSuccessConfigReceived(anyInt());
+        verify(mDppMetrics, times(2)).updateDppEnrolleeResponderRequests();
+        verify(mDppMetrics).updateDppFailure(eq(EASY_CONNECT_EVENT_FAILURE_BUSY));
+        verifyNoMoreInteractions(mDppMetrics);
         assertTrue(mDppManager.isSessionInProgress());
     }
 
@@ -1140,6 +1154,11 @@ public class DppManagerTest extends WifiBaseTest {
         verify(mDppCallback).onSuccessConfigReceived(eq(TEST_NETWORK_ID));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verify(mDppMetrics).updateDppEnrolleeSuccess();
+        verify(mDppMetrics).updateDppEnrolleeResponderSuccess();
+        verify(mDppMetrics).updateDppOperationTime(anyInt());
+        verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
         assertFalse(mDppManager.isSessionInProgress());
     }
@@ -1176,6 +1195,11 @@ public class DppManagerTest extends WifiBaseTest {
                 eq(null), eq(null), eq(new int[0]));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onSuccessConfigReceived(anyInt());
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verify(mDppMetrics).updateDppFailure(eq(EasyConnectStatusCallback
+                .EASY_CONNECT_EVENT_FAILURE_AUTHENTICATION));
+        verify(mDppMetrics).updateDppOperationTime(anyInt());
+        verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
         assertFalse(mDppManager.isSessionInProgress());
     }
@@ -1203,6 +1227,8 @@ public class DppManagerTest extends WifiBaseTest {
         // Check that WifiNative is called to stop the DPP session
         mDppManager.stopDppSession(10);
         verify(mWifiNative).stopDppResponder(eq(TEST_INTERFACE_NAME), eq(TEST_BOOTSTRAP_ID));
+        verify(mDppMetrics).updateDppEnrolleeResponderRequests();
+        verifyNoMoreInteractions(mDppMetrics);
         verifyCleanUpResources(DppManager.DPP_AUTH_ROLE_RESPONDER);
         assertFalse(mDppManager.isSessionInProgress());
     }
