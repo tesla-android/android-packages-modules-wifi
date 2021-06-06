@@ -21,6 +21,7 @@ import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAIL
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_CANNOT_FIND_NETWORK;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_CONFIGURATION;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_AUTHENTICATION;
+import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_GENERIC;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_INVALID_NETWORK;
@@ -28,6 +29,7 @@ import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAIL
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_NOT_COMPATIBLE;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_NOT_SUPPORTED;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_TIMEOUT;
+import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_FAILURE_URI_GENERATION;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_SUCCESS_CONFIGURATION_APPLIED;
 import static android.net.wifi.EasyConnectStatusCallback.EASY_CONNECT_EVENT_SUCCESS_CONFIGURATION_SENT;
 
@@ -35,9 +37,11 @@ import static com.android.server.wifi.DppMetrics.DPP_OPERATION_TIME;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.HistogramBucketInt32;
 
@@ -177,6 +181,26 @@ public class DppMetricsTest extends WifiBaseTest {
     }
 
     /**
+     * Test numDppEnrolleeResponderRequests
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testUpdateDppEnrolleeResponderRequests() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        // Get a random value and call the update method 'value' times
+        int value = getNumOfTimes(MAX_ITERATIONS) + 1;
+
+        for (int i = 0; i < value; i++) {
+            mDppMetrics.updateDppEnrolleeResponderRequests();
+        }
+
+        // Confirm that the consolidated log has the expected value
+        WifiMetricsProto.WifiDppLog mWifiDppLogProto = mDppMetrics.consolidateProto();
+        assertEquals(mWifiDppLogProto.numDppEnrolleeResponderRequests, value);
+    }
+
+    /**
      * Test EASY_CONNECT_EVENT_SUCCESS_CONFIGURATION_SENT
      *
      * @throws Exception
@@ -208,6 +232,7 @@ public class DppMetricsTest extends WifiBaseTest {
      */
     @Test
     public void testUpdateDppEnrolleeSuccess() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         // Get a random value and call the update method 'value' times
         int value = getNumOfTimes(MAX_ITERATIONS) + 1;
 
@@ -218,6 +243,25 @@ public class DppMetricsTest extends WifiBaseTest {
         // Confirm that the consolidated log has the expected value
         WifiMetricsProto.WifiDppLog mWifiDppLogProto = mDppMetrics.consolidateProto();
         assertEquals(mWifiDppLogProto.numDppEnrolleeSuccess, value);
+    }
+
+    /**
+     * Test numDppEnrolleeResponderSuccess
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testUpdateDppEnrolleeResponderSuccess() throws Exception {
+        // Get a random value and call the update method 'value' times
+        int value = getNumOfTimes(MAX_ITERATIONS) + 1;
+
+        for (int i = 0; i < value; i++) {
+            mDppMetrics.updateDppEnrolleeResponderSuccess();
+        }
+
+        // Confirm that the consolidated log has the expected value
+        WifiMetricsProto.WifiDppLog mWifiDppLogProto = mDppMetrics.consolidateProto();
+        assertEquals(mWifiDppLogProto.numDppEnrolleeResponderSuccess, value);
     }
 
     /**
@@ -444,6 +488,48 @@ public class DppMetricsTest extends WifiBaseTest {
         // Confirm that the consolidated log has the expected value
         checkDppFailures(WifiMetricsProto.WifiDppLog
                 .EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION, value);
+    }
+
+    /**
+     * Test EASY_CONNECT_EVENT_FAILURE_URI_GENERATION
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testUpdateDppFailureUriGeneration() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        // Get a random value and call the update method 'value' times
+        int value = getNumOfTimes(MAX_ITERATIONS) + 1;
+
+        for (int i = 0; i < value; i++) {
+            mDppMetrics.updateDppFailure(EASY_CONNECT_EVENT_FAILURE_URI_GENERATION);
+        }
+
+        // Confirm that the consolidated log has the expected value
+        checkDppFailures(WifiMetricsProto.WifiDppLog.EASY_CONNECT_EVENT_FAILURE_URI_GENERATION,
+                value);
+    }
+
+    /**
+     * Test EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testUpdateDppFailureEnrolleeFailedToScanNetworkChannel() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        // Get a random value and call the update method 'value' times
+        int value = getNumOfTimes(MAX_ITERATIONS) + 1;
+
+        for (int i = 0; i < value; i++) {
+            mDppMetrics.updateDppFailure(
+                    EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL);
+        }
+
+        // Confirm that the consolidated log has the expected value
+        checkDppFailures(WifiMetricsProto
+                .WifiDppLog.EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL,
+                value);
     }
 
     /**

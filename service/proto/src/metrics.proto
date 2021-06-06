@@ -3058,6 +3058,12 @@ message WifiDppLog {
   // Number of Enrollee-Responder incompatible configurations found in DPP R2 compatibility check.
   optional int32 num_dpp_r2_enrollee_responder_incompatible_configuration = 10;
 
+  // Number of Enrollee-Responder requests
+  optional int32 num_dpp_enrollee_responder_requests = 11;
+
+  // Number of Enrollee-Responder success
+  optional int32 num_dpp_enrollee_responder_success = 12;
+
   // Histogram bucket for Wi-Fi DPP configurator success
   message DppConfiguratorSuccessStatusHistogramBucket {
     // status type defining the bucket
@@ -3129,6 +3135,12 @@ message WifiDppLog {
 
     // Easy Connect R2 Failure event: Enrollee rejected the configuration.
     EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION = 12;
+
+    // Easy Connect Failure event: System failed to generate DPP URI.
+    EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = 13;
+
+    // Easy Connect Failure event: Enrollee didn't scan the network's operating channel.
+    EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL = 14;
   }
 }
 
