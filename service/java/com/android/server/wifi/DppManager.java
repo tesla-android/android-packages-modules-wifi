@@ -409,6 +409,7 @@ public class DppManager {
     public void startDppAsEnrolleeResponder(int uid, @Nullable String clientIfaceName,
             IBinder binder, @Nullable String deviceInfo,
             @WifiManager.EasyConnectCryptographyCurve int curve, IDppCallback callback) {
+        mDppMetrics.updateDppEnrolleeResponderRequests();
         if (isSessionInProgress()) {
             try {
                 Log.e(TAG, "DPP request already in progress");
@@ -588,6 +589,9 @@ public class DppManager {
 
                 if (networkUpdateResult.isSuccess()) {
                     mDppMetrics.updateDppEnrolleeSuccess();
+                    if (mDppRequestInfo.authRole == DPP_AUTH_ROLE_RESPONDER) {
+                        mDppMetrics.updateDppEnrolleeResponderSuccess();
+                    }
                     mDppRequestInfo.callback.onSuccessConfigReceived(
                             networkUpdateResult.getNetworkId());
                 } else {
