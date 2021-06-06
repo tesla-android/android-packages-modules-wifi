@@ -801,6 +801,18 @@ public class ApConfigUtil {
     }
 
     /**
+     * Helper function to get whether or not dynamic country code update is supported when Soft AP
+     * enabled.
+     *
+     * @param context the caller context used to get value from resource file.
+     * @return true if supported, false otherwise.
+     */
+    public static boolean isSoftApDynamicCountryCodeSupported(@NonNull Context context) {
+        return context.getResources().getBoolean(
+                R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported);
+    }
+
+    /**
      * Helper function for comparing two SoftApConfiguration.
      *
      * @param currentConfig the original configuration.
