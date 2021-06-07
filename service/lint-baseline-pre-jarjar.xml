@@ -562,4 +562,26 @@
             column="50"/>
     </issue>
 
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_URI_GENERATION`"
+        errorLine1="                case EASY_CONNECT_EVENT_FAILURE_URI_GENERATION:"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/DppMetrics.java"
+            line="249"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL`"
+        errorLine1="                case EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL:"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="packages/modules/Wifi/service/java/com/android/server/wifi/DppMetrics.java"
+            line="255"
+            column="22"/>
+    </issue>
+
 </issues>
