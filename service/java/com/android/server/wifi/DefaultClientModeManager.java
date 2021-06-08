@@ -43,6 +43,16 @@ public class DefaultClientModeManager implements ClientModeManager, ClientModeDe
     }
 
     @Override
+    @Nullable public ClientRole getPreviousRole() {
+        return null;
+    }
+
+    @Override
+    public long getLastRoleChangeSinceBootMs() {
+        return 0;
+    }
+
+    @Override
     public String getInterfaceName() {
         return null;
     }
