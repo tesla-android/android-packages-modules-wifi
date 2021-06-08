@@ -235,6 +235,8 @@ public class WifiMetrics {
     private RttMetrics mRttMetrics;
     private final PnoScanMetrics mPnoScanMetrics = new PnoScanMetrics();
     private final WifiLinkLayerUsageStats mWifiLinkLayerUsageStats = new WifiLinkLayerUsageStats();
+    /** Mapping of radio id values to RadioStats objects. */
+    private final SparseArray<RadioStats> mRadioStats = new SparseArray<>();
     private final ExperimentValues mExperimentValues = new ExperimentValues();
     private Handler mHandler;
     private ScoringParams mScoringParams;
@@ -1654,7 +1656,52 @@ public class WifiMetrics {
                 (newStats.on_time_pno_scan - mLastLinkLayerStats.on_time_pno_scan);
         mWifiLinkLayerUsageStats.radioHs20ScanTimeMs +=
                 (newStats.on_time_hs20_scan - mLastLinkLayerStats.on_time_hs20_scan);
+        incrementPerRadioUsageStats(mLastLinkLayerStats, newStats);
+
         mLastLinkLayerStats = newStats;
+    }
+
+    /**
+     * Increment individual radio stats usage
+     */
+    private void incrementPerRadioUsageStats(WifiLinkLayerStats oldStats,
+            WifiLinkLayerStats newStats) {
+        if (newStats.radioStats != null && newStats.radioStats.length > 0
+                && oldStats.radioStats != null && oldStats.radioStats.length > 0
+                && newStats.radioStats.length == oldStats.radioStats.length) {
+            int numRadios = newStats.radioStats.length;
+            for (int i = 0; i < numRadios; i++) {
+                WifiLinkLayerStats.RadioStat newRadio = newStats.radioStats[i];
+                WifiLinkLayerStats.RadioStat oldRadio = oldStats.radioStats[i];
+                if (newRadio.radio_id != oldRadio.radio_id) {
+                    continue;
+                }
+                RadioStats radioStats = mRadioStats.get(newRadio.radio_id);
+                if (radioStats == null) {
+                    radioStats = new RadioStats();
+                    radioStats.radioId = newRadio.radio_id;
+                    mRadioStats.put(newRadio.radio_id, radioStats);
+                }
+                radioStats.totalRadioOnTimeMs
+                        += newRadio.on_time - oldRadio.on_time;
+                radioStats.totalRadioTxTimeMs
+                        += newRadio.tx_time - oldRadio.tx_time;
+                radioStats.totalRadioRxTimeMs
+                        += newRadio.rx_time - oldRadio.rx_time;
+                radioStats.totalScanTimeMs
+                        += newRadio.on_time_scan - oldRadio.on_time_scan;
+                radioStats.totalNanScanTimeMs
+                        += newRadio.on_time_nan_scan - oldRadio.on_time_nan_scan;
+                radioStats.totalBackgroundScanTimeMs
+                        += newRadio.on_time_background_scan - oldRadio.on_time_background_scan;
+                radioStats.totalRoamScanTimeMs
+                        += newRadio.on_time_roam_scan - oldRadio.on_time_roam_scan;
+                radioStats.totalPnoScanTimeMs
+                        += newRadio.on_time_pno_scan - oldRadio.on_time_pno_scan;
+                radioStats.totalHotspot2ScanTimeMs
+                        += newRadio.on_time_hs20_scan - oldRadio.on_time_hs20_scan;
+            }
+        }
     }
 
     private boolean newLinkLayerStatsIsValid(WifiLinkLayerStats oldStats,
@@ -3980,6 +4027,20 @@ public class WifiMetrics {
                         + mWifiLinkLayerUsageStats.radioPnoScanTimeMs);
                 pw.println("mWifiLinkLayerUsageStats.radioHs20ScanTimeMs="
                         + mWifiLinkLayerUsageStats.radioHs20ScanTimeMs);
+                pw.println("mWifiLinkLayerUsageStats per Radio Stats: ");
+                for (int i = 0; i < mRadioStats.size(); i++) {
+                    RadioStats radioStat = mRadioStats.valueAt(i);
+                    pw.println("radioId=" + radioStat.radioId);
+                    pw.println("totalRadioOnTimeMs=" + radioStat.totalRadioOnTimeMs);
+                    pw.println("totalRadioTxTimeMs=" + radioStat.totalRadioTxTimeMs);
+                    pw.println("totalRadioRxTimeMs=" + radioStat.totalRadioRxTimeMs);
+                    pw.println("totalScanTimeMs=" + radioStat.totalScanTimeMs);
+                    pw.println("totalNanScanTimeMs=" + radioStat.totalNanScanTimeMs);
+                    pw.println("totalBackgroundScanTimeMs=" + radioStat.totalBackgroundScanTimeMs);
+                    pw.println("totalRoamScanTimeMs=" + radioStat.totalRoamScanTimeMs);
+                    pw.println("totalPnoScanTimeMs=" + radioStat.totalPnoScanTimeMs);
+                    pw.println("totalHotspot2ScanTimeMs=" + radioStat.totalHotspot2ScanTimeMs);
+                }
 
                 pw.println("mWifiLogProto.connectToNetworkNotificationCount="
                         + mConnectToNetworkNotificationCount.toString());
@@ -4671,6 +4732,11 @@ public class WifiMetrics {
 
             mWifiLogProto.pnoScanMetrics = mPnoScanMetrics;
             mWifiLogProto.wifiLinkLayerUsageStats = mWifiLinkLayerUsageStats;
+            mWifiLogProto.wifiLinkLayerUsageStats.radioStats =
+                    new WifiMetricsProto.RadioStats[mRadioStats.size()];
+            for (int i = 0; i < mRadioStats.size(); i++) {
+                mWifiLogProto.wifiLinkLayerUsageStats.radioStats[i] = mRadioStats.valueAt(i);
+            }
 
             /**
              * Convert the SparseIntArray of "Connect to Network" notification types and counts to
@@ -5108,6 +5174,7 @@ public class WifiMetrics {
             mAvailableSavedPasspointProviderBssidsInScanHistogram.clear();
             mPnoScanMetrics.clear();
             mWifiLinkLayerUsageStats.clear();
+            mRadioStats.clear();
             mConnectToNetworkNotificationCount.clear();
             mConnectToNetworkNotificationActionCount.clear();
             mNumOpenNetworkRecommendationUpdates = 0;

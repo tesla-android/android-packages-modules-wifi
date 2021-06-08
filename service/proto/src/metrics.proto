@@ -2484,6 +2484,9 @@ message WifiLinkLayerUsageStats {
   // Total time the wifi radio spent doing hotspot 2.0 scans and GAS exchange
   // in ms over the logging duration.
   optional int64 radio_hs20_scan_time_ms = 10;
+
+  // Radio stats from all the radios
+  repeated RadioStats radio_stats = 11;
 }
 
 message WifiUsabilityStatsEntry {
