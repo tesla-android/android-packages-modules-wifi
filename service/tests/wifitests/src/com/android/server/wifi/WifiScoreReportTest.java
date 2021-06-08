@@ -21,6 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
@@ -46,6 +47,7 @@ import android.net.NetworkAgent;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
 import android.net.NetworkProvider;
+import android.net.NetworkScore;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.IWifiConnectedNetworkScorer;
 import android.net.wifi.WifiConfiguration;
@@ -247,7 +249,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     public void calculateAndReportScoreSucceeds() throws Exception {
         mWifiInfo.setRssi(-77);
         mWifiScoreReport.calculateAndReportScore();
-        verify(mNetworkAgent).sendNetworkScore(anyInt());
+        verify(mNetworkAgent).sendNetworkScore(any());
         verify(mWifiMetrics).incrementWifiScoreCount(anyInt());
     }
 
@@ -261,7 +263,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     public void calculateAndReportScoreDoesNotReportWhenRssiIsNotValid() throws Exception {
         mWifiInfo.setRssi(WifiInfo.INVALID_RSSI);
         mWifiScoreReport.calculateAndReportScore();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         verify(mWifiMetrics, never()).incrementWifiScoreCount(anyInt());
     }
 
@@ -321,7 +323,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
         }
         int score = mWifiInfo.getScore();
         assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
-        verify(mNetworkAgent, atLeast(1)).sendNetworkScore(score);
+        verify(mNetworkAgent, atLeast(1)).sendNetworkScore(argThat(ns ->
+                ns.getLegacyInt() == score && ns.isExiting() && ns.isTransportPrimary()));
     }
 
     /**
@@ -338,7 +341,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
             oops += ":" + mWifiInfo.getScore();
         }
         int score = mWifiInfo.getScore();
-        verify(mNetworkAgent, atLeast(1)).sendNetworkScore(score);
+        verify(mNetworkAgent, atLeast(1)).sendNetworkScore(
+                argThat(ns -> ns.getLegacyInt() == score));
         assertTrue(oops, score < ConnectedScore.WIFI_TRANSITION_SCORE);
     }
 
@@ -722,21 +726,33 @@ public class WifiScoreReportTest extends WifiBaseTest {
 
         // Invalid session ID
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(-1, 49);
-        assertEquals(mWifiScoreReport.getScore(), ConnectedScore.WIFI_MAX_SCORE);
+        NetworkScore score = mWifiScoreReport.getScore();
+        assertEquals(score.getLegacyInt(), ConnectedScore.WIFI_MAX_SCORE);
+        assertTrue(score.isTransportPrimary());
+        assertFalse(score.isExiting());
 
         // Incorrect session ID
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId + 10, 49);
-        assertEquals(mWifiScoreReport.getScore(), ConnectedScore.WIFI_MAX_SCORE);
+        score = mWifiScoreReport.getScore();
+        assertEquals(score.getLegacyInt(), ConnectedScore.WIFI_MAX_SCORE);
+        assertTrue(score.isTransportPrimary());
+        assertFalse(score.isExiting());
 
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(49);
-        assertEquals(mWifiScoreReport.getScore(), 49);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 49));
+        score = mWifiScoreReport.getScore();
+        assertEquals(score.getLegacyInt(), 49);
+        assertTrue(score.isTransportPrimary());
+        assertTrue(score.isExiting());
 
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 59);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(59);
-        assertEquals(mWifiScoreReport.getScore(), 59);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 59));
+        score = mWifiScoreReport.getScore();
+        assertEquals(score.getLegacyInt(), 59);
+        assertTrue(score.isTransportPrimary());
+        assertFalse(score.isExiting());
     }
 
     /**
@@ -890,7 +906,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiInfo.setRssi(-65);
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(anyInt());
+        verify(mNetworkAgent).sendNetworkScore(any());
     }
 
     /**
@@ -911,16 +927,16 @@ public class WifiScoreReportTest extends WifiBaseTest {
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 60);
         mWifiInfo.setRssi(-70);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(60);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 60));
         mClock.mWallClockMillis = 3010;
         mWifiInfo.setRssi(-65);
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 59);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(59);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 59));
         mClock.mWallClockMillis = 6010;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 58);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(58);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 58));
     }
 
     /**
@@ -941,24 +957,24 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mClock.mWallClockMillis = 10;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 10
                 + mDeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS - 1;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 48);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 10
                 + mDeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS;
         mWifiInfo.setRssi(-65);
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 47);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(47);
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 10
                 + mDeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS + 3000;
         mWifiInfo.setRssi(-68);
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 46);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(46);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 46));
     }
 
     /**
@@ -978,16 +994,16 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mClock.mWallClockMillis = 10;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 3000;
         mWifiInfo.setRssi(-70);
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 51);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(51);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 51));
         mClock.mWallClockMillis = 6000;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 52);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(52);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 52));
     }
 
     /**
@@ -1008,19 +1024,19 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mClock.mWallClockMillis = 10;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 3000;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 51);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 6999;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 52);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 7000;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 53);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(53);
+        verify(mNetworkAgent).sendNetworkScore(argThat(ns -> ns.getLegacyInt() == 53));
     }
 
     /**
@@ -1040,7 +1056,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
         observer.getValue().onChange(true);
         mWifiScoreReport.calculateAndReportScore();
         assertFalse(mWifiScoreReport.shouldCheckIpLayer());
-        verify(mNetworkAgent).sendNetworkScore(51);
+        verify(mNetworkAgent).sendNetworkScore(argThat(score ->
+                score.getLegacyInt() == 51 && !score.isExiting() && score.isTransportPrimary()));
     }
 
     /**
@@ -1070,18 +1087,19 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mClock.mWallClockMillis = 10;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         assertFalse(mWifiScoreReport.shouldCheckIpLayer());
 
         mClock.mWallClockMillis = 10
                 + mDeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS - 1;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 48);
         mLooper.dispatchAll();
-        verify(mNetworkAgent, never()).sendNetworkScore(anyInt());
+        verify(mNetworkAgent, never()).sendNetworkScore(any());
         mClock.mWallClockMillis = 10
                 + mDeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS;
         scorerImpl.mScoreUpdateObserver.notifyScoreUpdate(scorerImpl.mSessionId, 47);
         mLooper.dispatchAll();
-        verify(mNetworkAgent).sendNetworkScore(51);
+        verify(mNetworkAgent).sendNetworkScore(argThat(score ->
+                score.getLegacyInt() == 51 && !score.isExiting() && score.isTransportPrimary()));
     }
 }
