@@ -2823,6 +2823,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Verify the recent failure association status is set properly
         List<WifiConfiguration> configs = mWifiConfigManager.getSavedNetworks(Process.WIFI_UID);
         assertEquals(1, configs.size());
+        verify(mWifiMetrics).incrementRecentFailureAssociationStatusCount(eq(expectedStatusCode));
         assertEquals(expectedStatusCode, configs.get(0).getRecentFailureReason());
         assertEquals(updateTimeMs,
                 configs.get(0).recentFailure.getLastUpdateTimeSinceBootMillis());
