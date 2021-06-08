@@ -6313,6 +6313,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
+        assertEquals(0,
+                mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds.length);
 
         // increment everything
         mWifiMetrics.setIsMakeBeforeBreakSupported(true);
@@ -6322,7 +6324,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.incrementMakeBeforeBreakRecoverPrimaryCount();
         mWifiMetrics.incrementMakeBeforeBreakInternetValidatedCount();
         mWifiMetrics.incrementMakeBeforeBreakSuccessCount();
-        mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount();
+        mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount(1000);
 
         dumpProtoAndDeserialize();
 
@@ -6335,6 +6337,12 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
         assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
         assertEquals(1, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
+        assertEquals(1,
+                mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds.length);
+        assertEquals(1,
+                mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds[0].key);
+        assertEquals(1,
+                mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds[0].count);
 
         // dump again
         dumpProtoAndDeserialize();
@@ -6348,6 +6356,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakInternetValidatedCount);
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakSuccessCount);
         assertEquals(0, mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount);
+        assertEquals(0,
+                mDecodedProto.wifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds.length);
     }
 
     @Test

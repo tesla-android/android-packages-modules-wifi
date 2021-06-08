@@ -226,6 +226,7 @@ public class WifiMetrics {
     private static final int WIFI_RECONNECT_DURATION_MEDIUM_MILLIS = 60 * 1000;
     // Number of WME Access Categories
     private static final int NUM_WME_ACCESS_CATEGORIES = 4;
+    private static final int MBB_LINGERING_DURATION_MAX_SECONDS = 30;
 
     private Clock mClock;
     private boolean mScreenOn;
@@ -325,6 +326,8 @@ public class WifiMetrics {
     private final IntCounter mRxLinkSpeedCount6gLow = new IntCounter();
     private final IntCounter mRxLinkSpeedCount6gMid = new IntCounter();
     private final IntCounter mRxLinkSpeedCount6gHigh = new IntCounter();
+
+    private final IntCounter mMakeBeforeBreakLingeringDurationSeconds = new IntCounter();
 
     /** RSSI of the scan result for the last connection event*/
     private int mScanResultRssi = 0;
@@ -4957,10 +4960,16 @@ public class WifiMetrics {
             mWifiLogProto.carrierWifiMetrics = mCarrierWifiMetrics.toProto();
             mWifiLogProto.mainlineModuleVersion = mWifiHealthMonitor.getWifiStackVersion();
             mWifiLogProto.firstConnectAfterBootStats = mFirstConnectAfterBootStats;
-            mWifiLogProto.wifiToWifiSwitchStats = mWifiToWifiSwitchStats;
+            mWifiLogProto.wifiToWifiSwitchStats = buildWifiToWifiSwitchStats();
             mWifiLogProto.bandwidthEstimatorStats = mWifiScoreCard.dumpBandwidthEstimatorStats();
             mWifiLogProto.passpointDeauthImminentScope = mPasspointDeauthImminentScope.toProto();
         }
+    }
+
+    private WifiToWifiSwitchStats buildWifiToWifiSwitchStats() {
+        mWifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds =
+                mMakeBeforeBreakLingeringDurationSeconds.toProto();
+        return mWifiToWifiSwitchStats;
     }
 
     private static int linkProbeFailureReasonToProto(int reason) {
@@ -5077,6 +5086,7 @@ public class WifiMetrics {
             mRxLinkSpeedCount6gMid.clear();
             mRxLinkSpeedCount6gHigh.clear();
             mWifiAlertReasonCounts.clear();
+            mMakeBeforeBreakLingeringDurationSeconds.clear();
             mWifiScoreCounts.clear();
             mWifiUsabilityScoreCounts.clear();
             mWifiLogProto.clear();
@@ -8125,14 +8135,18 @@ public class WifiMetrics {
     /**
      * Increment the number of times the old network in Make Before Break completed lingering and
      * was disconnected.
+     * @param duration the lingering duration in ms
      */
-    public void incrementMakeBeforeBreakLingerCompletedCount() {
+    public void incrementMakeBeforeBreakLingerCompletedCount(long duration) {
         synchronized (mLock) {
             mWifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount++;
+            int lingeringDurationSeconds = Math.min(MBB_LINGERING_DURATION_MAX_SECONDS,
+                    (int) duration / 1000);
+            mMakeBeforeBreakLingeringDurationSeconds.increment(lingeringDurationSeconds);
         }
     }
 
-    private static String wifiToWifiSwitchStatsToString(WifiToWifiSwitchStats stats) {
+    private String wifiToWifiSwitchStatsToString(WifiToWifiSwitchStats stats) {
         return "WifiToWifiSwitchStats{"
                 + "isMakeBeforeBreakSupported=" + stats.isMakeBeforeBreakSupported
                 + ",wifiToWifiSwitchTriggerCount=" + stats.wifiToWifiSwitchTriggerCount
@@ -8144,6 +8158,8 @@ public class WifiMetrics {
                 + ",makeBeforeBreakSuccessCount=" + stats.makeBeforeBreakSuccessCount
                 + ",makeBeforeBreakLingerCompletedCount="
                 + stats.makeBeforeBreakLingerCompletedCount
+                + ",makeBeforeBreakLingeringDurationSeconds="
+                + mMakeBeforeBreakLingeringDurationSeconds
                 + "}";
     }
 
