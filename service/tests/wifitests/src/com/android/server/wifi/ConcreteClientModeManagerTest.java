@@ -498,6 +498,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         // Don't initiate wifi native setup.
         verifyNoMoreInteractions(mListener, mWifiNative);
         assertNull(mClientModeManager.getRole());
+        assertNull(mClientModeManager.getPreviousRole());
     }
 
     /**
@@ -511,14 +512,22 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mClientModeManager.stop();
         mLooper.dispatchAll();
         // role has not been reset yet
-        assertNotNull(mClientModeManager.getRole());
+        ActiveModeManager.ClientRole lastRole = mClientModeManager.getRole();
+        assertNotNull(lastRole);
+        assertNull(mClientModeManager.getPreviousRole());
 
+        long testChangeRoleTimestamp = 12234455L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(testChangeRoleTimestamp);
         when(mClientModeImpl.hasQuit()).thenReturn(true);
         mClientModeManager.onClientModeImplQuit();
         verify(mListener).onStopped(mClientModeManager);
 
         // then role will be reset
         assertNull(mClientModeManager.getRole());
+        assertEquals("Should equal previous role", lastRole,
+                mClientModeManager.getPreviousRole());
+        assertEquals("The role change timestamp should match", testChangeRoleTimestamp,
+                mClientModeManager.getLastRoleChangeSinceBootMs());
 
         verify(mImsMmTelManager, never()).registerImsRegistrationCallback(any(), any());
         verify(mImsMmTelManager, never()).unregisterImsRegistrationCallback(any());
@@ -1384,6 +1393,10 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mClientModeManager = createClientModeManager(ROLE_CLIENT_SCAN_ONLY);
         mLooper.dispatchAll();
 
+        ActiveModeManager.ClientRole lastRole = mClientModeManager.getRole();
+        assertEquals(ROLE_CLIENT_SCAN_ONLY, lastRole);
+        assertNull(mClientModeManager.getPreviousRole());
+
         verify(mWifiNative).setupInterfaceForClientInScanMode(
                 mInterfaceCallbackCaptor.capture(), eq(TEST_WORKSOURCE));
         mInterfaceCallbackCaptor.getValue().onUp(TEST_INTERFACE_NAME);
@@ -1391,6 +1404,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         verify(mListener).onStarted(mClientModeManager); // callback sent.
 
         // Change to connectivity role.
+        long testChangeRoleTimestamp = 12234455L;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(testChangeRoleTimestamp);
         doAnswer(new AnswerWithArguments() {
             public void answer(ActiveModeManager clientModeManager) throws Exception {
                 assertEquals(ActiveModeManager.ROLE_CLIENT_PRIMARY, clientModeManager.getRole());
@@ -1399,6 +1414,12 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
         mClientModeManager.setRole(ActiveModeManager.ROLE_CLIENT_PRIMARY, TEST_WORKSOURCE);
         mLooper.dispatchAll();
         verify(mListener).onRoleChanged(mClientModeManager); // callback sent.
+
+        // Verify the role is changed and previousRole is updated.
+        assertEquals("Should equal previous role", lastRole,
+                mClientModeManager.getPreviousRole());
+        assertEquals("The role change timestamp should match", testChangeRoleTimestamp,
+                mClientModeManager.getLastRoleChangeSinceBootMs());
     }
 
     @Test
