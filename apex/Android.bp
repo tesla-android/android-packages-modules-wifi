@@ -66,9 +66,7 @@ android_app_certificate {
 
 sdk {
     name: "wifi-module-sdk",
-    java_sdk_libs: [
-        "framework-wifi",
-    ],
+    bootclasspath_fragments: ["com.android.wifi-bootclasspath-fragment"],
 }
 
 // Encapsulate the contributions made by the com.android.wifi to the bootclasspath.
