@@ -763,6 +763,10 @@ message WifiLog {
 
   // Total number of steering requests from AP
   optional int32 num_steering_request = 217;
+
+  // Histogram corresponding to the number of times recent connection failure status are reported
+  // per WifiConfiguration.RecentFailureReason
+  repeated Int32Count recent_failure_association_status = 218;
 }
 
 // Information that gets logged for every WiFi connection.

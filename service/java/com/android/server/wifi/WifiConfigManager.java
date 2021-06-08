@@ -3477,6 +3477,7 @@ public class WifiConfigManager {
         if (config == null) {
             return;
         }
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(reason);
         int previousReason = config.recentFailure.getAssociationStatus();
         config.recentFailure.setAssociationStatus(reason, mClock.getElapsedSinceBootMillis());
         if (previousReason != reason) {
