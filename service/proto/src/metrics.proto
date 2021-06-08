@@ -3880,6 +3880,9 @@ message WifiToWifiSwitchStats {
 
   // Number of times the old network in Make Before Break completed lingering and was disconnected.
   optional int32 make_before_break_linger_completed_count = 8;
+
+  // Histogram of lingering duration caused by make before break in seconds.
+  repeated Int32Count make_before_break_linger_duration_seconds = 9;
 }
 
 // Network layer bandwidth estimator stats
