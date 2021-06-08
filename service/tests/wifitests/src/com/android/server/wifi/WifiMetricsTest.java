@@ -6461,4 +6461,38 @@ public class WifiMetricsTest extends WifiBaseTest {
                 WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, 2000, true, true,
                 WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_2G));
     }
+
+    /**
+     * Test number of times connection failure status reported per
+     * WifiConfiguration.RecentFailureReason
+     */
+    @Test
+    public void testRecentFailureAssociationStatusCount() throws Exception {
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(
+                WifiConfiguration.RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA);
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(
+                WifiConfiguration.RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA);
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(
+                WifiConfiguration.RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION);
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(
+                WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED);
+        mWifiMetrics.incrementRecentFailureAssociationStatusCount(
+                WifiConfiguration.RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED);
+
+        dumpProtoAndDeserialize();
+
+        Int32Count[] expectedRecentFailureAssociationStatus = {
+                buildInt32Count(WifiConfiguration.RECENT_FAILURE_AP_UNABLE_TO_HANDLE_NEW_STA,
+                        2),
+                buildInt32Count(
+                        WifiConfiguration
+                                .RECENT_FAILURE_MBO_ASSOC_DISALLOWED_AIR_INTERFACE_OVERLOADED, 2),
+                buildInt32Count(
+                        WifiConfiguration.RECENT_FAILURE_OCE_RSSI_BASED_ASSOCIATION_REJECTION, 1),
+        };
+
+        assertKeyCountsEqual(expectedRecentFailureAssociationStatus,
+                mDecodedProto.recentFailureAssociationStatus);
+
+    }
 }
