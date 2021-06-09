@@ -5538,8 +5538,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     if (message.arg1 == NETWORK_STATUS_UNWANTED_DISCONNECT) {
                         mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_FRAMEWORK_DISCONNECT,
                                 StaEvent.DISCONNECT_UNWANTED);
-                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
-                            mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount();
+                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT
+                                && mClientModeManager.getPreviousRole() == ROLE_CLIENT_PRIMARY) {
+                            mWifiMetrics.incrementMakeBeforeBreakLingerCompletedCount(
+                                    mClock.getElapsedSinceBootMillis()
+                                            - mClientModeManager.getLastRoleChangeSinceBootMs());
                         }
                         mWifiNative.disconnect(mInterfaceName);
                     } else if (message.arg1 == NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN

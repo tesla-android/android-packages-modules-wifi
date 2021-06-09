@@ -763,6 +763,10 @@ message WifiLog {
 
   // Total number of steering requests from AP
   optional int32 num_steering_request = 217;
+
+  // Histogram corresponding to the number of times recent connection failure status are reported
+  // per WifiConfiguration.RecentFailureReason
+  repeated Int32Count recent_failure_association_status = 218;
 }
 
 // Information that gets logged for every WiFi connection.
@@ -2484,6 +2488,9 @@ message WifiLinkLayerUsageStats {
   // Total time the wifi radio spent doing hotspot 2.0 scans and GAS exchange
   // in ms over the logging duration.
   optional int64 radio_hs20_scan_time_ms = 10;
+
+  // Radio stats from all the radios
+  repeated RadioStats radio_stats = 11;
 }
 
 message WifiUsabilityStatsEntry {
@@ -3880,6 +3887,9 @@ message WifiToWifiSwitchStats {
 
   // Number of times the old network in Make Before Break completed lingering and was disconnected.
   optional int32 make_before_break_linger_completed_count = 8;
+
+  // Histogram of lingering duration caused by make before break in seconds.
+  repeated Int32Count make_before_break_linger_duration_seconds = 9;
 }
 
 // Network layer bandwidth estimator stats

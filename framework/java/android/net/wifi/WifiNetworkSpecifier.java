@@ -579,7 +579,7 @@ public final class WifiNetworkSpecifier extends NetworkSpecifier implements Parc
          * <pre>{@code
          * final NetworkSpecifier specifier =
          *      new Builder()
-         *      .setSsidPattern(new PatternMatcher("test", PatterMatcher.PATTERN_PREFIX))
+         *      .setSsidPattern(new PatternMatcher("test", PatternMatcher.PATTERN_PREFIX))
          *      .setBssidPattern(MacAddress.fromString("10:03:23:00:00:00"),
          *                       MacAddress.fromString("ff:ff:ff:00:00:00"))
          *      .build()

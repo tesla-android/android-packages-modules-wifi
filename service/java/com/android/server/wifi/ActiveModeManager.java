@@ -147,6 +147,16 @@ public interface ActiveModeManager {
     @Nullable Role getRole();
 
     /**
+     * Method to get the previous role a mode manager.
+     */
+    @Nullable Role getPreviousRole();
+
+    /**
+     * Get the time in ms since boot of the last role change.
+     */
+    long getLastRoleChangeSinceBootMs();
+
+    /**
      * Method to get the iface name for the mode manager.
      */
     String getInterfaceName();

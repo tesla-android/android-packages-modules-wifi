@@ -357,6 +357,16 @@ public class SoftApManager implements ActiveModeManager {
         return mRole;
     }
 
+    @Override
+    @Nullable public ClientRole getPreviousRole() {
+        return null;
+    }
+
+    @Override
+    public long getLastRoleChangeSinceBootMs() {
+        return 0;
+    }
+
     /** Set the role of this SoftApManager */
     public void setRole(SoftApRole role) {
         // softap does not allow in-place switching of roles.

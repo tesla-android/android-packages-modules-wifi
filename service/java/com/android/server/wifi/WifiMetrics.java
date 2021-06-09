@@ -226,6 +226,7 @@ public class WifiMetrics {
     private static final int WIFI_RECONNECT_DURATION_MEDIUM_MILLIS = 60 * 1000;
     // Number of WME Access Categories
     private static final int NUM_WME_ACCESS_CATEGORIES = 4;
+    private static final int MBB_LINGERING_DURATION_MAX_SECONDS = 30;
 
     private Clock mClock;
     private boolean mScreenOn;
@@ -234,6 +235,8 @@ public class WifiMetrics {
     private RttMetrics mRttMetrics;
     private final PnoScanMetrics mPnoScanMetrics = new PnoScanMetrics();
     private final WifiLinkLayerUsageStats mWifiLinkLayerUsageStats = new WifiLinkLayerUsageStats();
+    /** Mapping of radio id values to RadioStats objects. */
+    private final SparseArray<RadioStats> mRadioStats = new SparseArray<>();
     private final ExperimentValues mExperimentValues = new ExperimentValues();
     private Handler mHandler;
     private ScoringParams mScoringParams;
@@ -278,6 +281,7 @@ public class WifiMetrics {
     private WifiChannelUtilization mWifiChannelUtilization;
     private WifiSettingsStore mWifiSettingsStore;
     private IntCounter mPasspointDeauthImminentScope = new IntCounter();
+    private IntCounter mRecentFailureAssociationStatus = new IntCounter();
 
     /**
      * Metrics are stored within an instance of the WifiLog proto during runtime,
@@ -325,6 +329,8 @@ public class WifiMetrics {
     private final IntCounter mRxLinkSpeedCount6gLow = new IntCounter();
     private final IntCounter mRxLinkSpeedCount6gMid = new IntCounter();
     private final IntCounter mRxLinkSpeedCount6gHigh = new IntCounter();
+
+    private final IntCounter mMakeBeforeBreakLingeringDurationSeconds = new IntCounter();
 
     /** RSSI of the scan result for the last connection event*/
     private int mScanResultRssi = 0;
@@ -1651,7 +1657,52 @@ public class WifiMetrics {
                 (newStats.on_time_pno_scan - mLastLinkLayerStats.on_time_pno_scan);
         mWifiLinkLayerUsageStats.radioHs20ScanTimeMs +=
                 (newStats.on_time_hs20_scan - mLastLinkLayerStats.on_time_hs20_scan);
+        incrementPerRadioUsageStats(mLastLinkLayerStats, newStats);
+
         mLastLinkLayerStats = newStats;
+    }
+
+    /**
+     * Increment individual radio stats usage
+     */
+    private void incrementPerRadioUsageStats(WifiLinkLayerStats oldStats,
+            WifiLinkLayerStats newStats) {
+        if (newStats.radioStats != null && newStats.radioStats.length > 0
+                && oldStats.radioStats != null && oldStats.radioStats.length > 0
+                && newStats.radioStats.length == oldStats.radioStats.length) {
+            int numRadios = newStats.radioStats.length;
+            for (int i = 0; i < numRadios; i++) {
+                WifiLinkLayerStats.RadioStat newRadio = newStats.radioStats[i];
+                WifiLinkLayerStats.RadioStat oldRadio = oldStats.radioStats[i];
+                if (newRadio.radio_id != oldRadio.radio_id) {
+                    continue;
+                }
+                RadioStats radioStats = mRadioStats.get(newRadio.radio_id);
+                if (radioStats == null) {
+                    radioStats = new RadioStats();
+                    radioStats.radioId = newRadio.radio_id;
+                    mRadioStats.put(newRadio.radio_id, radioStats);
+                }
+                radioStats.totalRadioOnTimeMs
+                        += newRadio.on_time - oldRadio.on_time;
+                radioStats.totalRadioTxTimeMs
+                        += newRadio.tx_time - oldRadio.tx_time;
+                radioStats.totalRadioRxTimeMs
+                        += newRadio.rx_time - oldRadio.rx_time;
+                radioStats.totalScanTimeMs
+                        += newRadio.on_time_scan - oldRadio.on_time_scan;
+                radioStats.totalNanScanTimeMs
+                        += newRadio.on_time_nan_scan - oldRadio.on_time_nan_scan;
+                radioStats.totalBackgroundScanTimeMs
+                        += newRadio.on_time_background_scan - oldRadio.on_time_background_scan;
+                radioStats.totalRoamScanTimeMs
+                        += newRadio.on_time_roam_scan - oldRadio.on_time_roam_scan;
+                radioStats.totalPnoScanTimeMs
+                        += newRadio.on_time_pno_scan - oldRadio.on_time_pno_scan;
+                radioStats.totalHotspot2ScanTimeMs
+                        += newRadio.on_time_hs20_scan - oldRadio.on_time_hs20_scan;
+            }
+        }
     }
 
     private boolean newLinkLayerStatsIsValid(WifiLinkLayerStats oldStats,
@@ -3814,6 +3865,8 @@ public class WifiMetrics {
                         + mWifiLogProto.numConnectRequestWithFilsAkm);
                 pw.println("mWifiLogProto.numL2ConnectionThroughFilsAuthentication="
                         + mWifiLogProto.numL2ConnectionThroughFilsAuthentication);
+                pw.println("mWifiLogProto.recentFailureAssociationStatus="
+                        + mRecentFailureAssociationStatus.toString());
 
                 pw.println("mWifiLogProto.numScans=" + mWifiLogProto.numScans);
                 pw.println("mWifiLogProto.WifiScoreCount: [" + MIN_WIFI_SCORE + ", "
@@ -3977,6 +4030,20 @@ public class WifiMetrics {
                         + mWifiLinkLayerUsageStats.radioPnoScanTimeMs);
                 pw.println("mWifiLinkLayerUsageStats.radioHs20ScanTimeMs="
                         + mWifiLinkLayerUsageStats.radioHs20ScanTimeMs);
+                pw.println("mWifiLinkLayerUsageStats per Radio Stats: ");
+                for (int i = 0; i < mRadioStats.size(); i++) {
+                    RadioStats radioStat = mRadioStats.valueAt(i);
+                    pw.println("radioId=" + radioStat.radioId);
+                    pw.println("totalRadioOnTimeMs=" + radioStat.totalRadioOnTimeMs);
+                    pw.println("totalRadioTxTimeMs=" + radioStat.totalRadioTxTimeMs);
+                    pw.println("totalRadioRxTimeMs=" + radioStat.totalRadioRxTimeMs);
+                    pw.println("totalScanTimeMs=" + radioStat.totalScanTimeMs);
+                    pw.println("totalNanScanTimeMs=" + radioStat.totalNanScanTimeMs);
+                    pw.println("totalBackgroundScanTimeMs=" + radioStat.totalBackgroundScanTimeMs);
+                    pw.println("totalRoamScanTimeMs=" + radioStat.totalRoamScanTimeMs);
+                    pw.println("totalPnoScanTimeMs=" + radioStat.totalPnoScanTimeMs);
+                    pw.println("totalHotspot2ScanTimeMs=" + radioStat.totalHotspot2ScanTimeMs);
+                }
 
                 pw.println("mWifiLogProto.connectToNetworkNotificationCount="
                         + mConnectToNetworkNotificationCount.toString());
@@ -4668,6 +4735,11 @@ public class WifiMetrics {
 
             mWifiLogProto.pnoScanMetrics = mPnoScanMetrics;
             mWifiLogProto.wifiLinkLayerUsageStats = mWifiLinkLayerUsageStats;
+            mWifiLogProto.wifiLinkLayerUsageStats.radioStats =
+                    new WifiMetricsProto.RadioStats[mRadioStats.size()];
+            for (int i = 0; i < mRadioStats.size(); i++) {
+                mWifiLogProto.wifiLinkLayerUsageStats.radioStats[i] = mRadioStats.valueAt(i);
+            }
 
             /**
              * Convert the SparseIntArray of "Connect to Network" notification types and counts to
@@ -4957,10 +5029,18 @@ public class WifiMetrics {
             mWifiLogProto.carrierWifiMetrics = mCarrierWifiMetrics.toProto();
             mWifiLogProto.mainlineModuleVersion = mWifiHealthMonitor.getWifiStackVersion();
             mWifiLogProto.firstConnectAfterBootStats = mFirstConnectAfterBootStats;
-            mWifiLogProto.wifiToWifiSwitchStats = mWifiToWifiSwitchStats;
+            mWifiLogProto.wifiToWifiSwitchStats = buildWifiToWifiSwitchStats();
             mWifiLogProto.bandwidthEstimatorStats = mWifiScoreCard.dumpBandwidthEstimatorStats();
             mWifiLogProto.passpointDeauthImminentScope = mPasspointDeauthImminentScope.toProto();
+            mWifiLogProto.recentFailureAssociationStatus =
+                    mRecentFailureAssociationStatus.toProto();
         }
+    }
+
+    private WifiToWifiSwitchStats buildWifiToWifiSwitchStats() {
+        mWifiToWifiSwitchStats.makeBeforeBreakLingerDurationSeconds =
+                mMakeBeforeBreakLingeringDurationSeconds.toProto();
+        return mWifiToWifiSwitchStats;
     }
 
     private static int linkProbeFailureReasonToProto(int reason) {
@@ -5077,6 +5157,7 @@ public class WifiMetrics {
             mRxLinkSpeedCount6gMid.clear();
             mRxLinkSpeedCount6gHigh.clear();
             mWifiAlertReasonCounts.clear();
+            mMakeBeforeBreakLingeringDurationSeconds.clear();
             mWifiScoreCounts.clear();
             mWifiUsabilityScoreCounts.clear();
             mWifiLogProto.clear();
@@ -5098,6 +5179,7 @@ public class WifiMetrics {
             mAvailableSavedPasspointProviderBssidsInScanHistogram.clear();
             mPnoScanMetrics.clear();
             mWifiLinkLayerUsageStats.clear();
+            mRadioStats.clear();
             mConnectToNetworkNotificationCount.clear();
             mConnectToNetworkNotificationActionCount.clear();
             mNumOpenNetworkRecommendationUpdates = 0;
@@ -5190,6 +5272,7 @@ public class WifiMetrics {
             mFirstConnectAfterBootStats = null;
             mWifiToWifiSwitchStats.clear();
             mPasspointDeauthImminentScope.clear();
+            mRecentFailureAssociationStatus.clear();
         }
     }
 
@@ -8125,14 +8208,18 @@ public class WifiMetrics {
     /**
      * Increment the number of times the old network in Make Before Break completed lingering and
      * was disconnected.
+     * @param duration the lingering duration in ms
      */
-    public void incrementMakeBeforeBreakLingerCompletedCount() {
+    public void incrementMakeBeforeBreakLingerCompletedCount(long duration) {
         synchronized (mLock) {
             mWifiToWifiSwitchStats.makeBeforeBreakLingerCompletedCount++;
+            int lingeringDurationSeconds = Math.min(MBB_LINGERING_DURATION_MAX_SECONDS,
+                    (int) duration / 1000);
+            mMakeBeforeBreakLingeringDurationSeconds.increment(lingeringDurationSeconds);
         }
     }
 
-    private static String wifiToWifiSwitchStatsToString(WifiToWifiSwitchStats stats) {
+    private String wifiToWifiSwitchStatsToString(WifiToWifiSwitchStats stats) {
         return "WifiToWifiSwitchStats{"
                 + "isMakeBeforeBreakSupported=" + stats.isMakeBeforeBreakSupported
                 + ",wifiToWifiSwitchTriggerCount=" + stats.wifiToWifiSwitchTriggerCount
@@ -8144,6 +8231,8 @@ public class WifiMetrics {
                 + ",makeBeforeBreakSuccessCount=" + stats.makeBeforeBreakSuccessCount
                 + ",makeBeforeBreakLingerCompletedCount="
                 + stats.makeBeforeBreakLingerCompletedCount
+                + ",makeBeforeBreakLingeringDurationSeconds="
+                + mMakeBeforeBreakLingeringDurationSeconds
                 + "}";
     }
 
@@ -8190,6 +8279,17 @@ public class WifiMetrics {
         synchronized (mLock) {
             mPasspointDeauthImminentScope.increment(isEss ? PASSPOINT_DEAUTH_IMMINENT_SCOPE_ESS
                     : PASSPOINT_DEAUTH_IMMINENT_SCOPE_BSS);
+        }
+    }
+
+    /**
+     * Increment number of times connection failure status reported per
+     * WifiConfiguration.RecentFailureReason
+     */
+    public void incrementRecentFailureAssociationStatusCount(
+            @WifiConfiguration.RecentFailureReason int reason) {
+        synchronized (mLock) {
+            mRecentFailureAssociationStatus.increment(reason);
         }
     }
 }
