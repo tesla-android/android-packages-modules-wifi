@@ -2249,7 +2249,10 @@ public class WifiNetworkSuggestionsManager {
      */
     public void resetCarrierPrivilegedApps() {
         Log.w(TAG, "SIM state is changed!");
-        for (PerAppInfo appInfo : mActiveNetworkSuggestionsPerApp.values()) {
+        Iterator<Map.Entry<String, PerAppInfo>> iter =
+                mActiveNetworkSuggestionsPerApp.entrySet().iterator();
+        while (iter.hasNext()) {
+            PerAppInfo appInfo = iter.next().getValue();
             int carrierId = mWifiCarrierInfoManager
                     .getCarrierIdForPackageWithCarrierPrivileges(appInfo.packageName);
             if (carrierId == appInfo.carrierId) {
@@ -2258,7 +2261,7 @@ public class WifiNetworkSuggestionsManager {
             if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Carrier privilege revoked for " + appInfo.packageName);
                 removeInternal(List.of(), appInfo.packageName, appInfo);
-                mActiveNetworkSuggestionsPerApp.remove(appInfo.packageName);
+                iter.remove();
                 continue;
             }
             Log.i(TAG, "Carrier privilege granted for " + appInfo.packageName);
