@@ -61,10 +61,12 @@ import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.ArraySet;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
+import android.util.SparseBooleanArray;
 import android.util.SparseIntArray;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -496,6 +498,9 @@ public class WifiMetrics {
             new ArrayList<>();
     private final List<UserReaction> mUserApprovalCarrierUiReactionList =
             new ArrayList<>();
+    private final SparseBooleanArray mWifiNetworkSuggestionPriorityGroups =
+            new SparseBooleanArray();
+    private final Set<String> mWifiNetworkSuggestionCoexistSavedNetworks = new ArraySet<>();
 
     private final WifiLockStats mWifiLockStats = new WifiLockStats();
     private static final int[] WIFI_LOCK_SESSION_DURATION_HISTOGRAM_BUCKETS =
@@ -1827,6 +1832,8 @@ public class WifiMetrics {
                 currentConnectionEvent.mConnectionEvent.connectionNominator =
                         mNetworkIdToNominatorId.get(config.networkId,
                                 WifiMetricsProto.ConnectionEvent.NOMINATOR_UNKNOWN);
+                currentConnectionEvent.mConnectionEvent.isCarrierMerged = config.carrierMerged;
+
                 ScanResult candidate = config.getNetworkSelectionStatus().getCandidate();
                 if (candidate != null) {
                     // Cache the RSSI of the candidate, as the connection event level is updated
@@ -4229,6 +4236,10 @@ public class WifiMetrics {
                         + mWifiNetworkSuggestionApiListSizeHistogram);
                 pw.println("mWifiNetworkSuggestionApiAppTypeCounter:\n"
                         + mWifiNetworkSuggestionApiAppTypeCounter);
+                pw.println("mWifiNetworkSuggestionPriorityGroups:\n"
+                        + mWifiNetworkSuggestionPriorityGroups.toString());
+                pw.println("mWifiNetworkSuggestionCoexistSavedNetworks:\n"
+                        + mWifiNetworkSuggestionCoexistSavedNetworks.toString());
                 printUserApprovalSuggestionAppReaction(pw);
                 printUserApprovalCarrierReaction(pw);
                 pw.println("mNetworkIdToNominatorId:\n" + mNetworkIdToNominatorId);
@@ -4935,6 +4946,10 @@ public class WifiMetrics {
                                 entry.count = count;
                                 return entry;
                             });
+            mWifiNetworkSuggestionApiLog.numPriorityGroups =
+                    mWifiNetworkSuggestionPriorityGroups.size();
+            mWifiNetworkSuggestionApiLog.numSavedNetworksWithConfiguredSuggestion =
+                    mWifiNetworkSuggestionCoexistSavedNetworks.size();
             mWifiLogProto.wifiNetworkSuggestionApiLog = mWifiNetworkSuggestionApiLog;
 
             UserReactionToApprovalUiEvent events = new UserReactionToApprovalUiEvent();
@@ -5273,6 +5288,8 @@ public class WifiMetrics {
             mWifiToWifiSwitchStats.clear();
             mPasspointDeauthImminentScope.clear();
             mRecentFailureAssociationStatus.clear();
+            mWifiNetworkSuggestionPriorityGroups.clear();
+            mWifiNetworkSuggestionCoexistSavedNetworks.clear();
         }
     }
 
@@ -7180,6 +7197,38 @@ public class WifiMetrics {
         synchronized (mLock) {
             mWifiNetworkSuggestionApiLog.userRevokeAppSuggestionPermission++;
         }
+    }
+
+    /**
+     * Increment number of times a ScanResult matches more than one WifiNetworkSuggestion.
+     */
+    public void incrementNetworkSuggestionMoreThanOneSuggestionForSingleScanResult() {
+        synchronized (mLock) {
+            mWifiNetworkSuggestionApiLog.numMultipleSuggestions++;
+        }
+    }
+
+    /**
+     * Add a saved network which has at least has one suggestion for same network on the device.
+     */
+    public void addSuggestionExistsForSavedNetwork(String key) {
+        synchronized (mLock) {
+            mWifiNetworkSuggestionCoexistSavedNetworks.add(key);
+        }
+    }
+
+    /**
+     * Add a priority group which is using on the device.(Except default priority group).
+     */
+    public void addNetworkSuggestionPriorityGroup(int priorityGroup) {
+        synchronized (mLock) {
+            // Ignore the default group
+            if (priorityGroup == 0) {
+                return;
+            }
+            mWifiNetworkSuggestionPriorityGroups.put(priorityGroup, true);
+        }
+
     }
 
     /** Clear and set the latest network suggestion API max list size histogram */

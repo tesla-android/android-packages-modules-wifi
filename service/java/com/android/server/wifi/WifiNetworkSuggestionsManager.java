@@ -1006,6 +1006,7 @@ public class WifiNetworkSuggestionsManager {
                     ewns.isAutojoinEnabled = false;
                 }
             }
+            mWifiMetrics.addNetworkSuggestionPriorityGroup(ewns.wns.priorityGroup);
             if (ewns.wns.passpointConfiguration == null) {
                 if (ewns.wns.wifiConfiguration.isEnterprise()) {
                     if (!mWifiKeyStore.updateNetworkKeys(ewns.wns.wifiConfiguration, null)) {

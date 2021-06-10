@@ -365,6 +365,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertEquals(expectedAllNetworkSuggestions, allNetworkSuggestions);
 
         verify(mWifiMetrics, times(2)).incrementNetworkSuggestionApiNumModification();
+        verify(mWifiMetrics, times(2)).addNetworkSuggestionPriorityGroup(anyInt());
         ArgumentCaptor<List<Integer>> maxSizesCaptor = ArgumentCaptor.forClass(List.class);
         verify(mWifiMetrics, times(2)).noteNetworkSuggestionApiListSizeHistogram(
                 maxSizesCaptor.capture());
@@ -421,6 +422,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertTrue(mWifiNetworkSuggestionsManager.getAllNetworkSuggestions().isEmpty());
 
         verify(mWifiMetrics, times(4)).incrementNetworkSuggestionApiNumModification();
+        verify(mWifiMetrics, times(2)).addNetworkSuggestionPriorityGroup(anyInt());
         ArgumentCaptor<List<Integer>> maxSizesCaptor = ArgumentCaptor.forClass(List.class);
         verify(mWifiMetrics, times(4)).noteNetworkSuggestionApiListSizeHistogram(
                 maxSizesCaptor.capture());

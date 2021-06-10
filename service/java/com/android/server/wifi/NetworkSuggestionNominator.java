@@ -26,6 +26,7 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNetworkSuggestionsManager.ExtendedWifiNetworkSuggestion;
 import com.android.server.wifi.hotspot2.PasspointNetworkNominateHelper;
 
@@ -58,15 +59,18 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
     private final PasspointNetworkNominateHelper mPasspointNetworkNominateHelper;
     private final LocalLog mLocalLog;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
+    private final WifiMetrics mWifiMetrics;
 
     NetworkSuggestionNominator(WifiNetworkSuggestionsManager networkSuggestionsManager,
             WifiConfigManager wifiConfigManager, PasspointNetworkNominateHelper nominateHelper,
-            LocalLog localLog, WifiCarrierInfoManager wifiCarrierInfoManager) {
+            LocalLog localLog, WifiCarrierInfoManager wifiCarrierInfoManager,
+            WifiMetrics wifiMetrics) {
         mWifiNetworkSuggestionsManager = networkSuggestionsManager;
         mWifiConfigManager = wifiConfigManager;
         mPasspointNetworkNominateHelper = nominateHelper;
         mLocalLog = localLog;
         mWifiCarrierInfoManager = wifiCarrierInfoManager;
+        mWifiMetrics = wifiMetrics;
     }
 
     @Override
@@ -221,6 +225,9 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
             if (matchingExtNetworkSuggestions.isEmpty()) {
                 continue;
             }
+            if (matchingExtNetworkSuggestions.size() > 1) {
+                mWifiMetrics.incrementNetworkSuggestionMoreThanOneSuggestionForSingleScanResult();
+            }
             for (ExtendedWifiNetworkSuggestion ewns : matchingExtNetworkSuggestions) {
                 WifiConfiguration config = ewns.createInternalWifiConfiguration(
                         mWifiCarrierInfoManager);
@@ -230,6 +237,12 @@ public class NetworkSuggestionNominator implements WifiNetworkSelector.NetworkNo
                     mLocalLog.log(config.getProfileKey()
                             + "hasn't add to WifiConfigManager?");
                     continue;
+                }
+                if (SdkLevel.isAtLeastS()
+                        && mWifiConfigManager.getConfiguredNetwork(config.getKey()) != null) {
+                    // If a saved profile is available for the same network
+                    mWifiMetrics.addSuggestionExistsForSavedNetwork(
+                            config.getKey());
                 }
                 if (!wCmConfiguredNetwork.getNetworkSelectionStatus().isNetworkEnabled()
                         && !mWifiConfigManager.tryEnableNetwork(wCmConfiguredNetwork.networkId)) {
