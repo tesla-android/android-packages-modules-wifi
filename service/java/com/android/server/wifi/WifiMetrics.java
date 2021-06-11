@@ -1334,6 +1334,8 @@ public class WifiMetrics {
                                 WifiMetricsProto.RouterFingerPrint.AUTH_PERSONAL;
                     }
                     mRouterFingerPrint.mRouterFingerPrintProto.passpoint = config.isPasspoint();
+                    mRouterFingerPrint.mRouterFingerPrintProto.isPasspointHomeProvider =
+                            config.isHomeProviderNetwork;
                     // If there's a ScanResult candidate associated with this config already, get it
                     // and log (more accurate) metrics from it
                     ScanResult candidate = config.getNetworkSelectionStatus().getCandidate();
