@@ -887,7 +887,7 @@ message RouterFingerPrint {
     TYPE_PHASE2_AKA = 6;
 
     // EAP-Authentication and Key Agreement Prime [RFC-5448]
-    TYPE_PHASE2_AKA_PRIME   = 7;
+    TYPE_PHASE2_AKA_PRIME = 7;
   }
 
   enum OcspType {
@@ -925,7 +925,7 @@ message RouterFingerPrint {
   // whether ipv6 is supported.
   optional bool supports_ipv6 = 7;
 
-  // If the router is a passpoint / hotspot 2.0 network
+  // If the router is a Passpoint / Hotspot 2.0 network
   optional bool passpoint = 8;
 
   // EAP method used by the enterprise network
@@ -945,6 +945,9 @@ message RouterFingerPrint {
 
   // Max Rx link speed (in Mbps) supported by current network (STA and AP)
   optional int32 max_supported_rx_link_speed_mbps = 14;
+
+  // If the Passpoint connection is provided by the Home provider or Roaming/visited network
+  optional bool is_passpoint_home_provider = 15;
 }
 
 enum ClientRole {
