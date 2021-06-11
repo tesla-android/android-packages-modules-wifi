@@ -2132,6 +2132,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     @Test
     public void testConnectionNetworkTypePasspoint() throws Exception {
         WifiConfiguration config = WifiConfigurationTestUtil.createPasspointNetwork();
+        config.carrierMerged = true;
         mWifiMetrics.startConnectionEvent(TEST_IFACE_NAME, config,
                 "RED", WifiMetricsProto.ConnectionEvent.ROAM_NONE);
         mWifiMetrics.endConnectionEvent(TEST_IFACE_NAME,
@@ -2144,6 +2145,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(WifiMetricsProto.ConnectionEvent.TYPE_PASSPOINT,
                 mDecodedProto.connectionEvent[0].networkType);
         assertFalse(mDecodedProto.connectionEvent[0].isOsuProvisioned);
+        assertTrue(mDecodedProto.connectionEvent[0].isCarrierMerged);
     }
 
     /**
@@ -4962,6 +4964,12 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.incrementNetworkSuggestionUserRevokePermission();
         mWifiMetrics.incrementNetworkSuggestionUserRevokePermission();
 
+        mWifiMetrics.addSuggestionExistsForSavedNetwork("savedNetwork");
+        mWifiMetrics.incrementNetworkSuggestionMoreThanOneSuggestionForSingleScanResult();
+        mWifiMetrics.addNetworkSuggestionPriorityGroup(0);
+        mWifiMetrics.addNetworkSuggestionPriorityGroup(1);
+        mWifiMetrics.addNetworkSuggestionPriorityGroup(1);
+
         dumpProtoAndDeserialize();
 
         assertEquals(4, mDecodedProto.wifiNetworkSuggestionApiLog.numModification);
@@ -4987,6 +4995,10 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals(WifiMetricsProto.WifiNetworkSuggestionApiLog.TYPE_NON_PRIVILEGED,
                 mDecodedProto.wifiNetworkSuggestionApiLog.appCountPerType[2].appType);
         assertEquals(3, mDecodedProto.wifiNetworkSuggestionApiLog.appCountPerType[2].count);
+        assertEquals(1, mDecodedProto.wifiNetworkSuggestionApiLog.numMultipleSuggestions);
+        assertEquals(1, mDecodedProto.wifiNetworkSuggestionApiLog
+                .numSavedNetworksWithConfiguredSuggestion);
+        assertEquals(1, mDecodedProto.wifiNetworkSuggestionApiLog.numPriorityGroups);
     }
 
     /**

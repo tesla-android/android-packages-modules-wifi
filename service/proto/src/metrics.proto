@@ -1180,6 +1180,9 @@ message ConnectionEvent {
   // The role of the wireless interface at the start of the connection.
   // Gives more information on what purpose this interface is used for.
   optional ClientRole interface_role = 29;
+
+  // Indicates if the profile used for the connection is carrier merged.
+  optional bool is_carrier_merged = 30;
 }
 
 // Number of occurrences of a specific RSSI poll rssi value
@@ -3362,6 +3365,16 @@ message WifiNetworkSuggestionApiLog {
 
   // Number of user revoke app's permission from settings or disallowed from UI.
   optional int32 user_revoke_app_suggestion_permission = 6;
+
+  // Number of priority groups configured on the device, excluding the default priority group.
+  optional int32 num_priority_groups = 7;
+
+  // Number of times when a ScanResult matched more than one suggestions.
+  optional int32 num_multiple_suggestions = 8;
+
+  // Number of saved profiles which also have at least one suggestion (for the same network)
+  // provisioned on the device.
+  optional int32 num_saved_networks_with_configured_suggestion = 9;
 }
 
 // WifiLock metrics
