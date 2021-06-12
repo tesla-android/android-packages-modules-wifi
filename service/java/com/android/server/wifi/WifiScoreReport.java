@@ -685,7 +685,11 @@ public class WifiScoreReport {
             return false;
         }
         if (SdkLevel.isAtLeastS() && mWifiConnectedNetworkScorerHolder != null) {
-            return mWifiConnectedNetworkScorerHolder.getShouldCheckIpLayerOnce();
+            if (!mWifiConnectedNetworkScorerHolder.getShouldCheckIpLayerOnce()) {
+                return false;
+            }
+            mNudYes++;
+            return true;
         }
         int nud = mScoringParams.getNudKnob();
         if (nud == 0) {
@@ -984,6 +988,12 @@ public class WifiScoreReport {
         //   and R platform + S Wifi module + S external scorer is not possible)
         // Thus, it's ok to return the raw int score on R.
         return mLegacyIntScore;
+    }
+
+    /** Get counts when we voted for a NUD. */
+    @VisibleForTesting
+    public int getNudYes() {
+        return mNudYes;
     }
 
     private void revertToDefaultConnectedScorer() {
