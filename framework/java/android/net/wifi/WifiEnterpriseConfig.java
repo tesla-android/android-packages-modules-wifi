@@ -201,7 +201,9 @@ public class WifiEnterpriseConfig implements Parcelable {
 
     /**
      * Require valid OCSP stapling response for all not-trusted certificates in the server
-     * certificate chain
+     * certificate chain.
+     * @apiNote This option is not supported by most SSL libraries and should not be used.
+     * Specifying this option will most likely cause connection failures.
      * @hide
      */
     @SystemApi
