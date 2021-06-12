@@ -1023,6 +1023,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
         assertTrue(mWifiScoreReport.shouldCheckIpLayer());
+        assertEquals(1, mWifiScoreReport.getNudYes());
         mWifiScoreReport.noteIpCheck();
 
         mClock.mWallClockMillis = 10000;
@@ -1036,6 +1037,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 scorerImpl.mSessionId, 49);
         mLooper.dispatchAll();
         assertTrue(mWifiScoreReport.shouldCheckIpLayer());
+        assertEquals(2, mWifiScoreReport.getNudYes());
     }
 
     /**
@@ -1540,6 +1542,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mExternalScoreUpdateObserverCbCaptor.getValue().requestNudOperation(scorerImpl.mSessionId);
         mLooper.dispatchAll();
         assertTrue(mWifiScoreReport.shouldCheckIpLayer());
+        assertEquals(1, mWifiScoreReport.getNudYes());
         mWifiScoreReport.noteIpCheck();
         // Assert NUD is triggered only once by one request.
         assertFalse(mWifiScoreReport.shouldCheckIpLayer());
