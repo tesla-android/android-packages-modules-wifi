@@ -110,7 +110,7 @@ public class WifiAwareDataPathStateManager {
     private static final NetworkCapabilities sNetworkCapabilitiesFilter =
             makeNetworkCapabilitiesFilter();
     private final Set<String> mInterfaces = new HashSet<>();
-    private final Map<WifiAwareNetworkSpecifier, AwareNetworkRequestInformation>
+    private final ArrayMap<WifiAwareNetworkSpecifier, AwareNetworkRequestInformation>
             mNetworkRequestsCache = new ArrayMap<>();
     private Context mContext;
     private WifiAwareMetrics mAwareMetrics;
@@ -417,10 +417,10 @@ public class WifiAwareDataPathStateManager {
             return false; //ignore this for NDP set up flow: it is used to obtain app_info from Resp
         }
 
-        Map.Entry<WifiAwareNetworkSpecifier, AwareNetworkRequestInformation> selectedEntry = null;
-        for (Map.Entry<WifiAwareNetworkSpecifier, AwareNetworkRequestInformation> entry :
-                mNetworkRequestsCache.entrySet()) {
-            AwareNetworkRequestInformation requestInfo = entry.getValue();
+        AwareNetworkRequestInformation nnri = null;
+        WifiAwareNetworkSpecifier networkSpecifier = null;
+        for (int i = 0; i < mNetworkRequestsCache.size(); i++) {
+            AwareNetworkRequestInformation requestInfo = mNetworkRequestsCache.valueAt(i);
             /*
              * Checking that the incoming request (from the Initiator) matches the request
              * we (the Responder) already have set up. The rules are:
@@ -437,7 +437,9 @@ public class WifiAwareDataPathStateManager {
             if (requestInfo.specifiedPeerDiscoveryMac != null) {
                 if (Arrays.equals(requestInfo.specifiedPeerDiscoveryMac, mac) && requestInfo.state
                         == AwareNetworkRequestInformation.STATE_RESPONDER_WAIT_FOR_REQUEST) {
-                    selectedEntry = entry;
+                    // If a peer specific request matches, use it.
+                    networkSpecifier = mNetworkRequestsCache.keyAt(i);
+                    nnri = requestInfo;
                     break;
                 }
                 continue;
@@ -446,11 +448,15 @@ public class WifiAwareDataPathStateManager {
             // it will not accept any request.
             if (requestInfo.state != AwareNetworkRequestInformation.STATE_IDLE
                     && requestInfo.state != AwareNetworkRequestInformation.STATE_TERMINATING) {
-                selectedEntry = entry;
+                // If an accepts any request matches, continually find if there is a peer specific
+                // one. If there isn't any matched peer specific one, use the accepts any peer
+                // request.
+                networkSpecifier = mNetworkRequestsCache.keyAt(i);
+                nnri = requestInfo;
             }
         }
 
-        if (selectedEntry == null) {
+        if (nnri == null) {
             Log.w(TAG, "onDataPathRequest: can't find a request with specified pubSubId=" + pubSubId
                     + ", mac=" + String.valueOf(HexEncoding.encode(mac)));
             if (VDBG) {
@@ -459,10 +465,6 @@ public class WifiAwareDataPathStateManager {
             mMgr.respondToDataPathRequest(false, ndpId, "", null, null, null, false);
             return false;
         }
-
-        AwareNetworkRequestInformation nnri = selectedEntry.getValue();
-        WifiAwareNetworkSpecifier networkSpecifier = selectedEntry.getKey();
-
 
         if (nnri.interfaceName == null) {
             nnri.interfaceName = selectInterfaceForRequest(nnri);
