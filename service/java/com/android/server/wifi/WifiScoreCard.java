@@ -1015,8 +1015,9 @@ public class WifiScoreCard {
     // To be used in link bandwidth estimation, each TrafficStats poll sample needs to be above
     // the following values. Defined per signal level.
     // int [NUM_LINK_DIRECTION][NUM_SIGNAL_LEVEL]
+    // Use the low Tx threshold because xDSL UL speed could be below 1Mbps.
     static final int[][] LINK_BANDWIDTH_BYTE_DELTA_THR_KBYTE =
-            {{200, 500, 750, 1000, 1000}, {200, 500, 1000, 2500, 2500}};
+            {{200, 300, 300, 300, 300}, {200, 500, 1000, 2000, 2000}};
     // To be used in the long term avg, each count needs to be above the following value
     static final int BANDWIDTH_STATS_COUNT_THR = 5;
     private static final int TIME_CONSTANT_SMALL_SEC = 6;
@@ -1026,8 +1027,12 @@ public class WifiScoreCard {
     // Force weight to 0 if the elapsed time is above LARGE_TIME_DECAY_RATIO * time constant
     private static final int LARGE_TIME_DECAY_RATIO = 4;
     // Used to derive byte count threshold from avg BW
-    private static final int LOW_BW_TO_AVG_BW_RATIO_NUM = 3;
+    private static final int LOW_BW_TO_AVG_BW_RATIO_NUM = 6;
     private static final int LOW_BW_TO_AVG_BW_RATIO_DEN = 8;
+    // For some high speed connections, heavy DL traffic could falsely trigger UL BW update due to
+    // TCP ACK and the low Tx byte count threshold. To work around the issue, skip Tx BW update if
+    // Rx Bytes / Tx Bytes > RX_OVER_TX_BYTE_RATIO_MAX (heavy DL and light UL traffic)
+    private static final int RX_OVER_TX_BYTE_RATIO_MAX = 5;
     // radio on time below the following value is ignored.
     static final int RADIO_ON_TIME_MIN_MS = 200;
     static final int RADIO_ON_ELAPSED_TIME_DELTA_MAX_MS = 200;
@@ -1334,9 +1339,12 @@ public class WifiScoreCard {
             onTimeMs = Math.min(elapsedTimeMs, onTimeMs);
 
             long txBytesDelta = txBytes - mLastTxBytes;
-            updateBandwidthSample(txBytesDelta, LINK_TX, onTimeMs,
-                    wifiInfo.getMaxSupportedTxLinkSpeedMbps());
             long rxBytesDelta = rxBytes - mLastRxBytes;
+            if (txBytesDelta * RX_OVER_TX_BYTE_RATIO_MAX >= rxBytesDelta) {
+                updateBandwidthSample(txBytesDelta, LINK_TX, onTimeMs,
+                        wifiInfo.getMaxSupportedTxLinkSpeedMbps());
+            }
+
             updateBandwidthSample(rxBytesDelta, LINK_RX, onTimeMs,
                     wifiInfo.getMaxSupportedRxLinkSpeedMbps());
 
