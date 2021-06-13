@@ -1601,12 +1601,12 @@ public class WifiScoreCardTest extends WifiBaseTest {
     }
 
     @Test
-    public void testLinkBandwidthOneBssidOneSignalLevelOneBandTwoRadioStats() {
+    public void testLinkBandwidthTwoRadioStatsVariousTxTraffic() {
         mWifiInfo.setRssi(-70);
         mWifiInfo.setFrequency(2437);
         mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
         PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
-        mNewLlStats.on_time = 1200;
+        mNewLlStats.on_time = 3000;
         mOldLlStats.radioStats = new WifiLinkLayerStats.RadioStat[2];
         mOldLlStats.radioStats[0] = new WifiLinkLayerStats.RadioStat();
         mOldLlStats.radioStats[1] = new WifiLinkLayerStats.RadioStat();
@@ -1617,17 +1617,26 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mNewLlStats.radioStats[1].on_time = 500;
         mOldLlStats.timeStampInMs = 7_000;
         mNewLlStats.timeStampInMs = 10_000;
-        long txBytes = 2_000_000L;
+        long txBytes = 350_000L;
         long rxBytes = 4_000_000L;
-        // Add BANDWIDTH_STATS_COUNT_THR - 1 polls
         for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR - 1; i++) {
             addTotalBytes(txBytes, rxBytes);
-            millisecondsPass(2_000);
+            millisecondsPass(3_000);
             perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
         }
 
-        assertEquals(16_000, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(10_000, perNetwork.getTxLinkBandwidthKbps());
         assertEquals(32_000, perNetwork.getRxLinkBandwidthKbps());
+
+        txBytes = 400_000L;
+        rxBytes = 200_000L;
+        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR - 1; i++) {
+            addTotalBytes(txBytes, rxBytes);
+            millisecondsPass(3_000);
+            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
+        }
+
+        assertEquals(3_200, perNetwork.getTxLinkBandwidthKbps());
     }
 
     @Test
