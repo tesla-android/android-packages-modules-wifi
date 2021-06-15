@@ -38,6 +38,7 @@ import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -93,6 +94,7 @@ import com.android.server.wifi.WifiKeyStore;
 import com.android.server.wifi.WifiMetrics;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.WifiNetworkSuggestionsManager;
+import com.android.server.wifi.WifiSettingsStore;
 import com.android.server.wifi.hotspot2.anqp.ANQPElement;
 import com.android.server.wifi.hotspot2.anqp.Constants.ANQPElementType;
 import com.android.server.wifi.hotspot2.anqp.DomainNameElement;
@@ -198,6 +200,7 @@ public class PasspointManagerTest extends WifiBaseTest {
     @Mock ANQPRequestManager mAnqpRequestManager;
     @Mock WifiConfigManager mWifiConfigManager;
     @Mock WifiConfigStore mWifiConfigStore;
+    @Mock WifiSettingsStore mWifiSettingsStore;
     PasspointConfigSharedStoreData.DataSource mSharedDataSource;
     PasspointConfigUserStoreData.DataSource mUserDataSource;
     @Mock WifiMetrics mWifiMetrics;
@@ -218,6 +221,7 @@ public class PasspointManagerTest extends WifiBaseTest {
     Handler mHandler;
     TestLooper mLooper;
     PasspointManager mManager;
+    boolean mConfigSettingsPasspointEnabled = true;
     ArgumentCaptor<AppOpsManager.OnOpChangedListener> mAppOpChangedListenerCaptor =
             ArgumentCaptor.forClass(AppOpsManager.OnOpChangedListener.class);
     WifiCarrierInfoManager mWifiCarrierInfoManager;
@@ -254,6 +258,15 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mWifiInjector.getWifiNetworkSuggestionsManager())
                 .thenReturn(mWifiNetworkSuggestionsManager);
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        // Update mConfigSettingsPasspointEnabled when WifiSettingsStore#handleWifiPasspointEnabled
+        // is called.
+        doAnswer(invocation -> {
+            mConfigSettingsPasspointEnabled = (boolean) invocation.getArguments()[0];
+            // Return success
+            return true;
+        }).when(mWifiSettingsStore).handleWifiPasspointEnabled(anyBoolean());
+        when(mWifiSettingsStore.isWifiPasspointEnabled())
+                .thenReturn(mConfigSettingsPasspointEnabled);
         mLooper = new TestLooper();
         mHandler = new Handler(mLooper.getLooper());
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
@@ -263,8 +276,10 @@ public class PasspointManagerTest extends WifiBaseTest {
                 mSubscriptionsCaptor.capture());
         mManager = new PasspointManager(mContext, mWifiInjector, mHandler, mWifiNative,
                 mWifiKeyStore, mClock, mObjectFactory, mWifiConfigManager,
-                mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager, mMacAddressUtil,
-                mWifiPermissionsUtil);
+                mWifiConfigStore, mWifiSettingsStore, mWifiMetrics, mWifiCarrierInfoManager,
+                mMacAddressUtil, mWifiPermissionsUtil);
+        // Verify Passpoint is enabled on creation.
+        assertTrue(mManager.isWifiPasspointEnabled());
         mManager.setUseInjectedPKIX(true);
         mManager.injectPKIXParameters(TEST_PKIX_PARAMETERS);
 
@@ -821,8 +836,8 @@ public class PasspointManagerTest extends WifiBaseTest {
                 .thenReturn(true);
         PasspointManager ut = new PasspointManager(mContext, mWifiInjector, mHandler, mWifiNative,
                 mWifiKeyStore, mClock, spyFactory, mWifiConfigManager,
-                mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager, mMacAddressUtil,
-                mWifiPermissionsUtil);
+                mWifiConfigStore, mWifiSettingsStore, mWifiMetrics, mWifiCarrierInfoManager,
+                mMacAddressUtil, mWifiPermissionsUtil);
 
         assertTrue(ut.addOrUpdateProvider(config, TEST_CREATOR_UID, TEST_PACKAGE,
                 true, true));
@@ -3029,6 +3044,59 @@ public class PasspointManagerTest extends WifiBaseTest {
         verify(mAnqpRequestManager).clear();
         verify(mAnqpCache).flush();
         verify(provider).clearProviderBlock();
+    }
+
+    /**
+     * Verify that when Passpoint manager is enabled/disabled the WifiSettingsStore is updated
+     * with correct value.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testPasspointEnableSettingsStore() throws Exception {
+        // Disable the Wifi Passpoint, check return value and verify status.
+        mManager.setWifiPasspointEnabled(false);
+        assertFalse(mManager.isWifiPasspointEnabled());
+        // Verify WifiSettingStore has been called to set Wifi Passpoint status.
+        verify(mWifiSettingsStore).handleWifiPasspointEnabled(false);
+        assertFalse(mConfigSettingsPasspointEnabled);
+
+        // Enable the Wifi Passpoint, check return value and verify status.
+        mManager.setWifiPasspointEnabled(true);
+        assertTrue(mManager.isWifiPasspointEnabled());
+        // Verify WifiSettingStore has been called to set Wifi Passpoint status.
+        verify(mWifiSettingsStore).handleWifiPasspointEnabled(true);
+        assertTrue(mConfigSettingsPasspointEnabled);
+    }
+
+    /**
+     * Verify that Passpoint manager is enabled and disabled.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testPasspointEnableDisable() throws Exception {
+        PasspointProvider provider =
+                addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME, TEST_PACKAGE, false, null);
+        ANQPData entry = new ANQPData(mClock, null);
+
+        when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(entry);
+        when(provider.match(anyMap(), any(RoamingConsortium.class), any(ScanResult.class)))
+                .thenReturn(PasspointMatch.HomeProvider);
+
+        // Disable the Wifi Passpoint and expect the matchProvider to return empty list.
+        mManager.setWifiPasspointEnabled(false);
+        assertFalse(mManager.isWifiPasspointEnabled());
+        assertTrue(mManager.matchProvider(createTestScanResult()).isEmpty());
+
+        // Enable the Wifi Passpoint and expect the matchProvider to return matched result.
+        mManager.setWifiPasspointEnabled(true);
+        assertTrue(mManager.isWifiPasspointEnabled());
+        List<Pair<PasspointProvider, PasspointMatch>> results =
+                mManager.matchProvider(createTestScanResult());
+        Pair<PasspointProvider, PasspointMatch> result = results.get(0);
+        assertEquals(PasspointMatch.HomeProvider, result.second);
+        assertEquals(TEST_FQDN, result.first.getConfig().getHomeSp().getFqdn());
     }
 }
 
