@@ -4369,6 +4369,8 @@ public class WifiManager {
      * or {@link SoftApConfiguration.Builder#setClientControlByUserEnabled(boolean)}
      * or {@link SoftApConfiguration.Builder#setBlockedClientList(List)}
      * or {@link SoftApConfiguration.Builder#setAllowedClientList(List)}
+     * or {@link SoftApConfiguration.Builder#setAutoShutdownEnabled(boolean)}
+     * or {@link SoftApConfiguration.Builder#setBridgedModeOpportunisticShutdownEnabled(boolean)}
      *
      * Otherwise, the configuration changes will be applied when the Soft AP is next started
      * (the framework will not stop/start the AP).
