@@ -128,6 +128,12 @@ public class WifiAwareDiscoverySessionState {
      * if currently active.
      */
     public void terminate() {
+        try {
+            mCallback.onSessionTerminated(NanStatusType.SUCCESS);
+        } catch (RemoteException e) {
+            Log.w(TAG,
+                    "onSessionTerminatedLocal onSessionTerminated(): RemoteException (FYI): " + e);
+        }
         mCallback = null;
 
         if (mIsPublishSession) {
