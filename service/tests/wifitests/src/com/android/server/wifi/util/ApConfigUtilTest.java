@@ -612,6 +612,17 @@ public class ApConfigUtilTest extends WifiBaseTest {
         assertNull(ApConfigUtil.fromWifiConfiguration(wifiConfig));
     }
 
+    @Test
+    public void testConvertInvalidKeyMgmtWifiConfigurationToSoftApConfiguration()
+            throws Exception {
+        WifiConfiguration wifiConfig = new WifiConfiguration();
+        wifiConfig.SSID = "AndroidAP";
+        wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
+        wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA2_PSK);
+        wifiConfig.preSharedKey = "12345678";
+        assertNull(ApConfigUtil.fromWifiConfiguration(wifiConfig));
+    }
+
 
     @Test
     public void testCheckConfigurationChangeNeedToRestart() throws Exception {

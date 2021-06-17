@@ -507,6 +507,19 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that the validate method fails to validate WifiConfiguration with bad key mgmt values.
+     */
+    @Test
+    public void testValidateNegativeCases_BadSuiteBKeyMgmt() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapSuiteBNetwork();
+        assertTrue(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+
+        config.allowedKeyManagement.clear(WifiConfiguration.KeyMgmt.IEEE8021X);
+        config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA2_PSK);
+        assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+    }
+
+    /**
      * Verify that the validate method fails to validate WifiConfiguration with bad ipconfiguration
      * values.
      */
