@@ -603,8 +603,11 @@ public class WifiConfigurationUtil {
                 Log.e(TAG, "validateKeyMgmt failed: not PSK or 8021X");
                 return false;
             }
+            // SUITE-B keymgmt must be WPA_EAP + IEEE8021X + SUITE_B_192.
             if (keyMgmnt.cardinality() == 3
-                    && !keyMgmnt.get(WifiConfiguration.KeyMgmt.SUITE_B_192)) {
+                    && !(keyMgmnt.get(WifiConfiguration.KeyMgmt.WPA_EAP)
+                            && keyMgmnt.get(WifiConfiguration.KeyMgmt.IEEE8021X)
+                            && keyMgmnt.get(WifiConfiguration.KeyMgmt.SUITE_B_192))) {
                 Log.e(TAG, "validateKeyMgmt failed: not SUITE_B_192");
                 return false;
             }
