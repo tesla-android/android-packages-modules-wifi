@@ -1517,9 +1517,14 @@ public class WifiConfigManager {
                         .thenComparing((WifiConfiguration config) ->
                                 Math.max(config.lastConnected, config.lastUpdated))
                         .thenComparing((WifiConfiguration config) -> {
-                            int authType = config.getAuthType();
-                            return !(authType == WifiConfiguration.KeyMgmt.NONE
-                                    || authType == WifiConfiguration.KeyMgmt.OWE);
+                            try {
+                                int authType = config.getAuthType();
+                                return !(authType == WifiConfiguration.KeyMgmt.NONE
+                                        || authType == WifiConfiguration.KeyMgmt.OWE);
+                            } catch (IllegalStateException e) {
+                                // An invalid keymgmt configuration should be pruned first.
+                                return false;
+                            }
                         })
                         .thenComparing((WifiConfiguration config) -> config.numAssociation))
                 .limit(numExcessNetworks)
