@@ -4980,7 +4980,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.handleBootCompleted();
         mLooper.stopAutoDispatch();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
-                (IntentFilter) argThat(new IdleModeIntentMatcher()));
+                (IntentFilter) argThat(new IdleModeIntentMatcher()),
+                isNull(),
+                any(Handler.class));
 
         // Tell the wifi service that the device became idle.
         when(mPowerManager.isDeviceIdleMode()).thenReturn(true);
@@ -5072,7 +5074,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
                                 && filter.hasAction(Intent.ACTION_PACKAGE_REMOVED)
-                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)));
+                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)),
+                isNull(),
+                any(Handler.class));
         int uid = TEST_UID;
         String packageName = TEST_PACKAGE_NAME;
         doThrow(new PackageManager.NameNotFoundException()).when(mPackageManager)
@@ -5104,7 +5108,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
                                 && filter.hasAction(Intent.ACTION_PACKAGE_REMOVED)
-                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)));
+                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)),
+                isNull(),
+                any(Handler.class));
         int uid = TEST_UID;
         String packageName = TEST_PACKAGE_NAME;
         // Send the broadcast
@@ -5134,7 +5140,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
                                 && filter.hasAction(Intent.ACTION_PACKAGE_REMOVED)
-                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)));
+                                && filter.hasAction(Intent.ACTION_PACKAGE_CHANGED)),
+                isNull(),
+                any(Handler.class));
         int uid = TEST_UID;
         String packageName = TEST_PACKAGE_NAME;
         mPackageInfo.applicationInfo = mApplicationInfo;
@@ -5164,7 +5172,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)));
+                        filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)),
+                isNull(),
+                any(Handler.class));
 
         String packageName = TEST_PACKAGE_NAME;
         // Send the broadcast
@@ -5187,7 +5197,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)));
+                        filter.hasAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)),
+                isNull(),
+                any(Handler.class));
 
         int uid = TEST_UID;
         // Send the broadcast
@@ -5214,7 +5226,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatch();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(Intent.ACTION_USER_REMOVED)));
+                        filter.hasAction(Intent.ACTION_USER_REMOVED)),
+                isNull(),
+                any(Handler.class));
 
         UserHandle userHandle = UserHandle.of(TEST_USER_HANDLE);
         // Send the broadcast
@@ -5237,7 +5251,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
                         filter.hasAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
-                                && filter.hasAction(BluetoothAdapter.ACTION_STATE_CHANGED)));
+                                && filter.hasAction(BluetoothAdapter.ACTION_STATE_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         {
             Intent intent = new Intent(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
@@ -5300,7 +5316,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatch();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(Intent.ACTION_USER_REMOVED)));
+                        filter.hasAction(Intent.ACTION_USER_REMOVED)),
+                isNull(),
+                any(Handler.class));
 
         UserHandle userHandle = UserHandle.of(TEST_USER_HANDLE);
         // Send the broadcast with wrong action
@@ -5359,7 +5377,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 (IntentFilter) argThat((IntentFilter filter) ->
-                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5378,7 +5398,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 (IntentFilter) argThat((IntentFilter filter) ->
-                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5399,7 +5421,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_ABSENT);
@@ -5425,7 +5449,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_LOADED);
@@ -5450,7 +5476,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
                         filter.hasAction(
-                                TelephonyManager.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED)));
+                                TelephonyManager.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         Intent intent = new Intent(TelephonyManager.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
         intent.putExtra("subscription", 1);
@@ -7084,7 +7112,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)));
+                        filter.hasAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)),
+                isNull(),
+                any(Handler.class));
 
         // Send the broadcast
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
@@ -7105,7 +7135,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)));
+                        filter.hasAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)),
+                isNull(),
+                any(Handler.class));
         ArgumentCaptor<PhoneStateListener> phoneStateListenerCaptor =
                 ArgumentCaptor.forClass(PhoneStateListener.class);
         verify(mTelephonyManager).listen(phoneStateListenerCaptor.capture(),
@@ -7600,7 +7632,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)),
+                isNull(),
+                any(Handler.class));
         sendCountryCodeChangedBroadcast("US");
         verify(mWifiCountryCode).setTelephonyCountryCodeAndUpdate(any());
     }
@@ -7780,7 +7814,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mContext).registerReceiver(mBroadcastReceiverCaptor.capture(),
                 argThat((IntentFilter filter) ->
-                        filter.hasAction(Intent.ACTION_LOCALE_CHANGED)));
+                        filter.hasAction(Intent.ACTION_LOCALE_CHANGED)),
+                isNull(),
+                any(Handler.class));
         verify(mWifiNotificationManager).createNotificationChannels();
         clearInvocations(mWifiNotificationManager);
 
