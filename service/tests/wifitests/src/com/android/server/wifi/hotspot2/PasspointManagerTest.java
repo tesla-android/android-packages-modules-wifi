@@ -1337,10 +1337,10 @@ public class PasspointManagerTest extends WifiBaseTest {
      * randomized MAC address.
      */
     @Test
-    public void getWifiConfigsForPasspointProfilesWithoutEnhancedMacRandomization() {
+    public void getWifiConfigsForPasspointProfilesWithoutNonPersistentMacRandomization() {
         MacAddress randomizedMacAddress = MacAddress.fromString("01:23:45:67:89:ab");
         when(mMacAddressUtil.calculatePersistentMac(any(), any())).thenReturn(randomizedMacAddress);
-        when(mWifiConfigManager.shouldUseEnhancedRandomization(any())).thenReturn(false);
+        when(mWifiConfigManager.shouldUseNonPersistentRandomization(any())).thenReturn(false);
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
         WifiConfiguration configuration = provider.getWifiConfig();
@@ -1355,14 +1355,15 @@ public class PasspointManagerTest extends WifiBaseTest {
 
     /**
      * Verify that a {@link WifiConfiguration} will be returned with DEFAULT_MAC_ADDRESS for the
-     * randomized MAC address if enhanced mac randomization is enabled. This value will display in
-     * the wifi picker's network details page as "Not available" if the network is disconnected.
+     * randomized MAC address if non-persistent mac randomization is enabled. This value will
+     * display in the wifi picker's network details page as "Not available" if the network is
+     * disconnected.
      */
     @Test
-    public void getWifiConfigsForPasspointProfilesWithEnhancedMacRandomization() {
+    public void getWifiConfigsForPasspointProfilesWithNonPersistentMacRandomization() {
         MacAddress randomizedMacAddress = MacAddress.fromString("01:23:45:67:89:ab");
         when(mMacAddressUtil.calculatePersistentMac(any(), any())).thenReturn(randomizedMacAddress);
-        when(mWifiConfigManager.shouldUseEnhancedRandomization(any())).thenReturn(true);
+        when(mWifiConfigManager.shouldUseNonPersistentRandomization(any())).thenReturn(true);
         PasspointProvider provider = addTestProvider(TEST_FQDN, TEST_FRIENDLY_NAME,
                 TEST_PACKAGE, false, null);
         WifiConfiguration configuration = provider.getWifiConfig();
