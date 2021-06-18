@@ -3804,10 +3804,10 @@ public class WifiServiceImpl extends BaseWifiService {
             mActiveModeWarden.updateMetrics();
             mPasspointManager.updateMetrics();
         });
-        boolean isEnhancedMacRandEnabled = mFrameworkFacade.getIntegerSetting(mContext,
-                WifiConfigManager.ENHANCED_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG, 0) == 1
-                ? true : false;
-        mWifiMetrics.setEnhancedMacRandomizationForceEnabled(isEnhancedMacRandEnabled);
+        boolean isNonPersistentMacRandEnabled = mFrameworkFacade.getIntegerSetting(mContext,
+                WifiConfigManager.NON_PERSISTENT_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG, 0)
+                == 1 ? true : false;
+        mWifiMetrics.setNonPersistentMacRandomizationForceEnabled(isNonPersistentMacRandEnabled);
         mWifiMetrics.setIsScanningAlwaysEnabled(
                 mSettingsStore.isScanAlwaysAvailableToggleEnabled());
         mWifiMetrics.setVerboseLoggingEnabled(isVerboseLoggingEnabled());
