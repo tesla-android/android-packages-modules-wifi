@@ -256,10 +256,13 @@ public class WifiServiceImpl extends BaseWifiService {
 
         @Override
         public void onActiveDataSubscriptionIdChanged(int subId) {
-            Log.d(TAG, "OBSERVED active data subscription change, subId: " + subId);
-
-            mTetheredSoftApTracker.updateSoftApCapabilityWhenCarrierConfigChanged(subId);
-            mActiveModeWarden.updateSoftApCapability(mTetheredSoftApTracker.getSoftApCapability());
+            // post operation to handler thread
+            mWifiThreadRunner.post(() -> {
+                Log.d(TAG, "OBSERVED active data subscription change, subId: " + subId);
+                mTetheredSoftApTracker.updateSoftApCapabilityWhenCarrierConfigChanged(subId);
+                mActiveModeWarden.updateSoftApCapability(
+                        mTetheredSoftApTracker.getSoftApCapability());
+            });
         }
     }
 
@@ -1262,10 +1265,13 @@ public class WifiServiceImpl extends BaseWifiService {
     private final class CountryCodeListenerProxy implements WifiCountryCode.ChangeListener {
         @Override
         public void onDriverCountryCodeChanged(String countryCode) {
-            Log.i(TAG, "onDriverCountryCodeChanged " + countryCode);
-            mTetheredSoftApTracker.updateAvailChannelListInSoftApCapability();
-            mActiveModeWarden.updateSoftApCapability(
-                    mTetheredSoftApTracker.getSoftApCapability());
+            // post operation to handler thread
+            mWifiThreadRunner.post(() -> {
+                Log.i(TAG, "onDriverCountryCodeChanged " + countryCode);
+                mTetheredSoftApTracker.updateAvailChannelListInSoftApCapability();
+                mActiveModeWarden.updateSoftApCapability(
+                        mTetheredSoftApTracker.getSoftApCapability());
+            });
         }
     }
 
@@ -3736,11 +3742,13 @@ public class WifiServiceImpl extends BaseWifiService {
             @Override
             public void onReceive(Context context, Intent intent) {
                 final int subId = SubscriptionManager.getActiveDataSubscriptionId();
-                Log.d(TAG, "ACTION_CARRIER_CONFIG_CHANGED, active subId: " + subId);
-
-                mTetheredSoftApTracker.updateSoftApCapabilityWhenCarrierConfigChanged(subId);
-                mActiveModeWarden.updateSoftApCapability(
-                        mTetheredSoftApTracker.getSoftApCapability());
+                // post operation to handler thread
+                mWifiThreadRunner.post(() -> {
+                    Log.d(TAG, "ACTION_CARRIER_CONFIG_CHANGED, active subId: " + subId);
+                    mTetheredSoftApTracker.updateSoftApCapabilityWhenCarrierConfigChanged(subId);
+                    mActiveModeWarden.updateSoftApCapability(
+                            mTetheredSoftApTracker.getSoftApCapability());
+                });
             }
         }, filter);
 
