@@ -8224,4 +8224,45 @@ public class WifiServiceImplTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
                 expectedConfigs, privilegedConfigs.getList());
     }
+
+    /**
+     * Verify that a call to isWifiPasspointEnabled throws a SecurityException if the
+     * caller does not have the ACCESS_WIFI_STATE permission.
+     */
+    @Test (expected = SecurityException.class)
+    public void testIsWifiPasspointEnabledWithoutPermissions() {
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
+                        eq("WifiService"));
+
+        mWifiServiceImpl.isWifiPasspointEnabled();
+    }
+
+    /**
+     * Verify that the call to setWifiPasspointEnabled is not redirected to
+     * specific API when the caller doesn't have
+     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test(expected = SecurityException.class)
+    public void testSetWifiPasspointEnabledWithoutPermissions() {
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.setWifiPasspointEnabled(false);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+    }
+
+    /**
+     * Verify that the call to setWifiPasspointEnabled is redirected to
+     * specific API when the caller have
+     * NETWORK_SETTINGS permissions and NETWORK_SETUP_WIZARD.
+     */
+    @Test
+    public void testSetWifiPasspointEnabledWithPermissions() {
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.setWifiPasspointEnabled(false);
+        mLooper.dispatchAll();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mPasspointManager).setWifiPasspointEnabled(false);
+    }
 }

@@ -134,7 +134,8 @@ public class PasspointNetworkNominateHelper {
      */
     private @NonNull List<Pair<ScanDetail, WifiConfiguration>> findBestMatchScanDetailForProviders(
             List<ScanDetail> scanDetails, boolean isFromSuggestion) {
-        if (mPasspointManager.isProvidersListEmpty()) {
+        if (mPasspointManager.isProvidersListEmpty()
+                || !mPasspointManager.isWifiPasspointEnabled()) {
             return Collections.emptyList();
         }
         List<Pair<ScanDetail, WifiConfiguration>> results = new ArrayList<>();

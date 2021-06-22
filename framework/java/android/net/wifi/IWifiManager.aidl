@@ -337,4 +337,8 @@ interface IWifiManager
     void flushPasspointAnqpCache(String packageName);
 
     List<WifiAvailableChannel> getUsableChannels(int band, int mode, int filter);
+
+    boolean isWifiPasspointEnabled();
+
+    void setWifiPasspointEnabled(boolean enabled);
 }

@@ -395,6 +395,7 @@ package android.net.wifi {
     method public boolean isWapiSupported();
     method public boolean isWifiDisplayR2Supported();
     method public boolean isWifiEnabled();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isWifiPasspointEnabled();
     method public boolean isWifiStandardSupported(int);
     method public boolean isWpa3SaeH2eSupported();
     method public boolean isWpa3SaePublicKeySupported();

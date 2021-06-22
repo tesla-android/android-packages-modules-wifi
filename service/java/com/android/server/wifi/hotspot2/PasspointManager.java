@@ -54,6 +54,7 @@ import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiKeyStore;
 import com.android.server.wifi.WifiMetrics;
 import com.android.server.wifi.WifiNative;
+import com.android.server.wifi.WifiSettingsStore;
 import com.android.server.wifi.hotspot2.anqp.ANQPElement;
 import com.android.server.wifi.hotspot2.anqp.Constants;
 import com.android.server.wifi.hotspot2.anqp.HSOsuProvidersElement;
@@ -133,6 +134,7 @@ public class PasspointManager {
     private final MacAddressUtil mMacAddressUtil;
     private final Clock mClock;
     private final WifiPermissionsUtil mWifiPermissionsUtil;
+    private final WifiSettingsStore mSettingsStore;
 
     /**
      * Map of package name of an app to the app ops changed listener for the app.
@@ -142,6 +144,7 @@ public class PasspointManager {
     // Counter used for assigning unique identifier to each provider.
     private long mProviderIndex;
     private boolean mVerboseLoggingEnabled = false;
+    private boolean mEnabled;
 
     private class CallbackHandler implements PasspointEventHandler.Callbacks {
         private final Context mContext;
@@ -351,6 +354,7 @@ public class PasspointManager {
             WifiNative wifiNative, WifiKeyStore keyStore, Clock clock,
             PasspointObjectFactory objectFactory, WifiConfigManager wifiConfigManager,
             WifiConfigStore wifiConfigStore,
+            WifiSettingsStore wifiSettingsStore,
             WifiMetrics wifiMetrics,
             WifiCarrierInfoManager wifiCarrierInfoManager,
             MacAddressUtil macAddressUtil,
@@ -381,6 +385,8 @@ public class PasspointManager {
         mWifiConfigManager.addOnNetworkUpdateListener(
                 new PasspointManager.OnNetworkUpdateListener());
         mWifiPermissionsUtil = wifiPermissionsUtil;
+        mSettingsStore = wifiSettingsStore;
+        mEnabled = mSettingsStore.isWifiPasspointEnabled();
     }
 
     /**
@@ -815,6 +821,9 @@ public class PasspointManager {
      */
     public @NonNull List<Pair<PasspointProvider, PasspointMatch>> matchProvider(
             ScanResult scanResult, boolean anqpRequestAllowed) {
+        if (!mEnabled) {
+            return Collections.emptyList();
+        }
         List<Pair<PasspointProvider, PasspointMatch>> allMatches = getAllMatchedProviders(
                 scanResult, anqpRequestAllowed);
         if (allMatches.isEmpty()) {
@@ -1240,6 +1249,7 @@ public class PasspointManager {
      */
     public void dump(PrintWriter pw) {
         pw.println("Dump of PasspointManager");
+        pw.println("mEnabled: " + mEnabled);
         pw.println("PasspointManager - Providers Begin ---");
         for (Map.Entry<String, PasspointProvider> entry : mProviders.entrySet()) {
             pw.println(entry.getValue());
@@ -1602,5 +1612,25 @@ public class PasspointManager {
         Log.i(TAG, "Captive network, Terms and Conditions URL: " + termsAndConditionsUrl
                 + " from BSSID: " + Utils.macToString(event.getBssid()));
         return termsAndConditionsUrl;
+    }
+
+    /**
+     * Check if Wi-Fi Passpoint is enabled.
+     *
+     * @return true if Wi-Fi Passpoint is enabled.
+     */
+    public boolean isWifiPasspointEnabled() {
+        return mEnabled;
+    }
+
+    /**
+     * Enable or disable Wi-Fi Passpoint globally.
+     */
+    public void setWifiPasspointEnabled(boolean enabled) {
+        if (enabled != mEnabled) {
+            clearAnqpRequestsAndFlushCache();
+            mEnabled = enabled;
+            mSettingsStore.handleWifiPasspointEnabled(enabled);
+        }
     }
 }
