@@ -4089,7 +4089,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 Arrays.asList(savedOpenNetwork, ephemeralNetwork, passpointNetwork,
                         suggestionNetwork));
         WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
-                expectedConfigsBeforeRemove, mWifiConfigManager.getConfiguredNetworks());
+                expectedConfigsBeforeRemove,
+                mWifiConfigManager.getConfiguredNetworksWithPasswords());
 
         assertTrue(mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks());
 
