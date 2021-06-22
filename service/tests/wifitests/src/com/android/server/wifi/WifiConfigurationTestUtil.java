@@ -94,6 +94,7 @@ public class WifiConfigurationTestUtil {
     public static final String TEST_CA_CERT_SUITE_B_ALIAS = "SuiteBCaCertAlias";
     public static final String TEST_CA_CERT_PATH = "caPath";
     public static final String TEST_DOM_SUBJECT_MATCH = "domSubjectMatch";
+    public static final String TEST_IDENTITY = "user@example.com";
 
     private static final int MAX_SSID_LENGTH = 32;
     /**
@@ -170,13 +171,19 @@ public class WifiConfigurationTestUtil {
         if ((security & SECURITY_EAP) != 0) {
             config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
             config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TTLS);
+            config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.MSCHAPV2);
+            config.enterpriseConfig.setIdentity(TEST_IDENTITY);
+            config.enterpriseConfig.setPassword(TEST_EAP_PASSWORD);
             config.enterpriseConfig.setCaPath(TEST_CA_CERT_PATH);
             config.enterpriseConfig.setDomainSuffixMatch(TEST_DOM_SUBJECT_MATCH);
         }
 
         if ((security & SECURITY_WPA3_ENTERPRISE) != 0) {
             config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
-            config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.TTLS);
+            config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.PEAP);
+            config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.MSCHAPV2);
+            config.enterpriseConfig.setIdentity(TEST_IDENTITY);
+            config.enterpriseConfig.setPassword(TEST_EAP_PASSWORD);
             config.enterpriseConfig.setCaPath(TEST_CA_CERT_PATH);
             config.enterpriseConfig.setDomainSuffixMatch(TEST_DOM_SUBJECT_MATCH);
         }
@@ -598,6 +605,8 @@ public class WifiConfigurationTestUtil {
         config.setCaCertificateAliases(new String[] {TEST_CA_CERT_ALIAS + "PEAP"});
         config.setCaCertificates(new X509Certificate[] {FakeKeys.CA_CERT0, FakeKeys.CA_CERT1});
         config.setDomainSuffixMatch(TEST_DOM_SUBJECT_MATCH);
+        config.setIdentity(TEST_IDENTITY);
+        config.setPassword(TEST_EAP_PASSWORD);
         return config;
     }
 
