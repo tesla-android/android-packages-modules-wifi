@@ -16,6 +16,9 @@
 
 package com.android.server.wifi.p2p;
 
+import static android.net.NetworkInfo.DetailedState.FAILED;
+import static android.net.NetworkInfo.DetailedState.IDLE;
+
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_P2P_DEVICE_NAME;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_P2P_PENDING_FACTORY_RESET;
@@ -27,6 +30,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
@@ -108,6 +112,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.MockitoSession;
@@ -668,6 +673,12 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         simulateLocationModeChange(true);
         checkIsP2pInitWhenClientConnected(true, false, clientBinder,
                 new WorkSource(clientBinder.getCallingUid(), TEST_PACKAGE_NAME));
+        verify(mContext).sendBroadcastWithMultiplePermissions(
+                argThat(new WifiP2pServiceImplTest
+                       .P2pConnectionChangedIntentMatcherForNetworkState(IDLE)), any());
+        verify(mContext, never()).sendBroadcastWithMultiplePermissions(
+                argThat(new WifiP2pServiceImplTest
+                        .P2pConnectionChangedIntentMatcherForNetworkState(FAILED)), any());
     }
 
     /**
@@ -774,6 +785,22 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         Intent intent = intentCaptor.getValue();
         assertEquals(WifiP2pManager.ACTION_WIFI_P2P_PERSISTENT_GROUPS_CHANGED, intent.getAction());
         assertEquals(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT, intent.getFlags());
+    }
+
+    private class P2pConnectionChangedIntentMatcherForNetworkState
+            implements ArgumentMatcher<Intent> {
+        private final NetworkInfo.DetailedState mState;
+        P2pConnectionChangedIntentMatcherForNetworkState(NetworkInfo.DetailedState state) {
+            mState = state;
+        }
+        @Override
+        public boolean matches(Intent intent) {
+            if (WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION != intent.getAction()) {
+                return false;
+            }
+            NetworkInfo networkInfo = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
+            return networkInfo.getDetailedState() == mState;
+        }
     }
 
     /**
@@ -2208,6 +2235,9 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
                 anyInt(), eq(false));
 
         sendSimpleMsg(null, WifiP2pMonitor.P2P_GROUP_REMOVED_EVENT);
+        verify(mContext).sendBroadcastWithMultiplePermissions(
+                argThat(new WifiP2pServiceImplTest
+                        .P2pConnectionChangedIntentMatcherForNetworkState(FAILED)), any());
 
         verify(mWifiP2pMetrics).endConnectionEvent(
                 eq(P2pConnectionEvent.CLF_UNKNOWN));
