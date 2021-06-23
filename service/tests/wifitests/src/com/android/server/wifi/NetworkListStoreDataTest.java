@@ -18,6 +18,9 @@ package com.android.server.wifi;
 
 import static android.os.Process.SYSTEM_UID;
 
+import static com.android.server.wifi.WifiConfigurationTestUtil.TEST_EAP_PASSWORD;
+import static com.android.server.wifi.WifiConfigurationTestUtil.TEST_IDENTITY;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -215,9 +218,9 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<string name=\"ProxySettings\">NONE</string>\n"
                     + "</IpConfiguration>\n"
                     + "<WifiEnterpriseConfiguration>\n"
-                    + "<string name=\"Identity\"></string>\n"
+                    + "<string name=\"Identity\">" + TEST_IDENTITY + "</string>\n"
                     + "<string name=\"AnonIdentity\"></string>\n"
-                    + "<string name=\"Password\"></string>\n"
+                    + "<string name=\"Password\">" + TEST_EAP_PASSWORD + "</string>\n"
                     + "<string name=\"ClientCert\"></string>\n"
                     + "<string name=\"CaCert\"></string>\n"
                     + "<string name=\"SubjectMatch\"></string>\n"
@@ -228,7 +231,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<string name=\"DomSuffixMatch\">%s</string>\n"
                     + "<string name=\"CaPath\">%s</string>\n"
                     + "<int name=\"EapMethod\" value=\"2\" />\n"
-                    + "<int name=\"Phase2Method\" value=\"0\" />\n"
+                    + "<int name=\"Phase2Method\" value=\"3\" />\n"
                     + "<string name=\"PLMN\"></string>\n"
                     + "<string name=\"Realm\"></string>\n"
                     + "<int name=\"Ocsp\" value=\"0\" />\n"

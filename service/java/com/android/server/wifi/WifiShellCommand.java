@@ -131,6 +131,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             "set-scan-always-available",
             "set-verbose-logging",
             "set-wifi-enabled",
+            "set-passpoint-enabled",
             "start-scan",
             "start-softap",
             "status",
@@ -525,6 +526,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "set-wifi-enabled": {
                     boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
                     mWifiService.setWifiEnabled(SHELL_PACKAGE_NAME, enabled);
+                    return 0;
+                }
+                case "set-passpoint-enabled": {
+                    boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
+                    mWifiService.setWifiPasspointEnabled(enabled);
                     return 0;
                 }
                 case "set-scan-always-available": {
@@ -1747,6 +1753,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("  enable-scanning enabled|disabled [-h]");
         pw.println("    Sets whether all scanning should be enabled or disabled");
         pw.println("    -h - Enable scanning for hidden networks.");
+        pw.println("  set-passpoint-enabled enabled|disabled");
+        pw.println("    Sets whether Passpoint should be enabled or disabled");
     }
 
     @Override

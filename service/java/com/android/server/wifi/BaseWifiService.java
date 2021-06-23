@@ -778,5 +778,15 @@ public class BaseWifiService extends IWifiManager.Stub {
             int band, int mode, int filter) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public boolean isWifiPasspointEnabled() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setWifiPasspointEnabled(boolean enabled) {
+        throw new UnsupportedOperationException();
+    }
 }
 

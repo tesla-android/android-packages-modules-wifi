@@ -89,6 +89,12 @@ public class WifiSettingsConfigStore {
             new Key<>("wifi_scoring_enabled", true);
 
     /**
+     * Whether Wifi Passpoint is enabled or not.
+     */
+    public static final Key<Boolean> WIFI_PASSPOINT_ENABLED =
+            new Key<>("wifi_passpoint_enabled", true);
+
+    /**
      * Store the STA factory MAC address retrieved from the driver on the first bootup.
      */
     public static final Key<String> WIFI_STA_FACTORY_MAC_ADDRESS =
