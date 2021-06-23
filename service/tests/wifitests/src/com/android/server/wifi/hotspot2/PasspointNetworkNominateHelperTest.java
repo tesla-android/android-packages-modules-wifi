@@ -164,6 +164,8 @@ public class PasspointNetworkNominateHelperTest {
         mLocalLog = new LocalLog(512);
         mNominateHelper = new PasspointNetworkNominateHelper(mPasspointManager, mWifiConfigManager,
                 mLocalLog);
+        // Always assume Passpoint is enabled as we don't disable it in the test.
+        when(mPasspointManager.isWifiPasspointEnabled()).thenReturn(true);
     }
 
     /**

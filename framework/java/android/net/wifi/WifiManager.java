@@ -8141,4 +8141,45 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * If the device supports Wi-Fi Passpoint, the user can explicitly enable or disable it.
+     * That status can be queried using this method.
+     * @return {@code true} if Wi-Fi Passpoint is enabled
+     *
+     */
+    @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
+    public boolean isWifiPasspointEnabled() {
+        try {
+            return mService.isWifiPasspointEnabled();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Explicitly enable or disable Wi-Fi Passpoint as a global switch.
+     * The global Passpoint enabling/disabling overrides individual configuration
+     * enabling/disabling.
+     * Passpoint global status can be queried by {@link WifiManager#isWifiPasspointEnabled }.
+     *
+     * @param enabled {@code true} to enable, {@code false} to disable.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD
+    })
+    public void setWifiPasspointEnabled(boolean enabled) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "setWifiPasspointEnabled: " + enabled);
+        }
+        try {
+            mService.setWifiPasspointEnabled(enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
 }
