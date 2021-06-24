@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.server.wifi;
+package android.net.wifi;
 
 import android.annotation.NonNull;
 import android.net.DhcpInfo;
@@ -70,6 +70,8 @@ import java.util.Map;
  *
  * When a new API is added to IWifiManager.aidl, a stub should be added in BaseWifiService as
  * well otherwise compilation will fail.
+ *
+ * @hide
  */
 public class BaseWifiService extends IWifiManager.Stub {
 
