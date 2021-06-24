@@ -21,6 +21,8 @@
 
     <!-- Need DUMP permission to call `dumpsys wifi wifiMetricsProto` -->
     <uses-permission android:name="android.permission.DUMP" />
+    <!-- Need BATTERY_STATS permission to call `getWifiBatteryStats` during dump-->
+    <uses-permission android:name="android.permission.BATTERY_STATS" />
 
     <application android:usesCleartextTraffic="true">
         <uses-library android:name="android.test.runner" />
