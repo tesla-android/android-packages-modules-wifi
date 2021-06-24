@@ -603,11 +603,18 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 + " EXTRA_WIFI_STATE=" + newState
                 + " EXTRA_PREVIOUS_WIFI_STATE=" + currentState;
         if (mVerboseLoggingEnabled) Log.d(getTag(), "Queuing " + summary);
-        mBroadcastQueue.queueOrSendBroadcast(
-                this, () -> {
+        ClientModeManagerBroadcastQueue.QueuedBroadcast broadcast =
+                () -> {
                     if (mVerboseLoggingEnabled) Log.d(getTag(), "Sending " + summary);
                     mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-                });
+                };
+        if (mRole == null && role == ROLE_CLIENT_PRIMARY) {
+            // This CMM is intended to be the primary, but has not completed the mode transition
+            // yet. Need to force broadcast to be sent.
+            broadcast.send();
+        } else {
+            mBroadcastQueue.queueOrSendBroadcast(this, broadcast);
+        }
     }
 
     private void setWifiStateForApiCalls(int newState) {
