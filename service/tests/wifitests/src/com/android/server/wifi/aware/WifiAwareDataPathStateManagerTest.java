@@ -102,6 +102,7 @@ import org.mockito.Spy;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -1634,6 +1635,9 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 assertEquals(port, netInfo.getPort());
                 assertEquals(transportProtocol, netInfo.getTransportProtocol());
                 assertEquals(1, mDut.mDataPathMgr.getNumOfNdps());
+                mDut.onDataPathScheduleUpdateNotification(peerDiscoveryMac, new ArrayList<>(ndpId),
+                        Collections.emptyList());
+                mMockLooper.dispatchAll();
             }
         } else {
             assertTrue(mAlarmManager.dispatch(
