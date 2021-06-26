@@ -326,6 +326,7 @@ public class WifiAwareDataPathStateManager {
 
         NdpInfo ndpInfo = new NdpInfo(ndpId);
         ndpInfo.state = NdpInfo.STATE_WAIT_FOR_CONFIRM;
+        ndpInfo.peerDiscoveryMac = nnri.specifiedPeerDiscoveryMac;
         nnri.ndpInfos.put(ndpId, ndpInfo);
 
         nnri.state = AwareNetworkRequestInformation.STATE_IN_SETUP;
