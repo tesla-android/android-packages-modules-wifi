@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
@@ -50,6 +51,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.annotation.Nullable;
+import android.app.AlarmManager;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -187,6 +189,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Spy FakeWifiLog mLog;
     @Spy MockWifiP2pMonitor mWifiMonitor;
     @Mock WifiGlobals mWifiGlobals;
+    @Mock AlarmManager mAlarmManager;
     CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
@@ -700,6 +703,9 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             verify(mWifiNative).setupInterface(any(), any(), eq(expectedRequestorWs));
             verify(mNetdWrapper).setInterfaceUp(anyString());
             verify(mWifiMonitor, atLeastOnce()).registerHandler(anyString(), anyInt(), any());
+            // Verify timer is scheduled
+            verify(mAlarmManager).setExact(anyInt(), anyLong(),
+                    eq(mWifiP2pServiceImpl.P2P_IDLE_SHUTDOWN_MESSAGE_TIMEOUT_TAG), any(), any());
         } else if (expectReplace) {
             verify(mWifiNative).replaceRequestorWs(expectedRequestorWs);
         } else {
@@ -818,6 +824,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mClientMessenger =  new Messenger(mClientHandler);
         mLooper = new TestLooper();
 
+        when(mContext.getSystemService(Context.ALARM_SERVICE))
+                .thenReturn(mAlarmManager);
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getSystemService(WifiManager.class)).thenReturn(mWifiManager);
@@ -4431,5 +4439,44 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mWifiNative).p2pGroupRemove(group.getInterface());
+    }
+
+    /**
+     * Verify the idle timer is cancelled after leaving inactive state.
+     */
+    @Test
+    public void testIdleTimeoutCancelledAfterLeavingInactiveState() throws Exception {
+        forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
+
+        mockPeersList();
+        sendConnectMsg(mClientMessenger, mTestWifiP2pPeerConfig);
+        verify(mWifiPermissionsUtil)
+                .checkCanAccessWifiDirect(eq("testPkg1"), eq("testFeature"), anyInt(), eq(false));
+
+        ArgumentCaptor<WifiP2pConfig> configCaptor =
+                ArgumentCaptor.forClass(WifiP2pConfig.class);
+        verify(mWifiP2pMetrics).startConnectionEvent(
+                eq(P2pConnectionEvent.CONNECTION_FRESH),
+                configCaptor.capture());
+        assertEquals(mTestWifiP2pPeerConfig.toString(), configCaptor.getValue().toString());
+        // Verify timer is cannelled
+        // Includes re-schedule 2 times(1. update channel info and 2. connect) and final one which
+        // leave the inactive state
+        verify(mAlarmManager, times(3)).setExact(anyInt(), anyLong(),
+                eq(mWifiP2pServiceImpl.P2P_IDLE_SHUTDOWN_MESSAGE_TIMEOUT_TAG), any(), any());
+        verify(mAlarmManager, times(3)).cancel(eq(mWifiP2pServiceImpl.mP2pIdleShutdownMessage));
+    }
+
+    /**
+     * Verify the interface down after idle timer is triggered.
+     */
+    @Test
+    public void testIdleTimeoutTriggered() throws Exception {
+        forceP2pEnabled(mClient1);
+        mWifiP2pServiceImpl.mP2pIdleShutdownMessage.onAlarm();
+        mLooper.dispatchAll();
+        verify(mWifiNative).teardownInterface();
+        verify(mWifiMonitor).stopMonitoring(anyString());
     }
 }
