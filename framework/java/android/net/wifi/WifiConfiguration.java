@@ -3002,6 +3002,11 @@ public class WifiConfiguration implements Parcelable {
             sbuf.append(this.numNoInternetAccessReports).append("\n");
         }
         if (this.validatedInternetAccess) sbuf.append(" validatedInternetAccess");
+        if (this.shared) {
+            sbuf.append(" shared");
+        } else {
+            sbuf.append(" not-shared");
+        }
         if (this.ephemeral) sbuf.append(" ephemeral");
         if (this.osu) sbuf.append(" osu");
         if (this.trusted) sbuf.append(" trusted");
