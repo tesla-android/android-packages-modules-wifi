@@ -1073,6 +1073,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 }
             } else if (option.equals("-h")) {
                 configuration.hiddenSSID = true;
+            } else if (option.equals("-p")) {
+                configuration.shared = false;
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
@@ -1504,6 +1506,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -h - Mark the network hidden.");
+        pw.println("    -p - Mark the network private (not shared).");
         pw.println("    -b <bssid> - Set specific BSSID.");
         pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
@@ -1521,6 +1524,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -h - Mark the network hidden.");
+        pw.println("    -p - Mark the network private (not shared).");
         pw.println("    -b <bssid> - Set specific BSSID.");
         pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
