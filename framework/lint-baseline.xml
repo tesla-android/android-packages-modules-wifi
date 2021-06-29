@@ -102,7 +102,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): CIPHER_GCMP_128 [NewApi]"
+        message="Call requires API level 31 (current min is 30): `CIPHER_GCMP_128`"
         errorLine1="        ScanResult.CIPHER_GCMP_128,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -123,7 +123,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): CIPHER_BIP_GMAC_128 [NewApi]"
+        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_GMAC_128`"
         errorLine1="        ScanResult.CIPHER_BIP_GMAC_128,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -144,7 +144,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): CIPHER_BIP_GMAC_256 [NewApi]"
+        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_GMAC_256`"
         errorLine1="        ScanResult.CIPHER_BIP_GMAC_256,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
@@ -165,7 +165,7 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): CIPHER_BIP_CMAC_256 [NewApi]"
+        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_CMAC_256`"
         errorLine1="        ScanResult.CIPHER_BIP_CMAC_256,"
         errorLine2="                   ~~~~~~~~~~~~~~~">
         <location
