@@ -26,6 +26,7 @@ import static com.android.server.wifi.coex.CoexUtils.get5gHarmonicCoexUnsafeChan
 import static com.android.server.wifi.coex.CoexUtils.getIntermodCoexUnsafeChannels;
 import static com.android.server.wifi.coex.CoexUtils.getLowerFreqKhz;
 import static com.android.server.wifi.coex.CoexUtils.getNeighboringCoexUnsafeChannels;
+import static com.android.server.wifi.coex.CoexUtils.getOffsetChannel;
 import static com.android.server.wifi.coex.CoexUtils.getUpperFreqKhz;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -382,5 +383,45 @@ public class CoexUtilsTest {
         assertThat(getIntermodCoexUnsafeChannels(ulFreqKhz, bandwidthKhz, dlFreqKhz, bandwidthKhz,
                 -1, 1, maxOverlap, WIFI_BAND_5_GHZ, POWER_CAP_NONE))
                 .containsExactlyElementsIn(coexUnsafeChannels);
+    }
+
+    /**
+     * Verifies the behavior of getOffsetChannel from multiple sample inputs.
+     */
+    @Test
+    public void testGetOffsetChannel_differentChannelStepSize_returnsChannels() {
+        // Positive direction
+        assertThat(getOffsetChannel(10, 1_000, 1))
+                .isEqualTo(10);
+        assertThat(getOffsetChannel(10, 5_000, 1))
+                .isEqualTo(10);
+        assertThat(getOffsetChannel(10, 5_001, 1))
+                .isEqualTo(11);
+        assertThat(getOffsetChannel(10, 12_000, 1))
+                .isEqualTo(12);
+        // Positive direction different step sizes
+        assertThat(getOffsetChannel(10, 21_000, 2))
+                .isEqualTo(14);
+        assertThat(getOffsetChannel(10, 21_000, 3))
+                .isEqualTo(13);
+        assertThat(getOffsetChannel(10, 21_000, 4))
+                .isEqualTo(14);
+
+        // Negative direction
+        assertThat(getOffsetChannel(10, -1_000, 1))
+                .isEqualTo(10);
+        assertThat(getOffsetChannel(10, -5_000, 1))
+                .isEqualTo(10);
+        assertThat(getOffsetChannel(10, -5_001, 1))
+                .isEqualTo(9);
+        assertThat(getOffsetChannel(10, -12_000, 1))
+                .isEqualTo(8);
+        // Negative direction different step sizes
+        assertThat(getOffsetChannel(10, -21_000, 2))
+                .isEqualTo(6);
+        assertThat(getOffsetChannel(10, -21_000, 3))
+                .isEqualTo(7);
+        assertThat(getOffsetChannel(10, -21_000, 4))
+                .isEqualTo(6);
     }
 }
