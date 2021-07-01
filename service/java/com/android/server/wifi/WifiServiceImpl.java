@@ -5269,11 +5269,29 @@ public class WifiServiceImpl extends BaseWifiService {
                 () -> mSettingsStore.handleWifiScoringEnabled(enabled), false);
     }
 
+    @VisibleForTesting
+    static boolean isValidBandForGetUsableChannels(@WifiScanner.WifiBand int band) {
+        switch (band) {
+            case WifiScanner.WIFI_BAND_UNSPECIFIED:
+            case WifiScanner.WIFI_BAND_24_GHZ:
+            case WifiScanner.WIFI_BAND_5_GHZ_WITH_DFS:
+            case WifiScanner.WIFI_BAND_BOTH_WITH_DFS:
+            case WifiScanner.WIFI_BAND_6_GHZ:
+            case WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_GHZ:
+            case WifiScanner.WIFI_BAND_60_GHZ:
+            case WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /**
      * See {@link android.net.wifi.WifiManager#getUsableChannels(int, int) and
      * See {@link android.net.wifi.WifiManager#getAllowedChannels(int, int).
      *
      * @throws SecurityException if the caller does not have permission
+     * or IllegalArgumentException if the band is invalid for this method.
      */
     @Override
     public List<WifiAvailableChannel> getUsableChannels(@WifiScanner.WifiBand int band,
@@ -5288,6 +5306,9 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         if (!mWifiPermissionsUtil.checkCallersHardwareLocationPermission(uid)) {
             throw new SecurityException("UID " + uid + " does not have location h/w permission");
+        }
+        if (!isValidBandForGetUsableChannels(band)) {
+            throw new IllegalArgumentException("Unsupported band: " + band);
         }
         List<WifiAvailableChannel> channels = mWifiThreadRunner.call(
                 () -> mWifiNative.getUsableChannels(band, mode, filter), null);
