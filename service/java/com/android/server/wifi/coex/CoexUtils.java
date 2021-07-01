@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -309,22 +310,24 @@ public class CoexUtils {
      *
      * @param startChannel Channel to start from
      * @param offsetKhz Offset distance in Khz
-     * @param channelStep Step size to count channels by
-     * @return
+     * @param channelStepSize Step size to count channels by
+     * @return The channel that lies the given offset away from the start channel
      */
-    private static int getOffsetChannel(int startChannel, int offsetKhz, int channelStep) {
-        // Each channel number always counts 5Mhz.
+    @VisibleForTesting
+    /* package */ static int getOffsetChannel(
+            int startChannel, int offsetKhz, int channelStepSize) {
+        // Each channel number is always separated by 5Mhz.
         int channelSpacingKhz = 5_000;
-        int offsetChannel = startChannel + offsetKhz / channelSpacingKhz;
+        int stepsToOffset = offsetKhz / (channelSpacingKhz * channelStepSize);
         // Offset lands directly channel edge; use previous channel based on offset direction.
-        if (offsetKhz % (channelSpacingKhz * channelStep) == 0) {
+        if (offsetKhz % (channelSpacingKhz * channelStepSize) == 0) {
             if (offsetKhz > 0) {
-                offsetChannel -= channelStep;
-            } else {
-                offsetChannel += channelStep;
+                stepsToOffset--;
+            } else if (offsetKhz < 0) {
+                stepsToOffset++;
             }
         }
-        return offsetChannel;
+        return startChannel + (stepsToOffset * channelStepSize);
     }
 
     /**
@@ -642,6 +645,26 @@ public class CoexUtils {
                     + ", ulBandwidthKhz=" + mUplinkBandwidthKhz
                     + ", subId=" + mSubId
                     + '}';
+        }
+
+        @java.lang.Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof CoexCellChannel)) return false;
+            CoexCellChannel that = (CoexCellChannel) o;
+            return getRat() == that.getRat() && getBand() == that.getBand()
+                    && getDownlinkFreqKhz() == that.getDownlinkFreqKhz()
+                    && getDownlinkBandwidthKhz() == that.getDownlinkBandwidthKhz()
+                    && getUplinkFreqKhz() == that.getUplinkFreqKhz()
+                    && getUplinkBandwidthKhz() == that.getUplinkBandwidthKhz()
+                    && getSubId() == that.getSubId();
+        }
+
+        @java.lang.Override
+        public int hashCode() {
+            return Objects.hash(getRat(), getBand(), getDownlinkFreqKhz(),
+                    getDownlinkBandwidthKhz(),
+                    getUplinkFreqKhz(), getUplinkBandwidthKhz(), getSubId());
         }
     }
 }

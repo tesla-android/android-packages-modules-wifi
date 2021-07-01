@@ -191,6 +191,10 @@ public class CoexManager {
             for (PhysicalChannelConfig config : configs) {
                 cellChannels.add(new CoexUtils.CoexCellChannel(config, mSubId));
             }
+            if (cellChannels.equals(mCellChannelsPerSubId.get(mSubId))) {
+                // No change to cell channels, so no need to recalculate
+                return;
+            }
             mCellChannelsPerSubId.put(mSubId, cellChannels);
             if (mIsUsingMockCellChannels) {
                 return;
