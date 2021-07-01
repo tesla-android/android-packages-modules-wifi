@@ -7980,6 +7980,59 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify the call to isValidBandForGetUsableChannels()
+     */
+    @Test
+    public void testIsValidBandForGetUsableChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_UNSPECIFIED), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_GHZ), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_5_GHZ), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_BOTH), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_GHZ_WITH_5GHZ_DFS), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_5_GHZ_WITH_DFS), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_BOTH_WITH_DFS), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_6_GHZ), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_5_6_GHZ), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_GHZ), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_60_GHZ), true);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_5_6_60_GHZ), false);
+        assertEquals(WifiServiceImpl.isValidBandForGetUsableChannels(
+                WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ), true);
+    }
+
+    /**
+     * Verify that a call to getUsableChannels() throws an IllegalArgumentException
+     * if the band specified is invalid for getAllowedChannels() method.
+     */
+    @Test
+    public void testGetUsableChannelsThrowsIllegalArgumentExceptionOnInValidBand() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersHardwareLocationPermission(anyInt()))
+                .thenReturn(true);
+        try {
+            mWifiServiceImpl.getUsableChannels(WIFI_BAND_5_GHZ, OP_MODE_STA, FILTER_REGULATORY);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
      * Verify the call to getUsableChannels() goes to WifiNative
      */
     @Test
