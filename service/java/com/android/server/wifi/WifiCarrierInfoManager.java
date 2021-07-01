@@ -449,6 +449,7 @@ public class WifiCarrierInfoManager {
         @Override
         public void onSubscriptionsChanged() {
             mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
+            mSubIdToSimInfoSparseArray.clear();
             if (mVerboseLogEnabled) {
                 Log.v(TAG, "active subscription changes: " + mActiveSubInfos);
             }
@@ -1900,8 +1901,6 @@ public class WifiCarrierInfoManager {
         mImsiPrivacyProtectionExemptionMap.clear();
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
-        mSubIdToSimInfoSparseArray.clear();
-        mActiveSubInfos.clear();
         mUserDataEnabled.clear();
         if (SdkLevel.isAtLeastS()) {
             for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
