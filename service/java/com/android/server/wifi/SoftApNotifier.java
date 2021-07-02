@@ -90,7 +90,8 @@ public class SoftApNotifier {
 
     private PendingIntent launchWifiTetherSettings() {
         Intent intent = new Intent(ACTION_HOTSPOT_PREFERENCES)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .setPackage(mFrameworkFacade.getSettingsPackageName(mContext));
         return mFrameworkFacade.getActivity(mContext, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }

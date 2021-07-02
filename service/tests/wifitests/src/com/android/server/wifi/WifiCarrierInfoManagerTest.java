@@ -2167,6 +2167,9 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .hasUserApprovedImsiPrivacyExemptionForCarrier(DATA_CARRIER_ID));
         assertTrue(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
         assertTrue(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(NON_DATA_SUBID, false));
+
+        // Verify active subscription info is not clear
+        assertEquals(DATA_SUBID, mWifiCarrierInfoManager.getMatchingSubId(DATA_CARRIER_ID));
     }
 
     @Test
