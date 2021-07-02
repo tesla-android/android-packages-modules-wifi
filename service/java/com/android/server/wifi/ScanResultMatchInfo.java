@@ -72,6 +72,32 @@ public class ScanResultMatchInfo {
     }
 
     /**
+     * Check if an auto-upgraded security parameters configuration is allowed by the overlay
+     * configurations for WPA3-Personal (SAE) and Enhanced Open (OWE).
+     *
+     * @param securityParams Security parameters object
+     * @return true if allowed, false if not allowed
+     */
+    private static boolean isAutoUpgradeSecurityParamsAllowed(SecurityParams securityParams) {
+        WifiGlobals wifiGlobals = WifiInjector.getInstance().getWifiGlobals();
+        // In mixed security network environments, we need to filter out APs with the stronger
+        // security type when the current network supports the weaker security type, and the
+        // stronger security type was added by auto-upgrade, and
+        // auto-upgrade feature is disabled.
+        if (securityParams.getSecurityType() == WifiConfiguration.SECURITY_TYPE_SAE
+                && securityParams.isAddedByAutoUpgrade()
+                && !wifiGlobals.isWpa3SaeUpgradeEnabled()) {
+            return false;
+        }
+        if (securityParams.getSecurityType() == WifiConfiguration.SECURITY_TYPE_OWE
+                && securityParams.isAddedByAutoUpgrade()
+                && !wifiGlobals.isOweUpgradeEnabled()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * The matching algorithm is that the type with a bigger index in the allowed
      * params list has the higher priority. We try to match each type from the end of
      * the allowed params list against the params in the scan result params list.
@@ -89,9 +115,10 @@ public class ScanResultMatchInfo {
         if (null == scanResultParamsList) return null;
         for (int i = allowedParamsList.size() - 1; i >= 0; i--) {
             SecurityParams allowedParams = allowedParamsList.get(i);
-
-            if (!WifiConfigurationUtil.isSecurityParamsValid(allowedParams)) continue;
-
+            if (!WifiConfigurationUtil.isSecurityParamsValid(allowedParams)
+                    || !isAutoUpgradeSecurityParamsAllowed(allowedParams)) {
+                continue;
+            }
             for (SecurityParams scanResultParams: scanResultParamsList) {
                 if (!allowedParams.isSecurityType(scanResultParams.getSecurityType())) {
                     continue;
