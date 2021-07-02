@@ -691,7 +691,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 Log.e(TAG, "Error on linkToDeath: e=" + e);
                 // fall-through here - won't clean up
             }
-            mP2pStateMachine.sendMessage(ENABLE_P2P);
+            // If p2p is already on, send ENABLE_P2P to merge the new worksource.
+            // If p2p is off, the first one activates P2P will merge all worksources.
+            if (!mP2pStateMachine.isP2pDisabled()) {
+                mP2pStateMachine.sendMessage(ENABLE_P2P);
+            }
             return messenger;
         }
     }
@@ -960,6 +964,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     });
                 }
             }
+        }
+
+        boolean isP2pDisabled() {
+            return getCurrentState() == mP2pDisabledState;
         }
 
         void scheduleIdleShutdown() {
@@ -1569,9 +1577,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     default:
-                        // only handle commands from clients.
+                        // only handle commands from clients and only commands
+                        // which require P2P to be active.
                         if (message.what < Protocol.BASE_WIFI_P2P_MANAGER
-                                || Protocol.BASE_WIFI_P2P_SERVICE <= message.what) {
+                                || Protocol.BASE_WIFI_P2P_SERVICE <= message.what
+                                || message.what == WifiP2pManager.UPDATE_CHANNEL_INFO) {
                             return NOT_HANDLED;
                         }
                         // If P2P is not ready, it might be disabled due
