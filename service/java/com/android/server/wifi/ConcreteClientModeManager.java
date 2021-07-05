@@ -239,7 +239,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
                     }
                 };
 
-        private final NetworkCallback mImsNetworkCallback = new NetworkCallback() {
+        private final class ImsNetworkCallback extends NetworkCallback {
             private int mRegisteredImsNetworkCount = 0;
 
             @Override
@@ -264,7 +264,9 @@ public class ConcreteClientModeManager implements ClientModeManager {
                     }
                 }
             }
-        };
+        }
+
+        private NetworkCallback mImsNetworkCallback = null;
 
         DeferStopHandler(Looper looper) {
             super(TAG, looper);
@@ -310,6 +312,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             mConnectivityManager =
                     (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 
+            mImsNetworkCallback = new ImsNetworkCallback();
             mConnectivityManager.registerNetworkCallback(imsRequest, mImsNetworkCallback,
                     new Handler(mLooper));
         }
@@ -363,8 +366,9 @@ public class ConcreteClientModeManager implements ClientModeManager {
                 }
             }
 
-            if (mConnectivityManager != null) {
+            if (mConnectivityManager != null && mImsNetworkCallback != null) {
                 mConnectivityManager.unregisterNetworkCallback(mImsNetworkCallback);
+                mImsNetworkCallback = null;
             }
 
             mIsDeferring = false;
