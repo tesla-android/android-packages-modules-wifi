@@ -29,6 +29,7 @@ import static com.android.server.wifi.hotspot2.anqp.Constants.ANQPElementType.HS
 
 import android.annotation.NonNull;
 import android.hardware.wifi.supplicant.V1_0.ISupplicantStaIfaceCallback;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -311,10 +312,15 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
             // (unspecified failure). In SAE networks, the password authentication
             // is not related to the 4-way handshake. In this case, we will send an
             // authentication failure event up.
-            if (assocRejectInfo.statusCode == StatusCode.UNSPECIFIED_FAILURE
-                    && WifiConfigurationUtil.isConfigForSaeNetwork(curConfiguration)) {
-                mStaIfaceHal.logCallback("SAE incorrect password");
-                isWrongPwd = true;
+            if (assocRejectInfo.statusCode == StatusCode.UNSPECIFIED_FAILURE) {
+                // Network Selection status is guaranteed to be initialized
+                SecurityParams params = curConfiguration.getNetworkSelectionStatus()
+                        .getCandidateSecurityParams();
+                if (params != null
+                        && params.getSecurityType() == WifiConfiguration.SECURITY_TYPE_SAE) {
+                    mStaIfaceHal.logCallback("SAE incorrect password");
+                    isWrongPwd = true;
+                }
             } else if (assocRejectInfo.statusCode == StatusCode.CHALLENGE_FAIL
                     && WifiConfigurationUtil.isConfigForWepNetwork(curConfiguration)) {
                 mStaIfaceHal.logCallback("WEP incorrect password");
