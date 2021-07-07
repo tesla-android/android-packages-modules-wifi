@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SCAN_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 
 import static org.mockito.Mockito.*;
@@ -72,6 +73,14 @@ public class ClientModeManagerBroadcastQueueTest extends WifiBaseTest {
 
     @Test
     public void primaryManagerSendBroadcast_sentImmediately() {
+        mBroadcastQueue.queueOrSendBroadcast(mPrimaryManager, mQueuedBroadcast1);
+
+        verify(mQueuedBroadcast1).send();
+    }
+
+    @Test
+    public void scanOnlyModeManagerSendBroadcast_sentImmediately() {
+        when(mPrimaryManager.getRole()).thenReturn(ROLE_CLIENT_SCAN_ONLY);
         mBroadcastQueue.queueOrSendBroadcast(mPrimaryManager, mQueuedBroadcast1);
 
         verify(mQueuedBroadcast1).send();
