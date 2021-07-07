@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SCAN_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 
 import android.annotation.NonNull;
@@ -68,16 +69,21 @@ public class ClientModeManagerBroadcastQueue {
     }
 
     /**
-     * If the ClientModeManager is primary, the broadcast will be sent immediately. Otherwise, the
-     * broadcast will be queued, and sent out if and when the ClientModeManager becomes primary.
+     * If the ClientModeManager is primary or scan only, the broadcast will be sent immediately.
+     * Otherwise, the broadcast will be queued, and sent out if and when the ClientModeManager
+     * becomes primary.
      */
     public void queueOrSendBroadcast(
             @NonNull ClientModeManager manager,
             @NonNull QueuedBroadcast broadcast) {
-        if (manager.getRole() == ROLE_CLIENT_PRIMARY) {
-            // Primary, send existing queued broadcasts and send the new broadcast immediately.
-            // Assume that queue is empty for this manager (flushed when it originally became
-            // primary).
+
+        if (manager.getRole() == ROLE_CLIENT_PRIMARY
+                || manager.getRole() == ROLE_CLIENT_SCAN_ONLY) {
+            // Primary or scan only, send existing queued broadcasts and send the new broadcast
+            // immediately. Assume that queue is empty for this manager (flushed when it originally
+            // became primary).
+            // TODO: b/192612399 - look into the race issue causing the ClientModeManager to be
+            // already in ROLE_CLIENT_SCAN_ONLY when ClientModeImpl sends the broadcast.
             broadcast.send();
         } else if (manager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
             // buffer the broadcast until the ClientModeManager becomes primary.
