@@ -2937,6 +2937,10 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         config.networkId = newFrameworkNetworkId;
         config.wepKeys[0] = wepKey;
         config.wepTxKeyIndex = 0;
+        WifiConfiguration.NetworkSelectionStatus networkSelectionStatus =
+                new WifiConfiguration.NetworkSelectionStatus();
+        networkSelectionStatus.setCandidateSecurityParams(config.getSecurityParams(securityType));
+        config.setNetworkSelectionStatus(networkSelectionStatus);
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
         validateConnectSequence(haveExistingNetwork, 1);
         return config;
