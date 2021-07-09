@@ -808,7 +808,7 @@ public class PasspointManagerTest extends WifiBaseTest {
         TelephonyManager specifiedTm = mock(TelephonyManager.class);
         when(mTelephonyManager.createForSubscriptionId(eq(TEST_SUBID))).thenReturn(specifiedTm);
         when(specifiedTm.getSubscriberId()).thenReturn(FULL_IMSI);
-        when(specifiedTm.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(specifiedTm.getSimApplicationState()).thenReturn(TelephonyManager.SIM_STATE_LOADED);
         List<SubscriptionInfo> subInfoList = new ArrayList<SubscriptionInfo>() {{
                 add(subInfo);
             }};

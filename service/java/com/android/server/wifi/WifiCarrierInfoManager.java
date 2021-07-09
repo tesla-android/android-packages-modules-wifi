@@ -551,6 +551,10 @@ public class WifiCarrierInfoManager {
         if (mCachedCarrierConfigPerSubId.contains(subId)) {
             return mCachedCarrierConfigPerSubId.get(subId);
         }
+        TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
+        if (specifiedTm.getSimApplicationState() != TelephonyManager.SIM_STATE_LOADED) {
+            return null;
+        }
         if (mCarrierConfigManager == null) {
             mCarrierConfigManager = mContext.getSystemService(CarrierConfigManager.class);
         }
@@ -1924,7 +1928,7 @@ public class WifiCarrierInfoManager {
             return simInfo;
         }
         TelephonyManager specifiedTm = mTelephonyManager.createForSubscriptionId(subId);
-        if (specifiedTm.getSimState() != TelephonyManager.SIM_STATE_READY) {
+        if (specifiedTm.getSimApplicationState() != TelephonyManager.SIM_STATE_LOADED) {
             return null;
         }
         String imsi = specifiedTm.getSubscriberId();
