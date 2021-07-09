@@ -4734,7 +4734,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     public void testResetSimNetworks() {
         String expectedIdentity = "13214561234567890@wlan.mnc456.mcc321.3gppnetwork.org";
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         List<SubscriptionInfo> subList = new ArrayList<>() {{
@@ -4790,7 +4791,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testResetSimNetworks_getSimIdentityNull_shouldResetAllNonPeapSimIdentities() {
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         List<SubscriptionInfo> subList = new ArrayList<>() {{
@@ -4849,7 +4851,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testLoadFromStoreResetsSimIdentity() {
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
 
