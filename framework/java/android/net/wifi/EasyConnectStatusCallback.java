@@ -168,7 +168,6 @@ public abstract class EasyConnectStatusCallback {
     /**
      * Easy Connect Failure event: System failed to generate DPP URI.
      */
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = -13;
 
     /**
@@ -177,7 +176,6 @@ public abstract class EasyConnectStatusCallback {
      * is not included in the list of channels the Enrollee scanned in attempting to
      * discover the network prior to connection.
      */
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL =
             -14;
 
