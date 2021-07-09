@@ -217,7 +217,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(mDataTelephonyManager);
         when(mTelephonyManager.createForSubscriptionId(eq(NON_DATA_SUBID)))
                 .thenReturn(mNonDataTelephonyManager);
-        when(mTelephonyManager.getSimState(anyInt())).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mTelephonyManager.getSimApplicationState(anyInt()))
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mCarrierConfigManager.getConfigForSubId(anyInt()))
                 .thenReturn(generateTestCarrierConfig(false));
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(mSubInfoList);
@@ -242,8 +243,10 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(mNonDataTelephonyManager.getSimCarrierIdName()).thenReturn(null);
         when(mNonDataTelephonyManager.getSimOperator())
                 .thenReturn(NON_DATA_OPERATOR_NUMERIC);
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
-        when(mNonDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
+        when(mNonDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mSubscriptionManager.getActiveSubscriptionIdList())
                 .thenReturn(new int[]{DATA_SUBID, NON_DATA_SUBID});
 
@@ -492,7 +495,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "13214561234567890@wlan.mnc456.mcc321.3gppnetwork.org", "");
 
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration simConfig =
@@ -517,7 +519,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "03214561234567890@wlan.mnc456.mcc321.3gppnetwork.org", "");
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
 
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration akaConfig =
@@ -542,7 +543,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "63214561234567890@wlan.mnc456.mcc321.3gppnetwork.org", "");
 
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration akaPConfig =
@@ -586,7 +586,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(Cipher.getInstance(anyString())).thenReturn(cipher);
             when(cipher.doFinal(any(byte[].class))).thenReturn(permanentIdentity.getBytes());
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
-            when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
             ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
                     TelephonyManager.KEY_TYPE_WLAN, null, key, null);
@@ -621,7 +620,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(Cipher.getInstance(anyString())).thenReturn(cipher);
             when(cipher.doFinal(any(byte[].class))).thenThrow(BadPaddingException.class);
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
-            when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
             ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
                     TelephonyManager.KEY_TYPE_WLAN, keyIdentifier, (PublicKey) null, null);
@@ -648,7 +646,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "1321560123456789@wlan.mnc056.mcc321.3gppnetwork.org", "");
 
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("321560123456789");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("32156");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration config =
@@ -665,7 +662,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 "13214560123456789@wlan.mnc456.mcc321.3gppnetwork.org", "");
 
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214560123456789");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn(null);
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         WifiConfiguration config =
@@ -679,7 +675,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     @Test
     public void getSimIdentityNonTelephonyConfig() {
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("321560123456789");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("32156");
 
         assertEquals(null,
@@ -998,7 +993,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     public void getAnonymousIdentityWithSim() {
         String mccmnc = "123456";
         String expectedIdentity = ANONYMOUS_IDENTITY;
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn(mccmnc);
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
                 WifiEnterpriseConfig.Eap.AKA, WifiEnterpriseConfig.Phase2.NONE);
@@ -1012,7 +1006,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
      */
     @Test
     public void getAnonymousIdentityWithoutSim() {
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_ABSENT);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_NOT_READY);
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
                 WifiEnterpriseConfig.Eap.AKA, WifiEnterpriseConfig.Phase2.NONE);
 
@@ -1065,7 +1060,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(subInfo2.getSubscriptionId()).thenReturn(NON_DATA_SUBID);
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Arrays.asList(subInfo1, subInfo2));
-        when(mDataTelephonyManager.getSimState())
+        when(mDataTelephonyManager.getSimApplicationState())
                 .thenReturn(TelephonyManager.SIM_STATE_NETWORK_LOCKED);
         assertFalse(mWifiCarrierInfoManager.isSimReady(DATA_SUBID));
     }
@@ -1081,8 +1076,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         when(subInfo2.getSubscriptionId()).thenReturn(NON_DATA_SUBID);
         when(mSubscriptionManager.getActiveSubscriptionInfoList())
                 .thenReturn(Arrays.asList(subInfo1, subInfo2));
-        when(mDataTelephonyManager.getSimState())
-                .thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(null);
         ArgumentCaptor<BroadcastReceiver> receiver =
                 ArgumentCaptor.forClass(BroadcastReceiver.class);
@@ -1503,7 +1496,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
 
         String mccmnc = "123456";
         String expectedIdentity = methodStr + ANONYMOUS_IDENTITY;
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
         when(mDataTelephonyManager.getSimOperator()).thenReturn(mccmnc);
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork(
                 method, WifiEnterpriseConfig.Phase2.NONE);
@@ -2037,6 +2029,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         WifiConfiguration config1 = WifiConfigurationTestUtil.createOpenNetwork();
         WifiConfiguration config2 = WifiConfigurationTestUtil.createOpenNetwork();
         config1.carrierId = DATA_CARRIER_ID;
+        config1.subscriptionId = DATA_SUBID;
         PersistableBundle bundle = new PersistableBundle();
         PersistableBundle wifiBundle = new PersistableBundle();
         // Add the first SSID and some garbage SSID to the exception list.
@@ -2076,6 +2069,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         WifiConfiguration config1 = WifiConfigurationTestUtil.createOpenNetwork();
         WifiConfiguration config2 = WifiConfigurationTestUtil.createOpenNetwork();
         config1.carrierId = DATA_CARRIER_ID;
+        config1.subscriptionId = DATA_SUBID;
         PersistableBundle bundle = new PersistableBundle();
         PersistableBundle wifiBundle = new PersistableBundle();
         // add both the first SSID and second SSID to the exception list.
@@ -2110,7 +2104,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         PersistableBundle bundle = new PersistableBundle();
         bundle.putBoolean(KEY_CARRIER_CONFIG_APPLIED_BOOL, true);
         String key = CarrierConfigManager.KEY_CARRIER_PROVISIONS_WIFI_MERGED_NETWORKS_BOOL;
-        int subId = 0; // anything
+        int subId = DATA_SUBID;
         when(mCarrierConfigManager.getConfigForSubId(anyInt())).thenReturn(bundle);
 
         if (SdkLevel.isAtLeastS()) {
