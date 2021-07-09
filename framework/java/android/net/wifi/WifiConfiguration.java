@@ -1693,7 +1693,7 @@ public class WifiConfiguration implements Parcelable {
     private MacAddress mRandomizedMacAddress;
 
     /**
-     * The wall clock time of when |mRandomizedMacAddress| should be re-randomized in enhanced
+     * The wall clock time of when |mRandomizedMacAddress| should be re-randomized in non-persistent
      * MAC randomization mode.
      * @hide
      */

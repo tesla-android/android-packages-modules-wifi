@@ -1086,7 +1086,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                             + "suggestion with Passpoint configuration");
                 }
                 wifiConfiguration = buildWifiConfigurationForPasspoint();
-                mPasspointConfiguration.setEnhancedMacRandomizationEnabled(
+                mPasspointConfiguration.setNonPersistentMacRandomizationEnabled(
                         mMacRandomizationSetting == RANDOMIZATION_NON_PERSISTENT);
             } else {
                 if (mSsid == null) {

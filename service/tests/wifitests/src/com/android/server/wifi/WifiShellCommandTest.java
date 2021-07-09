@@ -673,7 +673,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
     }
 
     @Test
-    public void testAddSuggestionWithEnhancedMacRandomization() {
+    public void testAddSuggestionWithNonPersistentMacRandomization() {
         // default
         mWifiShellCommand.exec(
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
@@ -685,7 +685,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
                     == WifiConfiguration.RANDOMIZATION_PERSISTENT);
         }), eq(SHELL_PACKAGE_NAME), any());
 
-        // using enhanced MAC randomization.
+        // using non-persistent MAC randomization.
         if (SdkLevel.isAtLeastS()) {
             mWifiShellCommand.exec(
                     new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
