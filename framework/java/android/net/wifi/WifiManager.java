@@ -6672,7 +6672,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1 = 0;
 
     /**
@@ -6681,7 +6680,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1 = 1;
 
     /**
@@ -6690,7 +6688,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1 = 2;
 
 
@@ -6700,7 +6697,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1 = 3;
 
 
@@ -6710,7 +6706,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1 = 4;
 
 
@@ -6720,7 +6715,6 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresApi(Build.VERSION_CODES.S)
     public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1 = 5;
 
     /** @hide */
