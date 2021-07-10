@@ -8,7 +8,7 @@
         errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
-            line="130"
+            line="134"
             column="27"/>
     </issue>
 
@@ -19,7 +19,7 @@
         errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
-            line="369"
+            line="373"
             column="47"/>
     </issue>
 
@@ -30,7 +30,7 @@
         errorLine2="                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/util/ApConfigUtil.java"
-            line="569"
+            line="573"
             column="32"/>
     </issue>
 
@@ -102,56 +102,12 @@
 
     <issue
         id="NewApi"
-        message="Call requires API level 31 (current min is 30): `CIPHER_GCMP_128`"
-        errorLine1="                    return ScanResult.CIPHER_GCMP_128;"
-        errorLine2="                                      ~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
-            line="1107"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_GMAC_128`"
-        errorLine1="                    return ScanResult.CIPHER_BIP_GMAC_128;"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
-            line="1109"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_GMAC_256`"
-        errorLine1="                    return ScanResult.CIPHER_BIP_GMAC_256;"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
-            line="1111"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `CIPHER_BIP_CMAC_256`"
-        errorLine1="                    return ScanResult.CIPHER_BIP_CMAC_256;"
-        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/util/InformationElementUtil.java"
-            line="1113"
-            column="39"/>
-    </issue>
-
-    <issue
-        id="NewApi"
         message="Call requires API level 31 (current min is 30): `android.net.wifi.WifiEnterpriseConfig#isEapMethodServerCertUsed`"
         errorLine1="        if (config.isEnterprise() &amp;&amp; config.enterpriseConfig.isEapMethodServerCertUsed()"
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/NetworkSuggestionNominator.java"
-            line="253"
+            line="266"
             column="62"/>
     </issue>
 
@@ -261,7 +217,7 @@
         errorLine2="                                                                      ~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiDiagnostics.java"
-            line="367"
+            line="369"
             column="71"/>
     </issue>
 
@@ -272,7 +228,7 @@
         errorLine2="                ~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiNetworkFactory.java"
-            line="675"
+            line="676"
             column="17"/>
     </issue>
 
@@ -283,7 +239,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiNetworkSuggestionsManager.java"
-            line="1085"
+            line="1089"
             column="42"/>
     </issue>
 
@@ -294,7 +250,7 @@
         errorLine2="               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2704"
+            line="2715"
             column="16"/>
     </issue>
 
@@ -305,7 +261,7 @@
         errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2711"
+            line="2722"
             column="20"/>
     </issue>
 
@@ -316,7 +272,7 @@
         errorLine2="                       ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2723"
+            line="2734"
             column="24"/>
     </issue>
 
@@ -327,7 +283,7 @@
         errorLine2="                       ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2740"
+            line="2751"
             column="24"/>
     </issue>
 
@@ -338,7 +294,7 @@
         errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2744"
+            line="2755"
             column="20"/>
     </issue>
 
@@ -349,7 +305,7 @@
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2747"
+            line="2758"
             column="62"/>
     </issue>
 
@@ -360,7 +316,7 @@
         errorLine2="                       ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2754"
+            line="2765"
             column="24"/>
     </issue>
 
@@ -371,7 +327,7 @@
         errorLine2="                   ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2771"
+            line="2782"
             column="20"/>
     </issue>
 
@@ -382,7 +338,7 @@
         errorLine2="               ~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiServiceImpl.java"
-            line="2773"
+            line="2784"
             column="16"/>
     </issue>
 
@@ -393,7 +349,7 @@
         errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiShellCommand.java"
-            line="393"
+            line="398"
             column="52"/>
     </issue>
 
@@ -404,7 +360,7 @@
         errorLine2="                                         ~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3767"
+            line="3800"
             column="42"/>
     </issue>
 
@@ -415,7 +371,7 @@
         errorLine2="                                         ~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3770"
+            line="3803"
             column="42"/>
     </issue>
 
@@ -426,7 +382,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3773"
+            line="3806"
             column="42"/>
     </issue>
 
@@ -437,7 +393,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3776"
+            line="3809"
             column="42"/>
     </issue>
 
@@ -448,7 +404,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3779"
+            line="3812"
             column="42"/>
     </issue>
 
@@ -459,7 +415,7 @@
         errorLine2="                                         ~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3782"
+            line="3815"
             column="42"/>
     </issue>
 
@@ -470,7 +426,7 @@
         errorLine2="                                         ~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3794"
+            line="3827"
             column="42"/>
     </issue>
 
@@ -481,7 +437,7 @@
         errorLine2="                                         ~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3797"
+            line="3830"
             column="42"/>
     </issue>
 
@@ -492,7 +448,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3800"
+            line="3833"
             column="42"/>
     </issue>
 
@@ -503,7 +459,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3803"
+            line="3836"
             column="42"/>
     </issue>
 
@@ -514,7 +470,7 @@
         errorLine2="                                         ~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3806"
+            line="3839"
             column="42"/>
     </issue>
 
@@ -525,7 +481,7 @@
         errorLine2="                                         ~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3809"
+            line="3842"
             column="42"/>
     </issue>
 
@@ -536,7 +492,7 @@
         errorLine2="                                           ~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3820"
+            line="3853"
             column="44"/>
     </issue>
 
@@ -547,7 +503,7 @@
         errorLine2="                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3823"
+            line="3856"
             column="44"/>
     </issue>
 
@@ -558,30 +514,8 @@
         errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiVendorHal.java"
-            line="3850"
+            line="3883"
             column="50"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_URI_GENERATION`"
-        errorLine1="                case EASY_CONNECT_EVENT_FAILURE_URI_GENERATION:"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/DppMetrics.java"
-            line="249"
-            column="22"/>
-    </issue>
-
-    <issue
-        id="NewApi"
-        message="Call requires API level 31 (current min is 30): `EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL`"
-        errorLine1="                case EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL:"
-        errorLine2="                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/DppMetrics.java"
-            line="255"
-            column="22"/>
     </issue>
 
 </issues>
