@@ -1186,6 +1186,9 @@ message ConnectionEvent {
 
   // Indicates if the profile used for the connection is carrier merged.
   optional bool is_carrier_merged = 30;
+
+  // Indicates if this was the first connection event after boot
+  optional bool is_first_connection_after_boot = 31;
 }
 
 // Number of occurrences of a specific RSSI poll rssi value

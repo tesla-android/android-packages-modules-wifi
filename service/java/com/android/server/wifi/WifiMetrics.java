@@ -284,6 +284,7 @@ public class WifiMetrics {
     private WifiSettingsStore mWifiSettingsStore;
     private IntCounter mPasspointDeauthImminentScope = new IntCounter();
     private IntCounter mRecentFailureAssociationStatus = new IntCounter();
+    private boolean mFirstConnectionAfterBoot = true;
 
     /**
      * Metrics are stored within an instance of the WifiLog proto during runtime,
@@ -1303,6 +1304,8 @@ public class WifiMetrics {
                 sb.append(" interfaceName=").append(mConnectionEvent.interfaceName);
                 sb.append(" interfaceRole=").append(
                         clientRoleEnumToString(mConnectionEvent.interfaceRole));
+                sb.append(", isFirstConnectionAfterBoot="
+                        + mConnectionEvent.isFirstConnectionAfterBoot);
                 return sb.toString();
             }
         }
@@ -1816,6 +1819,9 @@ public class WifiMetrics {
             currentConnectionEvent.mConfigBssid = "any";
             currentConnectionEvent.mWifiState = mWifiState;
             currentConnectionEvent.mScreenOn = mScreenOn;
+            currentConnectionEvent.mConnectionEvent.isFirstConnectionAfterBoot =
+                    mFirstConnectionAfterBoot;
+            mFirstConnectionAfterBoot = false;
             mConnectionEventList.add(currentConnectionEvent);
             mScanResultRssiTimestampMillis = -1;
             if (config != null) {
