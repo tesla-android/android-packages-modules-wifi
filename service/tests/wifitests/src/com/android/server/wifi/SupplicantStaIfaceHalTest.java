@@ -646,12 +646,97 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     }
 
     /**
-     * Tests roaming to a linked network.
+     * Tests framework roaming to a linked network.
      */
     @Test
     public void testRoamToLinkedNetwork() throws Exception {
         executeAndValidateInitializationSequence();
         executeAndValidateRoamSequence(false, true);
+    }
+
+    /**
+     * Tests updating linked networks for a network id
+     */
+    @Test
+    public void testUpdateLinkedNetworks() throws Exception {
+        executeAndValidateInitializationSequence();
+
+        final int frameworkNetId = 1;
+        final int supplicantNetId = 10;
+
+        // No current network in supplicant, return false
+        assertFalse(mDut.updateLinkedNetworks(
+                WLAN0_IFACE_NAME, SUPPLICANT_NETWORK_ID, null));
+
+        WifiConfiguration config = executeAndValidateConnectSequence(
+                frameworkNetId, false);
+
+        // Mismatched framework network id, return false
+        assertFalse(mDut.updateLinkedNetworks(WLAN0_IFACE_NAME, frameworkNetId + 1, null));
+
+        // Supplicant network id is invalid, return false
+        when(mSupplicantStaNetworkMock.getNetworkId()).thenReturn(-1);
+        assertFalse(mDut.updateLinkedNetworks(WLAN0_IFACE_NAME, frameworkNetId, null));
+
+        // Supplicant failed to return network list, return false
+        when(mSupplicantStaNetworkMock.getNetworkId()).thenReturn(supplicantNetId);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ISupplicantStaIface.listNetworksCallback cb) {
+                cb.onValues(mStatusFailure, new ArrayList<>());
+            }
+        }).when(mISupplicantStaIfaceMock)
+                .listNetworks(any(ISupplicantStaIface.listNetworksCallback.class));
+        assertFalse(mDut.updateLinkedNetworks(
+                WLAN0_IFACE_NAME, frameworkNetId, null));
+
+        // Supplicant returned a null network list, return false
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ISupplicantStaIface.listNetworksCallback cb) {
+                cb.onValues(mStatusSuccess, null);
+            }
+        }).when(mISupplicantStaIfaceMock)
+                .listNetworks(any(ISupplicantStaIface.listNetworksCallback.class));
+        assertFalse(mDut.updateLinkedNetworks(
+                WLAN0_IFACE_NAME, frameworkNetId, null));
+
+        // Successfully link a network to the current network
+        final ArrayList<Integer> supplicantNetIds = new ArrayList<>();
+        supplicantNetIds.add(supplicantNetId);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ISupplicantStaIface.listNetworksCallback cb) {
+                cb.onValues(mStatusSuccess, supplicantNetIds);
+            }
+        }).when(mISupplicantStaIfaceMock)
+                .listNetworks(any(ISupplicantStaIface.listNetworksCallback.class));
+        WifiConfiguration linkedConfig = new WifiConfiguration();
+        linkedConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        Map<String, WifiConfiguration> linkedNetworks = new HashMap<>();
+        linkedNetworks.put(linkedConfig.getProfileKey(), linkedConfig);
+        SupplicantStaNetworkHal linkedNetworkHandle = mock(SupplicantStaNetworkHal.class);
+        when(linkedNetworkHandle.getNetworkId()).thenReturn(supplicantNetId + 1);
+        when(linkedNetworkHandle.saveWifiConfiguration(linkedConfig)).thenReturn(true);
+        when(linkedNetworkHandle.select()).thenReturn(true);
+        mDut.setStaNetworkMockable(linkedNetworkHandle);
+        assertTrue(mDut.updateLinkedNetworks(
+                WLAN0_IFACE_NAME, frameworkNetId, linkedNetworks));
+
+        // Successfully remove linked network but not the current network from supplicant
+        supplicantNetIds.add(supplicantNetId + 1);
+        doAnswer(new AnswerWithArguments() {
+            public void answer(ISupplicantStaIface.listNetworksCallback cb) {
+                cb.onValues(mStatusSuccess, supplicantNetIds);
+            }
+        }).when(mISupplicantStaIfaceMock)
+                .listNetworks(any(ISupplicantStaIface.listNetworksCallback.class));
+        doAnswer(new AnswerWithArguments() {
+            public SupplicantStatus answer(int id) {
+                return mStatusSuccess;
+            }
+        }).when(mISupplicantStaIfaceMock).removeNetwork(supplicantNetId + 1);
+        assertTrue(mDut.updateLinkedNetworks(
+                WLAN0_IFACE_NAME, frameworkNetId, null));
+        verify(mISupplicantStaIfaceMock).removeNetwork(supplicantNetId + 1);
+        verify(mISupplicantStaIfaceMock, never()).removeNetwork(supplicantNetId);
     }
 
     /**
@@ -3037,7 +3122,9 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         roamingConfig.getNetworkSelectionStatus().setNetworkSelectionBSSID(roamBssid);
         SupplicantStaNetworkHal linkedNetworkHandle = mock(SupplicantStaNetworkHal.class);
         if (linkedNetwork) {
-            when(linkedNetworkHandle.getNetworkId()).thenReturn(roamNetworkId);
+            // Set the StaNetworkMockable to add a new handle for the linked network
+            int roamRemoteNetworkId = roamNetworkId + 1;
+            when(linkedNetworkHandle.getNetworkId()).thenReturn(roamRemoteNetworkId);
             when(linkedNetworkHandle.saveWifiConfiguration(any())).thenReturn(true);
             when(linkedNetworkHandle.select()).thenReturn(true);
             mDut.setStaNetworkMockable(linkedNetworkHandle);
