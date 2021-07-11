@@ -6663,8 +6663,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      * SSID allowlist with the linked networks.
      */
     private void updateLinkedNetworks(@NonNull WifiConfiguration config) {
-        if (!mContext.getResources().getBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming)
-                || !config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)) {
+        if (!mContext.getResources().getBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming)) {
+            return;
+        }
+
+        SecurityParams params = mWifiNative.getCurrentNetworkSecurityParams(mInterfaceName);
+        if (params == null || !params.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) {
             return;
         }
 
