@@ -192,7 +192,7 @@ public class PasspointConfigurationTest {
         assertFalse(config.validateForR2());
         assertTrue(config.isAutojoinEnabled());
         assertTrue(config.isMacRandomizationEnabled());
-        assertFalse(config.isNonPersistentMacRandomizationEnabled());
+        assertFalse(config.isEnhancedMacRandomizationEnabled());
         assertTrue(config.getMeteredOverride() == METERED_OVERRIDE_NONE);
     }
 

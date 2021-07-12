@@ -641,7 +641,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.dump(new FileDescriptor(), new PrintWriter(new StringWriter()),
                 new String[]{mWifiMetrics.PROTO_DUMP_ARG});
         mLooper.stopAutoDispatchAndIgnoreExceptions();
-        verify(mWifiMetrics).setNonPersistentMacRandomizationForceEnabled(anyBoolean());
+        verify(mWifiMetrics).setEnhancedMacRandomizationForceEnabled(anyBoolean());
         verify(mWifiMetrics).setIsScanningAlwaysEnabled(anyBoolean());
         verify(mWifiMetrics).setVerboseLoggingEnabled(anyBoolean());
         verify(mWifiMetrics)
