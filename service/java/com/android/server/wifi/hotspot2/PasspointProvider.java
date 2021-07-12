@@ -575,7 +575,7 @@ public class PasspointProvider {
         wifiConfig.creatorUid = mCreatorUid;
         wifiConfig.trusted = mIsTrusted;
         if (mConfig.isMacRandomizationEnabled()) {
-            if (mConfig.isNonPersistentMacRandomizationEnabled()) {
+            if (mConfig.isEnhancedMacRandomizationEnabled()) {
                 wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
             } else {
                 wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;

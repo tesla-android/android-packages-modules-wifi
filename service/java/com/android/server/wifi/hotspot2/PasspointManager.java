@@ -1193,7 +1193,7 @@ public class PasspointManager {
                     .isPasspointSuggestionSharedWithUser(config)) {
                 continue;
             }
-            if (mWifiConfigManager.shouldUseNonPersistentRandomization(config)) {
+            if (mWifiConfigManager.shouldUseEnhancedRandomization(config)) {
                 config.setRandomizedMacAddress(MacAddress.fromString(DEFAULT_MAC_ADDRESS));
             } else {
                 MacAddress result = mMacAddressUtil.calculatePersistentMac(config.getNetworkKey(),
