@@ -16,10 +16,16 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
 import static android.net.wifi.WifiEnterpriseConfig.OCSP_NONE;
 import static android.net.wifi.WifiEnterpriseConfig.OCSP_REQUIRE_CERT_STATUS;
 
-import static org.junit.Assert.*;
+import static com.android.server.wifi.WifiConfigurationUtil.addSecurityTypeToNetworkId;
+import static com.android.server.wifi.WifiConfigurationUtil.convertWifiInfoSecurityTypeToWifiConfiguration;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import android.content.pm.UserInfo;
 import android.net.IpConfiguration;
@@ -27,6 +33,7 @@ import android.net.MacAddress;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
@@ -34,6 +41,8 @@ import android.os.PatternMatcher;
 import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
@@ -1208,5 +1217,100 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID);
         config.enterpriseConfig.setPassword(null);
         assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+    }
+
+    /**
+     * Verify the behavior of convertWifiInfoSecurityTypeToWifiConfiguration
+     */
+    @Test
+    public void testConvertWifiInfoSecurityTypeToWifiConfiguration() {
+        assertEquals(WifiConfiguration.SECURITY_TYPE_OPEN,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_OPEN));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WEP,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_WEP));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_PSK,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_PSK));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_EAP));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_SAE,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_SAE));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                convertWifiInfoSecurityTypeToWifiConfiguration(
+                        WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_OWE,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_OWE));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_WAPI_PSK));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_WAPI_CERT));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                convertWifiInfoSecurityTypeToWifiConfiguration(
+                        WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_OSEN,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_OSEN));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2,
+                convertWifiInfoSecurityTypeToWifiConfiguration(
+                        WifiInfo.SECURITY_TYPE_PASSPOINT_R1_R2));
+        assertEquals(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3,
+                convertWifiInfoSecurityTypeToWifiConfiguration(
+                        WifiInfo.SECURITY_TYPE_PASSPOINT_R3));
+        assertEquals(-1, convertWifiInfoSecurityTypeToWifiConfiguration(13));
+        assertEquals(-1,
+                convertWifiInfoSecurityTypeToWifiConfiguration(WifiInfo.SECURITY_TYPE_UNKNOWN));
+    }
+
+    /**
+     * Verify that adding and removing the security type for network ID behaves correctly
+     */
+    @Test
+    public void testAddAndRemoveSecurityTypeForNetworkId() {
+        List<Integer> securityList = Arrays.asList(
+                WifiConfiguration.SECURITY_TYPE_OPEN,
+                WifiConfiguration.SECURITY_TYPE_WEP,
+                WifiConfiguration.SECURITY_TYPE_PSK,
+                WifiConfiguration.SECURITY_TYPE_EAP,
+                WifiConfiguration.SECURITY_TYPE_SAE,
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                WifiConfiguration.SECURITY_TYPE_OWE,
+                WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
+                WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                WifiConfiguration.SECURITY_TYPE_OSEN,
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2,
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3
+        );
+
+        final int netId = 1;
+        if (!SdkLevel.isAtLeastS()) {
+            // INVALID_NET_ID should remain the same from either adding or removing
+            assertEquals(INVALID_NETWORK_ID, WifiConfigurationUtil.addSecurityTypeToNetworkId(
+                    INVALID_NETWORK_ID, WifiConfiguration.SECURITY_TYPE_OPEN));
+            assertEquals(INVALID_NETWORK_ID, WifiConfigurationUtil.removeSecurityTypeFromNetworkId(
+                    INVALID_NETWORK_ID));
+            // Add and then remove should result in the original netId
+            for (@WifiConfiguration.SecurityType int securityType : securityList) {
+                assertEquals(netId, WifiConfigurationUtil.removeSecurityTypeFromNetworkId(
+                        WifiConfigurationUtil.addSecurityTypeToNetworkId(
+                                netId, securityType)));
+            }
+            // Multiple removes should result in the same netId as a single remove
+            for (@WifiConfiguration.SecurityType int securityType : securityList) {
+                assertEquals(WifiConfigurationUtil.removeSecurityTypeFromNetworkId(netId),
+                        WifiConfigurationUtil.removeSecurityTypeFromNetworkId(
+                                WifiConfigurationUtil.removeSecurityTypeFromNetworkId(
+                                        WifiConfigurationUtil.addSecurityTypeToNetworkId(
+                                                netId, securityType))));
+            }
+            // A unique net id should be created for each security type added
+            assertEquals(securityList.size(), securityList.stream()
+                    .map(security -> addSecurityTypeToNetworkId(netId, security))
+                    .distinct()
+                    .count());
+        } else {
+            // Add should do nothing for SDK level S and above.
+            for (@WifiConfiguration.SecurityType int securityType : securityList) {
+                assertEquals(netId, addSecurityTypeToNetworkId(netId, securityType));
+            }
+        }
     }
 }

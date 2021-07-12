@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
 import static android.net.wifi.WifiManager.ALL_ZEROS_MAC_ADDRESS;
@@ -29,6 +30,7 @@ import android.net.StaticIpConfiguration;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
@@ -81,6 +83,9 @@ public class WifiConfigurationUtil {
             new Pair<>(MacAddress.BROADCAST_ADDRESS, MacAddress.BROADCAST_ADDRESS);
     private static final Pair<MacAddress, MacAddress> MATCH_ALL_BSSID_PATTERN =
             new Pair<>(ALL_ZEROS_MAC_ADDRESS, ALL_ZEROS_MAC_ADDRESS);
+
+    private static final int NETWORK_ID_SECURITY_MASK = 0xff;
+    private static final int NETWORK_ID_SECURITY_OFFSET = 23;
 
     /**
      * Checks if the provided |wepKeys| array contains any non-null value;
@@ -1061,6 +1066,9 @@ public class WifiConfigurationUtil {
                 if (shouldOmitAutoUpgradeParams(params)) continue;
                 WifiConfiguration legacyConfig = new WifiConfiguration(config);
                 legacyConfig.setSecurityParams(params);
+                legacyConfig.networkId = addSecurityTypeToNetworkId(
+                        legacyConfig.networkId,
+                        params.getSecurityType());
                 int securityType = params.getSecurityType();
                 if (securityType == SECURITY_TYPE_EAP) {
                     wpa2EnterpriseAdded = true;
@@ -1078,6 +1086,82 @@ public class WifiConfigurationUtil {
             }
         }
         return legacyConfigs;
+    }
+
+    /**
+     * Converts WifiInfo.SecurityType to WifiConfiguration.SecurityType
+     */
+    public static
+            @WifiConfiguration.SecurityType int convertWifiInfoSecurityTypeToWifiConfiguration(
+                    @WifiInfo.SecurityType int securityType) {
+        switch (securityType) {
+            case WifiInfo.SECURITY_TYPE_OPEN:
+                return WifiConfiguration.SECURITY_TYPE_OPEN;
+            case WifiInfo.SECURITY_TYPE_WEP:
+                return WifiConfiguration.SECURITY_TYPE_WEP;
+            case WifiInfo.SECURITY_TYPE_PSK:
+                return WifiConfiguration.SECURITY_TYPE_PSK;
+            case WifiInfo.SECURITY_TYPE_EAP:
+                return WifiConfiguration.SECURITY_TYPE_EAP;
+            case WifiInfo.SECURITY_TYPE_SAE:
+                return WifiConfiguration.SECURITY_TYPE_SAE;
+            case WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT:
+                return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
+            case WifiInfo.SECURITY_TYPE_OWE:
+                return WifiConfiguration.SECURITY_TYPE_OWE;
+            case WifiInfo.SECURITY_TYPE_WAPI_PSK:
+                return WifiConfiguration.SECURITY_TYPE_WAPI_PSK;
+            case WifiInfo.SECURITY_TYPE_WAPI_CERT:
+                return WifiConfiguration.SECURITY_TYPE_WAPI_CERT;
+            case WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE:
+                return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
+            case WifiInfo.SECURITY_TYPE_OSEN:
+                return WifiConfiguration.SECURITY_TYPE_OSEN;
+            case WifiInfo.SECURITY_TYPE_PASSPOINT_R1_R2:
+                return WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2;
+            case WifiInfo.SECURITY_TYPE_PASSPOINT_R3:
+                return WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3;
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Adds a WifiConfiguration.SecurityType value to a network ID to differentiate the network IDs
+     * of legacy single-type configurations derived from the same multi-type configuration.
+     *
+     * This method only works for SDK levels less than S, since those callers may expect a unique
+     * network ID for each single-type configuration. For SDK level S and above, this method returns
+     * the network ID as-is.
+     *
+     * @param netId network id to add the security type to
+     * @param securityType WifiConfiguration security type to encode
+     * @return network id with security type encoded in it
+     */
+    public static int addSecurityTypeToNetworkId(
+            int netId, @WifiConfiguration.SecurityType int securityType) {
+        if (netId == INVALID_NETWORK_ID || SdkLevel.isAtLeastS()) {
+            return netId;
+        }
+        return removeSecurityTypeFromNetworkId(netId)
+                | ((securityType & NETWORK_ID_SECURITY_MASK) << NETWORK_ID_SECURITY_OFFSET);
+    }
+
+    /**
+     * Removes the security type value of a network ID to have it match with internal network IDs.
+     *
+     * This method only works for SDK levels less than S. It should be used on network ID passed in
+     * from external callers, since those callers are be exposed to network IDs with an embedded
+     * security type value. For SDK levels S and above, this method returns the network ID as-is.
+     *
+     * @param netId network id to remove the security type from
+     * @return network id with the security type removed
+     */
+    public static int removeSecurityTypeFromNetworkId(int netId) {
+        if (netId == INVALID_NETWORK_ID || SdkLevel.isAtLeastS()) {
+            return netId;
+        }
+        return netId & ~(NETWORK_ID_SECURITY_MASK << NETWORK_ID_SECURITY_OFFSET);
     }
 
     private static boolean validateEnterpriseConfig(WifiConfiguration config) {
