@@ -724,7 +724,7 @@ public class WifiConfigurationTestUtil {
     }
 
 
-   /**
+    /**
      * Asserts that the 2 WifiConfigurations are equal. This only compares the elements saved
      * for softAp used.
      */
@@ -850,6 +850,26 @@ public class WifiConfigurationTestUtil {
         assertEquals(expected.fromWifiNetworkSuggestion, actual.fromWifiNetworkSuggestion);
         assertEquals(expected.fromWifiNetworkSpecifier, actual.fromWifiNetworkSpecifier);
         assertEquals(expected.trusted, actual.trusted);
+    }
+
+    /**
+     * Assert that the 2 lists of WifiConfigurations are equal.
+     */
+    public static void assertConfigurationsEqual(
+            List<WifiConfiguration> expected, List<WifiConfiguration> actual) {
+        assertEquals(expected.size(), actual.size());
+        for (WifiConfiguration expectedConfiguration : expected) {
+            String expectedConfigKey = expectedConfiguration.getProfileKey();
+            boolean didCompare = false;
+            for (WifiConfiguration actualConfiguration : actual) {
+                String actualConfigKey = actualConfiguration.getProfileKey();
+                if (actualConfigKey.equals(expectedConfigKey)) {
+                    assertConfigurationEqual(expectedConfiguration, actualConfiguration);
+                    didCompare = true;
+                }
+            }
+            assertTrue(didCompare);
+        }
     }
 
     /**
