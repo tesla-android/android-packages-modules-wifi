@@ -519,7 +519,7 @@ public class XmlUtilTest extends WifiBaseTest {
 
     /**
      * Verify that when deserializing a XML RANDOMIZATION_PERSISTENT is automatically upgraded to
-     * RANDOIMZATION_NON_PERSISTENT.
+     * RANDOIMZATION_ENHANCED.
      * @throws IOException
      * @throws XmlPullParserException
      */

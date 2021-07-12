@@ -192,11 +192,11 @@ public class WifiConfigManager {
      * 4 hours.
      */
     @VisibleForTesting
-    protected static final long NON_PERSISTENT_MAC_WAIT_AFTER_DISCONNECT_MS = 4 * 60 * 60 * 1000;
+    protected static final long ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS = 4 * 60 * 60 * 1000;
     @VisibleForTesting
-    protected static final long NON_PERSISTENT_MAC_REFRESH_MS_MIN = 30 * 60 * 1000; // 30 minutes
+    protected static final long ENHANCED_MAC_REFRESH_MS_MIN = 30 * 60 * 1000; // 30 minutes
     @VisibleForTesting
-    protected static final long NON_PERSISTENT_MAC_REFRESH_MS_MAX = 24 * 60 * 60 * 1000; // 24 hours
+    protected static final long ENHANCED_MAC_REFRESH_MS_MAX = 24 * 60 * 60 * 1000; // 24 hours
 
     private static final MacAddress DEFAULT_MAC_ADDRESS =
             MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS);
@@ -212,8 +212,8 @@ public class WifiConfigManager {
     @VisibleForTesting
     public static final int SCAN_RESULT_MISSING_COUNT_THRESHOLD = 1;
     @VisibleForTesting
-    protected static final String NON_PERSISTENT_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG =
-            "non_persistent_mac_randomization_force_enabled";
+    protected static final String ENHANCED_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG =
+            "enhanced_mac_randomization_force_enabled";
     private static final int NON_CARRIER_MERGED_NETWORKS_SCAN_CACHE_QUERY_DURATION_MS =
             10 * 60 * 1000; // 10 minutes
 
@@ -420,24 +420,24 @@ public class WifiConfigManager {
     }
 
     /**
-     * Determine if the framework should perform non-persistent MAC randomization when connecting
+     * Determine if the framework should perform enhanced MAC randomization when connecting
      * to the SSID or FQDN in the input WifiConfiguration.
      * @param config
      * @return
      */
-    public boolean shouldUseNonPersistentRandomization(WifiConfiguration config) {
+    public boolean shouldUseEnhancedRandomization(WifiConfiguration config) {
         if (!isMacRandomizationSupported()
                 || config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_NONE) {
             return false;
         }
 
-        // Use non-persistent randomization if it's forced on by dev option
+        // Use enhanced randomization if it's forced on by dev option
         if (mFrameworkFacade.getIntegerSetting(mContext,
-                NON_PERSISTENT_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG, 0) == 1) {
+                ENHANCED_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG, 0) == 1) {
             return true;
         }
 
-        // use non-persistent or persistent randomization if configured to do so.
+        // use enhanced or persistent randomization if configured to do so.
         if (config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_NON_PERSISTENT) {
             return true;
         }
@@ -449,37 +449,37 @@ public class WifiConfigManager {
         if (config.getIpConfiguration().getIpAssignment() == IpConfiguration.IpAssignment.STATIC) {
             return false;
         }
-        if (config.isOpenNetwork() && shouldEnableNonPersistentRandomizationOnOpenNetwork(config)) {
+        if (config.isOpenNetwork() && shouldEnableEnhancedRandomizationOnOpenNetwork(config)) {
             return true;
         }
         if (config.isPasspoint()) {
-            return isNetworkOptInForNonPersistentRandomization(config.FQDN);
+            return isNetworkOptInForEnhancedRandomization(config.FQDN);
         } else {
-            return isNetworkOptInForNonPersistentRandomization(config.SSID);
+            return isNetworkOptInForEnhancedRandomization(config.SSID);
         }
     }
 
-    private boolean shouldEnableNonPersistentRandomizationOnOpenNetwork(WifiConfiguration config) {
-        if (!mDeviceConfigFacade.allowNonPersistentMacRandomizationOnOpenSsids()
+    private boolean shouldEnableEnhancedRandomizationOnOpenNetwork(WifiConfiguration config) {
+        if (!mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()
                 && !mContext.getResources().getBoolean(
-                        R.bool.config_wifiAllowNonPersistentMacRandomizationOnOpenSsids)) {
+                        R.bool.config_wifiAllowEnhancedMacRandomizationOnOpenSsids)) {
             return false;
         }
         return config.getNetworkSelectionStatus().hasEverConnected()
                 && config.getNetworkSelectionStatus().hasNeverDetectedCaptivePortal();
     }
 
-    private boolean isNetworkOptInForNonPersistentRandomization(String ssidOrFqdn) {
+    private boolean isNetworkOptInForEnhancedRandomization(String ssidOrFqdn) {
         Set<String> perDeviceSsidBlocklist = new ArraySet<>(mContext.getResources().getStringArray(
-                R.array.config_wifi_non_persistent_randomization_ssid_blocklist));
-        if (mDeviceConfigFacade.getNonPersistentMacRandomizationSsidBlocklist().contains(ssidOrFqdn)
+                R.array.config_wifi_aggressive_randomization_ssid_blocklist));
+        if (mDeviceConfigFacade.getAggressiveMacRandomizationSsidBlocklist().contains(ssidOrFqdn)
                 || perDeviceSsidBlocklist.contains(ssidOrFqdn)) {
             return false;
         }
         Set<String> perDeviceSsidAllowlist = new ArraySet<>(mContext.getResources().getStringArray(
-                R.array.config_wifi_non_persistent_randomization_ssid_allowlist));
-        return mDeviceConfigFacade.getNonPersistentMacRandomizationSsidAllowlist()
-                .contains(ssidOrFqdn) || perDeviceSsidAllowlist.contains(ssidOrFqdn);
+                R.array.config_wifi_aggressive_randomization_ssid_allowlist));
+        return mDeviceConfigFacade.getAggressiveMacRandomizationSsidAllowlist().contains(ssidOrFqdn)
+                || perDeviceSsidAllowlist.contains(ssidOrFqdn);
     }
 
     @VisibleForTesting
@@ -543,8 +543,8 @@ public class WifiConfigManager {
             return;
         }
         long expireDurationMs = (dhcpLeaseSeconds & 0xffffffffL) * 1000;
-        expireDurationMs = Math.max(NON_PERSISTENT_MAC_REFRESH_MS_MIN, expireDurationMs);
-        expireDurationMs = Math.min(NON_PERSISTENT_MAC_REFRESH_MS_MAX, expireDurationMs);
+        expireDurationMs = Math.max(ENHANCED_MAC_REFRESH_MS_MIN, expireDurationMs);
+        expireDurationMs = Math.min(ENHANCED_MAC_REFRESH_MS_MAX, expireDurationMs);
         internalConfig.randomizedMacExpirationTimeMs = mClock.getWallClockMillis()
                 + expireDurationMs;
     }
@@ -572,7 +572,7 @@ public class WifiConfigManager {
     }
 
     /**
-     * This method is called before connecting to a network that has non-persistent randomization
+     * This method is called before connecting to a network that has "enhanced randomization"
      * enabled, and will re-randomize the MAC address if needed.
      * @param config the WifiConfiguration to make the update
      * @return the updated MacAddress
@@ -580,7 +580,7 @@ public class WifiConfigManager {
     private MacAddress updateRandomizedMacIfNeeded(WifiConfiguration config) {
         boolean shouldUpdateMac = config.randomizedMacExpirationTimeMs
                 < mClock.getWallClockMillis() || mClock.getWallClockMillis()
-                - config.randomizedMacLastModifiedTimeMs >= NON_PERSISTENT_MAC_REFRESH_MS_MAX;
+                - config.randomizedMacLastModifiedTimeMs >= ENHANCED_MAC_REFRESH_MS_MAX;
         if (!shouldUpdateMac) {
             return config.getRandomizedMacAddress();
         }
@@ -592,12 +592,12 @@ public class WifiConfigManager {
     /**
      * Returns the randomized MAC address that should be used for this WifiConfiguration.
      * This API may return a randomized MAC different from the persistent randomized MAC if
-     * the WifiConfiguration is configured for non-persistent MAC randomization.
+     * the WifiConfiguration is configured for enhanced MAC randomization.
      * @param config
      * @return MacAddress
      */
     public MacAddress getRandomizedMacAndUpdateIfNeeded(WifiConfiguration config) {
-        MacAddress mac = shouldUseNonPersistentRandomization(config)
+        MacAddress mac = shouldUseEnhancedRandomization(config)
                 ? updateRandomizedMacIfNeeded(config)
                 : setRandomizedMacToPersistentMac(config);
         return mac;
@@ -2093,7 +2093,7 @@ public class WifiConfigManager {
         }
         config.lastDisconnected = mClock.getWallClockMillis();
         config.randomizedMacExpirationTimeMs = Math.max(config.randomizedMacExpirationTimeMs,
-                config.lastDisconnected + NON_PERSISTENT_MAC_WAIT_AFTER_DISCONNECT_MS);
+                config.lastDisconnected + ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS);
         // If the network hasn't been disabled, mark it back as
         // enabled after disconnection.
         if (config.status == WifiConfiguration.Status.CURRENT) {
@@ -3169,11 +3169,11 @@ public class WifiConfigManager {
 
     /**
      * Initializes the randomized MAC address for an internal WifiConfiguration depending on
-     * whether it should use non-persistent randomization.
+     * whether it should use enhanced randomization.
      * @param config
      */
     private void initRandomizedMacForInternalConfig(WifiConfiguration internalConfig) {
-        MacAddress randomizedMac = shouldUseNonPersistentRandomization(internalConfig)
+        MacAddress randomizedMac = shouldUseEnhancedRandomization(internalConfig)
                 ? MacAddressUtils.createRandomUnicastAddress()
                 : getPersistentMacAddress(internalConfig);
         if (randomizedMac != null) {
