@@ -8181,11 +8181,15 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 SecurityParams.createSecurityParamsBySecurityType(
                         WifiConfiguration.SECURITY_TYPE_EAP));
         expectedConfigs.add(tmpConfig);
-        tmpConfig = new WifiConfiguration(testConfigs.get(2));
-        tmpConfig.setSecurityParams(
-                SecurityParams.createSecurityParamsBySecurityType(
-                        WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
-        expectedConfigs.add(tmpConfig);
+        if (SdkLevel.isAtLeastS()) {
+            // WPA2/WPA3-Enterprise config maps only to WPA2-Enterprise for R, but should map to
+            // both WPA2 and WPA3-Enterprise for S and beyond.
+            tmpConfig = new WifiConfiguration(testConfigs.get(2));
+            tmpConfig.setSecurityParams(
+                    SecurityParams.createSecurityParamsBySecurityType(
+                            WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+            expectedConfigs.add(tmpConfig);
+        }
         return expectedConfigs;
     }
 

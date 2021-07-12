@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
 import static android.net.wifi.WifiManager.ALL_ZEROS_MAC_ADDRESS;
 
 import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
@@ -36,6 +38,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 
 import java.nio.charset.StandardCharsets;
@@ -1051,12 +1054,27 @@ public class WifiConfigurationUtil {
             List<WifiConfiguration> configs) {
         List<WifiConfiguration> legacyConfigs = new ArrayList<>();
         for (WifiConfiguration config : configs) {
+            boolean wpa2EnterpriseAdded = false;
+            WifiConfiguration wpa3EnterpriseConfig = null;
             for (SecurityParams params: config.getSecurityParamsList()) {
                 if (!params.isEnabled()) continue;
                 if (shouldOmitAutoUpgradeParams(params)) continue;
                 WifiConfiguration legacyConfig = new WifiConfiguration(config);
                 legacyConfig.setSecurityParams(params);
+                int securityType = params.getSecurityType();
+                if (securityType == SECURITY_TYPE_EAP) {
+                    wpa2EnterpriseAdded = true;
+                } else if (securityType == SECURITY_TYPE_EAP_WPA3_ENTERPRISE) {
+                    wpa3EnterpriseConfig = legacyConfig;
+                    continue;
+                }
                 legacyConfigs.add(legacyConfig);
+            }
+            if (wpa3EnterpriseConfig != null && (SdkLevel.isAtLeastS() || !wpa2EnterpriseAdded)) {
+                // R Wifi settings maps WPA3-Enterprise to the same security type as
+                // WPA2-Enterprise, which causes a DuplicateKeyException. For R, we should only
+                // return the WPA2-Enterprise config if we have both.
+                legacyConfigs.add(wpa3EnterpriseConfig);
             }
         }
         return legacyConfigs;
