@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.BugreportManager;
 import android.os.BugreportParams;
@@ -352,6 +353,8 @@ public class WifiDiagnostics {
      * Initiates a system-level bug report if there is no bug report taken recently.
      * This is done in a non-blocking fashion.
      */
+    // TODO(b/193460475): BugReportManager changes from SystemApi to PublicApi, not a new API
+    @SuppressLint("NewApi")
     public void takeBugReport(String bugTitle, String bugDetail) {
         if (mBuildProperties.isUserBuild()
                 || !mContext.getResources().getBoolean(
