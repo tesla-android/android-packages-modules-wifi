@@ -379,7 +379,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final boolean TEST_VAL_IS_LOCATION_ENABLED = true;
     private static final boolean IS_SCANNING_ALWAYS_ENABLED = true;
     private static final boolean IS_VERBOSE_LOGGING_ENABLED = true;
-    private static final boolean IS_ENHANCED_MAC_RANDOMIZATION_FORCE_ENABLED = true;
+    private static final boolean IS_NON_PERSISTENT_MAC_RANDOMIZATION_FORCE_ENABLED = true;
     private static final boolean IS_WIFI_WAKE_ENABLED = true;
     private static final int NUM_EMPTY_SCAN_RESULTS = 19;
     private static final int NUM_NON_EMPTY_SCAN_RESULTS = 23;
@@ -763,8 +763,8 @@ public class WifiMetricsTest extends WifiBaseTest {
         mWifiMetrics.setIsLocationEnabled(TEST_VAL_IS_LOCATION_ENABLED);
         mWifiMetrics.setIsScanningAlwaysEnabled(IS_SCANNING_ALWAYS_ENABLED);
         mWifiMetrics.setVerboseLoggingEnabled(IS_VERBOSE_LOGGING_ENABLED);
-        mWifiMetrics.setEnhancedMacRandomizationForceEnabled(
-                IS_ENHANCED_MAC_RANDOMIZATION_FORCE_ENABLED);
+        mWifiMetrics.setNonPersistentMacRandomizationForceEnabled(
+                IS_NON_PERSISTENT_MAC_RANDOMIZATION_FORCE_ENABLED);
         mWifiMetrics.setWifiWakeEnabled(IS_WIFI_WAKE_ENABLED);
 
         for (int i = 0; i < NUM_EMPTY_SCAN_RESULTS; i++) {
@@ -1314,7 +1314,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         assertEquals("mDecodedProto.isScanningAlwaysEnabled == IS_SCANNING_ALWAYS_ENABLED",
                 IS_SCANNING_ALWAYS_ENABLED, mDecodedProto.isScanningAlwaysEnabled);
         assertEquals(IS_VERBOSE_LOGGING_ENABLED, mDecodedProto.isVerboseLoggingEnabled);
-        assertEquals(IS_ENHANCED_MAC_RANDOMIZATION_FORCE_ENABLED,
+        assertEquals(IS_NON_PERSISTENT_MAC_RANDOMIZATION_FORCE_ENABLED,
                 mDecodedProto.isEnhancedMacRandomizationForceEnabled);
         assertEquals(IS_WIFI_WAKE_ENABLED, mDecodedProto.isWifiWakeEnabled);
         assertEquals("mDecodedProto.numEmptyScanResults == NUM_EMPTY_SCAN_RESULTS",
