@@ -180,8 +180,8 @@ public class DeviceConfigFacade {
     private int mHealthMonitorRatioThrNumerator;
     private int mHealthMonitorMinRssiThrDbm;
     private Set<String> mRandomizationFlakySsidHotlist;
-    private Set<String> mNonPersistentMacRandomizationSsidAllowlist;
-    private Set<String> mNonPersistentMacRandomizationSsidBlocklist;
+    private Set<String> mAggressiveMacRandomizationSsidAllowlist;
+    private Set<String> mAggressiveMacRandomizationSsidBlocklist;
     private boolean mIsAbnormalConnectionFailureBugreportEnabled;
     private boolean mIsAbnormalDisconnectionBugreportEnabled;
     private int mHealthMonitorMinNumConnectionAttempt;
@@ -201,7 +201,7 @@ public class DeviceConfigFacade {
     private int mMinConfirmationDurationSendLowScoreMs;
     private int mMinConfirmationDurationSendHighScoreMs;
     private int mRssiThresholdNotSendLowScoreToCsDbm;
-    private boolean mAllowNonPersistentMacRandomizationOnOpenSsids;
+    private boolean mAllowEnhancedMacRandomizationOnOpenSsids;
     private int mTrafficStatsThresholdMaxKbyte;
     private int mBandwidthEstimatorLargeTimeConstantSec;
 
@@ -309,9 +309,9 @@ public class DeviceConfigFacade {
 
         mRandomizationFlakySsidHotlist =
                 getUnmodifiableSetQuoted("randomization_flaky_ssid_hotlist");
-        mNonPersistentMacRandomizationSsidAllowlist =
+        mAggressiveMacRandomizationSsidAllowlist =
                 getUnmodifiableSetQuoted("aggressive_randomization_ssid_allowlist");
-        mNonPersistentMacRandomizationSsidBlocklist =
+        mAggressiveMacRandomizationSsidBlocklist =
                 getUnmodifiableSetQuoted("aggressive_randomization_ssid_blocklist");
 
         mIsAbnormalConnectionFailureBugreportEnabled = DeviceConfig.getBoolean(NAMESPACE,
@@ -368,7 +368,7 @@ public class DeviceConfigFacade {
         mRssiThresholdNotSendLowScoreToCsDbm = DeviceConfig.getInt(NAMESPACE,
                 "rssi_threshold_not_send_low_score_to_cs_dbm",
                 DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
-        mAllowNonPersistentMacRandomizationOnOpenSsids = DeviceConfig.getBoolean(NAMESPACE,
+        mAllowEnhancedMacRandomizationOnOpenSsids = DeviceConfig.getBoolean(NAMESPACE,
                 "allow_enhanced_mac_randomization_on_open_ssids", false);
         mTrafficStatsThresholdMaxKbyte = DeviceConfig.getInt(NAMESPACE,
                 "traffic_stats_threshold_max_kbyte", DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB);
@@ -621,17 +621,17 @@ public class DeviceConfigFacade {
     }
 
     /**
-     * Gets the list of SSIDs for non-persistent MAC randomization.
+     * Gets the list of SSIDs for aggressive MAC randomization.
      */
-    public Set<String> getNonPersistentMacRandomizationSsidAllowlist() {
-        return mNonPersistentMacRandomizationSsidAllowlist;
+    public Set<String> getAggressiveMacRandomizationSsidAllowlist() {
+        return mAggressiveMacRandomizationSsidAllowlist;
     }
 
     /**
-     * Gets the list of SSIDs that non-persistent MAC randomization should not be used for.
+     * Gets the list of SSIDs that aggressive MAC randomization should not be used for.
      */
-    public Set<String> getNonPersistentMacRandomizationSsidBlocklist() {
-        return mNonPersistentMacRandomizationSsidBlocklist;
+    public Set<String> getAggressiveMacRandomizationSsidBlocklist() {
+        return mAggressiveMacRandomizationSsidBlocklist;
     }
     /**
      * Gets the feature flag for reporting abnormal connection failure.
@@ -771,10 +771,10 @@ public class DeviceConfigFacade {
     }
 
     /**
-     * Gets whether non-persistent MAC randomization should be allowed on open networks.
+     * Gets whether enhanced MAC randomization should be allowed on open networks.
      */
-    public boolean allowNonPersistentMacRandomizationOnOpenSsids() {
-        return mAllowNonPersistentMacRandomizationOnOpenSsids;
+    public boolean allowEnhancedMacRandomizationOnOpenSsids() {
+        return mAllowEnhancedMacRandomizationOnOpenSsids;
     }
 
     /**
