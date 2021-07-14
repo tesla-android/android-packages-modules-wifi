@@ -4659,7 +4659,9 @@ public class WifiServiceImpl extends BaseWifiService {
                         mDppManager.startDppAsConfiguratorInitiator(
                                 uid, packageName,
                                 mActiveModeWarden.getPrimaryClientModeManager().getInterfaceName(),
-                                binder, enrolleeUri, selectedNetworkId, netRole, callback)));
+                                binder, enrolleeUri,
+                                removeSecurityTypeFromNetworkId(selectedNetworkId), netRole,
+                                callback)));
     }
 
     /**

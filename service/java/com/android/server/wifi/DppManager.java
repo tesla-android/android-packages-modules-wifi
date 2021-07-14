@@ -593,7 +593,10 @@ public class DppManager {
                         mDppMetrics.updateDppEnrolleeResponderSuccess();
                     }
                     mDppRequestInfo.callback.onSuccessConfigReceived(
-                            networkUpdateResult.getNetworkId());
+                            WifiConfigurationUtil.addSecurityTypeToNetworkId(
+                                    networkUpdateResult.getNetworkId(),
+                                    newWifiConfiguration.getDefaultSecurityParams()
+                                            .getSecurityType()));
                 } else {
                     Log.e(TAG, "DPP configuration received, but failed to update network");
                     mDppMetrics.updateDppFailure(EasyConnectStatusCallback
