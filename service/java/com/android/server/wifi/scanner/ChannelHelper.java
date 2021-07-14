@@ -151,17 +151,18 @@ public abstract class ChannelHelper {
                 for (int j = 0; j < scanSettings.channels.length; ++j) {
                     addChannel(scanSettings.channels[j].frequency);
                 }
-            } else {
-                if (SdkLevel.isAtLeastS() && scanSettings.is6GhzPscOnlyEnabled()
-                        && is6GhzBandIncluded(scanSettings.band)) {
+                return;
+            }
+            if (SdkLevel.isAtLeastS()) {
+                if (scanSettings.is6GhzPscOnlyEnabled() && is6GhzBandIncluded(scanSettings.band)) {
                     // Modify the band to exclude 6Ghz since not all 6Ghz channels will be added.
                     int band = scanSettings.band & (~WifiScanner.WIFI_BAND_6_GHZ);
                     addBand(band);
                     add6GhzPscChannels();
-                } else {
-                    addBand(scanSettings.band);
+                    return;
                 }
             }
+            addBand(scanSettings.band);
         }
 
         /**
