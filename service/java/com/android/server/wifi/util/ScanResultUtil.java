@@ -88,7 +88,8 @@ public class ScanResultUtil {
      */
     public static boolean isScanResultForEapNetwork(ScanResult scanResult) {
         return (scanResult.capabilities.contains("EAP/SHA1")
-                        || scanResult.capabilities.contains("EAP/SHA256"))
+                        || scanResult.capabilities.contains("EAP/SHA256")
+                        || scanResult.capabilities.contains("EAP-FILS"))
                 && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
                 && !isScanResultForWpa3EnterpriseTransitionNetwork(scanResult);
     }
