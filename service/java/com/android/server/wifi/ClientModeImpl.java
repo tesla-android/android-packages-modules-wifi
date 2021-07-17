@@ -6129,6 +6129,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     /**
      * Helper method to set the allowed key management schemes from
      * scan result.
+     * When the AKM is updated, changes should be propagated to the
+     * actual saved network, and the correct AKM could be retrieved
+     * on selecting the security params.
      */
     private void updateAllowedKeyManagementSchemesFromScanResult(
             WifiConfiguration config, ScanResult scanResult) {
@@ -6137,6 +6140,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 && ScanResultUtil.isScanResultForFilsSha256Network(scanResult),
                 isFilsSha384Supported()
                 && ScanResultUtil.isScanResultForFilsSha384Network(scanResult));
+        mWifiConfigManager.updateFilsAkms(config.networkId,
+                config.isFilsSha256Enabled(), config.isFilsSha384Enabled());
     }
     /**
      * Update wifi configuration based on the matching scan result.
