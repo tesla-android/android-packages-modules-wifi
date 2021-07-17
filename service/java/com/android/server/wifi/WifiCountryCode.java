@@ -21,6 +21,7 @@ import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_DEFAULT_COUNT
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
+import android.net.wifi.WifiInfo;
 import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -50,6 +51,9 @@ import java.util.Set;
 public class WifiCountryCode {
     private static final String TAG = "WifiCountryCode";
     private static final String BOOT_DEFAULT_WIFI_COUNTRY_CODE = "ro.boot.wificountrycode";
+    private static final int PKT_COUNT_HIGH_PKT_PER_SEC = 16;
+    private static final int DISCONNECT_WIFI_COUNT_MAX = 1;
+    private static final String COUNTRY_CODE_WORLD = "00";
     private final Context mContext;
     private final TelephonyManager mTelephonyManager;
     private final ActiveModeWarden mActiveModeWarden;
@@ -79,6 +83,7 @@ public class WifiCountryCode {
     private String mTelephonyCountryTimestamp = null;
     private String mDriverCountryTimestamp = null;
     private String mReadyTimestamp = null;
+    private int mDisconnectWifiToForceUpdateCount = 0;
 
     private class ModeChangeCallbackInternal implements ActiveModeWarden.ModeChangeCallback {
         @Override
@@ -315,7 +320,7 @@ public class WifiCountryCode {
         // Empty country code.
         if (TextUtils.isEmpty(countryCode)) {
             if (mContext.getResources()
-                        .getBoolean(R.bool.config_wifi_revert_country_code_on_cellular_loss)) {
+                    .getBoolean(R.bool.config_wifi_revert_country_code_on_cellular_loss)) {
                 Log.d(TAG, "Received empty country code, reset to default country code");
                 mTelephonyCountryCode = null;
             }
@@ -343,9 +348,52 @@ public class WifiCountryCode {
             updateCountryCode();
         } else {
             Log.d(TAG, "skip update supplicant not ready yet");
+            disconnectWifiToForceUpdateIfNeeded();
         }
 
         return true;
+    }
+
+    private void disconnectWifiToForceUpdateIfNeeded() {
+        if (shouldDisconnectWifiToForceUpdate()) {
+            Log.d(TAG, "Disconnect wifi to force update");
+            for (ClientModeManager cmm :
+                    mActiveModeWarden.getInternetConnectivityClientModeManagers()) {
+                if (!cmm.isConnected()) {
+                    continue;
+                }
+                cmm.disconnect();
+            }
+            mDisconnectWifiToForceUpdateCount++;
+        }
+    }
+
+    private boolean shouldDisconnectWifiToForceUpdate() {
+        if (mTelephonyCountryCode == null || mTelephonyCountryCode.equals(mDriverCountryCode)) {
+            return false;
+        }
+
+        if (mDisconnectWifiToForceUpdateCount >= DISCONNECT_WIFI_COUNT_MAX) {
+            return false;
+        }
+
+        if (mDriverCountryCode != null
+                && !mDriverCountryCode.equalsIgnoreCase(COUNTRY_CODE_WORLD)) {
+            return false;
+        }
+
+        for (ClientModeManager cmm :
+                mActiveModeWarden.getInternetConnectivityClientModeManagers()) {
+            if (!cmm.isConnected()) {
+                continue;
+            }
+            WifiInfo wifiInfo = cmm.syncRequestConnectionInfo();
+            if (wifiInfo.getSuccessfulTxPacketsPerSecond() < PKT_COUNT_HIGH_PKT_PER_SEC
+                    && wifiInfo.getSuccessfulRxPacketsPerSecond() < PKT_COUNT_HIGH_PKT_PER_SEC) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -399,12 +447,12 @@ public class WifiCountryCode {
     }
 
     /**
-     * Method to dump the current state of this WifiCounrtyCode object.
+     * Method to dump the current state of this WifiCountryCode object.
      */
     public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("mRevertCountryCodeOnCellularLoss: "
                 + mContext.getResources().getBoolean(
-                        R.bool.config_wifi_revert_country_code_on_cellular_loss));
+                R.bool.config_wifi_revert_country_code_on_cellular_loss));
         pw.println("DefaultCountryCode(system property): " + getOemDefaultCountryCode());
         pw.println("DefaultCountryCode(config store): "
                 + mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE));
@@ -416,6 +464,7 @@ public class WifiCountryCode {
         pw.println("mReadyTimestamp: " + mReadyTimestamp);
         pw.println("isReady: " + isReady());
         pw.println("mAmmToReadyForChangeMap: " + mAmmToReadyForChangeMap);
+        pw.println("mDisconnectWifiToForceUpdateCount: " + mDisconnectWifiToForceUpdateCount);
     }
 
     private void updateCountryCode() {
@@ -426,7 +475,7 @@ public class WifiCountryCode {
         // There are two reasons:
         // 1. Wpa supplicant may silently modify the country code.
         // 2. If Wifi restarted therefore wpa_supplicant also restarted,
-        // the country code counld be reset to '00' by wpa_supplicant.
+        // the country code could be reset to '00' by wpa_supplicant.
         if (country != null) {
             setCountryCodeNative(country);
         }
@@ -497,4 +546,3 @@ public class WifiCountryCode {
         }
     }
 }
-
