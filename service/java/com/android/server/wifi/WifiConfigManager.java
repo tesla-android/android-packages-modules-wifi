@@ -3760,4 +3760,18 @@ public class WifiConfigManager {
         }
         return linkedNetworks;
     }
+
+    /**
+     * This method updates FILS AKMs to the internal network.
+     *
+     * @param networkId networkId corresponding to the network to be updated.
+     */
+    public void updateFilsAkms(int networkId,
+            boolean isFilsSha256Supported, boolean isFilsSha384Supported) {
+        WifiConfiguration internalConfig = getInternalConfiguredNetwork(networkId);
+        if (internalConfig == null) {
+            return;
+        }
+        internalConfig.enableFils(isFilsSha256Supported, isFilsSha384Supported);
+    }
 }
