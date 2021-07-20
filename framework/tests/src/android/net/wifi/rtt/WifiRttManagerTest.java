@@ -467,6 +467,10 @@ public class WifiRttManagerTest {
         ScanResult.InformationElement vsa = new ScanResult.InformationElement();
         vsa.id = ScanResult.InformationElement.EID_VSA;
 
+        ScanResult.InformationElement heCap = new ScanResult.InformationElement();
+        heCap.id = ScanResult.InformationElement.EID_EXTENSION_PRESENT;
+        heCap.idExt = ScanResult.InformationElement.EID_EXT_HE_CAPABILITIES;
+
         // no IE
         ScanResult scan = new ScanResult();
         scan.BSSID = "00:01:02:03:04:05";
@@ -503,5 +507,24 @@ public class WifiRttManagerTest {
         config = ResponderConfig.fromScanResult(scan);
 
         assertEquals(ResponderConfig.PREAMBLE_HT, config.preamble);
+
+        // IE with VHT and HE on 5G
+
+        scan.frequency = 5200;
+        scan.informationElements[0] = vhtCap;
+        scan.informationElements[1] = heCap;
+
+        config = ResponderConfig.fromScanResult(scan);
+
+        assertEquals(ResponderConfig.PREAMBLE_VHT, config.preamble);
+
+        // IE with VHT and HE on 6G
+        scan.frequency = 5935;
+        scan.informationElements[0] = vhtCap;
+        scan.informationElements[1] = heCap;
+
+        config = ResponderConfig.fromScanResult(scan);
+
+        assertEquals(ResponderConfig.PREAMBLE_HE, config.preamble);
     }
 }
