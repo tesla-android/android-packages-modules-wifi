@@ -259,6 +259,25 @@ public class ScanResultUtilTest extends WifiBaseTest {
     }
 
     /**
+     * Test that provided network supports FT/EAP AKM.
+     */
+    @Test
+    public void testFtEapAkmSupportedNetwork() {
+        final String ssid = "FT-EAP-AP";
+        String caps = " [WPA2-FT/EAP-CCMP][RSN-FT/EAP-CCMP][ESS]";
+
+        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+                "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
+                0, true);
+
+        input.informationElements = new InformationElement[] {
+                createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
+        };
+
+        assertTrue(ScanResultUtil.isScanResultForEapNetwork(input));
+    }
+
+    /**
      * Test that provided network supports FILS SHA256 AKM.
      */
     @Test
