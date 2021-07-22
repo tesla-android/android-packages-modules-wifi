@@ -2687,6 +2687,7 @@ public class WifiServiceImpl extends BaseWifiService {
             WifiConfiguration config, String packageName) {
         int pid = Binder.getCallingPid();
         int uid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
         boolean hasPermission = isPrivileged(pid, uid)
                 || isDeviceOrProfileOwner(uid, packageName)
                 || mWifiPermissionsUtil.isSystem(packageName, uid);
