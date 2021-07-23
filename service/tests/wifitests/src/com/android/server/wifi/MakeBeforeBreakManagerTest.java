@@ -246,6 +246,9 @@ public class MakeBeforeBreakManagerTest extends WifiBaseTest {
         // captive portal network detected on new primary CMM
         mCmiListenerCaptor.getValue().onCaptivePortalDetected(mNewPrimaryCmm);
 
+        // we should disable wifi state change broadcast before stopping it.
+        verify(mOldPrimaryCmm).setWifiStateChangeBroadcastEnabled(false);
+
         // we should stop the old primary
         verify(mOldPrimaryCmm).stop();
 

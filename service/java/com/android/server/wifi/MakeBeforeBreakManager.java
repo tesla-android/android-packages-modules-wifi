@@ -248,6 +248,7 @@ public class MakeBeforeBreakManager {
             Log.i(TAG, "onCaptivePortalDetected: Current primary is null, nothing to stop");
         } else {
             Log.i(TAG, "onCaptivePortalDetected: stopping current primary CMM");
+            currentPrimary.setWifiStateChangeBroadcastEnabled(false);
             currentPrimary.stop();
         }
         // Once the currentPrimary teardown completes, recoverPrimary() will make the Captive
