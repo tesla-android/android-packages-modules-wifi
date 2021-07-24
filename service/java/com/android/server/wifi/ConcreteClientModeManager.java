@@ -137,6 +137,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
     private RoleChangeInfo mTargetRoleChangeInfo;
     private boolean mVerboseLoggingEnabled = false;
     private int mActiveSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private boolean mWifiStateChangeBroadcastEnabled = true;
     /**
      * mClientModeImpl is only non-null when in {@link ClientModeStateMachine.ConnectModeState} -
      * it will be null in all other states
@@ -189,6 +190,14 @@ public class ConcreteClientModeManager implements ClientModeManager {
 
     private String getTag() {
         return TAG + "[" + (mClientInterfaceName == null ? "unknown" : mClientInterfaceName) + "]";
+    }
+
+    /**
+     * Sets whether to send WIFI_STATE_CHANGED broadcast for this ClientModeManager.
+     * @param enabled
+     */
+    public void setWifiStateChangeBroadcastEnabled(boolean enabled) {
+        mWifiStateChangeBroadcastEnabled = enabled;
     }
 
     /**
@@ -592,7 +601,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
             // do not need to broadcast failure to system
             return;
         }
-        if (role != ROLE_CLIENT_PRIMARY) {
+        if (role != ROLE_CLIENT_PRIMARY || !mWifiStateChangeBroadcastEnabled) {
             // do not raise public broadcast unless this is the primary client mode manager
             return;
         }
