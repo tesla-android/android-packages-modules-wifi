@@ -410,6 +410,35 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that no more public broadcasts are sent out after
+     * setWifiStateChangeBroadcastEnabled(false) is called.
+     */
+    @Test
+    public void testDisableWifiStateChangedBroadcasts() throws Exception {
+        startClientInConnectModeAndVerifyEnabled();
+
+        mClientModeManager.setWifiStateChangeBroadcastEnabled(false);
+        mClientModeManager.stop();
+        mLooper.dispatchAll();
+
+        verify(mClientModeImpl).stop();
+        assertEquals(WIFI_STATE_DISABLED, mClientModeManager.syncGetWifiState());
+
+        // Ensure that only public broadcasts for the "start" events were sent.
+        ArgumentCaptor<Intent> intentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, atLeastOnce()).sendStickyBroadcastAsUser(intentCaptor.capture(),
+                eq(UserHandle.ALL));
+
+        List<Intent> intents = intentCaptor.getAllValues();
+        assertEquals(2, intents.size());
+        Log.d(TAG, "captured intents: " + intents);
+        checkWifiConnectModeStateChangedBroadcast(intents.get(0), WIFI_STATE_ENABLING,
+                WIFI_STATE_DISABLED);
+        checkWifiConnectModeStateChangedBroadcast(intents.get(1), WIFI_STATE_ENABLED,
+                WIFI_STATE_ENABLING);
+    }
+
+    /**
      * Switch ClientModeManager from Connect mode to ScanOnly mode.
      */
     @Test
