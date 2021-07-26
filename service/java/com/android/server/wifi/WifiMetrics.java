@@ -1836,7 +1836,7 @@ public class WifiMetrics {
                         config.macRandomizationSetting
                         != WifiConfiguration.RANDOMIZATION_NONE;
                 currentConnectionEvent.mConnectionEvent.useAggressiveMac =
-                        mWifiConfigManager.shouldUseEnhancedRandomization(config);
+                        mWifiConfigManager.shouldUseNonPersistentRandomization(config);
                 currentConnectionEvent.mConnectionEvent.connectionNominator =
                         mNetworkIdToNominatorId.get(config.networkId,
                                 WifiMetricsProto.ConnectionEvent.NOMINATOR_UNKNOWN);
@@ -2215,9 +2215,9 @@ public class WifiMetrics {
     }
 
     /**
-     * Developer options toggle value for enhanced MAC randomization.
+     * Developer options toggle value for non-persistent MAC randomization.
      */
-    public void setEnhancedMacRandomizationForceEnabled(boolean enabled) {
+    public void setNonPersistentMacRandomizationForceEnabled(boolean enabled) {
         synchronized (mLock) {
             mWifiLogProto.isEnhancedMacRandomizationForceEnabled = enabled;
         }

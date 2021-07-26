@@ -20,7 +20,6 @@ import static com.android.dx.mockito.inline.extended.ExtendedMockito.verify;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
-import static org.mockito.MockitoAnnotations.*;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.Context;
@@ -181,9 +180,9 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(Collections.emptySet(),
                 mDeviceConfigFacade.getRandomizationFlakySsidHotlist());
         assertEquals(Collections.emptySet(),
-                mDeviceConfigFacade.getAggressiveMacRandomizationSsidAllowlist());
+                mDeviceConfigFacade.getNonPersistentMacRandomizationSsidAllowlist());
         assertEquals(Collections.emptySet(),
-                mDeviceConfigFacade.getAggressiveMacRandomizationSsidBlocklist());
+                mDeviceConfigFacade.getNonPersistentMacRandomizationSsidBlocklist());
         assertEquals(false, mDeviceConfigFacade.isAbnormalConnectionFailureBugreportEnabled());
         assertEquals(false, mDeviceConfigFacade.isAbnormalDisconnectionBugreportEnabled());
         assertEquals(DeviceConfigFacade.DEFAULT_HEALTH_MONITOR_MIN_NUM_CONNECTION_ATTEMPT,
@@ -216,7 +215,7 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 mDeviceConfigFacade.getMinConfirmationDurationSendHighScoreMs());
         assertEquals(DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM,
                 mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
-        assertEquals(false, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(false, mDeviceConfigFacade.allowNonPersistentMacRandomizationOnOpenSsids());
         assertEquals(DeviceConfigFacade.DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB,
                 mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
         assertEquals(DeviceConfigFacade.DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC,
@@ -383,9 +382,9 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(-67, mDeviceConfigFacade.getHealthMonitorMinRssiThrDbm());
         assertEquals(testSsidSet, mDeviceConfigFacade.getRandomizationFlakySsidHotlist());
         assertEquals(testSsidSet,
-                mDeviceConfigFacade.getAggressiveMacRandomizationSsidAllowlist());
+                mDeviceConfigFacade.getNonPersistentMacRandomizationSsidAllowlist());
         assertEquals(testSsidSet,
-                mDeviceConfigFacade.getAggressiveMacRandomizationSsidBlocklist());
+                mDeviceConfigFacade.getNonPersistentMacRandomizationSsidBlocklist());
         assertEquals(true, mDeviceConfigFacade.isAbnormalConnectionFailureBugreportEnabled());
         assertEquals(true, mDeviceConfigFacade.isAbnormalDisconnectionBugreportEnabled());
         assertEquals(20, mDeviceConfigFacade.getHealthMonitorMinNumConnectionAttempt());
@@ -406,7 +405,7 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(4000, mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs());
         assertEquals(1000, mDeviceConfigFacade.getMinConfirmationDurationSendHighScoreMs());
         assertEquals(-70, mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
-        assertEquals(true, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(true, mDeviceConfigFacade.allowNonPersistentMacRandomizationOnOpenSsids());
         assertEquals(5000, mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
         assertEquals(30, mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec());
     }

@@ -290,9 +290,9 @@
     <!-- Indicates that connected MAC randomization is supported on this device -->
     <bool translatable="false" name="config_wifi_connected_mac_randomization_supported">false</bool>
 
-    <!-- Indicates that enhanced MAC randomization is allowed on open networks that do not
+    <!-- Indicates that non-persistent MAC randomization is allowed on open networks that do not
      use captive portals -->
-    <bool translatable="false" name="config_wifiAllowEnhancedMacRandomizationOnOpenSsids">false</bool>
+    <bool translatable="false" name="config_wifiAllowNonPersistentMacRandomizationOnOpenSsids">false</bool>
 
     <!-- Indicates that p2p MAC randomization is supported on this device -->
     <bool translatable="false" name="config_wifi_p2p_mac_randomization_supported">false</bool>
@@ -309,17 +309,17 @@
     <!-- Indicates that dynamic country code update in AP mode is supported on this device -->
     <bool translatable="false" name="config_wifiSoftApDynamicCountryCodeUpdateSupported">false</bool>
 
-    <!-- list of SSIDs to enable aggressive MAC randomization on -->
-    <string-array translatable="false" name="config_wifi_aggressive_randomization_ssid_allowlist">
+    <!-- list of SSIDs to enable non-persistent MAC randomization on -->
+    <string-array translatable="false" name="config_wifi_non_persistent_randomization_ssid_allowlist">
         <!-- SSIDs are expected in quoted format:
         <item>\"SSID_1\"</item>
         <item>\"SSID_2\"</item>
         -->
     </string-array>
 
-    <!-- list of SSIDs to disable aggressive MAC randomization on. If a SSID is in both the
-    allowlist and blocklist, then aggressive MAC randomization will still be disabled. -->
-    <string-array translatable="false" name="config_wifi_aggressive_randomization_ssid_blocklist">
+    <!-- list of SSIDs to disable non-persistent MAC randomization on. If a SSID is in both the
+    allowlist and blocklist, then non-persistent MAC randomization will still be disabled. -->
+    <string-array translatable="false" name="config_wifi_non_persistent_randomization_ssid_blocklist">
         <!-- SSIDs are expected in quoted format:
         <item>\"SSID_1\"</item>
         <item>\"SSID_2\"</item>
