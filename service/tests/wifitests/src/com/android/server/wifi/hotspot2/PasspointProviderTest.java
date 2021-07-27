@@ -345,7 +345,7 @@ public class PasspointProviderTest extends WifiBaseTest {
         assertFalse(wifiConfig.shared);
         assertEquals(credential.getRealm(), wifiEnterpriseConfig.getRealm());
         if (passpointConfig.isMacRandomizationEnabled()) {
-            if (passpointConfig.isEnhancedMacRandomizationEnabled()) {
+            if (passpointConfig.isNonPersistentMacRandomizationEnabled()) {
                 assertEquals(WifiConfiguration.RANDOMIZATION_NON_PERSISTENT,
                         wifiConfig.macRandomizationSetting);
             } else {
@@ -1343,14 +1343,14 @@ public class PasspointProviderTest extends WifiBaseTest {
     }
 
     /**
-     * Verify the WifiConfiguration is generated properly with settings to use enhanced MAC
+     * Verify the WifiConfiguration is generated properly with settings to use non-persistent MAC
      * randomization.
      */
     @Test
-    public void testMacRandomizationSettingEnhanced() throws Exception {
+    public void testMacRandomizationSettingNonPersistent() throws Exception {
         PasspointConfiguration config = generateTestPasspointConfiguration(
                 CredentialType.SIM, false);
-        config.setEnhancedMacRandomizationEnabled(true);
+        config.setNonPersistentMacRandomizationEnabled(true);
         mProvider = createProvider(config);
 
         assertEquals(WifiConfiguration.RANDOMIZATION_NON_PERSISTENT,
