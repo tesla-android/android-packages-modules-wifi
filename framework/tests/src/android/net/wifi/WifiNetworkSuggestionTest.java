@@ -971,21 +971,24 @@ public class WifiNetworkSuggestionTest {
         WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
                 .build();
-        assertEquals(false, suggestion.passpointConfiguration.isEnhancedMacRandomizationEnabled());
+        assertEquals(false,
+                suggestion.passpointConfiguration.isNonPersistentMacRandomizationEnabled());
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
                 .setMacRandomizationSetting(
                         WifiNetworkSuggestion.RANDOMIZATION_PERSISTENT)
                 .build();
-        assertEquals(false, suggestion.passpointConfiguration.isEnhancedMacRandomizationEnabled());
+        assertEquals(false,
+                suggestion.passpointConfiguration.isNonPersistentMacRandomizationEnabled());
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
                 .setMacRandomizationSetting(
                         WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT)
                 .build();
-        assertEquals(true, suggestion.passpointConfiguration.isEnhancedMacRandomizationEnabled());
+        assertEquals(true,
+                suggestion.passpointConfiguration.isNonPersistentMacRandomizationEnabled());
     }
 
     /**
