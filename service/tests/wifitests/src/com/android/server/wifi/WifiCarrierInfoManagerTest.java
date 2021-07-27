@@ -1186,6 +1186,14 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     }
 
     /**
+     * The matched Subscription ID should be invalid if the config is null;
+     */
+    @Test
+    public void getBestMatchSubscriptionIdWithNullConfig() {
+        assertEquals(INVALID_SUBID, mWifiCarrierInfoManager.getBestMatchSubscriptionId(null));
+    }
+
+    /**
      * Verify that the result is null if no active SIM is matched.
      */
     @Test
