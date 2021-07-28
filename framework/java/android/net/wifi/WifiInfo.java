@@ -1189,6 +1189,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         sb.append("SSID: ").append(getSSID())
                 .append(", BSSID: ").append(mBSSID == null ? none : mBSSID)
                 .append(", MAC: ").append(mMacAddress == null ? none : mMacAddress)
+                .append(", IP: ").append(mIpAddress)
                 .append(", Security type: ").append(mSecurityType)
                 .append(", Supplicant state: ")
                 .append(mSupplicantState == null ? none : mSupplicantState)
@@ -1207,7 +1208,17 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(", score: ").append(Integer.toString(score))
                 .append(", CarrierMerged: ").append(mCarrierMerged)
                 .append(", SubscriptionId: ").append(mSubscriptionId)
-                .append(", IsPrimary: ").append(mIsPrimary);
+                .append(", IsPrimary: ").append(mIsPrimary)
+                .append(", Trusted: ").append(mTrusted)
+                .append(", Ephemeral: ").append(mEphemeral)
+                .append(", OEM paid: ").append(mOemPaid)
+                .append(", OEM private: ").append(mOemPrivate)
+                .append(", OSU AP: ").append(mOsuAp)
+                .append(", FQDN: ").append(mFqdn == null ? none : mFqdn)
+                .append(", Provider friendly name: ")
+                .append(mProviderFriendlyName == null ? none : mProviderFriendlyName)
+                .append(", Requesting package name: ")
+                .append(mRequestingPackageName == null ? none : mRequestingPackageName);
         return sb.toString();
     }
 
