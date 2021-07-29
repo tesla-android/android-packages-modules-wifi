@@ -699,6 +699,10 @@ public class WifiCarrierInfoManager {
      * @return the best match SubscriptionId
      */
     public int getBestMatchSubscriptionId(@NonNull WifiConfiguration config) {
+        if (config == null) {
+            Log.wtf(TAG, "getBestMatchSubscriptionId: Config must be NonNull!");
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
         if (config.subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             return config.subscriptionId;
         }
