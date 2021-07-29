@@ -3414,6 +3414,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      *******************************************************/
 
     class ConnectableState extends State {
+        private boolean mIsScreenStateChangeReceiverRegistered = false;
         BroadcastReceiver mScreenStateChangeReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -3446,7 +3447,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             IntentFilter filter = new IntentFilter();
             filter.addAction(Intent.ACTION_SCREEN_ON);
             filter.addAction(Intent.ACTION_SCREEN_OFF);
-            mContext.registerReceiver(mScreenStateChangeReceiver, filter);
+            if (!mIsScreenStateChangeReceiverRegistered) {
+                mContext.registerReceiver(mScreenStateChangeReceiver, filter);
+                mIsScreenStateChangeReceiverRegistered = true;
+            }
             // Learn the initial state of whether the screen is on.
             // We update this field when we receive broadcasts from the system.
             handleScreenStateChanged(mContext.getSystemService(PowerManager.class).isInteractive());
@@ -3474,7 +3478,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (!mWifiNative.removeAllNetworks(mInterfaceName)) {
                 loge("Failed to remove networks on exiting connect mode");
             }
-            mContext.unregisterReceiver(mScreenStateChangeReceiver);
+            if (mIsScreenStateChangeReceiverRegistered) {
+                mContext.unregisterReceiver(mScreenStateChangeReceiver);
+                mIsScreenStateChangeReceiverRegistered = false;
+            }
 
             stopClientMode();
             mWifiScoreCard.doWrites();
