@@ -269,6 +269,9 @@ public class SoftApManagerTest extends WifiBaseTest {
         when(mWifiNative.getApFactoryMacAddress(any())).thenReturn(TEST_INTERFACE_MAC_ADDRESS);
         when(mWifiApConfigStore.randomizeBssidIfUnset(any(), any())).thenAnswer(
                 (invocation) -> invocation.getArgument(1));
+        // Default init STA enabled
+        when(mResources.getBoolean(R.bool.config_wifiStaWithBridgedSoftApConcurrencySupported))
+                .thenReturn(true);
         when(mActiveModeWarden.getClientModeManagers())
                 .thenReturn(mTestClientModeManagers);
         mTestClientModeManagers.add(mPrimaryConcreteClientModeManager);
@@ -2861,7 +2864,6 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void testBridgedModeFallbackToSingleModeDueToCoexIsHardUnsafe()
             throws Exception {
-        //leslee
         assumeTrue(SdkLevel.isAtLeastS());
         int[] dual_bands = {SoftApConfiguration.BAND_2GHZ,
                 SoftApConfiguration.BAND_5GHZ};
@@ -3146,5 +3148,25 @@ public class SoftApManagerTest extends WifiBaseTest {
         mSoftApManager.updateCountryCode(TEST_COUNTRY_CODE);
         mLooper.dispatchAll();
         verify(mWifiNative, never()).setApCountryCode(any(), any());
+    }
+
+    @Test
+    public void testFallbackToSingleModeDueToStaExistButStaWithBridgedApNotSupported()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mResources.getBoolean(R.bool.config_wifiStaWithBridgedSoftApConcurrencySupported))
+                .thenReturn(false);
+        int[] dual_bands = {SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
+        Builder configBuilder = new SoftApConfiguration.Builder();
+        configBuilder.setSsid(TEST_SSID);
+        configBuilder.setBands(dual_bands);
+
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, configBuilder.build(),
+                mTestSoftApCapability);
+        // Reset band to 2.4G | 5G to generate expected configuration since it should fallback to
+        // single AP mode
+        configBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
+        startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, configBuilder.build());
     }
 }
