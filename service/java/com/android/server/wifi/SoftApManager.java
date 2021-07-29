@@ -858,19 +858,33 @@ public class SoftApManager implements ActiveModeManager {
                         if (isBridgedMode()) {
                             boolean isFallbackToSingleAp = false;
                             int newSingleApBand = 0;
-                            for (ClientModeManager cmm
-                                    : mActiveModeWarden.getClientModeManagers()) {
-                                WifiInfo wifiConnectedInfo = cmm.syncRequestConnectionInfo();
-                                int wifiFrequency = wifiConnectedInfo.getFrequency();
-                                if (wifiFrequency > 0
-                                        && !mSafeChannelFrequencyList.contains(
-                                        wifiFrequency)) {
-                                    Log.d(getTag(), "Wifi connected to unavailable freq: "
-                                            + wifiFrequency);
+                            final List<ClientModeManager> cmms =
+                                    mActiveModeWarden.getClientModeManagers();
+                            if (cmms.size() != 0) {
+                                if (ApConfigUtil.isStaWithBridgedModeSupported(mContext)) {
+                                    for (ClientModeManager cmm
+                                            : mActiveModeWarden.getClientModeManagers()) {
+                                        WifiInfo wifiConnectedInfo =
+                                                cmm.syncRequestConnectionInfo();
+                                        int wifiFrequency = wifiConnectedInfo.getFrequency();
+                                        if (wifiFrequency > 0
+                                                && !mSafeChannelFrequencyList.contains(
+                                                wifiFrequency)) {
+                                            Log.d(getTag(), "Wifi connected to unavailable freq: "
+                                                    + wifiFrequency);
+                                            isFallbackToSingleAp = true;
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    // The client mode exist but DUT doesn't support
+                                    // STA + bridged AP, we should fallback to single AP mode.
+                                    Log.d(getTag(), " STA iface exist but device doesn't support"
+                                            + " STA + Bridged AP");
                                     isFallbackToSingleAp = true;
-                                    break;
                                 }
                             }
+
                             for (int configuredBand : mCurrentSoftApConfiguration.getBands()) {
                                 int availableBand = ApConfigUtil.removeUnavailableBands(
                                         mCurrentSoftApCapability,

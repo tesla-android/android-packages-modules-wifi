@@ -713,6 +713,17 @@ public class ApConfigUtil {
     }
 
     /**
+     * Helper function to get HAL support STA + bridged AP or not.
+     *
+     * @param context the caller context used to get value from resource file.
+     * @return true if supported, false otherwise.
+     */
+    public static boolean isStaWithBridgedModeSupported(@NonNull Context context) {
+        return SdkLevel.isAtLeastS() && context.getResources().getBoolean(
+                    R.bool.config_wifiStaWithBridgedSoftApConcurrencySupported);
+    }
+
+    /**
      * Helper function to get HAL support client force disconnect or not.
      *
      * @param context the caller context used to get value from resource file.
