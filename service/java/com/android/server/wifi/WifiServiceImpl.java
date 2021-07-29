@@ -4883,7 +4883,20 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * see {@link android.net.wifi.WifiManager#connect(int, WifiManager.ActionListener)}
+     * Connects to a network.
+     *
+     * If the supplied config is not null, then the netId argument will be ignored and the config
+     * will be saved (or updated if its networkId or profile key already exist) and connected to.
+     *
+     * If the supplied config is null, then the netId argument will be matched to a saved config to
+     * be connected to.
+     *
+     * @param config New or existing config to add/update and connect to
+     * @param netId Network ID of existing config to connect to if the supplied config is null
+     * @param callback Listener to notify action result
+     *
+     * see: {@link WifiManager#connect(WifiConfiguration, WifiManager.ActionListener)}
+     *      {@link WifiManager#connect(int, WifiManager.ActionListener)}
      */
     @Override
     public void connect(WifiConfiguration config, int netId, @Nullable IActionListener callback) {
@@ -4891,10 +4904,10 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!isPrivileged(Binder.getCallingPid(), uid)) {
             throw new SecurityException(TAG + ": Permission denied");
         }
-        final int internalNetId = removeSecurityTypeFromNetworkId(netId);
         if (config != null) {
-            config.networkId = internalNetId;
+            config.networkId = removeSecurityTypeFromNetworkId(config.networkId);
         }
+        final int netIdArg = removeSecurityTypeFromNetworkId(netId);
         mLog.info("connect uid=%").c(uid).flush();
         mWifiThreadRunner.post(() -> {
             ActionListenerWrapper wrapper = new ActionListenerWrapper(callback);
@@ -4915,14 +4928,14 @@ public class WifiServiceImpl extends BaseWifiService {
             } else {
                 if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)) {
                     mWifiMetrics.logUserActionEvent(
-                            UserActionEvent.EVENT_MANUAL_CONNECT, internalNetId);
+                            UserActionEvent.EVENT_MANUAL_CONNECT, netIdArg);
                 }
-                result = new NetworkUpdateResult(internalNetId);
+                result = new NetworkUpdateResult(netIdArg);
             }
             WifiConfiguration configuration = mWifiConfigManager
                     .getConfiguredNetwork(result.getNetworkId());
             if (configuration == null) {
-                Log.e(TAG, "connect to Invalid network Id=" + internalNetId);
+                Log.e(TAG, "connect to Invalid network Id=" + netIdArg);
                 wrapper.sendFailure(WifiManager.ERROR);
                 return;
             }

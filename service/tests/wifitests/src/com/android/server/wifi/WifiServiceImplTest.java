@@ -4669,7 +4669,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 mActionListener);
         mLooper.dispatchAll();
 
-        verify(mWifiConfigManager).addOrUpdateNetwork(eq(mWifiConfig), anyInt());
+        ArgumentCaptor<WifiConfiguration> configCaptor =
+                ArgumentCaptor.forClass(WifiConfiguration.class);
+        verify(mWifiConfigManager).addOrUpdateNetwork(configCaptor.capture(), anyInt());
+        assertThat(configCaptor.getValue().networkId).isEqualTo(TEST_NETWORK_ID);
 
         verify(mConnectHelper).connectToNetwork(eq(result), any(), anyInt());
         verify(mContextAsUser).sendBroadcastWithMultiplePermissions(
