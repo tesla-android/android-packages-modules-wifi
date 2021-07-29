@@ -3970,7 +3970,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         private String getPersistedDeviceName() {
             String deviceName = mSettingsConfigStore.get(WIFI_P2P_DEVICE_NAME);
-            if (null != deviceName) return deviceName;
+            if (!TextUtils.isEmpty(deviceName)) return deviceName;
 
             String prefix = mWifiGlobals.getWifiP2pDeviceNamePrefix();
             if (DEVICE_NAME_PREFIX_LENGTH_MAX < prefix.getBytes(StandardCharsets.UTF_8).length
@@ -4005,7 +4005,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private boolean setAndPersistDeviceName(String devName) {
-            if (devName == null) return false;
+            if (TextUtils.isEmpty(devName)) return false;
 
             if (!mWifiNative.setDeviceName(devName)) {
                 loge("Failed to set device name " + devName);
