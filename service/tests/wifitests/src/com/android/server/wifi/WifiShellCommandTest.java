@@ -286,6 +286,15 @@ public class WifiShellCommandTest extends WifiBaseTest {
         assertEquals(bssid, sd.getBSSIDString());
         assertEquals(2412, sd.getScanResult().frequency);
         assertEquals(-55, sd.getScanResult().level);
+
+        // Test with "hello world" SSID encoded in hexadecimal UTF-8
+        String hexSsid = "68656c6c6f20776f726c64";
+        mWifiShellCommand.exec(new Binder(), new FileDescriptor(), new FileDescriptor(),
+                new FileDescriptor(),
+                new String[]{"add-fake-scan", "-x", hexSsid, bssid, capabilities, freq, dbm});
+        verify(mWifiNative, times(2)).addFakeScanDetail(scanDetailCaptor.capture());
+        sd = scanDetailCaptor.getValue();
+        assertEquals("hello world", sd.getScanResult().SSID);
     }
 
     @Test
