@@ -25,11 +25,13 @@ import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_NONE;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_NOT_METERED;
 import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NONE;
+import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NO_INTERNET_PERMANENT;
 import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.ClientModeImpl.CMD_PRE_DHCP_ACTION;
+import static com.android.server.wifi.ClientModeImpl.CMD_UNWANTED_NETWORK;
 import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_STA_FACTORY_MAC_ADDRESS;
 
@@ -141,6 +143,7 @@ import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ClientMode.LinkProbeCallback;
 import com.android.server.wifi.ClientModeManagerBroadcastQueue.QueuedBroadcast;
 import com.android.server.wifi.WifiNative.ConnectionCapabilities;
+import com.android.server.wifi.WifiScoreCard.PerBssid;
 import com.android.server.wifi.WifiScoreCard.PerNetwork;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.hotspot2.PasspointManager;
@@ -422,6 +425,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiNative mWifiNative;
     @Mock WifiScoreCard mWifiScoreCard;
     @Mock PerNetwork mPerNetwork;
+    @Mock PerBssid mPerBssid;
     @Mock WifiScoreCard.NetworkConnectionStats mPerNetworkRecentStats;
     @Mock WifiHealthMonitor mWifiHealthMonitor;
     @Mock WifiTrafficPoller mWifiTrafficPoller;
@@ -612,6 +616,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 .thenReturn(WifiHealthMonitor.REASON_NO_FAILURE);
         when(mPerNetwork.getRecentStats()).thenReturn(mPerNetworkRecentStats);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
+        when(mWifiScoreCard.lookupBssid(any(), any())).thenReturn(mPerBssid);
         when(mThroughputPredictor.predictMaxTxThroughput(any())).thenReturn(90);
         when(mThroughputPredictor.predictMaxRxThroughput(any())).thenReturn(80);
 
@@ -4867,6 +4872,42 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+    }
+
+    /**
+     * Verify that the current network is permanently disabled when
+     * NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN is received and percent internet availability is
+     * less than the threshold.
+     */
+    @Test
+    public void testLowPrababilityInternetPermanentlyDisableNetwork() throws Exception {
+        connect();
+        when(mPerBssid.estimatePercentInternetAvailability()).thenReturn(
+                ClientModeImpl.PROBABILITY_WITH_INTERNET_TO_PERMANENTLY_DISABLE_NETWORK - 1);
+        mCmi.sendMessage(CMD_UNWANTED_NETWORK,
+                ClientModeImpl.NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
+                eq(DISABLED_NO_INTERNET_PERMANENT));
+    }
+
+    /**
+     * Verify that the current network is temporarily disabled when
+     * NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN is received and percent internet availability is
+     * over the threshold.
+     */
+    @Test
+    public void testHighPrababilityInternetTemporarilyDisableNetwork() throws Exception {
+        connect();
+        when(mPerBssid.estimatePercentInternetAvailability()).thenReturn(
+                ClientModeImpl.PROBABILITY_WITH_INTERNET_TO_PERMANENTLY_DISABLE_NETWORK);
+        mCmi.sendMessage(CMD_UNWANTED_NETWORK,
+                ClientModeImpl.NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
+                eq(DISABLED_NO_INTERNET_TEMPORARY));
     }
 
     /**
