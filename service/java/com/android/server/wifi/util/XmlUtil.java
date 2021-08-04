@@ -29,9 +29,11 @@ import android.net.RouteInfo;
 import android.net.StaticIpConfiguration;
 import android.net.Uri;
 import android.net.wifi.SecurityParams;
+import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiMigration;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
@@ -1584,8 +1586,28 @@ public class XmlUtil {
          */
         public static final String XML_TAG_CLIENT_MACADDRESS = "ClientMacAddress";
         public static final String XML_TAG_BAND_CHANNEL = "BandChannel";
-        private static final String XML_TAG_BAND = "Band";
-        private static final String XML_TAG_CHANNEL = "Channel";
+        public static final String XML_TAG_SSID = "SSID";
+        public static final String XML_TAG_BSSID = "Bssid";
+        public static final String XML_TAG_BAND = "Band";
+        public static final String XML_TAG_CHANNEL = "Channel";
+        public static final String XML_TAG_HIDDEN_SSID = "HiddenSSID";
+        public static final String XML_TAG_SECURITY_TYPE = "SecurityType";
+        public static final String XML_TAG_WPA2_PASSPHRASE = "Wpa2Passphrase";
+        public static final String XML_TAG_AP_BAND = "ApBand";
+        public static final String XML_TAG_PASSPHRASE = "Passphrase";
+        public static final String XML_TAG_MAX_NUMBER_OF_CLIENTS = "MaxNumberOfClients";
+        public static final String XML_TAG_AUTO_SHUTDOWN_ENABLED = "AutoShutdownEnabled";
+        public static final String XML_TAG_SHUTDOWN_TIMEOUT_MILLIS = "ShutdownTimeoutMillis";
+        public static final String XML_TAG_CLIENT_CONTROL_BY_USER = "ClientControlByUser";
+        public static final String XML_TAG_BLOCKED_CLIENT_LIST = "BlockedClientList";
+        public static final String XML_TAG_ALLOWED_CLIENT_LIST = "AllowedClientList";
+        public static final String XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED =
+                "BridgedModeOpportunisticShutdownEnabled";
+        public static final String XML_TAG_MAC_RAMDOMIZATION_SETTING = "MacRandomizationSetting";
+        public static final String XML_TAG_BAND_CHANNEL_MAP = "BandChannelMap";
+        public static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
+        public static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
+
 
         /**
          * Parses the client list from the provided XML stream to a ArrayList object.
@@ -1690,6 +1712,244 @@ public class XmlUtil {
                 XmlUtil.writeNextSectionEnd(out, XML_TAG_BAND_CHANNEL);
             }
         }
+
+        /**
+         * Write the SoftApConfiguration data elements to the XML stream.
+         *
+         * @param out          XmlSerializer instance pointing to the XML stream.
+         * @param softApConfig configuration of the Soft AP.
+         */
+        public static void writeSoftApConfigurationToXml(@NonNull XmlSerializer out,
+                @NonNull SoftApConfiguration softApConfig)
+                throws XmlPullParserException, IOException {
+            XmlUtil.writeNextValue(out, XML_TAG_SSID, softApConfig.getSsid());
+            if (softApConfig.getBssid() != null) {
+                XmlUtil.writeNextValue(out, XML_TAG_BSSID, softApConfig.getBssid().toString());
+            }
+            if (!SdkLevel.isAtLeastS()) {
+                // Band and channel change to store in Tag:BandChannelMap from S.
+                XmlUtil.writeNextValue(out, XML_TAG_AP_BAND, softApConfig.getBand());
+                XmlUtil.writeNextValue(out, XML_TAG_CHANNEL, softApConfig.getChannel());
+            }
+            XmlUtil.writeNextValue(out, XML_TAG_HIDDEN_SSID, softApConfig.isHiddenSsid());
+            XmlUtil.writeNextValue(out, XML_TAG_SECURITY_TYPE, softApConfig.getSecurityType());
+            if (softApConfig.getSecurityType() != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+                XmlUtil.writeNextValue(out, XML_TAG_PASSPHRASE,
+                        softApConfig.getPassphrase());
+            }
+
+            XmlUtil.writeNextValue(out, XML_TAG_MAX_NUMBER_OF_CLIENTS,
+                    softApConfig.getMaxNumberOfClients());
+            XmlUtil.writeNextValue(out, XML_TAG_CLIENT_CONTROL_BY_USER,
+                    softApConfig.isClientControlByUserEnabled());
+            XmlUtil.writeNextValue(out, XML_TAG_AUTO_SHUTDOWN_ENABLED,
+                    softApConfig.isAutoShutdownEnabled());
+            XmlUtil.writeNextValue(out, XML_TAG_SHUTDOWN_TIMEOUT_MILLIS,
+                    softApConfig.getShutdownTimeoutMillis());
+            XmlUtil.writeNextSectionStart(out, XML_TAG_BLOCKED_CLIENT_LIST);
+            XmlUtil.SoftApConfigurationXmlUtil.writeClientListToXml(out,
+                    softApConfig.getBlockedClientList());
+            XmlUtil.writeNextSectionEnd(out, XML_TAG_BLOCKED_CLIENT_LIST);
+
+            XmlUtil.writeNextSectionStart(out, XML_TAG_ALLOWED_CLIENT_LIST);
+            XmlUtil.SoftApConfigurationXmlUtil.writeClientListToXml(out,
+                    softApConfig.getAllowedClientList());
+            XmlUtil.writeNextSectionEnd(out, XML_TAG_ALLOWED_CLIENT_LIST);
+            if (SdkLevel.isAtLeastS()) {
+                XmlUtil.writeNextValue(out, XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED,
+                        softApConfig.isBridgedModeOpportunisticShutdownEnabled());
+                XmlUtil.writeNextValue(out, XML_TAG_MAC_RAMDOMIZATION_SETTING,
+                        softApConfig.getMacRandomizationSetting());
+
+                XmlUtil.writeNextSectionStart(out, XML_TAG_BAND_CHANNEL_MAP);
+                XmlUtil.SoftApConfigurationXmlUtil.writeChannelsToXml(out,
+                        softApConfig.getChannels());
+                XmlUtil.writeNextSectionEnd(out, XML_TAG_BAND_CHANNEL_MAP);
+                XmlUtil.writeNextValue(out, XML_TAG_80211_AX_ENABLED,
+                        softApConfig.isIeee80211axEnabled());
+                XmlUtil.writeNextValue(out, XML_TAG_USER_CONFIGURATION,
+                        softApConfig.isUserConfiguration());
+            }
+        } // End of writeSoftApConfigurationToXml
+
+        /**
+         * Returns configuration of the SoftAp from the XML stream.
+         *
+         * @param in XmlPullParser instance pointing to the XML stream.
+         * @param outerTagDepth depth of the outer tag in the XML document.
+         * @param settingsMigrationDataHolder the class instance of SettingsMigrationDataHolder
+         */
+        @Nullable
+        public static SoftApConfiguration parseFromXml(XmlPullParser in, int outerTagDepth,
+                SettingsMigrationDataHolder settingsMigrationDataHolder)
+                throws XmlPullParserException, IOException  {
+            SoftApConfiguration.Builder softApConfigBuilder = new SoftApConfiguration.Builder();
+            int securityType = SoftApConfiguration.SECURITY_TYPE_OPEN;
+            String passphrase = null;
+            String ssid = null;
+            String bssid = null;
+            // Note that, during deserializaion, we may read the old band encoding (XML_TAG_BAND)
+            // or the new band encoding (XML_TAG_AP_BAND) that is used after the introduction of the
+            // 6GHz band. If the old encoding is found, a conversion is done.
+            int channel = -1;
+            int apBand = -1;
+            boolean hasBandChannelMap = false;
+            List<MacAddress> blockedList = new ArrayList<>();
+            List<MacAddress> allowedList = new ArrayList<>();
+            boolean autoShutdownEnabledTagPresent = false;
+            try {
+                while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+                    if (in.getAttributeValue(null, "name") != null) {
+                        String[] valueName = new String[1];
+                        Object value = XmlUtil.readCurrentValue(in, valueName);
+                        if (TextUtils.isEmpty(valueName[0])) {
+                            throw new XmlPullParserException("Missing value name");
+                        }
+                        switch (valueName[0]) {
+                            case XML_TAG_SSID:
+                                ssid = (String) value;
+                                softApConfigBuilder.setSsid((String) value);
+                                break;
+                            case XML_TAG_BSSID:
+                                bssid = (String) value;
+                                softApConfigBuilder.setBssid(MacAddress.fromString(bssid));
+                                break;
+                            case XML_TAG_BAND:
+                                apBand = ApConfigUtil.convertWifiConfigBandToSoftApConfigBand(
+                                        (int) value);
+                                break;
+                            case XML_TAG_AP_BAND:
+                                apBand = (int) value;
+                                break;
+                            case XML_TAG_CHANNEL:
+                                channel = (int) value;
+                                break;
+                            case XML_TAG_HIDDEN_SSID:
+                                softApConfigBuilder.setHiddenSsid((boolean) value);
+                                break;
+                            case XML_TAG_SECURITY_TYPE:
+                                securityType = (int) value;
+                                break;
+                            case XML_TAG_WPA2_PASSPHRASE:
+                            case XML_TAG_PASSPHRASE:
+                                passphrase = (String) value;
+                                break;
+                            case XML_TAG_MAX_NUMBER_OF_CLIENTS:
+                                softApConfigBuilder.setMaxNumberOfClients((int) value);
+                                break;
+                            case XML_TAG_AUTO_SHUTDOWN_ENABLED:
+                                softApConfigBuilder.setAutoShutdownEnabled((boolean) value);
+                                autoShutdownEnabledTagPresent = true;
+                                break;
+                            case XML_TAG_SHUTDOWN_TIMEOUT_MILLIS:
+                                if (value instanceof Integer) {
+                                    softApConfigBuilder
+                                            .setShutdownTimeoutMillis(Long.valueOf((int) value));
+                                } else if (value instanceof Long) {
+                                    softApConfigBuilder.setShutdownTimeoutMillis((long) value);
+                                }
+                                break;
+                            case XML_TAG_CLIENT_CONTROL_BY_USER:
+                                softApConfigBuilder.setClientControlByUserEnabled((boolean) value);
+                                break;
+                            case XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED:
+                                if (SdkLevel.isAtLeastS()) {
+                                    softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
+                                            (boolean) value);
+                                }
+                                break;
+                            case XML_TAG_MAC_RAMDOMIZATION_SETTING:
+                                if (SdkLevel.isAtLeastS()) {
+                                    softApConfigBuilder.setMacRandomizationSetting((int) value);
+                                }
+                                break;
+                            case XML_TAG_80211_AX_ENABLED:
+                                if (SdkLevel.isAtLeastS()) {
+                                    softApConfigBuilder.setIeee80211axEnabled((boolean) value);
+                                }
+                                break;
+                            case XML_TAG_USER_CONFIGURATION:
+                                if (SdkLevel.isAtLeastS()) {
+                                    softApConfigBuilder.setUserConfiguration((boolean) value);
+                                }
+                                break;
+                            default:
+                                Log.w(TAG, "Ignoring unknown value name " + valueName[0]);
+                                break;
+                        }
+                    } else {
+                        String tagName = in.getName();
+                        List<MacAddress> parseredList;
+                        if (tagName == null) {
+                            throw new XmlPullParserException("Unexpected null tag found");
+                        }
+                        switch (tagName) {
+                            case XML_TAG_BLOCKED_CLIENT_LIST:
+                                parseredList =
+                                        XmlUtil.SoftApConfigurationXmlUtil.parseClientListFromXml(
+                                        in, outerTagDepth + 1);
+                                if (parseredList != null) {
+                                    blockedList = new ArrayList<>(parseredList);
+                                }
+                                break;
+                            case XML_TAG_ALLOWED_CLIENT_LIST:
+                                parseredList =
+                                        XmlUtil.SoftApConfigurationXmlUtil.parseClientListFromXml(
+                                        in, outerTagDepth + 1);
+                                if (parseredList != null) {
+                                    allowedList = new ArrayList<>(parseredList);
+                                }
+                                break;
+                            case XML_TAG_BAND_CHANNEL_MAP:
+                                if (SdkLevel.isAtLeastS()) {
+                                    hasBandChannelMap = true;
+                                    SparseIntArray channels = XmlUtil.SoftApConfigurationXmlUtil
+                                            .parseChannelsFromXml(in, outerTagDepth + 1);
+                                    softApConfigBuilder.setChannels(channels);
+                                }
+                                break;
+                            default:
+                                Log.w(TAG, "Ignoring unknown tag found: " + tagName);
+                                break;
+                        }
+                    }
+                }
+                softApConfigBuilder.setBlockedClientList(blockedList);
+                softApConfigBuilder.setAllowedClientList(allowedList);
+                if (!hasBandChannelMap) {
+                    // Set channel and band
+                    if (channel == 0) {
+                        softApConfigBuilder.setBand(apBand);
+                    } else {
+                        softApConfigBuilder.setChannel(channel, apBand);
+                    }
+                }
+
+               // We should at-least have SSID restored from store.
+                if (ssid == null) {
+                    Log.e(TAG, "Failed to parse SSID");
+                    return null;
+                }
+                if (securityType != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+                    softApConfigBuilder.setPassphrase(passphrase, securityType);
+                }
+                if (!autoShutdownEnabledTagPresent) {
+                    // Migrate data out of settings.
+                    WifiMigration.SettingsMigrationData migrationData =
+                            settingsMigrationDataHolder.retrieveData();
+                    if (migrationData == null) {
+                        Log.e(TAG, "No migration data present");
+                    } else {
+                        softApConfigBuilder.setAutoShutdownEnabled(
+                                migrationData.isSoftApTimeoutEnabled());
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Failed to parse configuration " + e);
+                return null;
+            }
+            return softApConfigBuilder.setSsid(ssid).build();
+        } // End of parseFromXml
     }
 }
 
