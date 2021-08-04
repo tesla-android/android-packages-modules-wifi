@@ -477,7 +477,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private static final int NETWORK_STATUS_UNWANTED_DISCONNECT         = 0;
     private static final int NETWORK_STATUS_UNWANTED_VALIDATION_FAILED  = 1;
-    private static final int NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN   = 2;
+    @VisibleForTesting
+    public static final int NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN   = 2;
 
     static final int CMD_UNWANTED_NETWORK                               = BASE + 144;
 
@@ -607,6 +608,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final WifiNetworkSelector mWifiNetworkSelector;
 
     private final WifiInjector mWifiInjector;
+
+    // Permanently disable a network due to no internet if the estimated probability of having
+    // internet is less than this value.
+    @VisibleForTesting
+    public static final int PROBABILITY_WITH_INTERNET_TO_PERMANENTLY_DISABLE_NETWORK = 60;
 
     // Maximum duration to continue to log Wifi usability stats after a data stall is triggered.
     @VisibleForTesting
@@ -5557,8 +5563,23 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             if (message.arg1 == NETWORK_STATUS_UNWANTED_DISABLE_AUTOJOIN) {
                                 mWifiConfigManager.setNetworkValidatedInternetAccess(
                                         config.networkId, false);
+                                WifiScoreCard.PerBssid perBssid = mWifiScoreCard.lookupBssid(
+                                        mWifiInfo.getSSID(), mWifiInfo.getBSSID());
+                                int probInternet = perBssid.estimatePercentInternetAvailability();
+                                if (mVerboseLoggingEnabled) {
+                                    Log.d(TAG, "Potentially disabling network due to no "
+                                            + "internet. Probability of having internet = "
+                                            + probInternet);
+                                }
+                                // Only permanently disable a network if probability of having
+                                // internet from the currently connected BSSID is less than 60%.
+                                // If there is no historically information of the current BSSID,
+                                // the probability of internet will default to 50%, and the network
+                                // will be permanently disabled.
                                 mWifiConfigManager.updateNetworkSelectionStatus(config.networkId,
-                                        DISABLED_NO_INTERNET_PERMANENT);
+                                        probInternet < PROBABILITY_WITH_INTERNET_TO_PERMANENTLY_DISABLE_NETWORK
+                                                ? DISABLED_NO_INTERNET_PERMANENT
+                                                : DISABLED_NO_INTERNET_TEMPORARY);
                             } else {
                                 // stop collect last-mile stats since validation fail
                                 removeMessages(CMD_DIAGS_CONNECT_TIMEOUT);
