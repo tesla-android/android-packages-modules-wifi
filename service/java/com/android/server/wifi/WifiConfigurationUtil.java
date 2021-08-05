@@ -876,6 +876,10 @@ public class WifiConfigurationUtil {
         if (!Objects.equals(config.SSID, config1.SSID)) {
             return false;
         }
+        if (!Objects.equals(config.getNetworkSelectionStatus().getCandidateSecurityParams(),
+                config1.getNetworkSelectionStatus().getCandidateSecurityParams())) {
+            return false;
+        }
         if (WifiConfigurationUtil.hasCredentialChanged(config, config1)) {
             return false;
         }
