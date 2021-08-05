@@ -31,6 +31,7 @@ import android.content.pm.UserInfo;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
@@ -901,6 +902,40 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         network1.enterpriseConfig.setAnonymousIdentity("Identity1");
         network2.enterpriseConfig.setAnonymousIdentity("Identity2");
         assertTrue(WifiConfigurationUtil.isSameNetwork(network1, network2));
+    }
+
+    /**
+     * Verify that WifiConfigurationUtil.isSameNetwork returns true when two WifiConfiguration
+     * objects have the same candidate security params.
+     */
+    @Test
+    public void testIsSameNetworkReturnsTrueOnSameNetworkWithSameCandidateSecurityParams() {
+        WifiConfiguration network = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID);
+        network.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID);
+        network1.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        assertTrue(WifiConfigurationUtil.isSameNetwork(network, network1));
+    }
+
+    /**
+     * Verify that WifiConfigurationUtil.isSameNetwork returns false when two WifiConfiguration
+     * objects have the different candidate security params.
+     */
+    @Test
+    public void testIsSameNetworkReturnsTrueOnSameNetworkWithDifferentCandidateSecurityParams() {
+        WifiConfiguration network = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID);
+        network.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID);
+        network1.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_SAE));
+        assertFalse(WifiConfigurationUtil.isSameNetwork(network, network1));
     }
 
     /**
