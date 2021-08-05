@@ -62,8 +62,8 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
     static final int OTHER_USER_ID = 11;
     static final int TEST_UID = 10000;
     static final String TEST_PACKAGE = "com.test";
-    static final String TEST_SSID = "test_ssid";
-    static final String TEST_SSID_1 = "test_ssid_1";
+    static final String TEST_SSID = "\"test_ssid\"";
+    static final String TEST_SSID_1 = "\"test_ssid_1\"";
     static final String TEST_BSSID = "aa:aa:11:22:cc:dd";
     static final String TEST_BSSID_1 = "11:22:11:22:cc:dd";
     static final List<UserInfo> PROFILES = Arrays.asList(
@@ -1205,18 +1205,26 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
         config.enterpriseConfig.setIdentity(null);
         assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+        assertFalse(WifiConfigurationUtil.validate(config,
+                WifiConfigurationUtil.VALIDATE_FOR_UPDATE));
 
-        WifiConfigurationTestUtil.createEapNetwork();
+        config = WifiConfigurationTestUtil.createEapNetwork();
         config.enterpriseConfig.setPassword(null);
         assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+        assertTrue(WifiConfigurationUtil.validate(config,
+                WifiConfigurationUtil.VALIDATE_FOR_UPDATE));
 
         config = WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID);
         config.enterpriseConfig.setIdentity(null);
         assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+        assertFalse(WifiConfigurationUtil.validate(config,
+                WifiConfigurationUtil.VALIDATE_FOR_UPDATE));
 
-        WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID);
+        config = WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID);
         config.enterpriseConfig.setPassword(null);
         assertFalse(WifiConfigurationUtil.validate(config, WifiConfigurationUtil.VALIDATE_FOR_ADD));
+        assertTrue(WifiConfigurationUtil.validate(config,
+                WifiConfigurationUtil.VALIDATE_FOR_UPDATE));
     }
 
     /**
