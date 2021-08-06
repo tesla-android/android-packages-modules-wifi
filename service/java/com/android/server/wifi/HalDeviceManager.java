@@ -986,7 +986,14 @@ public class HalDeviceManager {
 
                 // get all chip IDs
                 mWifi.getChipIds((WifiStatus status, ArrayList<Integer> chipIds) -> {
-                    statusOk.value = status.code == WifiStatusCode.SUCCESS;
+                    statusOk.value = false;
+                    if (status.code == WifiStatusCode.SUCCESS) {
+                        if (chipIds == null) {
+                            Log.wtf(TAG, "getChipIds failed, chipIds is null");
+                            return;
+                        }
+                        statusOk.value = true;
+                    }
                     if (statusOk.value) {
                         chipIdsResp.value = chipIds;
                     } else {
@@ -1007,7 +1014,13 @@ public class HalDeviceManager {
                 Mutable<IWifiChip> chipResp = new Mutable<>();
                 for (Integer chipId: chipIdsResp.value) {
                     mWifi.getChip(chipId, (WifiStatus status, IWifiChip chip) -> {
-                        statusOk.value = status.code == WifiStatusCode.SUCCESS;
+                        statusOk.value = false;
+                        if (status.code == WifiStatusCode.SUCCESS) {
+                            if (chip == null) {
+                                Log.wtf(TAG, "getChip failed, chip " + chipId + " is null");
+                            }
+                            statusOk.value = true;
+                        }
                         if (statusOk.value) {
                             chipResp.value = chip;
                         } else {
