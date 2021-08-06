@@ -18,8 +18,10 @@ package com.android.server.wifi;
 
 import static android.content.Intent.ACTION_SCREEN_OFF;
 import static android.content.Intent.ACTION_SCREEN_ON;
+import static android.net.NetworkInfo.DetailedState.AUTHENTICATING;
 import static android.net.NetworkInfo.DetailedState.CONNECTED;
 import static android.net.NetworkInfo.DetailedState.CONNECTING;
+import static android.net.NetworkInfo.DetailedState.DISCONNECTED;
 import static android.net.NetworkInfo.DetailedState.OBTAINING_IPADDR;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_NONE;
@@ -2049,6 +2051,7 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void testWrongPasswordWithNeverConnected() throws Exception {
+        InOrder inOrder = inOrder(mContext);
         initializeAndAddNetworkAndVerifySuccess();
 
         startConnectSuccess();
@@ -2058,6 +2061,14 @@ public class ClientModeImplTest extends WifiBaseTest {
         config.getNetworkSelectionStatus().setHasEverConnected(false);
         config.carrierId = CARRIER_ID_1;
         when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
+
+        // Need to add supplicant state changed event to simulate broadcasts correctly
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
+                        SupplicantState.ASSOCIATED));
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
+                        SupplicantState.FOUR_WAY_HANDSHAKE));
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
                 WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
@@ -2070,6 +2081,14 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
                 eq(WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD));
         verify(mWifiMetrics).incrementNumOfCarrierWifiConnectionAuthFailure();
+        // Verify broadcasts corresponding to supplicant ASSOCIATED, FOUR_WAY_HANDSHAKE, then
+        // finally wrong password causing disconnect.
+        inOrder.verify(mContext).sendStickyBroadcastAsUser(
+                argThat(new NetworkStateChangedIntentMatcher(CONNECTING)), any());
+        inOrder.verify(mContext).sendStickyBroadcastAsUser(
+                argThat(new NetworkStateChangedIntentMatcher(AUTHENTICATING)), any());
+        inOrder.verify(mContext).sendStickyBroadcastAsUser(
+                argThat(new NetworkStateChangedIntentMatcher(DISCONNECTED)), any());
         assertEquals("DisconnectedState", getCurrentState().getName());
     }
 
