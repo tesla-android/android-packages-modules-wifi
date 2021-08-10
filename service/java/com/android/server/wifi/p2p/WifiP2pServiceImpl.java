@@ -77,6 +77,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.ParcelFileDescriptor;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
@@ -365,6 +366,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     @VisibleForTesting
     public WakeupMessage mP2pIdleShutdownMessage;
 
+    private boolean mIsBootComplete;
+
     /**
      * Error code definition.
      * see the Table.8 in the WiFi Direct specification for the detail.
@@ -624,6 +627,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
      */
     public void connectivityServiceReady() {
         mNetdWrapper = mWifiInjector.makeNetdWrapper();
+    }
+
+    /** Indicate that boot is completed. */
+    public void handleBootCompleted() {
+        mIsBootComplete = true;
     }
 
     private boolean isVerboseLoggingEnabled() {
@@ -939,6 +947,21 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             pw.println("mIpClient:");
             IpClientUtil.dumpIpClient(ipClient, fd, pw, args);
         }
+    }
+
+    @Override
+    public int handleShellCommand(@NonNull ParcelFileDescriptor in,
+            @NonNull ParcelFileDescriptor out, @NonNull ParcelFileDescriptor err,
+            @NonNull String[] args) {
+        if (!mIsBootComplete) {
+            Log.w(TAG, "Received shell command when boot is not complete!");
+            return -1;
+        }
+
+        WifiP2pShellCommand shellCommand = new WifiP2pShellCommand(mContext);
+        return shellCommand.exec(
+                this, in.getFileDescriptor(), out.getFileDescriptor(), err.getFileDescriptor(),
+                args);
     }
 
     /**
