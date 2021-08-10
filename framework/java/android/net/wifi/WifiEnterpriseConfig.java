@@ -544,8 +544,7 @@ public class WifiEnterpriseConfig implements Parcelable {
 
     /**
      * Set the EAP authentication method.
-     * @param  eapMethod is one {@link Eap#PEAP}, {@link Eap#TLS}, {@link Eap#TTLS} or
-     *                   {@link Eap#PWD}
+     * @param  eapMethod is one of {@link Eap}, except for {@link Eap#NONE}
      * @throws IllegalArgumentException on an invalid eap method
      */
     public void setEapMethod(int eapMethod) {
@@ -584,11 +583,8 @@ public class WifiEnterpriseConfig implements Parcelable {
     /**
      * Set Phase 2 authentication method. Sets the inner authentication method to be used in
      * phase 2 after setting up a secure channel
-     * @param phase2Method is the inner authentication method and can be one of {@link Phase2#NONE},
-     *                     {@link Phase2#PAP}, {@link Phase2#MSCHAP}, {@link Phase2#MSCHAPV2},
-     *                     {@link Phase2#GTC}
+     * @param phase2Method is the inner authentication method and can be one of {@link Phase2}
      * @throws IllegalArgumentException on an invalid phase2 method
-     *
      */
     public void setPhase2Method(int phase2Method) {
         switch (phase2Method) {
