@@ -16,6 +16,10 @@
 
 package android.net.wifi;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
+
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -24,14 +28,21 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.validateMockitoUsage;
 
 import android.net.wifi.ScanResult.InformationElement;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Parcel;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.dx.mockito.inline.extended.ExtendedMockito;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link android.net.wifi.WifiScanner}.
@@ -283,6 +294,46 @@ public class ScanResultTest {
     @Test
     public void convertFrequencyToChannelWithInvalidFreq() throws Exception {
         assertEquals(-1, ScanResult.convertFrequencyMhzToChannelIfSupported(8000));
+    }
+
+    /**
+     * Verify that getSecurityTypes returns the types derived from the generated security params
+     */
+    @Test
+    public void verifyGetSecurityTypesDerivedFromSecurityParams() {
+        List<Integer> wifiConfigSecurityTypes = List.of(
+                WifiConfiguration.SECURITY_TYPE_OPEN,
+                WifiConfiguration.SECURITY_TYPE_WEP,
+                WifiConfiguration.SECURITY_TYPE_PSK,
+                WifiConfiguration.SECURITY_TYPE_EAP,
+                WifiConfiguration.SECURITY_TYPE_SAE,
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                WifiConfiguration.SECURITY_TYPE_OWE,
+                WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
+                WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                WifiConfiguration.SECURITY_TYPE_OSEN,
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2,
+                WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3);
+        List<SecurityParams> securityParamsList = wifiConfigSecurityTypes.stream()
+                .map(SecurityParams::createSecurityParamsBySecurityType)
+                .collect(Collectors.toList());
+        List<Integer> wifiInfoSecurityTypes = wifiConfigSecurityTypes.stream()
+                .map(WifiInfo::convertWifiConfigurationSecurityType)
+                .collect(Collectors.toList());
+
+        MockitoSession session =
+                ExtendedMockito.mockitoSession().spyStatic(ScanResultUtil.class).startMocking();
+        try {
+            ScanResult scanResult = new ScanResult();
+            scanResult.capabilities = "";
+            doReturn(securityParamsList).when(
+                    () -> ScanResultUtil.generateSecurityParamsListFromScanResult(scanResult));
+            assertThat(scanResult.getSecurityTypes())
+                    .asList().containsExactlyElementsIn(wifiInfoSecurityTypes);
+        } finally {
+            session.finishMocking();
+        }
     }
 
     /**

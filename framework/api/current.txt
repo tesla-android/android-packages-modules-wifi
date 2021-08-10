@@ -25,6 +25,7 @@ package android.net.wifi {
     method public static int convertFrequencyMhzToChannelIfSupported(int);
     method public int describeContents();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
+    method @NonNull public int[] getSecurityTypes();
     method public int getWifiStandard();
     method public boolean is80211mcResponder();
     method public boolean isPasspointNetwork();
