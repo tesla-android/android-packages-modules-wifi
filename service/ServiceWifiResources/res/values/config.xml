@@ -287,6 +287,10 @@
          PackageManager#FEATURE_AUTOMOTIVE) -->
     <bool translatable="false" name="config_wifi_local_only_hotspot_5ghz">false</bool>
 
+    <!-- Set to "true" to always use the factory MAC saved in WifiConfigStore when available.
+         Set to "false" to get the factory MAC from vendor HAL every time it's needed. -->
+    <bool translatable="false" name="config_wifiSaveFactoryMacToWifiConfigStore">true</bool>
+
     <!-- Indicates that connected MAC randomization is supported on this device -->
     <bool translatable="false" name="config_wifi_connected_mac_randomization_supported">false</bool>
 
