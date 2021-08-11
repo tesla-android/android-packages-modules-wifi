@@ -293,7 +293,11 @@ public class WifiNetworkFactory extends NetworkFactory {
         @Override
         public void onAlarm() {
             Log.e(TAG, "Timed-out connecting to network");
-            handleNetworkConnectionFailure(mUserSelectedNetwork, mUserSelectedNetwork.BSSID);
+            if (mUserSelectedNetwork != null) {
+                handleNetworkConnectionFailure(mUserSelectedNetwork, mUserSelectedNetwork.BSSID);
+            } else {
+                Log.wtf(TAG, "mUserSelectedNetwork is null, when connection time out");
+            }
             mConnectionTimeoutSet = false;
         }
     }
@@ -341,6 +345,10 @@ public class WifiNetworkFactory extends NetworkFactory {
         @Override
         public void onFailure(int reason) {
             Log.e(TAG, "Failed to trigger network connection");
+            if (mUserSelectedNetwork == null) {
+                Log.e(TAG, "mUserSelectedNetwork is null, when connection failure");
+                return;
+            }
             handleNetworkConnectionFailure(mUserSelectedNetwork, mUserSelectedNetwork.BSSID);
         }
     }
@@ -1174,6 +1182,9 @@ public class WifiNetworkFactory extends NetworkFactory {
         if (mActiveSpecificNetworkRequest != null) {
             releaseRequestAsUnfulfillableByAnyFactory(mActiveSpecificNetworkRequest);
         }
+        // Cancel periodic scan, connection timeout alarm.
+        cancelPeriodicScans();
+        cancelConnectionTimeout();
         // Reset the active network request.
         mActiveSpecificNetworkRequest = null;
         mActiveSpecificNetworkRequestSpecifier = null;
@@ -1183,9 +1194,6 @@ public class WifiNetworkFactory extends NetworkFactory {
         mIsPeriodicScanPaused = false;
         mActiveMatchedScanResults = null;
         mPendingConnectionSuccess = false;
-        // Cancel periodic scan, connection timeout alarm.
-        cancelPeriodicScans();
-        cancelConnectionTimeout();
         // Remove any callbacks registered for the request.
         if (mRegisteredCallbacks != null) mRegisteredCallbacks.kill();
         mRegisteredCallbacks = null;
