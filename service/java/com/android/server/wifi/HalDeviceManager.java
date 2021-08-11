@@ -348,7 +348,7 @@ public class HalDeviceManager {
      * InterfaceDestroyedListeners.
      */
     public boolean removeIface(IWifiIface iface) {
-        boolean success = removeIfaceInternal(iface);
+        boolean success = removeIfaceInternal(iface, /* validateRttController */true);
         return success;
     }
 
@@ -2264,13 +2264,13 @@ public class HalDeviceManager {
                     // this does
                     for (WifiIfaceInfo[] ifaceInfos: ifaceCreationData.chipInfo.ifaces) {
                         for (WifiIfaceInfo ifaceInfo: ifaceInfos) {
-                            removeIfaceInternal(ifaceInfo.iface); // ignore return value
+                            removeIfaceInternal(ifaceInfo.iface,
+                                    /* validateRttController */false); // ignore return value
                         }
                     }
 
                     WifiStatus status = ifaceCreationData.chipInfo.chip.configureChip(
                             ifaceCreationData.chipModeId);
-                    updateRttControllerOnModeChange();
                     if (status.code != WifiStatusCode.SUCCESS) {
                         Log.e(TAG, "executeChipReconfiguration: configureChip error: "
                                 + statusString(status));
@@ -2279,7 +2279,8 @@ public class HalDeviceManager {
                 } else {
                     // remove all interfaces on the delete list
                     for (WifiIfaceInfo ifaceInfo: ifaceCreationData.interfacesToBeRemovedFirst) {
-                        removeIfaceInternal(ifaceInfo.iface); // ignore return value
+                        removeIfaceInternal(ifaceInfo.iface,
+                                /* validateRttController */false); // ignore return value
                     }
                 }
 
@@ -2332,6 +2333,8 @@ public class HalDeviceManager {
                         break;
                 }
 
+                updateRttControllerWhenInterfaceChanges();
+
                 if (statusResp.value.code != WifiStatusCode.SUCCESS) {
                     Log.e(TAG, "executeChipReconfiguration: failed to create interface"
                             + " createIfaceType=" + createIfaceType + ": "
@@ -2347,7 +2350,15 @@ public class HalDeviceManager {
         }
     }
 
-    private boolean removeIfaceInternal(IWifiIface iface) {
+    /**
+     * Remove a Iface from IWifiChip.
+     * @param iface the interface need to be removed
+     * @param validateRttController if RttController validation is required. If any iface creation
+     *                              is guaranteed after removing iface, this can be false. Otherwise
+     *                              this must be true.
+     * @return True if removal succeed, otherwise false.
+     */
+    private boolean removeIfaceInternal(IWifiIface iface, boolean validateRttController) {
         String name = getName(iface);
         int type = getType(iface);
         if (mDbg) Log.d(TAG, "removeIfaceInternal: iface(name)=" + name + ", type=" + type);
@@ -2399,6 +2410,10 @@ public class HalDeviceManager {
 
             // dispatch listeners no matter what status
             dispatchDestroyedListeners(name, type);
+            if (validateRttController) {
+                // Try to update the RttController
+                updateRttControllerWhenInterfaceChanges();
+            }
 
             if (status != null && status.code == WifiStatusCode.SUCCESS) {
                 return true;
@@ -2575,12 +2590,18 @@ public class HalDeviceManager {
 
 
     /**
-     * Updates the RttController when the chip mode is changed:
+     * Updates the RttController when the interface changes:
      * - Handles callbacks to registered listeners
      * - Handles creation of new RttController
      */
-    private void updateRttControllerOnModeChange() {
+    private void updateRttControllerWhenInterfaceChanges() {
         synchronized (mLock) {
+            if (validateRttController()) {
+                if (mDbg) {
+                    Log.d(TAG, "Current RttController is valid, Don't try to create a new one");
+                }
+                return;
+            }
             boolean controllerDestroyed = mIWifiRttController != null;
             mIWifiRttController = null;
             if (mRttControllerLifecycleCallbacks.size() == 0) {
@@ -2598,6 +2619,24 @@ public class HalDeviceManager {
                 dispatchRttControllerLifecycleOnNew();
             }
         }
+    }
+
+    private boolean validateRttController() {
+        if (mIWifiRttController == null) {
+            return false;
+        }
+        Mutable<Boolean> isRttControllerValid = new Mutable<>(false);
+        try {
+            mIWifiRttController.getBoundIface(
+                    (status, iface) -> {
+                        if (status.code == WifiStatusCode.SUCCESS) {
+                            isRttControllerValid.value = true;
+                        }
+                    });
+        } catch (RemoteException e) {
+            Log.e(TAG, "RttController: exception getBoundIface" + e);
+        }
+        return isRttControllerValid.value;
     }
 
     /**
