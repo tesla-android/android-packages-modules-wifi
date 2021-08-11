@@ -2428,6 +2428,15 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verifyCustomizeDefaultDeviceName(prefix, true);
     }
 
+    /** Verify that the default device name is customized by overlay
+     * when saved one is an empty string. */
+    @Test
+    public void testCustomizeDefaultDeviceNameWithEmptySavedName() throws Exception {
+        setupDefaultDeviceNameCustomization("Niceboat-", -1);
+        when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_DEVICE_NAME))).thenReturn("");
+        verifyCustomizeDefaultDeviceName("Niceboat-" + TEST_ANDROID_ID.substring(0, 4), false);
+    }
+
     /**
      * Verify the caller sends WifiP2pManager.STOP_DISCOVERY.
      */
@@ -2971,6 +2980,27 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verify(mClientHandler).sendMessage(mMessageCaptor.capture());
         Message message = mMessageCaptor.getValue();
         assertEquals(WifiP2pManager.SET_DEVICE_NAME_SUCCEEDED, message.what);
+    }
+
+    /**
+     * Verify the caller sends WifiP2pManager.SET_DEVICE_NAME with an empty name.
+     */
+    @Test
+    public void testSetDeviceNameFailureWithEmptyName() throws Exception {
+        // Move to enabled state
+        forceP2pEnabled(mClient1);
+        mTestThisDevice.status = mTestThisDevice.AVAILABLE;
+
+        mTestThisDevice.deviceName = "";
+        when(mWifiNative.setDeviceName(anyString())).thenReturn(true);
+        sendSetDeviceNameMsg(mClientMessenger, mTestThisDevice);
+        verify(mWifiNative, never()).setDeviceName(any());
+        verify(mWifiSettingsConfigStore, never()).put(any(), any());
+
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        assertEquals(WifiP2pManager.SET_DEVICE_NAME_FAILED, message.what);
+        assertEquals(WifiP2pManager.ERROR, message.arg1);
     }
 
     /**
