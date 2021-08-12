@@ -585,6 +585,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
         when(mWifiGlobals.getClientModeImplNumLogRecs()).thenReturn(100);
+        when(mWifiGlobals.isSaveFactoryMacToConfigStoreEnabled()).thenReturn(true);
         when(mWifiInjector.makeWifiNetworkAgent(any(), any(), any(), any(), any()))
                 .thenAnswer(new AnswerWithArguments() {
                     public WifiNetworkAgent answer(
@@ -4597,6 +4598,24 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNative.setLowLatencyMode(anyBoolean())).thenReturn(false);
         assertFalse(mCmi.setLowLatencyMode(lowLatencyMode));
         verify(mWifiNative).setLowLatencyMode(eq(lowLatencyMode));
+    }
+
+    /**
+     * Verify the wifi module can be confiured to always get the factory MAC address from
+     * WifiNative instead of using saved value in WifiConfigStore.
+     */
+    @Test
+    public void testGetFactoryMacAddressAlwaysFromWifiNative() throws Exception {
+        // Configure overlay to always retrieve the MAC address from WifiNative.
+        when(mWifiGlobals.isSaveFactoryMacToConfigStoreEnabled()).thenReturn(false);
+        initializeAndAddNetworkAndVerifySuccess();
+
+        clearInvocations(mWifiNative, mSettingsConfigStore);
+        assertEquals(TEST_GLOBAL_MAC_ADDRESS.toString(), mCmi.getFactoryMacAddress());
+        assertEquals(TEST_GLOBAL_MAC_ADDRESS.toString(), mCmi.getFactoryMacAddress());
+        assertEquals(TEST_GLOBAL_MAC_ADDRESS.toString(), mCmi.getFactoryMacAddress());
+
+        verify(mWifiNative, times(3)).getStaFactoryMacAddress(WIFI_IFACE_NAME);
     }
 
     /**
