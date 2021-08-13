@@ -61,6 +61,8 @@ public class WifiGlobals {
     private final int mP2pDeviceNamePostfixNumDigits;
     // This is read from the overlay, cache it after boot up.
     private final int mClientModeImplNumLogRecs;
+    // This is read from the overlay, cache it after boot up.
+    private final boolean mSaveFactoryMacToConfigStoreEnabled;
 
     // This is set by WifiManager#setVerboseLoggingEnabled(int).
     private boolean mIsShowKeyVerboseLoggingModeEnabled = false;
@@ -84,6 +86,8 @@ public class WifiGlobals {
                 .getInteger(R.integer.config_wifiP2pDeviceNamePostfixNumDigits);
         mClientModeImplNumLogRecs = mContext.getResources()
                 .getInteger(R.integer.config_wifiClientModeImplNumLogRecs);
+        mSaveFactoryMacToConfigStoreEnabled = mContext.getResources()
+                .getBoolean(R.bool.config_wifiSaveFactoryMacToWifiConfigStore);
     }
 
     /** Get the interval between RSSI polls, in milliseconds. */
@@ -215,6 +219,11 @@ public class WifiGlobals {
         return mClientModeImplNumLogRecs;
     }
 
+    /** Get whether to use the saved factory MAC address when available **/
+    public boolean isSaveFactoryMacToConfigStoreEnabled() {
+        return mSaveFactoryMacToConfigStoreEnabled;
+    }
+
     /** Dump method for debugging */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of WifiGlobals");
@@ -229,5 +238,6 @@ public class WifiGlobals {
         pw.println("mP2pDeviceNamePrefix=" + mP2pDeviceNamePrefix);
         pw.println("mP2pDeviceNamePostfixNumDigits=" + mP2pDeviceNamePostfixNumDigits);
         pw.println("mClientModeImplNumLogRecs=" + mClientModeImplNumLogRecs);
+        pw.println("mSaveFactoryMacToConfigStoreEnabled=" + mSaveFactoryMacToConfigStoreEnabled);
     }
 }
