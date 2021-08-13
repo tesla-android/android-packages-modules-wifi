@@ -908,6 +908,8 @@ public final class ScanResult implements Parcelable {
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public static final int EID_TIM = 5;
         /** @hide */
+        public static final int EID_COUNTRY = 7;
+        /** @hide */
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public static final int EID_BSS_LOAD = 11;
         /** @hide */

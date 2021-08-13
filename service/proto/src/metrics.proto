@@ -767,6 +767,13 @@ message WifiLog {
   // Histogram corresponding to the number of times recent connection failure status are reported
   // per WifiConfiguration.RecentFailureReason
   repeated Int32Count recent_failure_association_status = 218;
+
+  // Histogram of country codes observed from scan results.
+  // Bucket WifiMetrics.COUNTRY_CODE_CONFLICT_WIFI_SCAN for the code conflict within scan results.
+  // Bucket WifiMetrics.COUNTRY_CODE_CONFLICT_WIFI_SCAN_TELEPHONY for the code conflict between wifi
+  // and telephony.
+  // Bucket value is capped to WifiMetrics.MAX_COUNTRY_CODE_COUNT.
+  repeated Int32Count country_code_scan_histogram = 219;
 }
 
 // Information that gets logged for every WiFi connection.
