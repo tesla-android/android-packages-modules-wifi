@@ -966,6 +966,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
         }
 
+        // Clear internal data when P2P is shut down due to wifi off or no client.
+        // For idle shutdown case, there are clients and data should be restored when
+        // P2P goes back P2pEnabledState.
+        // For a real shutdown case which caused by wifi off or no client, those internal
+        // data should be cleared because the caller might not clear them, ex. WFD app
+        // enables WFD, but does not disable it after leaving the app.
+        private void clearP2pInternalDataIfNecessary() {
+            if (mIsWifiEnabled && !mDeathDataByBinder.isEmpty()) return;
+
+            mThisDevice.wfdInfo = null;
+        }
+
         boolean isP2pDisabled() {
             return getCurrentState() == mP2pDisabledState;
         }
@@ -1517,6 +1529,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             public void enter() {
                 if (mVerboseLoggingEnabled) logd(getName());
                 mInterfaceName = null; // reset iface name on disable.
+                clearP2pInternalDataIfNecessary();
             }
 
             private void setupInterfaceFeatures(String interfaceName) {
@@ -4069,6 +4082,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             mWifiNative.p2pServiceFlush();
             mServiceTransactionId = 0;
             mServiceDiscReqId = null;
+
+            if (null != mThisDevice.wfdInfo) {
+                setWfdInfo(mThisDevice.wfdInfo);
+            }
 
             updatePersistentNetworks(RELOAD);
             enableVerboseLogging(mSettingsConfigStore.get(WIFI_VERBOSE_LOGGING_ENABLED));

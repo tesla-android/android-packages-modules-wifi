@@ -425,7 +425,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         doNothing().when(mFrameworkFacade).registerContentObserver(eq(mContext), any(),
                 anyBoolean(), any());
         when(mFrameworkFacade.getSettingsWorkSource(any())).thenReturn(TEST_SETTINGS_WORKSOURCE);
-        when(mContext.getSystemService(Context.ACTIVITY_SERVICE)).thenReturn(mActivityManager);
+        when(mContext.getSystemService(ActivityManager.class)).thenReturn(mActivityManager);
         when(mContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(mAppOpsManager);
         IPowerManager powerManagerService = mock(IPowerManager.class);
         IThermalService thermalService = mock(IThermalService.class);

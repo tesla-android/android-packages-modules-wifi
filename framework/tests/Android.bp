@@ -40,7 +40,6 @@ android_test {
         "core-test-rules",
         "frameworks-base-testutils",
         "guava",
-        "mockito-target-minus-junit4",
         "modules-utils-build",
         "net-tests-utils",
         "net-utils-framework-common",
@@ -50,6 +49,13 @@ android_test {
     libs: [
         "android.test.runner",
         "android.test.base",
+    ],
+
+    // These are required for mockito static/final mocking
+    // mockito-target-extended-minus-junit4 is already included in frameworks-base-testutils
+    jni_libs: [
+        "libdexmakerjvmtiagent",
+        "libstaticjvmtiagent",
     ],
 
     test_suites: [
