@@ -624,6 +624,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         io2.verify(cb2).onNewRttController(mRttControllerMock);
 
         // change to AP mode (which for TestChipV1 doesn't allow RTT): trigger onDestroyed for all
+        doAnswer(new GetBoundIfaceAnswer(false)).when(mRttControllerMock).getBoundIface(any());
         validateInterfaceSequence(chipMock,
                 true, // chipModeValid
                 TestChipV1.STA_CHIP_MODE_ID, // chipModeId (only used if chipModeValid is true)
@@ -677,7 +678,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
         executeAndValidateStartupSequence();
-        validateInterfaceSequence(chipMock,
+        IWifiIface sta = validateInterfaceSequence(chipMock,
                 false, // chipModeValid
                 -1000, // chipModeId (only used if chipModeValid is true)
                 HDM_CREATE_IFACE_STA,
@@ -700,13 +701,20 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 true, // chipModeValid
                 TestChipV2.CHIP_MODE_ID, // chipModeId (only used if chipModeValid is true)
                 HDM_CREATE_IFACE_AP,
-                "wlan0",
+                "wlan1",
                 TestChipV2.CHIP_MODE_ID,
                 null, // tearDownList
                 null, // destroyedListener
                 TEST_WORKSOURCE_0 // requestorWs
         );
         mTestLooper.dispatchAll();
+
+        doAnswer(new GetBoundIfaceAnswer(false)).when(mRttControllerMock).getBoundIface(any());
+        chipMock.chipModeIdValidForRtt = -1;
+        mDut.removeIface(sta);
+        mTestLooper.dispatchAll();
+        verify(chipMock.chip, times(2)).createRttController(any(), any());
+        io.verify(cb).onRttControllerDestroyed();
 
         verifyNoMoreInteractions(cb);
     }
@@ -3354,6 +3362,21 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             }
         }
     }
+    private class GetBoundIfaceAnswer extends MockAnswerUtil.AnswerWithArguments {
+        private final boolean mIsValid;
+
+        GetBoundIfaceAnswer(boolean isValid) {
+            mIsValid = isValid;
+        }
+
+        public void answer(IWifiRttController.getBoundIfaceCallback cb) {
+            if (mIsValid) {
+                cb.onValues(mStatusOk, null);
+            } else {
+                cb.onValues(mStatusFail, null);
+            }
+        }
+    }
 
     private class RemoveXxxIfaceAnswer extends MockAnswerUtil.AnswerWithArguments {
         private ChipMockBase mChipMockBase;
@@ -3479,6 +3502,8 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
             doAnswer(new CreateRttControllerAnswer(this, mRttControllerMock)).when(
                     chip).createRttController(any(), any());
+
+            doAnswer(new GetBoundIfaceAnswer(true)).when(mRttControllerMock).getBoundIface(any());
         }
     }
 

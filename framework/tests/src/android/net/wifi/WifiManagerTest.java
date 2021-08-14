@@ -2242,10 +2242,7 @@ public class WifiManagerTest {
      */
     @Test
     public void getMaxNumberOfNetworkSuggestionsPerApp() {
-        when(mContext.getSystemServiceName(ActivityManager.class))
-                .thenReturn(Context.ACTIVITY_SERVICE);
-        when(mContext.getSystemService(Context.ACTIVITY_SERVICE))
-                .thenReturn(mActivityManager);
+        when(mContext.getSystemService(ActivityManager.class)).thenReturn(mActivityManager);
         when(mActivityManager.isLowRamDevice()).thenReturn(true);
         assertEquals(256, mWifiManager.getMaxNumberOfNetworkSuggestionsPerApp());
 
