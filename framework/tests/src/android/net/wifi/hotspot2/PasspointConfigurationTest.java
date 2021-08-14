@@ -18,10 +18,13 @@ package android.net.wifi.hotspot2;
 
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_NONE;
 
+import static junit.framework.Assert.assertNull;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.net.wifi.EAPConstants;
 import android.net.wifi.FakeKeys;
@@ -30,6 +33,8 @@ import android.net.wifi.hotspot2.pps.HomeSp;
 import android.os.Parcel;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
@@ -50,6 +55,7 @@ import java.util.Map;
 public class PasspointConfigurationTest {
     private static final int MAX_URL_BYTES = 1023;
     private static final int CERTIFICATE_FINGERPRINT_BYTES = 32;
+    private static final String TEST_DECORATED_IDENTITY_PREFIX = "androidwifi.dev!";
 
     /**
      * Verify parcel write and read consistency for the given configuration.
@@ -186,6 +192,7 @@ public class PasspointConfigurationTest {
         assertFalse(config.validateForR2());
         assertTrue(config.isAutojoinEnabled());
         assertTrue(config.isMacRandomizationEnabled());
+        assertFalse(config.isEnhancedMacRandomizationEnabled());
         assertTrue(config.getMeteredOverride() == METERED_OVERRIDE_NONE);
     }
 
@@ -622,5 +629,33 @@ public class PasspointConfigurationTest {
         PasspointConfiguration config = PasspointTestUtils.createConfig();
         config.setCredential(null);
         String uniqueId = config.getUniqueId();
+    }
+
+    /**
+     * Verify that the set and get decorated identity prefix methods work as expected.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSetGetDecoratedIdentityPrefix() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        PasspointConfiguration config = new PasspointConfiguration();
+
+        assertNull(config.getDecoratedIdentityPrefix());
+        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX);
+        assertEquals(TEST_DECORATED_IDENTITY_PREFIX, config.getDecoratedIdentityPrefix());
+    }
+
+    /**
+     * Verify that the set decorated identity prefix doesn't accept a malformed input.
+     *
+     * @throws Exception
+     */
+    @Test (expected = IllegalArgumentException.class)
+    public void testSetDecoratedIdentityPrefixWithInvalidValue() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        PasspointConfiguration config = new PasspointConfiguration();
+
+        config.setDecoratedIdentityPrefix(TEST_DECORATED_IDENTITY_PREFIX.replace('!', 'a'));
     }
 }

@@ -134,8 +134,9 @@ public class ScanResults {
             NetworkDetail nd = new NetworkDetail(bssid, ie, anqpLines, freq);
             ScanDetail detail = new ScanDetail(nd, WifiSsid.createFromAsciiEncoded(ssid),
                     bssid, "", rssi, freq,
-                    Long.MAX_VALUE, /* needed so that scan results aren't rejected because
-                                        they are older than scan start */
+                    // needed so that scan results aren't rejected because they are older than scan
+                    // start.
+                    Long.MAX_VALUE,
                     ie, anqpLines, generateIERawDatafromScanResultIE(ie));
             results[i] = detail;
         }

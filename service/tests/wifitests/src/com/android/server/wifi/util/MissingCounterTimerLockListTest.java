@@ -36,6 +36,7 @@ import java.util.Set;
 public class MissingCounterTimerLockListTest extends WifiBaseTest {
     private static final int TEST_MISSING_COUNT = 2;
     private static final long BLOCKING_DURATION = 1000;
+    private static final long MAX_DISABLE_DURATION = BLOCKING_DURATION * 10;
     private static final String TEST_SSID = "testSSID";
     private static final String TEST_FQDN = "testFQDN";
 
@@ -52,9 +53,9 @@ public class MissingCounterTimerLockListTest extends WifiBaseTest {
 
     @Test
     public void testAddRemove() {
-        mMissingCounterTimerLockList.add(TEST_SSID, BLOCKING_DURATION);
-        mMissingCounterTimerLockList.add(TEST_FQDN, BLOCKING_DURATION);
-        mMissingCounterTimerLockList.add(null, BLOCKING_DURATION);
+        mMissingCounterTimerLockList.add(TEST_SSID, BLOCKING_DURATION, MAX_DISABLE_DURATION);
+        mMissingCounterTimerLockList.add(TEST_FQDN, BLOCKING_DURATION, MAX_DISABLE_DURATION);
+        mMissingCounterTimerLockList.add(null, BLOCKING_DURATION, MAX_DISABLE_DURATION);
         assertEquals(2, mMissingCounterTimerLockList.size());
         assertTrue(mMissingCounterTimerLockList.isLocked(TEST_SSID));
         assertTrue(mMissingCounterTimerLockList.isLocked(TEST_FQDN));
@@ -68,8 +69,8 @@ public class MissingCounterTimerLockListTest extends WifiBaseTest {
 
     @Test
     public void testUpdateAndTimer() {
-        mMissingCounterTimerLockList.add(TEST_SSID, BLOCKING_DURATION);
-        mMissingCounterTimerLockList.add(TEST_FQDN, BLOCKING_DURATION);
+        mMissingCounterTimerLockList.add(TEST_SSID, BLOCKING_DURATION, MAX_DISABLE_DURATION);
+        mMissingCounterTimerLockList.add(TEST_FQDN, BLOCKING_DURATION, MAX_DISABLE_DURATION);
         assertEquals(2, mMissingCounterTimerLockList.size());
         when(mClock.getWallClockMillis()).thenReturn((long) 0);
         Set<String> updateSet = new HashSet<>();
@@ -82,5 +83,24 @@ public class MissingCounterTimerLockListTest extends WifiBaseTest {
         assertEquals(2, mMissingCounterTimerLockList.size());
         assertFalse(mMissingCounterTimerLockList.isLocked(TEST_SSID));
         assertTrue(mMissingCounterTimerLockList.isLocked(TEST_FQDN));
+    }
+
+    @Test
+    public void testMaxDisableDurationTimer() {
+        // Disable 2 networks at time == 0
+        when(mClock.getWallClockMillis()).thenReturn((long) 0);
+        mMissingCounterTimerLockList.add(TEST_SSID, BLOCKING_DURATION, MAX_DISABLE_DURATION);
+        mMissingCounterTimerLockList.add(TEST_FQDN, BLOCKING_DURATION, MAX_DISABLE_DURATION);
+        assertEquals(2, mMissingCounterTimerLockList.size());
+
+        // verify that at time == MAX_DISABLE_DURATION the networks are still disabled.
+        when(mClock.getWallClockMillis()).thenReturn(MAX_DISABLE_DURATION);
+        assertTrue(mMissingCounterTimerLockList.isLocked(TEST_SSID));
+        assertTrue(mMissingCounterTimerLockList.isLocked(TEST_FQDN));
+
+        // verify that at time == MAX_DISABLE_DURATION the networks are re-enabled.
+        when(mClock.getWallClockMillis()).thenReturn(MAX_DISABLE_DURATION + 1);
+        assertFalse(mMissingCounterTimerLockList.isLocked(TEST_SSID));
+        assertFalse(mMissingCounterTimerLockList.isLocked(TEST_FQDN));
     }
 }

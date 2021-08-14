@@ -26,4 +26,10 @@ oneway interface IScoreUpdateObserver
     void notifyScoreUpdate(int sessionId, int score);
 
     void triggerUpdateOfWifiUsabilityStats(int sessionId);
+
+    void notifyStatusUpdate(int sessionId, boolean isUsable);
+
+    void requestNudOperation(int sessionId);
+
+    void blocklistCurrentBssid(int sessionId);
 }

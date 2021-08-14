@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> შემოთავაზებული ქსელები. მოწყობილობა შეიძლება ავტომატურად დაუკავშირდეს."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"დაშვება"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"არა, გმადლობთ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"დაუკავშირდებით <xliff:g id="CARRIERNAME">%s</xliff:g> Wi-Fi-ს?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ეს ქსელები მიიღებს SIM-ის ID-ს, რომლის მეშვეობითაც შესაძლებელია მოწყობილობის მდებარეობაზე თვალის დევნება."</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"დაკავშირება"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"არ დაუკავშირდეს"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"გსურთ, დაადასტუროთ დაკავშირება?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"დაკავშირების შემთხვევაში, <xliff:g id="CARRIERNAME">%s</xliff:g>-ის Wi‑Fi ქსელებმა შეიძლება წვდომა იქონიოს ან გააზიაროს უნიკალური ID, რომელიც თქვენს SIM-ბარათთან არის ასოცირებული. ამ ცვლილებამ შესაძლოა თქვენი მოწყობილობის მდებარეობა აღნუსხვადი გახადოს."</string>

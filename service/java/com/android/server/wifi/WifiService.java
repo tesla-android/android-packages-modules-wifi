@@ -16,16 +16,10 @@
 
 package com.android.server.wifi;
 
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.util.Log;
 
 import com.android.server.SystemService;
-import com.android.server.wifi.util.WifiAsyncChannel;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Service implementing Wi-Fi functionality. Delegates actual interface
@@ -46,8 +40,7 @@ public final class WifiService extends SystemService {
         super(contextBase);
         mWifiContext = new WifiContext(contextBase);
         WifiInjector injector = new WifiInjector(mWifiContext);
-        WifiAsyncChannel channel =  new WifiAsyncChannel(TAG);
-        mImpl = new WifiServiceImpl(mWifiContext, injector, channel);
+        mImpl = new WifiServiceImpl(mWifiContext, injector);
     }
 
     @Override
@@ -59,7 +52,6 @@ public final class WifiService extends SystemService {
     @Override
     public void onBootPhase(int phase) {
         if (phase == SystemService.PHASE_SYSTEM_SERVICES_READY) {
-            createNotificationChannels(mWifiContext);
             mImpl.checkAndStartWifi();
         } else if (phase == SystemService.PHASE_BOOT_COMPLETED) {
             mImpl.handleBootCompleted();
@@ -79,35 +71,5 @@ public final class WifiService extends SystemService {
     @Override
     public void onUserStopping(TargetUser user) {
         mImpl.handleUserStop(user.getUserHandle().getIdentifier());
-    }
-
-    // Create notification channels used by wifi.
-    private static void createNotificationChannels(Context ctx) {
-        final NotificationManager nm = ctx.getSystemService(NotificationManager.class);
-        List<NotificationChannel> channelsList = new ArrayList<>();
-        final NotificationChannel networkStatusChannel = new NotificationChannel(
-                NOTIFICATION_NETWORK_STATUS,
-                ctx.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_status),
-                NotificationManager.IMPORTANCE_LOW);
-        channelsList.add(networkStatusChannel);
-
-        final NotificationChannel networkAlertsChannel = new NotificationChannel(
-                NOTIFICATION_NETWORK_ALERTS,
-                ctx.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_alerts),
-                NotificationManager.IMPORTANCE_HIGH);
-        networkAlertsChannel.setBlockable(true);
-        channelsList.add(networkAlertsChannel);
-
-        final NotificationChannel networkAvailable = new NotificationChannel(
-                NOTIFICATION_NETWORK_AVAILABLE,
-                ctx.getResources().getString(
-                        com.android.wifi.resources.R.string.notification_channel_network_available),
-                NotificationManager.IMPORTANCE_LOW);
-        networkAvailable.setBlockable(true);
-        channelsList.add(networkAvailable);
-
-        nm.createNotificationChannels(channelsList);
     }
 }

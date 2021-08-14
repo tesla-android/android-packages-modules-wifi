@@ -18,7 +18,9 @@ package android.net.wifi;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.validateMockitoUsage;
 
 import android.net.wifi.ScanResult.InformationElement;
@@ -44,6 +46,7 @@ public class ScanResultTest {
     public static final long TEST_TSF = 04660l;
     public static final @WifiAnnotations.WifiStandard int TEST_WIFI_STANDARD =
             ScanResult.WIFI_STANDARD_11AC;
+    public static final String TEST_IFACE_NAME = "test_ifname";
 
     /**
      * Frequency to channel map. This include some frequencies used outside the US.
@@ -122,6 +125,21 @@ public class ScanResultTest {
     @After
     public void cleanup() {
         validateMockitoUsage();
+    }
+
+    /**
+     * Verify the logic that determines whether a frequency is PSC.
+     */
+    @Test
+    public void testIs6GHzPsc() {
+        int test2G = 2412;
+        int test6GNonPsc = ScanResult.BAND_6_GHZ_PSC_START_MHZ
+                + ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ - 20;
+        int test6GPsc = ScanResult.BAND_6_GHZ_PSC_START_MHZ
+                + ScanResult.BAND_6_GHZ_PSC_STEP_SIZE_MHZ;
+        assertFalse(ScanResult.is6GHzPsc(test2G));
+        assertFalse(ScanResult.is6GHzPsc(test6GNonPsc));
+        assertTrue(ScanResult.is6GHzPsc(test6GPsc));
     }
 
     /**
@@ -220,7 +238,7 @@ public class ScanResultTest {
                 + "passpoint: no, ChannelBandwidth: 0, centerFreq0: 0, centerFreq1: 0, "
                 + "standard: 11ac, "
                 + "80211mcResponder: is not supported, "
-                + "Radio Chain Infos: null", scanResult.toString());
+                + "Radio Chain Infos: null, interface name: test_ifname", scanResult.toString());
     }
 
     /**
@@ -243,7 +261,8 @@ public class ScanResultTest {
                 + "standard: 11ac, "
                 + "80211mcResponder: is not supported, "
                 + "Radio Chain Infos: [RadioChainInfo: id=0, level=-45, "
-                + "RadioChainInfo: id=1, level=-54]", scanResult.toString());
+                + "RadioChainInfo: id=1, level=-54], interface name: test_ifname",
+                scanResult.toString());
     }
 
     /**
@@ -253,7 +272,8 @@ public class ScanResultTest {
     public void convertFrequencyToChannel() throws Exception {
         for (int i = 0; i < FREQUENCY_TO_CHANNEL_MAP.length; i += 3) {
             assertEquals(FREQUENCY_TO_CHANNEL_MAP[i + 2],
-                    ScanResult.convertFrequencyMhzToChannel(FREQUENCY_TO_CHANNEL_MAP[i]));
+                    ScanResult.convertFrequencyMhzToChannelIfSupported(
+                    FREQUENCY_TO_CHANNEL_MAP[i]));
         }
     }
 
@@ -262,7 +282,7 @@ public class ScanResultTest {
      */
     @Test
     public void convertFrequencyToChannelWithInvalidFreq() throws Exception {
-        assertEquals(-1, ScanResult.convertFrequencyMhzToChannel(8000));
+        assertEquals(-1, ScanResult.convertFrequencyMhzToChannelIfSupported(8000));
     }
 
     /**
@@ -284,6 +304,8 @@ public class ScanResultTest {
         result.frequency = TEST_FREQUENCY;
         result.timestamp = TEST_TSF;
         result.setWifiStandard(TEST_WIFI_STANDARD);
+        result.ifaceName = TEST_IFACE_NAME;
+
         return result;
     }
 

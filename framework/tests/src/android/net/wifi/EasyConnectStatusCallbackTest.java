@@ -19,6 +19,8 @@ package android.net.wifi;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import android.annotation.NonNull;
+import android.net.Uri;
 import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
@@ -51,6 +53,11 @@ public class EasyConnectStatusCallbackTest {
         public void onFailure(int code) {
             mOnFailureR1EventReceived = true;
             mLastCode = code;
+        }
+
+        @Override
+        public void onBootstrapUriGenerated(@NonNull Uri dppUri) {
+
         }
     };
     private boolean mOnFailureR1EventReceived;

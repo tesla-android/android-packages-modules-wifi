@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"Sugerowane sieci: <xliff:g id="NAME">%s</xliff:g>. Urządzenie może łączyć się automatycznie."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Zezwól"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Nie, dziękuję"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Połączyć z Wi-Fi operatora <xliff:g id="CARRIERNAME">%s</xliff:g>?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Te sieci otrzymują identyfikator SIM, który można wykorzystać do śledzenia lokalizacji urządzenia"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Połącz"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Nie łącz"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Potwierdzić połączenie?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Jeśli się połączysz, sieci Wi-Fi operatora <xliff:g id="CARRIERNAME">%s</xliff:g> będą mogły korzystać z unikalnego identyfikatora powiązanego z Twoją kartą SIM oraz go udostępniać. To może pozwolić na monitorowanie lokalizacji Twojego urządzenia."</string>

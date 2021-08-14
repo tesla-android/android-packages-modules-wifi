@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
@@ -28,10 +27,8 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 /**
  * This class performs serialization and parsing of XML data block that contain the map of IMSI
  * protection exemption user approval info.
@@ -41,7 +38,6 @@ public class ImsiPrivacyProtectionExemptionStoreData implements WifiConfigStore.
     private static final String XML_TAG_SECTION_HEADER_IMSI_PROTECTION_EXEMPTION_CARRIER_MAP =
             "ImsiPrivacyProtectionExemptionMap";
     private static final String XML_TAG_CARRIER_EXEMPTION_MAP = "CarrierExemptionMap";
-
     /**
      * Interface define the data source for the carrier IMSI protection exemption map store data.
      */
@@ -52,56 +48,45 @@ public class ImsiPrivacyProtectionExemptionStoreData implements WifiConfigStore.
          * @return Map of carrier Id to if allowed.
          */
         Map<Integer, Boolean> toSerialize();
-
         /**
          * Set the IMSI protection exemption map in the data source after serializing them from disk
          *
          * @param imsiProtectionExemptionMap Map of carrier Id to allowed or not.
          */
         void fromDeserialized(Map<Integer, Boolean> imsiProtectionExemptionMap);
-
         /**
          * Clear internal data structure in preparation for user switch or initial store read.
          */
         void reset();
-
         /**
          * Indicates whether there is new data to serialize.
          */
         boolean hasNewDataToSerialize();
     }
-
     private final DataSource mDataSource;
-
     /**
      * Set the data source fot store data.
      */
     public ImsiPrivacyProtectionExemptionStoreData(@NonNull DataSource dataSource) {
         mDataSource = dataSource;
     }
-
     @Override
     public void serializeData(XmlSerializer out, WifiConfigStoreEncryptionUtil encryptionUtil)
             throws XmlPullParserException, IOException {
         Map<String, Boolean> dataToSerialize = integerMapToStringMap(mDataSource.toSerialize());
         XmlUtil.writeNextValue(out, XML_TAG_CARRIER_EXEMPTION_MAP, dataToSerialize);
     }
-
     @Override
     public void deserializeData(XmlPullParser in, int outerTagDepth, int version,
             WifiConfigStoreEncryptionUtil encryptionUtil)
             throws XmlPullParserException, IOException {
         // Ignore empty reads.
         if (in == null) {
-            mDataSource.fromDeserialized(Collections.emptyMap());
             return;
         }
-
         mDataSource.fromDeserialized(parseCarrierImsiProtectionExemptionMap(in, outerTagDepth,
                 version, encryptionUtil));
-
     }
-
     private Map<Integer, Boolean> parseCarrierImsiProtectionExemptionMap(XmlPullParser in,
             int outerTagDepth,
             @WifiConfigStore.Version int version,
@@ -129,7 +114,6 @@ public class ImsiPrivacyProtectionExemptionStoreData implements WifiConfigStore.
         }
         return stringMapToIntegerMap(protectionExemptionMap);
     }
-
     private Map<String, Boolean> integerMapToStringMap(Map<Integer, Boolean> input) {
         Map<String, Boolean> output = new HashMap<>();
         if (input == null) {
@@ -140,7 +124,6 @@ public class ImsiPrivacyProtectionExemptionStoreData implements WifiConfigStore.
         }
         return output;
     }
-
     private Map<Integer, Boolean> stringMapToIntegerMap(Map<String, Boolean> input) {
         Map<Integer, Boolean> output = new HashMap<>();
         if (input == null) {
@@ -155,23 +138,18 @@ public class ImsiPrivacyProtectionExemptionStoreData implements WifiConfigStore.
         }
         return output;
     }
-
-
     @Override
     public void resetData() {
         mDataSource.reset();
     }
-
     @Override
     public boolean hasNewDataToSerialize() {
         return mDataSource.hasNewDataToSerialize();
     }
-
     @Override
     public String getName() {
         return XML_TAG_SECTION_HEADER_IMSI_PROTECTION_EXEMPTION_CARRIER_MAP;
     }
-
     @Override
     public int getStoreFileId() {
         // User general store.

@@ -25,11 +25,17 @@ import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiScanner.ScanData;
 import android.net.wifi.WifiSsid;
 
+import com.android.modules.utils.build.SdkLevel;
+import com.android.net.module.util.MacAddressUtils;
+import com.android.server.wifi.scanner.ChannelHelper;
+import com.android.server.wifi.scanner.ChannelHelper.ChannelCollection;
+
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -39,7 +45,7 @@ import java.util.Set;
 public class ScanTestUtil {
 
     public static void setupMockChannels(WifiNative wifiNative, int[] channels24, int[] channels5,
-            int[] channelsDfs, int[] channels6) throws Exception {
+            int[] channelsDfs, int[] channels6, int[] channels60) throws Exception {
         when(wifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_24_GHZ))
                 .thenReturn(channels24);
         when(wifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ))
@@ -48,6 +54,8 @@ public class ScanTestUtil {
                 .thenReturn(channelsDfs);
         when(wifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_6_GHZ))
                 .thenReturn(channels6);
+        when(wifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_60_GHZ))
+                .thenReturn(channels60);
     }
 
     public static WifiScanner.ScanSettings createRequest(WifiScanner.ChannelSpec[] channels,
@@ -124,6 +132,10 @@ public class ScanTestUtil {
             mSettings.report_threshold_percent = percent;
             return this;
         }
+        public NativeScanSettingsBuilder withEnable6GhzRnr(boolean enable) {
+            mSettings.enable6GhzRnr = enable;
+            return this;
+        }
 
         /**
          * Add the provided hidden network SSIDs to scan request.
@@ -137,6 +149,16 @@ public class ScanTestUtil {
                 mSettings.hiddenNetworks[i].ssid = networkSSIDs[i];
             }
             return this;
+        }
+
+        public NativeScanSettingsBuilder addBucketWithChannelCollection(
+                int period, int reportEvents, ChannelCollection channelCollection) {
+            WifiNative.BucketSettings bucket = new WifiNative.BucketSettings();
+            bucket.bucket = mSettings.num_buckets;
+            bucket.period_ms = period;
+            bucket.report_events = reportEvents;
+            channelCollection.fillBucketSettings(bucket, Integer.MAX_VALUE);
+            return addBucket(bucket);
         }
 
         public NativeScanSettingsBuilder addBucketWithBand(
@@ -185,6 +207,33 @@ public class ScanTestUtil {
 
     /**
      * Compute the expected native scan settings that are expected for the given
+     * WifiScanner.ScanSettings using the given ChannelHelper.
+     * This method is created to test 6Ghz PSC scanning.
+     */
+    public static WifiNative.ScanSettings computeSingleScanNativeSettingsWithChannelHelper(
+            WifiScanner.ScanSettings requestSettings, ChannelHelper channelHelper) {
+        int reportEvents = requestSettings.reportEvents | WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN;
+        NativeScanSettingsBuilder builder = new NativeScanSettingsBuilder()
+                .withBasePeriod(0)
+                .withMaxApPerScan(0)
+                .withMaxPercentToCache(0)
+                .withMaxScansToCache(0)
+                .withType(requestSettings.type);
+        if (SdkLevel.isAtLeastS()) {
+            builder.withEnable6GhzRnr(requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED
+                    || (requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
+                    && ChannelHelper.is6GhzBandIncluded(requestSettings.band)));
+        }
+        ChannelCollection channelCollection = channelHelper.createChannelCollection();
+        channelCollection.addChannels(requestSettings);
+        builder.addBucketWithChannelCollection(0, reportEvents, channelCollection);
+        return builder.build();
+    }
+
+    /**
+     * Compute the expected native scan settings that are expected for the given
      * WifiScanner.ScanSettings.
      */
     public static WifiNative.ScanSettings computeSingleScanNativeSettings(
@@ -196,6 +245,13 @@ public class ScanTestUtil {
                 .withMaxPercentToCache(0)
                 .withMaxScansToCache(0)
                 .withType(requestSettings.type);
+        if (SdkLevel.isAtLeastS()) {
+            builder.withEnable6GhzRnr(requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED
+                    || (requestSettings.getRnrSetting()
+                    == WifiScanner.WIFI_RNR_ENABLED_IF_WIFI_BAND_6_GHZ_SCANNED
+                    && ChannelHelper.is6GhzBandIncluded(requestSettings.band)));
+        }
         if (requestSettings.band == WifiScanner.WIFI_BAND_UNSPECIFIED) {
             builder.addBucketWithChannels(0, reportEvents, requestSettings.channels);
         } else {
@@ -239,7 +295,8 @@ public class ScanTestUtil {
     }
 
     public static ScanResult createScanResult(int freq) {
-        return new ScanResult(WifiSsid.createFromAsciiEncoded("AN SSID"), "00:00:00:00:00:00", 0L,
+        return new ScanResult(WifiSsid.createFromAsciiEncoded("AN SSID"),
+                MacAddressUtils.createRandomUnicastAddress().toString(), 0L,
                 -1, null, "", 0, freq, 0);
     }
 
@@ -303,6 +360,24 @@ public class ScanTestUtil {
         }
     }
 
+    private static void assertScanResultsEqualsAnyOrder(String prefix, ScanResult[] expected,
+            ScanResult[] actual) {
+        assertNotNull(prefix + "expected ScanResults was null", expected);
+        assertNotNull(prefix + "actual ScanResults was null", actual);
+        assertEquals(prefix + "results.length", expected.length, actual.length);
+
+        // Sort using the bssids.
+        ScanResult[] sortedExpected = Arrays
+                .stream(expected)
+                .sorted(Comparator.comparing(s -> s.BSSID))
+                .toArray(ScanResult[]::new);
+        ScanResult[] sortedActual = Arrays
+                .stream(actual)
+                .sorted(Comparator.comparing(s -> s.BSSID))
+                .toArray(ScanResult[]::new);
+        assertScanResultsEquals(prefix, sortedExpected, sortedActual);
+    }
+
     /**
      * Asserts if the provided scan results are the same.
      */
@@ -317,13 +392,20 @@ public class ScanTestUtil {
         assertScanResultsEquals("", expected, actual);
     }
 
+    /**
+     * Asserts if the provided scan result arrays are the same.
+     */
+    public static void assertScanResultsEqualsAnyOrder(ScanResult[] expected, ScanResult[] actual) {
+        assertScanResultsEqualsAnyOrder("", expected, actual);
+    }
+
     private static void assertScanDataEquals(String prefix, ScanData expected, ScanData actual) {
         assertNotNull(prefix + "expected ScanData was null", expected);
         assertNotNull(prefix + "actual ScanData was null", actual);
         assertEquals(prefix + "id", expected.getId(), actual.getId());
         assertEquals(prefix + "flags", expected.getFlags(), actual.getFlags());
-        assertEquals(prefix + "band", expected.getBandScanned(),
-                actual.getBandScanned());
+        assertEquals(prefix + "band", expected.getScannedBandsInternal(),
+                actual.getScannedBandsInternal());
         assertScanResultsEquals(prefix, expected.getResults(), actual.getResults());
     }
 
@@ -361,6 +443,7 @@ public class ScanTestUtil {
         assertEquals("percent to cache", expected.report_threshold_percent,
                 actual.report_threshold_percent);
         assertEquals("base period", expected.base_period_ms, actual.base_period_ms);
+        assertEquals("enable 6Ghz RNR", expected.enable6GhzRnr, actual.enable6GhzRnr);
 
         assertEquals("number of buckets", expected.num_buckets, actual.num_buckets);
         assertNotNull("buckets was null", actual.buckets);

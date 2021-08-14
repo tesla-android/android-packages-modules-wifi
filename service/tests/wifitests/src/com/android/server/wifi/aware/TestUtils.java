@@ -34,7 +34,7 @@ public class TestUtils {
 
         private void addTransactionId(int transactionId) {
             if (transactionId == 0) {
-                return; // transaction ID == 0 is used as a dummy ID in several command - acceptable
+                return; // transaction ID == 0 is used as a placeholder ID in several command
             }
             mTransactionIds.append(transactionId, mTransactionIds.get(transactionId) + 1);
         }
@@ -49,7 +49,7 @@ public class TestUtils {
 
         public boolean enableAndConfigure(short transactionId, ConfigRequest configRequest,
                 boolean notifyIdentityChange, boolean initialConfiguration, boolean isInteractive,
-                boolean isIdle, boolean rangingEnabled) {
+                boolean isIdle, boolean rangingEnabled, boolean isInstantCommunicationEnabled) {
             addTransactionId(transactionId);
             return true;
         }

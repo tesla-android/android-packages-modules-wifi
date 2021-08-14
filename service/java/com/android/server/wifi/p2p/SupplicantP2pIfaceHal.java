@@ -29,6 +29,8 @@ import android.hardware.wifi.supplicant.V1_0.SupplicantStatusCode;
 import android.hardware.wifi.supplicant.V1_0.WpsConfigMethods;
 import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
+import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -41,6 +43,7 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ArrayUtils;
 import com.android.server.wifi.util.NativeUtil;
 
@@ -112,7 +115,7 @@ public class SupplicantP2pIfaceHal {
             };
 
     private final WifiP2pMonitor mMonitor;
-    private SupplicantP2pIfaceCallback mCallback = null;
+    private ISupplicantP2pIfaceCallback mCallback = null;
 
     public SupplicantP2pIfaceHal(WifiP2pMonitor monitor) {
         mMonitor = monitor;
@@ -140,6 +143,7 @@ public class SupplicantP2pIfaceHal {
     public static void enableVerboseLogging(int verbose) {
         sVerboseLoggingEnabled = verbose > 0;
         SupplicantP2pIfaceCallback.enableVerboseLogging(verbose);
+        SupplicantP2pIfaceCallbackV1_4.enableVerboseLogging(verbose);
     }
 
     /**
@@ -262,17 +266,43 @@ public class SupplicantP2pIfaceHal {
                 return false;
             }
             if (mISupplicantP2pIface != null && mMonitor != null) {
-                mCallback = new SupplicantP2pIfaceCallback(ifaceName, mMonitor);
-                if (!registerCallback(mCallback)) {
-                    Log.e(TAG, "Callback registration failed. Initialization incomplete.");
-                    return false;
+                if (null != getP2pIfaceMockableV1_4()) {
+                    android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIfaceCallback callback =
+                            new SupplicantP2pIfaceCallbackV1_4(ifaceName);
+                    if (!registerCallbackV1_4(callback)) {
+                        Log.e(TAG, "Callback registration failed. Initialization incomplete.");
+                        return false;
+                    }
+                    mCallback = callback;
+                } else {
+                    mCallback = new SupplicantP2pIfaceCallback(ifaceName);
+                    if (!registerCallback(mCallback)) {
+                        Log.e(TAG, "Callback registration failed. Initialization incomplete.");
+                        return false;
+                    }
                 }
             }
             return true;
         }
     }
 
+    protected class SupplicantP2pIfaceCallback extends SupplicantP2pIfaceCallbackImpl {
+        SupplicantP2pIfaceCallback(@NonNull String ifaceName) {
+            super(SupplicantP2pIfaceHal.this, ifaceName, mMonitor);
+        }
+    }
+
+    protected class SupplicantP2pIfaceCallbackV1_4 extends SupplicantP2pIfaceCallbackV1_4Impl {
+        SupplicantP2pIfaceCallbackV1_4(@NonNull String ifaceName) {
+            super(SupplicantP2pIfaceHal.this, ifaceName, mMonitor);
+        }
+    }
+
     private ISupplicantIface getIfaceV1_0(@NonNull String ifaceName) {
+        if (null == mISupplicant) {
+            Log.e(TAG, "Can't call getIface: ISupplicant is null");
+            return null;
+        }
         /** List all supplicant Ifaces */
         final ArrayList<ISupplicant.IfaceInfo> supplicantIfaces = new ArrayList();
         try {
@@ -464,6 +494,13 @@ public class SupplicantP2pIfaceHal {
                 mISupplicantP2pIface);
     }
 
+    protected android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface
+            getP2pIfaceMockableV1_4() {
+        if (mISupplicantP2pIface == null) return null;
+        return android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface.castFrom(
+                mISupplicantP2pIface);
+    }
+
     protected ISupplicantP2pNetwork getP2pNetworkMockable(ISupplicantNetwork network) {
         return ISupplicantP2pNetwork.asInterface(network.asBinder());
     }
@@ -488,13 +525,15 @@ public class SupplicantP2pIfaceHal {
         if (sVerboseLoggingEnabled) Log.d(TAG, s);
     }
 
-    protected static void logCompletion(String operation, SupplicantStatus status) {
-        if (status == null) {
-            Log.w(TAG, operation + " failed: no status code returned.");
-        } else if (status.code == SupplicantStatusCode.SUCCESS) {
+    protected static void logw(String s) {
+        Log.w(TAG, s);
+    }
+
+    protected static <S> void logCompletion(String operation, int code, String debugMessage) {
+        if (code == SupplicantStatusCode.SUCCESS) {
             logd(operation + " completed successfully.");
         } else {
-            Log.w(TAG, operation + " failed: " + status.code + " (" + status.debugMessage + ")");
+            Log.w(TAG, operation + " failed: " + code + " (" + debugMessage + ")");
         }
     }
 
@@ -519,6 +558,23 @@ public class SupplicantP2pIfaceHal {
         synchronized (mLock) {
             android.hardware.wifi.supplicant.V1_2.ISupplicantP2pIface p2pIfaceV12 =
                     getP2pIfaceMockableV1_2();
+            if (p2pIfaceV12 == null) {
+                Log.e(TAG, "Can't call " + method + ": ISupplicantP2pIface is null");
+                return null;
+            }
+            return p2pIfaceV12;
+        }
+    }
+
+    /**
+     * Returns SupplicantP2pIface on success, logs failure to call methodStr
+     * and returns false otherwise
+     */
+    private android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface
+            getSupplicantP2pIfaceAndLogFailureV1_4(String method) {
+        synchronized (mLock) {
+            android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface p2pIfaceV12 =
+                    getP2pIfaceMockableV1_4();
             if (p2pIfaceV12 == null) {
                 Log.e(TAG, "Can't call " + method + ": ISupplicantP2pIface is null");
                 return null;
@@ -587,6 +643,36 @@ public class SupplicantP2pIfaceHal {
             SupplicantResult<Void> result = new SupplicantResult("registerCallback()");
             try {
                 result.setResult(mISupplicantP2pIface.registerCallback(receiver));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
+            }
+            return result.isSuccess();
+        }
+    }
+
+
+    /**
+     * Register for callbacks from this interface.
+     *
+     * These callbacks are invoked for events that are specific to this interface.
+     * Registration of multiple callback objects is supported. These objects must
+     * be automatically deleted when the corresponding client process is dead or
+     * if this interface is removed.
+     *
+     * @param receiver An instance of the |ISupplicantP2pIfaceCallback| HIDL
+     *        interface object.
+     * @return boolean value indicating whether operation was successful.
+     */
+    public boolean registerCallbackV1_4(
+            android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIfaceCallback receiver) {
+        synchronized (mLock) {
+            if (!checkSupplicantP2pIfaceAndLogFailure("registerCallbackV1_4")) return false;
+            if (null == getP2pIfaceMockableV1_4()) return false;
+            SupplicantResultV1_4<Void> result =
+                    new SupplicantResultV1_4("registerCallbackV1_4()");
+            try {
+                result.setResult(getP2pIfaceMockableV1_4().registerCallback_1_4(receiver));
             } catch (RemoteException e) {
                 Log.e(TAG, "ISupplicantP2pIface exception: " + e);
                 supplicantServiceDiedHandler();
@@ -1363,63 +1449,86 @@ public class SupplicantP2pIfaceHal {
 
 
     /**
-     * Set P2P Listen channel and operating chanel.
+     * Set P2P Listen channel.
      *
      * @param listenChannel Wifi channel. eg, 1, 6, 11.
-     * @param operatingChannel Wifi channel. eg, 1, 6, 11.
      *
      * @return true, if operation was successful.
      */
-    public boolean setListenChannel(int listenChannel, int operatingChannel) {
+    public boolean setListenChannel(int listenChannel) {
         synchronized (mLock) {
             if (!checkSupplicantP2pIfaceAndLogFailure("setListenChannel")) return false;
 
-            if (listenChannel >= 1 && listenChannel <= 11) {
-                SupplicantResult<Void> result = new SupplicantResult(
-                        "setListenChannel(" + listenChannel + ", " + DEFAULT_OPERATING_CLASS + ")");
-                try {
-                    result.setResult(mISupplicantP2pIface.setListenChannel(
-                            listenChannel, DEFAULT_OPERATING_CLASS));
-                } catch (RemoteException e) {
-                    Log.e(TAG, "ISupplicantP2pIface exception: " + e);
-                    supplicantServiceDiedHandler();
-                }
-                if (!result.isSuccess()) {
-                    return false;
-                }
-            } else if (listenChannel != 0) {
-                // listenChannel == 0 does not set any listen channel.
+            // There is no original channel recorded in supplicant, so just return true.
+            if (0 == listenChannel) return true;
+
+            // Using channels other than 1, 6, and 11 would result in discovery issue.
+            if (listenChannel != 1 && listenChannel != 6 && listenChannel != 11) {
                 return false;
             }
 
-            if (operatingChannel >= 0 && operatingChannel <= 165) {
-                ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-                // operatingChannel == 0 enables all freqs.
-                if (operatingChannel >= 1 && operatingChannel <= 165) {
-                    int freq = (operatingChannel <= 14 ? 2407 : 5000) + operatingChannel * 5;
-                    ISupplicantP2pIface.FreqRange range1 =  new ISupplicantP2pIface.FreqRange();
-                    range1.min = 1000;
-                    range1.max = freq - 5;
-                    ISupplicantP2pIface.FreqRange range2 =  new ISupplicantP2pIface.FreqRange();
-                    range2.min = freq + 5;
-                    range2.max = 6000;
-                    ranges.add(range1);
-                    ranges.add(range2);
-                }
-                SupplicantResult<Void> result = new SupplicantResult(
-                        "setDisallowedFrequencies(" + ranges + ")");
-                try {
-                    result.setResult(mISupplicantP2pIface.setDisallowedFrequencies(ranges));
-                } catch (RemoteException e) {
-                    Log.e(TAG, "ISupplicantP2pIface exception: " + e);
-                    supplicantServiceDiedHandler();
-                }
-                return result.isSuccess();
+            SupplicantResult<Void> result = new SupplicantResult(
+                    "setListenChannel(" + listenChannel + ", " + DEFAULT_OPERATING_CLASS + ")");
+            try {
+                result.setResult(mISupplicantP2pIface.setListenChannel(
+                        listenChannel, DEFAULT_OPERATING_CLASS));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
             }
-            return false;
+            return result.isSuccess();
         }
     }
 
+    /**
+     * Set P2P operating channel.
+     *
+     * @param operatingChannel the desired operating channel.
+     * @param unsafeChannels channels which p2p cannot use.
+     *
+     * @return true, if operation was successful.
+     */
+    public boolean setOperatingChannel(int operatingChannel,
+            @NonNull List<CoexUnsafeChannel> unsafeChannels) {
+        synchronized (mLock) {
+            if (!checkSupplicantP2pIfaceAndLogFailure("setOperatingChannel")) return false;
+            if (null == unsafeChannels) return false;
+
+            ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
+            if (operatingChannel >= 1 && operatingChannel <= 165) {
+                int freq = (operatingChannel <= 14 ? 2407 : 5000) + operatingChannel * 5;
+                ISupplicantP2pIface.FreqRange range1 =  new ISupplicantP2pIface.FreqRange();
+                range1.min = 1000;
+                range1.max = freq - 5;
+                ISupplicantP2pIface.FreqRange range2 =  new ISupplicantP2pIface.FreqRange();
+                range2.min = freq + 5;
+                range2.max = 6000;
+                ranges.add(range1);
+                ranges.add(range2);
+            }
+            if (SdkLevel.isAtLeastS()) {
+                for (CoexUnsafeChannel cuc: unsafeChannels) {
+                    int centerFreq = ScanResult.convertChannelToFrequencyMhzIfSupported(
+                            cuc.getChannel(), cuc.getBand());
+                    ISupplicantP2pIface.FreqRange range = new ISupplicantP2pIface.FreqRange();
+                    // The range boundaries are inclusive in native frequency inclusion check.
+                    // Minusing one to avoid affecting neighbors.
+                    range.min = centerFreq - 5 - 1;
+                    range.max = centerFreq + 5 - 1;
+                    ranges.add(range);
+                }
+            }
+            SupplicantResult<Void> result = new SupplicantResult(
+                    "setDisallowedFrequencies(" + ranges + ")");
+            try {
+                result.setResult(mISupplicantP2pIface.setDisallowedFrequencies(ranges));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
+            }
+            return result.isSuccess();
+        }
+    }
 
     /**
      * This command can be used to add a upnp/bonjour service.
@@ -2388,6 +2497,42 @@ public class SupplicantP2pIfaceHal {
         }
     }
 
+    /**
+     * Set Wifi Display R2 device info.
+     *
+     * @param info WFD R2 device info as described in section 5.1.12 of WFD technical
+     *        specification v2.1.
+     * @return true, if operation was successful.
+     */
+    public boolean setWfdR2DeviceInfo(String info) {
+        synchronized (mLock) {
+            if (info == null) {
+                Log.e(TAG, "Cannot parse null WFD info string.");
+                return false;
+            }
+            byte[] wfdR2Info = null;
+            try {
+                wfdR2Info = NativeUtil.hexStringToByteArray(info);
+            } catch (Exception e) {
+                Log.e(TAG, "Could not parse WFD R2 Device Info string.");
+                return false;
+            }
+
+            android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface ifaceV14 =
+                    getSupplicantP2pIfaceAndLogFailureV1_4("setWfdR2DeviceInfo");
+            if (ifaceV14 == null) return false;
+            SupplicantResultV1_4<Void> result = new SupplicantResultV1_4(
+                    "setWfdR2DeviceInfo(" + info + ")");
+            try {
+                result.setResult(ifaceV14.setWfdR2DeviceInfo(wfdR2Info));
+            } catch (RemoteException e) {
+                Log.e(TAG, "ISupplicantP2pIface exception: " + e);
+                supplicantServiceDiedHandler();
+            }
+            return result.isSuccess();
+        }
+    }
+
 
     /**
      * Converts the Wps config method string to the equivalent enum value.
@@ -2434,39 +2579,84 @@ public class SupplicantP2pIfaceHal {
      * Primary purpose is to allow callback lambdas to provide results
      * to parent methods.
      */
-    private static class SupplicantResult<E> {
+    private static class SupplicantResultBase<S, E> {
         private String mMethodName;
-        private SupplicantStatus mStatus;
+        private S mStatus;
         private E mValue;
 
-        SupplicantResult(String methodName) {
+        SupplicantResultBase(String methodName) {
             mMethodName = methodName;
             mStatus = null;
             mValue = null;
             logd("entering " + mMethodName);
         }
 
-        public void setResult(SupplicantStatus status, E value) {
-            logCompletion(mMethodName, status);
+        public void setResult(S status, E value) {
+            if (status == null) {
+                logw(mMethodName + " failed: no status code returned.");
+            } else {
+                logCompletion(mMethodName, getCode(status), getDebugMessage(status));
+            }
             logd("leaving " + mMethodName + " with result = " + value);
             mStatus = status;
             mValue = value;
         }
 
-        public void setResult(SupplicantStatus status) {
-            logCompletion(mMethodName, status);
+        public void setResult(S status) {
+            if (status == null) {
+                logw(mMethodName + " failed: no status code returned.");
+            } else {
+                logCompletion(mMethodName, getCode(status), getDebugMessage(status));
+            }
             logd("leaving " + mMethodName);
             mStatus = status;
         }
 
         public boolean isSuccess() {
             return (mStatus != null
-                    && (mStatus.code == SupplicantStatusCode.SUCCESS
-                    || mStatus.code == SupplicantStatusCode.FAILURE_IFACE_EXISTS));
+                    && (getCode(mStatus) == SupplicantStatusCode.SUCCESS
+                    || getCode(mStatus) == SupplicantStatusCode.FAILURE_IFACE_EXISTS));
         }
 
         public E getResult() {
             return (isSuccess() ? mValue : null);
+        }
+
+        protected int getCode(Object obj) {
+            SupplicantStatus status = (SupplicantStatus) obj;
+            return status.code;
+        }
+
+        protected String getDebugMessage(Object obj) {
+            SupplicantStatus status = (SupplicantStatus) obj;
+            return status.debugMessage;
+        }
+    }
+
+    private static class SupplicantResult<E>
+            extends SupplicantResultBase<SupplicantStatus, E> {
+        SupplicantResult(String iface) {
+            super(iface);
+        }
+    }
+
+    private static class SupplicantResultV1_4<E>
+            extends SupplicantResultBase<
+                    android.hardware.wifi.supplicant.V1_4.SupplicantStatus, E> {
+        SupplicantResultV1_4(String iface) {
+            super(iface);
+        }
+
+        protected int getCode(Object obj) {
+            android.hardware.wifi.supplicant.V1_4.SupplicantStatus status =
+                    (android.hardware.wifi.supplicant.V1_4.SupplicantStatus) obj;
+            return status.code;
+        }
+
+        protected String getDebugMessage(Object obj) {
+            android.hardware.wifi.supplicant.V1_4.SupplicantStatus status =
+                    (android.hardware.wifi.supplicant.V1_4.SupplicantStatus) obj;
+            return status.debugMessage;
         }
     }
 }

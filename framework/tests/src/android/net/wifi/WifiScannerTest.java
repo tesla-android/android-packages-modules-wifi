@@ -22,6 +22,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -47,6 +49,7 @@ import android.os.test.TestLooper;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.test.BidirectionalAsyncChannelServer;
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.After;
 import org.junit.Before;
@@ -227,7 +230,8 @@ public class WifiScannerTest {
         assertEquals(writeScanData.getId(), readScanData.getId());
         assertEquals(writeScanData.getFlags(), readScanData.getFlags());
         assertEquals(writeScanData.getBucketsScanned(), readScanData.getBucketsScanned());
-        assertEquals(writeScanData.getBandScanned(), readScanData.getBandScanned());
+        assertEquals(writeScanData.getScannedBandsInternal(),
+                readScanData.getScannedBandsInternal());
         assertArrayEquals(writeScanData.getResults(), readScanData.getResults());
     }
 
@@ -241,6 +245,25 @@ public class WifiScannerTest {
         return ScanData.CREATOR.createFromParcel(parcel);
     }
 
+    /**
+     * Verify #setRnrSetting with valid and invalid inputs.
+     */
+    @Test
+    public void testSetRnrSetting() throws Exception {
+        // First verify IllegalArgumentException if an invalid input is passed in.
+        assumeTrue(SdkLevel.isAtLeastS());
+        try {
+            WifiScanner.ScanSettings scanSettings = new WifiScanner.ScanSettings();
+            scanSettings.setRnrSetting(-1);
+            fail("Excepted IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+        }
+
+        // Then verify calling the API with a valid input.
+        WifiScanner.ScanSettings scanSettings = new WifiScanner.ScanSettings();
+        scanSettings.setRnrSetting(WifiScanner.WIFI_RNR_NOT_NEEDED);
+        assertEquals(WifiScanner.WIFI_RNR_NOT_NEEDED, scanSettings.getRnrSetting());
+    }
 
     /**
      * Test behavior of {@link WifiScanner#startScan(ScanSettings, ScanListener)}

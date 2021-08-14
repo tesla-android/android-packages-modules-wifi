@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"Предложени от <xliff:g id="NAME">%s</xliff:g> мрежи. Устройството може да се свърже автоматично."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Разрешаване"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Не, благодаря"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Искате ли да се свържете с Wi-Fi от <xliff:g id="CARRIERNAME">%s</xliff:g>?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Тези мрежи получават идентификатор за SIM карта, който може да се използва за проследяване на местоположението на устройството"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Свързване"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Без свързване"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Потвърждавате ли връзката?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Ако се свържете, Wi-Fi мрежите на <xliff:g id="CARRIERNAME">%s</xliff:g> може да имат достъп или да споделят уникален идентификатор, свързан със SIM картата ви. Това може да позволи проследяването на местоположението на устройството ви."</string>

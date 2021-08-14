@@ -16,6 +16,9 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
+
 import static com.android.server.wifi.ScoredNetworkNominator.SETTINGS_GLOBAL_USE_OPEN_WIFI_PACKAGE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_NONE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_PSK;
@@ -39,6 +42,7 @@ import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.server.wifi.WifiNetworkSelector.NetworkNominator.OnConnectableListener;
 import com.android.server.wifi.WifiNetworkSelectorTestUtil.ScanDetailsAndWifiConfigs;
 import com.android.server.wifi.util.WifiPermissionsUtil;
@@ -50,6 +54,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -74,11 +79,16 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
     @Mock private WifiConfigManager mWifiConfigManager;
     @Mock private WifiPermissionsUtil mWifiPermissionsUtil;
     @Mock private OnConnectableListener mOnConnectableListener;
+    @Mock private WifiInjector mWifiInjector;
+    @Mock private WifiGlobals mWifiGlobals;
+    @Mock private ActiveModeWarden mActiveModeWarden;
+    @Mock private ClientModeManager mClientModeManager;
     @Captor private ArgumentCaptor<Collection<NetworkKey>> mNetworkKeyCollectionCaptor;
     @Captor private ArgumentCaptor<WifiConfiguration> mWifiConfigCaptor;
 
     private WifiNetworkScoreCache mScoreCache;
     private ScoredNetworkNominator mScoredNetworkNominator;
+    private MockitoSession mSession;
 
     @Before
     public void setUp() throws Exception {
@@ -86,6 +96,17 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
         mThresholdQualifiedRssi5G = -70;
 
         MockitoAnnotations.initMocks(this);
+        mSession = ExtendedMockito.mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
+                .startMocking();
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(
+                WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
 
         when(mFrameworkFacade.getStringSetting(mContext,
                 SETTINGS_GLOBAL_USE_OPEN_WIFI_PACKAGE))
@@ -114,6 +135,9 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
     @After
     public void tearDown() {
         validateMockitoUsage();
+        if (mSession != null) {
+            mSession.finishMocking();
+        }
     }
 
     @Test
@@ -224,8 +248,8 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
 
         mContentObserver.onChange(false /* unused */);
 
-        mScoredNetworkNominator.nominateNetworks(null, null, null, false, false,
-                mOnConnectableListener);
+        mScoredNetworkNominator.nominateNetworks(
+                null, false, true, true, mOnConnectableListener);
 
         verifyZeroInteractions(mWifiConfigManager, mNetworkScoreManager);
     }
@@ -250,7 +274,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
 
         verify(mNetworkScoreManager, never()).requestScores(anyCollection());
         verify(mWifiPermissionsUtil).enforceCanAccessScanResults(
-                eq(TEST_PACKAGE_NAME), eq(null), eq(TEST_UID), nullable(String.class));
+                eq(TEST_PACKAGE_NAME), any(), eq(TEST_UID), nullable(String.class));
     }
 
     @Test
@@ -273,7 +297,7 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
 
         verify(mNetworkScoreManager, never()).requestScores(anyCollection());
         verify(mWifiPermissionsUtil).enforceCanAccessScanResults(
-                eq(TEST_PACKAGE_NAME), eq(null), eq(TEST_UID), nullable(String.class));
+                eq(TEST_PACKAGE_NAME), any(), eq(TEST_UID), nullable(String.class));
     }
 
     /**
@@ -297,14 +321,14 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
         WifiConfiguration ephemeralNetworkConfig = WifiNetworkSelectorTestUtil
                 .setupEphemeralNetwork(mWifiConfigManager, 1, scanDetails.get(1), meteredHints[1]);
         // No saved networks.
-        when(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(any(ScanDetail.class)))
+        when(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(any(ScanDetail.class)))
                 .thenReturn(null);
         // But when we create one, this is should be it.
         when(mWifiConfigManager.addOrUpdateNetwork(any(), eq(TEST_UID), eq(TEST_PACKAGE_NAME)))
                 .thenReturn(new NetworkUpdateResult(1));
         // Untrusted networks allowed.
-        mScoredNetworkNominator.nominateNetworks(scanDetails,
-                null, null, false, true, mOnConnectableListener);
+        mScoredNetworkNominator.nominateNetworks(
+                scanDetails, true, true, true, mOnConnectableListener);
         verify(mOnConnectableListener, atLeastOnce())
                 .onConnectable(any(), mWifiConfigCaptor.capture());
         assertTrue(mWifiConfigCaptor.getAllValues().stream()
@@ -331,15 +355,15 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
                 scanDetails, scores, meteredHints);
 
         // No saved networks.
-        when(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(any(ScanDetail.class)))
+        when(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(any(ScanDetail.class)))
                 .thenReturn(null);
 
         WifiNetworkSelectorTestUtil.setupEphemeralNetwork(
                 mWifiConfigManager, 1, scanDetails.get(1), meteredHints[1]);
 
         // Untrusted networks not allowed.
-        mScoredNetworkNominator.nominateNetworks(scanDetails,
-                null, null, false, false, mOnConnectableListener);
+        mScoredNetworkNominator.nominateNetworks(
+                scanDetails, false, true, true, mOnConnectableListener);
 
         verify(mOnConnectableListener, never()).onConnectable(any(), any());
     }
@@ -368,8 +392,8 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
         WifiNetworkSelectorTestUtil.configureScoreCache(mScoreCache,
                 scanDetails, scores, meteredHints);
 
-        mScoredNetworkNominator.nominateNetworks(scanDetails,
-                null, null, false, true, mOnConnectableListener);
+        mScoredNetworkNominator.nominateNetworks(
+                scanDetails, true, true, true, mOnConnectableListener);
 
         verify(mOnConnectableListener).onConnectable(any(), mWifiConfigCaptor.capture());
         assertEquals(mWifiConfigCaptor.getValue().networkId, savedConfigs[0].networkId);
@@ -400,8 +424,8 @@ public class ScoredNetworkNominatorTest extends WifiBaseTest {
         WifiNetworkSelectorTestUtil.configureScoreCache(mScoreCache,
                 scanDetails, scores, meteredHints);
 
-        mScoredNetworkNominator.nominateNetworks(scanDetails,
-                null, null, false, true, mOnConnectableListener);
+        mScoredNetworkNominator.nominateNetworks(
+                scanDetails, true, true, true, mOnConnectableListener);
 
         verify(mOnConnectableListener).onConnectable(any(), mWifiConfigCaptor.capture());
         assertEquals(mWifiConfigCaptor.getValue().networkId, savedConfigs[0].networkId);

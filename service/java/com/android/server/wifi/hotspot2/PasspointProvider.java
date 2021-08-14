@@ -18,8 +18,12 @@ package com.android.server.wifi.hotspot2;
 
 import static android.net.wifi.WifiConfiguration.MeteredOverride;
 
+import static com.android.server.wifi.MboOceConstants.DEFAULT_BLOCKLIST_DURATION_MS;
+
 import android.annotation.Nullable;
 import android.net.wifi.EAPConstants;
+import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -27,12 +31,15 @@ import android.net.wifi.hotspot2.pps.Credential;
 import android.net.wifi.hotspot2.pps.Credential.SimCredential;
 import android.net.wifi.hotspot2.pps.Credential.UserCredential;
 import android.net.wifi.hotspot2.pps.HomeSp;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.Clock;
 import com.android.server.wifi.IMSIParameter;
 import com.android.server.wifi.WifiCarrierInfoManager;
 import com.android.server.wifi.WifiKeyStore;
@@ -107,18 +114,25 @@ public class PasspointProvider {
     private boolean mIsTrusted;
     private boolean mVerboseLoggingEnabled;
 
+    private final Clock mClock;
+    private long mReauthDelay = 0;
+    private List<String> mBlockedBssids = new ArrayList<>();
+    private String mAnonymousIdentity = null;
+    private String mConnectChoice = null;
+    private int mConnectChoiceRssi = 0;
+
     public PasspointProvider(PasspointConfiguration config, WifiKeyStore keyStore,
             WifiCarrierInfoManager wifiCarrierInfoManager, long providerId, int creatorUid,
-            String packageName, boolean isFromSuggestion) {
+            String packageName, boolean isFromSuggestion, Clock clock) {
         this(config, keyStore, wifiCarrierInfoManager, providerId, creatorUid, packageName,
-                isFromSuggestion, null, null, null, false, false);
+                isFromSuggestion, null, null, null, false, false, clock);
     }
 
     public PasspointProvider(PasspointConfiguration config, WifiKeyStore keyStore,
             WifiCarrierInfoManager wifiCarrierInfoManager, long providerId, int creatorUid,
             String packageName, boolean isFromSuggestion, List<String> caCertificateAliases,
             String clientPrivateKeyAndCertificateAlias, String remediationCaCertificateAlias,
-            boolean hasEverConnected, boolean isShared) {
+            boolean hasEverConnected, boolean isShared, Clock clock) {
         // Maintain a copy of the configuration to avoid it being updated by others.
         mConfig = new PasspointConfiguration(config);
         mKeyStore = keyStore;
@@ -133,6 +147,7 @@ public class PasspointProvider {
         mIsFromSuggestion = isFromSuggestion;
         mWifiCarrierInfoManager = wifiCarrierInfoManager;
         mIsTrusted = true;
+        mClock = clock;
 
         // Setup EAP method and authentication parameter based on the credential.
         if (mConfig.getCredential().getUserCredential() != null) {
@@ -166,6 +181,17 @@ public class PasspointProvider {
 
     public boolean isTrusted() {
         return mIsTrusted;
+    }
+
+    /**
+     * Set Anonymous Identity for passpoint network.
+     */
+    public void setAnonymousIdentity(String anonymousIdentity) {
+        mAnonymousIdentity = anonymousIdentity;
+    }
+
+    public String getAnonymousIdentity() {
+        return mAnonymousIdentity;
     }
 
     public PasspointConfiguration getConfig() {
@@ -363,9 +389,12 @@ public class PasspointProvider {
 
     private @Nullable String getMatchingSimImsi() {
         String matchingSIMImsi = null;
-        if (mConfig.getCarrierId() != TelephonyManager.UNKNOWN_CARRIER_ID) {
+        if (mConfig.getSubscriptionId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             matchingSIMImsi = mWifiCarrierInfoManager
-                    .getMatchingImsi(mConfig.getCarrierId());
+                    .getMatchingImsiBySubId(mConfig.getSubscriptionId());
+        } else if (mConfig.getCarrierId() != TelephonyManager.UNKNOWN_CARRIER_ID) {
+            matchingSIMImsi = mWifiCarrierInfoManager.getMatchingImsiBySubId(
+                    mWifiCarrierInfoManager.getMatchingSubId(mConfig.getCarrierId()));
         } else {
             // Get the IMSI and carrier ID of SIM card which match with the IMSI prefix from
             // passpoint profile
@@ -385,10 +414,20 @@ public class PasspointProvider {
      *
      * @param anqpElements ANQP elements from the AP
      * @param roamingConsortiumFromAp Roaming Consortium information element from the AP
+     * @param scanResult Latest Scan result
      * @return {@link PasspointMatch}
      */
     public PasspointMatch match(Map<ANQPElementType, ANQPElement> anqpElements,
-            RoamingConsortium roamingConsortiumFromAp) {
+            RoamingConsortium roamingConsortiumFromAp, ScanResult scanResult) {
+        if (isProviderBlocked(scanResult)) {
+            if (mVerboseLoggingEnabled) {
+                Log.d(TAG, "Provider " + mConfig.getServiceFriendlyName()
+                        + " is blocked because reauthentication delay duration is still in"
+                        + " progess");
+            }
+            return PasspointMatch.None;
+        }
+
         // If the profile requires a SIM credential, make sure that the installed SIM matches
         String matchingSimImsi = null;
         if (mConfig.getCredential().getSimCredential() != null) {
@@ -458,6 +497,14 @@ public class PasspointProvider {
      */
     public WifiConfiguration getWifiConfig() {
         WifiConfiguration wifiConfig = new WifiConfiguration();
+
+        List<SecurityParams> paramsList = Arrays.asList(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2),
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
+        wifiConfig.setSecurityParams(paramsList);
+
         wifiConfig.FQDN = mConfig.getHomeSp().getFqdn();
         wifiConfig.setPasspointUniqueId(mConfig.getUniqueId());
         if (mConfig.getHomeSp().getRoamingConsortiumOis() != null) {
@@ -474,16 +521,18 @@ public class PasspointProvider {
             }
         }
         wifiConfig.providerFriendlyName = mConfig.getHomeSp().getFriendlyName();
-        wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
-        wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.IEEE8021X);
         int carrierId = mConfig.getCarrierId();
         if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
             carrierId = mBestGuessCarrierId;
         }
         wifiConfig.carrierId = carrierId;
-
-        // Set RSN only to tell wpa_supplicant that this network is for Passpoint.
-        wifiConfig.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
+        wifiConfig.subscriptionId =
+                mConfig.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                        ? mWifiCarrierInfoManager.getMatchingSubId(carrierId)
+                        : mConfig.getSubscriptionId();
+        wifiConfig.carrierMerged = mConfig.isCarrierMerged();
+        wifiConfig.oemPaid = mConfig.isOemPaid();
+        wifiConfig.oemPrivate = mConfig.isOemPrivate();
 
         WifiEnterpriseConfig enterpriseConfig = new WifiEnterpriseConfig();
         enterpriseConfig.setRealm(mConfig.getCredential().getRealm());
@@ -498,6 +547,7 @@ public class PasspointProvider {
         } else {
             buildEnterpriseConfigForSimCredential(enterpriseConfig,
                     mConfig.getCredential().getSimCredential());
+            enterpriseConfig.setAnonymousIdentity(mAnonymousIdentity);
         }
         // If AAA server trusted names are specified, use it to replace HOME SP FQDN
         // and use system CA regardless of provisioned CA certificate.
@@ -505,6 +555,9 @@ public class PasspointProvider {
             enterpriseConfig.setDomainSuffixMatch(
                     String.join(";", mConfig.getAaaServerTrustedNames()));
             enterpriseConfig.setCaPath(SYSTEM_CA_STORE_PATH);
+        }
+        if (SdkLevel.isAtLeastS()) {
+            enterpriseConfig.setDecoratedIdentityPrefix(mConfig.getDecoratedIdentityPrefix());
         }
         wifiConfig.enterpriseConfig = enterpriseConfig;
         // PPS MO Credential/CheckAAAServerCertStatus node contains a flag which indicates
@@ -522,11 +575,18 @@ public class PasspointProvider {
         wifiConfig.creatorUid = mCreatorUid;
         wifiConfig.trusted = mIsTrusted;
         if (mConfig.isMacRandomizationEnabled()) {
-            wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+            if (mConfig.isEnhancedMacRandomizationEnabled()) {
+                wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
+            } else {
+                wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+            }
         } else {
             wifiConfig.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
         }
         wifiConfig.meteredOverride = mConfig.getMeteredOverride();
+        wifiConfig.getNetworkSelectionStatus().setConnectChoice(mConnectChoice);
+        wifiConfig.getNetworkSelectionStatus().setConnectChoiceRssi(mConnectChoiceRssi);
+
         return wifiConfig;
     }
 
@@ -638,6 +698,22 @@ public class PasspointProvider {
         builder.append("Shared: ").append(mIsShared).append("\n");
         builder.append("Suggestion: ").append(mIsFromSuggestion).append("\n");
         builder.append("Trusted: ").append(mIsTrusted).append("\n");
+        builder.append("UserConnectChoice: ").append(mConnectChoice).append("\n");
+        if (mReauthDelay != 0 && mClock.getElapsedSinceBootMillis() < mReauthDelay) {
+            builder.append("Reauth delay remaining (seconds): ")
+                    .append((mReauthDelay - mClock.getElapsedSinceBootMillis()) / 1000)
+                    .append("\n");
+            if (mBlockedBssids.isEmpty()) {
+                builder.append("ESS is blocked").append("\n");
+            } else {
+                builder.append("List of blocked BSSIDs:").append("\n");
+                for (String bssid : mBlockedBssids) {
+                    builder.append(bssid).append("\n");
+                }
+            }
+        } else {
+            builder.append("Provider is not blocked").append("\n");
+        }
 
         if (mPackageName != null) {
             builder.append("PackageName: ").append(mPackageName).append("\n");
@@ -1001,9 +1077,94 @@ public class PasspointProvider {
 
     /**
      * Enable verbose logging
-     * @param verbose more than 0 enables verbose logging
+     * @param verbose enables verbose logging
      */
-    public void enableVerboseLogging(int verbose) {
-        mVerboseLoggingEnabled = (verbose > 0) ? true : false;
+    public void enableVerboseLogging(boolean verbose) {
+        mVerboseLoggingEnabled = verbose;
+    }
+
+    /**
+     * Block a BSS or ESS following a Deauthentication-Imminent WNM-Notification
+     *
+     * @param bssid BSSID of the source AP
+     * @param isEss true: Block ESS, false: Block BSS
+     * @param delayInSeconds Delay duration in seconds
+     */
+    public void blockBssOrEss(long bssid, boolean isEss, int delayInSeconds) {
+        if (delayInSeconds < 0 || bssid == 0) {
+            return;
+        }
+
+        mReauthDelay = mClock.getElapsedSinceBootMillis();
+        if (delayInSeconds == 0) {
+            // Section 3.2.1.2 in the specification defines that a Re-Auth Delay field
+            // value of 0 means the delay value is chosen by the mobile device.
+            mReauthDelay += DEFAULT_BLOCKLIST_DURATION_MS;
+        } else {
+            mReauthDelay += (delayInSeconds * 1000);
+        }
+        if (isEss) {
+            // Deauth-imminent for the entire ESS, do not try to reauthenticate until the delay
+            // is over. Clear the list of blocked BSSIDs.
+            mBlockedBssids.clear();
+        } else {
+            // Add this MAC address to the list of blocked BSSIDs.
+            mBlockedBssids.add(Utils.macToString(bssid));
+        }
+    }
+
+    /**
+     * Clear a block from a Passpoint provider. Used when Wi-Fi state is cleared, for example,
+     * when turning Wi-Fi off.
+     */
+    public void clearProviderBlock() {
+        mReauthDelay = 0;
+        mBlockedBssids.clear();
+    }
+
+    /**
+     * Checks if this provider is blocked or if there are any BSSes blocked
+     *
+     * @param scanResult Latest scan result
+     * @return true if blocked, false otherwise
+     */
+    private boolean isProviderBlocked(ScanResult scanResult) {
+        if (mReauthDelay == 0) {
+            return false;
+        }
+
+        if (mClock.getElapsedSinceBootMillis() >= mReauthDelay) {
+            // Provider was blocked, but the delay duration have passed
+            mReauthDelay = 0;
+            mBlockedBssids.clear();
+            return false;
+        }
+
+        // Empty means the entire ESS is blocked
+        if (mBlockedBssids.isEmpty() || mBlockedBssids.contains(scanResult.BSSID)) {
+            return true;
+        }
+
+        // Trying to associate to another BSS in the ESS
+        return false;
+    }
+
+    /**
+     * Set the user connect choice on the passpoint network.
+     * @param choice The {@link WifiConfiguration#getProfileKey()} of the user connect
+     *               network.
+     * @param rssi The signal strength of the network.
+     */
+    public void setUserConnectChoice(String choice, int rssi) {
+        mConnectChoice = choice;
+        mConnectChoiceRssi = rssi;
+    }
+
+    public String getConnectChoice() {
+        return mConnectChoice;
+    }
+
+    public int getConnectChoiceRssi() {
+        return mConnectChoiceRssi;
     }
 }

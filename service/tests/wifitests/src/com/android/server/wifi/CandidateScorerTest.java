@@ -310,6 +310,93 @@ public class CandidateScorerTest extends WifiBaseTest {
     }
 
     /**
+     * Prefer not oem paid suggestion over privileged oem paid suggestion even though the OEM paid
+     * network has better t'put & RSSI.
+     */
+    @Test
+    public void testPreferNotOemPaidOverOemPaid() throws Exception {
+        if (mExpectedExpId != ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) return;
+        assertThat(evaluate(mCandidate1.setScanRssi(-71)
+                        .setPredictedThroughputMbps(100)
+                        .setEphemeral(true)
+                        .setOemPaid(false)),
+                greaterThan(evaluate(mCandidate2.setScanRssi(-40)
+                        .setEphemeral(true)
+                        .setPredictedThroughputMbps(1000)
+                        .setOemPaid(true))));
+    }
+
+    /**
+     * Prefer not oem paid metered suggestion over privileged oem paid suggestion even though the
+     * OEM paid network has better t'put & RSSI.
+     */
+    @Test
+    public void testPreferNotOemPaidMeteredOverOemPaid() throws Exception {
+        if (mExpectedExpId != ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) return;
+        assertThat(evaluate(mCandidate1.setScanRssi(-71)
+                        .setPredictedThroughputMbps(100)
+                        .setEphemeral(true)
+                        .setMetered(true)
+                        .setOemPaid(false)),
+                greaterThan(evaluate(mCandidate2.setScanRssi(-40)
+                        .setEphemeral(true)
+                        .setPredictedThroughputMbps(1000)
+                        .setOemPaid(true))));
+    }
+
+    /**
+     * Prefer not oem paid suggestion over privileged oem private suggestion even though the OEM
+     * paid network has better t'put & RSSI.
+     */
+    @Test
+    public void testPreferNotOemPrivateOverOemPrivate() throws Exception {
+        if (mExpectedExpId != ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) return;
+        assertThat(evaluate(mCandidate1.setScanRssi(-71)
+                        .setPredictedThroughputMbps(100)
+                        .setEphemeral(true)
+                        .setOemPrivate(false)),
+                greaterThan(evaluate(mCandidate2.setScanRssi(-40)
+                        .setEphemeral(true)
+                        .setPredictedThroughputMbps(1000)
+                        .setOemPaid(true))));
+    }
+
+    /**
+     * Prefer not oem paid metered suggestion over privileged oem private suggestion even though the
+     * OEM paid network has better t'put & RSSI.
+     */
+    @Test
+    public void testPreferNotOemPrivateMeteredOverOemPrivate() throws Exception {
+        if (mExpectedExpId != ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) return;
+        assertThat(evaluate(mCandidate1.setScanRssi(-71)
+                        .setPredictedThroughputMbps(100)
+                        .setEphemeral(true)
+                        .setMetered(true)
+                        .setOemPrivate(false)),
+                greaterThan(evaluate(mCandidate2.setScanRssi(-40)
+                        .setEphemeral(true)
+                        .setPredictedThroughputMbps(1000)
+                        .setOemPaid(true))));
+    }
+
+    /**
+     * Prefer oem paid suggestion over oem private suggestion even though the
+     * OEM private network has better t'put & RSSI.
+     */
+    @Test
+    public void testPreferOemPaidOverOemPrivate() throws Exception {
+        if (mExpectedExpId != ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) return;
+        assertThat(evaluate(mCandidate1.setScanRssi(-71)
+                        .setPredictedThroughputMbps(100)
+                        .setEphemeral(true)
+                        .setOemPaid(true)),
+                greaterThan(evaluate(mCandidate2.setScanRssi(-40)
+                        .setPredictedThroughputMbps(1000)
+                        .setEphemeral(true)
+                        .setOemPrivate(true))));
+    }
+
+    /**
      * Prefer carrier untrusted over other untrusted.
      */
     @Test
@@ -322,6 +409,37 @@ public class CandidateScorerTest extends WifiBaseTest {
                 greaterThan(evaluate(mCandidate2.setScanRssi(-40)
                                                 .setPredictedThroughputMbps(1000)
                                                 .setTrusted(false))));
+    }
+
+    /**
+     * Verify that the ThroughputScorer prefers a current network that has internet over a
+     * candidate that has no internet.
+     */
+    @Test
+    public void testPreferCurrentNetworkWithInternetOverNetworkWithNoInternet() throws Exception {
+        if (mExpectedExpId == ThroughputScorer.THROUGHPUT_SCORER_DEFAULT_EXPID) {
+            // First verify that when evaluated separately, mCandidate2 has a higher score due
+            // to it having better RSSI and throughput.
+            mCandidate1.setScanRssi(-77)
+                    .setPredictedThroughputMbps(30)
+                    .setCurrentNetwork(true)
+                    .setNoInternetAccess(false);
+            mCandidate2.setScanRssi(-40)
+                    .setPredictedThroughputMbps(100)
+                    .setCurrentNetwork(false)
+                    .setNoInternetAccess(true)
+                    .setNoInternetAccessExpected(false);
+            double score1 = evaluate(mCandidate1);
+            assertThat(evaluate(mCandidate2), greaterThan(score1));
+
+            // Then verify that when evaluated together, mCandidate1 wins because it is the current
+            // network and has internet
+            List<Candidate> candidates = new ArrayList<>();
+            candidates.add(mCandidate1);
+            candidates.add(mCandidate2);
+            ScoredCandidate choice = mCandidateScorer.scoreCandidates(candidates);
+            assertEquals(score1, choice.value, TOL);
+        }
     }
 
 }

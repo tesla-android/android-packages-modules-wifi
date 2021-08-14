@@ -17,12 +17,18 @@
 package android.net.wifi;
 
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP;
-import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_SUITE_B;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_OPEN;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_OSEN;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_OWE;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_PSK;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_SAE;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_WAPI_CERT;
 import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_WAPI_PSK;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_WEP;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -30,24 +36,39 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import android.net.MacAddress;
+import android.net.wifi.WifiConfiguration.GroupCipher;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
+import android.net.wifi.WifiConfiguration.PairwiseCipher;
+import android.net.wifi.WifiConfiguration.Protocol;
 import android.os.Parcel;
+import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
 
 /**
  * Unit tests for {@link android.net.wifi.WifiConfiguration}.
  */
 @SmallTest
 public class WifiConfigurationTest {
+    private static final String TEST_PASSPOINT_UNIQUE_ID = "uniqueId";
+    private static final int TEST_CARRIER_ID = 1234;
+    private static final int TEST_SUB_ID = 3;
+    private static final String TEST_PACKAGE_NAME = "google.com";
 
     @Before
     public void setUp() {
@@ -67,11 +88,16 @@ public class WifiConfigurationTest {
         WifiConfiguration config = new WifiConfiguration();
         config.setPasspointManagementObjectTree(cookie);
         config.trusted = false;
+        config.oemPaid = true;
+        config.oemPrivate = true;
+        config.carrierMerged = true;
         config.updateIdentifier = "1234";
         config.fromWifiNetworkSpecifier = true;
         config.fromWifiNetworkSuggestion = true;
         config.setRandomizedMacAddress(MacAddressUtils.createRandomUnicastAddress());
         MacAddress macBeforeParcel = config.getRandomizedMacAddress();
+        config.subscriptionId = 1;
+        config.carrierId = 1189;
         Parcel parcelW = Parcel.obtain();
         config.writeToParcel(parcelW, 0);
         byte[] bytes = parcelW.marshall();
@@ -87,8 +113,11 @@ public class WifiConfigurationTest {
         assertEquals(macBeforeParcel, reconfig.getRandomizedMacAddress());
         assertEquals(config.updateIdentifier, reconfig.updateIdentifier);
         assertFalse(reconfig.trusted);
-        assertTrue(config.fromWifiNetworkSpecifier);
-        assertTrue(config.fromWifiNetworkSuggestion);
+        assertTrue(reconfig.fromWifiNetworkSpecifier);
+        assertTrue(reconfig.fromWifiNetworkSuggestion);
+        assertTrue(reconfig.oemPaid);
+        assertTrue(reconfig.oemPrivate);
+        assertTrue(reconfig.carrierMerged);
 
         Parcel parcelWW = Parcel.obtain();
         reconfig.writeToParcel(parcelWW, 0);
@@ -96,6 +125,34 @@ public class WifiConfigurationTest {
         parcelWW.recycle();
 
         assertArrayEquals(bytes, rebytes);
+    }
+
+    @Test
+    public void testWifiConfigurationCopyConstructor() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.trusted = false;
+        config.oemPaid = true;
+        config.oemPrivate = true;
+        config.carrierMerged = true;
+        config.updateIdentifier = "1234";
+        config.fromWifiNetworkSpecifier = true;
+        config.fromWifiNetworkSuggestion = true;
+        config.setRandomizedMacAddress(MacAddressUtils.createRandomUnicastAddress());
+        MacAddress macBeforeParcel = config.getRandomizedMacAddress();
+        config.subscriptionId = 1;
+        config.carrierId = 1189;
+
+        WifiConfiguration reconfig = new WifiConfiguration(config);
+
+        // lacking a useful config.equals, check two fields near the end.
+        assertEquals(macBeforeParcel, reconfig.getRandomizedMacAddress());
+        assertEquals(config.updateIdentifier, reconfig.updateIdentifier);
+        assertFalse(reconfig.trusted);
+        assertTrue(reconfig.fromWifiNetworkSpecifier);
+        assertTrue(reconfig.fromWifiNetworkSuggestion);
+        assertTrue(reconfig.oemPaid);
+        assertTrue(reconfig.oemPrivate);
+        assertTrue(reconfig.carrierMerged);
     }
 
     @Test
@@ -145,18 +202,24 @@ public class WifiConfigurationTest {
 
     @Test
     public void testIsOpenNetwork_NotOpen_HasAuthType() {
-        for (int keyMgmt = 0; keyMgmt < WifiConfiguration.KeyMgmt.strings.length; keyMgmt++) {
-            if (keyMgmt == WifiConfiguration.KeyMgmt.NONE
-                    || keyMgmt == WifiConfiguration.KeyMgmt.OWE) {
-                continue;
-            }
+        int[] securityTypes = new int [] {
+                SECURITY_TYPE_WEP,
+                SECURITY_TYPE_PSK,
+                SECURITY_TYPE_EAP,
+                SECURITY_TYPE_SAE,
+                SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                SECURITY_TYPE_WAPI_PSK,
+                SECURITY_TYPE_WAPI_CERT,
+                SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
+                SECURITY_TYPE_OSEN,
+        };
+        for (int type: securityTypes) {
             WifiConfiguration config = new WifiConfiguration();
-            config.allowedKeyManagement.clear();
-            config.allowedKeyManagement.set(keyMgmt);
+            config.setSecurityParams(type);
             config.wepKeys = null;
 
-            assertFalse("Open network reported when key mgmt was set to "
-                            + WifiConfiguration.KeyMgmt.strings[keyMgmt], config.isOpenNetwork());
+            assertFalse("Open network reported when security type was set to "
+                            + type, config.isOpenNetwork());
         }
     }
 
@@ -166,6 +229,7 @@ public class WifiConfigurationTest {
         config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
         config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
         config.wepKeys = null;
+        config.convertLegacyFieldsToSecurityParamsIfNeeded();
 
         assertFalse(config.isOpenNetwork());
     }
@@ -388,6 +452,79 @@ public class WifiConfigurationTest {
     }
 
     /**
+     * Verifies that getNetworkKey returns the correct String for networks of
+     * various different security types, the result should be stable.
+     */
+    @Test
+    public void testGetNetworkKeyString() {
+        WifiConfiguration config = new WifiConfiguration();
+        final String mSsid = "TestAP";
+        config.SSID = mSsid;
+
+        // Test various combinations
+        config.allowedKeyManagement.set(KeyMgmt.WPA_PSK);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WPA_PSK],
+                config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WPA_EAP],
+                config.getNetworkKey());
+
+        config.wepKeys[0] = "TestWep";
+        config.allowedKeyManagement.clear();
+        assertEquals(mSsid + "WEP", config.getNetworkKey());
+
+        // set WEP key and give a valid index.
+        config.wepKeys[0] = null;
+        config.wepKeys[2] = "TestWep";
+        config.wepTxKeyIndex = 2;
+        config.allowedKeyManagement.clear();
+        assertEquals(mSsid + "WEP", config.getNetworkKey());
+
+        // set WEP key but does not give a valid index.
+        config.wepKeys[0] = null;
+        config.wepKeys[2] = "TestWep";
+        config.wepTxKeyIndex = 0;
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.OWE);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.OWE], config.getNetworkKey());
+
+        config.wepKeys[0] = null;
+        config.wepTxKeyIndex = 0;
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.OWE);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.OWE], config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.SAE);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.SAE], config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.SUITE_B_192);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.SUITE_B_192],
+                config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.NONE);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.NONE], config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WAPI_PSK);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WAPI_PSK],
+                config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WAPI_CERT);
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WAPI_CERT],
+                config.getNetworkKey());
+
+        config.allowedKeyManagement.clear();
+        config.setPasspointUniqueId(TEST_PASSPOINT_UNIQUE_ID);
+        assertEquals(TEST_PASSPOINT_UNIQUE_ID, config.getNetworkKey());
+    }
+
+    /**
      * Ensure that the {@link NetworkSelectionStatus.DisableReasonInfo}s are populated in
      * {@link NetworkSelectionStatus#DISABLE_REASON_INFOS} for reason codes from 0 to
      * {@link NetworkSelectionStatus#NETWORK_SELECTION_DISABLED_MAX} - 1.
@@ -462,7 +599,7 @@ public class WifiConfigurationTest {
     public void testSetSecurityParamsForSuiteB() throws Exception {
         WifiConfiguration config = new WifiConfiguration();
 
-        config.setSecurityParams(SECURITY_TYPE_EAP_SUITE_B);
+        config.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
 
         assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SUITE_B_192));
         assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP));
@@ -471,6 +608,26 @@ public class WifiConfigurationTest {
         assertTrue(config.allowedGroupCiphers.get(WifiConfiguration.GroupCipher.GCMP_256));
         assertTrue(config.allowedGroupManagementCiphers
                 .get(WifiConfiguration.GroupMgmtCipher.BIP_GMAC_256));
+        assertTrue(config.requirePmf);
+    }
+
+    /**
+     * Ensure that {@link WifiConfiguration#setSecurityParams(int)} sets up the
+     * {@link WifiConfiguration} object correctly for WPA3 Enterprise security type.
+     * @throws Exception
+     */
+    @Test
+    public void testSetSecurityParamsForWpa3Enterprise() throws Exception {
+        WifiConfiguration config = new WifiConfiguration();
+
+        config.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+
+        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP));
+        assertTrue(config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X));
+        assertTrue(config.allowedPairwiseCiphers.get(WifiConfiguration.PairwiseCipher.CCMP));
+        assertTrue(config.allowedPairwiseCiphers.get(WifiConfiguration.PairwiseCipher.GCMP_256));
+        assertTrue(config.allowedGroupCiphers.get(WifiConfiguration.GroupCipher.CCMP));
+        assertTrue(config.allowedGroupCiphers.get(WifiConfiguration.GroupCipher.GCMP_256));
         assertTrue(config.requirePmf);
     }
 
@@ -535,7 +692,526 @@ public class WifiConfigurationTest {
         configuration.setSecurityParams(SECURITY_TYPE_EAP);
         assertFalse(configuration.needsPreSharedKey());
 
-        configuration.setSecurityParams(SECURITY_TYPE_EAP_SUITE_B);
+        configuration.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
         assertFalse(configuration.needsPreSharedKey());
+
+        configuration.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
+        assertFalse(configuration.needsPreSharedKey());
+    }
+
+    @Test
+    public void testGetAuthType() throws Exception {
+        WifiConfiguration configuration = new WifiConfiguration();
+
+        configuration.setSecurityParams(SECURITY_TYPE_PSK);
+        assertEquals(KeyMgmt.WPA_PSK, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_SAE);
+        assertEquals(KeyMgmt.SAE, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_WAPI_PSK);
+        assertEquals(KeyMgmt.WAPI_PSK, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_OPEN);
+        assertEquals(KeyMgmt.NONE, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_OWE);
+        assertEquals(KeyMgmt.OWE, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_EAP);
+        assertEquals(KeyMgmt.WPA_EAP, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        assertEquals(KeyMgmt.WPA_EAP, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
+        assertEquals(KeyMgmt.SUITE_B_192, configuration.getAuthType());
+
+        configuration.setSecurityParams(SECURITY_TYPE_WAPI_CERT);
+        assertEquals(KeyMgmt.WAPI_CERT, configuration.getAuthType());
+    }
+
+    @Test (expected = IllegalStateException.class)
+    public void testGetAuthTypeFailure1() throws Exception {
+        WifiConfiguration configuration = new WifiConfiguration();
+
+        configuration.setSecurityParams(SECURITY_TYPE_PSK);
+        configuration.allowedKeyManagement.set(KeyMgmt.IEEE8021X);
+        configuration.getAuthType();
+    }
+
+    @Test (expected = IllegalStateException.class)
+    public void testGetAuthTypeFailure2() throws Exception {
+        WifiConfiguration configuration = new WifiConfiguration();
+
+        configuration.allowedKeyManagement.set(KeyMgmt.IEEE8021X);
+        configuration.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        configuration.allowedKeyManagement.set(KeyMgmt.SAE);
+        configuration.getAuthType();
+    }
+
+    /**
+     * Verifies that getProfileKey returns the correct String for networks of
+     * various different security types, the result should be stable.
+     */
+    @Test
+    public void testGetProfileKeyString() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiConfiguration config = new WifiConfiguration();
+        final String mSsid = "TestAP";
+        config.SSID = mSsid;
+        config.carrierId = TEST_CARRIER_ID;
+        config.subscriptionId = TEST_SUB_ID;
+        config.creatorName = TEST_PACKAGE_NAME;
+
+
+        // Test various combinations
+        config.allowedKeyManagement.set(KeyMgmt.WPA_PSK);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WPA_PSK], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WPA_PSK], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WPA_EAP], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WPA_EAP], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.wepKeys[0] = "TestWep";
+        config.allowedKeyManagement.clear();
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, "WEP", TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, "WEP", TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        // set WEP key and give a valid index.
+        config.wepKeys[0] = null;
+        config.wepKeys[2] = "TestWep";
+        config.wepTxKeyIndex = 2;
+        config.allowedKeyManagement.clear();
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, "WEP", TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, "WEP", TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        // set WEP key but does not give a valid index.
+        config.wepKeys[0] = null;
+        config.wepKeys[2] = "TestWep";
+        config.wepTxKeyIndex = 0;
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.OWE);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.OWE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.OWE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.wepKeys[0] = null;
+        config.wepTxKeyIndex = 0;
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.OWE);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.OWE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.OWE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.SAE);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.SAE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.SAE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.SUITE_B_192);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.SUITE_B_192],
+                TEST_PACKAGE_NAME, TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.SUITE_B_192],
+                TEST_PACKAGE_NAME, TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.NONE);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.NONE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.NONE], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WAPI_PSK);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WAPI_PSK], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WAPI_PSK], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WAPI_CERT);
+        config.fromWifiNetworkSuggestion = false;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WAPI_CERT], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, false), config.getProfileKey());
+        config.fromWifiNetworkSuggestion = true;
+        assertEquals(createProfileKey(mSsid, KeyMgmt.strings[KeyMgmt.WAPI_CERT], TEST_PACKAGE_NAME,
+                TEST_CARRIER_ID, TEST_SUB_ID, true), config.getProfileKey());
+
+        config.allowedKeyManagement.clear();
+        config.setPasspointUniqueId(TEST_PASSPOINT_UNIQUE_ID);
+        assertEquals(TEST_PASSPOINT_UNIQUE_ID, config.getProfileKey());
+    }
+
+    @Test
+    public void testGetProfileKeyOnR() {
+        assumeFalse(SdkLevel.isAtLeastS());
+        WifiConfiguration config = new WifiConfiguration();
+        final String mSsid = "TestAP";
+        config.SSID = mSsid;
+        config.carrierId = TEST_CARRIER_ID;
+        config.subscriptionId = TEST_SUB_ID;
+        config.creatorName = TEST_PACKAGE_NAME;
+
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.NONE] , config.getProfileKey());
+    }
+
+    private String createProfileKey(String ssid, String keyMgmt, String providerName,
+            int carrierId, int subId, boolean isFromSuggestion) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ssid).append(keyMgmt);
+        if (isFromSuggestion) {
+            sb.append("_").append(providerName).append('-')
+                    .append(carrierId).append('-').append(subId);
+        }
+        return sb.toString();
+    }
+
+    private void verifyAllowedKeyManagement(WifiConfiguration config, int[] akms) {
+        for (int akm: akms) {
+            assertTrue(config.getSecurityParamsList().stream()
+                    .anyMatch(params -> params.getAllowedKeyManagement().get(akm)));
+        }
+    }
+
+    private void verifyAllowedProtocols(WifiConfiguration config, int[] aps) {
+        for (int ap: aps) {
+            assertTrue(config.getSecurityParamsList().stream()
+                    .anyMatch(params -> params.getAllowedProtocols().get(ap)));
+        }
+    }
+
+    private void verifyAllowedPairwiseCiphers(WifiConfiguration config, int[] apcs) {
+        for (int apc: apcs) {
+            assertTrue(config.getSecurityParamsList().stream()
+                    .anyMatch(params -> params.getAllowedPairwiseCiphers().get(apc)));
+        }
+    }
+
+    private void verifyAllowedGroupCiphers(WifiConfiguration config, int[] agcs) {
+        for (int agc: agcs) {
+            assertTrue(config.getSecurityParamsList().stream()
+                    .anyMatch(params -> params.getAllowedGroupCiphers().get(agc)));
+        }
+    }
+
+    /** Verify that adding security types works as expected. */
+    @Test
+    public void testAddSecurityTypes() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_WAPI_PSK);
+        List<SecurityParams> paramsList = config.getSecurityParamsList();
+        assertEquals(3, paramsList.size());
+
+        verifyAllowedKeyManagement(config, new int[] {
+                KeyMgmt.WPA_PSK, KeyMgmt.SAE, KeyMgmt.WAPI_PSK});
+        verifyAllowedProtocols(config, new int[] {Protocol.WPA, Protocol.RSN, Protocol.WAPI});
+        verifyAllowedPairwiseCiphers(config, new int[] {
+                PairwiseCipher.CCMP, PairwiseCipher.TKIP,
+                PairwiseCipher.GCMP_128, PairwiseCipher.GCMP_256,
+                PairwiseCipher.SMS4});
+        verifyAllowedGroupCiphers(config, new int[] {
+                GroupCipher.CCMP, GroupCipher.TKIP,
+                GroupCipher.GCMP_128, GroupCipher.GCMP_256,
+                GroupCipher.SMS4});
+    }
+
+    /** Check that a personal security type can be added to a personal configuration. */
+    @Test
+    public void testAddPersonalTypeToPersonalConfiguration() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+    }
+
+    /** Check that an enterprise security type can be added to an enterprise configuration. */
+    @Test
+    public void testAddEnterpriseTypeToEnterpriseConfiguration() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.NONE);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+    }
+
+    /** Verify that adding an enterprise type to a personal configuration. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testAddEnterpriseTypeToPersonalConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+    }
+
+    /** Verify that adding a personal type to an enterprise configuration. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testAddPersonalTypeToEnterpriseConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.NONE);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+    }
+
+    /** Check that an open security cannot be added to a non-open configuration. */
+    @Test(expected = IllegalArgumentException.class)
+    public void testAddOpenTypeToNonOpenConfiguration() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+    }
+
+    /** Check that a non-open security cannot be added to an open configuration. */
+    @Test(expected = IllegalArgumentException.class)
+    public void testAddNonOpenTypeToOpenConfiguration() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+    }
+
+    /** Check that a OSEN security cannot be added as additional type. */
+    @Test(expected = IllegalArgumentException.class)
+    public void testAddOsenTypeToConfiguration() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_OSEN);
+    }
+
+    /** Verify that adding duplicate security types raises the exception. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testAddDuplicateSecurityTypes() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+    }
+
+    /** Verify that adding duplicate security params raises the exception. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testAddDuplicateSecurityParams() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+    }
+
+    /** Verify that Suite-B type works as expected. */
+    @Test
+    public void testAddSuiteBSecurityType() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.NONE);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
+
+        assertFalse(config.isSuiteBCipherEcdheRsaEnabled());
+        config.enableSuiteBCiphers(false, true);
+        assertTrue(config.isSuiteBCipherEcdheRsaEnabled());
+    }
+
+    /** Verify that FILS bit can be set correctly. */
+    @Test
+    public void testFilsKeyMgmt() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+
+        config.enableFils(false, true);
+        assertFalse(config.isFilsSha256Enabled());
+        assertTrue(config.isFilsSha384Enabled());
+    }
+
+    /** Verify that SAE mode can be configured correctly. */
+    @Test
+    public void testSaeTypeMethods() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        config.addSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+
+        SecurityParams saeParams = config.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        assertNotNull(saeParams);
+        assertFalse(saeParams.isSaeH2eOnlyMode());
+        assertFalse(saeParams.isSaePkOnlyMode());
+
+        config.enableSaeH2eOnlyMode(true);
+        config.enableSaePkOnlyMode(true);
+
+        saeParams = config.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        assertNotNull(saeParams);
+        assertTrue(saeParams.isSaeH2eOnlyMode());
+        assertTrue(saeParams.isSaePkOnlyMode());
+    }
+
+    /** Verify the legacy configuration conversion */
+    @Test
+    public void testLegacyConfigurationConversion() {
+        Pair[] keyMgmtSecurityTypePairs = new Pair[] {
+                new Pair<>(KeyMgmt.WAPI_CERT, SECURITY_TYPE_WAPI_CERT),
+                new Pair<>(KeyMgmt.WAPI_PSK, SECURITY_TYPE_WAPI_PSK),
+                new Pair<>(KeyMgmt.SUITE_B_192, SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT),
+                new Pair<>(KeyMgmt.OWE, SECURITY_TYPE_OWE),
+                new Pair<>(KeyMgmt.SAE, SECURITY_TYPE_SAE),
+                new Pair<>(KeyMgmt.OSEN, SECURITY_TYPE_OSEN),
+                new Pair<>(KeyMgmt.WPA2_PSK, SECURITY_TYPE_PSK),
+                new Pair<>(KeyMgmt.WPA_EAP, SECURITY_TYPE_EAP),
+                new Pair<>(KeyMgmt.WPA_PSK, SECURITY_TYPE_PSK),
+                new Pair<>(KeyMgmt.NONE, SECURITY_TYPE_OPEN),
+        };
+
+        for (Pair pair: keyMgmtSecurityTypePairs) {
+            WifiConfiguration config = new WifiConfiguration();
+            config.allowedKeyManagement.set((int) pair.first);
+            config.convertLegacyFieldsToSecurityParamsIfNeeded();
+            assertNotNull(config.getSecurityParams((int) pair.second));
+        }
+
+        // If none of key management is set, it should be open.
+        WifiConfiguration emptyConfig = new WifiConfiguration();
+        emptyConfig.convertLegacyFieldsToSecurityParamsIfNeeded();
+        assertNotNull(emptyConfig.getSecurityParams(SECURITY_TYPE_OPEN));
+
+        // If EAP key management is set and requirePmf is true, it is WPA3 Enterprise.
+        WifiConfiguration wpa3EnterpriseConfig = new WifiConfiguration();
+        wpa3EnterpriseConfig.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        wpa3EnterpriseConfig.requirePmf = true;
+        wpa3EnterpriseConfig.convertLegacyFieldsToSecurityParamsIfNeeded();
+        assertNotNull(wpa3EnterpriseConfig.getSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+
+        // If key management is NONE and wep key is set, it is WEP type.
+        WifiConfiguration wepConfig = new WifiConfiguration();
+        wepConfig.allowedKeyManagement.set(KeyMgmt.NONE);
+        wepConfig.wepKeys = new String[] {"\"abcdef\""};
+        wepConfig.convertLegacyFieldsToSecurityParamsIfNeeded();
+        assertNotNull(wepConfig.getSecurityParams(SECURITY_TYPE_WEP));
+    }
+
+    /** Verify the set security params by SecurityParams objects. */
+    @Test
+    public void testSetBySecurityParamsObject() {
+        int[] securityTypes = new int[] {
+                SECURITY_TYPE_WAPI_CERT,
+                SECURITY_TYPE_WAPI_PSK,
+                SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
+                SECURITY_TYPE_OWE,
+                SECURITY_TYPE_SAE,
+                SECURITY_TYPE_OSEN,
+                SECURITY_TYPE_EAP,
+                SECURITY_TYPE_PSK,
+                SECURITY_TYPE_OPEN,
+                SECURITY_TYPE_PASSPOINT_R1_R2,
+                SECURITY_TYPE_PASSPOINT_R3,
+        };
+        for (int type: securityTypes) {
+            WifiConfiguration config = new WifiConfiguration();
+            config.setSecurityParams(type);
+            assertTrue(config.isSecurityType(type));
+            assertNotNull(config.getSecurityParams(type));
+        }
+    }
+
+    /** Verify the set security params by an allowed key management mask. */
+    @Test
+    public void testSetSecurityParamsByAllowedKeyManagement() {
+        Pair[] keyMgmtSecurityTypePairs = new Pair[] {
+                new Pair<>(KeyMgmt.WAPI_CERT, SECURITY_TYPE_WAPI_CERT),
+                new Pair<>(KeyMgmt.WAPI_PSK, SECURITY_TYPE_WAPI_PSK),
+                new Pair<>(KeyMgmt.SUITE_B_192, SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT),
+                new Pair<>(KeyMgmt.OWE, SECURITY_TYPE_OWE),
+                new Pair<>(KeyMgmt.SAE, SECURITY_TYPE_SAE),
+                new Pair<>(KeyMgmt.OSEN, SECURITY_TYPE_OSEN),
+                new Pair<>(KeyMgmt.WPA2_PSK, SECURITY_TYPE_PSK),
+                new Pair<>(KeyMgmt.WPA_EAP, SECURITY_TYPE_EAP),
+                new Pair<>(KeyMgmt.WPA_PSK, SECURITY_TYPE_PSK),
+                new Pair<>(KeyMgmt.NONE, SECURITY_TYPE_OPEN),
+        };
+
+        for (Pair pair: keyMgmtSecurityTypePairs) {
+            BitSet akm = new BitSet();
+            akm.set((int) pair.first);
+            WifiConfiguration config = new WifiConfiguration();
+            config.setSecurityParams(akm);
+            assertNotNull(config.getSecurityParams((int) pair.second));
+        }
+    }
+
+    /** Verify the set security params by an invalid allowed key management mask. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testSetSecurityParamsByInvalidAllowedKeyManagement() {
+        WifiConfiguration config = new WifiConfiguration();
+        BitSet akm = null;
+        config.setSecurityParams(akm);
+    }
+
+    /** Verify the set security params by a security params list. */
+    @Test
+    public void testSetSecurityParamsBySecurityParamsList() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.enterpriseConfig.setPhase2Method(WifiEnterpriseConfig.Phase2.NONE);
+        config.addSecurityParams(SECURITY_TYPE_EAP);
+        config.addSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        assertTrue(config.isSecurityType(SECURITY_TYPE_EAP));
+        assertTrue(config.isSecurityType(SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        assertFalse(config.isSecurityType(SECURITY_TYPE_PSK));
+        assertFalse(config.isSecurityType(SECURITY_TYPE_SAE));
+
+        List<SecurityParams> list = new ArrayList<>();
+        list.add(SecurityParams.createSecurityParamsBySecurityType(SECURITY_TYPE_PSK));
+        list.add(SecurityParams.createSecurityParamsBySecurityType(SECURITY_TYPE_SAE));
+        config.setSecurityParams(list);
+        assertFalse(config.isSecurityType(SECURITY_TYPE_EAP));
+        assertFalse(config.isSecurityType(SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        assertTrue(config.isSecurityType(SECURITY_TYPE_PSK));
+        assertTrue(config.isSecurityType(SECURITY_TYPE_SAE));
+    }
+
+    /** Verify the set security params by an empty security params list. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testSetSecurityParamsByEmptySecurityParamsList() {
+        WifiConfiguration config = new WifiConfiguration();
+        List<SecurityParams> list = new ArrayList<>();
+        config.setSecurityParams(list);
+    }
+
+    /** Verify the set security params by a null security params list. */
+    @Test (expected = IllegalArgumentException.class)
+    public void testSetSecurityParamsByNullSecurityParamsList() {
+        WifiConfiguration config = new WifiConfiguration();
+        List<SecurityParams> list = null;
+        config.setSecurityParams(list);
     }
 }

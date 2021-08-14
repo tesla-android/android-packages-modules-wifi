@@ -16,7 +16,6 @@
 
 package com.android.server.wifi;
 
-import android.content.Context;
 import android.os.Looper;
 import android.provider.Settings;
 
@@ -35,20 +34,23 @@ public class OpenNetworkNotifier extends AvailableNetworkNotifier {
             Settings.Global.WIFI_NETWORKS_AVAILABLE_NOTIFICATION_ON;
 
     public OpenNetworkNotifier(
-            Context context,
+            WifiContext context,
             Looper looper,
             FrameworkFacade framework,
             Clock clock,
             WifiMetrics wifiMetrics,
             WifiConfigManager wifiConfigManager,
             WifiConfigStore wifiConfigStore,
-            ClientModeImpl clientModeImpl,
-            ConnectToNetworkNotificationBuilder connectToNetworkNotificationBuilder) {
+            ConnectHelper connectHelper,
+            ConnectToNetworkNotificationBuilder connectToNetworkNotificationBuilder,
+            MakeBeforeBreakManager makeBeforeBreakManager,
+            WifiNotificationManager wifiNotificationManager) {
         super(TAG, STORE_DATA_IDENTIFIER, TOGGLE_SETTINGS_NAME,
                 SystemMessage.NOTE_NETWORK_AVAILABLE,
                 WifiMetricsProto.ConnectionEvent.NOMINATOR_OPEN_NETWORK_AVAILABLE,
                 context, looper, framework, clock,
-                wifiMetrics, wifiConfigManager, wifiConfigStore, clientModeImpl,
-                connectToNetworkNotificationBuilder);
+                wifiMetrics, wifiConfigManager, wifiConfigStore, connectHelper,
+                connectToNetworkNotificationBuilder, makeBeforeBreakManager,
+                wifiNotificationManager);
     }
 }

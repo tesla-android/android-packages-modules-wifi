@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> सुचवलेली नेटवर्क. डिव्हाइस आपोआप कनेक्ट होऊ शकते."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"अनुमती द्या"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"नाही, नको"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> वाय-फायशी कनेक्ट करायचे आहे का?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"या नेटवर्कना एक सिम आयडी मिळतो जो डिव्हाइस स्थानाचा माग ठेवण्यासाठी वापरला जाऊ शकतो"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"कनेक्ट करा"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"कनेक्ट करू नका"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"कनेक्शन निश्चित करायचे आहे का?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"तुम्ही कनेक्ट केल्यास, <xliff:g id="CARRIERNAME">%s</xliff:g> वाय-फाय नेटवर्क तुमच्या सिम शी संबंधित एक युनिक आयडी अ‍ॅक्सेस किंवा शेअर करू शकतात. यामुळे तुमच्या डिव्हाइस स्थानाचा मागोवा घेतला जाऊ शकतो."</string>

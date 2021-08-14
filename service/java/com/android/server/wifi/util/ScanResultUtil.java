@@ -16,14 +16,19 @@
 
 package com.android.server.wifi.util;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.ScanDetail;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 /**
  * Scan result utility for any {@link ScanResult} related operations.
@@ -33,6 +38,7 @@ import java.util.List;
  *   > Helper methods to identify the encryption of a ScanResult.
  */
 public class ScanResultUtil {
+    private static final String TAG = "ScanResultUtil";
     private ScanResultUtil() { /* not constructable */ }
 
     /**
@@ -40,8 +46,11 @@ public class ScanResultUtil {
      * result is filled in with the IEs from the beacon.
      */
     public static ScanDetail toScanDetail(ScanResult scanResult) {
+        ScanResult.InformationElement[] ieArray = (null != scanResult.informationElements)
+            ? scanResult.informationElements
+            : new ScanResult.InformationElement[0];
         NetworkDetail networkDetail = new NetworkDetail(scanResult.BSSID,
-                scanResult.informationElements, scanResult.anqpLines, scanResult.frequency);
+                ieArray, scanResult.anqpLines, scanResult.frequency);
         return new ScanDetail(scanResult, networkDetail);
     }
 
@@ -72,18 +81,123 @@ public class ScanResultUtil {
 
     /**
      * Helper method to check if the provided |scanResult| corresponds to a EAP network or not.
-     * This checks if the provided capabilities string contains EAP encryption type or not.
+     * This checks these conditions:
+     * - Enable EAP/SHA1, EAP/SHA256 AKM, FT/EAP, or EAP-FILS.
+     * - Not a WPA3 Enterprise only network.
+     * - Not a WPA3 Enterprise transition network.
      */
     public static boolean isScanResultForEapNetwork(ScanResult scanResult) {
-        return scanResult.capabilities.contains("EAP");
+        return (scanResult.capabilities.contains("EAP/SHA1")
+                        || scanResult.capabilities.contains("EAP/SHA256")
+                        || scanResult.capabilities.contains("FT/EAP")
+                        || scanResult.capabilities.contains("EAP-FILS"))
+                && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
+                && !isScanResultForWpa3EnterpriseTransitionNetwork(scanResult);
+    }
+
+    private static boolean isScanResultForPmfMandatoryNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("[MFPR]");
+    }
+
+    private static boolean isScanResultForPmfCapableNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("[MFPC]");
     }
 
     /**
-     * Helper method to check if the provided |scanResult| corresponds to a EAP network or not.
-     * This checks if the provided capabilities string contains EAP encryption type or not.
+     * Helper method to check if the provided |scanResult| corresponds to a Passpoint R1/R2
+     * network or not.
+     * Passpoint R1/R2 requirements:
+     * - WPA2 Enterprise network.
+     * - interworking bit is set.
+     * - HotSpot Release presents.
+     */
+    public static boolean isScanResultForPasspointR1R2Network(ScanResult scanResult) {
+        if (!isScanResultForEapNetwork(scanResult)) return false;
+
+        ScanDetail detail = toScanDetail(scanResult);
+        if (!detail.getNetworkDetail().isInterworking()) return false;
+        return null != detail.getNetworkDetail().getHSRelease();
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to a Passpoint R3
+     * network or not.
+     * Passpoint R3 requirements:
+     * - Must be WPA2 Enterprise network, WPA3 Enterprise network,
+     *   or WPA3 Enterprise 192-bit mode network.
+     * - interworking bit is set.
+     * - HotSpot Release presents.
+     * - PMF is mandatory.
+     */
+    public static boolean isScanResultForPasspointR3Network(ScanResult scanResult) {
+        if (!isScanResultForEapNetwork(scanResult)
+                && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
+                && !isScanResultForEapSuiteBNetwork(scanResult)) {
+            return false;
+        }
+        if (!isScanResultForPmfMandatoryNetwork(scanResult)) return false;
+
+        ScanDetail detail = toScanDetail(scanResult);
+        if (!detail.getNetworkDetail().isInterworking()) return false;
+        return null != detail.getNetworkDetail().getHSRelease();
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to
+     * a WPA3 Enterprise transition network or not.
+     *
+     * See Section 3.3 WPA3-Enterprise transition mode in WPA3 Specification
+     * - Enable at least EAP/SHA1 and EAP/SHA256 AKM suites.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
+     * - Management Frame Protection Capable is set.
+     * - Management Frame Protection Required is not set.
+     */
+    public static boolean isScanResultForWpa3EnterpriseTransitionNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("EAP/SHA1")
+                && scanResult.capabilities.contains("EAP/SHA256")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
+                && !isScanResultForPmfMandatoryNetwork(scanResult)
+                && isScanResultForPmfCapableNetwork(scanResult);
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to
+     * a WPA3 Enterprise only network or not.
+     *
+     * See Section 3.2 WPA3-Enterprise only mode in WPA3 Specification
+     * - Enable at least EAP/SHA256 AKM suite.
+     * - Not enable EAP/SHA1 AKM suite.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
+     * - Management Frame Protection Capable is set.
+     * - Management Frame Protection Required is set.
+     */
+    public static boolean isScanResultForWpa3EnterpriseOnlyNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("EAP/SHA256")
+                && !scanResult.capabilities.contains("EAP/SHA1")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
+                && isScanResultForPmfMandatoryNetwork(scanResult)
+                && isScanResultForPmfCapableNetwork(scanResult);
+    }
+
+    /**
+     * Helper method to check if the provided |scanResult| corresponds to a WPA3-Enterprise 192-bit
+     * mode network or not.
+     * This checks if the provided capabilities comply these conditions:
+     * - Enable SUITE-B-192 AKM.
+     * - Not enable EAP/SHA1 AKM suite.
+     * - Not enable WPA1 version 1, WEP, and TKIP.
+     * - Management Frame Protection Required is set.
      */
     public static boolean isScanResultForEapSuiteBNetwork(ScanResult scanResult) {
-        return scanResult.capabilities.contains("SUITE-B-192");
+        return scanResult.capabilities.contains("SUITE_B_192")
+                && scanResult.capabilities.contains("RSN")
+                && !scanResult.capabilities.contains("WEP")
+                && !scanResult.capabilities.contains("TKIP")
+                && isScanResultForPmfMandatoryNetwork(scanResult);
     }
 
     /**
@@ -143,16 +257,27 @@ public class ScanResultUtil {
     }
 
     /**
+     *  Helper method to check if the provided |scanResult| corresponds to an unknown amk network.
+     *  This checks if the provided capabilities string contains ? or not.
+     */
+    public static boolean isScanResultForUnknownAkmNetwork(ScanResult scanResult) {
+        return scanResult.capabilities.contains("?");
+    }
+
+    /**
      * Helper method to check if the provided |scanResult| corresponds to an open network or not.
      * This checks if the provided capabilities string does not contain either of WEP, PSK, SAE
-     * or EAP encryption types or not.
+     * EAP, or unknown encryption types or not.
      */
     public static boolean isScanResultForOpenNetwork(ScanResult scanResult) {
         return (!(isScanResultForWepNetwork(scanResult) || isScanResultForPskNetwork(scanResult)
                 || isScanResultForEapNetwork(scanResult) || isScanResultForSaeNetwork(scanResult)
+                || isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
+                || isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
                 || isScanResultForWapiPskNetwork(scanResult)
                 || isScanResultForWapiCertNetwork(scanResult)
-                || isScanResultForEapSuiteBNetwork(scanResult)));
+                || isScanResultForEapSuiteBNetwork(scanResult)
+                || isScanResultForUnknownAkmNetwork(scanResult)));
     }
 
     /**
@@ -168,38 +293,109 @@ public class ScanResultUtil {
      * Creates a network configuration object using the provided |scanResult|.
      * This is used to create ephemeral network configurations.
      */
-    public static WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
+    public static @Nullable WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = createQuotedSSID(scanResult.SSID);
-        setAllowedKeyManagementFromScanResult(scanResult, config);
+        List<SecurityParams> list = generateSecurityParamsListFromScanResult(scanResult);
+        if (list.isEmpty()) {
+            return null;
+        }
+        config.setSecurityParams(list);
         return config;
     }
 
     /**
-     * Sets the {@link WifiConfiguration#allowedKeyManagement} field on the given
-     * {@link WifiConfiguration} based on its corresponding {@link ScanResult}.
+     * Generate security params from the scan result.
+     * @param scanResult the scan result to be checked.
+     * @return a list of security params. If no known security params, return an empty list.
      */
-    public static void setAllowedKeyManagementFromScanResult(ScanResult scanResult,
-            WifiConfiguration config) {
-        if (isScanResultForSaeNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
-        } else if (isScanResultForWapiPskNetwork(scanResult)) {
-            config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WAPI_PSK);
-        } else if (isScanResultForWapiCertNetwork(scanResult)) {
-            config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WAPI_CERT);
-        } else if (isScanResultForPskNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
-        } else if (isScanResultForEapSuiteBNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_SUITE_B);
-        } else if (isScanResultForEapNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
-        } else if (isScanResultForWepNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_WEP);
-        } else if (isScanResultForOweNetwork(scanResult)) {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
-        } else {
-            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+    public static @NonNull List<SecurityParams> generateSecurityParamsListFromScanResult(
+            ScanResult scanResult) {
+        List<SecurityParams> list = new ArrayList<>();
+
+        // Open network & its upgradable types
+        if (ScanResultUtil.isScanResultForOweTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForOweNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OWE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForOpenNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_OPEN));
+            return list;
         }
+
+        // WEP network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWepNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WEP));
+            return list;
+        }
+
+        // WAPI PSK network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_PSK));
+            return list;
+        }
+
+        // WAPI CERT network which has no upgradable type
+        if (ScanResultUtil.isScanResultForWapiCertNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_WAPI_CERT));
+            return list;
+        }
+
+        // WPA2 personal network & its upgradable types
+        if (ScanResultUtil.isScanResultForPskNetwork(scanResult)
+                && ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        } else if (ScanResultUtil.isScanResultForPskNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PSK));
+            return list;
+        } else if (ScanResultUtil.isScanResultForSaeNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_SAE));
+            return list;
+        }
+
+        // WPA3 Enterprise 192-bit mode, WPA2/WPA3 enterprise network & its upgradable types
+        if (ScanResultUtil.isScanResultForEapSuiteBNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT));
+        } else if (ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        } else if (ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
+        } else if (ScanResultUtil.isScanResultForEapNetwork(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_EAP));
+        }
+        // An Enterprise network might be a Passpoint network as well.
+        // R3 network might be also a valid R1/R2 network.
+        if (isScanResultForPasspointR1R2Network(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2));
+        }
+        if (isScanResultForPasspointR3Network(scanResult)) {
+            list.add(SecurityParams.createSecurityParamsBySecurityType(
+                    WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3));
+        }
+        return list;
     }
 
     /**
@@ -253,10 +449,12 @@ public class ScanResultUtil {
      */
     public static boolean validateScanResultList(List<ScanResult> scanResults) {
         if (scanResults == null || scanResults.isEmpty()) {
+            Log.w(TAG, "Empty or null ScanResult list");
             return false;
         }
         for (ScanResult scanResult : scanResults) {
             if (!validate(scanResult)) {
+                Log.w(TAG, "Invalid ScanResult: " + scanResult);
                 return false;
             }
         }

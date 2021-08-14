@@ -19,6 +19,7 @@ package com.android.server.wifi.aware;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,6 +53,7 @@ import android.util.SparseIntArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiBaseTest;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.util.NetdWrapper;
@@ -170,6 +173,31 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         verify(mAwareStateManagerMock).isUsageEnabled();
     }
 
+    @Test
+    public void testGetAwareResources() {
+        mDut.getAvailableAwareResources();
+        verify(mAwareStateManagerMock).getAvailableAwareResources();
+    }
+
+    /**
+     * Validate enableInstantCommunicationMode() and isInstantCommunicationModeEnabled() function
+     */
+    @Test
+    public void testInstantCommunicationMode() {
+        mDut.isInstantCommunicationModeEnabled();
+        verify(mAwareStateManagerMock).isInstantCommunicationModeEnabled();
+
+        // Non-system package could not enable this mode.
+        when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(false);
+        mDut.enableInstantCommunicationMode(mPackageName, true);
+        verify(mAwareStateManagerMock, never()).enableInstantCommunicationMode(eq(true));
+
+        when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(true);
+        mDut.enableInstantCommunicationMode(mPackageName, true);
+        verify(mAwareStateManagerMock).enableInstantCommunicationMode(eq(true));
+
+    }
+
 
     /**
      * Validate connect() - returns and uses a client ID.
@@ -187,12 +215,13 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         ConfigRequest configRequest = new ConfigRequest.Builder().setMasterPreference(55).build();
         String callingPackage = "com.google.somePackage";
         String callingFeatureId = "com.google.someFeature";
-
+        assertFalse(mDut.isDeviceAttached());
         mDut.connect(mBinderMock, callingPackage, callingFeatureId, mCallbackMock,
                 configRequest, false);
 
         verify(mAwareStateManagerMock).connect(anyInt(), anyInt(), anyInt(), eq(callingPackage),
                 eq(callingFeatureId), eq(mCallbackMock), eq(configRequest), eq(false));
+        assertTrue(mDut.isDeviceAttached());
     }
 
     /**
@@ -203,11 +232,12 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     @Test
     public void testDisconnect() throws Exception {
         int clientId = doConnect();
-
+        assertTrue(mDut.isDeviceAttached());
         mDut.disconnect(clientId, mBinderMock);
 
         verify(mAwareStateManagerMock).disconnect(clientId);
         validateInternalStateCleanedUp(clientId);
+        assertFalse(mDut.isDeviceAttached());
     }
 
     /**
@@ -584,7 +614,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     public void testRequestMacAddress() {
         int uid = 1005;
         List<Integer> list = new ArrayList<>();
-        IWifiAwareMacAddressProvider callback = new IWifiAwareMacAddressProvider() { // dummy
+        IWifiAwareMacAddressProvider callback = new IWifiAwareMacAddressProvider() { // placeholder
             @Override
             public void macAddress(Map peerIdToMacMap) throws RemoteException {
                 // empty
@@ -638,6 +668,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         cap.maxAppInfoLen = 255;
         cap.maxQueuedTransmitMessages = 6;
         cap.supportedCipherSuites = NanCipherSuiteType.SHARED_KEY_256_MASK;
+        cap.isInstantCommunicationModeSupported = true;
 
         Characteristics characteristics = cap.toPublicCharacteristics();
         assertEquals(characteristics.getMaxServiceNameLength(), maxServiceName);
@@ -645,6 +676,9 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         assertEquals(characteristics.getMaxMatchFilterLength(), maxMatchFilter);
         assertEquals(characteristics.getSupportedCipherSuites(),
                 Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256);
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
+        }
     }
 
     /*
@@ -726,6 +760,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         cap.maxAppInfoLen = 255;
         cap.maxQueuedTransmitMessages = 6;
         cap.supportedCipherSuites = NanCipherSuiteType.SHARED_KEY_256_MASK;
+        cap.isInstantCommunicationModeSupported = false;
         return cap.toPublicCharacteristics();
     }
 

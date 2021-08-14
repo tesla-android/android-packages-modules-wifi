@@ -16,15 +16,22 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiConfiguration.INVALID_NETWORK_ID;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP;
+import static android.net.wifi.WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
 import static android.net.wifi.WifiManager.ALL_ZEROS_MAC_ADDRESS;
 
 import static com.android.server.wifi.util.NativeUtil.addEnclosingQuotes;
 
+import android.annotation.SuppressLint;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.StaticIpConfiguration;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.os.PatternMatcher;
@@ -33,13 +40,16 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -63,6 +73,8 @@ public class WifiConfigurationUtil {
     private static final int SAE_ASCII_MIN_LEN = 1 + ENCLOSING_QUOTES_LEN;
     private static final int PSK_SAE_ASCII_MAX_LEN = 63 + ENCLOSING_QUOTES_LEN;
     private static final int PSK_SAE_HEX_LEN = 64;
+    private static final int WEP104_KEY_BYTES_LEN = 13;
+    private static final int WEP40_KEY_BYTES_LEN = 5;
 
     @VisibleForTesting
     public static final String PASSWORD_MASK = "*";
@@ -71,6 +83,9 @@ public class WifiConfigurationUtil {
             new Pair<>(MacAddress.BROADCAST_ADDRESS, MacAddress.BROADCAST_ADDRESS);
     private static final Pair<MacAddress, MacAddress> MATCH_ALL_BSSID_PATTERN =
             new Pair<>(ALL_ZEROS_MAC_ADDRESS, ALL_ZEROS_MAC_ADDRESS);
+
+    private static final int NETWORK_ID_SECURITY_MASK = 0xff;
+    private static final int NETWORK_ID_SECURITY_OFFSET = 23;
 
     /**
      * Checks if the provided |wepKeys| array contains any non-null value;
@@ -88,58 +103,64 @@ public class WifiConfigurationUtil {
      * Helper method to check if the provided |config| corresponds to a PSK network or not.
      */
     public static boolean isConfigForPskNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK);
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to a WAPI PSK network or not.
      */
     public static boolean isConfigForWapiPskNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WAPI_PSK);
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_PSK);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to a WAPI CERT network or not.
      */
     public static boolean isConfigForWapiCertNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WAPI_CERT);
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WAPI_CERT);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to an SAE network or not.
      */
     public static boolean isConfigForSaeNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SAE);
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to an OWE network or not.
      */
     public static boolean isConfigForOweNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.OWE);
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to a EAP network or not.
      */
     public static boolean isConfigForEapNetwork(WifiConfiguration config) {
-        return (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP)
-                || config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X));
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP);
+    }
+
+    /**
+     * Helper method to check if the provided |config| corresponds to
+     * a WPA3 Enterprise network or not.
+     */
+    public static boolean isConfigForWpa3EnterpriseNetwork(WifiConfiguration config) {
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to a EAP Suite-B network or not.
      */
-    public static boolean isConfigForEapSuiteBNetwork(WifiConfiguration config) {
-        return config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SUITE_B_192);
+    public static boolean isConfigForWpa3Enterprise192BitNetwork(WifiConfiguration config) {
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
     }
 
     /**
      * Helper method to check if the provided |config| corresponds to a WEP network or not.
      */
     public static boolean isConfigForWepNetwork(WifiConfiguration config) {
-        return (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.NONE)
-                && hasAnyValidWepKey(config.wepKeys));
+        return config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WEP);
     }
 
     /**
@@ -148,8 +169,9 @@ public class WifiConfigurationUtil {
      */
     public static boolean isConfigForOpenNetwork(WifiConfiguration config) {
         return (!(isConfigForWepNetwork(config) || isConfigForPskNetwork(config)
+                || isConfigForWapiPskNetwork(config) || isConfigForWapiCertNetwork(config)
                 || isConfigForEapNetwork(config) || isConfigForSaeNetwork(config)
-                || isConfigForEapSuiteBNetwork(config)));
+                || isConfigForWpa3Enterprise192BitNetwork(config)));
     }
 
     /**
@@ -203,7 +225,7 @@ public class WifiConfigurationUtil {
     public static boolean hasMacRandomizationSettingsChanged(WifiConfiguration existingConfig,
             WifiConfiguration newConfig) {
         if (existingConfig == null) {
-            return newConfig.macRandomizationSetting != WifiConfiguration.RANDOMIZATION_PERSISTENT;
+            return newConfig.macRandomizationSetting != WifiConfiguration.RANDOMIZATION_AUTO;
         }
         return newConfig.macRandomizationSetting != existingConfig.macRandomizationSetting;
     }
@@ -262,6 +284,10 @@ public class WifiConfigurationUtil {
                     existingEnterpriseConfig.getAltSubjectMatch())) {
                 return true;
             }
+            if (!TextUtils.equals(newEnterpriseConfig.getWapiCertSuite(),
+                    existingEnterpriseConfig.getWapiCertSuite())) {
+                return true;
+            }
             if (newEnterpriseConfig.getOcsp() != existingEnterpriseConfig.getOcsp()) {
                 return true;
             }
@@ -309,6 +335,9 @@ public class WifiConfigurationUtil {
         }
         if (!Objects.equals(existingConfig.allowedSuiteBCiphers,
                 newConfig.allowedSuiteBCiphers)) {
+            return true;
+        }
+        if (!existingConfig.getSecurityParamsList().equals(newConfig.getSecurityParamsList())) {
             return true;
         }
         if (!Objects.equals(existingConfig.preSharedKey, newConfig.preSharedKey)) {
@@ -400,6 +429,8 @@ public class WifiConfigurationUtil {
             Log.e(TAG, "validateBssid failed: empty string");
             return false;
         }
+        // Allow reset of bssid with "any".
+        if (bssid.equals(ClientModeImpl.SUPPLICANT_BSSID_ANY)) return true;
         MacAddress bssidMacAddress;
         try {
             bssidMacAddress = MacAddress.fromString(bssid);
@@ -470,6 +501,55 @@ public class WifiConfigurationUtil {
         return true;
     }
 
+    private static boolean validateWepKeys(String[] wepKeys, int wepTxKeyIndex, boolean isAdd) {
+        if (isAdd) {
+            if (wepKeys == null) {
+                Log.e(TAG, "validateWepKeys: null string");
+                return false;
+            }
+        } else {
+            if (wepKeys == null) {
+                // This is an update, so the psk can be null if that is not being changed.
+                return true;
+            } else {
+                boolean allMaskedKeys = true;
+                for (int i = 0; i < wepKeys.length; i++) {
+                    if (wepKeys[i] != null && !TextUtils.equals(wepKeys[i], PASSWORD_MASK)) {
+                        allMaskedKeys = false;
+                    }
+                }
+                if (allMaskedKeys) {
+                    // This is an update, so the app might have returned back the masked password,
+                    // let it thru. WifiConfigManager will handle it.
+                    return true;
+                }
+            }
+        }
+        for (int i = 0; i < wepKeys.length; i++) {
+            if (wepKeys[i] != null) {
+                try {
+                    ArrayList<Byte> wepKeyBytes =
+                            NativeUtil.hexOrQuotedStringToBytes(wepKeys[i]);
+                    if (wepKeyBytes.size() != WEP40_KEY_BYTES_LEN
+                            && wepKeyBytes.size() != WEP104_KEY_BYTES_LEN) {
+                        Log.e(TAG, "validateWepKeys: invalid wep key length "
+                                + wepKeys[i].length() + " at index " + i);
+                        return false;
+                    }
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "validateWepKeys: invalid wep key at index " + i, e);
+                    return false;
+                }
+            }
+        }
+        if (wepTxKeyIndex >= wepKeys.length) {
+            Log.e(TAG, "validateWepKeys: invalid wep tx key index " + wepTxKeyIndex
+                    + " wepKeys len: " + wepKeys.length);
+            return false;
+        }
+        return true;
+    }
+
     private static boolean validateBitSet(BitSet bitSet, int validValuesLength) {
         if (bitSet == null) return false;
         BitSet clonedBitset = (BitSet) bitSet.clone();
@@ -531,8 +611,11 @@ public class WifiConfigurationUtil {
                 Log.e(TAG, "validateKeyMgmt failed: not PSK or 8021X");
                 return false;
             }
+            // SUITE-B keymgmt must be WPA_EAP + IEEE8021X + SUITE_B_192.
             if (keyMgmnt.cardinality() == 3
-                    && !keyMgmnt.get(WifiConfiguration.KeyMgmt.SUITE_B_192)) {
+                    && !(keyMgmnt.get(WifiConfiguration.KeyMgmt.WPA_EAP)
+                            && keyMgmnt.get(WifiConfiguration.KeyMgmt.IEEE8021X)
+                            && keyMgmnt.get(WifiConfiguration.KeyMgmt.SUITE_B_192))) {
                 Log.e(TAG, "validateKeyMgmt failed: not SUITE_B_192");
                 return false;
             }
@@ -599,39 +682,28 @@ public class WifiConfigurationUtil {
         if (!validateKeyMgmt(config.allowedKeyManagement)) {
             return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_WEP)
+                && config.wepKeys != null
+                && !validateWepKeys(config.wepKeys, config.wepTxKeyIndex, isAdd)) {
+            return false;
+        }
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
                 && !validatePassword(config.preSharedKey, isAdd, false)) {
             return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.OWE)) {
-            // PMF mandatory for OWE networks
-            if (!config.requirePmf) {
-                Log.e(TAG, "PMF must be enabled for OWE networks");
-                return false;
-            }
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)
+                && !validatePassword(config.preSharedKey, isAdd, true)) {
+            return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SAE)) {
-            // PMF mandatory for WPA3-Personal networks
-            if (!config.requirePmf) {
-                Log.e(TAG, "PMF must be enabled for SAE networks");
-                return false;
-            }
-            if (!validatePassword(config.preSharedKey, isAdd, true)) {
-                return false;
-            }
+
+        if (!validateEnterpriseConfig(config, isAdd)) {
+            return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SUITE_B_192)) {
-            // PMF mandatory for WPA3-Enterprise networks
-            if (!config.requirePmf) {
-                Log.e(TAG, "PMF must be enabled for Suite-B 192-bit networks");
-                return false;
-            }
-        }
+
         // b/153435438: Added to deal with badly formed WifiConfiguration from apps.
         if (config.preSharedKey != null && !config.needsPreSharedKey()) {
             Log.e(TAG, "preSharedKey set with an invalid KeyMgmt, resetting KeyMgmt to WPA_PSK");
-            config.allowedKeyManagement.clear();
-            config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+            config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
         }
         if (!validateIpConfiguration(config.getIpConfiguration())) {
             return false;
@@ -655,7 +727,6 @@ public class WifiConfigurationUtil {
                     + baseAddress);
             return false;
         }
-        // TBD: Can we do any more checks?
         return true;
     }
 
@@ -697,6 +768,12 @@ public class WifiConfigurationUtil {
         return false;
     }
 
+    // TODO: b/177434707 calls inside same module are safe
+    @SuppressLint("NewApi")
+    private static int getBand(WifiNetworkSpecifier s) {
+        return s.getBand();
+    }
+
     /**
      * Validate the configuration received from an external application inside
      * {@link WifiNetworkSpecifier}.
@@ -704,15 +781,16 @@ public class WifiConfigurationUtil {
      * This method checks for the following parameters:
      * 1. {@link WifiNetworkSpecifier#ssidPatternMatcher}
      * 2. {@link WifiNetworkSpecifier#bssidPatternMatcher}
-     * 3. {@link WifiConfiguration#SSID}
-     * 4. {@link WifiConfiguration#BSSID}
-     * 5. {@link WifiConfiguration#preSharedKey}
-     * 6. {@link WifiConfiguration#allowedKeyManagement}
-     * 7. {@link WifiConfiguration#allowedProtocols}
-     * 8. {@link WifiConfiguration#allowedAuthAlgorithms}
-     * 9. {@link WifiConfiguration#allowedGroupCiphers}
-     * 10. {@link WifiConfiguration#allowedPairwiseCiphers}
-     * 11. {@link WifiConfiguration#getIpConfiguration()}
+     * 3. {@link WifiNetworkSpecifier#getBand()}
+     * 4. {@link WifiConfiguration#SSID}
+     * 5. {@link WifiConfiguration#BSSID}
+     * 6. {@link WifiConfiguration#preSharedKey}
+     * 7. {@link WifiConfiguration#allowedKeyManagement}
+     * 8. {@link WifiConfiguration#allowedProtocols}
+     * 9. {@link WifiConfiguration#allowedAuthAlgorithms}
+     * 10. {@link WifiConfiguration#allowedGroupCiphers}
+     * 11. {@link WifiConfiguration#allowedPairwiseCiphers}
+     * 12. {@link WifiConfiguration#getIpConfiguration()}
      *
      * @param specifier Instance of {@link WifiNetworkSpecifier}.
      * @return true if the parameters are valid, false otherwise.
@@ -728,6 +806,9 @@ public class WifiConfigurationUtil {
         }
         if (isMatchAllNetworkSpecifier(specifier)) {
             Log.e(TAG, "validateNetworkSpecifier failed : match-all specifier");
+            return false;
+        }
+        if (!WifiNetworkSpecifier.validateBand(getBand(specifier))) {
             return false;
         }
         WifiConfiguration config = specifier.wifiConfiguration;
@@ -760,30 +841,13 @@ public class WifiConfigurationUtil {
         if (!validateKeyMgmt(config.allowedKeyManagement)) {
             return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
                 && !validatePassword(config.preSharedKey, true, false)) {
             return false;
         }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.OWE)) {
-            // PMF mandatory for OWE networks
-            if (!config.requirePmf) {
-                return false;
-            }
-        }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SAE)) {
-            // PMF mandatory for WPA3-Personal networks
-            if (!config.requirePmf) {
-                return false;
-            }
-            if (!validatePassword(config.preSharedKey, true, true)) {
-                return false;
-            }
-        }
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.SUITE_B_192)) {
-            // PMF mandatory for WPA3-Enterprise networks
-            if (!config.requirePmf) {
-                return false;
-            }
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)
+                && !validatePassword(config.preSharedKey, true, true)) {
+            return false;
         }
         // TBD: Validate some enterprise params as well in the future here.
         return true;
@@ -812,6 +876,10 @@ public class WifiConfigurationUtil {
         if (!Objects.equals(config.SSID, config1.SSID)) {
             return false;
         }
+        if (!Objects.equals(config.getNetworkSelectionStatus().getCandidateSecurityParams(),
+                config1.getNetworkSelectionStatus().getCandidateSecurityParams())) {
+            return false;
+        }
         if (WifiConfigurationUtil.hasCredentialChanged(config, config1)) {
             return false;
         }
@@ -833,10 +901,9 @@ public class WifiConfigurationUtil {
         }
         pnoNetwork.flags |= WifiScanner.PnoSettings.PnoNetwork.FLAG_A_BAND;
         pnoNetwork.flags |= WifiScanner.PnoSettings.PnoNetwork.FLAG_G_BAND;
-        if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_PSK)) {
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) {
             pnoNetwork.authBitField |= WifiScanner.PnoSettings.PnoNetwork.AUTH_CODE_PSK;
-        } else if (config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.WPA_EAP)
-                || config.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X)) {
+        } else if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)) {
             pnoNetwork.authBitField |= WifiScanner.PnoSettings.PnoNetwork.AUTH_CODE_EAPOL;
         } else {
             pnoNetwork.authBitField |= WifiScanner.PnoSettings.PnoNetwork.AUTH_CODE_OPEN;
@@ -844,6 +911,97 @@ public class WifiConfigurationUtil {
         return pnoNetwork;
     }
 
+    private static void addOpenUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) return;
+
+        Log.d(TAG, "Add upgradable OWE configuration.");
+        SecurityParams oweParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_OWE);
+        oweParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(oweParams);
+    }
+
+    private static void addPskUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) return;
+
+        Log.d(TAG, "Add upgradable SAE configuration.");
+        SecurityParams saeParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_SAE);
+        saeParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(saeParams);
+    }
+
+    private static void addEapUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        if (!config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)) return;
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE)) return;
+
+        Log.d(TAG, "Add upgradable Enterprise configuration.");
+        SecurityParams wpa3EnterpriseParams = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        wpa3EnterpriseParams.setIsAddedByAutoUpgrade(true);
+        config.addSecurityParams(wpa3EnterpriseParams);
+    }
+
+    /**
+     * Add upgradable securit type to the given wifi configuration.
+     *
+     * @param config the wifi configuration to be checked.
+     */
+    public static boolean addUpgradableSecurityTypeIfNecessary(WifiConfiguration config) {
+        try {
+            addOpenUpgradableSecurityTypeIfNecessary(config);
+            addPskUpgradableSecurityTypeIfNecessary(config);
+            addEapUpgradableSecurityTypeIfNecessary(config);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Failed to add upgradable security type");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * For a upgradable type which is added by the auto-upgrade mechenism, it is only
+     * matched when corresponding auto-upgrade features are enabled.
+     */
+    private static boolean shouldOmitAutoUpgradeParams(SecurityParams params) {
+        if (!params.isAddedByAutoUpgrade()) return false;
+
+        WifiGlobals wifiGlobals = WifiInjector.getInstance().getWifiGlobals();
+
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)) {
+            return !wifiGlobals.isWpa3SaeUpgradeEnabled();
+        }
+        if (params.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE)) {
+            return !wifiGlobals.isOweUpgradeEnabled();
+        }
+        return false;
+    }
+
+    private static boolean isSecurityParamsSupported(SecurityParams params) {
+        final long wifiFeatures = WifiInjector.getInstance()
+                .getActiveModeWarden().getPrimaryClientModeManager()
+                .getSupportedFeatures();
+        switch (params.getSecurityType()) {
+            case WifiConfiguration.SECURITY_TYPE_SAE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_WPA3_SAE);
+            case WifiConfiguration.SECURITY_TYPE_OWE:
+                return 0 != (wifiFeatures & WifiManager.WIFI_FEATURE_OWE);
+        }
+        return true;
+    }
+
+    /**
+     * Check the security params is valid or not.
+     * @param params the requesting security params.
+     * @return true if it's valid; otherwise false.
+     */
+    public static boolean isSecurityParamsValid(SecurityParams params) {
+        if (!params.isEnabled()) return false;
+        if (!isSecurityParamsSupported(params)) return false;
+        return true;
+    }
 
     /**
      * General WifiConfiguration list sorting algorithm:
@@ -890,5 +1048,156 @@ public class WifiConfigurationUtil {
                 return PERMANENTLY_DISABLED_NETWORK_SCORE;
             }
         }
+    }
+
+    /**
+     * Convert multi-type configurations to a list of configurations with a single security type,
+     * where a configuration with multiple security configurations will be converted to multiple
+     * Wi-Fi configurations with a single security type..
+     *
+     * @param configs the list of multi-type configurations.
+     * @return a list of Wi-Fi configurations with a single security type,
+     *         that may contain multiple configurations with the same network ID.
+     */
+    public static List<WifiConfiguration> convertMultiTypeConfigsToLegacyConfigs(
+            List<WifiConfiguration> configs) {
+        List<WifiConfiguration> legacyConfigs = new ArrayList<>();
+        for (WifiConfiguration config : configs) {
+            boolean wpa2EnterpriseAdded = false;
+            WifiConfiguration wpa3EnterpriseConfig = null;
+            for (SecurityParams params: config.getSecurityParamsList()) {
+                if (!params.isEnabled()) continue;
+                if (shouldOmitAutoUpgradeParams(params)) continue;
+                WifiConfiguration legacyConfig = new WifiConfiguration(config);
+                legacyConfig.setSecurityParams(params);
+                legacyConfig.networkId = addSecurityTypeToNetworkId(
+                        legacyConfig.networkId,
+                        params.getSecurityType());
+                int securityType = params.getSecurityType();
+                if (securityType == SECURITY_TYPE_EAP) {
+                    wpa2EnterpriseAdded = true;
+                } else if (securityType == SECURITY_TYPE_EAP_WPA3_ENTERPRISE) {
+                    wpa3EnterpriseConfig = legacyConfig;
+                    continue;
+                }
+                legacyConfigs.add(legacyConfig);
+            }
+            if (wpa3EnterpriseConfig != null && (SdkLevel.isAtLeastS() || !wpa2EnterpriseAdded)) {
+                // R Wifi settings maps WPA3-Enterprise to the same security type as
+                // WPA2-Enterprise, which causes a DuplicateKeyException. For R, we should only
+                // return the WPA2-Enterprise config if we have both.
+                legacyConfigs.add(wpa3EnterpriseConfig);
+            }
+        }
+        return legacyConfigs;
+    }
+
+    /**
+     * Converts WifiInfo.SecurityType to WifiConfiguration.SecurityType
+     */
+    public static
+            @WifiConfiguration.SecurityType int convertWifiInfoSecurityTypeToWifiConfiguration(
+                    @WifiInfo.SecurityType int securityType) {
+        switch (securityType) {
+            case WifiInfo.SECURITY_TYPE_OPEN:
+                return WifiConfiguration.SECURITY_TYPE_OPEN;
+            case WifiInfo.SECURITY_TYPE_WEP:
+                return WifiConfiguration.SECURITY_TYPE_WEP;
+            case WifiInfo.SECURITY_TYPE_PSK:
+                return WifiConfiguration.SECURITY_TYPE_PSK;
+            case WifiInfo.SECURITY_TYPE_EAP:
+                return WifiConfiguration.SECURITY_TYPE_EAP;
+            case WifiInfo.SECURITY_TYPE_SAE:
+                return WifiConfiguration.SECURITY_TYPE_SAE;
+            case WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT:
+                return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT;
+            case WifiInfo.SECURITY_TYPE_OWE:
+                return WifiConfiguration.SECURITY_TYPE_OWE;
+            case WifiInfo.SECURITY_TYPE_WAPI_PSK:
+                return WifiConfiguration.SECURITY_TYPE_WAPI_PSK;
+            case WifiInfo.SECURITY_TYPE_WAPI_CERT:
+                return WifiConfiguration.SECURITY_TYPE_WAPI_CERT;
+            case WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE:
+                return WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE;
+            case WifiInfo.SECURITY_TYPE_OSEN:
+                return WifiConfiguration.SECURITY_TYPE_OSEN;
+            case WifiInfo.SECURITY_TYPE_PASSPOINT_R1_R2:
+                return WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2;
+            case WifiInfo.SECURITY_TYPE_PASSPOINT_R3:
+                return WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3;
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Adds a WifiConfiguration.SecurityType value to a network ID to differentiate the network IDs
+     * of legacy single-type configurations derived from the same multi-type configuration.
+     *
+     * This method only works for SDK levels less than S, since those callers may expect a unique
+     * network ID for each single-type configuration. For SDK level S and above, this method returns
+     * the network ID as-is.
+     *
+     * @param netId network id to add the security type to
+     * @param securityType WifiConfiguration security type to encode
+     * @return network id with security type encoded in it
+     */
+    public static int addSecurityTypeToNetworkId(
+            int netId, @WifiConfiguration.SecurityType int securityType) {
+        if (netId == INVALID_NETWORK_ID || SdkLevel.isAtLeastS()) {
+            return netId;
+        }
+        return removeSecurityTypeFromNetworkId(netId)
+                | ((securityType & NETWORK_ID_SECURITY_MASK) << NETWORK_ID_SECURITY_OFFSET);
+    }
+
+    /**
+     * Removes the security type value of a network ID to have it match with internal network IDs.
+     *
+     * This method only works for SDK levels less than S. It should be used on network ID passed in
+     * from external callers, since those callers are be exposed to network IDs with an embedded
+     * security type value. For SDK levels S and above, this method returns the network ID as-is.
+     *
+     * @param netId network id to remove the security type from
+     * @return network id with the security type removed
+     */
+    public static int removeSecurityTypeFromNetworkId(int netId) {
+        if (netId == INVALID_NETWORK_ID || SdkLevel.isAtLeastS()) {
+            return netId;
+        }
+        return netId & ~(NETWORK_ID_SECURITY_MASK << NETWORK_ID_SECURITY_OFFSET);
+    }
+
+    private static boolean validateEnterpriseConfig(WifiConfiguration config, boolean isAdd) {
+        if ((config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)
+                || config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE))
+                && !config.isEnterprise()) {
+            return false;
+        }
+        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT)
+                && (!config.isEnterprise()
+                || config.enterpriseConfig.getEapMethod() != WifiEnterpriseConfig.Eap.TLS)) {
+            return false;
+        }
+        if (config.isEnterprise()) {
+            if (config.enterpriseConfig.getEapMethod() == WifiEnterpriseConfig.Eap.PEAP
+                    || config.enterpriseConfig.getEapMethod() == WifiEnterpriseConfig.Eap.TTLS) {
+
+                int phase2Method = config.enterpriseConfig.getPhase2Method();
+                if (phase2Method == WifiEnterpriseConfig.Phase2.MSCHAP
+                        || phase2Method == WifiEnterpriseConfig.Phase2.MSCHAPV2
+                        || phase2Method == WifiEnterpriseConfig.Phase2.PAP
+                        || phase2Method == WifiEnterpriseConfig.Phase2.GTC) {
+                    // Check the password on add only. When updating, the password may not be
+                    // available and it appears as "(Unchanged)" in Settings
+                    if ((isAdd && TextUtils.isEmpty(config.enterpriseConfig.getPassword()))
+                            || TextUtils.isEmpty(config.enterpriseConfig.getIdentity())) {
+                        Log.e(TAG, "Enterprise network without an identity or a password set");
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 }

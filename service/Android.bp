@@ -38,6 +38,7 @@ filegroup {
         ":framework-wifi-service-shared-srcs",
         ":net-utils-wifi-service-common-srcs",
         ":statslog-wifi-java-gen",
+        ":coex-table-parser",
     ],
 }
 
@@ -58,7 +59,8 @@ java_library {
 
     sdk_version: "system_server_current",
     lint: {
-    	baseline_filename: "lint-baseline-pre-jarjar.xml",
+        baseline_filename: "lint-baseline-pre-jarjar.xml",
+        strict_updatability_linting: true,
     },
     libs: [
         "error_prone_annotations",
@@ -81,13 +83,16 @@ java_library {
         "android.hardware.wifi-V1.2-java",
         "android.hardware.wifi-V1.3-java",
         "android.hardware.wifi-V1.4-java",
+        "android.hardware.wifi-V1.5-java",
         "android.hardware.wifi.hostapd-V1.0-java",
         "android.hardware.wifi.hostapd-V1.1-java",
         "android.hardware.wifi.hostapd-V1.2-java",
+        "android.hardware.wifi.hostapd-V1.3-java",
         "android.hardware.wifi.supplicant-V1.0-java",
         "android.hardware.wifi.supplicant-V1.1-java",
         "android.hardware.wifi.supplicant-V1.2-java",
         "android.hardware.wifi.supplicant-V1.3-java",
+        "android.hardware.wifi.supplicant-V1.4-java",
         "android.hidl.manager-V1.2-java",
         "androidx.annotation_annotation",
         "bouncycastle-unbundled",
@@ -101,7 +106,6 @@ java_library {
         "services.net-module-wifi",
         "wifi-lite-protos",
         "wifi-nano-protos",
-        "modules-utils-os",
     ],
 }
 

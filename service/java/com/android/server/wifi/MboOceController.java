@@ -19,6 +19,7 @@ package com.android.server.wifi;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_MBO;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OCE;
 
+import android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.MboAssocDisallowedReasonCode;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -35,28 +36,29 @@ public class MboOceController {
     private boolean mIsOceSupported = false;
     private boolean mVerboseLoggingEnabled = false;
 
-    private final WifiNative mWifiNative;
     private final TelephonyManager mTelephonyManager;
+    private final ActiveModeWarden mActiveModeWarden;
 
     /**
      * Create new instance of MboOceController.
      */
-    public MboOceController(TelephonyManager telephonyManager,
-                            WifiNative wifiNative) {
+    public MboOceController(TelephonyManager telephonyManager, ActiveModeWarden activeModeWarden) {
         mTelephonyManager = telephonyManager;
-        mWifiNative = wifiNative;
+        mActiveModeWarden = activeModeWarden;
     }
 
     /**
      * Enable MBO and OCE functionality.
      */
     public void enable() {
-        String iface = mWifiNative.getClientInterfaceName();
-        if (iface == null) {
+        ClientModeManager clientModeManager =
+                mActiveModeWarden.getPrimaryClientModeManagerNullable();
+        if (clientModeManager == null) {
             return;
         }
-        mIsMboSupported = (mWifiNative.getSupportedFeatureSet(iface) & WIFI_FEATURE_MBO) != 0;
-        mIsOceSupported = (mWifiNative.getSupportedFeatureSet(iface) & WIFI_FEATURE_OCE) != 0;
+        long supportedFeatures = clientModeManager.getSupportedFeatures();
+        mIsMboSupported = (supportedFeatures & WIFI_FEATURE_MBO) != 0;
+        mIsOceSupported = (supportedFeatures & WIFI_FEATURE_OCE) != 0;
         mEnabled = true;
         if (mVerboseLoggingEnabled) {
             Log.d(TAG, "Enable MBO-OCE MBO support: " + mIsMboSupported
@@ -99,8 +101,9 @@ public class MboOceController {
         public void onDataConnectionStateChanged(int state, int networkType) {
             boolean dataAvailable;
 
-            String iface = mWifiNative.getClientInterfaceName();
-            if (iface == null) {
+            ClientModeManager clientModeManager =
+                    mActiveModeWarden.getPrimaryClientModeManagerNullable();
+            if (clientModeManager == null) {
                 return;
             }
             if (!mEnabled) {
@@ -118,7 +121,7 @@ public class MboOceController {
             if (mVerboseLoggingEnabled) {
                 Log.d(TAG, "Cell Data: " + dataAvailable);
             }
-            mWifiNative.setMboCellularDataStatus(iface, dataAvailable);
+            clientModeManager.setMboCellularDataStatus(dataAvailable);
         }
     };
 
@@ -143,6 +146,83 @@ public class MboOceController {
                     ", assocRetryDelay=").append(mBlockListDurationMs).append(
                     ", transitionReason=").append(mTransitionReason).append(
                     ", cellPref=").append(mCellPreference).toString();
+        }
+    }
+
+    /**
+     * OceRssiBasedAssocRejectAttr is extracted from (Re-)Association response frame from an OCE AP
+     * to indicate that the AP has rejected the (Re-)Association request on the basis of
+     * insufficient RSSI.
+     * Refer OCE spec v1.0 section 4.2.2 Table 7.
+     */
+    public static class OceRssiBasedAssocRejectAttr {
+        /*
+         * Delta RSSI - The difference in dB between the minimum RSSI at which
+         * the AP would accept a (Re-)Association request from the STA before
+         * Retry Delay expires and the AP's measurement of the RSSI at which the
+         * (Re-)Association request was received.
+         */
+        public int mDeltaRssi;
+        /*
+         * Retry Delay - The time period in seconds for which the AP will not
+         * accept any subsequent (Re-)Association requests from the STA, unless
+         * the received RSSI has improved by Delta RSSI.
+         */
+        public int mRetryDelayS;
+
+        public OceRssiBasedAssocRejectAttr(int deltaRssi, int retryDelayS) {
+            this.mDeltaRssi = deltaRssi;
+            this.mRetryDelayS = retryDelayS;
+        }
+
+        @Override
+        public String toString() {
+            return new StringBuilder("OceRssiBasedAssocRejectAttr Delta Rssi=")
+                    .append(mDeltaRssi).append(
+                    ", Retry Delay=").append(mRetryDelayS).toString();
+        }
+    }
+
+    /**
+     * MboAssocDisallowedAttr is extracted from (Re-)Association response frame from the MBO AP
+     * to indicate that the AP is not accepting new associations.
+     * Refer MBO spec v1.2 section 4.2.4 Table 13 for the details of reason code.
+     */
+    public static class MboAssocDisallowedAttr {
+        /*
+         * Reason Code - The reason why the AP is not accepting new
+         * associations.
+         */
+        public @MboOceConstants.MboAssocDisallowedReasonCode int mReasonCode;
+
+        public MboAssocDisallowedAttr(int reasonCode) {
+            mReasonCode = halToFrameworkMboAssocRDisallowedReasonCode(reasonCode);
+        }
+
+        @Override
+        public String toString() {
+            return new StringBuilder("MboAssocDisallowedAttr Reason code=")
+                    .append(mReasonCode).toString();
+        }
+
+        private @MboOceConstants.MboAssocDisallowedReasonCode int
+                halToFrameworkMboAssocRDisallowedReasonCode(int reasonCode) {
+            switch (reasonCode) {
+                case MboAssocDisallowedReasonCode.RESERVED:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_RESERVED_0;
+                case MboAssocDisallowedReasonCode.UNSPECIFIED:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_UNSPECIFIED;
+                case MboAssocDisallowedReasonCode.MAX_NUM_STA_ASSOCIATED:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_MAX_NUM_STA_ASSOCIATED;
+                case MboAssocDisallowedReasonCode.AIR_INTERFACE_OVERLOADED:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_AIR_INTERFACE_OVERLOADED;
+                case MboAssocDisallowedReasonCode.AUTH_SERVER_OVERLOADED:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_AUTH_SERVER_OVERLOADED;
+                case MboAssocDisallowedReasonCode.INSUFFICIENT_RSSI:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_INSUFFICIENT_RSSI;
+                default:
+                    return MboOceConstants.MBO_ASSOC_DISALLOWED_REASON_RESERVED;
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
 package android.net.wifi;
 
 /**
- * Interface for tx packet counter callback.
- * @deprecated no longer used, remove once removed from BaseWifiService
+ * Interface for suggestion user approval status listener.
+ *
  * @hide
  */
-oneway interface ITxPacketCountListener
+oneway interface ISuggestionUserApprovalStatusListener
 {
-    void onSuccess(int count);
-    void onFailure(int reason);
+   void onUserApprovalStatusChange(int status);
 }

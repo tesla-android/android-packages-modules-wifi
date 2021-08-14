@@ -18,21 +18,27 @@ package com.android.server.wifi;
 
 import static com.android.server.wifi.util.InformationElementUtil.BssLoad.CHANNEL_UTILIZATION_SCALE;
 
+import android.annotation.IntDef;
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.content.Context;
-import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager.DeviceMobilityState;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.telephony.PhoneStateListener;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.android.server.wifi.proto.WifiStatsLog;
+import com.android.server.wifi.ActiveModeWarden.PrimaryClientModeManagerChangedCallback;
+import com.android.server.wifi.WifiNative.ConnectionCapabilities;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
-import com.android.server.wifi.scanner.KnownBandsChannelHelper;
 import com.android.server.wifi.util.InformationElementUtil.BssLoad;
 import com.android.wifi.resources.R;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
  * Looks for Wifi data stalls
@@ -62,7 +68,8 @@ public class WifiDataStall {
     private final WifiChannelUtilization mWifiChannelUtilization;
     private TelephonyManager mTelephonyManager;
     private final ThroughputPredictor mThroughputPredictor;
-    private WifiNative.ConnectionCapabilities mConnectionCapabilities;
+    private final ActiveModeWarden mActiveModeWarden;
+    private final ClientModeImplMonitor mClientModeImplMonitor;
 
     private int mLastFrequency = -1;
     private String mLastBssid;
@@ -79,9 +86,72 @@ public class WifiDataStall {
     private int mTxTputKbps = INVALID_THROUGHPUT;
     private int mRxTputKbps = INVALID_THROUGHPUT;
 
+    /** @hide */
+    @IntDef(prefix = { "CELLULAR_DATA_" }, value = {
+            CELLULAR_DATA_UNKNOWN,
+            CELLULAR_DATA_AVAILABLE,
+            CELLULAR_DATA_NOT_AVAILABLE,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface CellularDataStatusCode {}
+    public static final int CELLULAR_DATA_UNKNOWN = 0;
+    public static final int CELLULAR_DATA_AVAILABLE = 1;
+    public static final int CELLULAR_DATA_NOT_AVAILABLE = 2;
+
+    private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        private void update() {
+            // Register/Unregister phone listener on wifi on/off.
+            if (mActiveModeWarden.getPrimaryClientModeManagerNullable() != null) {
+                enablePhoneStateListener();
+            } else {
+                disablePhoneStateListener();
+            }
+        }
+    }
+
+    private class PrimaryModeChangeCallback implements PrimaryClientModeManagerChangedCallback {
+        @Override
+        public void onChange(
+                @Nullable ConcreteClientModeManager prevPrimaryClientModeManager,
+                @Nullable ConcreteClientModeManager newPrimaryClientModeManager) {
+            // This is needed to reset state on an MBB switch or wifi toggle.
+            if (prevPrimaryClientModeManager != null) {
+                reset();
+            }
+            if (newPrimaryClientModeManager != null) {
+                init();
+            }
+        }
+    }
+
+    private class ClientModeImplListenerInternal implements ClientModeImplListener {
+        @Override
+        public void onConnectionEnd(@NonNull ConcreteClientModeManager clientModeManager) {
+            if (clientModeManager.getRole() == ActiveModeManager.ROLE_CLIENT_PRIMARY) {
+                reset();
+            }
+        }
+    }
+
     public WifiDataStall(FrameworkFacade facade, WifiMetrics wifiMetrics, Context context,
             DeviceConfigFacade deviceConfigFacade, WifiChannelUtilization wifiChannelUtilization,
-            Clock clock, Handler handler, ThroughputPredictor throughputPredictor) {
+            Clock clock, Handler handler, ThroughputPredictor throughputPredictor,
+            ActiveModeWarden activeModeWarden, ClientModeImplMonitor clientModeImplMonitor) {
         mFacade = facade;
         mDeviceConfigFacade = deviceConfigFacade;
         mWifiMetrics = wifiMetrics;
@@ -90,26 +160,33 @@ public class WifiDataStall {
         mWifiChannelUtilization = wifiChannelUtilization;
         mWifiChannelUtilization.setCacheUpdateIntervalMs(LLSTATS_CACHE_UPDATE_INTERVAL_MIN_MS);
         mThroughputPredictor = throughputPredictor;
+        mActiveModeWarden = activeModeWarden;
+        mClientModeImplMonitor = clientModeImplMonitor;
         mPhoneStateListener = new PhoneStateListener(new HandlerExecutor(handler)) {
             @Override
             public void onDataConnectionStateChanged(int state, int networkType) {
-                if (state == TelephonyManager.DATA_CONNECTED) {
-                    mIsCellularDataAvailable = true;
-                } else if (state == TelephonyManager.DATA_DISCONNECTED) {
-                    mIsCellularDataAvailable = false;
-                } else {
+                if (state != TelephonyManager.DATA_CONNECTED
+                        && state != TelephonyManager.DATA_DISCONNECTED) {
                     Log.e(TAG, "onDataConnectionStateChanged unexpected State: " + state);
                     return;
                 }
+                mIsCellularDataAvailable = state == TelephonyManager.DATA_CONNECTED;
+                mActiveModeWarden.getPrimaryClientModeManager()
+                        .onCellularConnectivityChanged(mIsCellularDataAvailable
+                                ? CELLULAR_DATA_AVAILABLE : CELLULAR_DATA_NOT_AVAILABLE);
                 logd("Cellular Data: " + mIsCellularDataAvailable);
             }
         };
+        mActiveModeWarden.registerPrimaryClientModeManagerChangedCallback(
+                new PrimaryModeChangeCallback());
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
+        mClientModeImplMonitor.registerListener(new ClientModeImplListenerInternal());
     }
 
     /**
      * initialization after wifi is enabled
      */
-    public void init() {
+    private void init() {
         mWifiChannelUtilization.init(null);
         reset();
     }
@@ -117,7 +194,7 @@ public class WifiDataStall {
     /**
      * Reset internal variables
      */
-    public void reset() {
+    private void reset() {
         mLastTxBytes = 0;
         mLastRxBytes = 0;
         mLastFrequency = -1;
@@ -130,20 +207,34 @@ public class WifiDataStall {
         mRxTputKbps = INVALID_THROUGHPUT;
     }
 
-    /**
-     * Set ConnectionCapabilities after each association and roaming
-     */
-    public void setConnectionCapabilities(WifiNative.ConnectionCapabilities capabilities) {
-        mConnectionCapabilities = capabilities;
-    }
-    /**
-     * Enable phone state listener
-     */
-    public void enablePhoneStateListener() {
+    private void createTelephonyManagerForDefaultDataSubIfNeeded() {
         if (mTelephonyManager == null) {
             mTelephonyManager = (TelephonyManager) mContext
                     .getSystemService(Context.TELEPHONY_SERVICE);
         }
+        int defaultSubscriptionId = SubscriptionManager.getDefaultDataSubscriptionId();
+        if (defaultSubscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                && defaultSubscriptionId != mTelephonyManager.getSubscriptionId()) {
+            mTelephonyManager = mTelephonyManager.createForSubscriptionId(
+                    SubscriptionManager.getDefaultDataSubscriptionId());
+        }
+    }
+
+    /**
+     * Reset the PhoneStateListener to listen on the default data SIM.
+     */
+    public void resetPhoneStateListener() {
+        disablePhoneStateListener();
+        mActiveModeWarden.getPrimaryClientModeManager()
+                .onCellularConnectivityChanged(CELLULAR_DATA_UNKNOWN);
+        enablePhoneStateListener();
+    }
+
+    /**
+     * Enable phone state listener
+     */
+    private void enablePhoneStateListener() {
+        createTelephonyManagerForDefaultDataSubIfNeeded();
         if (mTelephonyManager != null && !mPhoneStateListenerEnabled) {
             mPhoneStateListenerEnabled = true;
             mTelephonyManager.listen(mPhoneStateListener,
@@ -154,7 +245,7 @@ public class WifiDataStall {
     /**
      * Disable phone state listener
      */
-    public void disablePhoneStateListener() {
+    private void disablePhoneStateListener() {
         if (mTelephonyManager != null && mPhoneStateListenerEnabled) {
             mPhoneStateListenerEnabled = false;
             mTelephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_NONE);
@@ -218,25 +309,32 @@ public class WifiDataStall {
     /**
      * Update data stall detection, check throughput sufficiency and report wifi health stat
      * with the latest link layer stats
+     * @param connectionCapabilities Connection capabilities.
      * @param oldStats second most recent WifiLinkLayerStats
      * @param newStats most recent WifiLinkLayerStats
      * @param wifiInfo WifiInfo for current connection
      * @return trigger type of WifiIsUnusableEvent
+     *
+     * Note: This is only collected for primary STA currently because RSSI polling is disabled for
+     * non-primary STAs.
      */
-    public int checkDataStallAndThroughputSufficiency(WifiLinkLayerStats oldStats,
-            WifiLinkLayerStats newStats, WifiInfo wifiInfo) {
+    public int checkDataStallAndThroughputSufficiency(
+            @NonNull String ifaceName,
+            @NonNull ConnectionCapabilities connectionCapabilities,
+            @Nullable WifiLinkLayerStats oldStats,
+            @Nullable WifiLinkLayerStats newStats,
+            @NonNull WifiInfo wifiInfo) {
         int currFrequency = wifiInfo.getFrequency();
         mWifiChannelUtilization.refreshChannelStatsAndChannelUtilization(newStats, currFrequency);
         int ccaLevel = mWifiChannelUtilization.getUtilizationRatio(currFrequency);
         mWifiMetrics.incrementChannelUtilizationCount(ccaLevel, currFrequency);
-
         if (oldStats == null || newStats == null) {
             // First poll after new association
             // Update throughput with prediction
-            if (wifiInfo.getRssi() != WifiInfo.INVALID_RSSI && mConnectionCapabilities != null) {
-                mTxTputKbps = mThroughputPredictor.predictTxThroughput(mConnectionCapabilities,
+            if (wifiInfo.getRssi() != WifiInfo.INVALID_RSSI && connectionCapabilities != null) {
+                mTxTputKbps = mThroughputPredictor.predictTxThroughput(connectionCapabilities,
                         wifiInfo.getRssi(), currFrequency, ccaLevel) * 1000;
-                mRxTputKbps = mThroughputPredictor.predictRxThroughput(mConnectionCapabilities,
+                mRxTputKbps = mThroughputPredictor.predictRxThroughput(connectionCapabilities,
                         wifiInfo.getRssi(), currFrequency, ccaLevel) * 1000;
             }
             mIsThroughputSufficient = true;
@@ -336,8 +434,6 @@ public class WifiDataStall {
         if (timeDeltaLastTwoPollsMs > 0 && timeDeltaLastTwoPollsMs <= maxTimeDeltaMs) {
             mWifiMetrics.incrementConnectionDuration(timeDeltaLastTwoPollsMs,
                     mIsThroughputSufficient, mIsCellularDataAvailable);
-            reportWifiHealthStat(currFrequency, timeDeltaLastTwoPollsMs, mIsThroughputSufficient,
-                    mIsCellularDataAvailable);
         }
 
         boolean possibleDataStallTx = isTxTputLow
@@ -349,13 +445,14 @@ public class WifiDataStall {
         boolean dataStallTx = isTxTrafficHigh ? possibleDataStallTx : mDataStallTx;
         boolean dataStallRx = isRxTrafficHigh ? possibleDataStallRx : mDataStallRx;
 
-        return detectConsecutiveTwoDataStalls(timeDeltaLastTwoPollsMs, dataStallTx, dataStallRx);
+        return detectConsecutiveTwoDataStalls(ifaceName, timeDeltaLastTwoPollsMs, dataStallTx,
+                dataStallRx);
     }
 
     // Data stall event is triggered if there are consecutive Tx and/or Rx data stalls
     // 1st data stall should be preceded by no data stall
     // Reset mDataStallStartTimeMs to -1 if currently there is no Tx or Rx data stall
-    private int detectConsecutiveTwoDataStalls(int timeDeltaLastTwoPollsMs,
+    private int detectConsecutiveTwoDataStalls(String ifaceName, int timeDeltaLastTwoPollsMs,
             boolean dataStallTx, boolean dataStallRx) {
         if (timeDeltaLastTwoPollsMs >= MAX_MS_DELTA_FOR_DATA_STALL) {
             return WifiIsUnusableEvent.TYPE_UNKNOWN;
@@ -368,7 +465,8 @@ public class WifiDataStall {
                 mDataStallStartTimeMs = mClock.getElapsedSinceBootMillis();
                 if (mDeviceConfigFacade.getDataStallDurationMs() == 0) {
                     mDataStallStartTimeMs = -1;
-                    int result = calculateUsabilityEventType(mDataStallTx, mDataStallRx);
+                    int result = calculateUsabilityEventType(ifaceName, mDataStallTx,
+                            mDataStallRx);
                     mDataStallRx = false;
                     mDataStallTx = false;
                     return result;
@@ -378,7 +476,8 @@ public class WifiDataStall {
                 if (elapsedTime >= mDeviceConfigFacade.getDataStallDurationMs()) {
                     mDataStallStartTimeMs = -1;
                     if (elapsedTime <= VALIDITY_PERIOD_OF_DATA_STALL_START_MS) {
-                        int result = calculateUsabilityEventType(mDataStallTx, mDataStallRx);
+                        int result = calculateUsabilityEventType(ifaceName, mDataStallTx,
+                                mDataStallRx);
                         mDataStallRx = false;
                         mDataStallTx = false;
                         return result;
@@ -409,7 +508,8 @@ public class WifiDataStall {
         }
         return (int) (txRetriesDelta * 100 / txAttempts);
     }
-    private int calculateUsabilityEventType(boolean dataStallTx, boolean dataStallRx) {
+    private int calculateUsabilityEventType(String ifaceName, boolean dataStallTx,
+            boolean dataStallRx) {
         int result = WifiIsUnusableEvent.TYPE_UNKNOWN;
         if (dataStallTx && dataStallRx) {
             result = WifiIsUnusableEvent.TYPE_DATA_STALL_BOTH;
@@ -418,7 +518,7 @@ public class WifiDataStall {
         } else if (dataStallRx) {
             result = WifiIsUnusableEvent.TYPE_DATA_STALL_TX_WITHOUT_RX;
         }
-        mWifiMetrics.logWifiIsUnusableEvent(result);
+        mWifiMetrics.logWifiIsUnusableEvent(ifaceName, result);
         return result;
     }
 
@@ -491,43 +591,6 @@ public class WifiDataStall {
             boolean isTrafficHigh, boolean lastIsTputSufficient) {
         boolean possibleFalseInsufficient = (!isTrafficHigh && !isTputSufficient);
         return  possibleFalseInsufficient ? lastIsTputSufficient : isTputSufficient;
-    }
-
-    /**
-     * Report the latest Wifi connection health to statsd
-     */
-    private void reportWifiHealthStat(int frequency, int timeDeltaLastTwoPollsMs,
-            boolean isThroughputSufficient,
-            boolean isCellularDataAvailable) {
-        int band = getBand(frequency);
-        WifiStatsLog.write(WifiStatsLog.WIFI_HEALTH_STAT_REPORTED, timeDeltaLastTwoPollsMs,
-                isThroughputSufficient,  isCellularDataAvailable, band);
-    }
-
-    private int getBand(int frequency) {
-        int band;
-        if (ScanResult.is24GHz(frequency)) {
-            band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_2G;
-        } else if (ScanResult.is5GHz(frequency)) {
-            if (frequency <= KnownBandsChannelHelper.BAND_5_GHZ_LOW_END_FREQ) {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_LOW;
-            } else if (frequency <= KnownBandsChannelHelper.BAND_5_GHZ_MID_END_FREQ) {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_MIDDLE;
-            } else {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_HIGH;
-            }
-        } else if (ScanResult.is6GHz(frequency)) {
-            if (frequency <= KnownBandsChannelHelper.BAND_6_GHZ_LOW_END_FREQ) {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_LOW;
-            } else if (frequency <= KnownBandsChannelHelper.BAND_6_GHZ_MID_END_FREQ) {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_MIDDLE;
-            } else {
-                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_HIGH;
-            }
-        } else {
-            band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__UNKNOWN;
-        }
-        return band;
     }
 
     private void logd(String string) {

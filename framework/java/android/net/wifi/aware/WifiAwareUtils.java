@@ -29,8 +29,8 @@ public class WifiAwareUtils {
     /**
      * Per spec: The Service Name is a UTF-8 encoded string from 1 to 255 bytes in length. The
      * only acceptable single-byte UTF-8 symbols for a Service Name are alphanumeric values (A-Z,
-     * a-z, 0-9), the hyphen ('-'), and the period ('.'). All valid multi-byte UTF-8 characters
-     * are acceptable in a Service Name.
+     * a-z, 0-9), the hyphen ('-'), the underscore ('_') and the period ('.'). All valid multi-byte
+     * UTF-8 characters are acceptable in a Service Name.
      */
     public static void validateServiceName(byte[] serviceNameData) throws IllegalArgumentException {
         if (serviceNameData == null) {
@@ -47,9 +47,9 @@ public class WifiAwareUtils {
             byte b = serviceNameData[index];
             if ((b & 0x80) == 0x00) {
                 if (!((b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
-                        || b == '-' || b == '.')) {
+                        || b == '-' || b == '.' || b == '_')) {
                     throw new IllegalArgumentException("Invalid service name - illegal characters,"
-                            + " allowed = (0-9, a-z,A-Z, -, .)");
+                            + " allowed = (0-9, a-z,A-Z, -, _, .)");
                 }
             }
             ++index;

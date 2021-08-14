@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.android.server.wifi;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,20 +36,16 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-
 public class ImsiPrivacyProtectionExemptionStoreDataTest {
     private static final int TEST_CARRIER_ID = 1911;
-
     private @Mock ImsiPrivacyProtectionExemptionStoreData.DataSource mDataSource;
     private ImsiPrivacyProtectionExemptionStoreData mImsiPrivacyProtectionExemptionStoreData;
-
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         mImsiPrivacyProtectionExemptionStoreData =
                 new ImsiPrivacyProtectionExemptionStoreData(mDataSource);
     }
-
     /**
      * Helper function for serializing configuration data to a XML block.
      */
@@ -63,7 +57,6 @@ public class ImsiPrivacyProtectionExemptionStoreDataTest {
         out.flush();
         return outputStream.toByteArray();
     }
-
     /**
      * Helper function for parsing configuration data from a XML block.
      */
@@ -74,7 +67,6 @@ public class ImsiPrivacyProtectionExemptionStoreDataTest {
         mImsiPrivacyProtectionExemptionStoreData.deserializeData(in, in.getDepth(),
                 WifiConfigStore.ENCRYPT_CREDENTIALS_CONFIG_STORE_DATA_VERSION, null);
     }
-
     /**
      * Verify store file Id.
      */
@@ -83,7 +75,6 @@ public class ImsiPrivacyProtectionExemptionStoreDataTest {
         assertEquals(WifiConfigStore.STORE_FILE_USER_GENERAL,
                 mImsiPrivacyProtectionExemptionStoreData.getStoreFileId());
     }
-
     /**
      * Verify serialize and deserialize Protection exemption map.
      */
@@ -93,7 +84,6 @@ public class ImsiPrivacyProtectionExemptionStoreDataTest {
         imsiPrivacyProtectionExemptionMap.put(TEST_CARRIER_ID, true);
         assertSerializeDeserialize(imsiPrivacyProtectionExemptionMap);
     }
-
     /**
      * Verify serialize and deserialize empty protection exemption map.
      */
@@ -102,26 +92,12 @@ public class ImsiPrivacyProtectionExemptionStoreDataTest {
         Map<Integer, Boolean> imsiPrivacyProtectionExemptionMap = new HashMap<>();
         assertSerializeDeserialize(imsiPrivacyProtectionExemptionMap);
     }
-
-    @Test
-    public void testDeserializeOnNewDeviceOrNewUser() throws Exception {
-        ArgumentCaptor<Map> deserializedNetworkSuggestionsMap =
-                ArgumentCaptor.forClass(Map.class);
-        mImsiPrivacyProtectionExemptionStoreData.deserializeData(null, 0,
-                WifiConfigStore.ENCRYPT_CREDENTIALS_CONFIG_STORE_DATA_VERSION, null);
-        verify(mDataSource).fromDeserialized(deserializedNetworkSuggestionsMap.capture());
-        assertTrue(deserializedNetworkSuggestionsMap.getValue().isEmpty());
-    }
-
-
     private Map<Integer, Boolean> assertSerializeDeserialize(
             Map<Integer, Boolean> mImsiPrivacyProtectionExemptionMap) throws Exception {
         // Setup the data to serialize.
         when(mDataSource.toSerialize()).thenReturn(mImsiPrivacyProtectionExemptionMap);
-
         // Serialize/deserialize data.
         deserializeData(serializeData());
-
         // Verify the deserialized data.
         ArgumentCaptor<HashMap> deserializedNetworkSuggestionsMap =
                 ArgumentCaptor.forClass(HashMap.class);

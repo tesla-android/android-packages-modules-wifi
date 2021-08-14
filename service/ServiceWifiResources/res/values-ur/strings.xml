@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> تجویز کردہ نیٹ ورکس۔ آلہ خودکار طور پر منسلک ہو سکتا ہے۔"</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"اجازت ہیں"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"نہیں شکریہ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"‏<xliff:g id="CARRIERNAME">%s</xliff:g> Wi-Fi سے منسلک ہوں؟"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"‏یہ نیٹ ورکس ایک منفرد SIM ID موصول کرتے ہیں جسے آلہ کا مقام ٹریک کرنے کے لیے استعمال کیا جا سکتا ہے"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"منسلک کریں"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"منسلک نہ کریں"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"کنکشن کی تصدیق کریں؟"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"‏اگر آب منسلک ہیں، Wi-Fi <xliff:g id="CARRIERNAME">%s</xliff:g> نیٹ ورکس آپ کے SIM سے وابستہ ایک منفرد ID تک رسائی حاصل یا اشتراک کر سکتے ہیں۔ یہ آپ کے آلہ کے مقام کو ٹریک کیے جانے کی اجازت دے سکتا ہے۔"</string>

@@ -78,9 +78,9 @@ public class WificondPnoScannerTest extends WifiBaseTest {
                 new int[]{2400, 2450},
                 new int[]{5150, 5175},
                 new int[]{5600, 5650},
-                new int[]{5945, 5985});
+                new int[]{5945, 5985},
+                new int[]{58320, 60480});
 
-        when(mWifiNative.getClientInterfaceName()).thenReturn(IFACE_NAME);
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager.getAlarmManager());
         when(mContext.getResources()).thenReturn(mResources);
@@ -188,7 +188,8 @@ public class WificondPnoScannerTest extends WifiBaseTest {
                     10000,
                     WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN,
                     allChannelsScanned
-                            ? WifiScanner.WIFI_BAND_BOTH_WITH_DFS : WifiScanner.WIFI_BAND_24_GHZ)
+                            ? WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ
+                            : WifiScanner.WIFI_BAND_24_GHZ)
                 .build();
         return settings;
     }
@@ -202,7 +203,8 @@ public class WificondPnoScannerTest extends WifiBaseTest {
             WifiNative.PnoSettings pnoSettings, WifiNative.ScanEventHandler scanEventHandler,
             WifiNative.PnoEventHandler pnoEventHandler) {
         // Scans succeed
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
         when(mWifiNative.startPnoScan(eq(IFACE_NAME), any(WifiNative.PnoSettings.class)))
                 .thenReturn(true);
         when(mWifiNative.stopPnoScan(IFACE_NAME)).thenReturn(true);

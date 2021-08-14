@@ -52,8 +52,21 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
     // config_wifi_framework_RSSI_SCORE_SLOPE
     public static final int RSSI_SCORE_SLOPE_IS_4 = 4;
 
+    /**
+     * Sample scoring buckets (assumes default overlay bucket sizes for metered, saved, etc):
+     * 0 -> 500: OEM private
+     * 500 -> 1000: OEM paid
+     * 1000 -> 1500: untrusted 3rd party
+     * 1500 -> 2000: untrusted carrier
+     * 2000 -> 2500: metered suggestions
+     * 2500 -> 3000: metered saved
+     * 3000 -> 3500: unmetered suggestions
+     * 3500 -> 4000: unmetered saved
+     */
     public static final int TRUSTED_AWARD = 1000;
     public static final int HALF_TRUSTED_AWARD = 1000 / 2;
+    public static final int NOT_OEM_PAID_AWARD = 500;
+    public static final int NOT_OEM_PRIVATE_AWARD = 500;
 
     private static final boolean USE_USER_CONNECT_CHOICE = true;
 
@@ -69,7 +82,7 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
     /**
      * Calculates an individual candidate's score.
      */
-    private ScoredCandidate scoreCandidate(Candidate candidate) {
+    private ScoredCandidate scoreCandidate(Candidate candidate, boolean currentNetworkHasInternet) {
         int rssiSaturationThreshold = mScoringParams.getSufficientRssi(candidate.getFrequency());
         int rssi = Math.min(candidate.getScanRssi(), rssiSaturationThreshold);
         int rssiBaseScore = (rssi + RSSI_SCORE_OFFSET) * RSSI_SCORE_SLOPE_IS_4;
@@ -97,7 +110,6 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
         int savedNetworkAward = candidate.isEphemeral() ? 0 : mScoringParams.getSavedNetworkBonus();
 
         int trustedAward = TRUSTED_AWARD;
-
         if (!candidate.isTrusted()) {
             savedNetworkAward = 0; // Saved networks are not untrusted, but clear anyway
             unmeteredAward = 0; // Ignore metered for untrusted networks
@@ -111,9 +123,31 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
             }
         }
 
+        int notOemPaidAward = NOT_OEM_PAID_AWARD;
+        if (candidate.isOemPaid()) {
+            savedNetworkAward = 0; // Saved networks are not oem paid, but clear anyway
+            unmeteredAward = 0; // Ignore metered for oem paid networks
+            trustedAward = 0; // Ignore untrusted for oem paid networks.
+            notOemPaidAward = 0;
+        }
+
+        int notOemPrivateAward = NOT_OEM_PRIVATE_AWARD;
+        if (candidate.isOemPrivate()) {
+            savedNetworkAward = 0; // Saved networks are not oem paid, but clear anyway
+            unmeteredAward = 0; // Ignore metered for oem paid networks
+            trustedAward = 0; // Ignore untrusted for oem paid networks.
+            notOemPaidAward = 0;
+            notOemPrivateAward = 0;
+        }
+
         int score = rssiBaseScore + throughputBonusScore
                 + currentNetworkBoost + securityAward + unmeteredAward + savedNetworkAward
-                + trustedAward;
+                + trustedAward + notOemPaidAward + notOemPrivateAward;
+
+        // do not select a network that has no internet when the current network has internet.
+        if (currentNetworkHasInternet && !candidate.isCurrentNetwork() && unExpectedNoInternet) {
+            score = 0;
+        }
 
         if (candidate.getLastSelectionWeight() > 0.0) {
             // Put a recently-selected network in a tier above everything else,
@@ -129,6 +163,8 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
                     + " unmeteredAward: " + unmeteredAward
                     + " savedNetworkAward: " + savedNetworkAward
                     + " trustedAward: " + trustedAward
+                    + " notOemPaidAward: " + notOemPaidAward
+                    + " notOemPrivateAward: " + notOemPrivateAward
                     + " final score: " + score);
         }
 
@@ -146,11 +182,21 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
         return Math.min(throughputScoreRaw, mScoringParams.getThroughputBonusLimit());
     }
 
+    private boolean doesAnyCurrentNetworksHaveInternet(@NonNull Collection<Candidate> candidates) {
+        for (Candidate candidate : candidates) {
+            if (candidate.isCurrentNetwork() && !candidate.hasNoInternetAccess()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public ScoredCandidate scoreCandidates(@NonNull Collection<Candidate> candidates) {
         ScoredCandidate choice = ScoredCandidate.NONE;
+        boolean currentNetworkHasInternet = doesAnyCurrentNetworksHaveInternet(candidates);
         for (Candidate candidate : candidates) {
-            ScoredCandidate scoredCandidate = scoreCandidate(candidate);
+            ScoredCandidate scoredCandidate = scoreCandidate(candidate, currentNetworkHasInternet);
             if (scoredCandidate.value > choice.value) {
                 choice = scoredCandidate;
             }

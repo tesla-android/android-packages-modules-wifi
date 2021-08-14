@@ -16,13 +16,16 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+
+import android.annotation.NonNull;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.BatteryStatsManager;
-import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Parcelable;
 import android.os.UserHandle;
@@ -39,14 +42,22 @@ import java.io.PrintWriter;
  * that is based on these state changes:
  * - detect a failed WPA handshake that loops indefinitely
  * - authentication failure handling
+ * TODO(b/159944009): Need to rework this class to handle make before break transition on STA +
+ * STA devices (Apps will not see SUPPLICANT_STATE_CHANGED_ACTION when switching wifi networks)
  */
 public class SupplicantStateTracker extends StateMachine {
 
     private static final String TAG = "SupplicantStateTracker";
-    private static boolean DBG = false;
+
+    private final Context mContext;
     private final WifiConfigManager mWifiConfigManager;
-    private FrameworkFacade mFacade;
+    private final WifiMonitor mWifiMonitor;
     private final BatteryStatsManager mBatteryStatsManager;
+    private final String mInterfaceName;
+    private final ClientModeManager mClientModeManager;
+    private final ClientModeManagerBroadcastQueue mBroadcastQueue;
+
+    private boolean mVerboseLoggingEnabled = false;
     /* Indicates authentication failure in supplicant broadcast.
      * TODO: enhance auth failure reporting to include notification
      * for all type of failures: EAP, WPS & WPA networks */
@@ -60,66 +71,95 @@ public class SupplicantStateTracker extends StateMachine {
      */
     private int mAuthFailureReason;
 
-    /* Maximum retries on a authentication failure notification */
-    private static final int MAX_RETRIES_ON_AUTHENTICATION_FAILURE = 2;
-
-    /* Maximum retries on assoc rejection events */
-    private static final int MAX_RETRIES_ON_ASSOCIATION_REJECT = 16;
-
-    private final Context mContext;
-
     private final State mUninitializedState = new UninitializedState();
     private final State mDefaultState = new DefaultState();
     private final State mInactiveState = new InactiveState();
     private final State mDisconnectState = new DisconnectedState();
     private final State mScanState = new ScanState();
-    private final State mConnectionActiveState = new ConnectionActiveState();
     private final State mHandshakeState = new HandshakeState();
     private final State mCompletedState = new CompletedState();
     private final State mDormantState = new DormantState();
 
-    void enableVerboseLogging(int verbose) {
-        if (verbose > 0) {
-            DBG = true;
-        } else {
-            DBG = false;
-        }
+    /** enable/disable verbose logging. */
+    public void enableVerboseLogging(boolean verbose) {
+        mVerboseLoggingEnabled = verbose;
     }
 
-    public String getSupplicantStateName() {
-        return getCurrentState().getName();
+    private String getTag() {
+        return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
     }
 
-    public SupplicantStateTracker(Context c, WifiConfigManager wcs,
-            BatteryStatsManager batteryStatsManager, Handler t) {
-        super(TAG, t.getLooper());
-
-        mContext = c;
-        mWifiConfigManager = wcs;
+    public SupplicantStateTracker(
+            @NonNull Context context,
+            @NonNull WifiConfigManager wifiConfigManager,
+            @NonNull BatteryStatsManager batteryStatsManager,
+            @NonNull Looper looper,
+            @NonNull WifiMonitor wifiMonitor,
+            @NonNull String interfaceName,
+            @NonNull ClientModeManager clientModeManager,
+            @NonNull ClientModeManagerBroadcastQueue broadcastQueue) {
+        super(TAG, looper);
+        mContext = context;
+        mWifiConfigManager = wifiConfigManager;
         mBatteryStatsManager = batteryStatsManager;
-        // CHECKSTYLE:OFF IndentationCheck
-        addState(mDefaultState);
+        mWifiMonitor = wifiMonitor;
+        mInterfaceName = interfaceName;
+        mClientModeManager = clientModeManager;
+        mBroadcastQueue = broadcastQueue;
+
+        registerForWifiMonitorEvents();
+
+        addState(mDefaultState); {
+            // disconnected states
             addState(mUninitializedState, mDefaultState);
             addState(mInactiveState, mDefaultState);
             addState(mDisconnectState, mDefaultState);
-            addState(mConnectionActiveState, mDefaultState);
-                addState(mScanState, mConnectionActiveState);
-                addState(mHandshakeState, mConnectionActiveState);
-                addState(mCompletedState, mConnectionActiveState);
-                addState(mDormantState, mConnectionActiveState);
-        // CHECKSTYLE:ON IndentationCheck
+            // connected states
+            addState(mScanState, mDefaultState);
+            addState(mHandshakeState, mDefaultState);
+            addState(mCompletedState, mDefaultState);
+            addState(mDormantState, mDefaultState);
+        }
 
         setInitialState(mUninitializedState);
         setLogRecSize(50);
         setLogOnlyTransitions(true);
-        //start the state machine
+        // start the state machine
         start();
     }
 
+    private static final int[] WIFI_MONITOR_EVENTS = {
+            WifiMonitor.ASSOCIATION_REJECTION_EVENT,
+            WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
+            WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT,
+    };
+
+    private void registerForWifiMonitorEvents() {
+        for (int event : WIFI_MONITOR_EVENTS) {
+            mWifiMonitor.registerHandler(mInterfaceName, event, getHandler());
+        }
+    }
+
+    private void deregisterForWifiMonitorEvents() {
+        for (int event : WIFI_MONITOR_EVENTS) {
+            mWifiMonitor.deregisterHandler(mInterfaceName, event, getHandler());
+        }
+    }
+
+    /**
+     * Called when the owner ClientModeImpl is stopped. No more actions shall be performed on this
+     * instance after it is stopped.
+     */
+    public void stop() {
+        deregisterForWifiMonitorEvents();
+
+        quitNow();
+    }
+
     private void handleNetworkConnectionFailure(int netId, int disableReason) {
-        if (DBG) {
-            Log.d(TAG, "handleNetworkConnectionFailure netId=" + Integer.toString(netId)
-                    + " reason " + Integer.toString(disableReason));
+        if (mVerboseLoggingEnabled) {
+            Log.d(getTag(), "handleNetworkConnectionFailure netId=" + netId
+                    + " reason " + disableReason);
         }
 
         /* update network status */
@@ -127,12 +167,14 @@ public class SupplicantStateTracker extends StateMachine {
     }
 
     private void transitionOnSupplicantStateChange(StateChangeResult stateChangeResult) {
-        SupplicantState supState = (SupplicantState) stateChangeResult.state;
+        SupplicantState supState = stateChangeResult.state;
 
-        if (DBG) Log.d(TAG, "Supplicant state: " + supState.toString() + "\n");
+        if (mVerboseLoggingEnabled) {
+            Log.d(getTag(), "Supplicant state: " + supState.toString() + "\n");
+        }
 
         switch (supState) {
-           case DISCONNECTED:
+            case DISCONNECTED:
                 transitionTo(mDisconnectState);
                 break;
             case INTERFACE_DISABLED:
@@ -162,64 +204,66 @@ public class SupplicantStateTracker extends StateMachine {
                 transitionTo(mUninitializedState);
                 break;
             default:
-                Log.e(TAG, "Unknown supplicant state " + supState);
+                Log.e(getTag(), "Unknown supplicant state " + supState);
                 break;
         }
     }
 
-    private void sendSupplicantStateChangedBroadcast(SupplicantState state, boolean failedAuth) {
-        sendSupplicantStateChangedBroadcast(state, failedAuth, WifiManager.ERROR_AUTH_FAILURE_NONE);
-    }
-
-    private void sendSupplicantStateChangedBroadcast(SupplicantState state, boolean failedAuth,
-            int reasonCode) {
-        int supplState;
+    private static int supplicantStateToBatteryStatsSupplicantState(SupplicantState state) {
         switch (state) {
             case DISCONNECTED:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_DISCONNECTED;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_DISCONNECTED;
             case INTERFACE_DISABLED:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_INTERFACE_DISABLED;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_INTERFACE_DISABLED;
             case INACTIVE:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_INACTIVE;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_INACTIVE;
             case SCANNING:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_SCANNING;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_SCANNING;
             case AUTHENTICATING:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_AUTHENTICATING;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_AUTHENTICATING;
             case ASSOCIATING:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_ASSOCIATING;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_ASSOCIATING;
             case ASSOCIATED:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_ASSOCIATED;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_ASSOCIATED;
             case FOUR_WAY_HANDSHAKE:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_FOUR_WAY_HANDSHAKE;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_FOUR_WAY_HANDSHAKE;
             case GROUP_HANDSHAKE:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_GROUP_HANDSHAKE;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_GROUP_HANDSHAKE;
             case COMPLETED:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_COMPLETED;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_COMPLETED;
             case DORMANT:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_DORMANT;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_DORMANT;
             case UNINITIALIZED:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_UNINITIALIZED;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_UNINITIALIZED;
             case INVALID:
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_INVALID;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_INVALID;
             default:
                 Log.w(TAG, "Unknown supplicant state " + state);
-                supplState = BatteryStatsManager.WIFI_SUPPL_STATE_INVALID;
-                break;
+                return BatteryStatsManager.WIFI_SUPPL_STATE_INVALID;
         }
-        mBatteryStatsManager.reportWifiSupplicantStateChanged(supplState, failedAuth);
+    }
+
+    private void sendSupplicantStateChangedBroadcast(
+            SupplicantState state, boolean failedAuth, int reasonCode) {
+        int supplState = supplicantStateToBatteryStatsSupplicantState(state);
+        if (mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
+            mBatteryStatsManager.reportWifiSupplicantStateChanged(supplState, failedAuth);
+        }
+        String summary = "broadcast=SUPPLICANT_STATE_CHANGED_ACTION"
+                + " state=" + state
+                + " failedAuth=" + failedAuth
+                + " reasonCode=" + reasonCode;
+        if (mVerboseLoggingEnabled) Log.d(TAG, "Queuing " + summary);
+        mBroadcastQueue.queueOrSendBroadcast(
+                mClientModeManager,
+                () -> {
+                    if (mVerboseLoggingEnabled) Log.d(TAG, "Sending " + summary);
+                    sendSupplicantStateChangedBroadcast(mContext, state, failedAuth, reasonCode);
+                });
+    }
+
+    private static void sendSupplicantStateChangedBroadcast(
+            Context context, SupplicantState state, boolean failedAuth, int reasonCode) {
         Intent intent = new Intent(WifiManager.SUPPLICANT_STATE_CHANGED_ACTION);
         intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
                 | Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -232,7 +276,7 @@ public class SupplicantStateTracker extends StateMachine {
                     WifiManager.EXTRA_SUPPLICANT_ERROR_REASON,
                     reasonCode);
         }
-        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+        context.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     /********************************************************
@@ -241,12 +285,12 @@ public class SupplicantStateTracker extends StateMachine {
 
     class DefaultState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-         }
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
+        }
         @Override
         public boolean processMessage(Message message) {
-            if (DBG) Log.d(TAG, getName() + message.toString() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
             switch (message.what) {
                 case WifiMonitor.AUTHENTICATION_FAILURE_EVENT:
                     mAuthFailureInSupplicantBroadcast = true;
@@ -261,12 +305,9 @@ public class SupplicantStateTracker extends StateMachine {
                     mAuthFailureReason = WifiManager.ERROR_AUTH_FAILURE_NONE;
                     transitionOnSupplicantStateChange(stateChangeResult);
                     break;
-                case ClientModeImpl.CMD_RESET_SUPPLICANT_STATE:
-                    transitionTo(mUninitializedState);
-                    break;
                 case WifiMonitor.ASSOCIATION_REJECTION_EVENT:
                 default:
-                    Log.e(TAG, "Ignoring " + message);
+                    Log.e(getTag(), "Ignoring " + message);
                     break;
             }
             return HANDLED;
@@ -283,42 +324,29 @@ public class SupplicantStateTracker extends StateMachine {
      */
     class UninitializedState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-         }
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
+        }
     }
 
     class InactiveState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-         }
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
+        }
     }
 
     class DisconnectedState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-         }
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
+        }
     }
 
     class ScanState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-         }
-    }
-
-    /* Meta-state that processes supplicant disconnections and broadcasts this event. */
-    class ConnectionActiveState extends State {
-        @Override
-        public boolean processMessage(Message message) {
-            if (message.what == ClientModeImpl.CMD_RESET_SUPPLICANT_STATE) {
-                sendSupplicantStateChangedBroadcast(SupplicantState.DISCONNECTED, false);
-            }
-
-            /* Let parent states handle the state possible transition. */
-            return NOT_HANDLED;
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 
@@ -332,14 +360,14 @@ public class SupplicantStateTracker extends StateMachine {
         private int mLoopDetectCount;
 
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
-             mLoopDetectIndex = 0;
-             mLoopDetectCount = 0;
-         }
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
+            mLoopDetectIndex = 0;
+            mLoopDetectCount = 0;
+        }
         @Override
         public boolean processMessage(Message message) {
-            if (DBG) Log.d(TAG, getName() + message.toString() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
             switch (message.what) {
                 case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT:
                     StateChangeResult stateChangeResult = (StateChangeResult) message.obj;
@@ -349,8 +377,8 @@ public class SupplicantStateTracker extends StateMachine {
                             mLoopDetectCount++;
                         }
                         if (mLoopDetectCount > MAX_SUPPLICANT_LOOP_ITERATIONS) {
-                            Log.d(TAG, "Supplicant loop detected, disabling network " +
-                                    stateChangeResult.networkId);
+                            Log.d(getTag(), "Supplicant loop detected, disabling network "
+                                    + stateChangeResult.networkId);
                             handleNetworkConnectionFailure(stateChangeResult.networkId,
                                     WifiConfiguration.NetworkSelectionStatus
                                             .DISABLED_AUTHENTICATION_FAILURE);
@@ -372,13 +400,13 @@ public class SupplicantStateTracker extends StateMachine {
 
     class CompletedState extends State {
         @Override
-         public void enter() {
-             if (DBG) Log.d(TAG, getName() + "\n");
+        public void enter() {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
         @Override
         public boolean processMessage(Message message) {
-            if (DBG) Log.d(TAG, getName() + message.toString() + "\n");
-            switch(message.what) {
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + message.toString() + "\n");
+            switch (message.what) {
                 case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT:
                     StateChangeResult stateChangeResult = (StateChangeResult) message.obj;
                     SupplicantState state = stateChangeResult.state;
@@ -404,7 +432,7 @@ public class SupplicantStateTracker extends StateMachine {
     class DormantState extends State {
         @Override
         public void enter() {
-            if (DBG) Log.d(TAG, getName() + "\n");
+            if (mVerboseLoggingEnabled) Log.d(getTag(), getName() + "\n");
         }
     }
 

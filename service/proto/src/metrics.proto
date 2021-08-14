@@ -324,9 +324,9 @@ message WifiLog {
   // Histogram of "Connect to Network" notification user actions.
   repeated ConnectToNetworkNotificationAndActionCount connect_to_network_notification_action_count = 78;
 
-  // The number of SSIDs blacklisted from recommendation by the open network
+  // The number of SSIDs blocked from recommendation by the open network
   // notification recommender
-  optional int32 open_network_recommender_blacklist_size = 79;
+  optional int32 open_network_recommender_blocklist_size = 79;
 
   // Is the available network notification feature turned on
   optional bool is_wifi_networks_available_notification_on = 80;
@@ -581,7 +581,7 @@ message WifiLog {
   // Metrics collected by health monitor
   optional HealthMonitorMetrics health_monitor_metrics = 158;
 
-  // Metrics related to the BssidBlocklistMonitor
+  // Metrics related to the WifiBlocklistMonitor
   optional BssidBlocklistStats bssid_blocklist_stats = 159;
 
   // Connection duration under various health conditions
@@ -733,6 +733,40 @@ message WifiLog {
 
   // Histogram of Rx link speed at 6G high band
   repeated Int32Count rx_link_speed_count_6g_high = 207;
+
+  // Metrics about the first connection after boot.
+  optional FirstConnectAfterBootStats first_connect_after_boot_stats = 208;
+
+  // Metrics for Wifi to Wifi switches.
+  optional WifiToWifiSwitchStats wifi_to_wifi_switch_stats = 209;
+
+  // Bandwidth estimator stats.
+  optional BandwidthEstimatorStats bandwidth_estimator_stats = 210;
+
+  // Total number of scan results from 6GHz PSC band
+  optional int32 num_6g_psc_network_scan_results = 211;
+
+  // Total number of Passpoint connections with a venue URL
+  optional int32 total_number_of_passpoint_connections_with_venue_url = 212;
+
+  // Total number of Passpoint connections with a T&C URL
+  optional int32 total_number_of_passpoint_connections_with_terms_and_conditions_url = 213;
+
+  // Total number of user accepted and T&C process completed successfully
+  optional int32 total_number_of_passpoint_acceptance_of_terms_and_conditions = 214;
+
+  // Total number of Passpoint profiles with decorated identity prefix
+  optional int32 total_number_of_passpoint_profiles_with_decorated_identity = 215;
+
+  // Scope of Passpoint deauth-imminent notification: ESS or BSS
+  repeated Int32Count passpoint_deauth_imminent_scope = 216;
+
+  // Total number of steering requests from AP
+  optional int32 num_steering_request = 217;
+
+  // Histogram corresponding to the number of times recent connection failure status are reported
+  // per WifiConfiguration.RecentFailureReason
+  repeated Int32Count recent_failure_association_status = 218;
 }
 
 // Information that gets logged for every WiFi connection.
@@ -853,7 +887,7 @@ message RouterFingerPrint {
     TYPE_PHASE2_AKA = 6;
 
     // EAP-Authentication and Key Agreement Prime [RFC-5448]
-    TYPE_PHASE2_AKA_PRIME   = 7;
+    TYPE_PHASE2_AKA_PRIME = 7;
   }
 
   enum OcspType {
@@ -891,7 +925,7 @@ message RouterFingerPrint {
   // whether ipv6 is supported.
   optional bool supports_ipv6 = 7;
 
-  // If the router is a passpoint / hotspot 2.0 network
+  // If the router is a Passpoint / Hotspot 2.0 network
   optional bool passpoint = 8;
 
   // EAP method used by the enterprise network
@@ -911,6 +945,29 @@ message RouterFingerPrint {
 
   // Max Rx link speed (in Mbps) supported by current network (STA and AP)
   optional int32 max_supported_rx_link_speed_mbps = 14;
+
+  // If the Passpoint connection is provided by the Home provider or Roaming/visited network
+  optional bool is_passpoint_home_provider = 15;
+}
+
+enum ClientRole {
+  // default/Invalid role
+  ROLE_UNKNOWN = 0;
+
+  // STA created for scans only.
+  ROLE_CLIENT_SCAN_ONLY = 1;
+
+  // secondary STA used for make before break.
+  ROLE_CLIENT_SECONDARY_TRANSIENT = 2;
+
+  // secondary STA created for local connection (no internet connectivity).
+  ROLE_CLIENT_LOCAL_ONLY = 3;
+
+  // primary STA.
+  ROLE_CLIENT_PRIMARY = 4;
+
+  // Long lived secondary STA used for restricted use cases
+  ROLE_CLIENT_SECONDARY_LONG_LIVED = 5;
 }
 
 message ConnectionEvent {
@@ -977,6 +1034,9 @@ message ConnectionEvent {
 
     // The reason code if the AP can no longer accept new clients.
     ASSOCIATION_REJECTION_AP_UNABLE_TO_HANDLE_NEW_STA = 5;
+
+    // The reason code if AP disconnects STA during the connecting state.
+    DISCONNECTION_NON_LOCAL = 6;
   }
 
   // Entity that recommended connecting to this network.
@@ -1050,7 +1110,10 @@ message ConnectionEvent {
   }
 
   // Start time of the connection, in milliseconds since Unix epoch (1970-01-01).
-  optional int64 start_time_millis = 1;// [(datapol.semantic_type) = ST_TIMESTAMP];
+  optional int64 start_time_millis = 1 [deprecated=true]; // [(datapol.semantic_type) = ST_TIMESTAMP];
+
+  // Start time of the connection, in milliseconds since device boot
+  optional int64 start_time_since_boot_millis = 28 [default = 0];
 
   // Duration to connect.
   optional int32 duration_taken_to_connect_millis = 2;
@@ -1112,6 +1175,20 @@ message ConnectionEvent {
 
   // Indicates if the profile used for the connection was provisioned by Passpoint OSU server
   optional bool is_osu_provisioned = 20;
+
+  // The wireless interface name e.g. "wlan0", "wlan1". Used to distinguish which event stream this
+  // ConnectionEvent belongs to when multiple interfaces are active concurrently.
+  optional string interface_name = 27;
+
+  // The role of the wireless interface at the start of the connection.
+  // Gives more information on what purpose this interface is used for.
+  optional ClientRole interface_role = 29;
+
+  // Indicates if the profile used for the connection is carrier merged.
+  optional bool is_carrier_merged = 30;
+
+  // Indicates if this was the first connection event after boot
+  optional bool is_first_connection_after_boot = 31;
 }
 
 // Number of occurrences of a specific RSSI poll rssi value
@@ -1343,6 +1420,34 @@ message StaEvent {
 
     // SIM was removed while using a SIM config
     DISCONNECT_RESET_SIM_NETWORKS = 6;
+
+    // The network being evaluated in Make-Before-Break was disconnected due to no internet.
+    DISCONNECT_MBB_NO_INTERNET = 7;
+
+    // The network has been removed from the database.
+    DISCONNECT_NETWORK_REMOVED = 8;
+
+    // The network has been marked as metered.
+    DISCONNECT_NETWORK_METERED = 9;
+
+    // The network has been disabled temporarily.
+    DISCONNECT_NETWORK_TEMPORARY_DISABLED = 10;
+
+    // The network has been disabled permanently.
+    DISCONNECT_NETWORK_PERMANENT_DISABLED = 11;
+
+    // Carrier offload for this network has been disabled.
+    DISCONNECT_CARRIER_OFFLOAD_DISABLED = 12;
+
+    // Disconnected due to an issue with passpoint terms and conditions URL.
+    DISCONNECT_PASSPOINT_TAC = 13;
+
+    // VCN policy is requesting to tear down the network.
+    DISCONNECT_VCN_REQUEST = 14;
+
+    // Connected to a network that's not found in the database.
+    DISCONNECT_UNKNOWN_NETWORK = 15;
+
   }
 
   // Authentication Failure reasons as reported through the API.
@@ -1472,8 +1577,16 @@ message StaEvent {
   // Whether cellular data network is available
   optional bool is_cellular_data_available = 25;
 
-  //Whether Adaptive Connectivity is enabled
+  // Whether Adaptive Connectivity is enabled
   optional bool is_adaptive_connectivity_enabled = 26;
+
+  // The wireless interface name e.g. "wlan0", "wlan1". Used to distinguish which event stream this
+  // StaEvent belongs to when multiple interfaces are active concurrently.
+  optional string interface_name = 27;
+
+  // The role of the wireless interface
+  // Gives more information on what purpose this interface is used for.
+  optional ClientRole interface_role = 28;
 }
 
 // Wi-Fi Aware metrics
@@ -1619,6 +1732,9 @@ message WifiAwareLog {
   // enabled which did not trigger ranging
   optional int32 num_matches_without_ranging_for_ranging_enabled_subscribes = 49;
 
+  // Total number of different types of NDP requests
+  repeated NdpRequestTypeHistogramBucket histogram_ndp_request_type = 50;
+
   // Histogram bucket for Wi-Fi Aware logs. Range is [start, end)
   message HistogramBucket {
     // lower range of the bucket (inclusive)
@@ -1686,6 +1802,32 @@ message WifiAwareLog {
 
     // number of samples in the bucket
     optional int32 count = 2;
+  }
+
+  enum NdpRequestTypeEnum {
+    // Unknown Type
+    NETWORK_SPECIFIER_TYPE_UNKNOWN = 0;
+
+    // TYPE: in band, specific peer: role, client_id, session_id, peer_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_IB = 1;
+
+    // TYPE: in band, any peer: role, client_id, session_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_IB_ANY_PEER = 2;
+
+    //TYPE: out-of-band: role, client_id, peer_mac, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_OOB = 3;
+
+    //TYPE: out-of-band, any peer: role, client_id, pmk/passphrase optional
+    NETWORK_SPECIFIER_TYPE_OOB_ANY_PEER = 4;
+
+  }
+
+  message NdpRequestTypeHistogramBucket {
+    // request type defining the bucket
+    optional NdpRequestTypeEnum ndp_request_type = 1;
+    // number of samples in the bucket
+    optional int32 count = 2;
+
   }
 }
 
@@ -1789,14 +1931,27 @@ message SoftApConnectedClientsEvent {
   // Soft AP event Types
   enum SoftApEventType {
 
-    // Soft AP is Up and ready for use
+    // Soft AP in single AP mode is Up and ready for use.
+    // The sequence of the events in single AP mode:
+    // SOFT_AP_UP -> ... (ex:NUM_CLIENTS_CHANGED) -> SOFT_AP_DOWN
     SOFT_AP_UP = 0;
 
-    // Soft AP is Down
+    // Soft AP in single/dual AP mode is Down.
     SOFT_AP_DOWN = 1;
 
-    // Number of connected soft AP clients has changed
+    // Number of connected soft AP clients has changed.
     NUM_CLIENTS_CHANGED = 2;
+
+    // Soft AP in dual AP mode is Up and ready for use.
+    // There are two DUAL_AP_BOTH_INSTANCES_UP events in dual AP mode for
+    // storing each instance information.
+    // The sequence of the events in dual AP mode:
+    // DUAL_AP_BOTH_INSTANCES_UP -> DUAL_AP_BOTH_INSTANCES_UP
+    // ... (ex: DUAL_AP_ONE_INSTANCE_DOWN or NUM_CLIENTS_CHANGED) -> SOFT_AP_DOWN
+    DUAL_AP_BOTH_INSTANCES_UP = 3;
+
+    // One of the dual AP instance is Down.
+    DUAL_AP_ONE_INSTANCE_DOWN = 4;
   }
 
   // Soft AP channel bandwidth types
@@ -1815,6 +1970,20 @@ message SoftApConnectedClientsEvent {
     BANDWIDTH_80P80 = 5;
 
     BANDWIDTH_160 = 6;
+  }
+
+  // The operational mode  of the Soft AP.
+  enum Generation {
+
+    WIFI_STANDARD_UNKNOWN = 0;
+
+    WIFI_STANDARD_LEGACY = 1;
+
+    WIFI_STANDARD_11N = 4;
+
+    WIFI_STANDARD_11AC = 5;
+
+    WIFI_STANDARD_11AX = 6;
   }
 
   // Type of event being recorded
@@ -1846,6 +2015,17 @@ message SoftApConnectedClientsEvent {
 
   // Indicates if user enabled the client_control
   optional bool client_control_is_enabled = 10;
+
+  // The operational mode of the AP
+  optional Generation generation = 11;
+
+  // Number of connected clients on current frequency if event_type is NUM_CLIENTS_CHANGED,
+  // otherwise zero. On dual AP, it may be different from num_connected_clients
+  // because there are two instances and num_connected_clients is used to record
+  // total number of the clients. But num_connected_clients_on_current_frequency
+  // is used to record the number of the clients on specific instance. (depends
+  // on channel_frequency)
+  optional int32 num_connected_clients_on_current_frequency = 12;
 }
 
 // Power stats for Wifi
@@ -2166,6 +2346,14 @@ message BssidBlocklistStats {
   // Number of times connection is initiated in the high movement state
   // only relevant if high_movement_multiple_scans_feature_enabled=true
   optional int32 num_high_movement_connection_started = 4;
+
+  // Histogram corresponding to the number of times BSSIDs are blocked per
+  // WifiBlocklistMonitor.FailureReason.
+  repeated Int32Count bssid_blocklist_per_reason_count = 5;
+
+  // Histogram corresponding to the number of times WifiConfigurations are blocked per
+  // WifiConfiguration.NetworkSelectionStatus.NetworkSelectionDisableReason.
+  repeated Int32Count wifi_config_blocklist_per_reason_count = 6;
 }
 
 message WifiIsUnusableEvent {
@@ -2309,6 +2497,9 @@ message WifiLinkLayerUsageStats {
   // Total time the wifi radio spent doing hotspot 2.0 scans and GAS exchange
   // in ms over the logging duration.
   optional int64 radio_hs20_scan_time_ms = 10;
+
+  // Radio stats from all the radios
+  repeated RadioStats radio_stats = 11;
 }
 
 message WifiUsabilityStatsEntry {
@@ -2463,6 +2654,183 @@ message WifiUsabilityStatsEntry {
   // The device mobility state
   optional DeviceMobilityStatePnoScanStats.DeviceMobilityState
           device_mobility_state = 34;
+
+  // Duty cycle of the connection.
+  // if this connection is being served using time slicing on a radio with one or more interfaces
+  // (i.e MCC), then this field contains the duty cycle assigned to this interface in percent.
+  // If no concurrency or not using time slicing during concurrency (i.e SCC or DBS), set to 100.
+  optional int32 time_slice_duty_cycle_in_percent = 35;
+
+  // WME data packet contention time statistics for all four categories: BE, BK, VI, VO
+  repeated ContentionTimeStats contention_time_stats = 36;
+
+  // The channel utilization ratio (value) in the range of
+  // [BssLoad.MIN_CHANNEL_UTILIZATION, BssLoad.MAX_CHANNEL_UTILIZATION], where MIN_CHANNEL_UTILIZATION
+  // corresponds to ratio 0%, MAX_CHANNEL_UTILIZATION corresponds to ratio 100%,
+  // see {@link com.android.server.wifi.util.InformationElementUtil}
+  optional int32 channel_utilization_ratio = 37;
+
+  // Indicate whether current link layer throughput is sufficient, see {@link WifiDataStall#isThroughputSufficient()}.
+  optional bool is_throughput_sufficient = 38;
+
+  // Indicate whether Wi-Fi scoring is enabled by the user, see {@link WifiManager#setWifiScoringEnabled(boolean)}.
+  optional bool is_wifi_scoring_enabled = 39;
+
+  // Indicate whether Cellular data is available, see {@link WifiDataStall#isCellularDataAvailable()}.
+  optional bool is_cellular_data_available = 40;
+
+  // Rate statistics, including number of successful packets, retries, etc.,
+  // indexed by preamble, bandwidth, number of spatial streams, MCS.
+  repeated RateStats rate_stats = 41;
+
+  // Number of stations associated with current AP.
+  optional int32 sta_count = 42;
+
+  // Channel utilization at current AP in the range of [0, 255].
+  optional int32 channel_utilization = 43;
+
+  // Link layer radio stats for all the radios
+  repeated RadioStats radio_stats = 44;
+}
+
+message ContentionTimeStats {
+  enum AccessCategory {
+    // WME Best Effort Access Category
+    WME_ACCESS_CATEGORY_BE = 0;
+
+    // WME Background Access Category
+    WME_ACCESS_CATEGORY_BK = 1;
+
+    // WME Video Access Category
+    WME_ACCESS_CATEGORY_VI = 2;
+
+    // WME Voice Access Category
+    WME_ACCESS_CATEGORY_VO = 3;
+  }
+
+  // WME access category
+  optional AccessCategory access_category = 1;
+
+  // Data packet min contention time in microseconds
+  optional int64 contention_time_min_micros = 2;
+
+  // Data packet max contention time in microseconds
+  optional int64 contention_time_max_micros = 3;
+
+  // Data packet average contention time in microseconds
+  optional int64 contention_time_avg_micros = 4;
+
+  // Number of data packets used for contention statistics
+  optional int64 contention_num_samples = 5;
+}
+
+message RateStats {
+  enum WifiPreambleType {
+    // Preamble type for IEEE 802.11a/g, IEEE Std 802.11-2020, Section 17
+    WIFI_PREAMBLE_OFDM = 0;
+    // Preamble type for IEEE 802.11b, IEEE Std 802.11-2020, Section 16
+    WIFI_PREAMBLE_CCK = 1;
+    // Preamble type for IEEE 802.11n, IEEE Std 802.11-2020, Section 19
+    WIFI_PREAMBLE_HT = 2;
+    // Preamble type for IEEE 802.11ac, IEEE Std 802.11-2020, Section 21
+    WIFI_PREAMBLE_VHT = 3;
+    // Preamble type for IEEE 802.11ax, IEEE Std 802.11-2020, Section 27
+    WIFI_PREAMBLE_HE = 5;
+    // Invalid
+    WIFI_PREAMBLE_INVALID = -1;
+  }
+
+  enum WifiSpatialStreams {
+    // Single stream, 1x1
+    WIFI_SPATIAL_STREAMS_ONE = 0;
+    // Dual streams, 2x2
+    WIFI_SPATIAL_STREAMS_TWO = 1;
+    // Three streams, 3x3
+    WIFI_SPATIAL_STREAMS_THREE = 2;
+    // Four streams, 4x4
+    WIFI_SPATIAL_STREAMS_FOUR = 3;
+    // Invalid
+    WIFI_SPATIAL_STREAMS_INVALID = -1;
+  }
+
+  enum WifiChannelBandwidth {
+    // Channel bandwidth: 20MHz
+    WIFI_BANDWIDTH_20_MHZ = 0;
+    // Channel bandwidth: 40MHz
+    WIFI_BANDWIDTH_40_MHZ = 1;
+    // Channel bandwidth: 80MHz
+    WIFI_BANDWIDTH_80_MHZ = 2;
+    // Channel bandwidth: 160MHz
+    WIFI_BANDWIDTH_160_MHZ = 3;
+    // Channel bandwidth: 80MHz + 80MHz
+    WIFI_BANDWIDTH_80P80_MHZ = 4;
+    // Channel bandwidth: 5MHz
+    WIFI_BANDWIDTH_5_MHZ = 5;
+    // Channel bandwidth: 10MHz
+    WIFI_BANDWIDTH_10_MHZ = 6;
+    // Invalid channel bandwidth
+    WIFI_BANDWIDTH_INVALID = -1;
+  }
+
+  // Preamble information.
+  optional WifiPreambleType preamble = 1;
+
+  // Number of spatial streams.
+  optional WifiSpatialStreams nss = 2;
+
+  // Bandwidth information.
+  optional WifiChannelBandwidth bw = 3;
+
+  // MCS index. OFDM/CCK rate code would be as per IEEE std in the units of 0.5Mbps.
+  // HT/VHT/HE: it would be MCS index.
+  optional int32 rate_mcs_idx = 4;
+
+  // Bitrate in units of 100 Kbps.
+  optional int32 bit_rate_in_kbps = 5;
+
+  // Number of successfully transmitted data packets (ACK received).
+  optional int32 tx_mpdu = 6;
+
+  // Number of received data packets.
+  optional int32 rx_mpdu = 7;
+
+  // Number of data packet losses (no ACK).
+  optional int32 mpdu_lost = 8;
+
+  // Number of data packet retries.
+  optional int32 retries = 9;
+}
+
+message RadioStats {
+  // The Radio ID
+  optional int32 radio_id = 1;
+  // The total time the wifi radio is on in ms counted from the last radio chip reset
+  optional int64 total_radio_on_time_ms = 2;
+
+  // The total time the wifi radio is doing tx in ms counted from the last radio chip reset
+  optional int64 total_radio_tx_time_ms = 3;
+
+  // The total time the wifi radio is doing rx in ms counted from the last radio chip reset
+  optional int64 total_radio_rx_time_ms = 4;
+
+  // The total time spent on all types of scans in ms counted from the last radio chip reset
+  optional int64 total_scan_time_ms = 5;
+
+  // The total time spent on nan scans in ms counted from the last radio chip reset
+  optional int64 total_nan_scan_time_ms = 6;
+
+  // The total time spent on background scans in ms counted from the last radio chip reset
+  optional int64 total_background_scan_time_ms = 7;
+
+  // The total time spent on roam scans in ms counted from the last radio chip reset
+  optional int64 total_roam_scan_time_ms = 8;
+
+  // The total time spent on pno scans in ms counted from the last radio chip reset
+  optional int64 total_pno_scan_time_ms = 9;
+
+  // The total time spent on hotspot2.0 scans and GAS exchange in ms counted from the last radio
+  // chip reset
+  optional int64 total_hotspot_2_scan_time_ms = 10;
 }
 
 message WifiUsabilityStats {
@@ -2706,6 +3074,12 @@ message WifiDppLog {
   // Number of Enrollee-Responder incompatible configurations found in DPP R2 compatibility check.
   optional int32 num_dpp_r2_enrollee_responder_incompatible_configuration = 10;
 
+  // Number of Enrollee-Responder requests
+  optional int32 num_dpp_enrollee_responder_requests = 11;
+
+  // Number of Enrollee-Responder success
+  optional int32 num_dpp_enrollee_responder_success = 12;
+
   // Histogram bucket for Wi-Fi DPP configurator success
   message DppConfiguratorSuccessStatusHistogramBucket {
     // status type defining the bucket
@@ -2777,6 +3151,12 @@ message WifiDppLog {
 
     // Easy Connect R2 Failure event: Enrollee rejected the configuration.
     EASY_CONNECT_EVENT_FAILURE_ENROLLEE_REJECTED_CONFIGURATION = 12;
+
+    // Easy Connect Failure event: System failed to generate DPP URI.
+    EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = 13;
+
+    // Easy Connect Failure event: Enrollee didn't scan the network's operating channel.
+    EASY_CONNECT_EVENT_FAILURE_ENROLLEE_FAILED_TO_SCAN_NETWORK_CHANNEL = 14;
   }
 }
 
@@ -2918,9 +3298,6 @@ message WifiNetworkRequestApiLog {
   // Histogram of requests via this API surface to number of networks matched in scan results.
   repeated HistogramBucketInt32 network_match_size_histogram = 2;
 
-  // Number of successful network connection from this API.
-  optional int32 num_connect_success = 3;
-
   // Number of requests via this API surface that bypassed user approval.
   optional int32 num_user_approval_bypass = 4;
 
@@ -2929,6 +3306,32 @@ message WifiNetworkRequestApiLog {
 
   // Number of unique apps using this API surface.
   optional int32 num_apps = 6;
+
+  // Number of connections on primary iface.
+  optional int32 num_connect_on_primary_iface = 7;
+
+  // Number of successful network connection from this API.
+  optional int32 num_connect_success_on_primary_iface = 3;
+
+  // Histogram of connection durations in seconds using this API surface.
+  repeated HistogramBucketInt32 connection_duration_sec_on_primary_iface_histogram = 8;
+
+  // Number of connections on secondary iface (STA + STA)
+  optional int32 num_connect_on_secondary_iface = 9;
+
+  // Number of connection success on secondary iface (STA + STA)
+  optional int32 num_connect_success_on_secondary_iface = 10;
+
+  // Histogram of connection durations in seconds on secondary iface using this API surface.
+  repeated HistogramBucketInt32 connection_duration_sec_on_secondary_iface_histogram = 11;
+
+  // Number of times there were concurrent connections (STA + STA):
+  // - on a primary iface (internet) and
+  // - on a secondary iface (using this API surface)
+  optional int32 num_concurrent_connection = 12;
+
+  // Histogram of concurrent connection durations in seconds using this API surface (STA + STA).
+  repeated HistogramBucketInt32 concurrent_connection_duration_sec_histogram = 13;
 }
 
 // NetworkSuggestion API metrics.
@@ -2968,6 +3371,16 @@ message WifiNetworkSuggestionApiLog {
 
   // Number of user revoke app's permission from settings or disallowed from UI.
   optional int32 user_revoke_app_suggestion_permission = 6;
+
+  // Number of priority groups configured on the device, excluding the default priority group.
+  optional int32 num_priority_groups = 7;
+
+  // Number of times when a ScanResult matched more than one suggestions.
+  optional int32 num_multiple_suggestions = 8;
+
+  // Number of saved profiles which also have at least one suggestion (for the same network)
+  // provisioned on the device.
+  optional int32 num_saved_networks_with_configured_suggestion = 9;
 }
 
 // WifiLock metrics
@@ -3165,6 +3578,8 @@ message UserActionEvent {
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_ON = 14;
     // User sets the adaptive connectivity to off
     EVENT_CONFIGURE_ADAPTIVE_CONNECTIVITY_OFF = 15;
+    // User restarts wifi subsystem
+    EVENT_RESTART_WIFI_SUB_SYSTEM = 16;
   }
 
   // The type of user action
@@ -3280,6 +3695,8 @@ message HealthMonitorFailureStats {
   optional int32 cnt_disconnection_nonlocal = 5;
   // Number of networks with a large change of (or high) short disconnection rate
   optional int32 cnt_short_connection_nonlocal = 6;
+  // Number of networks with a large change of (or high) disconnection-during-connecting rate
+  optional int32 cnt_disconnection_nonlocal_connecting = 7;
 }
 
 // Metrics collected by health monitor
@@ -3309,6 +3726,9 @@ message ConnectionDurationStats {
   optional int32 total_time_insufficient_throughput_ms = 2;
   // Total time with cellular data off
   optional int32 total_time_cellular_data_off_ms = 3;
+  // Total time with insufficient Wifi throughput and with cellular data on
+  // while wifi is the default network
+  optional int32 total_time_insufficient_throughput_default_wifi_ms = 4;
 }
 
 // Wi-Fi off metrics
@@ -3420,3 +3840,110 @@ message CarrierWifiMetrics {
   optional int32 num_connection_auth_failure = 2;
   optional int32 num_connection_non_auth_failure = 3;
 }
+
+message FirstConnectAfterBootStats {
+  message Attempt {
+    // The attempt completion timestamp, in milliseconds since boot.
+    optional int64 timestamp_since_boot_millis = 1;
+
+    // whether the attempt was successful.
+    optional bool is_success = 2;
+  }
+
+  // Info about whether Wifi was enabled at boot time.
+  // `is_success` is true if Wifi is toggled ON at boot, false otherwise.
+  // This field will never be null.
+  optional Attempt wifi_enabled_at_boot = 1;
+
+  // Info about the first network selection attempt for auto-join.
+  // `is_success` is true if a network candidate was found, false otherwise.
+  // This field is null if `wifi_enabled_at_boot.is_success` is false.
+  optional Attempt first_network_selection = 2;
+
+  // Info about the first successful L2 connection.
+  // `is_success` is true if the L2 connection was successfully established, false otherwise.
+  // This field is null if `first_network_selection.is_success` is false.
+  optional Attempt first_l2_connection = 3;
+
+  // Info about the first successful L3 connection.
+  // `is_success` is true if the L3 connection was successfully established, false otherwise.
+  // This field is null if `first_l2_connection.is_success` is false.
+  optional Attempt first_l3_connection = 4;
+}
+
+// Stats for Autojoin switches between Wifi networks. Does not include user/app-initiated switches.
+message WifiToWifiSwitchStats {
+  // Whether Make Before Break is supported by the hardware and enabled.
+  optional bool is_make_before_break_supported = 1;
+
+  // Number of times Wifi to Wifi switch was triggered. This includes Make Before Break and Break
+  // Before Make.
+  optional int32 wifi_to_wifi_switch_trigger_count = 2;
+
+  // Number of times Wifi to Wifi switch was triggered using Make Before Break (MBB).
+  // Note that MBB may not always be used for various reasons e.g. no additional iface available due
+  // to ongoing SoftAP, both old and new network have MAC randomization disabled, etc.
+  // TODO(b/180974604): also add metrics for the various reasons to not use MBB even when it is
+  //  supported by the device.
+  optional int32 make_before_break_trigger_count = 3;
+
+  // TODO(b/180974604): add metrics for L2 failure and L3 failure
+
+  // Number of times Make Before Break was aborted due to the new network not having internet.
+  optional int32 make_before_break_no_internet_count = 4;
+
+  // Number of times where, for some reason, Make Before Break resulted in the loss of the primary
+  // ClientModeManager, and we needed to recover by making one of the SECONDARY_TRANSIENT
+  // ClientModeManagers primary.
+  optional int32 make_before_break_recover_primary_count = 5;
+
+  // Number of times the new network in Make Before Break had its internet connection validated.
+  optional int32 make_before_break_internet_validated_count = 6;
+
+  // Number of times the new network was made primary in Make Before Break.
+  // TODO(b/180974604): add metrics for the various ways this could fail.
+  optional int32 make_before_break_success_count = 7;
+
+  // Number of times the old network in Make Before Break completed lingering and was disconnected.
+  optional int32 make_before_break_linger_completed_count = 8;
+
+  // Histogram of lingering duration caused by make before break in seconds.
+  repeated Int32Count make_before_break_linger_duration_seconds = 9;
+}
+
+// Network layer bandwidth estimator stats
+message BandwidthEstimatorStats {
+  // Bandwidth stats of each signal level
+  message PerLevel {
+    // Signal level derived by RssiUtil.calculateSignalLevel based on RSSI
+    optional uint32 signal_level = 1;
+    // Accumulated bandwidth sample count
+    optional uint32 count = 2;
+    // Average network layer bandwidth in kbps based on TrafficStats byte count and radio on time
+    // of link layer stats.
+    optional uint32 avg_bandwidth_kbps = 3;
+    // Error of layer 2 link bandwidth in percent
+    optional uint32 l2_error_percent = 4;
+    // Error of network layer bandwidth estimation in percent
+    optional uint32 bandwidth_est_error_percent = 5;
+  }
+
+  // Bandwidth stats of each link
+  message PerLink {
+    repeated PerLevel level = 1;
+  }
+
+  // Bandwidth stats of each band
+  message PerBand {
+    // Tx bandwidth stats
+    optional PerLink tx = 1;
+    // Rx bandwidth stats
+    optional PerLink rx = 2;
+  }
+
+  // Stats of 2g band
+  optional PerBand stats_2g = 1;
+  // Stats of above-2g band
+  optional PerBand stats_above_2g = 2;
+}
+

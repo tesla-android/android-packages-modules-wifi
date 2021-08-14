@@ -16,9 +16,13 @@
 
 package android.net.wifi.hotspot2;
 
+import android.annotation.IntDef;
 import android.annotation.SystemApi;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
  * Base class for provisioning callbacks. Should be extended by applications and set when calling
@@ -28,6 +32,37 @@ import android.os.Handler;
  */
 @SystemApi
 public abstract class ProvisioningCallback {
+
+    /**
+     * OSU Failure error codes
+     * @hide
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = { "OSU_FAILURE_" }, value = {
+            OSU_FAILURE_AP_CONNECTION,
+            OSU_FAILURE_SERVER_URL_INVALID,
+            OSU_FAILURE_SERVER_CONNECTION,
+            OSU_FAILURE_SERVER_VALIDATION,
+            OSU_FAILURE_SERVICE_PROVIDER_VERIFICATION,
+            OSU_FAILURE_PROVISIONING_ABORTED,
+            OSU_FAILURE_PROVISIONING_NOT_AVAILABLE,
+            OSU_FAILURE_INVALID_URL_FORMAT_FOR_OSU,
+            OSU_FAILURE_UNEXPECTED_COMMAND_TYPE,
+            OSU_FAILURE_UNEXPECTED_SOAP_MESSAGE_TYPE,
+            OSU_FAILURE_SOAP_MESSAGE_EXCHANGE,
+            OSU_FAILURE_START_REDIRECT_LISTENER,
+            OSU_FAILURE_TIMED_OUT_REDIRECT_LISTENER,
+            OSU_FAILURE_NO_OSU_ACTIVITY_FOUND,
+            OSU_FAILURE_UNEXPECTED_SOAP_MESSAGE_STATUS,
+            OSU_FAILURE_NO_PPS_MO,
+            OSU_FAILURE_NO_AAA_SERVER_TRUST_ROOT_NODE,
+            OSU_FAILURE_NO_REMEDIATION_SERVER_TRUST_ROOT_NODE,
+            OSU_FAILURE_NO_POLICY_SERVER_TRUST_ROOT_NODE,
+            OSU_FAILURE_RETRIEVE_TRUST_ROOT_CERTIFICATES,
+            OSU_FAILURE_NO_AAA_TRUST_ROOT_CERTIFICATE,
+            OSU_FAILURE_ADD_PASSPOINT_CONFIGURATION,
+            OSU_FAILURE_OSU_PROVIDER_NOT_FOUND})
+    public @interface OsuFailure {}
 
     /**
      * The reason code for Provisioning Failure due to connection failure to OSU AP.
@@ -158,6 +193,25 @@ public abstract class ProvisioningCallback {
     public static final int OSU_FAILURE_OSU_PROVIDER_NOT_FOUND = 23;
 
     /**
+     * OSU Status error codes
+     * @hide
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = { "OSU_FAILURE_" }, value = {
+            OSU_STATUS_AP_CONNECTING,
+            OSU_STATUS_AP_CONNECTED,
+            OSU_STATUS_SERVER_CONNECTING,
+            OSU_STATUS_SERVER_VALIDATED,
+            OSU_STATUS_SERVER_CONNECTED,
+            OSU_STATUS_INIT_SOAP_EXCHANGE,
+            OSU_STATUS_WAITING_FOR_REDIRECT_RESPONSE,
+            OSU_STATUS_REDIRECT_RESPONSE_RECEIVED,
+            OSU_STATUS_SECOND_SOAP_EXCHANGE,
+            OSU_STATUS_THIRD_SOAP_EXCHANGE,
+            OSU_STATUS_RETRIEVING_TRUST_ROOT_CERTS})
+    public @interface OsuStatus {}
+
+    /**
      * The status code for provisioning flow to indicate connecting to OSU AP
      */
     public static final int OSU_STATUS_AP_CONNECTING = 1;
@@ -218,18 +272,17 @@ public abstract class ProvisioningCallback {
      *
      * @param status indicates error condition
      */
-    public abstract void onProvisioningFailure(int status);
+    public abstract void onProvisioningFailure(@OsuFailure int status);
 
     /**
      * Provisioning status when OSU is in progress
      *
      * @param status indicates status of OSU flow
      */
-    public abstract void onProvisioningStatus(int status);
+    public abstract void onProvisioningStatus(@OsuStatus int status);
 
     /**
      * Provisioning complete when provisioning/remediation flow completes
      */
     public abstract void onProvisioningComplete();
 }
-

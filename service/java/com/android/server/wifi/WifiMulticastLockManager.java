@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import android.annotation.Nullable;
 import android.os.BatteryStatsManager;
 import android.os.Binder;
 import android.os.IBinder;
@@ -32,8 +33,6 @@ import java.util.List;
 /**
  * WifiMulticastLockManager tracks holders of multicast locks and
  * triggers enabling and disabling of filtering.
- *
- * @hide
  */
 public class WifiMulticastLockManager {
     private static final String TAG = "WifiMulticastLockManager";
@@ -42,7 +41,7 @@ public class WifiMulticastLockManager {
     private int mMulticastDisabled = 0;
     private boolean mVerboseLoggingEnabled = false;
     private final BatteryStatsManager mBatteryStats;
-    private final FilterController mFilterController;
+    private final ActiveModeWarden mActiveModeWarden;
 
     /** Delegate for handling state change events for multicast filtering. */
     public interface FilterController {
@@ -53,10 +52,14 @@ public class WifiMulticastLockManager {
         void stopFilteringMulticastPackets();
     }
 
-    public WifiMulticastLockManager(FilterController filterController,
+    public WifiMulticastLockManager(
+            ActiveModeWarden activeModeWarden,
             BatteryStatsManager batteryStats) {
         mBatteryStats = batteryStats;
-        mFilterController = filterController;
+        mActiveModeWarden = activeModeWarden;
+
+        mActiveModeWarden.registerPrimaryClientModeManagerChangedCallback(
+                new PrimaryClientModeManagerChangedCallback());
     }
 
     private class Multicaster implements IBinder.DeathRecipient {
@@ -114,21 +117,17 @@ public class WifiMulticastLockManager {
     }
 
     protected void enableVerboseLogging(int verbose) {
-        if (verbose > 0) {
-            mVerboseLoggingEnabled = true;
-        } else {
-            mVerboseLoggingEnabled = false;
-        }
+        mVerboseLoggingEnabled = verbose > 0;
     }
 
     /** Start filtering if  no multicasters exist. */
     public void initializeFiltering() {
         synchronized (mMulticasters) {
             // if anybody had requested filters be off, leave off
-            if (mMulticasters.size() != 0) {
-                return;
-            } else {
-                mFilterController.startFilteringMulticastPackets();
+            if (mMulticasters.size() == 0) {
+                mActiveModeWarden.getPrimaryClientModeManager()
+                        .getMcastLockManagerFilterController()
+                        .startFilteringMulticastPackets();
             }
         }
     }
@@ -146,7 +145,9 @@ public class WifiMulticastLockManager {
             // our new size == 1 (first call), but this function won't
             // be called often and by making the stopPacket call each
             // time we're less fragile and self-healing.
-            mFilterController.stopFilteringMulticastPackets();
+            mActiveModeWarden.getPrimaryClientModeManager()
+                    .getMcastLockManagerFilterController()
+                    .stopFilteringMulticastPackets();
         }
 
         int uid = Binder.getCallingUid();
@@ -181,7 +182,9 @@ public class WifiMulticastLockManager {
             removed.unlinkDeathRecipient();
         }
         if (mMulticasters.size() == 0) {
-            mFilterController.startFilteringMulticastPackets();
+            mActiveModeWarden.getPrimaryClientModeManager()
+                    .getMcastLockManagerFilterController()
+                    .startFilteringMulticastPackets();
         }
 
         final long ident = Binder.clearCallingIdentity();
@@ -192,10 +195,31 @@ public class WifiMulticastLockManager {
         Binder.restoreCallingIdentity(ident);
     }
 
-    /** Returns whether multicast should be allowed (filterning disabled). */
+    /** Returns whether multicast should be allowed (filtering disabled). */
     public boolean isMulticastEnabled() {
         synchronized (mMulticasters) {
-            return (mMulticasters.size() > 0);
+            return mMulticasters.size() > 0;
+        }
+    }
+
+    private class PrimaryClientModeManagerChangedCallback
+            implements ActiveModeWarden.PrimaryClientModeManagerChangedCallback {
+
+        @Override
+        public void onChange(
+                @Nullable ConcreteClientModeManager prevPrimaryClientModeManager,
+                @Nullable ConcreteClientModeManager newPrimaryClientModeManager) {
+            if (prevPrimaryClientModeManager != null) {
+                // no longer primary => start filtering out multicast packets
+                prevPrimaryClientModeManager.getMcastLockManagerFilterController()
+                        .startFilteringMulticastPackets();
+            }
+            if (newPrimaryClientModeManager != null
+                    && isMulticastEnabled()) { // this call is synchronized
+                // new primary and multicast enabled => stop filtering out multicast packets
+                newPrimaryClientModeManager.getMcastLockManagerFilterController()
+                        .stopFilteringMulticastPackets();
+            }
         }
     }
 }

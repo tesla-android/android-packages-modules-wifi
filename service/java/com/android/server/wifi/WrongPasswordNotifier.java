@@ -16,24 +16,15 @@
 
 package com.android.server.wifi;
 
-import android.app.ActivityManager;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Icon;
-import android.os.UserHandle;
 import android.provider.Settings;
-import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.server.wifi.util.NativeUtil;
-
-import java.util.List;
 
 /**
  * Responsible for notifying user for wrong password errors.
@@ -51,14 +42,14 @@ public class WrongPasswordNotifier {
     private boolean mWrongPasswordDetected;
 
     private final WifiContext mContext;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
     private final FrameworkFacade mFrameworkFacade;
 
-    public WrongPasswordNotifier(WifiContext context, FrameworkFacade frameworkFacade) {
+    public WrongPasswordNotifier(WifiContext context, FrameworkFacade frameworkFacade,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = frameworkFacade;
-        mNotificationManager =
-                (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
@@ -81,26 +72,13 @@ public class WrongPasswordNotifier {
         }
     }
 
-    private String getSettingsPackageName() {
-        Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
-        List<ResolveInfo> resolveInfos = mContext.getPackageManager().queryIntentActivitiesAsUser(
-                intent, PackageManager.MATCH_SYSTEM_ONLY | PackageManager.MATCH_DEFAULT_ONLY,
-                UserHandle.of(ActivityManager.getCurrentUser()));
-        if (resolveInfos == null || resolveInfos.isEmpty()) {
-            Log.e(TAG, "Failed to resolve wifi settings activity");
-            return null;
-        }
-        // Pick the first one if there are more than 1 since the list is ordered from best to worst.
-        return resolveInfos.get(0).activityInfo.packageName;
-    }
-
     /**
      * Display wrong password notification for a given Wi-Fi network (specified by its SSID).
      *
      * @param ssid SSID of the Wi-FI network
      */
     private void showNotification(String ssid) {
-        String settingsPackage = getSettingsPackageName();
+        String settingsPackage = mFrameworkFacade.getSettingsPackageName(mContext);
         if (settingsPackage == null) return;
         Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS)
                 .setPackage(settingsPackage)
@@ -116,7 +94,8 @@ public class WrongPasswordNotifier {
                         com.android.wifi.resources.R.string.wifi_available_title_failed_to_connect))
                 .setContentText(ssid)
                 .setContentIntent(mFrameworkFacade.getActivity(
-                        mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT))
+                        mContext, 0, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .setColor(mContext.getResources().getColor(
                         android.R.color.system_notification_accent_color));
         mNotificationManager.notify(NOTIFICATION_ID, builder.build());
@@ -130,6 +109,6 @@ public class WrongPasswordNotifier {
     private void dismissNotification() {
         // Notification might have already been dismissed, either by user or timeout. It is
         // still okay to cancel it if already dismissed.
-        mNotificationManager.cancel(null, NOTIFICATION_ID);
+        mNotificationManager.cancel(NOTIFICATION_ID);
     }
 }

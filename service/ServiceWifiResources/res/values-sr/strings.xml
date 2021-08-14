@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"Мреже које предлаже <xliff:g id="NAME">%s</xliff:g>. Уређај ће се можда повезати аутоматски."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Дозволи"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Не, хвала"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Желите да се повежете на WiFi мрежу <xliff:g id="CARRIERNAME">%s</xliff:g>?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Ове мреже добијају ИД SIM картице који може да се користи за праћење локације уређаја"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Повежи"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Не повезуј"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Желите ли да потврдите повезивање?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Ако се повежете, Wi‑Fi мреже оператера <xliff:g id="CARRIERNAME">%s</xliff:g> могу да приступају јединственом ИД-у повезаном са SIM картицом или да га деле. То може да омогући праћење локације уређаја."</string>

@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> tavsiya qilgan tarmoqlar. Qurilma avtomatik ulanishi mumkin."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Ruxsat"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Kerak emas"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> Wi-Fi tarmoqqa ulaning"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Bu tarmoqlar SIM identifikator oladi, bu orqali qurilma joylashuvini kuzatish mumkin"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Ulash"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Ulanmasin"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Ulanish tasdiqlansinmi?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Agar ulansangiz, <xliff:g id="CARRIERNAME">%s</xliff:g> Wi‑Fi tarmoqlari SIM kartangizga aloqador unikal identifikatordan foydalanishi yoki ulashishi mumkin. Bu qurilmangiz joylashuvi kuzatilishiga ruxsat berishi mumkin."</string>

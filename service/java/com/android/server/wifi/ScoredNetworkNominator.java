@@ -24,10 +24,10 @@ import android.database.ContentObserver;
 import android.net.NetworkKey;
 import android.net.NetworkScoreManager;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.os.Handler;
 import android.provider.Settings;
-import android.text.TextUtils;
 import android.util.LocalLog;
 import android.util.Log;
 import android.util.Pair;
@@ -50,6 +50,11 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
     public static final String SETTINGS_GLOBAL_USE_OPEN_WIFI_PACKAGE =
             "use_open_wifi_package";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
+
+    /**
+     * Attribution tag used for checks on the scorers access to location permissions.
+     */
+    private static final String ATTRIBUTION_FEATURE_ID = "system_scored_network_nominator";
 
     private final NetworkScoreManager mNetworkScoreManager;
     private final PackageManager mPackageManager;
@@ -132,7 +137,8 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
         try {
             // TODO moltmann: Can we set a featureID here instead of null?
             mWifiPermissionsUtil.enforceCanAccessScanResults(
-                    scorerUidAndPackage.second, null, scorerUidAndPackage.first, null);
+                    scorerUidAndPackage.second, ATTRIBUTION_FEATURE_ID,
+                    scorerUidAndPackage.first, null);
             return true;
         } catch (SecurityException e) {
             return false;
@@ -141,8 +147,8 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
 
     @Override
     public void nominateNetworks(List<ScanDetail> scanDetails,
-            WifiConfiguration currentNetwork, String currentBssid, boolean connected,
-            boolean untrustedNetworkAllowed,
+            boolean untrustedNetworkAllowed, boolean oemPaidNetworkAllowed /* unused */,
+            boolean oemPrivateNetworkAllowed /* unused */,
             @NonNull OnConnectableListener onConnectableListener) {
         if (!mNetworkRecommendationsEnabled) {
             mLocalLog.log("Skipping nominateNetworks; Network recommendations disabled.");
@@ -160,7 +166,7 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 continue;
             }
             final WifiConfiguration configuredNetwork =
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
             boolean untrustedScanResult = configuredNetwork == null || !configuredNetwork.trusted;
 
             if (!untrustedNetworkAllowed && untrustedScanResult) {
@@ -185,17 +191,20 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 debugLog("Ignoring disabled SSID: " + configuredNetwork.SSID);
                 continue;
             }
+            if (mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                    configuredNetwork)) {
+                debugLog("Ignoring non-carrier-merged SSID: " + configuredNetwork.SSID);
+                continue;
+            }
 
-            // TODO(b/37485956): consider applying a boost for networks with only the same SSID
-            boolean isCurrentNetwork = currentNetwork != null
-                    && currentNetwork.networkId == configuredNetwork.networkId
-                    && TextUtils.equals(currentBssid, scanResult.BSSID);
+            // score boosts for current network is done by the candidate scorer. Don't artificially
+            // boost the score in the nominator.
             if (!configuredNetwork.trusted) {
                 scoreTracker.trackUntrustedCandidate(
-                        scanResult, configuredNetwork, isCurrentNetwork);
+                        scanResult, configuredNetwork, false /* isCurrentNetwork */);
             } else {
                 scoreTracker.trackExternallyScoredCandidate(
-                        scanResult, configuredNetwork, isCurrentNetwork);
+                        scanResult, configuredNetwork, false /* isCurrentNetwork */);
             }
             onConnectableListener.onConnectable(scanDetail, configuredNetwork);
         }
@@ -262,7 +271,10 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 mScanDetailCandidate = null;
                 mBestCandidateType = EXTERNAL_SCORED_UNTRUSTED_NETWORK;
                 mEphemeralConfig = config;
-                mWifiConfigManager.setNetworkCandidateScanResult(config.networkId, scanResult, 0);
+                SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                        config, scanResult);
+                mWifiConfigManager.setNetworkCandidateScanResult(
+                        config.networkId, scanResult, 0, params);
                 debugLog(WifiNetworkSelector.toScanId(scanResult)
                         + " becomes the new untrusted candidate.");
             }
@@ -283,7 +295,10 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                 mScanResultCandidate = scanResult;
                 mScanDetailCandidate = null;
                 mBestCandidateType = EXTERNAL_SCORED_SAVED_NETWORK;
-                mWifiConfigManager.setNetworkCandidateScanResult(config.networkId, scanResult, 0);
+                SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                        config, scanResult);
+                mWifiConfigManager.setNetworkCandidateScanResult(
+                        config.networkId, scanResult, 0, params);
                 debugLog(WifiNetworkSelector.toScanId(scanResult)
                         + " becomes the new externally scored saved network candidate.");
             }
@@ -313,6 +328,12 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
 
                     mEphemeralConfig =
                             ScanResultUtil.createNetworkFromScanResult(mScanResultCandidate);
+                    if (null == mEphemeralConfig) {
+                        mLocalLog.log("Failed to create ephemeral network from the scan result:"
+                                + " SSID=" + mScanResultCandidate.SSID
+                                + ", caps=" + mScanResultCandidate.capabilities);
+                        break;
+                    }
                     // Mark this config as ephemeral so it isn't persisted.
                     mEphemeralConfig.ephemeral = true;
                     // Mark this network as untrusted.
@@ -336,8 +357,11 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
                         // A message here might help with the diagnosis.
                         Log.e(TAG, "mScanDetailCandidate is null!");
                     }
+                    SecurityParams params = ScanResultMatchInfo.getBestMatchingSecurityParams(
+                            mWifiConfigManager.getConfiguredNetwork(candidateNetworkId),
+                            mScanResultCandidate);
                     mWifiConfigManager.setNetworkCandidateScanResult(candidateNetworkId,
-                            mScanResultCandidate, 0);
+                            mScanResultCandidate, 0, params);
                     mLocalLog.log(String.format("new ephemeral candidate %s network ID:%d, "
                                                 + "meteredHint=%b",
                                         WifiNetworkSelector.toScanId(mScanResultCandidate),

@@ -57,6 +57,10 @@ public final class WifiAnnotations {
             SoftApInfo.CHANNEL_WIDTH_80MHZ,
             SoftApInfo.CHANNEL_WIDTH_80MHZ_PLUS_MHZ,
             SoftApInfo.CHANNEL_WIDTH_160MHZ,
+            SoftApInfo.CHANNEL_WIDTH_2160MHZ,
+            SoftApInfo.CHANNEL_WIDTH_4320MHZ,
+            SoftApInfo.CHANNEL_WIDTH_6480MHZ,
+            SoftApInfo.CHANNEL_WIDTH_8640MHZ,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface Bandwidth {}
@@ -77,6 +81,7 @@ public final class WifiAnnotations {
             ScanResult.WIFI_STANDARD_11N,
             ScanResult.WIFI_STANDARD_11AC,
             ScanResult.WIFI_STANDARD_11AX,
+            ScanResult.WIFI_STANDARD_11AD,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiStandard{}
@@ -117,7 +122,11 @@ public final class WifiAnnotations {
         ScanResult.CIPHER_TKIP,
         ScanResult.CIPHER_CCMP,
         ScanResult.CIPHER_GCMP_256,
-        ScanResult.CIPHER_SMS4
+        ScanResult.CIPHER_SMS4,
+        ScanResult.CIPHER_GCMP_128,
+        ScanResult.CIPHER_BIP_GMAC_128,
+        ScanResult.CIPHER_BIP_GMAC_256,
+        ScanResult.CIPHER_BIP_CMAC_256,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface Cipher {}

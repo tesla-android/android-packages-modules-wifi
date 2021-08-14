@@ -21,11 +21,9 @@ import static org.mockito.Mockito.*;
 
 import android.app.ActivityManager;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.os.UserHandle;
@@ -44,8 +42,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.MockitoSession;
 
-import java.util.Arrays;
-
 /**
  * Unit tests for {@link com.android.server.wifi.WrongPasswordNotifier}.
  */
@@ -56,8 +52,7 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
-    @Mock PackageManager mPackageManager;
-    @Mock NotificationManager mNotificationManager;
+    @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock FrameworkFacade mFrameworkFacade;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS) private Notification.Builder mNotificationBuilder;
     WrongPasswordNotifier mWrongPassNotifier;
@@ -72,16 +67,11 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         ResolveInfo settingsResolveInfo = new ResolveInfo();
         settingsResolveInfo.activityInfo = new ActivityInfo();
         settingsResolveInfo.activityInfo.packageName = TEST_SETTINGS_PACKAGE;
-        when(mPackageManager.queryIntentActivitiesAsUser(
-                argThat(((intent) -> intent.getAction().equals(Settings.ACTION_WIFI_SETTINGS))),
-                anyInt(), any()))
-                .thenReturn(Arrays.asList(settingsResolveInfo));
-        when(mContext.getSystemService(Context.NOTIFICATION_SERVICE))
-                .thenReturn(mNotificationManager);
+        when(mFrameworkFacade.getSettingsPackageName(any())).thenReturn(TEST_SETTINGS_PACKAGE);
         when(mContext.getResources()).thenReturn(mResources);
-        when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
-        mWrongPassNotifier = new WrongPasswordNotifier(mContext, mFrameworkFacade);
+        mWrongPassNotifier = new WrongPasswordNotifier(mContext, mFrameworkFacade,
+                mWifiNotificationManager);
 
         // static mocking
         mSession = ExtendedMockito.mockitoSession()
@@ -112,7 +102,7 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
         mWrongPassNotifier.onWrongPasswordError(TEST_SSID);
-        verify(mNotificationManager).notify(eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
+        verify(mWifiNotificationManager).notify(eq(WrongPasswordNotifier.NOTIFICATION_ID), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
                 any(Context.class), anyInt(), intent.capture(), anyInt());
@@ -130,10 +120,10 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
     @Test
     public void onNewConnectionAttemptWithPreviousWrongPasswordError() throws Exception {
         onWrongPasswordError();
-        reset(mNotificationManager);
+        reset(mWifiNotificationManager);
 
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager).cancel(any(), eq(WrongPasswordNotifier.NOTIFICATION_ID));
+        verify(mWifiNotificationManager).cancel(eq(WrongPasswordNotifier.NOTIFICATION_ID));
     }
 
     /**
@@ -145,6 +135,6 @@ public class WrongPasswordNotifierTest extends WifiBaseTest {
     @Test
     public void onNewConnectionAttemptWithoutPreviousWrongPasswordError() throws Exception {
         mWrongPassNotifier.onNewConnectionAttempt();
-        verify(mNotificationManager, never()).cancel(any(), anyInt());
+        verify(mWifiNotificationManager, never()).cancel(anyInt());
     }
 }

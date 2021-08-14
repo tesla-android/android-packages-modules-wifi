@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g>-foreslåtte nettverk. Enheten kan koble til automatisk."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Tillat"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Nei takk"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Vil du koble til <xliff:g id="CARRIERNAME">%s</xliff:g>-Wi-Fi?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Disse nettverkene mottar en SIM-ID som kan brukes til å spore enhetsposisjonen"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Koble til"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Ikke koble til"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Vil du bekrefte tilkoblingen?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Hvis du kobler til, kan <xliff:g id="CARRIERNAME">%s</xliff:g>-Wi‑Fi-nettverk få tilgang til eller dele en unik ID som er knyttet til SIM-kortet ditt. Dette gjør at enhetens posisjon kan spores."</string>

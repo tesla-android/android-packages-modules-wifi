@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> aplikazioak sare batzuk iradoki ditu. Baliteke gailua automatikoki konektatzea."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Baimendu"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Ez, eskerrik asko"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> operadorearen wifi-sarera konektatu nahi duzu?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Sare hauek SIM ID bat jasotzen dute, gailuaren kokapenaren jarraipena egin ahal izateko"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Konektatu"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Ez konektatu"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Konexioa berretsi nahi duzu?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Konektatzen bazara, baliteke <xliff:g id="CARRIERNAME">%s</xliff:g> operadorearen wifi-sareek zure SIM txartelarekin lotutako ID esklusiboa atzitzea edo partekatzea. Horrela, baliteke zure gailuaren kokapenaren jarraipena egiteko aukera izatea."</string>
@@ -68,7 +65,7 @@
     <string name="wifi_cannot_connect_with_randomized_mac_title" msgid="2344570489693915253">"Ezin da konektatu <xliff:g id="SSID">%1$s</xliff:g> sarera"</string>
     <string name="wifi_cannot_connect_with_randomized_mac_message" msgid="4834133226521813352">"Sakatu hau pribatutasun-ezarpenak aldatzeko, eta saiatu berriro"</string>
     <string name="wifi_disable_mac_randomization_dialog_title" msgid="2054540994993681606">"Pribatutasun-ezarpena aldatu nahi duzu?"</string>
-    <string name="wifi_disable_mac_randomization_dialog_message" msgid="8874064864332248988">"Konektatzeko, <xliff:g id="SSID">%1$s</xliff:g> sareak gailuaren MAC helbidea (identifikatzaile esklusiboa) behar du. Sarearen uneko pribatutasun-ezarpenen arabera, ausazko identifikatzaile bat erabiltzen da. \n\nAldaketa honekin, baliteke inguruko gailuek zure gailuaren kokapenaren jarraipena egin ahal izatea."</string>
+    <string name="wifi_disable_mac_randomization_dialog_message" msgid="8874064864332248988">"Konektatzeko, <xliff:g id="SSID">%1$s</xliff:g> sareak gailuaren MAC helbidea (identifikatzaile esklusiboa) behar du. Sarearen pribatutasun-ezarpenen arabera, ausazko identifikatzaile bat erabiltzen da. \n\nAldaketa honekin, baliteke inguruko gailuek zure gailuaren kokapenaren jarraipena egin ahal izatea."</string>
     <string name="wifi_disable_mac_randomization_dialog_confirm_text" msgid="6954419863076751626">"Aldatu ezarpena"</string>
     <string name="wifi_disable_mac_randomization_dialog_success" msgid="5849155828154391387">"Eguneratu da ezarpena. Saiatu berriro konektatzen."</string>
     <string name="wifi_disable_mac_randomization_dialog_failure" msgid="2894643619143813096">"Ezin da aldatu pribatutasun-ezarpena"</string>

@@ -297,8 +297,8 @@ public final class SubscribeConfig implements Parcelable {
          * <p>
          * The Service Name is a UTF-8 encoded string from 1 to 255 bytes in length.
          * The only acceptable single-byte UTF-8 symbols for a Service Name are alphanumeric
-         * values (A-Z, a-z, 0-9), the hyphen ('-'), and the period ('.'). All valid multi-byte
-         * UTF-8 characters are acceptable in a Service Name.
+         * values (A-Z, a-z, 0-9), the hyphen ('-'), the period ('.') and the underscore ('_'). All
+         * valid multi-byte UTF-8 characters are acceptable in a Service Name.
          * <p>
          * Must be called - an empty ServiceName is not valid.
          *

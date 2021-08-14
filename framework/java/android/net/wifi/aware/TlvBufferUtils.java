@@ -114,7 +114,7 @@ public class TlvBufferUtils {
         }
 
         /**
-         * Allocates a new byte array to be used ot construct a TLV.
+         * Allocates a new byte array to be used to construct a TLV.
          *
          * @param capacity The size of the byte array to be allocated.
          * @return The constructor to facilitate chaining

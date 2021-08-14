@@ -16,9 +16,14 @@
 
 package com.android.server.wifi;
 
+import android.annotation.IntDef;
 import android.os.BatteryStatsManager;
+import android.util.ArrayMap;
 import android.util.Log;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
 /**
@@ -27,57 +32,93 @@ import java.util.concurrent.RejectedExecutionException;
 public class WifiStateTracker {
     private static final String TAG = "WifiStateTracker";
 
-    public static final int INVALID = 0;
-    public static final int SCAN_MODE = 1;
+    @IntDef(value = {
+            INVALID,
+            SCAN_MODE,
+            DISCONNECTED,
+            CONNECTED,
+            SOFT_AP,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface WifiStateTrackerState {}
+
+    public static final int INVALID = -1;
+    public static final int SCAN_MODE = 1; // unused
     public static final int DISCONNECTED = 2;
     public static final int CONNECTED = 3;
-    public static final int SOFT_AP = 4;
-    private int mWifiState;
-    private BatteryStatsManager mBatteryStatsManager;
+    public static final int SOFT_AP = 4; // unused
+
+    /**
+     * String key: interface name
+     * int value: last wifi state, one of the {@link WifiStateTrackerState} values.
+     */
+    private final Map<String, Integer> mIfaceToWifiState = new ArrayMap<>();
+    private final BatteryStatsManager mBatteryStatsManager;
 
     public WifiStateTracker(BatteryStatsManager batteryStatsManager) {
-        mWifiState = INVALID;
         mBatteryStatsManager = batteryStatsManager;
     }
 
-    private void informWifiStateBatteryStats(int state) {
+    @WifiStateTrackerState
+    private int mLastReportedState = INVALID;
+
+    private void informWifiStateBatteryStats(@WifiStateTrackerState int state) {
+        if (state == mLastReportedState) {
+            return;
+        }
+        mLastReportedState = state;
+
+        int batteryStatsState = internalToBatteryStatsWifiState(state);
+        if (batteryStatsState == INVALID) {
+            return;
+        }
+
         try {
-            mBatteryStatsManager.reportWifiState(state, null);
+            mBatteryStatsManager.reportWifiState(batteryStatsState, null);
         } catch (RejectedExecutionException e) {
             Log.e(TAG, "Battery stats executor is being shutdown " + e.getMessage());
         }
     }
 
     /**
+     * Reports the most active state among Wifi ifaces. e.g. Connected is more active than
+     * disconnected.
+     */
+    @WifiStateTrackerState
+    private int getHighestPriorityState() {
+        int highest = INVALID;
+        for (int i : mIfaceToWifiState.values()) {
+            highest = Math.max(highest, i);
+        }
+        return highest;
+    }
+
+    /**
      * Inform the WifiState to this tracker to translate into the
      * WifiState corresponding to BatteryStatsManager.
-     * @param state state corresponding to the ClientModeImpl state
+     * @param ifaceName iface name whose state has changed
+     * @param state state corresponding to the ClientModeImpl state, one of the
+     *        {@link WifiStateTrackerState} values.
      */
-    public void updateState(int state) {
-        int reportState = BatteryStatsManager.WIFI_STATE_OFF;
-        if (state != mWifiState) {
-            switch(state) {
-                case SCAN_MODE:
-                    reportState = BatteryStatsManager.WIFI_STATE_OFF_SCANNING;
-                    break;
-                case DISCONNECTED:
-                    reportState = BatteryStatsManager.WIFI_STATE_ON_DISCONNECTED;
-                    break;
-                case CONNECTED:
-                    reportState = BatteryStatsManager.WIFI_STATE_ON_CONNECTED_STA;
-                    break;
-                case SOFT_AP:
-                    reportState = BatteryStatsManager.WIFI_STATE_SOFT_AP;
-                    break;
-                case INVALID:
-                    mWifiState = INVALID;
-                    /* Fall through */
-                default:
-                    return;
-            }
-            mWifiState = state;
-            informWifiStateBatteryStats(reportState);
+    public void updateState(String ifaceName, @WifiStateTrackerState int state) {
+        mIfaceToWifiState.put(ifaceName, state);
+        int highestPriorityState = getHighestPriorityState();
+        informWifiStateBatteryStats(highestPriorityState);
+    }
+
+    private static int internalToBatteryStatsWifiState(@WifiStateTrackerState int internal) {
+        switch (internal) {
+            case SCAN_MODE:
+                return BatteryStatsManager.WIFI_STATE_OFF_SCANNING;
+            case DISCONNECTED:
+                return BatteryStatsManager.WIFI_STATE_ON_DISCONNECTED;
+            case CONNECTED:
+                return BatteryStatsManager.WIFI_STATE_ON_CONNECTED_STA;
+            case SOFT_AP:
+                return BatteryStatsManager.WIFI_STATE_SOFT_AP;
+            case INVALID:
+            default:
+                return INVALID;
         }
-        return;
     }
 }

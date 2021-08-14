@@ -1,15 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <issues format="5" by="lint 4.1.0" client="cli" variant="all" version="4.1.0">
-
-    <issue
-        id="NewApi"
-        message="Class requires API level 31 (current min is 30): `android.os.BugreportManager`"
-        errorLine1="        BugreportManager bugreportManager = mContext.getSystemService(BugreportManager.class);"
-        errorLine2="                                                                      ~~~~~~~~~~~~~~~~">
-        <location
-            file="packages/modules/Wifi/service/java/com/android/server/wifi/WifiDiagnostics.java"
-            line="318"
-            column="71"/>
-    </issue>
-
 </issues>

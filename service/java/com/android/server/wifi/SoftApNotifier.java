@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
@@ -42,32 +41,32 @@ public class SoftApNotifier {
 
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
 
-    public SoftApNotifier(WifiContext context, FrameworkFacade framework) {
+    public SoftApNotifier(WifiContext context, FrameworkFacade framework,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = framework;
-        mNotificationManager =
-                mContext.getSystemService(NotificationManager.class);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
      * Show notification to notify user softap disable because auto shutdown timeout expired.
      */
-    public void showSoftApShutDownTimeoutExpiredNotification() {
+    public void showSoftApShutdownTimeoutExpiredNotification() {
         mNotificationManager.notify(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED,
-                buildSoftApShutDownTimeoutExpiredNotification());
+                buildSoftApShutdownTimeoutExpiredNotification());
     }
 
     /**
      * Dismiss notification which used to notify user softap disable because auto shutdown
      * timeout expired.
      */
-    public void dismissSoftApShutDownTimeoutExpiredNotification() {
-        mNotificationManager.cancel(null, NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
+    public void dismissSoftApShutdownTimeoutExpiredNotification() {
+        mNotificationManager.cancel(NOTIFICATION_ID_SOFTAP_AUTO_DISABLED);
     }
 
-    private Notification buildSoftApShutDownTimeoutExpiredNotification() {
+    private Notification buildSoftApShutdownTimeoutExpiredNotification() {
         String title = mContext.getResources().getString(
                 R.string.wifi_softap_auto_shutdown_timeout_expired_title);
         String contentSummary = mContext.getResources().getString(
@@ -91,9 +90,10 @@ public class SoftApNotifier {
 
     private PendingIntent launchWifiTetherSettings() {
         Intent intent = new Intent(ACTION_HOTSPOT_PREFERENCES)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .setPackage(mFrameworkFacade.getSettingsPackageName(mContext));
         return mFrameworkFacade.getActivity(mContext, 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
 

@@ -301,7 +301,7 @@ public class NetworkDetail {
         //set up channel info
         mPrimaryFreq = freq;
         int channelWidth = ScanResult.UNSPECIFIED;
-        int centerFreq0 = 0;
+        int centerFreq0 = mPrimaryFreq;
         int centerFreq1 = 0;
 
         // First check if HE Operation IE is present
@@ -338,6 +338,12 @@ public class NetworkDetail {
                 centerFreq0 = htOperation.getCenterFreq0(mPrimaryFreq);
             }
         }
+
+        if (channelWidth == ScanResult.UNSPECIFIED) {
+            // Failed to obtain channel info from HE, VHT, HT IEs (possibly a 802.11a/b/g legacy AP)
+            channelWidth = ScanResult.CHANNEL_WIDTH_20MHZ;
+        }
+
         mChannelWidth = channelWidth;
         mCenterfreq0 = centerFreq0;
         mCenterfreq1 = centerFreq1;

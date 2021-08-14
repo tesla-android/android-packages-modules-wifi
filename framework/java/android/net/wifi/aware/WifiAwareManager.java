@@ -22,6 +22,7 @@ import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
+import android.annotation.SystemApi;
 import android.annotation.SystemService;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -36,6 +37,10 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -115,8 +120,9 @@ public class WifiAwareManager {
     private static final boolean VDBG = false; // STOPSHIP if true
 
     /**
-     * Broadcast intent action to indicate that the state of Wi-Fi Aware availability has changed.
-     * Use the {@link #isAvailable()} to query the current status.
+     * Broadcast intent action to indicate that the state of Wi-Fi Aware availability has changed
+     * and all active Aware sessions are no longer usable. Use the {@link #isAvailable()} to query
+     * the current status.
      * This broadcast is <b>not</b> sticky, use the {@link #isAvailable()} API after registering
      * the broadcast to check the current state of Wi-Fi Aware.
      * <p>Note: The broadcast is only delivered to registered receivers - no manifest registered
@@ -151,6 +157,27 @@ public class WifiAwareManager {
      */
     public static final int WIFI_AWARE_DATA_PATH_ROLE_RESPONDER = 1;
 
+    /** @hide */
+    @IntDef({
+            WIFI_AWARE_DISCOVERY_LOST_REASON_UNKNOWN,
+            WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DiscoveryLostReasonCode {
+    }
+
+    /**
+     * Reason code provided in {@link DiscoverySessionCallback#onServiceLost(PeerHandle, int)}
+     * indicating that the service was lost for unknown reason.
+     */
+    public static final int WIFI_AWARE_DISCOVERY_LOST_REASON_UNKNOWN = 0;
+
+    /**
+     * Reason code provided in {@link DiscoverySessionCallback#onServiceLost(PeerHandle, int)}
+     * indicating that the service advertised by the peer is no longer visible. This may be because
+     * the peer is out of range or because the peer stopped advertising this service.
+     */
+    public static final int WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE = 1;
+
     private final Context mContext;
     private final IWifiAwareManager mService;
 
@@ -179,14 +206,92 @@ public class WifiAwareManager {
     }
 
     /**
+     * Return the current status of the Aware service: whether or not the device is already attached
+     * to an Aware cluster. To attach to an Aware cluster, please use
+     * {@link #attach(AttachCallback, Handler)} or
+     * {@link #attach(AttachCallback, IdentityChangedListener, Handler)}.
+     * @return A boolean indicating whether the device is attached to a cluster at this time (true)
+     *         or not (false).
+     */
+    public boolean isDeviceAttached() {
+        try {
+            return mService.isDeviceAttached();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Enable the Wifi Aware Instant communication mode. If the device doesn't support this feature
+     * calling this API will result no action.
+     * @see Characteristics#isInstantCommunicationModeSupported()
+     * @param enable true for enable, false otherwise.
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void enableInstantCommunicationMode(boolean enable) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            mService.enableInstantCommunicationMode(mContext.getOpPackageName(), enable);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Return the current status of the Wifi Aware instant communication mode.
+     * If the device doesn't support this feature, return will always be false.
+     * @see Characteristics#isInstantCommunicationModeSupported()
+     * @return true if it is enabled, false otherwise.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    public boolean isInstantCommunicationModeEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.isInstantCommunicationModeEnabled();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Returns the characteristics of the Wi-Fi Aware interface: a set of parameters which specify
      * limitations on configurations, e.g. the maximum service name length.
+     * <p>
+     * May return {@code null} if the Wi-Fi Aware service is not initialized. Use
+     * {@link #attach(AttachCallback, Handler)} or
+     * {@link #attach(AttachCallback, IdentityChangedListener, Handler)} to initialize the Wi-Fi
+     * Aware service.
      *
      * @return An object specifying configuration limitations of Aware.
      */
-    public Characteristics getCharacteristics() {
+    public @Nullable Characteristics getCharacteristics() {
         try {
             return mService.getCharacteristics();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Return the available resources of the Wi-Fi aware service: a set of parameters which specify
+     * limitations on service usage, e.g the number of data-paths which could be created.
+     * <p>
+     * May return {@code null} if the Wi-Fi Aware service is not initialized. Use
+     * {@link #attach(AttachCallback, Handler)} or
+     * {@link #attach(AttachCallback, IdentityChangedListener, Handler)} to initialize the Wi-Fi
+     * Aware service.
+     *
+     * @return An object specifying the currently available resource of the Wi-Fi Aware service.
+     */
+    public @Nullable AwareResources getAvailableAwareResources() {
+        try {
+            return mService.getAvailableAwareResources();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -587,6 +692,7 @@ public class WifiAwareManager {
         private static final int CALLBACK_MESSAGE_SEND_FAIL = 6;
         private static final int CALLBACK_MESSAGE_RECEIVED = 7;
         private static final int CALLBACK_MATCH_WITH_DISTANCE = 8;
+        private static final int CALLBACK_MATCH_EXPIRED = 9;
 
         private static final String MESSAGE_BUNDLE_KEY_MESSAGE = "message";
         private static final String MESSAGE_BUNDLE_KEY_MESSAGE2 = "message2";
@@ -676,6 +782,11 @@ public class WifiAwareManager {
                             mOriginalCallback.onMessageReceived(new PeerHandle(msg.arg1),
                                     (byte[]) msg.obj);
                             break;
+                        case CALLBACK_MATCH_EXPIRED:
+                            mOriginalCallback
+                                    .onServiceLost(new PeerHandle(msg.arg1),
+                                            WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE);
+                            break;
                     }
                 }
             };
@@ -745,6 +856,15 @@ public class WifiAwareManager {
 
             onMatchCommon(CALLBACK_MATCH_WITH_DISTANCE, peerId, serviceSpecificInfo, matchFilter,
                     distanceMm);
+        }
+        @Override
+        public void onMatchExpired(int peerId) {
+            if (VDBG) {
+                Log.v(TAG, "onMatchExpired: peerId=" + peerId);
+            }
+            Message msg = mHandler.obtainMessage(CALLBACK_MATCH_EXPIRED);
+            msg.arg1 = peerId;
+            mHandler.sendMessage(msg);
         }
 
         @Override

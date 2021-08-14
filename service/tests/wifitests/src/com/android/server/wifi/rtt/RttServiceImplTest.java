@@ -763,12 +763,12 @@ public class RttServiceImplTest extends WifiBaseTest {
         RangingResult removed = results.second.remove(1);
         results.second.add(
                 new RangingResult(RangingResult.STATUS_FAIL, removed.getMacAddress(), 0, 0, 0, 0, 0,
-                        null, null, null, 0));
+                        null, null, null, 0, false));
         results.first.remove(0); // remove an AP request
         removed = results.second.remove(0);
         results.second.add(
                 new RangingResult(RangingResult.STATUS_FAIL, removed.getMacAddress(), 0, 0, 0, 0, 0,
-                        null, null, null, 0));
+                        null, null, null, 0, false));
 
         // (1) request ranging operation
         mDut.startRanging(mockIbinder, mPackageName, mFeatureId, null, request, mockCallback);
@@ -810,7 +810,7 @@ public class RttServiceImplTest extends WifiBaseTest {
         for (RangingResult result : results.second) {
             allFailResults.add(
                     new RangingResult(RangingResult.STATUS_FAIL, result.getMacAddress(), 0, 0, 0, 0,
-                            0, null, null, null, 0));
+                            0, null, null, null, 0, false));
         }
 
         // (1) request ranging operation
@@ -833,59 +833,6 @@ public class RttServiceImplTest extends WifiBaseTest {
         // verify metrics
         verify(mockMetrics).recordRequest(eq(mDefaultWs), eq(request));
         verify(mockMetrics).recordResult(eq(request), eq(new ArrayList<>()), anyInt());
-        verify(mockMetrics).recordOverallStatus(WifiMetricsProto.WifiRttLog.OVERALL_SUCCESS);
-
-        verify(mockNative, atLeastOnce()).isReady();
-        verifyNoMoreInteractions(mockNative, mockMetrics, mockCallback,
-                mAlarmManager.getAlarmManager());
-    }
-
-    /**
-     * Validate that when the HAL returns results with "missing" entries (i.e. some requests
-     * don't get results) AND these correspond to peers which do not support 802.11mc AND the
-     * request is from a non-privileged context: they are filled-in with FAILED results.
-     */
-    @Test
-    public void testMissingResultsForNonSupportOf80211mc() throws Exception {
-        RangingRequest request = RttTestUtils.getDummyRangingRequest((byte) 0);
-        Pair<List<RangingResult>, List<RangingResult>> results =
-                RttTestUtils.getDummyRangingResults(request);
-        results.first.remove(1); // remove the entry which doesn't support 802.11mc
-        RangingResult removed = results.second.remove(1);
-        results.second.add(
-                new RangingResult(RangingResult.STATUS_RESPONDER_DOES_NOT_SUPPORT_IEEE80211MC,
-                        removed.getMacAddress(), 0, 0, 0, 0, 0, null, null, null, 0));
-        results.first.remove(
-                0); // remove an AP request (i.e. test combo of missing for different reasons)
-        removed = results.second.remove(0);
-        results.second.add(
-                new RangingResult(RangingResult.STATUS_FAIL, removed.getMacAddress(), 0, 0, 0, 0, 0,
-                        null, null, null, 0));
-
-        when(mockContext.checkCallingOrSelfPermission(
-                android.Manifest.permission.LOCATION_HARDWARE)).thenReturn(
-                PackageManager.PERMISSION_DENIED);
-
-        // (1) request ranging operation
-        mDut.startRanging(mockIbinder, mPackageName, mFeatureId, null, request, mockCallback);
-        mMockLooper.dispatchAll();
-
-        // (2) verify that request issued to native
-        verify(mockNative).rangeRequest(mIntCaptor.capture(), eq(request), eq(false));
-        verifyWakeupSet(true, 0);
-
-        // (3) return results with missing entries
-        mDut.onRangingResults(mIntCaptor.getValue(), results.second);
-        mMockLooper.dispatchAll();
-
-        // (5) verify that (full) results dispatched
-        verify(mockCallback).onRangingResults(mListCaptor.capture());
-        assertTrue(compareListContentsNoOrdering(results.second, mListCaptor.getValue()));
-        verifyWakeupCancelled();
-
-        // verify metrics
-        verify(mockMetrics).recordRequest(eq(mDefaultWs), eq(request));
-        verify(mockMetrics).recordResult(eq(request), eq(results.second), anyInt());
         verify(mockMetrics).recordOverallStatus(WifiMetricsProto.WifiRttLog.OVERALL_SUCCESS);
 
         verify(mockNative, atLeastOnce()).isReady();

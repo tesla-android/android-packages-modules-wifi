@@ -45,7 +45,6 @@ import androidx.test.filters.SmallTest;
 import com.android.server.wifi.HalDeviceManager;
 import com.android.server.wifi.PropertyService;
 import com.android.server.wifi.WifiBaseTest;
-import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.WifiVendorHal;
 
@@ -55,6 +54,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -83,7 +83,6 @@ public class WifiP2pNativeTest extends WifiBaseTest {
     private static final String TEST_NFC_SELECT_MSG = "select";
     private static final String TEST_CLIENT_LIST = "aa:bb:cc:dd:ee:ff 11:22:33:44:55:66";
 
-    @Mock private WifiInjector mWifiInjector;
     @Mock private WifiNl80211Manager mWifiCondManager;
     @Mock private WifiNative mWifiNative;
     @Mock private WifiVendorHal mWifiVendorHalMock;
@@ -115,14 +114,12 @@ public class WifiP2pNativeTest extends WifiBaseTest {
         mWifiClientInterfaceNames.add("wlan1");
 
         mWifiP2pNative = new WifiP2pNative(
-                mWifiInjector,
+                mWifiCondManager,
+                mWifiNative,
                 mWifiVendorHalMock,
                 mSupplicantP2pIfaceHalMock,
                 mHalDeviceManagerMock,
                 mPropertyServiceMock);
-
-        when(mWifiInjector.getWifiCondManager()).thenReturn(mWifiCondManager);
-        when(mWifiInjector.getWifiNative()).thenReturn(mWifiNative);
 
         when(mWifiNative.getClientInterfaceNames()).thenReturn(mWifiClientInterfaceNames);
 
@@ -349,11 +346,22 @@ public class WifiP2pNativeTest extends WifiBaseTest {
      * Verifies setting p2p listen channel.
      */
     @Test
-    public void testP2pSetChannel() {
-        when(mSupplicantP2pIfaceHalMock.setListenChannel(anyInt(), anyInt()))
+    public void testP2pSetListenChannel() {
+        when(mSupplicantP2pIfaceHalMock.setListenChannel(anyInt()))
                 .thenReturn(true);
-        assertTrue(mWifiP2pNative.p2pSetChannel(1, 81));
-        verify(mSupplicantP2pIfaceHalMock).setListenChannel(eq(1), eq(81));
+        assertTrue(mWifiP2pNative.p2pSetListenChannel(1));
+        verify(mSupplicantP2pIfaceHalMock).setListenChannel(eq(1));
+    }
+
+    /**
+     * Verifies setting p2p operating channel.
+     */
+    @Test
+    public void testP2pSetOperatingChannel() {
+        when(mSupplicantP2pIfaceHalMock.setOperatingChannel(anyInt(), any()))
+                .thenReturn(true);
+        assertTrue(mWifiP2pNative.p2pSetOperatingChannel(65, Collections.emptyList()));
+        verify(mSupplicantP2pIfaceHalMock).setOperatingChannel(eq(65), any());
     }
 
     /**

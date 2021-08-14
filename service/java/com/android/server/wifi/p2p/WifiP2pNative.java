@@ -19,68 +19,40 @@ package com.android.server.wifi.p2p;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.hardware.wifi.V1_0.IWifiP2pIface;
-import android.hardware.wifi.V1_0.IfaceType;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pGroupList;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 import android.os.Handler;
+import android.os.WorkSource;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.server.wifi.HalDeviceManager;
 import com.android.server.wifi.PropertyService;
-import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.WifiVendorHal;
 
+import java.util.List;
 import java.util.Set;
 
 /**
  * Native calls for bring up/shut down of the supplicant daemon and for
  * sending requests to the supplicant daemon
- *
- * {@hide}
  */
 public class WifiP2pNative {
     private static final String TAG = "WifiP2pNative";
     private boolean mVerboseLoggingEnabled = false;
     private final SupplicantP2pIfaceHal mSupplicantP2pIfaceHal;
-    private final WifiInjector mWifiInjector;
+    private final WifiNative mWifiNative;
+    private final WifiNl80211Manager mWifiNl80211Manager;
     private final HalDeviceManager mHalDeviceManager;
     private final PropertyService mPropertyService;
     private final WifiVendorHal mWifiVendorHal;
     private IWifiP2pIface mIWifiP2pIface;
-    private InterfaceAvailableListenerInternal mInterfaceAvailableListener;
     private InterfaceDestroyedListenerInternal mInterfaceDestroyedListener;
-
-    // Internal callback registered to HalDeviceManager.
-    private class InterfaceAvailableListenerInternal implements
-            HalDeviceManager.InterfaceAvailableForRequestListener {
-        private final HalDeviceManager.InterfaceAvailableForRequestListener mExternalListener;
-
-        InterfaceAvailableListenerInternal(
-                HalDeviceManager.InterfaceAvailableForRequestListener externalListener) {
-            mExternalListener = externalListener;
-        }
-
-        @Override
-        public void onAvailabilityChanged(boolean isAvailable) {
-            Log.d(TAG, "P2P InterfaceAvailableListener " + isAvailable);
-            // We need another level of abstraction here. When a P2P interface is created,
-            // we should mask the availability change callback from WifiP2pService.
-            // This is because when the P2P interface is created, we'll get a callback
-            // indicating that we can no longer create a new P2P interface. We don't need to
-            // propagate this internal state to WifiP2pServiceImpl.
-            if (mIWifiP2pIface != null && !isAvailable) {
-                Log.i(TAG, "Masking interface non-availability callback because "
-                        + "we created a P2P iface");
-                return;
-            }
-            mExternalListener.onAvailabilityChanged(isAvailable);
-        }
-    }
 
     // Internal callback registered to HalDeviceManager.
     private class InterfaceDestroyedListenerInternal implements
@@ -114,10 +86,15 @@ public class WifiP2pNative {
         }
     }
 
-    public WifiP2pNative(WifiInjector wifiInjector, WifiVendorHal wifiVendorHal,
-            SupplicantP2pIfaceHal p2pIfaceHal, HalDeviceManager halDeviceManager,
+    public WifiP2pNative(
+            WifiNl80211Manager wifiNl80211Manager,
+            WifiNative wifiNative,
+            WifiVendorHal wifiVendorHal,
+            SupplicantP2pIfaceHal p2pIfaceHal,
+            HalDeviceManager halDeviceManager,
             PropertyService propertyService) {
-        mWifiInjector = wifiInjector;
+        mWifiNative = wifiNative;
+        mWifiNl80211Manager = wifiNl80211Manager;
         mWifiVendorHal = wifiVendorHal;
         mSupplicantP2pIfaceHal = p2pIfaceHal;
         mHalDeviceManager = halDeviceManager;
@@ -180,10 +157,10 @@ public class WifiP2pNative {
      * For devices which do not the support the HAL, this will bypass HalDeviceManager &
      * teardown any existing iface.
      */
-    private String createP2pIface(Handler handler) {
+    private String createP2pIface(Handler handler, WorkSource requestorWs) {
         if (mHalDeviceManager.isSupported()) {
             mIWifiP2pIface = mHalDeviceManager
-                                .createP2pIface(mInterfaceDestroyedListener, handler);
+                                .createP2pIface(mInterfaceDestroyedListener, handler, requestorWs);
             if (mIWifiP2pIface == null) {
                 Log.e(TAG, "Failed to create P2p iface in HalDeviceManager");
                 return null;
@@ -202,43 +179,20 @@ public class WifiP2pNative {
     }
 
     /**
-     * Register for an interface available callbacks from HalDeviceManager.
-     *
-     * @param listener callback to be invoked when the interface is available/not available.
-     */
-    public void registerInterfaceAvailableListener(
-            @NonNull HalDeviceManager.InterfaceAvailableForRequestListener listener,
-            Handler handler) {
-        mInterfaceAvailableListener = new InterfaceAvailableListenerInternal(listener);
-        // The interface available callbacks are cleared on every HAL stop, so need to
-        // re-register these callbacks on every start.
-        mHalDeviceManager.registerStatusListener(() -> {
-            if (mHalDeviceManager.isStarted()) {
-                Log.i(TAG, "Registering for interface available listener");
-                mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                        IfaceType.P2P, mInterfaceAvailableListener, handler);
-            }
-        }, handler);
-        if (mHalDeviceManager.isStarted()) {
-            mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                    IfaceType.P2P, mInterfaceAvailableListener, handler);
-        }
-    }
-
-    /**
      * Setup Interface for P2p mode.
      *
      * @param destroyedListener Listener to be invoked when the interface is destroyed.
      * @param handler Handler to be used for invoking the destroyedListener.
+     * @param requestorWs Worksource to attribute the request to.
      */
     public String setupInterface(
             @NonNull HalDeviceManager.InterfaceDestroyedListener destroyedListener,
-            Handler handler) {
+            @NonNull Handler handler, @NonNull WorkSource requestorWs) {
         Log.d(TAG, "Setup P2P interface");
         if (mIWifiP2pIface == null) {
             mInterfaceDestroyedListener =
                     new InterfaceDestroyedListenerInternal(destroyedListener);
-            String ifaceName = createP2pIface(handler);
+            String ifaceName = createP2pIface(handler, requestorWs);
             if (ifaceName == null) {
                 Log.e(TAG, "Failed to create P2p iface");
                 return null;
@@ -279,6 +233,19 @@ public class WifiP2pNative {
             Log.i(TAG, "HAL (HIDL) is not supported. Destroy listener for the interface.");
             String ifaceName = mPropertyService.getString(P2P_INTERFACE_PROPERTY, P2P_IFACE_NAME);
             mInterfaceDestroyedListener.teardownAndInvalidate(ifaceName);
+        }
+    }
+
+    /**
+     * Replace requestorWs in-place when iface is already enabled.
+     */
+    public boolean replaceRequestorWs(WorkSource requestorWs) {
+        if (mHalDeviceManager.isSupported()) {
+            if (mIWifiP2pIface == null) return false;
+            return mHalDeviceManager.replaceRequestorWs(mIWifiP2pIface, requestorWs);
+        } else {
+            Log.i(TAG, "HAL (HIDL) is not supported. Ignore replace requestorWs");
+            return true;
         }
     }
 
@@ -495,13 +462,26 @@ public class WifiP2pNative {
      * operating class (180).
      *
      * @param lc Wifi channel. eg, 1, 6, 11.
-     * @param oc Operating Class indicates the channel set of the AP
-     *        indicated by this BSSID
      *
      * @return true, if operation was successful.
      */
-    public boolean p2pSetChannel(int lc, int oc) {
-        return mSupplicantP2pIfaceHal.setListenChannel(lc, oc);
+    public boolean p2pSetListenChannel(int lc) {
+        return mSupplicantP2pIfaceHal.setListenChannel(lc);
+    }
+
+    /**
+     * Set P2P operating channel.
+     *
+     * @param oc Wifi channel, eg, 1, 6, 11.
+     * @param unsafeChannels channels are not allowed.
+     * @return true if operation was successful.
+     */
+    public boolean p2pSetOperatingChannel(int oc, @NonNull List<CoexUnsafeChannel> unsafeChannels) {
+        if (null == unsafeChannels) {
+            Log.wtf(TAG, "unsafeChannels is null.");
+            return false;
+        }
+        return mSupplicantP2pIfaceHal.setOperatingChannel(oc, unsafeChannels);
     }
 
     /**
@@ -615,12 +595,10 @@ public class WifiP2pNative {
     private void abortWifiRunningScanIfNeeded(boolean isJoin) {
         if (!isJoin) return;
 
-        WifiNl80211Manager wifiCondManager = mWifiInjector.getWifiCondManager();
-        WifiNative wifiNative = mWifiInjector.getWifiNative();
-        Set<String> wifiClientInterfaces = wifiNative.getClientInterfaceNames();
+        Set<String> wifiClientInterfaces = mWifiNative.getClientInterfaceNames();
 
         for (String interfaceName: wifiClientInterfaces) {
-            wifiCondManager.abortScan(interfaceName);
+            mWifiNl80211Manager.abortScan(interfaceName);
         }
     }
 
@@ -864,5 +842,16 @@ public class WifiP2pNative {
      */
     public long getSupportedFeatureSet(@NonNull String ifaceName) {
         return mWifiVendorHal.getSupportedFeatureSet(ifaceName);
+    }
+
+    /**
+     * Set Wifi Display R2 device info.
+     *
+     * @param hex WFD device info as described in section 5.1.12 of WFD technical
+     *        specification v2.1.0.
+     * @return true, if operation was successful.
+     */
+    public boolean setWfdR2DeviceInfo(String hex) {
+        return mSupplicantP2pIfaceHal.setWfdR2DeviceInfo(hex);
     }
 }

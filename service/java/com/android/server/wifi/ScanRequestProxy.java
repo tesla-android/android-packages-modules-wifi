@@ -19,6 +19,7 @@ package com.android.server.wifi;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_SCAN_THROTTLE_ENABLED;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.content.Context;
@@ -38,13 +39,18 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
+import com.android.wifi.resources.R;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -107,7 +113,9 @@ public class ScanRequestProxy {
     private final ArrayMap<Pair<Integer, String>, LinkedList<Long>> mLastScanTimestampsForFgApps =
             new ArrayMap();
     // Scan results cached from the last full single scan request.
-    private final List<ScanResult> mLastScanResults = new ArrayList<>();
+    // Stored as a map of bssid -> ScanResult to allow other clients to perform ScanResult lookup
+    // for bssid more efficiently.
+    private final Map<String, ScanResult> mLastScanResultsMap = new HashMap<>();
     // external ScanResultCallback tracker
     private final RemoteCallbackList<IScanResultsCallback> mRegisteredScanResultsCallbacks;
     // Global scan listener for listening to all scan requests.
@@ -139,10 +147,10 @@ public class ScanRequestProxy {
                 Log.d(TAG, "Received " + scanResults.length + " scan results");
             }
             // Only process full band scan results.
-            if (WifiScanner.isFullBandScan(scanData.getBandScanned(), false)) {
+            if (WifiScanner.isFullBandScan(scanData.getScannedBandsInternal(), false)) {
                 // Store the last scan results & send out the scan completion broadcast.
-                mLastScanResults.clear();
-                mLastScanResults.addAll(Arrays.asList(scanResults));
+                mLastScanResultsMap.clear();
+                Arrays.stream(scanResults).forEach(s -> mLastScanResultsMap.put(s.BSSID, s));
                 sendScanResultBroadcast(true);
                 sendScanResultsAvailableToCallbacks();
             }
@@ -257,7 +265,7 @@ public class ScanRequestProxy {
         }
         mWifiScanner.setScanningEnabled(enable);
         sendScanAvailableBroadcast(mContext, enable);
-        clearScanResults();
+        if (!enable) clearScanResults();
         Log.i(TAG, "Scanning is " + (enable ? "enabled" : "disabled"));
     }
 
@@ -337,6 +345,9 @@ public class ScanRequestProxy {
      */
     private boolean shouldScanRequestBeThrottledForForegroundApp(
             int callingUid, String packageName) {
+        if (isPackageNameInExceptionList(packageName, true)) {
+            return false;
+        }
         LinkedList<Long> scanRequestTimestamps =
                 getOrCreateScanRequestTimestampsForForegroundApp(callingUid, packageName);
         long currentTimeMillis = mClock.getElapsedSinceBootMillis();
@@ -350,10 +361,31 @@ public class ScanRequestProxy {
         return false;
     }
 
+    private boolean isPackageNameInExceptionList(String packageName, boolean isForeground) {
+        if (packageName == null) {
+            return false;
+        }
+        String[] exceptionList = mContext.getResources().getStringArray(isForeground
+                ? R.array.config_wifiForegroundScanThrottleExceptionList
+                : R.array.config_wifiBackgroundScanThrottleExceptionList);
+        if (exceptionList == null) {
+            return false;
+        }
+        for (String name : exceptionList) {
+            if (packageName.equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Checks if the scan request from a background app needs to be throttled.
      */
-    private boolean shouldScanRequestBeThrottledForBackgroundApp() {
+    private boolean shouldScanRequestBeThrottledForBackgroundApp(String packageName) {
+        if (isPackageNameInExceptionList(packageName, false)) {
+            return false;
+        }
         long lastScanMs = mLastScanTimestampForBgApps;
         long elapsedRealtime = mClock.getElapsedSinceBootMillis();
         if (lastScanMs != 0
@@ -366,16 +398,15 @@ public class ScanRequestProxy {
     }
 
     /**
-     * Check if the request comes from background app.
+     * Safely retrieve package importance.
      */
-    private boolean isRequestFromBackground(int callingUid, String packageName) {
+    private int getPackageImportance(int callingUid, String packageName) {
         mAppOps.checkPackage(callingUid, packageName);
         try {
-            return mActivityManager.getPackageImportance(packageName)
-                    > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE;
+            return mActivityManager.getPackageImportance(packageName);
         } catch (SecurityException e) {
             Log.e(TAG, "Failed to check the app state", e);
-            return true;
+            return ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE;
         }
     }
 
@@ -383,10 +414,12 @@ public class ScanRequestProxy {
      * Checks if the scan request from the app (specified by callingUid & packageName) needs
      * to be throttled.
      */
-    private boolean shouldScanRequestBeThrottledForApp(int callingUid, String packageName) {
+    private boolean shouldScanRequestBeThrottledForApp(int callingUid, String packageName,
+            int packageImportance) {
         boolean isThrottled;
-        if (isRequestFromBackground(callingUid, packageName)) {
-            isThrottled = shouldScanRequestBeThrottledForBackgroundApp();
+        if (packageImportance
+                > ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE) {
+            isThrottled = shouldScanRequestBeThrottledForBackgroundApp(packageName);
             if (isThrottled) {
                 if (mVerboseLoggingEnabled) {
                     Log.v(TAG, "Background scan app request [" + callingUid + ", "
@@ -426,22 +459,29 @@ public class ScanRequestProxy {
         // Check and throttle scan request unless,
         // a) App has either NETWORK_SETTINGS or NETWORK_SETUP_WIZARD permission.
         // b) Throttling has been disabled by user.
+        int packageImportance = getPackageImportance(callingUid, packageName);
         if (!fromSettingsOrSetupWizard && mThrottleEnabled
-                && shouldScanRequestBeThrottledForApp(callingUid, packageName)) {
+                && shouldScanRequestBeThrottledForApp(callingUid, packageName, packageImportance)) {
             Log.i(TAG, "Scan request from " + packageName + " throttled");
             sendScanResultFailureBroadcastToPackage(packageName);
             return false;
         }
         // Create a worksource using the caller's UID.
         WorkSource workSource = new WorkSource(callingUid, packageName);
+        mWifiMetrics.getScanMetrics().setWorkSource(workSource);
+        mWifiMetrics.getScanMetrics().setImportance(packageImportance);
 
         // Create the scan settings.
         WifiScanner.ScanSettings settings = new WifiScanner.ScanSettings();
         // Scan requests from apps with network settings will be of high accuracy type.
         if (fromSettingsOrSetupWizard) {
             settings.type = WifiScanner.SCAN_TYPE_HIGH_ACCURACY;
+        } else {
+            if (SdkLevel.isAtLeastS()) {
+                // since the scan request is from a normal app, do not scan all 6Ghz channels.
+                settings.set6GhzPscOnlyEnabled(true);
+            }
         }
-        // always do full scans
         settings.band = WifiScanner.WIFI_BAND_ALL;
         settings.reportEvents = WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN
                 | WifiScanner.REPORT_EVENT_FULL_SCAN_RESULT;
@@ -465,14 +505,28 @@ public class ScanRequestProxy {
      */
     public List<ScanResult> getScanResults() {
         // return a copy to prevent external modification
-        return new ArrayList<>(mLastScanResults);
+        return new ArrayList<>(mLastScanResultsMap.values());
     }
+
+    /**
+     * Return the ScanResult from the most recent access point scan for the provided bssid.
+     *
+     * @param bssid BSSID as string {@link ScanResult#BSSID}.
+     * @return ScanResult for the corresponding bssid if found, null otherwise.
+     */
+    public @Nullable ScanResult getScanResult(@NonNull String bssid) {
+        ScanResult scanResult = mLastScanResultsMap.get(bssid);
+        if (scanResult == null) return null;
+        // return a copy to prevent external modification
+        return new ScanResult(scanResult);
+    }
+
 
     /**
      * Clear the stored scan results.
      */
     private void clearScanResults() {
-        mLastScanResults.clear();
+        mLastScanResultsMap.clear();
         mLastScanTimestampForBgApps = 0;
         mLastScanTimestampsForFgApps.clear();
     }
@@ -535,5 +589,55 @@ public class ScanRequestProxy {
      */
     public boolean isScanThrottleEnabled() {
         return mThrottleEnabled;
+    }
+
+    /** Indicate whether there are WPA2 personal only networks. */
+    public boolean isWpa2PersonalOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForPskNetwork(r)
+                && !ScanResultUtil.isScanResultForSaeNetwork(r));
+    }
+
+    /** Indicate whether there are WPA3 only networks. */
+    public boolean isWpa3PersonalOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForSaeNetwork(r)
+                && !ScanResultUtil.isScanResultForPskNetwork(r));
+    }
+
+    /** Indicate whether there are OPEN only networks. */
+    public boolean isOpenOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForOpenNetwork(r)
+                && !ScanResultUtil.isScanResultForOweNetwork(r));
+    }
+
+    /** Indicate whether there are OWE only networks. */
+    public boolean isOweOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForOweNetwork(r)
+                && !ScanResultUtil.isScanResultForOweTransitionNetwork(r));
+    }
+
+    /** Indicate whether there are WPA2 Enterprise only networks. */
+    public boolean isWpa2EnterpriseOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForEapNetwork(r)
+                && !ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(r)
+                && !ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(r));
+    }
+
+    /** Indicate whether there are WPA3 Enterprise only networks. */
+    public boolean isWpa3EnterpriseOnlyNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForWpa3EnterpriseOnlyNetwork(r)
+                && !ScanResultUtil.isScanResultForWpa3EnterpriseTransitionNetwork(r)
+                && !ScanResultUtil.isScanResultForEapNetwork(r));
     }
 }

@@ -82,6 +82,24 @@ public class WifiSettingsConfigStore {
     public static final Key<String> WIFI_P2P_DEVICE_NAME =
             new Key<>("wifi_p2p_device_name", null);
 
+    /**
+     * Whether Wifi scoring is enabled or not.
+     */
+    public static final Key<Boolean> WIFI_SCORING_ENABLED =
+            new Key<>("wifi_scoring_enabled", true);
+
+    /**
+     * Store the STA factory MAC address retrieved from the driver on the first bootup.
+     */
+    public static final Key<String> WIFI_STA_FACTORY_MAC_ADDRESS =
+            new Key<>("wifi_sta_factory_mac_address", null);
+
+    /**
+     * Store the default country code updated via {@link WifiManager#setDefaultCountryCode(String)}
+     */
+    public static final Key<String> WIFI_DEFAULT_COUNTRY_CODE =
+            new Key<>("wifi_default_country_code", WifiCountryCode.getOemDefaultCountryCode());
+
     /******** Wifi shared pref keys ***************/
 
     private final Context mContext;

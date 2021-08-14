@@ -19,12 +19,14 @@ package com.android.server.wifi.scanner;
 import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY;
+import static android.net.wifi.WifiScanner.WIFI_BAND_60_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_6_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_ALL;
 import static android.net.wifi.WifiScanner.WIFI_BAND_COUNT;
 import static android.net.wifi.WifiScanner.WIFI_BAND_INDEX_24_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_INDEX_5_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_INDEX_5_GHZ_DFS_ONLY;
+import static android.net.wifi.WifiScanner.WIFI_BAND_INDEX_60_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_INDEX_6_GHZ;
 import static android.net.wifi.WifiScanner.WIFI_BAND_UNSPECIFIED;
 
@@ -35,8 +37,11 @@ import android.net.wifi.WifiScanner.WifiBandIndex;
 import android.util.ArraySet;
 
 import com.android.server.wifi.WifiNative;
+import com.android.server.wifi.proto.WifiStatsLog;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -61,8 +66,12 @@ public class KnownBandsChannelHelper extends ChannelHelper {
     private WifiScanner.ChannelSpec[][] mBandsToChannels;
 
     protected void setBandChannels(int[] channels2G, int[] channels5G, int[] channelsDfs,
-            int[] channels6G) {
+            int[] channels6G, int[] channels60G) {
         mBandsToChannels = new WifiScanner.ChannelSpec[WIFI_BAND_COUNT][];
+
+        for (int i = 0; i < WIFI_BAND_COUNT; i++) {
+            mBandsToChannels[i] = NO_CHANNELS;
+        }
 
         if (channels2G.length != 0) {
             mBandsToChannels[WIFI_BAND_INDEX_24_GHZ] =
@@ -95,6 +104,14 @@ public class KnownBandsChannelHelper extends ChannelHelper {
         } else {
             mBandsToChannels[WIFI_BAND_INDEX_6_GHZ] = NO_CHANNELS;
         }
+
+        if (channels60G.length != 0) {
+            mBandsToChannels[WIFI_BAND_INDEX_60_GHZ] =
+                    new WifiScanner.ChannelSpec[channels60G.length];
+            copyChannels(mBandsToChannels[WIFI_BAND_INDEX_60_GHZ], channels60G);
+        } else {
+            mBandsToChannels[WIFI_BAND_INDEX_60_GHZ] = NO_CHANNELS;
+        }
     }
 
     private static void copyChannels(
@@ -111,15 +128,14 @@ public class KnownBandsChannelHelper extends ChannelHelper {
             return null;
         }
 
-        WifiScanner.ChannelSpec[][] channels = new WifiScanner.ChannelSpec[WIFI_BAND_COUNT][];
+        List<WifiScanner.ChannelSpec[]> channelList = new ArrayList<>();
         for (@WifiBandIndex int index = 0; index < WIFI_BAND_COUNT; index++) {
-            if ((band & (1 << index)) != 0) {
-                channels[index] = mBandsToChannels[index];
-            } else {
-                channels[index] = NO_CHANNELS;
+            if ((band & (1 << index)) != 0 && mBandsToChannels[index].length > 0) {
+                channelList.add(mBandsToChannels[index]);
             }
         }
-        return channels;
+
+        return channelList.toArray(new WifiScanner.ChannelSpec[0][0]);
     }
 
     @Override
@@ -179,6 +195,8 @@ public class KnownBandsChannelHelper extends ChannelHelper {
             }
         } else if (ScanResult.is6GHz(frequency)) {
             return WIFI_BAND_6_GHZ;
+        } else if (ScanResult.is60GHz(frequency)) {
+            return WIFI_BAND_60_GHZ;
         } else {
             return WIFI_BAND_UNSPECIFIED;
         }
@@ -194,6 +212,8 @@ public class KnownBandsChannelHelper extends ChannelHelper {
                 return WIFI_BAND_INDEX_5_GHZ_DFS_ONLY;
             case WIFI_BAND_6_GHZ:
                 return WIFI_BAND_INDEX_6_GHZ;
+            case WIFI_BAND_60_GHZ:
+                return WIFI_BAND_INDEX_60_GHZ;
             default:
                 return -1;
         }
@@ -223,6 +243,38 @@ public class KnownBandsChannelHelper extends ChannelHelper {
             }
         }
         return false;
+    }
+
+    /**
+     * Convert Wifi channel frequency to a bucketed band value.
+     *
+     * @param frequency Frequency (e.g. 2417)
+     * @return WifiBandBucket enum value (e.g. BAND_2G)
+     */
+    public static int getBand(int frequency) {
+        int band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__UNKNOWN;
+
+        if (ScanResult.is24GHz(frequency)) {
+            band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_2G;
+        } else if (ScanResult.is5GHz(frequency)) {
+            if (frequency <= BAND_5_GHZ_LOW_END_FREQ) {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_LOW;
+            } else if (frequency <= BAND_5_GHZ_MID_END_FREQ) {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_MIDDLE;
+            } else {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_5G_HIGH;
+            }
+        } else if (ScanResult.is6GHz(frequency)) {
+            if (frequency <= BAND_6_GHZ_LOW_END_FREQ) {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_LOW;
+            } else if (frequency <= BAND_6_GHZ_MID_END_FREQ) {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_MIDDLE;
+            } else {
+                band = WifiStatsLog.WIFI_HEALTH_STAT_REPORTED__BAND__BAND_6G_HIGH;
+            }
+        }
+
+        return band;
     }
 
     /**
@@ -271,6 +323,7 @@ public class KnownBandsChannelHelper extends ChannelHelper {
         @Override
         public boolean containsBand(int band) {
             WifiScanner.ChannelSpec[][] bandChannels = getAvailableScanChannels(band);
+
             for (int i = 0; i < bandChannels.length; ++i) {
                 for (int j = 0; j < bandChannels[i].length; ++j) {
                     if (!mChannels.contains(bandChannels[i][j].frequency)) {
@@ -349,9 +402,22 @@ public class KnownBandsChannelHelper extends ChannelHelper {
         }
 
         @Override
+        public void add6GhzPscChannels() {
+            Set<Integer> missingChannels = getMissingChannelsFromBand(WIFI_BAND_6_GHZ);
+            if (missingChannels.isEmpty()) {
+                return;
+            }
+            for (int freq : missingChannels) {
+                if (ScanResult.is6GHzPsc(freq)) {
+                    mChannels.add(freq);
+                    mAllBands |= WIFI_BAND_6_GHZ;
+                }
+            }
+        }
+
+        @Override
         public void fillBucketSettings(WifiNative.BucketSettings bucketSettings, int maxChannels) {
-            if ((mChannels.size() > maxChannels || mAllBands == mExactBands)
-                    && mAllBands != 0) {
+            if ((mChannels.size() > maxChannels || mAllBands == mExactBands) && mAllBands != 0) {
                 bucketSettings.band = mAllBands;
                 bucketSettings.num_channels = 0;
                 bucketSettings.channels = null;
@@ -382,7 +448,6 @@ public class KnownBandsChannelHelper extends ChannelHelper {
     }
 
     @Override
-
     public KnownBandsChannelCollection createChannelCollection() {
         return new KnownBandsChannelCollection();
     }

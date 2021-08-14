@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package android.net.wifi;
 
 import android.net.wifi.IScoreUpdateObserver;
+import android.net.wifi.WifiConnectedSessionInfo;
 
 /**
  * Interface for Wi-Fi connected network scorer.
@@ -25,7 +26,7 @@ import android.net.wifi.IScoreUpdateObserver;
  */
 oneway interface IWifiConnectedNetworkScorer
 {
-    void onStart(int sessionId);
+    void onStart(in WifiConnectedSessionInfo sessionInfo);
 
     void onStop(int sessionId);
 

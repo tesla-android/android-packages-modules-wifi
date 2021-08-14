@@ -99,6 +99,8 @@ public class WifiHealthMonitor {
     static final int HEALTH_MONITOR_COUNT_TX_SPEED_MIN_MBPS = 54;
     // Minimum Tx packet per seconds for disconnection stats collection
     static final int HEALTH_MONITOR_MIN_TX_PACKET_PER_SEC = 4;
+    private static final long MAX_TIME_SINCE_LAST_CONNECTION_MS = 48 * 3600_000;
+
 
     private final Context mContext;
     private final WifiConfigManager mWifiConfigManager;
@@ -109,6 +111,7 @@ public class WifiHealthMonitor {
     private final WifiNative mWifiNative;
     private final WifiInjector mWifiInjector;
     private final DeviceConfigFacade mDeviceConfigFacade;
+    private final ActiveModeWarden mActiveModeWarden;
     private WifiScanner mScanner;
     private MemoryStore mMemoryStore;
     private boolean mWifiEnabled;
@@ -125,9 +128,31 @@ public class WifiHealthMonitor {
     private boolean mHasNewDataForWifiMetrics = false;
     private int mDeviceMobilityState = WifiManager.DEVICE_MOBILITY_STATE_UNKNOWN;
 
+    private class ModeChangeCallback implements ActiveModeWarden.ModeChangeCallback {
+        @Override
+        public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        @Override
+        public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            update();
+        }
+
+        private void update() {
+            setWifiEnabled(mActiveModeWarden.getPrimaryClientModeManagerNullable() != null);
+        }
+    }
+
     WifiHealthMonitor(Context context, WifiInjector wifiInjector, Clock clock,
             WifiConfigManager wifiConfigManager, WifiScoreCard wifiScoreCard, Handler handler,
-            WifiNative wifiNative, String l2KeySeed, DeviceConfigFacade deviceConfigFacade) {
+            WifiNative wifiNative, String l2KeySeed, DeviceConfigFacade deviceConfigFacade,
+            ActiveModeWarden activeModeWarden) {
         mContext = context;
         mWifiInjector = wifiInjector;
         mClock = clock;
@@ -137,9 +162,10 @@ public class WifiHealthMonitor {
         mHandler = handler;
         mWifiNative = wifiNative;
         mDeviceConfigFacade = deviceConfigFacade;
-        mWifiEnabled = false;
+        mActiveModeWarden = activeModeWarden;
         mWifiSystemInfoStats = new WifiSystemInfoStats(l2KeySeed);
         mWifiConfigManager.addOnNetworkUpdateListener(new OnNetworkUpdateListener());
+        mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
     }
 
     /**
@@ -186,7 +212,8 @@ public class WifiHealthMonitor {
      * During the off->on transition, retrieve scanner.
      * During the on->off transition, issue MemoryStore write to save data.
      */
-    public void setWifiEnabled(boolean enable) {
+    private void setWifiEnabled(boolean enable) {
+        if (mWifiEnabled == enable) return;
         mWifiEnabled = enable;
         logd("Set WiFi " + (enable ? "enabled" : "disabled"));
         if (enable) {
@@ -309,10 +336,13 @@ public class WifiHealthMonitor {
         List<WifiConfiguration> configuredNetworks = mWifiConfigManager.getConfiguredNetworks();
         for (WifiConfiguration network : configuredNetworks) {
             if (isInvalidConfiguredNetwork(network)) continue;
+            boolean isRecentlyConnected = (mClock.getWallClockMillis() - network.lastConnected)
+                    < MAX_TIME_SINCE_LAST_CONNECTION_MS;
             PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(network.SSID);
             int cntName = WifiScoreCard.CNT_CONNECTION_ATTEMPT;
             if (perNetwork.getStatsCurrBuild().getCount(cntName) > 0
-                    || perNetwork.getRecentStats().getCount(cntName) > 0) {
+                    || perNetwork.getRecentStats().getCount(cntName) > 0
+                    || isRecentlyConnected) {
                 pw.println(mWifiScoreCard.lookupNetwork(network.SSID));
             }
         }
@@ -464,6 +494,8 @@ public class WifiHealthMonitor {
         stats.cntAssocTimeout = failureStats.getCount(REASON_ASSOC_TIMEOUT);
         stats.cntAuthFailure = failureStats.getCount(REASON_AUTH_FAILURE);
         stats.cntConnectionFailure = failureStats.getCount(REASON_CONNECTION_FAILURE);
+        stats.cntDisconnectionNonlocalConnecting =
+                failureStats.getCount(REASON_CONNECTION_FAILURE_DISCONNECTION);
         stats.cntDisconnectionNonlocal =
                 failureStats.getCount(REASON_DISCONNECTION_NONLOCAL);
         stats.cntShortConnectionNonlocal =
@@ -582,14 +614,16 @@ public class WifiHealthMonitor {
     public static final int REASON_CONNECTION_FAILURE = 3;
     public static final int REASON_DISCONNECTION_NONLOCAL = 4;
     public static final int REASON_SHORT_CONNECTION_NONLOCAL = 5;
-    public static final int NUMBER_FAILURE_REASON_CODE = 6;
+    public static final int REASON_CONNECTION_FAILURE_DISCONNECTION = 6;
+    public static final int NUMBER_FAILURE_REASON_CODE = 7;
     public static final String[] FAILURE_REASON_NAME = {
             "association rejection failure",
             "association timeout failure",
             "authentication failure",
             "connection failure",
             "disconnection",
-            "short connection"
+            "short connection",
+            "connection failure disconnection",
     };
     @IntDef(prefix = { "REASON_" }, value = {
         REASON_NO_FAILURE,
@@ -598,7 +632,8 @@ public class WifiHealthMonitor {
         REASON_AUTH_FAILURE,
         REASON_CONNECTION_FAILURE,
         REASON_DISCONNECTION_NONLOCAL,
-        REASON_SHORT_CONNECTION_NONLOCAL
+        REASON_SHORT_CONNECTION_NONLOCAL,
+        REASON_CONNECTION_FAILURE_DISCONNECTION
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FailureReasonCode {}
@@ -1007,14 +1042,6 @@ public class WifiHealthMonitor {
         }
 
         @Override
-        public void onNetworkEnabled(WifiConfiguration config) {
-        }
-
-        @Override
-        public void onNetworkPermanentlyDisabled(WifiConfiguration config, int disableReason) {
-        }
-
-        @Override
         public void onNetworkRemoved(WifiConfiguration config) {
             if (config == null || (config.fromWifiNetworkSuggestion && !config.isPasspoint())) {
                 // If a suggestion non-passpoint network is removed from wifiConfigManager do not
@@ -1022,14 +1049,6 @@ public class WifiHealthMonitor {
                 return;
             }
             mWifiScoreCard.removeNetwork(config.SSID);
-        }
-
-        @Override
-        public void onNetworkTemporarilyDisabled(WifiConfiguration config, int disableReason) {
-        }
-
-        @Override
-        public void onNetworkUpdated(WifiConfiguration newConfig, WifiConfiguration oldConfig) {
         }
     }
 
@@ -1064,7 +1083,7 @@ public class WifiHealthMonitor {
                 return;
             }
 
-            if (WifiScanner.isFullBandScan(results[0].getBandScanned(), true)) {
+            if (WifiScanner.isFullBandScan(results[0].getScannedBandsInternal(), true)) {
                 handleScanResults(mScanDetails);
             }
             clearScanDetails();

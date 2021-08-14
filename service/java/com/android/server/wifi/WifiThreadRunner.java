@@ -23,6 +23,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.util.GeneralUtil.Mutable;
 
 import java.util.function.Supplier;
@@ -41,6 +42,10 @@ public class WifiThreadRunner {
 
     /** Max wait time for posting blocking runnables */
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
+
+    /** For test only */
+    private boolean mTimeoutsAreErrors = false;
+    private volatile Thread mDispatchThread = null;
 
     private final Handler mHandler;
 
@@ -77,7 +82,14 @@ public class WifiThreadRunner {
         if (runWithScissorsSuccess) {
             return result.value;
         } else {
-            Log.e(TAG, "WifiThreadRunner.call() timed out!", new Throwable("Stack trace:"));
+            Throwable callerThreadThrowable = new Throwable("Caller thread Stack trace:");
+            Throwable wifiThreadThrowable = new Throwable("Wifi thread Stack trace:");
+            wifiThreadThrowable.setStackTrace(mHandler.getLooper().getThread().getStackTrace());
+            Log.e(TAG, "WifiThreadRunner.call() timed out!", callerThreadThrowable);
+            Log.e(TAG, "WifiThreadRunner.call() timed out!", wifiThreadThrowable);
+            if (mTimeoutsAreErrors) {
+                throw new RuntimeException("WifiThreadRunner.call() timed out!");
+            }
             return valueToReturnOnTimeout;
         }
     }
@@ -96,9 +108,45 @@ public class WifiThreadRunner {
         if (runWithScissorsSuccess) {
             return true;
         } else {
-            Log.e(TAG, "WifiThreadRunner.run() timed out!", new Throwable("Stack trace:"));
+            Throwable callerThreadThrowable = new Throwable("Caller thread Stack trace:");
+            Throwable wifiThreadThrowable = new Throwable("Wifi thread Stack trace:");
+            wifiThreadThrowable.setStackTrace(mHandler.getLooper().getThread().getStackTrace());
+            Log.e(TAG, "WifiThreadRunner.run() timed out!", callerThreadThrowable);
+            Log.e(TAG, "WifiThreadRunner.run() timed out!", wifiThreadThrowable);
+            if (mTimeoutsAreErrors) {
+                throw new RuntimeException("WifiThreadRunner.run() timed out!");
+            }
             return false;
         }
+    }
+
+    /**
+     * Sets whether or not a RuntimeError should be thrown when a timeout occurs.
+     *
+     * For test purposes only!
+     */
+    @VisibleForTesting
+    public void setTimeoutsAreErrors(boolean timeoutsAreErrors) {
+        Log.d(TAG, "setTimeoutsAreErrors " + timeoutsAreErrors);
+        mTimeoutsAreErrors = timeoutsAreErrors;
+    }
+
+    /**
+     * Prepares to run on a different thread.
+     *
+     * Useful when TestLooper#startAutoDispatch is used to test code that uses #call or #run,
+     * because in this case the messages are dispatched by a thread that is not actually the
+     * thread associated with the looper. Should be called before each call
+     * to TestLooper#startAutoDispatch, without intervening calls to other TestLooper dispatch
+     * methods.
+     *
+     * For test purposes only!
+     */
+    @VisibleForTesting
+    public void prepareForAutoDispatch() {
+        mHandler.postAtFrontOfQueue(() -> {
+            mDispatchThread = Thread.currentThread();
+        });
     }
 
     /**
@@ -109,6 +157,28 @@ public class WifiThreadRunner {
      */
     public boolean post(@NonNull Runnable runnable) {
         return mHandler.post(runnable);
+    }
+
+    /**
+     * Asynchronously runs a Runnable on the main Wifi thread with delay.
+     *
+     * @param runnable The Runnable that will be executed.
+     * @param delayMillis The delay (in milliseconds) until the Runnable
+     *        will be executed.
+     * @return true if the runnable was successfully posted <b>(not executed)</b> to the main Wifi
+     * thread, false otherwise
+     */
+    public boolean postDelayed(@NonNull Runnable runnable, long delayMillis) {
+        return mHandler.postDelayed(runnable, delayMillis);
+    }
+
+    /**
+     * Remove any pending posts of Runnable r that are in the message queue.
+     *
+     * @param r The Runnable that will be removed.
+     */
+    public final void removeCallbacks(@NonNull Runnable r) {
+        mHandler.removeCallbacks(r);
     }
 
     // Note: @hide methods copied from android.os.Handler
@@ -152,7 +222,7 @@ public class WifiThreadRunner {
      * If we ever do make it part of the API, we might want to rename it to something
      * less funny like runUnsafe().
      */
-    private static boolean runWithScissors(@NonNull Handler handler, @NonNull Runnable r,
+    private boolean runWithScissors(@NonNull Handler handler, @NonNull Runnable r,
             long timeout) {
         if (r == null) {
             throw new IllegalArgumentException("runnable must not be null");
@@ -162,6 +232,11 @@ public class WifiThreadRunner {
         }
 
         if (Looper.myLooper() == handler.getLooper()) {
+            r.run();
+            return true;
+        }
+
+        if (Thread.currentThread() == mDispatchThread) {
             r.run();
             return true;
         }

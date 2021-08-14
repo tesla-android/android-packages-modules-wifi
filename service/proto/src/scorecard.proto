@@ -56,6 +56,8 @@ message AccessPoint {
   reserved 3;
   repeated Signal event_stats = 4;     // Statistics taken at specific events
   reserved 5;
+  // Link bandwidth stats of all bands, links and signal levels
+  optional BandwidthStatsAll bandwidth_stats_all = 7;
 };
 
 // Describes the IEEE 802.11 security type
@@ -105,8 +107,35 @@ message HistogramBucket {
   // Compact signed encoding used here, because rssi values are negative.
   // The upper bound is not stored explicitly.
   optional sint64 low = 1;
-  // Number of occurences for this value or bucket.
+  // Number of occurrences for this value or bucket.
   optional int64 number = 2;
+}
+
+message BandwidthStatsAll {
+  // Stats of 2g band
+  optional BandwidthStatsAllLink stats_2g = 1;
+  // Stats of above-2g band
+  optional BandwidthStatsAllLink stats_above_2g = 2;
+}
+
+message BandwidthStatsAllLink {
+  // Tx bandwidth stats
+  optional BandwidthStatsAllLevel tx = 1;
+  // Rx bandwidth stats
+  optional BandwidthStatsAllLevel rx = 2;
+}
+
+// Bandwidth of all signal levels
+// The number of entries will match WifiScoreCard.NUM_SIGNAL_LEVEL
+message BandwidthStatsAllLevel {
+  repeated BandwidthStats level = 1;
+}
+
+message BandwidthStats {
+  // Accumulated bandwidth sample value
+  optional uint64 value = 1;
+  // Accumulated bandwidth sample count
+  optional uint32 count = 2;
 }
 
 // Events where statistics may be collected
@@ -163,7 +192,8 @@ message NetworkStats {
   optional ConnectionStats stats_prev_build = 4;
   // List of frequencies observed for this network from scan results, sorted by most recent first.
   repeated int32 frequencies = 5;
-
+  // Link bandwidth stats of all bands, links and signal levels
+  optional BandwidthStatsAll bandwidth_stats_all = 6;
 };
 
 message ConnectionStats {
@@ -183,9 +213,11 @@ message ConnectionStats {
   // Number of short connections caused by nonlocal disconnection at high RSSI
   // or at high Tx speed with a recent RSSI poll
   optional int32 num_short_connection_nonlocal = 7;
-  // Number of non-locally generated disconnections at high RSSI or Tx speed
-  // with a recent RSSI poll
+  // Number of non-local disconnections after L3 connection at high RSSI
+  // or Tx speed with a recent RSSI poll
   optional int32 num_disconnection_nonlocal = 8;
-  // Number of disconnections with a recent RSSI poll
+  // Number of disconnections after L3 connection with a recent RSSI poll
   optional int32 num_disconnection = 9;
+  // Number of non-local disconnections during the connecting state at high RSSI
+  optional int32 num_disconnection_nonlocal_connecting = 10;
 }
