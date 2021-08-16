@@ -24,8 +24,6 @@ import android.net.wifi.WifiConfiguration;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.server.wifi.ScanDetail;
-import com.android.server.wifi.hotspot2.NetworkDetail;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -33,26 +31,11 @@ import java.util.List;
 /**
  * Scan result utility for any {@link ScanResult} related operations.
  * Currently contains:
- *   > Helper method for converting a ScanResult to a ScanDetail.
- *     Only fields that are supported in ScanResult are copied.
  *   > Helper methods to identify the encryption of a ScanResult.
  */
 public class ScanResultUtil {
     private static final String TAG = "ScanResultUtil";
     private ScanResultUtil() { /* not constructable */ }
-
-    /**
-     * This method should only be used when the informationElements field in the provided scan
-     * result is filled in with the IEs from the beacon.
-     */
-    public static ScanDetail toScanDetail(ScanResult scanResult) {
-        ScanResult.InformationElement[] ieArray = (null != scanResult.informationElements)
-            ? scanResult.informationElements
-            : new ScanResult.InformationElement[0];
-        NetworkDetail networkDetail = new NetworkDetail(scanResult.BSSID,
-                ieArray, scanResult.anqpLines, scanResult.frequency);
-        return new ScanDetail(scanResult, networkDetail);
-    }
 
     /**
      * Helper method to check if the provided |scanResult| corresponds to a PSK network or not.
@@ -114,9 +97,7 @@ public class ScanResultUtil {
     public static boolean isScanResultForPasspointR1R2Network(ScanResult scanResult) {
         if (!isScanResultForEapNetwork(scanResult)) return false;
 
-        ScanDetail detail = toScanDetail(scanResult);
-        if (!detail.getNetworkDetail().isInterworking()) return false;
-        return null != detail.getNetworkDetail().getHSRelease();
+        return scanResult.isPasspointNetwork();
     }
 
     /**
@@ -137,9 +118,7 @@ public class ScanResultUtil {
         }
         if (!isScanResultForPmfMandatoryNetwork(scanResult)) return false;
 
-        ScanDetail detail = toScanDetail(scanResult);
-        if (!detail.getNetworkDetail().isInterworking()) return false;
-        return null != detail.getNetworkDetail().getHSRelease();
+        return scanResult.isPasspointNetwork();
     }
 
     /**

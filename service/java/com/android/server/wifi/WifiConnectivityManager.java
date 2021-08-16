@@ -775,7 +775,7 @@ public class WifiConnectivityManager {
                 return;
             }
 
-            mScanDetails.add(ScanResultUtil.toScanDetail(fullScanResult));
+            mScanDetails.add(new ScanDetail(fullScanResult));
         }
     }
 
@@ -901,7 +901,7 @@ public class WifiConnectivityManager {
                     localLog("Skipping scan result with null information elements");
                     continue;
                 }
-                mScanDetails.add(ScanResultUtil.toScanDetail(result));
+                mScanDetails.add(new ScanDetail(result));
             }
 
             // Create a new list to avoid looping call trigger concurrent exception.

@@ -6206,7 +6206,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         List<ScanDetail> scanDetailsList = scanResults.stream()
                 .filter(scanResult -> config.SSID.equals(
                         ScanResultUtil.createQuotedSSID(scanResult.SSID)))
-                .map(ScanResultUtil::toScanDetail)
+                .map(ScanDetail::new)
                 .collect(Collectors.toList());
         List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
         cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));

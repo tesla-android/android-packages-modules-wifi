@@ -1790,7 +1790,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 new ScanDetail(
                         new ScanResult(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID),
                                 CANDIDATE_SSID, CANDIDATE_BSSID, 1245, 0, "some caps", -78, 2450,
-                                1025, 22, 33, 20, 0, 0, true), null));
+                                1025, 22, 33, 20, 0, 0, true)));
 
         when(mWifiNS.getFilteredScanDetailsForOpenUnsavedNetworks())
                 .thenReturn(expectedOpenNetworks);
@@ -1819,7 +1819,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 new ScanDetail(
                         new ScanResult(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID),
                                 CANDIDATE_SSID, CANDIDATE_BSSID, 1245, 0, "some caps", -78, 2450,
-                                1025, 22, 33, 20, 0, 0, true), null));
+                                1025, 22, 33, 20, 0, 0, true)));
 
         when(mWifiNS.getFilteredScanDetailsForOpenUnsavedNetworks())
                 .thenReturn(expectedOpenNetworks);

@@ -53,7 +53,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
             createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
         };
 
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
+        ScanDetail output = new ScanDetail(input);
 
         validateScanDetail(input, output);
     }
@@ -70,7 +70,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
         };
         input.anqpLines = Arrays.asList("LINE 1", "line 2", "Line 3");
 
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
+        ScanDetail output = new ScanDetail(input);
 
         validateScanDetail(input, output);
     }
@@ -84,7 +84,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
             createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
         };
 
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
+        ScanDetail output = new ScanDetail(input);
 
         validateScanDetail(input, output);
     }
@@ -372,6 +372,9 @@ public class ScanResultUtilTest extends WifiBaseTest {
                 0, true);
         input.informationElements = new InformationElement[ies.size()];
         input.informationElements = ies.toArray(input.informationElements);
+        if (isInterworking && hsRel != null) {
+            input.setFlag(ScanResult.FLAG_PASSPOINT_NETWORK);
+        }
 
         assertTrue(ScanResultUtil.isScanResultForEapNetwork(input));
         assertEquals(isR1R2Network, ScanResultUtil.isScanResultForPasspointR1R2Network(input));
