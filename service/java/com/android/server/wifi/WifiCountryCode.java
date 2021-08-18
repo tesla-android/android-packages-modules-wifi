@@ -329,14 +329,18 @@ public class WifiCountryCode {
      * @param countryCode The country code intended to set.
      * This is supposed to be from Telephony service.
      * otherwise we think it is from other applications.
-     * @return Returns true if the country code passed in is acceptable.
+     * @return Returns true if the country code passed in is acceptable and passed to the driver.
      */
     public boolean setTelephonyCountryCodeAndUpdate(String countryCode) {
+        // We do not check if the country code (CC) equals the current one because
+        // 1. Wpa supplicant may silently modify the country code.
+        // 2. If Wifi restarted therefore wpa_supplicant also restarted,
         setTelephonyCountryCode(countryCode);
         if (mOverrideCountryCode != null) {
-            Log.d(TAG, "Skip Telephony Country code update due to override country code set");
+            Log.d(TAG, "Skip Telephony CC update due to override country code set");
             return false;
         }
+
         // If wpa_supplicant is ready we set the country code now, otherwise it will be
         // set once wpa_supplicant is ready.
         if (isReady()) {
@@ -426,7 +430,7 @@ public class WifiCountryCode {
         // There are two reasons:
         // 1. Wpa supplicant may silently modify the country code.
         // 2. If Wifi restarted therefore wpa_supplicant also restarted,
-        // the country code counld be reset to '00' by wpa_supplicant.
+        // the country code could be reset to '00' by wpa_supplicant.
         if (country != null) {
             setCountryCodeNative(country);
         }
@@ -492,6 +496,7 @@ public class WifiCountryCode {
     private void updateDriverCountryCodeAndNotifyListener(String country) {
         mDriverCountryTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
         mDriverCountryCode = country;
+        mActiveModeWarden.updateClientScanModeAfterCountryCodeUpdate();
         for (ChangeListener listener : mListeners) {
             listener.onDriverCountryCodeChanged(country);
         }

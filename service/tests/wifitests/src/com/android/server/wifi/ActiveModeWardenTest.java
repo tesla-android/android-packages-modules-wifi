@@ -329,10 +329,14 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         } else {
             verify(mClientModeManager).setRole(ROLE_CLIENT_PRIMARY, TEST_WORKSOURCE);
         }
-        verify(mScanRequestProxy).enableScanning(true, true);
+        verify(mScanRequestProxy, times(1)).enableScanning(true, true);
         if (fromState.equals(DISABLED_STATE_STRING)) {
             verify(mBatteryStats).reportWifiOn();
         }
+        for (int i = 0; i < 3; i++) {
+            mActiveModeWarden.updateClientScanModeAfterCountryCodeUpdate();
+        }
+        verify(mScanRequestProxy, times(4)).enableScanning(true, true);
         assertEquals(mClientModeManager, mActiveModeWarden.getPrimaryClientModeManager());
         verify(mModeChangeCallback).onActiveModeManagerRoleChanged(mClientModeManager);
     }
