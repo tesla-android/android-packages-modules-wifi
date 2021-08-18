@@ -16,6 +16,7 @@
 
 package com.android.server.wifi;
 
+import static android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PAID;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_TRUSTED;
@@ -44,12 +45,16 @@ import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
+import android.net.MacAddress;
+import android.net.NetworkRequest;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.os.Binder;
+import android.os.PatternMatcher;
 import android.os.Process;
 
 import androidx.test.filters.SmallTest;
@@ -847,5 +852,102 @@ public class WifiShellCommandTest extends WifiBaseTest {
                 new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
                 new String[]{"enable-scanning", "enabled", "-h"});
         verify(mScanRequestProxy).enableScanning(true, true);
+    }
+
+    @Test
+    public void testAddNetworkRequest() {
+        BinderUtil.setUid(Process.ROOT_UID);
+        final String testSsid = "ssid";
+        final String testBssid = "80:01:02:03:04:05";
+        final String testPassphrase = "password";
+
+        // Open
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", testSsid, "open"});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsid(testSsid)
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
+
+        // OWE
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", testSsid, "owe", testPassphrase});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsid(testSsid)
+                                .setIsEnhancedOpen(true)
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
+
+        // WPA2
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", testSsid, "wpa2", testPassphrase});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsid(testSsid)
+                                .setWpa2Passphrase(testPassphrase)
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
+
+        // WPA3
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", testSsid, "wpa3", testPassphrase});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsid(testSsid)
+                                .setWpa3Passphrase(testPassphrase)
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
+
+        // Test bssid flag
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", testSsid, "open", "-b", testBssid});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsid(testSsid)
+                                .setBssid(MacAddress.fromString(testBssid))
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
+
+        // Test glob flag
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"add-request", "-g", testSsid, "open"});
+        verify(mConnectivityManager).requestNetwork(eq(
+                new NetworkRequest.Builder()
+                        .addTransportType(TRANSPORT_WIFI)
+                        .removeCapability(NET_CAPABILITY_INTERNET)
+                        .setNetworkSpecifier(new WifiNetworkSpecifier.Builder()
+                                .setSsidPattern(new PatternMatcher(
+                                        testSsid, PatternMatcher.PATTERN_ADVANCED_GLOB))
+                                .build())
+                        .build()),
+                (ConnectivityManager.NetworkCallback) any());
     }
 }
