@@ -867,4 +867,34 @@ public class CoexManagerTest extends WifiBaseTest {
         // The remote callback has an extra call since it was notified on registration.
         verify(remoteCallback, times(4)).onCoexUnsafeChannelsChanged(any(), anyInt());
     }
+
+    /**
+     * Verify that multiple calls to setCoexUnsafeChannels with the same unsafe channels will only
+     * update the driver the first time.
+     */
+    @Test
+    public void testSetCoexUnsafeChannels_multipleSameChannels_updatesDriverOnce() {
+        CoexManager coexManager = createCoexManager();
+
+        coexManager.setCoexUnsafeChannels(new ArrayList<>(), 0);
+        coexManager.setCoexUnsafeChannels(new ArrayList<>(), 0);
+        coexManager.setCoexUnsafeChannels(new ArrayList<>(), 0);
+        // Default state after initialization is no channels and no restrictions, so no update to
+        // the driver is necessary
+        verify(mMockWifiNative, times(0)).setCoexUnsafeChannels(any(), anyInt());
+
+        coexManager.setCoexUnsafeChannels(
+                Arrays.asList(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6)), COEX_RESTRICTION_SOFTAP);
+        coexManager.setCoexUnsafeChannels(
+                Arrays.asList(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6)), COEX_RESTRICTION_SOFTAP);
+        coexManager.setCoexUnsafeChannels(
+                Arrays.asList(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6)), COEX_RESTRICTION_SOFTAP);
+        // Driver should be updated only once for the same unsafe channels
+        verify(mMockWifiNative, times(1)).setCoexUnsafeChannels(any(), anyInt());
+
+        // Change in restrictions with same unsafe channels should trigger an update
+        coexManager.setCoexUnsafeChannels(
+                Arrays.asList(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6)), 0);
+        verify(mMockWifiNative, times(2)).setCoexUnsafeChannels(any(), anyInt());
+    }
 }
