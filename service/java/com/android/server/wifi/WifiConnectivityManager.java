@@ -457,7 +457,8 @@ public class WifiConnectivityManager {
                 mNetworkSelector.selectNetwork(secondaryCmmCandidates);
         // No oem paid/private selected, fallback to legacy flow (should never happen!).
         if (secondaryCmmCandidate == null
-                || secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate() == null) {
+                || secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate() == null
+                || (!secondaryCmmCandidate.oemPaid && !secondaryCmmCandidate.oemPrivate)) {
             localLog(listenerName + ": No secondary candidate");
             handleCandidatesFromScanResultsForPrimaryCmmUsingMbbIfAvailable(
                     listenerName,
@@ -468,20 +469,15 @@ public class WifiConnectivityManager {
         }
         String secondaryCmmCandidateBssid =
                 secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate().BSSID;
-        WorkSource secondaryRequestorWs = null;
+
+        // At this point secondaryCmmCandidate must be either oemPaid, oemPrivate, or both.
         // OEM_PAID takes precedence over OEM_PRIVATE, so attribute to OEM_PAID requesting app.
-        if (secondaryCmmCandidate.oemPaid
-                && mActiveModeWarden.canRequestMoreClientModeManagersInRole(
-                mOemPaidConnectionRequestorWs, ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
-            secondaryRequestorWs = mOemPaidConnectionRequestorWs;
-        } else if (secondaryCmmCandidate.oemPrivate
-                && mActiveModeWarden.canRequestMoreClientModeManagersInRole(
-                mOemPrivateConnectionRequestorWs, ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
-            secondaryRequestorWs = mOemPrivateConnectionRequestorWs;
-        }
-        // Secondary STA not available, fallback to legacy flow.
+        WorkSource secondaryRequestorWs = secondaryCmmCandidate.oemPaid
+                ? mOemPaidConnectionRequestorWs : mOemPrivateConnectionRequestorWs;
+
         if (secondaryRequestorWs == null) {
-            localLog(listenerName + ": No secondary STA available");
+            localLog(listenerName + ": Requestor worksource is null in long live STA use-case,"
+                    + "  falling back to single client mode manager flow.");
             handleCandidatesFromScanResultsForPrimaryCmmUsingMbbIfAvailable(
                     listenerName,
                     Stream.concat(primaryCmmCandidates.stream(), secondaryCmmCandidates.stream())
@@ -489,6 +485,7 @@ public class WifiConnectivityManager {
                     handleScanResultsListener);
             return;
         }
+
         WifiConfiguration primaryCmmCandidate =
                 mNetworkSelector.selectNetwork(primaryCmmCandidates);
         // Request for a new client mode manager to spin up concurrent connection

@@ -1935,6 +1935,13 @@ public class ActiveModeWarden {
                         requestInfo.listener.onAnswer(cmmForSameBssid);
                         return;
                     }
+                    // The CMM having BSSID conflict is exactly the one being requested.
+                    // Simply return the CMM in this case. The requestor will be responsible to
+                    // make sure it does not trigger the connection again when already connected.
+                    if (cmmForSameBssid.getRole() == requestInfo.clientRole) {
+                        requestInfo.listener.onAnswer(cmmForSameBssid);
+                        return;
+                    }
                     // Existing secondary CMM connected to the same ssid/bssid.
                     if (!canRequestMoreClientModeManagersInRole(
                             requestInfo.requestorWs, requestInfo.clientRole)) {
