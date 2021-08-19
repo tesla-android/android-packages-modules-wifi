@@ -5264,7 +5264,7 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceAccessPermission();
         long callingIdentity = Binder.clearCallingIdentity();
         try {
-            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
                 Log.e(TAG, "UID " + uid + " not visible to the current user");
                 throw new SecurityException("UID " + uid + " not visible to the current user");
             }
@@ -5290,7 +5290,7 @@ public class WifiServiceImpl extends BaseWifiService {
         int uid = Binder.getCallingUid();
         long callingIdentity = Binder.clearCallingIdentity();
         try {
-            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+            if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
                 Log.e(TAG, "UID " + uid + " not visible to the current user");
                 throw new SecurityException("UID " + uid + " not visible to the current user");
             }

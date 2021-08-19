@@ -242,7 +242,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         when(mActivityManager.isLowRamDevice()).thenReturn(false);
         when(mActivityManager.getPackageImportance(any())).thenReturn(
                 IMPORTANCE_FOREGROUND_SERVICE);
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(true);
         when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
         when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
                 WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
@@ -1469,7 +1470,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                         TEST_PACKAGE_1));
         verify(mWifiConfigManager).removeSuggestionConfiguredNetwork(
                 argThat(new WifiConfigMatcher(networkSuggestion.wifiConfiguration)));
-        mInorder.verify(mWifiPermissionsUtil).doesUidBelongToCurrentUser(eq(TEST_UID_1));
+        mInorder.verify(mWifiPermissionsUtil)
+                .doesUidBelongToCurrentUserOrDeviceOwner(eq(TEST_UID_1));
 
         // Verify no more broadcast were sent out.
         mInorder.verifyNoMoreInteractions();
@@ -4686,7 +4688,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
         // When switch the user to background
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(TEST_UID_1)).thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(TEST_UID_1))
+                .thenReturn(false);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL,
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
@@ -4698,7 +4701,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mConnectionStatusListener, TEST_PACKAGE_1, TEST_UID_1));
 
         // When switch the user back to foreground
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(TEST_UID_1)).thenReturn(true);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(TEST_UID_1))
+                .thenReturn(true);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
@@ -4722,7 +4726,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiNetworkSuggestionsManager.add(Arrays.asList(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
-        mInorder.verify(mWifiPermissionsUtil).doesUidBelongToCurrentUser(anyInt());
+        mInorder.verify(mWifiPermissionsUtil).doesUidBelongToCurrentUserOrDeviceOwner(anyInt());
         assertTrue(mWifiNetworkSuggestionsManager.hasUserApprovedForApp(TEST_PACKAGE_1));
 
         // Simulate connecting to the network.
@@ -4748,7 +4752,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                         TEST_PACKAGE_1));
         verify(mWifiConfigManager).removeSuggestionConfiguredNetwork(
                 argThat(new WifiConfigMatcher(connectNetwork)));
-        mInorder.verify(mWifiPermissionsUtil).doesUidBelongToCurrentUser(anyInt());
+        mInorder.verify(mWifiPermissionsUtil).doesUidBelongToCurrentUserOrDeviceOwner(anyInt());
 
         // Verify no more broadcast were sent out.
         mInorder.verifyNoMoreInteractions();
