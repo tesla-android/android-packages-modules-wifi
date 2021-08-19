@@ -55,6 +55,7 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
 import android.os.Binder;
+import android.os.PatternMatcher;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
@@ -1224,11 +1225,17 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     }
 
     private NetworkRequest buildNetworkRequest(PrintWriter pw) {
+        boolean isGlob = "-g".equals(getNextOption());
         String ssid = getNextArgRequired();
         String type = getNextArgRequired();
         WifiNetworkSpecifier.Builder specifierBuilder =
                 new WifiNetworkSpecifier.Builder();
-        specifierBuilder.setSsid(ssid);
+        if (isGlob) {
+            specifierBuilder.setSsidPattern(
+                    new PatternMatcher(ssid, PatternMatcher.PATTERN_ADVANCED_GLOB));
+        } else {
+            specifierBuilder.setSsid(ssid);
+        }
         if (TextUtils.equals(type, "wpa3")) {
             specifierBuilder.setWpa3Passphrase(getNextArgRequired());
         } else if (TextUtils.equals(type, "wpa3_transition")) {
@@ -1680,11 +1687,12 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    each on a separate line.");
         pw.println("  settings-reset");
         pw.println("    Initiates wifi settings reset");
-        pw.println("  add-request <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-b <bssid>]");
+        pw.println("  add-request [-g] <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-b <bssid>]");
         pw.println("    Add a network request with provided params");
         pw.println("    Use 'network-requests-set-user-approved android yes'"
                 +  " to pre-approve requests added via rooted shell (Not persisted)");
-        pw.println("    <ssid> - SSID of the network");
+        pw.println("    -g - Marks the following SSID as a glob pattern");
+        pw.println("    <ssid> - SSID of the network, or glob pattern if -g is present");
         pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
         pw.println("        - Use 'open' or 'owe' for networks with no passphrase");
         pw.println("           - 'open' - Open networks (Most prevalent)");
