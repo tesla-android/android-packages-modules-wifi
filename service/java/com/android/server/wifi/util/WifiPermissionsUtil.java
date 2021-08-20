@@ -301,7 +301,8 @@ public class WifiPermissionsUtil {
         }
         // If the User or profile is current, permission is granted
         // Otherwise, uid must have INTERACT_ACROSS_USERS_FULL permission.
-        boolean isCurrentProfile = isCurrentProfile(uid);
+        boolean isCurrentProfile = doesUidBelongToUser(
+                uid, mWifiPermissionsWrapper.getCurrentUser());
         if (!isCurrentProfile && !checkInteractAcrossUsersFull(uid)) {
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "enforceCanAccessScanResults(pkg=" + pkgName + ", uid=" + uid + "): "
@@ -431,17 +432,6 @@ public class WifiPermissionsUtil {
         return mWifiPermissionsWrapper.getUidPermission(
                 android.Manifest.permission.INTERACT_ACROSS_USERS_FULL, uid)
                 == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /**
-     * Returns true if the calling user is the current one or a profile of the
-     * current user.
-     */
-    private boolean isCurrentProfile(int uid) {
-        UserHandle currentUser = UserHandle.of(mWifiPermissionsWrapper.getCurrentUser());
-        UserHandle callingUser = UserHandle.getUserHandleForUid(uid);
-        return currentUser.equals(callingUser)
-                || mUserManager.isSameProfileGroup(currentUser, callingUser);
     }
 
     private boolean noteAppOpAllowed(String op, String pkgName, @Nullable String featureId,
@@ -728,20 +718,40 @@ public class WifiPermissionsUtil {
      * @return true if the given UID belongs to the current foreground user,
      *         otherwise false.
      */
-    public boolean doesUidBelongToCurrentUser(int uid) {
-        if (uid == android.os.Process.SYSTEM_UID
-                // UIDs with the NETWORK_SETTINGS permission are always allowed since they are
-                // acting on behalf of the user.
-                || checkNetworkSettingsPermission(uid)) {
-            return true;
-        }
-        boolean isCurrentProfile = isCurrentProfile(uid);
+    public boolean doesUidBelongToCurrentUserOrDeviceOwner(int uid) {
+        boolean isCurrentProfile = doesUidBelongToUser(
+                uid, mWifiPermissionsWrapper.getCurrentUser());
         if (!isCurrentProfile) {
             // Fix for b/174749461
             EventLog.writeEvent(0x534e4554, "174749461", -1,
                     "Non foreground user trying to modify wifi configuration");
         }
         return isCurrentProfile || isDeviceOwner(uid);
+    }
+
+    /**
+     * Checks if the given UID belongs to the given user ID. This is
+     * used to prevent apps running in other users from modifying network configurations belonging
+     * to the given user.
+     * <p>
+     * UIDs belonging to system internals (such as SystemUI) are always allowed,
+     * since they always run as {@link UserHandle#USER_SYSTEM}.
+     *
+     * @param uid uid to check
+     * @param userId user to check against
+     * @return true if the given UID belongs to the given user.
+     */
+    public boolean doesUidBelongToUser(int uid, int userId) {
+        if (uid == android.os.Process.SYSTEM_UID
+                // UIDs with the NETWORK_SETTINGS permission are always allowed since they are
+                // acting on behalf of the user.
+                || checkNetworkSettingsPermission(uid)) {
+            return true;
+        }
+        UserHandle uidHandle = UserHandle.getUserHandleForUid(uid);
+        UserHandle userHandle = UserHandle.of(userId);
+        return uidHandle.equals(userHandle)
+                || mUserManager.isSameProfileGroup(uidHandle, userHandle);
     }
 
     /**
