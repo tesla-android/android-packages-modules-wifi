@@ -17,6 +17,7 @@
 package com.android.server.wifi.util;
 
 import android.Manifest;
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.admin.DevicePolicyManager;
@@ -71,6 +72,51 @@ public class WifiPermissionsUtil {
         mUserManager = userManager;
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
         mLog = wifiInjector.makeLog(TAG);
+    }
+
+
+    /**
+     * A class to store binder caller information.
+     */
+    public static final class CallerIdentity {
+        int mUid;
+        int mPid;
+        String mPackageName;
+        String mFeatureId;
+
+        public CallerIdentity(int uid, int pid, String packageName, String featureId) {
+            mUid = uid;
+            mPid = pid;
+            mPackageName = packageName;
+            mFeatureId = featureId;
+        }
+
+        public int getUid() {
+            return mUid;
+        }
+
+        public int getPid() {
+            return mPid;
+        }
+
+        public String getPackageName() {
+            return mPackageName;
+        }
+
+        public String getFeatureId() {
+            return mFeatureId;
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return "CallerIdentity{"
+                    + "Uid= " + mUid
+                    + ", Pid= " + mPid
+                    + ", PackageName= " + mPackageName
+                    + ", FeatureId= " + mFeatureId
+                    + '}';
+        }
     }
 
     /**
