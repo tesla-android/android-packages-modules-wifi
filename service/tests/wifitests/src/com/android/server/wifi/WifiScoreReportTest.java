@@ -425,6 +425,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                         return ns.getLegacyInt() == 49 && ns.isExiting() && ns.isTransportPrimary();
                     }
                 }));
+        assertTrue(mWifiInfo.isUsable());
     }
 
     /**
@@ -1487,6 +1488,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         assumeTrue(SdkLevel.isAtLeastS());
         // initially called once
         verify(mNetworkAgent).sendNetworkScore(any());
+        assertTrue(mWifiInfo.isUsable());
         WifiConnectedNetworkScorerImpl scorerImpl = new WifiConnectedNetworkScorerImpl();
         // Register Client for verification.
         mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, scorerImpl);
@@ -1502,6 +1504,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         {
             ArgumentCaptor<NetworkScore> scoreCaptor = ArgumentCaptor.forClass(NetworkScore.class);
             verify(mNetworkAgent, times(2)).sendNetworkScore(scoreCaptor.capture());
+            assertTrue(mWifiInfo.isUsable());
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(60, ns.getLegacyInt());
             assertFalse(ns.isExiting());
@@ -1515,6 +1518,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         {
             ArgumentCaptor<NetworkScore> scoreCaptor = ArgumentCaptor.forClass(NetworkScore.class);
             verify(mNetworkAgent, times(3)).sendNetworkScore(scoreCaptor.capture());
+            assertFalse(mWifiInfo.isUsable());
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(60, ns.getLegacyInt());
             assertTrue(ns.isExiting());
