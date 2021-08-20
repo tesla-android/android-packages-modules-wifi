@@ -467,7 +467,7 @@ public class PasspointManager {
             Log.e(TAG, "Set isTrusted to false on a non suggestion passpoint is not allowed");
             return false;
         }
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return false;
         }
@@ -571,7 +571,7 @@ public class PasspointManager {
                     + provider.getCreatorUid());
             return false;
         }
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(callingUid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(callingUid)) {
             Log.e(TAG, "UID " + callingUid + " not visible to the current user");
             return false;
         }
