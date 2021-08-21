@@ -21,6 +21,7 @@ import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiScanner.WifiBandIndex;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -32,7 +33,6 @@ import com.android.server.wifi.WifiMonitor;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.scanner.ChannelHelper.ChannelCollection;
 import com.android.server.wifi.util.NativeUtil;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;

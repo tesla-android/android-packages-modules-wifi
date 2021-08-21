@@ -49,6 +49,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.ProvisioningCallback;
 import android.net.wifi.hotspot2.ProvisioningCallback.OsuFailure;
 import android.net.wifi.nl80211.WifiNl80211Manager;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -126,7 +127,6 @@ import com.android.server.wifi.util.IntCounter;
 import com.android.server.wifi.util.IntHistogram;
 import com.android.server.wifi.util.MetricsUtils;
 import com.android.server.wifi.util.ObjectCounter;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.wifi.resources.R;
 
 import org.json.JSONArray;

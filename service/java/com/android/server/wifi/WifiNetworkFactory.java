@@ -49,6 +49,7 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.SecurityType;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.Looper;
@@ -66,7 +67,6 @@ import android.util.Pair;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.ActionListenerWrapper;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
@@ -1716,7 +1716,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         int networkType = params.getSecurityType();
         if (!isAccessPointApprovedForActiveRequest(ssid, bssid, networkType)
                 || mWifiConfigManager.isNetworkTemporarilyDisabledByUser(
-                ScanResultUtil.createQuotedSSID(ssid))) {
+                ScanResultUtil.createQuotedSsid(ssid))) {
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "No approved access point found");
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package com.android.server.wifi.util;
+package android.net.wifi.util;
+
+import static android.net.wifi.ScanResult.FLAG_PASSPOINT_NETWORK;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -24,8 +26,6 @@ import android.net.wifi.WifiConfiguration;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.server.wifi.ScanDetail;
-import com.android.server.wifi.hotspot2.NetworkDetail;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -33,32 +33,18 @@ import java.util.List;
 /**
  * Scan result utility for any {@link ScanResult} related operations.
  * Currently contains:
- *   > Helper method for converting a ScanResult to a ScanDetail.
- *     Only fields that are supported in ScanResult are copied.
  *   > Helper methods to identify the encryption of a ScanResult.
+ * @hide
  */
 public class ScanResultUtil {
     private static final String TAG = "ScanResultUtil";
     private ScanResultUtil() { /* not constructable */ }
 
     /**
-     * This method should only be used when the informationElements field in the provided scan
-     * result is filled in with the IEs from the beacon.
-     */
-    public static ScanDetail toScanDetail(ScanResult scanResult) {
-        ScanResult.InformationElement[] ieArray = (null != scanResult.informationElements)
-            ? scanResult.informationElements
-            : new ScanResult.InformationElement[0];
-        NetworkDetail networkDetail = new NetworkDetail(scanResult.BSSID,
-                ieArray, scanResult.anqpLines, scanResult.frequency);
-        return new ScanDetail(scanResult, networkDetail);
-    }
-
-    /**
      * Helper method to check if the provided |scanResult| corresponds to a PSK network or not.
      * This checks if the provided capabilities string contains PSK encryption type or not.
      */
-    public static boolean isScanResultForPskNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForPskNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("PSK");
     }
 
@@ -66,7 +52,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to a WAPI-PSK network or not.
      * This checks if the provided capabilities string contains PSK encryption type or not.
      */
-    public static boolean isScanResultForWapiPskNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForWapiPskNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("WAPI-PSK");
     }
 
@@ -75,7 +61,7 @@ public class ScanResultUtil {
      * network or not.
      * This checks if the provided capabilities string contains PSK encryption type or not.
      */
-    public static boolean isScanResultForWapiCertNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForWapiCertNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("WAPI-CERT");
     }
 
@@ -86,7 +72,7 @@ public class ScanResultUtil {
      * - Not a WPA3 Enterprise only network.
      * - Not a WPA3 Enterprise transition network.
      */
-    public static boolean isScanResultForEapNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForEapNetwork(@NonNull ScanResult scanResult) {
         return (scanResult.capabilities.contains("EAP/SHA1")
                         || scanResult.capabilities.contains("EAP/SHA256")
                         || scanResult.capabilities.contains("FT/EAP")
@@ -95,11 +81,11 @@ public class ScanResultUtil {
                 && !isScanResultForWpa3EnterpriseTransitionNetwork(scanResult);
     }
 
-    private static boolean isScanResultForPmfMandatoryNetwork(ScanResult scanResult) {
+    private static boolean isScanResultForPmfMandatoryNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("[MFPR]");
     }
 
-    private static boolean isScanResultForPmfCapableNetwork(ScanResult scanResult) {
+    private static boolean isScanResultForPmfCapableNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("[MFPC]");
     }
 
@@ -111,12 +97,10 @@ public class ScanResultUtil {
      * - interworking bit is set.
      * - HotSpot Release presents.
      */
-    public static boolean isScanResultForPasspointR1R2Network(ScanResult scanResult) {
+    public static boolean isScanResultForPasspointR1R2Network(@NonNull ScanResult scanResult) {
         if (!isScanResultForEapNetwork(scanResult)) return false;
 
-        ScanDetail detail = toScanDetail(scanResult);
-        if (!detail.getNetworkDetail().isInterworking()) return false;
-        return null != detail.getNetworkDetail().getHSRelease();
+        return scanResult.isPasspointNetwork();
     }
 
     /**
@@ -129,7 +113,7 @@ public class ScanResultUtil {
      * - HotSpot Release presents.
      * - PMF is mandatory.
      */
-    public static boolean isScanResultForPasspointR3Network(ScanResult scanResult) {
+    public static boolean isScanResultForPasspointR3Network(@NonNull ScanResult scanResult) {
         if (!isScanResultForEapNetwork(scanResult)
                 && !isScanResultForWpa3EnterpriseOnlyNetwork(scanResult)
                 && !isScanResultForEapSuiteBNetwork(scanResult)) {
@@ -137,9 +121,7 @@ public class ScanResultUtil {
         }
         if (!isScanResultForPmfMandatoryNetwork(scanResult)) return false;
 
-        ScanDetail detail = toScanDetail(scanResult);
-        if (!detail.getNetworkDetail().isInterworking()) return false;
-        return null != detail.getNetworkDetail().getHSRelease();
+        return scanResult.isPasspointNetwork();
     }
 
     /**
@@ -152,7 +134,8 @@ public class ScanResultUtil {
      * - Management Frame Protection Capable is set.
      * - Management Frame Protection Required is not set.
      */
-    public static boolean isScanResultForWpa3EnterpriseTransitionNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForWpa3EnterpriseTransitionNetwork(
+            @NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA1")
                 && scanResult.capabilities.contains("EAP/SHA256")
                 && scanResult.capabilities.contains("RSN")
@@ -173,7 +156,7 @@ public class ScanResultUtil {
      * - Management Frame Protection Capable is set.
      * - Management Frame Protection Required is set.
      */
-    public static boolean isScanResultForWpa3EnterpriseOnlyNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForWpa3EnterpriseOnlyNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("EAP/SHA256")
                 && !scanResult.capabilities.contains("EAP/SHA1")
                 && scanResult.capabilities.contains("RSN")
@@ -192,7 +175,7 @@ public class ScanResultUtil {
      * - Not enable WPA1 version 1, WEP, and TKIP.
      * - Management Frame Protection Required is set.
      */
-    public static boolean isScanResultForEapSuiteBNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForEapSuiteBNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("SUITE_B_192")
                 && scanResult.capabilities.contains("RSN")
                 && !scanResult.capabilities.contains("WEP")
@@ -204,7 +187,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to a WEP network or not.
      * This checks if the provided capabilities string contains WEP encryption type or not.
      */
-    public static boolean isScanResultForWepNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForWepNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("WEP");
     }
 
@@ -212,7 +195,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to OWE network.
      * This checks if the provided capabilities string contains OWE or not.
      */
-    public static boolean isScanResultForOweNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForOweNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("OWE");
     }
 
@@ -220,7 +203,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to OWE transition network.
      * This checks if the provided capabilities string contains OWE_TRANSITION or not.
      */
-    public static boolean isScanResultForOweTransitionNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForOweTransitionNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("OWE_TRANSITION");
     }
 
@@ -228,7 +211,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to SAE network.
      * This checks if the provided capabilities string contains SAE or not.
      */
-    public static boolean isScanResultForSaeNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForSaeNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("SAE");
     }
 
@@ -236,7 +219,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to PSK-SAE transition
      * network. This checks if the provided capabilities string contains both PSK and SAE or not.
      */
-    public static boolean isScanResultForPskSaeTransitionNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForPskSaeTransitionNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("PSK") && scanResult.capabilities.contains("SAE");
     }
 
@@ -244,7 +227,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to FILS SHA256 network.
      * This checks if the provided capabilities string contains FILS-SHA256 or not.
      */
-    public static boolean isScanResultForFilsSha256Network(ScanResult scanResult) {
+    public static boolean isScanResultForFilsSha256Network(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("FILS-SHA256");
     }
 
@@ -252,7 +235,7 @@ public class ScanResultUtil {
      * Helper method to check if the provided |scanResult| corresponds to FILS SHA384 network.
      * This checks if the provided capabilities string contains FILS-SHA384 or not.
      */
-    public static boolean isScanResultForFilsSha384Network(ScanResult scanResult) {
+    public static boolean isScanResultForFilsSha384Network(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("FILS-SHA384");
     }
 
@@ -260,7 +243,7 @@ public class ScanResultUtil {
      *  Helper method to check if the provided |scanResult| corresponds to an unknown amk network.
      *  This checks if the provided capabilities string contains ? or not.
      */
-    public static boolean isScanResultForUnknownAkmNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForUnknownAkmNetwork(@NonNull ScanResult scanResult) {
         return scanResult.capabilities.contains("?");
     }
 
@@ -269,7 +252,7 @@ public class ScanResultUtil {
      * This checks if the provided capabilities string does not contain either of WEP, PSK, SAE
      * EAP, or unknown encryption types or not.
      */
-    public static boolean isScanResultForOpenNetwork(ScanResult scanResult) {
+    public static boolean isScanResultForOpenNetwork(@NonNull ScanResult scanResult) {
         return (!(isScanResultForWepNetwork(scanResult) || isScanResultForPskNetwork(scanResult)
                 || isScanResultForEapNetwork(scanResult) || isScanResultForSaeNetwork(scanResult)
                 || isScanResultForWpa3EnterpriseTransitionNetwork(scanResult)
@@ -285,17 +268,17 @@ public class ScanResultUtil {
      * WifiConfiguration object.
      */
     @VisibleForTesting
-    public static String createQuotedSSID(String ssid) {
+    public static @NonNull String createQuotedSsid(@Nullable String ssid) {
         return "\"" + ssid + "\"";
     }
 
     /**
      * Creates a network configuration object using the provided |scanResult|.
-     * This is used to create ephemeral network configurations.
      */
-    public static @Nullable WifiConfiguration createNetworkFromScanResult(ScanResult scanResult) {
+    public static @Nullable WifiConfiguration createNetworkFromScanResult(
+            @NonNull ScanResult scanResult) {
         WifiConfiguration config = new WifiConfiguration();
-        config.SSID = createQuotedSSID(scanResult.SSID);
+        config.SSID = createQuotedSsid(scanResult.SSID);
         List<SecurityParams> list = generateSecurityParamsListFromScanResult(scanResult);
         if (list.isEmpty()) {
             return null;
@@ -310,7 +293,7 @@ public class ScanResultUtil {
      * @return a list of security params. If no known security params, return an empty list.
      */
     public static @NonNull List<SecurityParams> generateSecurityParamsListFromScanResult(
-            ScanResult scanResult) {
+            @NonNull ScanResult scanResult) {
         List<SecurityParams> list = new ArrayList<>();
 
         // Open network & its upgradable types
@@ -401,7 +384,8 @@ public class ScanResultUtil {
     /**
      * Dump the provided scan results list to |pw|.
      */
-    public static void dumpScanResults(PrintWriter pw, List<ScanResult> scanResults, long nowMs) {
+    public static void dumpScanResults(@NonNull PrintWriter pw,
+            @Nullable List<ScanResult> scanResults, long nowMs) {
         if (scanResults != null && scanResults.size() != 0) {
             pw.println("    BSSID              Frequency      RSSI           Age(sec)     SSID "
                     + "                                Flags");
@@ -419,18 +403,19 @@ public class ScanResultUtil {
                 }
                 String ssid = r.SSID == null ? "" : r.SSID;
                 String rssiInfo = "";
-                if (ArrayUtils.size(r.radioChainInfos) == 1) {
+                int numRadioChainInfos = r.radioChainInfos == null ? 0 : r.radioChainInfos.length;
+                if (numRadioChainInfos == 1) {
                     rssiInfo = String.format("%5d(%1d:%3d)       ", r.level,
                             r.radioChainInfos[0].id, r.radioChainInfos[0].level);
-                } else if (ArrayUtils.size(r.radioChainInfos) == 2) {
+                } else if (numRadioChainInfos == 2) {
                     rssiInfo = String.format("%5d(%1d:%3d/%1d:%3d)", r.level,
                             r.radioChainInfos[0].id, r.radioChainInfos[0].level,
                             r.radioChainInfos[1].id, r.radioChainInfos[1].level);
                 } else {
                     rssiInfo = String.format("%9d         ", r.level);
                 }
-                if ((r.flags & ScanResult.FLAG_PASSPOINT_NETWORK)
-                        == ScanResult.FLAG_PASSPOINT_NETWORK) {
+                if ((r.flags & FLAG_PASSPOINT_NETWORK)
+                        == FLAG_PASSPOINT_NETWORK) {
                     r.capabilities += "[PASSPOINT]";
                 }
                 pw.printf("  %17s  %9d  %18s   %7s    %-32s  %s\n",
@@ -445,9 +430,9 @@ public class ScanResultUtil {
     }
 
     /**
-     * Check if ScarResult list is valid.
+     * Check if ScanResult list is valid.
      */
-    public static boolean validateScanResultList(List<ScanResult> scanResults) {
+    public static boolean validateScanResultList(@Nullable List<ScanResult> scanResults) {
         if (scanResults == null || scanResults.isEmpty()) {
             Log.w(TAG, "Empty or null ScanResult list");
             return false;
@@ -461,7 +446,7 @@ public class ScanResultUtil {
         return true;
     }
 
-    private static boolean validate(ScanResult scanResult) {
+    private static boolean validate(@Nullable ScanResult scanResult) {
         return scanResult != null && scanResult.SSID != null
                 && scanResult.capabilities != null && scanResult.BSSID != null;
     }
