@@ -309,6 +309,11 @@ public class CoexManager {
             Log.e(TAG, "setCoexUnsafeChannels called with undefined restriction flags");
             return;
         }
+        if (new HashSet(mCurrentCoexUnsafeChannels).equals(new HashSet(coexUnsafeChannels))
+                && mCoexRestrictions == coexRestrictions) {
+            // Do not update if the unsafe channels haven't changed since the last time
+            return;
+        }
         mCurrentCoexUnsafeChannels.clear();
         mCurrentCoexUnsafeChannels.addAll(coexUnsafeChannels);
         mCoexRestrictions = coexRestrictions;
