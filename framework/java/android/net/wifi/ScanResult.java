@@ -23,6 +23,7 @@ import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.wifi.WifiAnnotations.ChannelWidth;
 import android.net.wifi.WifiAnnotations.WifiStandard;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -1065,6 +1066,21 @@ public final class ScanResult implements Parcelable {
     @NonNull
     public List<InformationElement> getInformationElements() {
         return Collections.unmodifiableList(Arrays.asList(informationElements));
+    }
+
+    /**
+     * Get all the security types supported by this ScanResult.
+     * @return array of {@code WifiInfo#SECURITY_TYPE_*}.
+     */
+    @NonNull
+    public @WifiInfo.SecurityType int[] getSecurityTypes() {
+        List<SecurityParams> params = ScanResultUtil.generateSecurityParamsListFromScanResult(this);
+        int[] securityTypes = new int[params.size()];
+        for (int i = 0; i < securityTypes.length; i++) {
+            securityTypes[i] = WifiInfo.convertWifiConfigurationSecurityType(
+                    params.get(i).getSecurityType());
+        }
+        return securityTypes;
     }
 
     /** ANQP response elements.

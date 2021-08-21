@@ -1568,7 +1568,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public void setCurrentSecurityType(@WifiConfiguration.SecurityType int securityType) {
-        mSecurityType = convertSecurityTypeToWifiInfo(securityType);
+        mSecurityType = convertWifiConfigurationSecurityType(securityType);
     }
 
     /**
@@ -1588,9 +1588,15 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mSecurityType;
     }
 
-    private @SecurityType int convertSecurityTypeToWifiInfo(
-            @WifiConfiguration.SecurityType int securityType) {
-        switch (securityType) {
+    /**
+     * Converts the WifiConfiguration.SecurityType to a WifiInfo.SecurityType
+     * @param wifiConfigSecurity WifiConfiguration.SecurityType to convert
+     * @return security type as a WifiInfo.SecurityType
+     * @hide
+     */
+    public static @SecurityType int convertWifiConfigurationSecurityType(
+            @WifiConfiguration.SecurityType int wifiConfigSecurity) {
+        switch (wifiConfigSecurity) {
             case WifiConfiguration.SECURITY_TYPE_OPEN:
                 return SECURITY_TYPE_OPEN;
             case WifiConfiguration.SECURITY_TYPE_WEP:

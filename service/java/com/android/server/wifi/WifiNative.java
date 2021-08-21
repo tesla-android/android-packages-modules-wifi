@@ -1614,18 +1614,15 @@ public class WifiNative {
     public ArrayList<ScanDetail> getScanResults(@NonNull String ifaceName) {
         if (mUseFakeScanDetails) {
             synchronized (mFakeScanDetails) {
-                ArrayList<ScanDetail> copy = new ArrayList<>();
+                ArrayList<ScanDetail> copyList = new ArrayList<>();
                 for (ScanDetail sd: mFakeScanDetails) {
-                    sd.getScanResult().ifaceName = ifaceName;
+                    ScanDetail copy = new ScanDetail(sd);
+                    copy.getScanResult().ifaceName = ifaceName;
                     // otherwise the fake will be too old
-                    sd.getScanResult().timestamp = SystemClock.elapsedRealtime() * 1000;
-
-                    // clone the ScanResult (which was updated above) so that each call gets a
-                    // unique timestamp
-                    copy.add(new ScanDetail(new ScanResult(sd.getScanResult()),
-                            sd.getNetworkDetail()));
+                    copy.getScanResult().timestamp = SystemClock.elapsedRealtime() * 1000;
+                    copyList.add(copy);
                 }
-                return copy;
+                return copyList;
             }
         }
         return convertNativeScanResults(ifaceName, mWifiCondManager.getScanResults(

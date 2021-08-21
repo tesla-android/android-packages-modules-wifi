@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.server.wifi.util;
+package android.net.wifi.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.ScanResult.InformationElement;
@@ -25,70 +28,17 @@ import android.net.wifi.WifiSsid;
 
 import androidx.test.filters.SmallTest;
 
-import com.android.server.wifi.ScanDetail;
-import com.android.server.wifi.WifiBaseTest;
-import com.android.server.wifi.hotspot2.NetworkDetail;
-
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
- * Unit tests for {@link com.android.server.wifi.util.ScanResultUtil}.
+ * Unit tests for {@link ScanResultUtil}.
  */
 @SmallTest
-public class ScanResultUtilTest extends WifiBaseTest {
-
-    @Test
-    public void convertScanResult() {
-        final String ssid = "SOME SsId";
-
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
-                "ab:cd:01:ef:45:89", 1245, 0, "", -78, 2450, 1025, 22, 33, 20, 0, 0, true);
-
-        input.informationElements = new InformationElement[] {
-            createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
-        };
-
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
-
-        validateScanDetail(input, output);
-    }
-
-    @Test
-    public void convertScanResultWithAnqpLines() {
-        final String ssid = "SOME SsId";
-
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
-                "ab:cd:01:ef:45:89", 1245, 0, "some caps", -78, 2450, 1025, 22, 33, 20, 0, 0, true);
-
-        input.informationElements = new InformationElement[] {
-            createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
-        };
-        input.anqpLines = Arrays.asList("LINE 1", "line 2", "Line 3");
-
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
-
-        validateScanDetail(input, output);
-    }
-
-    @Test
-    public void convertScanResultWithoutWifiSsid() {
-        final String ssid = "Another SSid";
-        ScanResult input = new ScanResult(ssid, "ab:cd:01:ef:45:89", 1245, 0, "other caps",
-                -78, 2450, 1025, 22, 33, 20, 0, 0, true);
-        input.informationElements = new InformationElement[] {
-            createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8))
-        };
-
-        ScanDetail output = ScanResultUtil.toScanDetail(input);
-
-        validateScanDetail(input, output);
-    }
-
+public class ScanResultUtilTest {
     @Test
     public void testNetworkCreationFromScanResult() {
         final String ssid = "Another SSid";
@@ -101,47 +51,47 @@ public class ScanResultUtilTest extends WifiBaseTest {
 
         scanResult.capabilities = "";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_OPEN,
                 config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WEP";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_WEP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "PSK";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_PSK,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA2 Enterprise network with none MFP capability.
         scanResult.capabilities = "[EAP/SHA1]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA2 Enterprise network with MFPC.
         scanResult.capabilities = "[EAP/SHA1][MFPC]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA2 Enterprise network with MFPR.
         scanResult.capabilities = "[EAP/SHA1][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA3 Enterprise transition network
         scanResult.capabilities = "[RSN-EAP/SHA1+EAP/SHA256][MFPC]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
         assertTrue(config.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP));
@@ -150,7 +100,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
         // WPA3 Enterprise only network
         scanResult.capabilities = "[RSN-EAP/SHA256][MFPC][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
                 config.getDefaultSecurityParams().getSecurityType());
 
@@ -158,26 +108,26 @@ public class ScanResultUtilTest extends WifiBaseTest {
         // Fallback to WPA2 Enterprise
         scanResult.capabilities = "[RSN-EAP/SHA1+EAP/SHA256][MFPC][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP,
                 config.getDefaultSecurityParams().getSecurityType());
 
         // WPA3 Enterprise only network
         scanResult.capabilities = "[RSN-SUITE_B_192][MFPR]";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
                 config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WAPI-PSK";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
                 config.getDefaultSecurityParams().getSecurityType());
 
         scanResult.capabilities = "WAPI-CERT";
         config = ScanResultUtil.createNetworkFromScanResult(scanResult);
-        assertEquals(config.SSID, ScanResultUtil.createQuotedSSID(ssid));
+        assertEquals(config.SSID, ScanResultUtil.createQuotedSsid(ssid));
         assertEquals(WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
                 config.getDefaultSecurityParams().getSecurityType());
     }
@@ -341,37 +291,16 @@ public class ScanResultUtilTest extends WifiBaseTest {
     }
 
     private void verifyPasspointNetwork(
-            String caps, boolean isInterworking, NetworkDetail.HSRelease hsRel,
+            String caps, boolean isPasspoint,
             boolean isR1R2Network, boolean isR3Network) {
         final String ssid = "PASSPOINT-NETWORK";
-        List<InformationElement> ies = new ArrayList<>();
-        ies.add(createIE(InformationElement.EID_SSID, ssid.getBytes(StandardCharsets.UTF_8)));
-        if (isInterworking) {
-            ies.add(createIE(InformationElement.EID_INTERWORKING, new byte[] {(byte) 0x10}));
-        }
-        if (null != hsRel) {
-            byte releaseByte = (byte) 0xff;
-            switch (hsRel) {
-                case R1:
-                    releaseByte = (byte) 0x0;
-                    break;
-                case R2:
-                    releaseByte = (byte) 0x10;
-                    break;
-                case R3:
-                    releaseByte = (byte) 0x20;
-                    break;
-            }
-            ies.add(
-                    createIE(InformationElement.EID_VSA, new byte[] {
-                            (byte) 0x50, (byte) 0x6f, (byte) 0x9a, (byte) 0x10, releaseByte}));
-        }
 
         ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
-        input.informationElements = new InformationElement[ies.size()];
-        input.informationElements = ies.toArray(input.informationElements);
+        if (isPasspoint) {
+            input.setFlag(ScanResult.FLAG_PASSPOINT_NETWORK);
+        }
 
         assertTrue(ScanResultUtil.isScanResultForEapNetwork(input));
         assertEquals(isR1R2Network, ScanResultUtil.isScanResultForPasspointR1R2Network(input));
@@ -384,7 +313,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
     @Test
     public void testPasspointR1NetworkCheck() {
         String caps = "[EAP/SHA1][ESS]";
-        verifyPasspointNetwork(caps, true, NetworkDetail.HSRelease.R1, true, false);
+        verifyPasspointNetwork(caps, true, true, false);
     }
 
     /**
@@ -393,7 +322,7 @@ public class ScanResultUtilTest extends WifiBaseTest {
     @Test
     public void testPasspointR2NetworkCheck() {
         String caps = "[EAP/SHA1][ESS]";
-        verifyPasspointNetwork(caps, true, NetworkDetail.HSRelease.R2, true, false);
+        verifyPasspointNetwork(caps, true, true, false);
     }
 
     /**
@@ -403,25 +332,16 @@ public class ScanResultUtilTest extends WifiBaseTest {
     public void testPasspointR3NetworkCheck() {
         String caps = "[EAP/SHA1][ESS][MFPR]";
         // R3 network is also a valid R1/R2 network.
-        verifyPasspointNetwork(caps, true, NetworkDetail.HSRelease.R3, true, true);
+        verifyPasspointNetwork(caps, true, true, true);
     }
 
     /**
-     * Test that an EAP network with HS release, but no interwork set.
+     * Test that an EAP network without the passpoint flag set is not a passpoint network
      */
     @Test
-    public void testEapNetworkWithoutInterworkNotAPasspointNetwork() {
+    public void testEapNetworkWithoutPasspointFlagNotAPasspointNetwork() {
         String caps = "[EAP/SHA1][ESS]";
-        verifyPasspointNetwork(caps, false, NetworkDetail.HSRelease.R3, false, false);
-    }
-
-    /**
-     * Test that an EAP network with interwork set, but no HS release.
-     */
-    @Test
-    public void testEapNetworkWithoutHsReleaseNotAPasspointNetwork() {
-        String caps = "[EAP/SHA1][ESS]";
-        verifyPasspointNetwork(caps, true, null, false, false);
+        verifyPasspointNetwork(caps, false, false, false);
     }
 
     /**
@@ -487,32 +407,4 @@ public class ScanResultUtilTest extends WifiBaseTest {
         ie.bytes = bytes;
         return ie;
     }
-
-    private static void validateScanDetail(ScanResult input, ScanDetail output) {
-        assertNotNull("NetworkDetail was null", output.getNetworkDetail());
-        assertNotNull("ScanResult was null", output.getScanResult());
-        assertEquals("NetworkDetail SSID", input.SSID,
-                output.getNetworkDetail().getSSID());
-        assertEquals("ScanResult SSID", input.SSID,
-                output.getScanResult().SSID);
-        assertEquals("ScanResult wifiSsid", input.wifiSsid,
-                output.getScanResult().wifiSsid);
-        assertEquals("getSSID", input.SSID, output.getSSID());
-        assertEquals("NetworkDetail BSSID", input.BSSID,
-                output.getNetworkDetail().getBSSIDString());
-        assertEquals("getBSSIDString", input.BSSID, output.getBSSIDString());
-        assertEquals("ScanResult frequency", input.frequency,
-                output.getScanResult().frequency);
-        assertEquals("ScanResult level", input.level,
-                output.getScanResult().level);
-        assertEquals("ScanResult capabilities", input.capabilities,
-                output.getScanResult().capabilities);
-        assertEquals("ScanResult timestamp", input.timestamp,
-                output.getScanResult().timestamp);
-        assertArrayEquals("ScanResult information elements", input.informationElements,
-                output.getScanResult().informationElements);
-        assertEquals("ScanResult anqp lines", input.anqpLines,
-                output.getScanResult().anqpLines);
-    }
-
 }

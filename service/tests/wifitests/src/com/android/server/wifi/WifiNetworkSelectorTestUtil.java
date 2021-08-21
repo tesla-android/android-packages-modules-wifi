@@ -21,8 +21,16 @@ import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_SAE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.SECURITY_WAPI_PSK;
 import static com.android.server.wifi.WifiConfigurationTestUtil.generateWifiConfig;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.net.NetworkKey;
@@ -34,12 +42,12 @@ import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiSsid;
+import android.net.wifi.util.ScanResultUtil;
 import android.text.TextUtils;
 
 import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.util.InformationElementUtil;
 import com.android.server.wifi.util.NativeUtil;
-import com.android.server.wifi.util.ScanResultUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -310,7 +318,7 @@ public class WifiNetworkSelectorTestUtil {
                     public WifiConfiguration answer(ScanDetail scanDetail) {
                         for (WifiConfiguration config : configs) {
                             if (TextUtils.equals(config.SSID,
-                                    ScanResultUtil.createQuotedSSID(scanDetail.getSSID()))) {
+                                    ScanResultUtil.createQuotedSsid(scanDetail.getSSID()))) {
                                 return config;
                             }
                         }
