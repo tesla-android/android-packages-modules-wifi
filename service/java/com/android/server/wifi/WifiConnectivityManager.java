@@ -41,6 +41,7 @@ import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiScanner.PnoSettings;
 import android.net.wifi.WifiScanner.ScanSettings;
 import android.net.wifi.hotspot2.PasspointConfiguration;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
 import android.os.HandlerExecutor;
 import android.os.PowerManager;
@@ -54,7 +55,6 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.hotspot2.PasspointManager;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -612,7 +612,7 @@ public class WifiConnectivityManager {
         List<String> results = new ArrayList<>();
         List<ScanResult> passpointAp = new ArrayList<>();
         for (ScanDetail scanDetail : scanDetails) {
-            results.add(ScanResultUtil.createQuotedSSID(scanDetail.getScanResult().SSID));
+            results.add(ScanResultUtil.createQuotedSsid(scanDetail.getScanResult().SSID));
             if (!scanDetail.getScanResult().isPasspointNetwork()) {
                 continue;
             }
@@ -775,7 +775,7 @@ public class WifiConnectivityManager {
                 return;
             }
 
-            mScanDetails.add(ScanResultUtil.toScanDetail(fullScanResult));
+            mScanDetails.add(new ScanDetail(fullScanResult));
         }
     }
 
@@ -901,7 +901,7 @@ public class WifiConnectivityManager {
                     localLog("Skipping scan result with null information elements");
                     continue;
                 }
-                mScanDetails.add(ScanResultUtil.toScanDetail(result));
+                mScanDetails.add(new ScanDetail(result));
             }
 
             // Create a new list to avoid looping call trigger concurrent exception.

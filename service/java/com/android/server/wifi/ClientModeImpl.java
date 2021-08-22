@@ -83,6 +83,7 @@ import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
 import android.net.wifi.nl80211.WifiNl80211Manager;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.BatteryStatsManager;
 import android.os.Build;
 import android.os.ConditionVariable;
@@ -135,7 +136,6 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStats;
 import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.RssiUtil;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.StateMachineObituary;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
@@ -6205,8 +6205,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // Run network selection against this SSID.
         List<ScanDetail> scanDetailsList = scanResults.stream()
                 .filter(scanResult -> config.SSID.equals(
-                        ScanResultUtil.createQuotedSSID(scanResult.SSID)))
-                .map(ScanResultUtil::toScanDetail)
+                        ScanResultUtil.createQuotedSsid(scanResult.SSID)))
+                .map(ScanDetail::new)
                 .collect(Collectors.toList());
         List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
         cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));
@@ -6251,7 +6251,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         ScanResultMatchInfo key1 = ScanResultMatchInfo.fromWifiConfiguration(config);
         List<ScanResult> scanResults = mScanRequestProxy.getScanResults();
         for (ScanResult scanResult : scanResults) {
-            if (!config.SSID.equals(ScanResultUtil.createQuotedSSID(scanResult.SSID))) {
+            if (!config.SSID.equals(ScanResultUtil.createQuotedSsid(scanResult.SSID))) {
                 continue;
             }
             ScanResultMatchInfo key2 = ScanResultMatchInfo.fromScanResult(scanResult);

@@ -26,6 +26,7 @@ import android.net.NetworkScoreManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
 import android.provider.Settings;
 import android.util.LocalLog;
@@ -33,7 +34,6 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 
 import java.util.ArrayList;
@@ -161,7 +161,7 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
             ScanResult scanResult = scanDetail.getScanResult();
             if (scanResult == null) continue;
             if (mWifiConfigManager.isNetworkTemporarilyDisabledByUser(
-                    ScanResultUtil.createQuotedSSID(scanResult.SSID))) {
+                    ScanResultUtil.createQuotedSsid(scanResult.SSID))) {
                 debugLog("Ignoring user disabled SSID: " + scanResult.SSID);
                 continue;
             }

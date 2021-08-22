@@ -27,11 +27,10 @@ import static org.mockito.Mockito.withSettings;
 
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
+import android.net.wifi.util.ScanResultUtil;
 import android.util.ArraySet;
 
 import androidx.test.filters.SmallTest;
-
-import com.android.server.wifi.util.ScanResultUtil;
 
 import com.google.android.collect.Sets;
 
@@ -85,10 +84,10 @@ public class WakeupEvaluatorTest extends WifiBaseTest {
         Set<ScanResultMatchInfo> networks = new ArraySet<>();
         networks.add(ScanResultMatchInfo.fromWifiConfiguration(
                 WifiConfigurationTestUtil.createOpenNetwork(
-                        ScanResultUtil.createQuotedSSID(SAVED_SSID_1))));
+                        ScanResultUtil.createQuotedSsid(SAVED_SSID_1))));
         networks.add(ScanResultMatchInfo.fromWifiConfiguration(
                 WifiConfigurationTestUtil.createOpenNetwork(
-                        ScanResultUtil.createQuotedSSID(SAVED_SSID_2))));
+                        ScanResultUtil.createQuotedSsid(SAVED_SSID_2))));
         return networks;
     }
 

@@ -21,21 +21,28 @@ import static android.os.Process.SYSTEM_UID;
 import static com.android.server.wifi.WifiConfigurationTestUtil.TEST_EAP_PASSWORD;
 import static com.android.server.wifi.WifiConfigurationTestUtil.TEST_IDENTITY;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.MacAddress;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.util.ScanResultUtil;
 import android.util.Xml;
 
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
 import com.android.modules.utils.build.SdkLevel;
-import com.android.server.wifi.util.ScanResultUtil;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 import com.android.server.wifi.util.XmlUtilTest;
 
@@ -834,7 +841,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
         List<WifiConfiguration> storedWIfiConfig = new ArrayList<>();
         for (int i = 1; i <= 1; i++) {
             WifiConfiguration network = WifiConfigurationTestUtil.createOpenNetwork(
-                    ScanResultUtil.createQuotedSSID(testSSID + (1 - i)));
+                    ScanResultUtil.createQuotedSsid(testSSID + (1 - i)));
             network.creatorName = TEST_CREATOR_NAME;
         }
         // Add to store data based on added order.
