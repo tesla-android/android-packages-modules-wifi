@@ -5171,6 +5171,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.sendMessage(ClientModeImpl.CMD_START_FILS_CONNECTION, 0, 0,
                 Collections.singletonList(l2Packet));
         mLooper.dispatchAll();
+        assertEquals("L2ConnectingState", mCmi.getCurrentState().getName());
     }
 
     /**
@@ -5278,6 +5279,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         mLooper.dispatchAll();
+        assertEquals("L2ConnectingState", mCmi.getCurrentState().getName());
 
         prepareFilsHlpPktAndSendStartConnect();
 
