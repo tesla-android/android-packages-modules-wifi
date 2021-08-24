@@ -3285,25 +3285,6 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify WifiP2pManager.SET_WFD_INFO_FAILED is returned when p2p is disabled.
-     */
-    @Test
-    public void testSetWfdInfoFailureWhenP2pDisabled() throws Exception {
-        mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
-        when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
-        when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
-                .thenReturn(PackageManager.PERMISSION_GRANTED);
-        sendSetWfdInfoMsg(mClientMessenger, mTestThisDevice.wfdInfo);
-        verify(mWifiInjector).getWifiPermissionsWrapper();
-        verify(mWifiPermissionsWrapper).getUidPermission(
-                eq(android.Manifest.permission.CONFIGURE_WIFI_DISPLAY), anyInt());
-        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
-        Message message = mMessageCaptor.getValue();
-        assertEquals(WifiP2pManager.SET_WFD_INFO_FAILED, message.what);
-        assertEquals(WifiP2pManager.BUSY, message.arg1);
-    }
-
-    /**
      * Verify WifiP2pManager.SET_WFD_INFO_FAILED is returned when wfd permission denied
      * and p2p is disabled.
      */
@@ -4606,5 +4587,32 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // In normal case, wfd info is cleared.
         verify(mWifiNative, never()).setWfdEnable(anyBoolean());
         verify(mWifiNative, never()).setWfdDeviceInfo(anyString());
+    }
+
+    /**
+     * Verify the WFD info is set if WFD info is set at P2pDisabledState.
+     */
+    @Test
+    public void testWfdInfoIsSetAtP2pEnabledWithPreSetWfdInfo() throws Exception {
+        mTestThisDevice.wfdInfo = new WifiP2pWfdInfo();
+        mTestThisDevice.wfdInfo.setEnabled(true);
+        when(mWifiInjector.getWifiPermissionsWrapper()).thenReturn(mWifiPermissionsWrapper);
+        when(mWifiPermissionsWrapper.getUidPermission(anyString(), anyInt()))
+                .thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiNative.setWfdEnable(anyBoolean())).thenReturn(true);
+        when(mWifiNative.setWfdDeviceInfo(anyString())).thenReturn(true);
+        sendSetWfdInfoMsg(mClientMessenger, mTestThisDevice.wfdInfo);
+
+        // At disabled state, WFD info is stored in the service, but not set actually.
+        verify(mWifiNative, never()).setWfdEnable(anyBoolean());
+        verify(mWifiNative, never()).setWfdDeviceInfo(any());
+
+        // Move to enabled state
+        forceP2pEnabled(mClient1);
+        mTestThisDevice.status = mTestThisDevice.AVAILABLE;
+
+        // Restore data for resuming from idle shutdown.
+        verify(mWifiNative).setWfdEnable(eq(true));
+        verify(mWifiNative).setWfdDeviceInfo(eq(mTestThisDevice.wfdInfo.getDeviceInfoHex()));
     }
 }
