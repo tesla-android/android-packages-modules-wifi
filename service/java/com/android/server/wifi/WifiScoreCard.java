@@ -1340,13 +1340,19 @@ public class WifiScoreCard {
 
             long txBytesDelta = txBytes - mLastTxBytes;
             long rxBytesDelta = rxBytes - mLastRxBytes;
+            int txLinkSpeedMbps = wifiInfo.getTxLinkSpeedMbps();
+            int txBandwidthCapMbps =  (txLinkSpeedMbps == LINK_SPEED_UNKNOWN)
+                    ? wifiInfo.getMaxSupportedTxLinkSpeedMbps() : txLinkSpeedMbps;
             if (txBytesDelta * RX_OVER_TX_BYTE_RATIO_MAX >= rxBytesDelta) {
-                updateBandwidthSample(txBytesDelta, LINK_TX, onTimeMs,
-                        wifiInfo.getMaxSupportedTxLinkSpeedMbps());
+                updateBandwidthSample(txBytesDelta, LINK_TX, onTimeMs, txBandwidthCapMbps);
             }
 
-            updateBandwidthSample(rxBytesDelta, LINK_RX, onTimeMs,
-                    wifiInfo.getMaxSupportedRxLinkSpeedMbps());
+            int rxLinkSpeedMbps = wifiInfo.getRxLinkSpeedMbps();
+            // Rx link speed is not available in many devices. In these cases, fall back to Tx link
+            // speed which is available in most devices.
+            int rxBandwidthCapMbps = (rxLinkSpeedMbps == LINK_SPEED_UNKNOWN)
+                    ? txBandwidthCapMbps : rxLinkSpeedMbps;
+            updateBandwidthSample(rxBytesDelta, LINK_RX, onTimeMs, rxBandwidthCapMbps);
 
             if (!mBandwidthSampleValid[LINK_RX] && !mBandwidthSampleValid[LINK_TX]) {
                 return;
@@ -1380,13 +1386,12 @@ public class WifiScoreCard {
         }
 
         private void updateBandwidthSample(long bytesDelta, int link, int onTimeMs,
-                int maxSupportedLinkSpeedMbps) {
-            checkAndPossiblyResetBandwidthStats(link, maxSupportedLinkSpeedMbps);
+                int bandwidthCapMbps) {
             if (bytesDelta < mByteDeltaAccThr[link]) {
                 return;
             }
             long speedKbps = bytesDelta / onTimeMs * 8;
-            if (speedKbps > (maxSupportedLinkSpeedMbps * 1000)) {
+            if (speedKbps > (bandwidthCapMbps * 1000)) {
                 return;
             }
             int linkBandwidthKbps = (int) speedKbps;
@@ -1402,26 +1407,6 @@ public class WifiScoreCard {
                 perBssid.changed = true;
                 perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] += linkBandwidthKbps;
                 perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel]++;
-            }
-        }
-
-        private void checkAndPossiblyResetBandwidthStats(int link, int maxSupportedLinkSpeedMbps) {
-            if (getAvgUsedLinkBandwidthKbps(link) > (maxSupportedLinkSpeedMbps * 1000)) {
-                resetBandwidthStats(link);
-            }
-        }
-
-        private void resetBandwidthStats(int link) {
-            changed = true;
-            // Reset SSID level stats
-            mBandwidthStatsValue[mBandIdx][link][mSignalLevel] = 0;
-            mBandwidthStatsCount[mBandIdx][link][mSignalLevel] = 0;
-            // Reset BSSID level stats
-            PerBssid perBssid = lookupBssid(ssid, mBssid);
-            if (perBssid != mPlaceholderPerBssid) {
-                perBssid.changed = true;
-                perBssid.bandwidthStatsValue[mBandIdx][link][mSignalLevel] = 0;
-                perBssid.bandwidthStatsCount[mBandIdx][link][mSignalLevel] = 0;
             }
         }
 
