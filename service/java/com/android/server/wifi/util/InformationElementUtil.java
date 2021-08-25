@@ -36,6 +36,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Locale;
 
 public class InformationElementUtil {
     private static final String TAG = "InformationElementUtil";
@@ -1702,6 +1703,60 @@ public class InformationElementUtil {
                 sbuf.append(String.format("%.1f", (double) rate / 1000000) + ", ");
             }
             return sbuf.toString();
+        }
+    }
+
+    /**
+     * This util class determines country related information in beacon/probe response
+     */
+    public static class Country {
+        private boolean mValid = false;
+        public String mCountryCode = "00";
+
+        /**
+         * Parse the Information Element Country Information field. Note that element ID and length
+         * fields are already removed.
+         *
+         * Country IE format (size unit: byte)
+         *
+         * ElementID | Length | country string | triplet | padding
+         *      1          1          3            Q*x       0 or 1
+         * First two bytes of country string are country code
+         * See 802.11 spec dot11CountryString definition.
+         */
+        public void from(InformationElement ie) {
+            mValid = false;
+            if (ie == null || ie.bytes == null || ie.bytes.length < 3) return;
+            ByteBuffer data = ByteBuffer.wrap(ie.bytes).order(ByteOrder.LITTLE_ENDIAN);
+            try {
+                char letter1 = (char) (data.get() & Constants.BYTE_MASK);
+                char letter2 = (char) (data.get() & Constants.BYTE_MASK);
+                char letter3 = (char) (data.get() & Constants.BYTE_MASK);
+                // See 802.11 spec dot11CountryString definition.
+                // ' ', 'O', 'I' are for all operation, outdoor, indoor environments, respectively.
+                mValid = (letter3 == ' ' || letter3 == 'O' || letter3 == 'I')
+                        && Character.isLetterOrDigit((int) letter1)
+                        && Character.isLetterOrDigit((int) letter2);
+                if (mValid) {
+                    mCountryCode = (String.valueOf(letter1) + letter2).toUpperCase(Locale.US);
+                }
+            } catch (BufferUnderflowException e) {
+                return;
+            }
+        }
+
+        /**
+         * Is this a valid country information element.
+         */
+        public boolean isValid() {
+            return mValid;
+        }
+
+        /**
+         * @return country code indicated in beacon/probe response frames
+         */
+        public String getCountryCode() {
+            return mCountryCode;
         }
     }
 }
