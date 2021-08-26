@@ -1038,6 +1038,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         String ssid = getNextArgRequired();
         String type = getNextArgRequired();
         WifiConfiguration configuration = new WifiConfiguration();
+        // Wrap the SSID in double quotes for UTF-8. The quotes may be removed if the SSID is in
+        // hexadecimal digits, specified by the [-x] option below.
         configuration.SSID = "\"" + ssid + "\"";
         if (TextUtils.equals(type, "wpa3")) {
             configuration.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
@@ -1054,7 +1056,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         }
         String option = getNextOption();
         while (option != null) {
-            if (option.equals("-m")) {
+            if (option.equals("-x")) {
+                configuration.SSID = ssid;
+            } else if (option.equals("-m")) {
                 configuration.meteredOverride = METERED_OVERRIDE_METERED;
             } else if (option.equals("-d")) {
                 configuration.allowAutojoin = false;
@@ -1505,7 +1509,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Start a new scan");
         pw.println("  list-networks");
         pw.println("    Lists the saved networks");
-        pw.println("  connect-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-m] [-d] "
+        pw.println("  connect-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
                 + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
         pw.println("    Connect to a network with provided params and add to saved networks list");
         pw.println("    <ssid> - SSID of the network");
@@ -1516,6 +1520,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
         pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -h - Mark the network hidden.");
@@ -1523,7 +1528,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -b <bssid> - Set specific BSSID.");
         pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
                 + " network");
-        pw.println("  add-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-m] [-d] "
+        pw.println("  add-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
                 + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
         pw.println("    Add/update saved network with provided params");
         pw.println("    <ssid> - SSID of the network");
@@ -1534,6 +1539,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
         pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
         pw.println("    -m - Mark the network metered.");
         pw.println("    -d - Mark the network autojoin disabled.");
         pw.println("    -h - Mark the network hidden.");
