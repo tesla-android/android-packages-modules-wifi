@@ -1084,6 +1084,13 @@ public class WifiNetworkSuggestionsManager {
                         WifiConfigurationUtil.VALIDATE_FOR_ADD)) {
                     return false;
                 }
+                if (config.macRandomizationSetting != WifiConfiguration.RANDOMIZATION_PERSISTENT
+                        && config.macRandomizationSetting
+                        != WifiConfiguration.RANDOMIZATION_NON_PERSISTENT) {
+                    Log.w(TAG, "MAC randomization setting is invalid. Automatically setting"
+                            + " config to use persistent random MAC address.");
+                    config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+                }
                 if (config.isEnterprise()) {
                     final WifiEnterpriseConfig enterpriseConfig = config.enterpriseConfig;
                     if (enterpriseConfig.isEapMethodServerCertUsed()
@@ -1101,6 +1108,13 @@ public class WifiNetworkSuggestionsManager {
             } else {
                 if (!wns.passpointConfiguration.validate()) {
                     return false;
+                }
+                if (!wns.passpointConfiguration.isMacRandomizationEnabled()) {
+                    Log.w(TAG, "MAC randomization must be enabled on Passpoint suggestion."
+                            + " Defaulting to use persistent MAC randomization for invalid"
+                            + " configuration.");
+                    wns.passpointConfiguration.setMacRandomizationEnabled(true);
+                    wns.passpointConfiguration.setNonPersistentMacRandomizationEnabled(false);
                 }
             }
             if (!isAppWorkingAsCrossCarrierProvider(packageName)
