@@ -1836,5 +1836,22 @@ public class InformationElementUtilTest extends WifiBaseTest {
                       2412, 72000000, true, true, true, false));
     }
 
+    /**
+     * Verify that the country code is parsed correctly from country IE
+     */
+    @Test
+    public void getCountryCodeWithCountryIE() throws Exception {
+        InformationElement ie = new InformationElement();
+        ie.id = InformationElement.EID_EXTENSION_PRESENT;
+        /** Country IE format (size unit: byte)
+         *
+         * |ElementID | Length | country string | triplet | padding
+         *      1          1          3            Q*x       0 or 1
+         */
+        ie.bytes = new byte[]{(byte) 0x75, (byte) 0x73, (byte) 0x49};
+        InformationElementUtil.Country country = new InformationElementUtil.Country();
+        country.from(ie);
+        assertEquals("US", country.getCountryCode());
+    }
     // TODO: SAE, OWN, SUITE_B
 }
