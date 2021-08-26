@@ -28,6 +28,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import android.net.NetworkCapabilities;
+import android.net.wifi.util.HexEncoding;
 import android.os.Parcel;
 import android.telephony.SubscriptionManager;
 
@@ -37,6 +38,7 @@ import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -514,6 +516,27 @@ public class WifiInfoTest {
         assertEquals(TEST_BSSID, info2.getBSSID());
         assertEquals(TEST_RSSI, info2.getRssi());
         assertEquals(TEST_NETWORK_ID2, info2.getNetworkId());
+    }
+
+    @Test
+    public void testSetSsid() throws Exception {
+        WifiInfo.Builder builder = new WifiInfo.Builder();
+
+        // Null
+        assertEquals(WifiManager.UNKNOWN_SSID, builder.build().getSSID());
+
+        // Empty
+        builder.setSsid(new byte[0]);
+        assertEquals(WifiManager.UNKNOWN_SSID, builder.build().getSSID());
+
+        // UTF-8
+        builder.setSsid(TEST_SSID.getBytes(StandardCharsets.UTF_8));
+        assertEquals("\"" + TEST_SSID + "\"", builder.build().getSSID());
+
+        // Non-UTF-8
+        byte[] gbkBytes = "服務集識別碼".getBytes(Charset.forName("GBK"));
+        builder.setSsid(gbkBytes);
+        assertEquals(HexEncoding.encodeToString(gbkBytes), builder.build().getSSID());
     }
 
     @Test

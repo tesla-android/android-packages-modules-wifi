@@ -1094,7 +1094,9 @@ public final class ScanResult implements Parcelable {
     public ScanResult(WifiSsid wifiSsid, String BSSID, long hessid, int anqpDomainId,
             byte[] osuProviders, String caps, int level, int frequency, long tsf) {
         this.wifiSsid = wifiSsid;
-        this.SSID = (wifiSsid != null) ? wifiSsid.toString() : WifiManager.UNKNOWN_SSID;
+        final String utf8Ssid = (wifiSsid != null) ? wifiSsid.getUtf8Text().toString()
+                : WifiManager.UNKNOWN_SSID;
+        this.SSID = (utf8Ssid != null) ? utf8Ssid : WifiManager.UNKNOWN_SSID;
         this.BSSID = BSSID;
         this.hessid = hessid;
         this.anqpDomainId = anqpDomainId;
@@ -1122,7 +1124,9 @@ public final class ScanResult implements Parcelable {
     public ScanResult(WifiSsid wifiSsid, String BSSID, String caps, int level, int frequency,
             long tsf, int distCm, int distSdCm) {
         this.wifiSsid = wifiSsid;
-        this.SSID = (wifiSsid != null) ? wifiSsid.toString() : WifiManager.UNKNOWN_SSID;
+        final String utf8Ssid = (wifiSsid != null) ? wifiSsid.getUtf8Text().toString()
+                : WifiManager.UNKNOWN_SSID;
+        this.SSID = (utf8Ssid != null) ? utf8Ssid : WifiManager.UNKNOWN_SSID;
         this.BSSID = BSSID;
         this.capabilities = caps;
         this.level = level;

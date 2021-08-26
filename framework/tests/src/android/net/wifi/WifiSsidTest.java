@@ -16,13 +16,15 @@
 
 package android.net.wifi;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static com.google.common.truth.Truth.assertThat;
+
+import android.net.wifi.util.HexEncoding;
 
 import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -31,17 +33,32 @@ import java.nio.charset.StandardCharsets;
 @SmallTest
 public class WifiSsidTest {
 
-    private static final String TEST_SSID = "Test SSID";
-    private static final byte[] TEST_SSID_BYTES = TEST_SSID.getBytes(StandardCharsets.US_ASCII);
+    private static final String TEST_SSID_UTF_8 = "Test SSID";
+    private static final String TEST_SSID_UTF_8_QUOTED = "\"" + TEST_SSID_UTF_8 + "\"";
+    private static final byte[] TEST_SSID_UTF_8_BYTES =
+            TEST_SSID_UTF_8.getBytes(StandardCharsets.UTF_8);
+
+    private static final byte[] TEST_SSID_NON_UTF_8_BYTES =
+            "服務集識別碼".getBytes(Charset.forName("GBK"));
+    private static final String TEST_SSID_NON_UTF_8_HEX =
+            HexEncoding.encodeToString(TEST_SSID_NON_UTF_8_BYTES);
 
     /**
      * Check that createFromByteArray() works.
      */
     @Test
     public void testCreateFromByteArray() {
-        WifiSsid wifiSsid = WifiSsid.createFromByteArray(TEST_SSID_BYTES);
-        assertTrue(wifiSsid != null);
-        assertEquals(TEST_SSID, wifiSsid.toString());
+        WifiSsid wifiSsidUtf8 = WifiSsid.createFromByteArray(TEST_SSID_UTF_8_BYTES);
+        assertThat(wifiSsidUtf8).isNotNull();
+        assertThat(wifiSsidUtf8.getOctets()).isEqualTo(TEST_SSID_UTF_8_BYTES);
+        assertThat(wifiSsidUtf8.getUtf8Text()).isEqualTo(TEST_SSID_UTF_8);
+        assertThat(wifiSsidUtf8.toString()).isEqualTo(TEST_SSID_UTF_8_QUOTED);
+
+        WifiSsid wifiSsidNonUtf8 = WifiSsid.createFromByteArray(TEST_SSID_NON_UTF_8_BYTES);
+        assertThat(wifiSsidNonUtf8).isNotNull();
+        assertThat(wifiSsidNonUtf8.getOctets()).isEqualTo(TEST_SSID_NON_UTF_8_BYTES);
+        assertThat(wifiSsidNonUtf8.getUtf8Text()).isNull();
+        assertThat(wifiSsidNonUtf8.toString()).isEqualTo(TEST_SSID_NON_UTF_8_HEX);
     }
 
     /**
@@ -51,10 +68,16 @@ public class WifiSsidTest {
      */
     @Test
     public void testEquals() throws Exception {
-        WifiSsid fromBytes = WifiSsid.createFromByteArray(TEST_SSID_BYTES);
-        WifiSsid fromString = WifiSsid.createFromAsciiEncoded(TEST_SSID);
-        assertTrue(fromBytes != null);
-        assertTrue(fromString != null);
-        assertEquals(fromBytes, fromString);
+        WifiSsid fromBytesUtf8 = WifiSsid.createFromByteArray(TEST_SSID_UTF_8_BYTES);
+        WifiSsid fromStringUtf8 = WifiSsid.createFromAsciiEncoded(TEST_SSID_UTF_8);
+        assertThat(fromBytesUtf8).isNotNull();
+        assertThat(fromStringUtf8).isNotNull();
+        assertThat(fromBytesUtf8).isEqualTo(fromStringUtf8);
+
+        WifiSsid fromBytesNonUtf8 = WifiSsid.createFromByteArray(TEST_SSID_NON_UTF_8_BYTES);
+        WifiSsid fromStringNonUtf8 = WifiSsid.createFromHex(TEST_SSID_NON_UTF_8_HEX);
+        assertThat(fromBytesNonUtf8).isNotNull();
+        assertThat(fromStringNonUtf8).isNotNull();
+        assertThat(fromBytesNonUtf8).isEqualTo(fromStringNonUtf8);
     }
 }
