@@ -80,6 +80,8 @@ import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.ArrayUtils;
 
+import libcore.util.HexEncoding;
+
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -938,7 +940,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     return 0;
                 }
                 case "add-fake-scan": {
-                    String ssid = getNextArgRequired();
+                    String option = getNextOption();
+                    boolean isHex = (option != null && option.equals("-x"));
+                    WifiSsid wifiSsid = WifiSsid.createFromByteArray(isHex
+                            ? HexEncoding.decode(getNextArgRequired())
+                            : getNextArgRequired().getBytes(StandardCharsets.UTF_8));
                     String bssid = getNextArgRequired();
                     String capabilities = getNextArgRequired();
                     int frequency;
@@ -968,11 +974,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     ScanResult.InformationElement ieSSid = new ScanResult.InformationElement(
                             ScanResult.InformationElement.EID_SSID,
                             0,
-                            ssid.getBytes(StandardCharsets.UTF_8));
+                            wifiSsid.getOctets());
                     ScanResult.InformationElement[] ies =
                             new ScanResult.InformationElement[]{ieSSid};
                     ScanDetail sd = new ScanDetail(new NetworkDetail(bssid, ies, null, frequency),
-                            WifiSsid.createFromAsciiEncoded(ssid), bssid, capabilities, dbm,
+                            wifiSsid, bssid, capabilities, dbm,
                             frequency, SystemClock.elapsedRealtime() * 1000, ies, null, null);
                     mWifiNative.addFakeScanDetail(sd);
                     return 0;
@@ -1740,7 +1746,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 + "'add-fake-scan'), stop with 'stop-faking-scans'.");
         pw.println("  stop-faking-scans");
         pw.println("    Stop faking scan results - started with 'start-faking-scans'.");
-        pw.println("  add-fake-scan <ssid> <bssid> <capabilities> <frequency> <dbm>");
+        pw.println("  add-fake-scan [-x] <ssid> <bssid> <capabilities> <frequency> <dbm>");
         pw.println("    Add a fake scan result to be used when enabled via `start-faking-scans'.");
         pw.println("    Example WPA2: add-fake-scan fakeWpa2 80:01:02:03:04:05 "
                 + "\"[WPA2-PSK-CCMP][RSN-PSK-CCMP][ESS]\" 2412 -55");
@@ -1760,6 +1766,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 "    Example Passpoint: add-fake-scan fakePasspoint 80:01:02:03:04:0B "
                         + "\"[WPA2-EAP/SHA1-CCMP][RSN-EAP/SHA1-CCMP][ESS][MFPR][MFPC]"
                         + "[PASSPOINT]\" 2412 -55");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
         pw.println("  reset-fake-scans");
         pw.println("    Resets all fake scan results added by 'add-fake-scan'.");
         pw.println("  enable-scanning enabled|disabled [-h]");
