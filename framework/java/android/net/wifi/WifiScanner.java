@@ -43,6 +43,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import androidx.annotation.RequiresApi;
+import androidx.annotation.VisibleForTesting;
 
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
@@ -1736,6 +1737,12 @@ public class WifiScanner {
     }
 
     /** @hide */
+    @VisibleForTesting
+    public Handler getInternalHandler() {
+        return mInternalHandler;
+    }
+
+    /** @hide */
     public static class OperationResult implements Parcelable {
         public int reason;
         public String description;
@@ -1785,8 +1792,12 @@ public class WifiScanner {
                     // This will cause all further async API calls on the WifiManager
                     // to fail and throw an exception
                     mAsyncChannel = null;
-                    getLooper().quit();
                     return;
+            }
+
+            if (mAsyncChannel == null) {
+                Log.e(TAG, "Channel was already disconnected!");
+                return;
             }
 
             ListenerWithExecutor listenerWithExecutor = getListenerWithExecutor(msg.arg2);
