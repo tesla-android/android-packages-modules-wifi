@@ -144,6 +144,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
         mWifiInfo.setSSID(TEST_SSID_1);
         mWifiInfo.setBSSID(TEST_BSSID_1.toString());
         mWifiInfo.setNetworkId(TEST_NETWORK_CONFIG_ID);
+        mWifiInfo.setTxLinkSpeedMbps(866);
+        mWifiInfo.setRxLinkSpeedMbps(866);
         mWifiInfo.setMaxSupportedTxLinkSpeedMbps(866);
         mWifiInfo.setMaxSupportedRxLinkSpeedMbps(866);
         millisecondsPass(0);
@@ -1785,7 +1787,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
     @Test
     public void testLinkBandwidthLargeByteCountReturnNonNegativeValue() {
         mWifiInfo.setRssi(-70);
-        mWifiInfo.setMaxSupportedRxLinkSpeedMbps(200_000);
+        mWifiInfo.setRxLinkSpeedMbps(200_000);
         mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
         PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
         mWifiInfo.setFrequency(5210);
@@ -1816,7 +1818,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         }
 
         // Report cold start BW for Tx because the calculated value is higher than
-        // maxSupportedTxLinkSpeedMbps.
+        // txLinkSpeedMbps.
         assertEquals(10_000, perNetwork.getTxLinkBandwidthKbps());
         assertEquals(128_000_000, perNetwork.getRxLinkBandwidthKbps());
 
@@ -1841,9 +1843,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
     }
 
     @Test
-    public void testLinkBandwidthResetInvalidStats() {
+    public void testLinkBandwidthInvalidBytes() {
         mWifiInfo.setRssi(-70);
-        mWifiInfo.setMaxSupportedRxLinkSpeedMbps(200_000);
         mWifiScoreCard.noteConnectionAttempt(mWifiInfo, -53, mWifiInfo.getSSID());
         PerNetwork perNetwork = mWifiScoreCard.lookupNetwork(mWifiInfo.getSSID());
         mWifiScoreCard.noteIpConfiguration(mWifiInfo);
@@ -1858,16 +1859,8 @@ public class WifiScoreCardTest extends WifiBaseTest {
             millisecondsPass(3_000);
             perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
         }
-        assertEquals(128_000_000, perNetwork.getRxLinkBandwidthKbps());
-        // Reduce max supported Rx link speed so that stats in the memory become invalid
-        // and fall back to cold start values
-        mWifiInfo.setMaxSupportedRxLinkSpeedMbps(100);
-        for (int i = 0; i < BANDWIDTH_STATS_COUNT_THR + 2; i++) {
-            addTotalBytes(txBytes, rxBytes);
-            millisecondsPass(3_000);
-            perNetwork.updateLinkBandwidth(mOldLlStats, mNewLlStats, mWifiInfo);
-        }
-        assertEquals(10_070, perNetwork.getRxLinkBandwidthKbps());
+        assertEquals(10_000, perNetwork.getTxLinkBandwidthKbps());
+        assertEquals(10_000, perNetwork.getRxLinkBandwidthKbps());
     }
 
     @Test
