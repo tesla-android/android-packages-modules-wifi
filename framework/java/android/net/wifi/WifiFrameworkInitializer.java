@@ -27,6 +27,8 @@ import android.net.wifi.rtt.WifiRttManager;
 import android.os.HandlerThread;
 import android.os.Looper;
 
+import androidx.annotation.VisibleForTesting;
+
 /**
  * Class for performing registration for all Wifi services.
  *
@@ -54,8 +56,9 @@ public class WifiFrameworkInitializer {
             return thread;
         }
     }
-
-    private static Looper getInstanceLooper() {
+    /** @hide */
+    @VisibleForTesting
+    public static Looper getInstanceLooper() {
         return NoPreloadHolder.INSTANCE.getLooper();
     }
 
