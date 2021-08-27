@@ -80,6 +80,8 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.Handler;
 import android.os.IPowerManager;
 import android.os.IThermalService;
+import android.os.Looper;
+import android.os.Message;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.SystemClock;
@@ -144,6 +146,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mWifiScanner = mockWifiScanner();
         mWifiConnectivityHelper = mockWifiConnectivityHelper();
         mWifiNS = mockWifiNetworkSelector();
+        mLooper = new TestLooper(mClock::getElapsedSinceBootMillis);
+        mTestHandler = new TestHandler(mLooper.getLooper());
         when(mContext.getSystemService(WifiScanner.class)).thenReturn(mWifiScanner);
         when(mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList())
                 .thenReturn(new ArrayList<>());
@@ -179,7 +183,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mWifiConnectivityManager.setTrustedConnectionAllowed(true);
         mWifiConnectivityManager.enableVerboseLogging(true);
         setWifiEnabled(true);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(SystemClock.elapsedRealtime());
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(CURRENT_SYSTEM_TIME_MS);
         when(mWifiLastResortWatchdog.shouldIgnoreBssidUpdate(anyString())).thenReturn(false);
         mLruConnectionTracker = new LruConnectionTracker(100, mContext);
         Comparator<WifiConfiguration> comparator =
@@ -234,7 +238,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
     private WifiContext mContext;
     private TestAlarmManager mAlarmManager;
-    private TestLooper mLooper = new TestLooper();
+    private TestLooper mLooper;
+    private TestHandler mTestHandler;
     private WifiConnectivityManager mWifiConnectivityManager;
     private WifiNetworkSelector mWifiNS;
     private WifiScanner mWifiScanner;
@@ -314,6 +319,55 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     private static final int POWER_SAVE_SCAN_INTERVAL_MULTIPLIER = 2;
     private static final int LOW_RSSI_NETWORK_RETRY_START_DELAY_SEC = 20;
     private static final int LOW_RSSI_NETWORK_RETRY_MAX_DELAY_SEC = 80;
+    private static final int SCAN_TRIGGER_TIMES = 7;
+
+    /**
+    * A test Handler that stores one single incoming Message with delayed time internally, to be
+    * able to manually triggered by calling {@link #timeAdvance}. Only one delayed message can be
+    * scheduled at a time. The scheduled delayed message intervals are recorded and returned by
+    * {@link #getIntervals}. The intervals are cleared by calling {@link #reset}.
+    */
+    private class TestHandler extends Handler {
+        private ArrayList<Long> mIntervals = new ArrayList<>();
+        private Message mMessage;
+
+        TestHandler(Looper looper) {
+            super(looper);
+        }
+
+        public List<Long> getIntervals() {
+            return mIntervals;
+        }
+
+        public void reset() {
+            mIntervals.clear();
+        }
+
+        public void timeAdvance() {
+            if (mMessage != null) {
+                // Dispatch the message without waiting.
+                super.dispatchMessage(mMessage);
+            }
+        }
+
+        @Override
+        public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
+            // uptimeMillis is an absolute time obtained as SystemClock.uptimeMillis() + delay
+            // in Handler and can't be replaced with customized clock.
+            // if custom clock is given, recalculate the time with regards to it
+            long delayMs = uptimeMillis - SystemClock.uptimeMillis();
+            if (delayMs > 0) {
+                mIntervals.add(delayMs);
+                mMessage = msg;
+            }
+            uptimeMillis = delayMs + mClock.getElapsedSinceBootMillis();
+            // Message is still queued to super, so it doesn't get filtered out and rely on the
+            // timeAdvance() to dispatch. timeAdvance() can force time to advance and send the
+            // message immediately. If it is not called not the message can still be dispatched
+            // at the time the message is scheduled.
+            return super.sendMessageAtTime(msg, uptimeMillis);
+        }
+    }
 
     WifiContext mockContext() {
         WifiContext context = mock(WifiContext.class);
@@ -474,7 +528,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 mWifiConfigManager, mWifiNetworkSuggestionsManager,
                 mWifiNS, mWifiConnectivityHelper,
                 mWifiLastResortWatchdog, mOpenNetworkNotifier,
-                mWifiMetrics, new Handler(mLooper.getLooper()), mClock,
+                mWifiMetrics, mTestHandler, mClock,
                 mLocalLog, mWifiScoreCard, mWifiBlocklistMonitor, mWifiChannelUtilization,
                 mPasspointManager, mDeviceConfigFacade, mActiveModeWarden, mWifiGlobals);
         verify(mActiveModeWarden, atLeastOnce()).registerModeChangeCallback(
@@ -1967,24 +2021,21 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
         // set screen off and wifi disconnected
         setScreenState(false);
-        mWifiConnectivityManager.handleConnectionStateChanged(
-                mPrimaryClientModeManager,
+        mWifiConnectivityManager.handleConnectionStateChanged(mPrimaryClientModeManager,
                 WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
 
-        // Set screen to ON to start a fast initial scan
-        setScreenState(true);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(0 /* triggerTimes */,
+                () -> {
+                    // Set screen to ON to start a fast initial scan
+                    setScreenState(true);
+                }, currentTimeStamp);
+        verifyScanTimesAndIntervals(1 /* scanTimes */, intervals,
+                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
 
         // Verify the initial scan state is awaiting for response
         assertEquals(WifiConnectivityManager.INITIAL_SCAN_STATE_AWAITING_RESPONSE,
                 mWifiConnectivityManager.getInitialScanState());
         verify(mWifiMetrics).incrementInitialPartialScanCount();
-
-        // Also verify the scan timer is set properly.
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        int expected = (int) (VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000);
-        assertEquals(expected, firstIntervalMs);
     }
 
     /**
@@ -2039,7 +2090,71 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     }
 
     private void checkWorkingWithDefaultSchedule() {
-        checkWorkingWithDefaultScheduleWithMultiplier(1);
+        checkWorkingWithDefaultScheduleWithMultiplier(1 /* multiplier */);
+    }
+
+    /**
+     * Get the value at index, or the last value if index is out of bound.
+     * @param schedule Int array of schedule.
+     * @param index Array index.
+     */
+    private int getByIndexOrLast(int[] schedule, int index) {
+        return index < schedule.length ? schedule[index] : schedule[schedule.length - 1];
+    }
+
+    private void verifyScanTimesAndIntervals(int scanTimes, List<Long> intervals,
+            int[] intervalSchedule) {
+        // Verify the scans actually happened for expected times, one scan for state change and
+        // each for scan timer triggered.
+        verify(mWifiScanner, times(scanTimes)).startScan(anyObject(), anyObject(), anyObject(),
+                anyObject());
+
+        // Verify the scan intervals are same as expected interval schedule.
+        for (int i = 0; i < intervals.size(); i++) {
+            long expected = (long) (getByIndexOrLast(intervalSchedule, i) * 1000);
+            assertEquals("Interval " + i, expected, intervals.get(i).longValue());
+        }
+    }
+
+    private void verifyScanTimesAndFirstInterval(int scanTimes, List<Long> intervals,
+            int expectedInterval) {
+        // Verify the scans actually happened for expected times, one scan for state change and
+        // each for scan timer triggered.
+        verify(mWifiScanner, times(scanTimes)).startScan(anyObject(), anyObject(), anyObject(),
+                anyObject());
+
+        // The actual interval should be same as scheduled.
+        assertEquals(expectedInterval * 1000, intervals.get(0).longValue());
+    }
+
+    /**
+     * Trigger the Wifi periodic scan and get scan intervals, after setting the Wifi state.
+     * @param triggerTimes The times to trigger the scheduled periodic scan. If it's 0 then don't
+     *              trigger the scheduled periodic scan just return the interval.
+     * @param setStateCallback The callback function to be called to set the Wifi state.
+     * @param startTime The simulated scan start time.
+     */
+    private List<Long> triggerPeriodicScansAndGetIntervals(int triggerTimes,
+            Runnable setStateCallback, long startTime) {
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(startTime);
+        // Call the Wifi state callback to set the specified Wifi State to test the scan intervals.
+        setStateCallback.run();
+
+        for (int i = 0; i < triggerTimes; i++) {
+            // Mock the advanced time as when the scan timer supposed to fire
+            when(mClock.getElapsedSinceBootMillis()).thenReturn(startTime
+                    + mTestHandler.getIntervals().stream().mapToLong(Long::longValue).sum());
+            // Now advance the test handler and fire the periodic scan timer
+            mTestHandler.timeAdvance();
+        }
+
+        /* Verify the number of intervals recorded for periodic scans is (times + 1):
+         * One initial interval by scan scheduled in setStateCallback.
+         * One interval by each scan triggered.
+         */
+        assertEquals(triggerTimes + 1, mTestHandler.getIntervals().size());
+
+        return mTestHandler.getIntervals();
     }
 
     private void checkWorkingWithDefaultScheduleWithMultiplier(float multiplier) {
@@ -2053,57 +2168,16 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set screen to ON
         setScreenState(true);
 
-        // Wait for max periodic scan interval so that any impact triggered
-        // by screen state change can settle
-        currentTimeStamp += MAX_SCAN_INTERVAL_IN_DEFAULT_SCHEDULE_SEC * 1000;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(SCAN_TRIGGER_TIMES,
+                () -> {
+                    mWifiConnectivityManager.handleConnectionStateChanged(
+                            mPrimaryClientModeManager,
+                            WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+                }, currentTimeStamp);
 
-        // Set WiFi to disconnected state to trigger periodic scan
-        mWifiConnectivityManager.handleConnectionStateChanged(
-                mPrimaryClientModeManager,
-                WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        int expected = (int) (DEFAULT_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000 * multiplier);
-        assertEquals(expected, firstIntervalMs);
-
-        currentTimeStamp += firstIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Now fire the first periodic scan alarm timer
-        mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-        mLooper.dispatchAll();
-
-        // Get the second periodic scan interval
-        long secondIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-
-        // Verify the intervals are exponential back off
-        expected = (int) (DEFAULT_SINGLE_SCAN_SCHEDULE_SEC[1] * 1000 * multiplier);
-        assertEquals(expected, secondIntervalMs);
-
-        currentTimeStamp += secondIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Make sure we eventually stay at the maximum scan interval.
-        long intervalMs = 0;
-        for (int i = 0; i < 5; i++) {
-            mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-            mLooper.dispatchAll();
-            intervalMs = mAlarmManager
-                    .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                    - currentTimeStamp;
-            currentTimeStamp += intervalMs;
-            when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-        }
-
-        expected = (int) (DEFAULT_SINGLE_SCAN_SCHEDULE_SEC[DEFAULT_SINGLE_SCAN_SCHEDULE_SEC.length
-                - 1] * 1000 * multiplier);
-        assertEquals(expected, intervalMs);
+        verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
+                Arrays.stream(DEFAULT_SINGLE_SCAN_SCHEDULE_SEC).map(i -> (int) (i * multiplier))
+                .toArray());
     }
 
     /**
@@ -2126,49 +2200,15 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         currentTimeStamp += MAX_SCAN_INTERVAL_IN_SCHEDULE_SEC * 1000;
         when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
 
-        // Set WiFi to disconnected state to trigger periodic scan
-        mWifiConnectivityManager.handleConnectionStateChanged(
-                mPrimaryClientModeManager,
-                WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(SCAN_TRIGGER_TIMES,
+                () -> {
+                    mWifiConnectivityManager.handleConnectionStateChanged(
+                            mPrimaryClientModeManager,
+                            WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+                }, currentTimeStamp);
 
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
-
-        currentTimeStamp += firstIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Now fire the first periodic scan alarm timer
-        mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-        mLooper.dispatchAll();
-
-        // Get the second periodic scan interval
-        long secondIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-
-        // Verify the intervals are exponential back off
-        assertEquals(VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[1] * 1000, secondIntervalMs);
-
-        currentTimeStamp += secondIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Make sure we eventually stay at the maximum scan interval.
-        long intervalMs = 0;
-        for (int i = 0; i < 5; i++) {
-            mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-            mLooper.dispatchAll();
-            intervalMs = mAlarmManager
-                    .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                    - currentTimeStamp;
-            currentTimeStamp += intervalMs;
-            when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-        }
-
-        assertEquals(VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[
-                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC.length - 1] * 1000, intervalMs);
+        verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
+                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
     }
 
     /**
@@ -2189,49 +2229,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Wait for max scanning interval so that any impact triggered
         // by screen state change can settle
         currentTimeStamp += MAX_SCAN_INTERVAL_IN_SCHEDULE_SEC * 1000;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
-
-        currentTimeStamp += firstIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Now fire the first periodic scan alarm timer
-        mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-        mLooper.dispatchAll();
-
-        // Get the second periodic scan interval
-        long secondIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-
-        // Verify the intervals are exponential back off
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[1] * 1000, secondIntervalMs);
-
-        currentTimeStamp += secondIntervalMs;
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-
-        // Make sure we eventually stay at the maximum scan interval.
-        long intervalMs = 0;
-        for (int i = 0; i < 5; i++) {
-            mAlarmManager.dispatch(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-            mLooper.dispatchAll();
-            intervalMs = mAlarmManager
-                    .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                    - currentTimeStamp;
-            currentTimeStamp += intervalMs;
-            when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
-        }
-
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[
-                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC.length - 1] * 1000, intervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(SCAN_TRIGGER_TIMES,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
     }
 
     /**
@@ -2266,16 +2270,15 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set firmware roaming to enabled
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
-        // Set WiFi to connected state to trigger periodic scan
-        mWifiConnectivityManager.handleConnectionStateChanged(
-                mPrimaryClientModeManager,
-                WifiConnectivityManager.WIFI_STATE_CONNECTED);
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(0 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    mWifiConnectivityManager.handleConnectionStateChanged(
+                            mPrimaryClientModeManager,
+                            WifiConnectivityManager.WIFI_STATE_CONNECTED);
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(1 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2310,14 +2313,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set firmware roaming to enabled
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2354,14 +2356,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         wifiConfigurationList.add(wifiConfiguration);
         when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(wifiConfigurationList);
 
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2404,14 +2405,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set firmware roaming to enabled
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2455,14 +2455,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set firmware roaming to enabled
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2513,14 +2512,13 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set firmware roaming to enabled
         when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
 
-        // Set WiFi to connected state to trigger periodic scan
-        setWifiStateConnected();
-
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2554,17 +2552,19 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         wifiConfigurationList.add(wifiConfiguration);
         when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(wifiConfigurationList);
 
-        // Set WiFi to connected state.
+        // Set WiFi to connected state to trigger periodic scan
         setWifiStateConnected();
-        // Simulate remove network, disconnect not finished.
-        when(mPrimaryClientModeManager.getConnectedWifiConfiguration()).thenReturn(null);
-        mNetworkUpdateListenerCaptor.getValue().onNetworkRemoved(null);
+        mTestHandler.reset();
 
-        // Get the first periodic scan interval
-        long firstIntervalMs = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG)
-                - currentTimeStamp;
-        assertEquals(VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000, firstIntervalMs);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Simulate remove network, disconnect not finished.
+                    when(mPrimaryClientModeManager.getConnectedWifiConfiguration())
+                            .thenReturn(null);
+                    mNetworkUpdateListenerCaptor.getValue().onNetworkRemoved(null);
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2598,19 +2598,16 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Set up time stamp for when entering CONNECTED state
         currentTimeStamp += 2000;
         when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+        mTestHandler.reset();
 
-        // Set WiFi to connected state to trigger its periodic scan
-        setWifiStateConnected();
-
-        // The very first scan triggered for connected state is actually via the alarm timer
-        // and it obeys the minimum scan interval
-        long firstScanForConnectedTimeStamp = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-
-        // Verify that the first scan for connected state is scheduled after the scan for
-        // disconnected state by first interval in connected scanning schedule.
-        assertEquals(scanForDisconnectedTimeStamp + VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]
-                * 1000, firstScanForConnectedTimeStamp);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(1 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        intervals.set(0, intervals.get(0) + 2000);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**
@@ -2646,23 +2643,17 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         currentTimeStamp += 2000;
         long enteringDisconnectedStateTimeStamp = currentTimeStamp;
         when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+        mTestHandler.reset();
 
-        // Set WiFi to disconnected state to trigger its periodic scan
-        mWifiConnectivityManager.handleConnectionStateChanged(
-                mPrimaryClientModeManager,
-                WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
-
-        // Verify the very first scan for DISCONNECTED state is fired immediately
-        verify(mWifiScanner, times(2)).startScan(
-                anyObject(), anyObject(), anyObject(), anyObject());
-        long secondScanForDisconnectedTimeStamp = mAlarmManager
-                .getTriggerTimeMillis(WifiConnectivityManager.PERIODIC_SCAN_TIMER_TAG);
-
-        // Verify that the second scan is scheduled after entering DISCONNECTED state by first
-        // interval in disconnected scanning schedule.
-        assertEquals(enteringDisconnectedStateTimeStamp
-                + VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0] * 1000,
-                secondScanForDisconnectedTimeStamp);
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(0 /* triggerTimes */,
+                () -> {
+                    // Set WiFi to disconnected state to trigger its periodic scan
+                    mWifiConnectivityManager.handleConnectionStateChanged(
+                            mPrimaryClientModeManager,
+                            WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+                }, currentTimeStamp);
+        verifyScanTimesAndFirstInterval(2 /* scanTimes */, intervals,
+                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC[0]);
     }
 
     /**

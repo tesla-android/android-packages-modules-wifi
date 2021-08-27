@@ -82,8 +82,6 @@ import java.util.stream.Stream;
 public class WifiConnectivityManager {
     public static final String WATCHDOG_TIMER_TAG =
             "WifiConnectivityManager Schedule Watchdog Timer";
-    public static final String PERIODIC_SCAN_TIMER_TAG =
-            "WifiConnectivityManager Schedule Periodic Scan Timer";
     public static final String RESTART_SINGLE_SCAN_TIMER_TAG =
             "WifiConnectivityManager Restart Single Scan";
     public static final String RESTART_CONNECTIVITY_SCAN_TIMER_TAG =
@@ -189,6 +187,7 @@ public class WifiConnectivityManager {
     private long mLastNetworkSelectionTimeStamp = RESET_TIME_STAMP;
     private boolean mPnoScanStarted = false;
     private boolean mPeriodicScanTimerSet = false;
+    private Object mPeriodicScanTimerToken = new Object();
     private boolean mDelayedPartialScanTimerSet = false;
     private boolean mWatchdogScanTimerSet = false;
 
@@ -264,15 +263,6 @@ public class WifiConnectivityManager {
             new AlarmManager.OnAlarmListener() {
                 public void onAlarm() {
                     watchdogHandler();
-                }
-            };
-
-    // Due to b/28020168, timer based single scan will be scheduled
-    // to provide periodic scan in an exponential backoff fashion.
-    private final AlarmManager.OnAlarmListener mPeriodicScanTimerListener =
-            new AlarmManager.OnAlarmListener() {
-                public void onAlarm() {
-                    periodicScanTimerHandler();
                 }
             };
 
@@ -1771,16 +1761,6 @@ public class WifiConnectivityManager {
         mLastPeriodicSingleScanTimeStamp = RESET_TIME_STAMP;
     }
 
-    // Periodic scan timer handler
-    private void periodicScanTimerHandler() {
-        localLog("periodicScanTimerHandler");
-
-        // Schedule the next timer and start a single scan if screen is on.
-        if (mScreenOn) {
-            startPeriodicSingleScan();
-        }
-    }
-
     // Start a single scan
     private void startForcedSingleScan(boolean isFullBandScan, WorkSource workSource) {
         mPnoScanListener.resetLowRssiNetworkRetryDelay();
@@ -2029,18 +2009,31 @@ public class WifiConnectivityManager {
     }
 
     // Set up periodic scan timer
+    // Due to b/28020168, timer based single scan will be scheduled
+    // to provide periodic scan in an exponential backoff fashion.
     private void schedulePeriodicScanTimer(int intervalMs) {
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                            mClock.getElapsedSinceBootMillis() + intervalMs,
-                            PERIODIC_SCAN_TIMER_TAG,
-                            mPeriodicScanTimerListener, mEventHandler);
+        if (mPeriodicScanTimerSet) {
+            Log.e(TAG, "A periodic scan was already scheduled.");
+            return;
+        }
+        localLog("schedulePeriodicScanTimer intervalMs " + intervalMs);
         mPeriodicScanTimerSet = true;
+        mEventHandler.postDelayed(() -> {
+            synchronized (mLock) {
+                mPeriodicScanTimerSet = false;
+            }
+            // Schedule the next timer and start a single scan if screen is on.
+            if (mScreenOn) {
+                startPeriodicSingleScan();
+            }
+        }, mPeriodicScanTimerToken, intervalMs);
     }
 
     // Cancel periodic scan timer
     private void cancelPeriodicScanTimer() {
         if (mPeriodicScanTimerSet) {
-            mAlarmManager.cancel(mPeriodicScanTimerListener);
+            localLog("cancelPeriodicScanTimer");
+            mEventHandler.removeCallbacksAndMessages(mPeriodicScanTimerToken);
             mPeriodicScanTimerSet = false;
         }
     }
