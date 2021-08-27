@@ -265,6 +265,12 @@ public class WifiScannerTest {
         assertEquals(WifiScanner.WIFI_RNR_NOT_NEEDED, scanSettings.getRnrSetting());
     }
 
+    @Test
+    public void testIsScanning() throws Exception {
+        mWifiScanner.isScanning();
+        verify(mService).isScanning();
+    }
+
     /**
      * Test behavior of {@link WifiScanner#startScan(ScanSettings, ScanListener)}
      * @throws Exception
