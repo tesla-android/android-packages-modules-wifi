@@ -43,9 +43,11 @@ import java.util.stream.Collectors;
  * Passpoint networks.
  */
 public class PasspointNetworkNominateHelper {
-    private final PasspointManager mPasspointManager;
-    private final WifiConfigManager mWifiConfigManager;
-    private final LocalLog mLocalLog;
+    @NonNull private final PasspointManager mPasspointManager;
+    @NonNull private final WifiConfigManager mWifiConfigManager;
+    @NonNull private final List<ScanDetail> mCachedScanDetails = new ArrayList<>();
+    @NonNull private LocalLog mLocalLog;
+
     /**
      * Contained information for a Passpoint network candidate.
      */
@@ -61,8 +63,8 @@ public class PasspointNetworkNominateHelper {
         ScanDetail mScanDetail;
     }
 
-    public PasspointNetworkNominateHelper(PasspointManager passpointManager,
-            WifiConfigManager wifiConfigManager, LocalLog localLog) {
+    public PasspointNetworkNominateHelper(@NonNull PasspointManager passpointManager,
+            @NonNull WifiConfigManager wifiConfigManager, @NonNull LocalLog localLog) {
         mPasspointManager = passpointManager;
         mWifiConfigManager = wifiConfigManager;
         mLocalLog = localLog;
@@ -95,8 +97,22 @@ public class PasspointNetworkNominateHelper {
             }
             filteredScanDetails.add(scanDetail);
         }
-
+        if (!filteredScanDetails.isEmpty()) {
+            mCachedScanDetails.clear();
+            mCachedScanDetails.addAll(filteredScanDetails);
+        }
         return findBestMatchScanDetailForProviders(filteredScanDetails, isFromSuggestion);
+    }
+
+    /**
+     * Refresh the best matched available Passpoint network candidates in WifiConfigManager for the
+     * last seen scanDetails. This should be used if new profiles have been added but scan results
+     * remain the same.
+     * @param isFromSuggestion True to indicate profile from suggestion, false for user saved.
+     */
+    public void refreshPasspointNetworkCandidates(boolean isFromSuggestion) {
+        // This method will add the provider wifi configs to WifiConfigManager
+        findBestMatchScanDetailForProviders(mCachedScanDetails, isFromSuggestion);
     }
 
     /**
@@ -126,8 +142,8 @@ public class PasspointNetworkNominateHelper {
     }
 
     /**
-     * Match available providers for each scan detail. Then for each available provider, find the
-     * best scan detail for it.
+     * Match available providers for each scan detail and add their configs to WifiConfigManager.
+     * Then for each available provider, find the best scan detail for it.
      * @param scanDetails all details for this scan.
      * @param isFromSuggestion True to indicate profile from suggestion, false for user saved.
      * @return List of pair of scanDetail and WifiConfig from matched available provider.

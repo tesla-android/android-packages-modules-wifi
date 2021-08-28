@@ -38,6 +38,8 @@ import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -204,6 +206,7 @@ public class PasspointManagerTest extends WifiBaseTest {
     @Mock OsuNetworkConnection mOsuNetworkConnection;
     @Mock OsuServerConnection mOsuServerConnection;
     @Mock PasspointProvisioner mPasspointProvisioner;
+    @Mock PasspointNetworkNominateHelper mPasspointNetworkNominateHelper;
     @Mock IProvisioningCallback mCallback;
     @Mock WfaKeyStore mWfaKeyStore;
     @Mock KeyStore mKeyStore;
@@ -265,6 +268,7 @@ public class PasspointManagerTest extends WifiBaseTest {
                 mWifiKeyStore, mClock, mObjectFactory, mWifiConfigManager,
                 mWifiConfigStore, mWifiMetrics, mWifiCarrierInfoManager, mMacAddressUtil,
                 mWifiPermissionsUtil);
+        mManager.setPasspointNetworkNominateHelper(mPasspointNetworkNominateHelper);
         mManager.setUseInjectedPKIX(true);
         mManager.injectPKIXParameters(TEST_PKIX_PARAMETERS);
 
@@ -416,6 +420,8 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(provider.getPackageName()).thenReturn(packageName);
         assertTrue(mManager.addOrUpdateProvider(
                 config, TEST_CREATOR_UID, TEST_PACKAGE, isSuggestion, true));
+        verify(mPasspointNetworkNominateHelper, atLeastOnce())
+                .refreshPasspointNetworkCandidates(isSuggestion);
         return provider;
     }
 
