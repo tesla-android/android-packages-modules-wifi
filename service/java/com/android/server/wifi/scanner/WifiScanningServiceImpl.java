@@ -148,6 +148,20 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
         return b;
     }
 
+    /**
+     * See {@link WifiScanner#isScanning()}
+     * @return true if in ScanningState.
+     */
+    @Override
+    public boolean isScanning() {
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkCallersHardwareLocationPermission(uid)) {
+            throw new SecurityException("UID " + uid
+                    + " does not have hardware Location permission");
+        }
+        return mIsScanning;
+    }
+
     private void enforceNetworkStack(int uid) {
         mContext.enforcePermission(
                 Manifest.permission.NETWORK_STACK,
@@ -401,6 +415,7 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
     private ChannelHelper mChannelHelper;
     private BackgroundScanScheduler mBackgroundScheduler;
     private WifiNative.ScanSettings mPreviousSchedule;
+    private boolean mIsScanning = false;
 
     private WifiBackgroundScanStateMachine mBackgroundScanStateMachine;
     private WifiSingleScanStateMachine mSingleScanStateMachine;
@@ -1046,6 +1061,7 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
                 WifiStatsLog.write(WifiStatsLog.WIFI_SCAN_STATE_CHANGED,
                         uidsAndTags.first, uidsAndTags.second,
                         WifiStatsLog.WIFI_SCAN_STATE_CHANGED__STATE__ON);
+                mIsScanning = true;
             }
 
             @Override
@@ -1057,6 +1073,7 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
                 WifiStatsLog.write(WifiStatsLog.WIFI_SCAN_STATE_CHANGED,
                         uidsAndTags.first, uidsAndTags.second,
                         WifiStatsLog.WIFI_SCAN_STATE_CHANGED__STATE__OFF);
+                mIsScanning = false;
 
                 // if any scans are still active (never got results available then indicate failure)
                 mWifiMetrics.incrementScanReturnEntry(

@@ -1119,6 +1119,21 @@ public class WifiScanner {
         mAsyncChannel.sendMessage(CMD_DEREGISTER_SCAN_LISTENER, 0, key);
     }
 
+    /**
+     * Check whether the Wi-Fi subsystem has started a scan and is waiting for scan results.
+     * @return true if a scan is in progress.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE)
+    public boolean isScanning() {
+        try {
+            return mService.isScanning();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
     /** start wifi scan in background
      * @param settings specifies various parameters for the scan; for more information look at
      * {@link ScanSettings}
