@@ -232,6 +232,53 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Check and enforce Coarse Location permission.
+     *
+     * @param pkgName PackageName of the application requesting access.
+     * @param featureId The feature in the package.
+     * @param uid The uid of the package.
+     */
+    public void enforceCoarseLocationPermission(String pkgName, @Nullable String featureId,
+            int uid) {
+        if (!checkCallersCoarseLocationPermission(pkgName, featureId,
+                uid, null)) {
+            throw new SecurityException(
+                    "UID " + uid + " does not have Coarse Location permission");
+        }
+    }
+
+    /**
+     * Checks that calling process has android.Manifest.permission.ACCESS_COARSE_LOCATION
+     * and a corresponding app op is allowed for this package and uid.
+     *
+     * @param pkgName PackageName of the application requesting access.
+     * @param featureId The feature in the package.
+     * @param uid The uid of the package.
+     * @param message A message describing why the permission was checked. Only needed if this is
+     *                not inside of a two-way binder call from the data receiver.
+     */
+    public boolean checkCallersCoarseLocationPermission(String pkgName, @Nullable String featureId,
+            int uid, @Nullable String message) {
+        if (mWifiPermissionsWrapper.getUidPermission(
+                Manifest.permission.ACCESS_COARSE_LOCATION, uid)
+                == PackageManager.PERMISSION_DENIED) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "checkCallersCoarseLocationPermission(" + pkgName + "): uid " + uid
+                        + " doesn't have ACCESS_COARSE_LOCATION permission ");
+            }
+            return false;
+        }
+        boolean allowed = noteAppOpAllowed(AppOpsManager.OPSTR_COARSE_LOCATION, pkgName,
+                    featureId, uid, message);
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "checkCallersCoarseLocationPermission(" + pkgName + "): returning "
+                    + allowed + " because uid " + uid + (allowed ? "has" : "doesn't have")
+                    + " app-op " + AppOpsManager.OPSTR_COARSE_LOCATION);
+        }
+        return allowed;
+    }
+
+    /**
      * Checks that calling process has android.Manifest.permission.LOCATION_HARDWARE.
      *
      * @param uid The uid of the package
