@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doAnswer;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.Context;
+import android.net.wifi.WifiInfo;
 import android.telephony.TelephonyManager;
 
 import androidx.test.filters.SmallTest;
@@ -41,6 +42,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -62,7 +65,9 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     @Mock ClientModeImplMonitor mClientModeImplMonitor;
     @Mock WifiNative mWifiNative;
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
+    @Mock WifiInfo mWifiInfo;
     private WifiCountryCode mWifiCountryCode;
+    private List<ClientModeManager> mClientManagerList;
 
     @Captor
     private ArgumentCaptor<ActiveModeWarden.ModeChangeCallback> mModeChangeCallbackCaptor;
@@ -80,8 +85,16 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
+        mClientManagerList = new ArrayList<>();
+        mClientManagerList.add(mClientModeManager);
+        when(mActiveModeWarden.getInternetConnectivityClientModeManagers())
+                .thenReturn(mClientManagerList);
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         when(mClientModeManager.setCountryCode(anyString())).thenReturn(true);
+        when(mClientModeManager.isConnected()).thenReturn(true);
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(mWifiInfo);
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond()).thenReturn(10.0);
+        when(mWifiInfo.getSuccessfulRxPacketsPerSecond()).thenReturn(5.0);
         when(mContext.getSystemService(Context.TELEPHONY_SERVICE))
                 .thenReturn(mTelephonyManager);
 
@@ -233,17 +246,34 @@ public class WifiCountryCodeTest extends WifiBaseTest {
      */
     @Test
     public void telephonyCountryCodeChangeAfterL2Connected() throws Exception {
+        mWifiCountryCode.setDefaultCountryCode("00");
         // Supplicant starts.
         mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mClientModeManager);
         // Wifi get L2 connected.
         mClientModeImplListenerCaptor.getValue().onConnectionStart(mClientModeManager);
+
+        // Wifi traffic is high
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond()).thenReturn(20.0);
         // Telephony country code arrives.
         mWifiCountryCode.setTelephonyCountryCodeAndUpdate(mTelephonyCountryCode);
-        // Telephony coutry code won't be applied at this time.
-        assertEquals(mDefaultCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
+        // Telephony country code won't be applied at this time.
+        assertEquals("00", mWifiCountryCode.getCountryCodeSentToDriver());
+        // Wifi is not forced to disconnect
+        verify(mClientModeManager, times(0)).disconnect();
+
+        // Wifi traffic is low
+        when(mWifiInfo.getSuccessfulTxPacketsPerSecond()).thenReturn(10.0);
+        // Telephony country code arrives for multiple times
+        for (int i = 0; i < 3; i++) {
+            mWifiCountryCode.setTelephonyCountryCodeAndUpdate(mTelephonyCountryCode);
+        }
+        // Telephony country code still won't be applied.
+        assertEquals("00", mWifiCountryCode.getCountryCodeSentToDriver());
+        // Wifi is forced to disconnect
+        verify(mClientModeManager, times(1)).disconnect();
 
         mClientModeImplListenerCaptor.getValue().onConnectionEnd(mClientModeManager);
-        // Telephony coutry is applied after supplicant is ready.
+        // Telephony country is applied after supplicant is ready.
         verify(mClientModeManager, times(2)).setCountryCode(anyString());
         assertEquals(mTelephonyCountryCode, mWifiCountryCode.getCountryCodeSentToDriver());
     }
