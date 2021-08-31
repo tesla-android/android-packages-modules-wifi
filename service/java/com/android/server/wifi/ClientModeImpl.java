@@ -3600,6 +3600,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         boolean isIpClientStarted = startIpClient(config, true);
                         if (isIpClientStarted) {
                             mIpClientWithPreConnection = true;
+                            transitionTo(mL2ConnectingState);
                             break;
                         }
                     }
@@ -6329,6 +6330,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     .withPreconnection()
                     .withApfCapabilities(
                     mWifiNative.getApfCapabilities(mInterfaceName))
+                    .withDisplayName(config.SSID)
                     .withLayer2Information(layer2Info);
             if (isUsingMacRandomization) {
                 // Use EUI64 address generation for link-local IPv6 addresses.
