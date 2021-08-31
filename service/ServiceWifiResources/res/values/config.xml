@@ -103,7 +103,7 @@
     <integer translatable="false" name="config_wifiFrameworkSavedNetworkBonus">500</integer>
     <integer translatable="false" name="config_wifiFrameworkUnmeteredNetworkBonus">1000</integer>
     <!-- Integer specifying the minimum bonus for current network -->
-    <integer translatable="false" name="config_wifiFrameworkCurrentNetworkBonusMin">20</integer>
+    <integer translatable="false" name="config_wifiFrameworkCurrentNetworkBonusMin">16</integer>
     <!-- Integer specifying the percent bonus for current network. The percent is applied to
          the sum of rssi base score and throughput score-->
     <integer translatable="false" name="config_wifiFrameworkCurrentNetworkBonusPercent">20</integer>

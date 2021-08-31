@@ -89,7 +89,7 @@ public class ScoringParams {
         public int throughputBonusLimit = 200;
         public int savedNetworkBonus = 500;
         public int unmeteredNetworkBonus = 1000;
-        public int currentNetworkBonusMin = 20;
+        public int currentNetworkBonusMin = 16;
         public int currentNetworkBonusPercent = 20;
         public int secureNetworkBonus = 40;
         public int lastSelectionMinutes = 480;
