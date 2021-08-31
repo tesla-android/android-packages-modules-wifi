@@ -2473,6 +2473,7 @@ public class WifiServiceImpl extends BaseWifiService {
             String featureId, boolean callerNetworksOnly) {
         enforceAccessPermission();
         int callingUid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(callingUid, packageName);
         boolean isDeviceOrProfileOwner = isDeviceOrProfileOwner(callingUid, packageName);
         boolean isCarrierApp = mWifiInjector.makeTelephonyManager()
                 .checkCarrierPrivilegesForPackageAnyPhone(packageName)
