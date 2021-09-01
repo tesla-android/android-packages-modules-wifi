@@ -49,9 +49,9 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ICoexCallback;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.RemoteException;
-import android.os.test.TestLooper;
 import android.telephony.AccessNetworkConstants;
 import android.telephony.Annotation;
 import android.telephony.CarrierConfigManager;
@@ -103,8 +103,6 @@ public class CoexManagerTest extends WifiBaseTest {
     private static final String FILEPATH_LTE_27_HARMONIC = "assets/coex_lte_27_harmonic.xml";
     private static final String FILEPATH_LTE_7_INTERMOD = "assets/coex_lte_7_intermod.xml";
 
-    private TestLooper mTestLooper;
-
     @Mock private Context mMockContext;
     @Mock private Resources mMockResources;
     @Mock private WifiNative mMockWifiNative;
@@ -136,10 +134,10 @@ public class CoexManagerTest extends WifiBaseTest {
     }
 
     private CoexManager createCoexManager() {
-        mTestLooper = new TestLooper();
+        Looper.prepare();
         final CoexManager coexManager = new CoexManager(mMockContext, mMockWifiNative,
                 mMockDefaultTelephonyManager, mMockSubscriptionManager, mMockCarrierConfigManager,
-                new Handler(mTestLooper.getLooper()));
+                new Handler(Looper.myLooper()));
         coexManager.enableVerboseLogging(true);
         return coexManager;
     }
@@ -639,8 +637,6 @@ public class CoexManagerTest extends WifiBaseTest {
         );
 
         coexManager.resetMockCellChannels();
-        mTestLooper.moveTimeForward(CoexManager.CELL_CHANNEL_IDLE_DELAY_MILLIS);
-        mTestLooper.dispatchAll();
 
         // Real channels should be used when mock channels are reset.
         assertThat(coexManager.getCoexUnsafeChannels()).isEmpty();
@@ -857,8 +853,6 @@ public class CoexManagerTest extends WifiBaseTest {
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 41, 2399_900, 10_000, 0, 0)
         ));
-        mTestLooper.moveTimeForward(CoexManager.CELL_CHANNEL_IDLE_DELAY_MILLIS);
-        mTestLooper.dispatchAll();
         // Update physical channel configs back to the first channel
         telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
                 createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
@@ -872,66 +866,6 @@ public class CoexManagerTest extends WifiBaseTest {
         verify(listener, times(3)).onCoexUnsafeChannelsChanged();
         // The remote callback has an extra call since it was notified on registration.
         verify(remoteCallback, times(4)).onCoexUnsafeChannelsChanged(any(), anyInt());
-    }
-
-    /**
-     * Verifies that calling onPhysicalChannelConfigChanged resulting in empty unsafe channels will
-     * delay clearing the list and abort the clearing if the unsafe channels become non-empty before
-     * the delay is over.
-     */
-    @Test
-    public void testOnPhysicalChannelConfigChanged_emptyUnsafeChannels_updateIsDelayed()
-            throws Exception {
-        when(mMockResources.getString(R.string.config_wifiCoexTableFilepath))
-                .thenReturn(createFileFromResource(FILEPATH_LTE_40_NEIGHBORING).getCanonicalPath());
-        final TelephonyManager telephonyManager = setUpSubIdMocks(0);
-        CoexManager coexManager = createCoexManager();
-        verify(mMockSubscriptionManager).addOnSubscriptionsChangedListener(
-                any(), mCoexSubscriptionsListenerCaptor.capture());
-        mCoexSubscriptionsListenerCaptor.getValue().onSubscriptionsChanged();
-        final ArgumentCaptor<CoexManager.CoexTelephonyCallback> telephonyCallbackCaptor =
-                ArgumentCaptor.forClass(CoexManager.CoexTelephonyCallback.class);
-        verify(telephonyManager).registerTelephonyCallback(any(Executor.class),
-                telephonyCallbackCaptor.capture());
-        CoexManager.CoexListener listener = mock(CoexManager.CoexListener.class);
-        coexManager.registerCoexListener(listener);
-        ICoexCallback remoteCallback = mock(ICoexCallback.class);
-        when(remoteCallback.asBinder()).thenReturn(mock(IBinder.class));
-        coexManager.registerRemoteCoexCallback(remoteCallback);
-
-        // Update physical channel configs to populate the unsafe channel list
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
-                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
-        ));
-        assertThat(coexManager.getCellChannels()).isNotEmpty();
-
-        // Update physical channel configs to clear unsafe channel list.
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(new ArrayList<>());
-        // List should not be cleared yet since clearance delay isn't over
-        assertThat(coexManager.getCoexUnsafeChannels()).isNotEmpty();
-        // Simulate clearance delay
-        mTestLooper.moveTimeForward(CoexManager.CELL_CHANNEL_IDLE_DELAY_MILLIS);
-        mTestLooper.dispatchAll();
-        // Unsafe channels should now be cleared
-        assertThat(coexManager.getCoexUnsafeChannels()).isEmpty();
-
-        // Repopulate unsafe channels
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
-                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
-        ));
-        assertThat(coexManager.getCellChannels()).isNotEmpty();
-
-        // Update physical channel configs to clear unsafe channel list.
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(new ArrayList<>());
-        // Repopulate unsafe channels again before clearance delay is over
-        telephonyCallbackCaptor.getValue().onPhysicalChannelConfigChanged(Arrays.asList(
-                createMockPhysicalChannelConfig(NETWORK_TYPE_LTE, 40, 2399_900, 10_000, 0, 0)
-        ));
-        // Simulate clearance delay
-        mTestLooper.moveTimeForward(CoexManager.CELL_CHANNEL_IDLE_DELAY_MILLIS);
-        mTestLooper.dispatchAll();
-        // Unsafe channels should not be cleared since we got a physical channel config during delay
-        assertThat(coexManager.getCoexUnsafeChannels()).isNotEmpty();
     }
 
     /**
