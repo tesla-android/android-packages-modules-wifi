@@ -41,6 +41,7 @@ import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.eq;
@@ -981,6 +982,19 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 CANDIDATE_NETWORK_ID, Process.WIFI_UID, "any");
         verify(mActiveModeWarden).requestSecondaryLongLivedClientModeManager(
                 any(), any(), any(), any());
+
+        // Simulate connection failing on the secondary
+        clearInvocations(mSecondaryClientModeManager, mPrimaryClientModeManager, mWifiNS);
+        mWifiConnectivityManager.handleConnectionAttemptEnded(
+                mSecondaryClientModeManager,
+                WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
+                CANDIDATE_SSID);
+        // verify connection is never restarted when a connection on the secondary STA fails.
+        verify(mWifiNS, never()).selectNetwork(any());
+        verify(mSecondaryClientModeManager, never()).startConnectToNetwork(
+                anyInt(), anyInt(), any());
+        verify(mPrimaryClientModeManager, never()).startConnectToNetwork(
+                anyInt(), anyInt(), any());
     }
 
     @Test
