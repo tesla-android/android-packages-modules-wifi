@@ -5069,6 +5069,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new IllegalArgumentException("listener must not be null");
         }
         final int uid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
         enforceAccessPermission();
         enforceLocationPermission(packageName, featureId, uid);
         if (isVerboseLoggingEnabled()) {
