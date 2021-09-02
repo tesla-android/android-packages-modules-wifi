@@ -6211,15 +6211,17 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 .collect(Collectors.toList());
         List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
         cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));
-        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
-                scanDetailsList,
-                new HashSet<String>(),
-                cmmState,
+        // getCandidatesFromScan updates candidate security params to configurations
+        // match these scanDetails.
+        mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetailsList, new HashSet<String>(), cmmState,
                 true, true, true);
-        WifiConfiguration selectedConfig = mWifiNetworkSelector.selectNetwork(candidates);
-        if (null != selectedConfig && selectedConfig.networkId == config.networkId) {
+        // Get the fresh copy again to retrieve the candidate security params.
+        WifiConfiguration freshConfig = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        if (null != freshConfig
+                && null != freshConfig.getNetworkSelectionStatus().getCandidateSecurityParams()) {
             config.getNetworkSelectionStatus().setCandidateSecurityParams(
-                    selectedConfig.getNetworkSelectionStatus().getCandidateSecurityParams());
+                    freshConfig.getNetworkSelectionStatus().getCandidateSecurityParams());
             return;
         }
 
