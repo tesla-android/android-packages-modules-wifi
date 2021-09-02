@@ -107,10 +107,6 @@ public class CoexManager {
     private static final String TAG = "WifiCoexManager";
     private boolean mVerboseLoggingEnabled = false;
 
-    // Delay in millis before updating cell channels to empty in case of a temporary idle.
-    @VisibleForTesting
-    static final int CELL_CHANNEL_IDLE_DELAY_MILLIS = 2_000;
-
     @NonNull
     private final Context mContext;
     @NonNull
@@ -178,7 +174,6 @@ public class CoexManager {
     /* package */ class CoexTelephonyCallback extends TelephonyCallback
             implements TelephonyCallback.PhysicalChannelConfigListener {
         private final int mSubId;
-        private boolean mIsIdleDelayStarted;
 
         private CoexTelephonyCallback(int subId) {
             super();
@@ -196,28 +191,6 @@ public class CoexManager {
             for (PhysicalChannelConfig config : configs) {
                 cellChannels.add(new CoexUtils.CoexCellChannel(config, mSubId));
             }
-            // Delay updating an empty cell channel list in case this is a temporary idle to avoid
-            // recalculating the unsafe channels and sending them to the driver again.
-            if (configs.isEmpty()) {
-                if (mIsIdleDelayStarted) {
-                    return;
-                }
-                mIsIdleDelayStarted = true;
-                mCallbackHandler.postDelayed(
-                        () -> {
-                            if (mIsIdleDelayStarted) {
-                                mIsIdleDelayStarted = false;
-                                updateCellChannels(cellChannels);
-                            }
-                        },
-                        CELL_CHANNEL_IDLE_DELAY_MILLIS);
-                return;
-            }
-            mIsIdleDelayStarted = false;
-            updateCellChannels(cellChannels);
-        }
-
-        private void updateCellChannels(List<CoexUtils.CoexCellChannel> cellChannels) {
             if (cellChannels.equals(mCellChannelsPerSubId.get(mSubId))) {
                 // No change to cell channels, so no need to recalculate
                 return;
