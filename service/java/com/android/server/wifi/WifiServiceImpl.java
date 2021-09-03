@@ -1206,7 +1206,8 @@ public class WifiServiceImpl extends BaseWifiService {
 
         mLog.info("startTetheredHotspot uid=%").c(Binder.getCallingUid()).flush();
 
-        if (!mTetheredSoftApTracker.setEnablingIfAllowed()) {
+        if (!mWifiThreadRunner.call(
+                () -> mTetheredSoftApTracker.setEnablingIfAllowed(), false)) {
             mLog.err("Tethering is already active.").flush();
             return false;
         }
