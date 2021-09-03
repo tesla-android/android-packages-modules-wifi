@@ -38,7 +38,7 @@ android_test {
         "frameworks-base-testutils",
         "guava",
         "mockito-target-minus-junit4",
-        "modules-utils-build",
+        "wifi-modules-utils",
         "net-tests-utils",
         "net-utils-framework-common",
         "truth-prebuilt",

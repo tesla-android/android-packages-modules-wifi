@@ -31,7 +31,6 @@ import android.net.wifi.WifiScanner;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.BatteryStatsManager;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
@@ -44,6 +43,7 @@ import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 import android.util.Log;
 
+import com.android.modules.utils.HandlerExecutor;
 import com.android.server.wifi.aware.WifiAwareMetrics;
 import com.android.server.wifi.hotspot2.PasspointManager;
 import com.android.server.wifi.hotspot2.PasspointNetworkNominateHelper;

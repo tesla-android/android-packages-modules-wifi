@@ -30,12 +30,12 @@ import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.modules.utils.HandlerExecutor;
 import com.android.server.wifi.util.WifiHandler;
 import com.android.wifi.resources.R;
 

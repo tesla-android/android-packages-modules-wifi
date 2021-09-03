@@ -86,7 +86,6 @@ import android.net.wifi.WifiManager.WifiConnectedNetworkScorer;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.connectivity.WifiActivityEnergyInfo;
@@ -94,6 +93,8 @@ import android.os.test.TestLooper;
 import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.HandlerExecutor;
 
 import org.junit.Before;
 import org.junit.Test;

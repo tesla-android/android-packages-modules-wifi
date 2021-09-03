@@ -67,6 +67,20 @@ test_access_hidden_api_whitelist = [
     "//packages/apps/Settings/tests/robotests", // TODO(b/161767237): remove
 ]
 
+java_library {
+    name: "wifi-modules-utils",
+    sdk_version: "module_current",
+    static_libs: [
+        "modules-utils-build",
+        "modules-utils-preconditions",
+        "modules-utils-handlerexecutor",
+    ],
+    apex_available: [
+        "com.android.wifi",
+        "test_com.android.wifi",
+    ],
+}
+
 // defaults shared between `framework-wifi` & `framework-wifi-pre-jarjar`
 // java_sdk_library `framework-wifi` needs sources to generate stubs, so it cannot reuse
 // `framework-wifi-pre-jarjar`
@@ -76,7 +90,7 @@ java_defaults {
     static_libs: [
         "framework-wifi-util-lib",
         "android.hardware.wifi-V1.0-java-constants",
-        "modules-utils-build",
+        "wifi-modules-utils",
     ],
     libs: [
         "unsupportedappusage", // for android.compat.annotation.UnsupportedAppUsage

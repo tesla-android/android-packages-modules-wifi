@@ -35,7 +35,6 @@ import android.net.wifi.WifiScanner.PnoSettings;
 import android.net.wifi.WifiScanner.ScanSettings;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.Process;
 import android.os.WorkSource;
 import android.util.ArrayMap;
@@ -44,6 +43,7 @@ import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.HandlerExecutor;
 import com.android.server.wifi.util.ScanResultUtil;
 import com.android.wifi.resources.R;
 
