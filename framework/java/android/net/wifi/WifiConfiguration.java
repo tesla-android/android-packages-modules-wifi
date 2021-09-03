@@ -689,6 +689,21 @@ public class WifiConfiguration implements Parcelable {
         updateLegacySecurityParams();
     }
 
+    private boolean isWpa3EnterpriseConfiguration() {
+        if (!allowedKeyManagement.get(KeyMgmt.WPA_EAP)
+                && !allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
+            return false;
+        }
+        if (!requirePmf) return false;
+        // Only RSN protocol is set.
+        if (allowedProtocols.cardinality() > 1) return false;
+        if (!allowedProtocols.get(Protocol.RSN)) return false;
+        // TKIP is not allowed.
+        if (allowedPairwiseCiphers.get(PairwiseCipher.TKIP)) return false;
+        if (allowedGroupCiphers.get(GroupCipher.TKIP)) return false;
+        return true;
+    }
+
     /**
      * If there is no security params, generate one according to legacy fields.
      * @hide
@@ -711,7 +726,7 @@ public class WifiConfiguration implements Parcelable {
         } else if (allowedKeyManagement.get(KeyMgmt.WPA2_PSK)) {
             setSecurityParams(SECURITY_TYPE_PSK);
         } else if (allowedKeyManagement.get(KeyMgmt.WPA_EAP)) {
-            if (requirePmf) {
+            if (isWpa3EnterpriseConfiguration()) {
                 setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
             } else {
                 setSecurityParams(SECURITY_TYPE_EAP);
@@ -3368,35 +3383,7 @@ public class WifiConfiguration implements Parcelable {
      *  return the SSID + security type in String format.
      */
     public String getSsidAndSecurityTypeString() {
-        String key;
-        if (allowedKeyManagement.get(KeyMgmt.WPA_PSK)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.WPA_PSK];
-        } else if (allowedKeyManagement.get(KeyMgmt.WPA_EAP)
-                || allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
-            if (!requirePmf) {
-                key = SSID + KeyMgmt.strings[KeyMgmt.WPA_EAP];
-            } else {
-                key = SSID + "WPA3_EAP";
-            }
-        } else if (wepTxKeyIndex >= 0 && wepTxKeyIndex < wepKeys.length
-                && wepKeys[wepTxKeyIndex] != null) {
-            key = SSID + "WEP";
-        } else if (allowedKeyManagement.get(KeyMgmt.OWE)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.OWE];
-        } else if (allowedKeyManagement.get(KeyMgmt.SAE)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.SAE];
-        } else if (allowedKeyManagement.get(KeyMgmt.SUITE_B_192)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.SUITE_B_192];
-        } else if (allowedKeyManagement.get(KeyMgmt.WAPI_PSK)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.WAPI_PSK];
-        } else if (allowedKeyManagement.get(KeyMgmt.WAPI_CERT)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.WAPI_CERT];
-        } else if (allowedKeyManagement.get(KeyMgmt.OSEN)) {
-            key = SSID + KeyMgmt.strings[KeyMgmt.OSEN];
-        } else {
-            key = SSID + KeyMgmt.strings[KeyMgmt.NONE];
-        }
-        return key;
+        return SSID + getDefaultSecurityType();
     }
 
     /**
@@ -3887,10 +3874,10 @@ public class WifiConfiguration implements Parcelable {
             key = KeyMgmt.strings[KeyMgmt.WPA_PSK];
         } else if (allowedKeyManagement.get(KeyMgmt.WPA_EAP)
                 || allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
-            if (!requirePmf) {
-                key = KeyMgmt.strings[KeyMgmt.WPA_EAP];
-            } else {
+            if (isWpa3EnterpriseConfiguration()) {
                 key = "WPA3_EAP";
+            } else {
+                key = KeyMgmt.strings[KeyMgmt.WPA_EAP];
             }
         } else if (wepTxKeyIndex >= 0 && wepTxKeyIndex < wepKeys.length
                 && wepKeys[wepTxKeyIndex] != null) {

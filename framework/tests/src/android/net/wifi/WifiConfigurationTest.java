@@ -449,6 +449,21 @@ public class WifiConfigurationTest {
         config.allowedKeyManagement.set(KeyMgmt.WAPI_CERT);
         assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WAPI_CERT],
                 config.getSsidAndSecurityTypeString());
+
+        // WPA2 Enterprise configuration with PMF required
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        config.requirePmf = true;
+        assertEquals(mSsid + KeyMgmt.strings[KeyMgmt.WPA_EAP],
+                config.getSsidAndSecurityTypeString());
+
+        // WPA3 Enterprise configuration
+        config.allowedKeyManagement.clear();
+        config.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
+        config.requirePmf = true;
+        config.allowedProtocols.set(Protocol.RSN);
+        assertEquals(mSsid + "WPA3_EAP",
+                config.getSsidAndSecurityTypeString());
     }
 
     /**
@@ -1108,6 +1123,7 @@ public class WifiConfigurationTest {
         WifiConfiguration wpa3EnterpriseConfig = new WifiConfiguration();
         wpa3EnterpriseConfig.allowedKeyManagement.set(KeyMgmt.WPA_EAP);
         wpa3EnterpriseConfig.requirePmf = true;
+        wpa3EnterpriseConfig.allowedProtocols.set(Protocol.RSN);
         wpa3EnterpriseConfig.convertLegacyFieldsToSecurityParamsIfNeeded();
         assertNotNull(wpa3EnterpriseConfig.getSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
 
