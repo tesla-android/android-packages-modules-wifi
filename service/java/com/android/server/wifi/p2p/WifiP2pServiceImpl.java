@@ -1132,8 +1132,12 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 WifiP2pManager.BUSY);
                         break;
                     case WifiP2pManager.STOP_DISCOVERY:
-                        replyToMessage(message, WifiP2pManager.STOP_DISCOVERY_FAILED,
-                                WifiP2pManager.BUSY);
+                        if (mIsWifiEnabled) {
+                            replyToMessage(message, WifiP2pManager.STOP_DISCOVERY_SUCCEEDED);
+                        } else {
+                            replyToMessage(message, WifiP2pManager.STOP_DISCOVERY_FAILED,
+                                    WifiP2pManager.BUSY);
+                        }
                         break;
                     case WifiP2pManager.DISCOVER_SERVICES:
                         replyToMessage(message, WifiP2pManager.DISCOVER_SERVICES_FAILED,
@@ -1145,7 +1149,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     case WifiP2pManager.CANCEL_CONNECT:
                         replyToMessage(message, WifiP2pManager.CANCEL_CONNECT_FAILED,
-                                WifiP2pManager.BUSY);
+                                 WifiP2pManager.BUSY);
                         break;
                     case WifiP2pManager.CREATE_GROUP:
                         replyToMessage(message, WifiP2pManager.CREATE_GROUP_FAILED,
@@ -1154,6 +1158,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case WifiP2pManager.REMOVE_GROUP:
                         replyToMessage(message, WifiP2pManager.REMOVE_GROUP_FAILED,
                                 WifiP2pManager.BUSY);
+                        break;
+                    case WifiP2pManager.STOP_LISTEN:
+                        if (mIsWifiEnabled) {
+                            replyToMessage(message, WifiP2pManager.STOP_LISTEN_SUCCEEDED);
+                        }
                         break;
                     case WifiP2pManager.ADD_LOCAL_SERVICE:
                         replyToMessage(message, WifiP2pManager.ADD_LOCAL_SERVICE_FAILED,
@@ -1182,9 +1191,31 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 WifiP2pManager.BUSY);
                         break;
                     case WifiP2pManager.SET_DEVICE_NAME:
-                        replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
-                                WifiP2pManager.BUSY);
+                    {
+                        if (!mIsWifiEnabled) {
+                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
+                                    WifiP2pManager.BUSY);
+                            break;
+                        }
+                        if (!checkNetworkSettingsOrNetworkStackOrOverrideWifiConfigPermission(
+                                message.sendingUid)) {
+                            loge("Permission violation - none of NETWORK_SETTING, NETWORK_STACK,"
+                                    + " or OVERRIDE_WIFI_CONFIG permission, uid = "
+                                    + message.sendingUid);
+                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
+                                    WifiP2pManager.ERROR);
+                            break;
+                        }
+                        WifiP2pDevice d = (WifiP2pDevice) message.obj;
+                        if (d != null && setAndPersistDeviceName(d.deviceName)) {
+                            if (mVerboseLoggingEnabled) logd("set device name " + d.deviceName);
+                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_SUCCEEDED);
+                        } else {
+                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
                         break;
+                    }
                     case WifiP2pManager.DELETE_PERSISTENT_GROUP:
                         replyToMessage(message, WifiP2pManager.DELETE_PERSISTENT_GROUP_FAILED,
                                 WifiP2pManager.BUSY);
@@ -1293,7 +1324,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case WifiP2pMonitor.P2P_PROV_DISC_FAILURE_EVENT:
                     case SET_MIRACAST_MODE:
                     case WifiP2pManager.START_LISTEN:
-                    case WifiP2pManager.STOP_LISTEN:
                     case WifiP2pManager.SET_CHANNEL:
                     case ENABLE_P2P:
                         // Enable is lazy and has no response
@@ -1570,6 +1600,35 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 return true;
             }
 
+            private boolean needsActiveP2p(int cmd) {
+                switch (cmd) {
+                    case WifiP2pManager.UPDATE_CHANNEL_INFO:
+                    case WifiP2pManager.SET_WFD_INFO:
+                    // If P2P is not active, these commands do not take effect actually.
+                    case WifiP2pManager.STOP_DISCOVERY:
+                    case WifiP2pManager.STOP_LISTEN:
+                    case WifiP2pManager.CANCEL_CONNECT:
+                    case WifiP2pManager.REMOVE_GROUP:
+                    case WifiP2pManager.REMOVE_LOCAL_SERVICE:
+                    case WifiP2pManager.CLEAR_LOCAL_SERVICES:
+                    case WifiP2pManager.REMOVE_SERVICE_REQUEST:
+                    case WifiP2pManager.CLEAR_SERVICE_REQUESTS:
+                    // These commands return wifi service p2p information which
+                    // does not need active P2P.
+                    case WifiP2pManager.REQUEST_P2P_STATE:
+                    case WifiP2pManager.REQUEST_DISCOVERY_STATE:
+                    case WifiP2pManager.REQUEST_NETWORK_INFO:
+                    case WifiP2pManager.REQUEST_CONNECTION_INFO:
+                    case WifiP2pManager.REQUEST_GROUP_INFO:
+                    case WifiP2pManager.REQUEST_DEVICE_INFO:
+                    case WifiP2pManager.REQUEST_PEERS:
+                    // These commands could be cached and executed on activating P2P.
+                    case WifiP2pManager.SET_DEVICE_NAME:
+                        return false;
+                }
+                return true;
+            }
+
             @Override
             public boolean processMessage(Message message) {
                 if (mVerboseLoggingEnabled) logd(getName() + message.toString());
@@ -1598,8 +1657,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         // which require P2P to be active.
                         if (message.what < Protocol.BASE_WIFI_P2P_MANAGER
                                 || Protocol.BASE_WIFI_P2P_SERVICE <= message.what
-                                || message.what == WifiP2pManager.UPDATE_CHANNEL_INFO
-                                || message.what == WifiP2pManager.SET_WFD_INFO) {
+                                || !needsActiveP2p(message.what)) {
                             return NOT_HANDLED;
                         }
                         // If P2P is not ready, it might be disabled due
@@ -1678,27 +1736,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             Log.e(TAG, "Failed to replace requestorWs");
                         }
                         break;
-                    case WifiP2pManager.SET_DEVICE_NAME:
-                    {
-                        if (!checkNetworkSettingsOrNetworkStackOrOverrideWifiConfigPermission(
-                                message.sendingUid)) {
-                            loge("Permission violation - none of NETWORK_SETTING, NETWORK_STACK,"
-                                    + " or OVERRIDE_WIFI_CONFIG permission, uid = "
-                                    + message.sendingUid);
-                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
-                                    WifiP2pManager.ERROR);
-                            break;
-                        }
-                        WifiP2pDevice d = (WifiP2pDevice) message.obj;
-                        if (d != null && setAndPersistDeviceName(d.deviceName)) {
-                            if (mVerboseLoggingEnabled) logd("set device name " + d.deviceName);
-                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_SUCCEEDED);
-                        } else {
-                            replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
-                                    WifiP2pManager.ERROR);
-                        }
-                        break;
-                    }
                     case WifiP2pManager.SET_WFD_INFO:
                     {
                         WifiP2pWfdInfo d = (WifiP2pWfdInfo) message.obj;
@@ -4021,14 +4058,15 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         private boolean setAndPersistDeviceName(String devName) {
             if (TextUtils.isEmpty(devName)) return false;
 
-            if (!mWifiNative.setDeviceName(devName)) {
-                loge("Failed to set device name " + devName);
-                return false;
+            if (mInterfaceName != null) {
+                if (!mWifiNative.setDeviceName(devName)
+                        || !mWifiNative.setP2pSsidPostfix("-" + devName)) {
+                    loge("Failed to set device name " + devName);
+                    return false;
+                }
             }
 
             mThisDevice.deviceName = devName;
-            mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceName);
-
             mSettingsConfigStore.put(WIFI_P2P_DEVICE_NAME, devName);
             sendThisDeviceChangedBroadcast();
             return true;
@@ -4068,7 +4106,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             mThisDevice.primaryDeviceType = mContext.getResources().getString(
                     R.string.config_wifi_p2p_device_type);
 
-            mWifiNative.setP2pDeviceName(mThisDevice.deviceName);
+            mWifiNative.setDeviceName(mThisDevice.deviceName);
             // DIRECT-XY-DEVICENAME (XY is randomly generated)
             mWifiNative.setP2pSsidPostfix("-" + mThisDevice.deviceName);
             mWifiNative.setP2pDeviceType(mThisDevice.primaryDeviceType);

@@ -314,16 +314,6 @@ public class WifiP2pNative {
     }
 
     /**
-     * Set WPS device name.
-     *
-     * @param name String to be set.
-     * @return true if request is sent successfully, false otherwise.
-     */
-    public boolean setP2pDeviceName(String name) {
-        return mSupplicantP2pIfaceHal.setWpsDeviceName(name);
-    }
-
-    /**
      * Set WPS device type.
      *
      * @param type Type specified as a string. Used format: <categ>-<OUI>-<subcateg>
