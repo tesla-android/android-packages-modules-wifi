@@ -700,7 +700,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mWifiP2pServiceImpl.getMessenger(clientBinder, TEST_PACKAGE_NAME);
         if (expectInit) {
             // send a command to force P2P enabled.
-            sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_P2P_STATE);
+            sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
         }
         mLooper.dispatchAll();
         reset(mClientHandler);
@@ -1017,7 +1017,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verify(mWifiMonitor, atLeastOnce()).registerHandler(anyString(), anyInt(), any());
 
         // Lazy initialization is done once receiving a command.
-        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_P2P_STATE);
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
         verify(mWifiNative, times(2)).setupInterface(any(), any(), any());
         verify(mNetdWrapper, times(2)).setInterfaceUp(anyString());
     }
@@ -2971,6 +2971,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
         mTestThisDevice.deviceName = "another-name";
         when(mWifiNative.setDeviceName(anyString())).thenReturn(true);
+        when(mWifiNative.setP2pSsidPostfix(anyString())).thenReturn(true);
         sendSetDeviceNameMsg(mClientMessenger, mTestThisDevice);
         verify(mWifiNative).setDeviceName(eq(mTestThisDevice.deviceName));
         verify(mWifiNative).setP2pSsidPostfix(eq("-" + mTestThisDevice.deviceName));
@@ -2991,6 +2992,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         forceP2pEnabled(mClient1);
         mTestThisDevice.status = mTestThisDevice.AVAILABLE;
 
+        // clear the one called on entering P2pEnabledState.
+        reset(mWifiNative);
         mTestThisDevice.deviceName = "";
         when(mWifiNative.setDeviceName(anyString())).thenReturn(true);
         sendSetDeviceNameMsg(mClientMessenger, mTestThisDevice);
@@ -3011,6 +3014,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // Move to enabled state
         forceP2pEnabled(mClient1);
 
+        // clear the one called on entering P2pEnabledState.
+        reset(mWifiNative);
         when(mWifiNative.setDeviceName(anyString())).thenReturn(false);
         sendSetDeviceNameMsg(mClientMessenger, mTestThisDevice);
         verify(mWifiNative).setDeviceName(eq(mTestThisDevice.deviceName));
@@ -4491,7 +4496,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // Verify timer is cannelled
         // Includes re-schedule 4 times:
         // 1. forceP2pEnabled(): enter InactiveState
-        // 2. forceP2pEnabled: REQUEST_P2P_STATE
+        // 2. forceP2pEnabled: DISCOVER_PEERS
         // 3. CONNECT
         // 4. leave InactiveState
         verify(mAlarmManager, times(4)).setExact(anyInt(), anyLong(),
@@ -4543,7 +4548,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiNative.setWfdDeviceInfo(anyString())).thenReturn(true);
 
         // send a command to resume P2P
-        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_P2P_STATE);
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
 
         // Restore data for resuming from idle shutdown.
         verify(mWifiNative).setWfdEnable(eq(true));
@@ -4581,7 +4586,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiNative.setWfdDeviceInfo(anyString())).thenReturn(true);
 
         // send a command to resume P2P
-        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_P2P_STATE);
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
         mLooper.dispatchAll();
 
         // In normal case, wfd info is cleared.
