@@ -917,13 +917,14 @@ public class WifiServiceImpl extends BaseWifiService {
         if (enforceChangePermission(packageName) != MODE_ALLOWED) {
             return false;
         }
-        boolean isPrivileged = isPrivileged(Binder.getCallingPid(), Binder.getCallingUid());
-        if (!isPrivileged && !isDeviceOrProfileOwner(Binder.getCallingUid(), packageName)
+        int callingUid = Binder.getCallingUid();
+        int callingPid = Binder.getCallingPid();
+        boolean isPrivileged = isPrivileged(callingPid, callingUid);
+        if (!isPrivileged && !isDeviceOrProfileOwner(callingUid, packageName)
                 && !mWifiPermissionsUtil.isTargetSdkLessThan(packageName, Build.VERSION_CODES.Q,
-                  Binder.getCallingUid())
-                && !mWifiPermissionsUtil.isSystem(packageName, Binder.getCallingUid())) {
-            mLog.info("setWifiEnabled not allowed for uid=%")
-                    .c(Binder.getCallingUid()).flush();
+                  callingUid)
+                && !mWifiPermissionsUtil.isSystem(packageName, callingUid)) {
+            mLog.info("setWifiEnabled not allowed for uid=%").c(callingUid).flush();
             return false;
         }
         // If Airplane mode is enabled, only privileged apps are allowed to toggle Wifi
@@ -938,8 +939,17 @@ public class WifiServiceImpl extends BaseWifiService {
             return false;
         }
 
+        // If user restriction is set, only DO/PO is allowed to toggle wifi
+        if (SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
+                UserManager.DISALLOW_CHANGE_WIFI_STATE,
+                UserHandle.getUserHandleForUid(callingUid))
+                && !isDeviceOrProfileOwner(callingUid, packageName)) {
+            mLog.err("setWifiEnabled with user restriction: only DO/PO can toggle wifi").flush();
+            return false;
+        }
+
         mLog.info("setWifiEnabled package=% uid=% enable=%").c(packageName)
-                .c(Binder.getCallingUid()).c(enable).flush();
+                .c(callingUid).c(enable).flush();
         long ident = Binder.clearCallingIdentity();
         try {
             if (!mSettingsStore.handleWifiToggled(enable)) {
@@ -949,7 +959,7 @@ public class WifiServiceImpl extends BaseWifiService {
         } finally {
             Binder.restoreCallingIdentity(ident);
         }
-        if (mWifiPermissionsUtil.checkNetworkSettingsPermission(Binder.getCallingUid())) {
+        if (mWifiPermissionsUtil.checkNetworkSettingsPermission(callingUid)) {
             if (enable) {
                 mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_TOGGLE_WIFI_ON);
             } else {
@@ -960,9 +970,9 @@ public class WifiServiceImpl extends BaseWifiService {
             }
         }
         mWifiMetrics.incrementNumWifiToggles(isPrivileged, enable);
-        mActiveModeWarden.wifiToggled(new WorkSource(Binder.getCallingUid(), packageName));
+        mActiveModeWarden.wifiToggled(new WorkSource(callingUid, packageName));
         mLastCallerInfoManager.put(LastCallerInfoManager.WIFI_ENABLED, Process.myTid(),
-                Binder.getCallingUid(), Binder.getCallingPid(), packageName, enable);
+                callingUid, callingPid, packageName, enable);
         return true;
     }
 

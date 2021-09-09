@@ -48,6 +48,8 @@ import android.os.Message;
 import android.os.Process;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.os.UserHandle;
+import android.os.UserManager;
 import android.os.WorkSource;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -61,6 +63,7 @@ import com.android.internal.util.Preconditions;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ActiveModeManager.ClientConnectivityRole;
 import com.android.server.wifi.ActiveModeManager.ClientInternetConnectivityRole;
 import com.android.server.wifi.ActiveModeManager.ClientRole;
@@ -114,6 +117,7 @@ public class ActiveModeWarden {
     private final WifiMetrics mWifiMetrics;
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     private final DppManager mDppManager;
+    private final UserManager mUserManager;
 
     private WifiServiceImpl.SoftApCallbackInternal mSoftApCallback;
     private WifiServiceImpl.SoftApCallbackInternal mLohsCallback;
@@ -274,6 +278,7 @@ public class ActiveModeWarden {
         mExternalScoreUpdateObserverProxy = externalScoreUpdateObserverProxy;
         mDppManager = dppManager;
         mGraveyard = new Graveyard();
+        mUserManager = mWifiInjector.getUserManager();
 
         wifiNative.registerStatusListener(isReady -> {
             if (!isReady && !mIsShuttingdown) {
@@ -511,7 +516,13 @@ public class ActiveModeWarden {
         mContext.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (mSettingsStore.handleAirplaneModeToggled()) {
+                boolean airplaneModeUpdated = mSettingsStore.updateAirplaneModeTracker();
+                boolean userRestrictionSet =
+                        SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
+                                UserManager.DISALLOW_CHANGE_WIFI_STATE,
+                                UserHandle.getUserHandleForUid(Process.SYSTEM_UID));
+                if (!userRestrictionSet && airplaneModeUpdated) {
+                    mSettingsStore.handleAirplaneModeToggled();
                     airplaneModeToggled();
                 }
             }
