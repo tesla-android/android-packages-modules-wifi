@@ -128,6 +128,7 @@ public class PasspointManager {
     private final WifiConfigManager mWifiConfigManager;
     private final WifiMetrics mWifiMetrics;
     private final PasspointProvisioner mPasspointProvisioner;
+    private PasspointNetworkNominateHelper mPasspointNetworkNominateHelper;
     private final AppOpsManager mAppOps;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
     private final MacAddressUtil mMacAddressUtil;
@@ -393,6 +394,14 @@ public class PasspointManager {
     }
 
     /**
+     * Sets the {@link PasspointNetworkNominateHelper} used by this PasspointManager.
+     */
+    public void setPasspointNetworkNominateHelper(
+            @Nullable PasspointNetworkNominateHelper nominateHelper) {
+        mPasspointNetworkNominateHelper = nominateHelper;
+    }
+
+    /**
      * Enable verbose logging
      * @param verbose enables verbose logging
      */
@@ -555,6 +564,9 @@ public class PasspointManager {
             mWifiMetrics.incrementTotalNumberOfPasspointProfilesWithDecoratedIdentity();
         }
         mWifiMetrics.incrementNumPasspointProviderInstallSuccess();
+        if (mPasspointNetworkNominateHelper != null) {
+            mPasspointNetworkNominateHelper.refreshPasspointNetworkCandidates(isFromSuggestion);
+        }
         return true;
     }
 
