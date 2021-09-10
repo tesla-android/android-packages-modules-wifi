@@ -104,6 +104,7 @@ import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
@@ -186,6 +187,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -866,6 +868,41 @@ public class ClientModeImplTest extends WifiBaseTest {
                         .filter(WifiConfigurationUtil::isSecurityParamsValid)
                         .findFirst().orElse(null),
                 config.getNetworkSelectionStatus().getCandidateSecurityParams());
+    }
+
+    /**
+     * Tests the network connection initiation sequence with the default network request pending
+     * from WifiNetworkFactory.
+     * This simulates the connect sequence using the public
+     * {@link WifiManager#enableNetwork(int, boolean)} and ensures that we invoke
+     * {@link WifiNative#connectToNetwork(WifiConfiguration)}.
+     */
+    @Test
+    public void triggerConnectWithUpgradeType() throws Exception {
+        WifiConfiguration config = spy(WifiConfigurationTestUtil.createOpenOweNetwork());
+        doAnswer(new AnswerWithArguments() {
+            public List<WifiCandidates.Candidate> answer(
+                    List<ScanDetail> scanDetails, Set<String> bssidBlocklist,
+                    List<WifiNetworkSelector.ClientModeManagerState> cmmStates,
+                    boolean untrustedNetworkAllowed,
+                    boolean oemPaidNetworkAllowed, boolean oemPrivateNetworkAllowed) {
+                config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                        SecurityParams.createSecurityParamsBySecurityType(
+                                WifiConfiguration.SECURITY_TYPE_OWE));
+                return null;
+            }
+        }).when(mWifiNetworkSelector).getCandidatesFromScan(any(), any(), any(),
+                anyBoolean(), anyBoolean(), anyBoolean());
+        config.networkId = FRAMEWORK_NETWORK_ID;
+        config.setRandomizedMacAddress(TEST_LOCAL_MAC_ADDRESS);
+        config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
+        config.getNetworkSelectionStatus().setHasEverConnected(mTestNetworkParams.hasEverConnected);
+        assertEquals(null, config.getNetworkSelectionStatus().getCandidateSecurityParams());
+
+        setupAndStartConnectSequence(config);
+        validateSuccessfulConnectSequence(config);
+        assertTrue(config.getNetworkSelectionStatus().getCandidateSecurityParams()
+                .isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE));
     }
 
     /**

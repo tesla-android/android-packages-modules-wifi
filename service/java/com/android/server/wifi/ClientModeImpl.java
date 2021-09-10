@@ -3271,6 +3271,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // Block to make sure IpClient has really shut down, lest cleanup
             // race with, say, bringup code over in tethering.
             mIpClientCallbacks.awaitShutdown();
+            mIpClientCallbacks = null;
+            mIpClient = null;
         }
         deregisterForWifiMonitorEvents(); // uses mInterfaceName, must call before nulling out
         // TODO: b/79504296 This broadcast has been deprecated and should be removed
@@ -6211,15 +6213,17 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 .collect(Collectors.toList());
         List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
         cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));
-        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
-                scanDetailsList,
-                new HashSet<String>(),
-                cmmState,
+        // getCandidatesFromScan updates candidate security params to configurations
+        // match these scanDetails.
+        mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetailsList, new HashSet<String>(), cmmState,
                 true, true, true);
-        WifiConfiguration selectedConfig = mWifiNetworkSelector.selectNetwork(candidates);
-        if (null != selectedConfig && selectedConfig.networkId == config.networkId) {
+        // Get the fresh copy again to retrieve the candidate security params.
+        WifiConfiguration freshConfig = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        if (null != freshConfig
+                && null != freshConfig.getNetworkSelectionStatus().getCandidateSecurityParams()) {
             config.getNetworkSelectionStatus().setCandidateSecurityParams(
-                    selectedConfig.getNetworkSelectionStatus().getCandidateSecurityParams());
+                    freshConfig.getNetworkSelectionStatus().getCandidateSecurityParams());
             return;
         }
 
