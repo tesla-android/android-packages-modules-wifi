@@ -278,6 +278,11 @@ public class WifiNetworkSelector {
             return true;
         }
 
+        // Current network is set as unusable by the external scorer.
+        if (!wifiInfo.isUsable()) {
+            return false;
+        }
+
         // OEM paid/private networks are only available to system apps, so this is never sufficient.
         if (network.oemPaid || network.oemPrivate) {
             localLog("Current network is oem paid/private");

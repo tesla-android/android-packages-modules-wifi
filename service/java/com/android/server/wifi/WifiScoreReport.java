@@ -250,6 +250,7 @@ public class WifiScoreReport {
                 mNetworkAgent.sendNetworkScore(mIsUsable ? ConnectedScore.WIFI_TRANSITION_SCORE + 1
                         : ConnectedScore.WIFI_TRANSITION_SCORE - 1);
             }
+            mWifiInfo.setUsable(mIsUsable);
         }
 
         @Override
