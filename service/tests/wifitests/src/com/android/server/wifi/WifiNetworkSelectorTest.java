@@ -332,6 +332,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         when(mWifiInfo.getRssi()).thenReturn(-70);
         when(mWifiInfo.getNetworkId()).thenReturn(WifiConfiguration.INVALID_NETWORK_ID);
         when(mWifiInfo.getBSSID()).thenReturn(null);
+        when(mWifiInfo.isUsable()).thenReturn(true);
+        when(mSecondaryWifiInfo.isUsable()).thenReturn(true);
     }
 
     private void setupWifiGlobals() {
@@ -347,6 +349,22 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     private void setupWifiConfigManager(int networkId) {
         when(mWifiConfigManager.getLastSelectedNetwork())
                 .thenReturn(networkId);
+    }
+
+    @Test
+    public void testNetworkInsufficientWhenMarkedUnusable() {
+        // mock current network to be connected
+        WifiConfiguration testConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        when(mWifiInfo.getSupplicantState()).thenReturn(SupplicantState.COMPLETED);
+        when(mWifiConfigManager.getConfiguredNetwork(anyInt()))
+                .thenReturn(testConfig);
+
+        // verify the current network is sufficient
+        assertTrue(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
+
+        // verify the current network is no longer sufficient after setting "isUsable" to false.
+        when(mWifiInfo.isUsable()).thenReturn(false);
+        assertFalse(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
     }
 
     /**

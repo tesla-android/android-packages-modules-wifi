@@ -2040,10 +2040,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         ExtendedWifiNetworkSuggestion extendedWifiNetworkSuggestion2 =
                 ExtendedWifiNetworkSuggestion.fromWns(networkSuggestion2, appInfo, true);
-        // For simplicity, the networkSuggestion2 is created through the constructor and has
-        // macRandomizationSetting = RANDOMIZATION_AUTO. Suggestions created through the formal
-        // Builder API should have RANDOMIZATION_PERSISTENT as default.
-        assertEquals(WifiConfiguration.RANDOMIZATION_AUTO,
+        assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
                 extendedWifiNetworkSuggestion2.createInternalWifiConfiguration(
                         mWifiCarrierInfoManager).macRandomizationSetting);
     }
@@ -4998,6 +4995,49 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     }
 
     @Test
+    public void testAddNonRandomizedNetworkSuggestionForcedToRandomized() {
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createOpenNetwork(), null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        networkSuggestion.wifiConfiguration.macRandomizationSetting =
+                WifiConfiguration.RANDOMIZATION_NONE;
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion),
+                        TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE));
+        assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
+                networkSuggestion.wifiConfiguration.macRandomizationSetting);
+    }
+
+    @Test
+    public void testAddNonRandomizedPasspointSuggestionForcedToRandomized() {
+        PasspointConfiguration passpointConfiguration =
+                createTestConfigWithUserCredential(TEST_FQDN, TEST_FRIENDLY_NAME);
+        WifiConfiguration placeholderConfig = createPlaceholderConfigForPasspoint(TEST_FQDN,
+                passpointConfiguration.getUniqueId());
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                placeholderConfig, passpointConfiguration, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        networkSuggestion.passpointConfiguration.setMacRandomizationEnabled(false);
+        networkSuggestion.passpointConfiguration.setNonPersistentMacRandomizationEnabled(false);
+        List<WifiNetworkSuggestion> networkSuggestionList =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(networkSuggestion);
+                }};
+        when(mPasspointManager.addOrUpdateProvider(any(), anyInt(), anyString(), anyBoolean(),
+                anyBoolean())).thenReturn(true);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+
+        ArgumentCaptor<PasspointConfiguration> passpointConfigCaptor =
+                ArgumentCaptor.forClass(PasspointConfiguration.class);
+        verify(mPasspointManager).addOrUpdateProvider(passpointConfigCaptor.capture(),
+                anyInt(), anyString(), anyBoolean(), anyBoolean());
+        assertTrue(passpointConfigCaptor.getValue().isMacRandomizationEnabled());
+        assertFalse(passpointConfigCaptor.getValue().isNonPersistentMacRandomizationEnabled());
+    }
+
+    @Test
     public void testIncompleteEnterpriseNetworkSuggestion() {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = "\"someNetwork\"";
@@ -5024,9 +5064,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
             boolean isUserInteractionRequired,
             boolean isUserAllowedToManuallyConnect,
             boolean isInitialAutoJoinEnabled, int priorityGroup) {
-        if (!SdkLevel.isAtLeastS()) {
-            config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
-        }
+        config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
         return new WifiNetworkSuggestion(config, passpointConfiguration, isAppInteractionRequired,
                 isUserInteractionRequired, isUserAllowedToManuallyConnect, isInitialAutoJoinEnabled,
                 priorityGroup);
