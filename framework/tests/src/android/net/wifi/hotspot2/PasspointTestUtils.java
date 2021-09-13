@@ -116,7 +116,7 @@ public class PasspointTestUtils {
     private static UpdateParameter createSubscriptionUpdate() {
         UpdateParameter subUpdate = new UpdateParameter();
         subUpdate.setUpdateIntervalInMinutes(9021);
-        subUpdate.setUpdateMethod(UpdateParameter.UPDATE_METHOD_SSP);
+        subUpdate.setUpdateMethod(UpdateParameter.UPDATE_METHOD_SPP);
         subUpdate.setRestriction(UpdateParameter.UPDATE_RESTRICTION_ROAMING_PARTNER);
         subUpdate.setServerUri("subscription.update.com");
         subUpdate.setUsername("subUsername");
