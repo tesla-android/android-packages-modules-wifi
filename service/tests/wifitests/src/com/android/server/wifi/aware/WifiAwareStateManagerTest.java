@@ -390,8 +390,8 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 eq(false), eq(true), eq(true), eq(false), eq(false), eq(false));
         mDut.onConfigSuccessResponse(transactionId.getValue());
         mMockLooper.dispatchAll();
-        inOrder.verify(mockCallback).onConnectSuccess(clientId);
         inOrder.verify(mMockAwareDataPathStatemanager).createAllInterfaces();
+        inOrder.verify(mockCallback).onConnectSuccess(clientId);
 
         // (3) disconnect (disable Aware)
         mDut.disconnect(clientId);
