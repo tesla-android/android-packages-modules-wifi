@@ -19,7 +19,10 @@ package com.android.server.wifi;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.os.UserHandle;
-import android.os.UserManager;
+
+import androidx.annotation.NonNull;
+
+import com.android.server.wifi.util.WifiPermissionsUtil;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -35,12 +38,12 @@ public class ConfigurationMap {
     private final Map<ScanResultMatchInfo, WifiConfiguration>
             mScanResultMatchInfoMapForCurrentUser = new HashMap<>();
 
-    private final UserManager mUserManager;
+    @NonNull private final WifiPermissionsUtil mWifiPermissionsUtil;
 
     private int mCurrentUserId = UserHandle.SYSTEM.getIdentifier();
 
-    ConfigurationMap(UserManager userManager) {
-        mUserManager = userManager;
+    ConfigurationMap(@NonNull WifiPermissionsUtil wifiPermissionsUtil) {
+        mWifiPermissionsUtil = wifiPermissionsUtil;
     }
 
     /** Dump internal state for debugging. */
@@ -55,10 +58,8 @@ public class ConfigurationMap {
     // RW methods:
     public WifiConfiguration put(WifiConfiguration config) {
         final WifiConfiguration current = mPerID.put(config.networkId, config);
-        final UserHandle currentUser = UserHandle.of(mCurrentUserId);
-        final UserHandle creatorUser = UserHandle.getUserHandleForUid(config.creatorUid);
-        if (config.shared || currentUser.equals(creatorUser)
-                || mUserManager.isSameProfileGroup(currentUser, creatorUser)) {
+        if (config.shared || mWifiPermissionsUtil
+                .doesUidBelongToCurrentUserOrDeviceOwner(config.creatorUid)) {
             mPerIDForCurrentUser.put(config.networkId, config);
             // TODO (b/142035508): Add a more generic fix. This cache should only hold saved
             // networks.
