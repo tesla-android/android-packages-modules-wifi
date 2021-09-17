@@ -16,8 +16,17 @@
 
 package com.android.server.wifi;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.net.wifi.ScanResult;
@@ -32,6 +41,7 @@ import com.android.wifi.resources.R;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -1240,5 +1250,25 @@ public class WifiBlocklistMonitorTest {
                     NetworkSelectionStatus.DISABLE_REASON_INFOS.get(i).mDisableThreshold,
                     mWifiBlocklistMonitor.getNetworkSelectionDisableThreshold(i));
         }
+    }
+
+    /**
+     * Verifies that an oversize allowlist is trimmed to the max allowlist size when updating
+     * the firmware roaming configuration.
+     */
+    @Test
+    public void testUpdateFirmwareRoamingConfigurationTrimsOversizeAllowlist() {
+        int maxAllowlistSize = 4;
+        when(mWifiConnectivityHelper.getMaxNumAllowlistSsid()).thenReturn(maxAllowlistSize);
+        when(mWifiConnectivityHelper.isFirmwareRoamingSupported()).thenReturn(true);
+        Set<String> allowList = Set.of("ssid1", "ssid2", "ssid3", "ssid4", "ssid5");
+        mWifiBlocklistMonitor.setAllowlistSsids("ssid0", new ArrayList<>(allowList));
+        mWifiBlocklistMonitor.updateFirmwareRoamingConfiguration(Set.of("ssid0"));
+
+        ArgumentCaptor<ArrayList> ssidAllowlistCaptor = ArgumentCaptor.forClass(ArrayList.class);
+        verify(mWifiConnectivityHelper).setFirmwareRoamingConfiguration(
+                any(), ssidAllowlistCaptor.capture());
+
+        assertEquals(maxAllowlistSize, ssidAllowlistCaptor.getValue().size());
     }
 }
