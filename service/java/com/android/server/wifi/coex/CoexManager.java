@@ -48,7 +48,6 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.CoexRestriction;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.PersistableBundle;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
@@ -67,6 +66,7 @@ import android.util.SparseBooleanArray;
 import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.HandlerExecutor;
 import com.android.server.wifi.WifiNative;
 import com.android.wifi.resources.R;
 
