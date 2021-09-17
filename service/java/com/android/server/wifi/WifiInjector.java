@@ -69,6 +69,9 @@ import com.android.server.wifi.util.WifiPermissionsWrapper;
 import com.android.server.wifi.util.WorkSourceHelper;
 import com.android.wifi.resources.R;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchProviderException;
@@ -611,6 +614,13 @@ public class WifiInjector {
         return mWifiHandlerThread;
     }
 
+    /**
+     * Wrapper method for getting the current native Java Thread ID of the current thread.
+     */
+    public long getCurrentThreadId() {
+        return Thread.currentThread().getId();
+    }
+
     public WifiTrafficPoller getWifiTrafficPoller() {
         return mWifiTrafficPoller;
     }
@@ -1062,5 +1072,13 @@ public class WifiInjector {
 
     public LinkProbeManager getLinkProbeManager() {
         return mLinkProbeManager;
+    }
+
+    /**
+     * Creates a BufferedReader for the given filename. Useful for unit tests that depend on IO.
+     */
+    @NonNull
+    public BufferedReader createBufferedReader(String filename) throws FileNotFoundException {
+        return new BufferedReader(new FileReader(filename));
     }
 }

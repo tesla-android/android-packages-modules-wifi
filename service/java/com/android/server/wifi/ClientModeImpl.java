@@ -143,7 +143,6 @@ import com.android.wifi.resources.R;
 import java.io.BufferedReader;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Retention;
@@ -182,6 +181,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     @VisibleForTesting public static final long CONNECTING_WATCHDOG_TIMEOUT_MS = 30_000; // 30 secs.
     @VisibleForTesting
     public static final short NETWORK_NOT_FOUND_EVENT_THRESHOLD = 3;
+    public static final String ARP_TABLE_PATH = "/proc/net/arp";
 
     private boolean mVerboseLoggingEnabled = false;
 
@@ -3068,14 +3068,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     }
 
     /*
-     * Read a MAC address in /proc/arp/table, used by ClientModeImpl
+     * Read a MAC address in /proc/net/arp, used by ClientModeImpl
      * so as to record MAC address of default gateway.
      **/
     private String macAddressFromRoute(String ipAddress) {
         String macAddress = null;
         BufferedReader reader = null;
         try {
-            reader = new BufferedReader(new FileReader("/proc/net/arp"));
+            reader = mWifiInjector.createBufferedReader(ARP_TABLE_PATH);
 
             // Skip over the line bearing column titles
             String line = reader.readLine();
@@ -3087,7 +3087,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 }
 
                 // ARP column format is
-                // Address HWType HWAddress Flags Mask IFace
+                // IPAddress HWType Flags HWAddress Mask Device
                 String ip = tokens[0];
                 String mac = tokens[3];
 
@@ -4413,6 +4413,21 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     transitionTo(mL3ProvisioningState);
                     break;
                 }
+                case WifiMonitor.SUP_REQUEST_SIM_AUTH: {
+                    logd("Received SUP_REQUEST_SIM_AUTH");
+                    SimAuthRequestData requestData = (SimAuthRequestData) message.obj;
+                    if (requestData != null) {
+                        if (requestData.protocol == WifiEnterpriseConfig.Eap.SIM) {
+                            handleGsmAuthRequest(requestData);
+                        } else if (requestData.protocol == WifiEnterpriseConfig.Eap.AKA
+                                || requestData.protocol == WifiEnterpriseConfig.Eap.AKA_PRIME) {
+                            handle3GAuthRequest(requestData);
+                        }
+                    } else {
+                        loge("Invalid SIM auth request");
+                    }
+                    break;
+                }
                 case WifiMonitor.NETWORK_DISCONNECTION_EVENT: {
                     DisconnectEventInfo eventInfo = (DisconnectEventInfo) message.obj;
                     if (mVerboseLoggingEnabled) {
@@ -4744,21 +4759,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_FRAMEWORK_DISCONNECT,
                                 StaEvent.DISCONNECT_GENERIC);
                         mWifiNative.disconnect(mInterfaceName);
-                    }
-                    break;
-                }
-                case WifiMonitor.SUP_REQUEST_SIM_AUTH: {
-                    logd("Received SUP_REQUEST_SIM_AUTH");
-                    SimAuthRequestData requestData = (SimAuthRequestData) message.obj;
-                    if (requestData != null) {
-                        if (requestData.protocol == WifiEnterpriseConfig.Eap.SIM) {
-                            handleGsmAuthRequest(requestData);
-                        } else if (requestData.protocol == WifiEnterpriseConfig.Eap.AKA
-                                || requestData.protocol == WifiEnterpriseConfig.Eap.AKA_PRIME) {
-                            handle3GAuthRequest(requestData);
-                        }
-                    } else {
-                        loge("Invalid SIM auth request");
                     }
                     break;
                 }

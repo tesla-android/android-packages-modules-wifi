@@ -17,7 +17,6 @@
 package com.android.server.wifi.hotspot2;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
@@ -82,7 +81,7 @@ public class PasspointXmlUtilsTest extends WifiBaseTest {
         // Subscription update.
         UpdateParameter subscriptionUpdate = new UpdateParameter();
         subscriptionUpdate.setUpdateIntervalInMinutes(120);
-        subscriptionUpdate.setUpdateMethod(UpdateParameter.UPDATE_METHOD_SSP);
+        subscriptionUpdate.setUpdateMethod(UpdateParameter.UPDATE_METHOD_SPP);
         subscriptionUpdate.setRestriction(UpdateParameter.UPDATE_RESTRICTION_ROAMING_PARTNER);
         subscriptionUpdate.setServerUri("subscription.update.com");
         subscriptionUpdate.setUsername("subscriptionUser");
