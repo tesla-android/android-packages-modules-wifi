@@ -50,7 +50,6 @@ import android.net.wifi.WifiConfiguration.SecurityType;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.Looper;
 import android.os.PatternMatcher;
 import android.os.PowerManager;
@@ -64,6 +63,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.HandlerExecutor;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.ActionListenerWrapper;
 import com.android.server.wifi.util.ScanResultUtil;
