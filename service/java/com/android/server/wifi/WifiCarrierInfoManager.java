@@ -42,7 +42,6 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
@@ -63,6 +62,7 @@ import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
+import com.android.modules.utils.HandlerExecutor;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.wifi.resources.R;
 
