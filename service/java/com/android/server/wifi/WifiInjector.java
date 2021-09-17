@@ -614,6 +614,13 @@ public class WifiInjector {
         return mWifiHandlerThread;
     }
 
+    /**
+     * Wrapper method for getting the current native Java Thread ID of the current thread.
+     */
+    public long getCurrentThreadId() {
+        return Thread.currentThread().getId();
+    }
+
     public WifiTrafficPoller getWifiTrafficPoller() {
         return mWifiTrafficPoller;
     }

@@ -2482,9 +2482,25 @@ public class HalDeviceManager {
 
         void trigger() {
             if (mHandler != null) {
-                mHandler.post(() -> {
+                // TODO(b/199792691): The thread check is needed to preserve the existing
+                //  assumptions of synchronous execution of the "onDestroyed" callback as much as
+                //  possible. This is needed to prevent regressions caused by posting to the handler
+                //  thread changing the code execution order.
+                //  When all wifi services (ie. WifiAware, WifiP2p) get moved to the wifi handler
+                //  thread, remove this thread check and the Handler#post() and simply always
+                //  invoke the callback directly.
+                long currentTid = mWifiInjector.getCurrentThreadId();
+                long handlerTid = mHandler.getLooper().getThread().getId();
+                if (currentTid == handlerTid) {
+                    // Already running on the same handler thread. Trigger listener synchronously.
                     action();
-                });
+                } else {
+                    // Current thread is not the thread the listener should be invoked on.
+                    // Post action to the intended thread.
+                    mHandler.post(() -> {
+                        action();
+                    });
+                }
             } else {
                 action();
             }

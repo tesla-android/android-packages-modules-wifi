@@ -86,6 +86,7 @@ import org.junit.rules.ErrorCollector;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.PrintWriter;
@@ -959,6 +960,90 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         verify(mManagerStatusListenerMock, times(2)).onStatusChanged();
 
         verifyNoMoreInteractions(mManagerStatusListenerMock, idl);
+    }
+
+    /**
+     * Verify that when the thread that caused an iface to get destroyed is not the thread the
+     * onDestroy callback is intended to be invoked on, then onDestroy is will get posted to the
+     * correct thread.
+     */
+    @Test
+    public void testOnDestroyedWithHandlerTriggeredOnDifferentThread() throws Exception {
+        long currentThreadId = 983757; // arbitrary current thread ID
+        when(mWifiInjector.getCurrentThreadId()).thenReturn(currentThreadId);
+        // RETURNS_DEEP_STUBS allows mocking nested method calls
+        Handler staIfaceOnDestroyedHandler = mock(Handler.class, Mockito.RETURNS_DEEP_STUBS);
+        // Configure the handler to be on a different thread as the current thread.
+        when(staIfaceOnDestroyedHandler.getLooper().getThread().getId())
+                .thenReturn(currentThreadId + 1);
+        InterfaceDestroyedListener staIdl = mock(InterfaceDestroyedListener.class);
+        ArgumentCaptor<Runnable> lambdaCaptor = ArgumentCaptor.forClass(Runnable.class);
+
+        // simulate adding a STA iface and then stopping wifi
+        simulateStartAndStopWifi(staIdl, staIfaceOnDestroyedHandler);
+
+        // Verify a runnable is posted because current thread is different than the intended thread
+        // for running "onDestroyed"
+        verify(staIfaceOnDestroyedHandler).post(lambdaCaptor.capture());
+
+        // Verify onDestroyed is only run after the posted runnable is dispatched
+        verify(staIdl, never()).onDestroyed("wlan0");
+        lambdaCaptor.getValue().run();
+        verify(staIdl).onDestroyed("wlan0");
+    }
+
+    /**
+     * Verify that when the thread that caused an iface to get destroyed is already the thread the
+     * onDestroy callback is intended to be invoked on, then onDestroy is invoked directly.
+     */
+    @Test
+    public void testOnDestroyedWithHandlerTriggeredOnSameThread() throws Exception {
+        long currentThreadId = 983757; // arbitrary current thread ID
+        when(mWifiInjector.getCurrentThreadId()).thenReturn(currentThreadId);
+        // RETURNS_DEEP_STUBS allows mocking nested method calls
+        Handler staIfaceOnDestroyedHandler = mock(Handler.class, Mockito.RETURNS_DEEP_STUBS);
+        // Configure the handler thread ID so it's the same as the current thread.
+        when(staIfaceOnDestroyedHandler.getLooper().getThread().getId())
+                .thenReturn(currentThreadId);
+        InterfaceDestroyedListener staIdl = mock(InterfaceDestroyedListener.class);
+
+        // simulate adding a STA iface and then stopping wifi
+        simulateStartAndStopWifi(staIdl, staIfaceOnDestroyedHandler);
+
+        // Verify a runnable is never posted
+        verify(staIfaceOnDestroyedHandler, never()).post(any());
+        // Verify onDestroyed is triggered directly
+        verify(staIdl).onDestroyed("wlan0");
+    }
+
+    private void simulateStartAndStopWifi(InterfaceDestroyedListener staIdl,
+            Handler staIfaceOnDestroyedHandler) throws Exception {
+        TestChipV1 chipMock = new TestChipV1();
+        chipMock.initialize();
+
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
+                mManagerStatusListenerMock);
+        executeAndValidateInitializationSequence();
+
+        // start Wi-Fi
+        assertTrue(mDut.start());
+
+        // Create STA Iface.
+        IWifiStaIface staIface = mock(IWifiStaIface.class);
+        doAnswer(new GetNameAnswer("wlan0")).when(staIface).getName(
+                any(IWifiIface.getNameCallback.class));
+        doAnswer(new GetTypeAnswer(IfaceType.STA)).when(staIface).getType(
+                any(IWifiIface.getTypeCallback.class));
+        doAnswer(new CreateXxxIfaceAnswer(chipMock, mStatusOk, staIface)).when(
+                chipMock.chip).createStaIface(any(IWifiChip.createStaIfaceCallback.class));
+        assertEquals(staIface, mDut.createStaIface(staIdl, staIfaceOnDestroyedHandler,
+                TEST_WORKSOURCE_0));
+
+        mInOrder.verify(chipMock.chip).configureChip(TestChipV1.STA_CHIP_MODE_ID);
+
+        // Stop Wi-Fi
+        mDut.stop();
+        mInOrder.verify(mWifiMock).stop();
     }
 
     /**
