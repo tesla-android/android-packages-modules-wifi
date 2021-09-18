@@ -106,7 +106,6 @@ import android.net.wifi.WifiUsabilityStatsEntry.RadioStats;
 import android.net.wifi.WifiUsabilityStatsEntry.RateStats;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.connectivity.WifiActivityEnergyInfo;
@@ -115,6 +114,7 @@ import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.HandlerExecutor;
 import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Before;

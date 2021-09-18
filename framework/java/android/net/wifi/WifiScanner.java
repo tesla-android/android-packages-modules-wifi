@@ -1122,7 +1122,12 @@ public class WifiScanner {
 
     /**
      * Check whether the Wi-Fi subsystem has started a scan and is waiting for scan results.
-     * @return true if a scan is in progress.
+     * @return true if a scan initiated via
+     *         {@link WifiScanner#startScan(ScanSettings, ScanListener)} or
+     *         {@link WifiManager#startScan()} is in progress.
+     *         false if there is currently no scanning initiated by {@link WifiScanner} or
+     *         {@link WifiManager}, but it's still possible the wifi radio is scanning for
+     *         another reason.
      * @hide
      */
     @SystemApi
