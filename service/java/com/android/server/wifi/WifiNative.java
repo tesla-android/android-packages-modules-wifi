@@ -26,6 +26,7 @@ import android.net.TrafficStats;
 import android.net.apf.ApfCapabilities;
 import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAnnotations;
 import android.net.wifi.WifiAvailableChannel;
@@ -4099,5 +4100,15 @@ public class WifiNative {
         if (mCountryCodeChangeListener != null) {
             mCountryCodeChangeListener.setChangeListener(listener);
         }
+    }
+
+    /**
+     * Gets the security params of the current network associated with this interface
+     *
+     * @param ifaceName Name of the interface
+     * @return Security params of the current network associated with the interface
+     */
+    public SecurityParams getCurrentNetworkSecurityParams(@NonNull String ifaceName) {
+        return mSupplicantStaIfaceHal.getCurrentNetworkSecurityParams(ifaceName);
     }
 }
