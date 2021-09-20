@@ -234,7 +234,7 @@ public class PasspointNetworkNominateHelper {
             return existingNetwork;
         }
         mWifiConfigManager.allowAutojoin(result.getNetworkId(), config.allowAutojoin);
-        mWifiConfigManager.enableNetwork(result.getNetworkId(), false, Process.WIFI_UID, null);
+        mWifiConfigManager.enableNetwork(result.getNetworkId(), false, config.creatorUid, null);
         mWifiConfigManager.setNetworkCandidateScanResult(result.getNetworkId(),
                 candidate.mScanDetail.getScanResult(), 0, null);
         mWifiConfigManager.updateScanDetailForNetwork(
