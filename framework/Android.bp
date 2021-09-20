@@ -72,8 +72,9 @@ java_library {
     sdk_version: "module_current",
     static_libs: [
         "modules-utils-build",
-        "modules-utils-preconditions",
         "modules-utils-handlerexecutor",
+        "modules-utils-preconditions",
+        "modules-utils-statemachine",
     ],
     apex_available: [
         "com.android.wifi",
