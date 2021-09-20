@@ -238,7 +238,7 @@ public class PasspointNetworkNominateHelperTest {
         assertEquals("", addedConfig.getValue().enterpriseConfig.getAnonymousIdentity());
         assertTrue(addedConfig.getValue().isHomeProviderNetwork);
         verify(mWifiConfigManager).enableNetwork(
-                eq(TEST_NETWORK_ID), eq(false), anyInt(), any());
+                eq(TEST_NETWORK_ID), eq(false), eq(TEST_UID), any());
         verify(mWifiConfigManager).setNetworkCandidateScanResult(
                 eq(TEST_NETWORK_ID), any(ScanResult.class), anyInt(), any());
         verify(mWifiConfigManager).updateScanDetailForNetwork(
@@ -285,7 +285,7 @@ public class PasspointNetworkNominateHelperTest {
         assertEquals("", addedConfig.getValue().enterpriseConfig.getAnonymousIdentity());
         assertTrue(addedConfig.getValue().isHomeProviderNetwork);
         verify(mWifiConfigManager).enableNetwork(
-                eq(TEST_NETWORK_ID), eq(false), anyInt(), any());
+                eq(TEST_NETWORK_ID), eq(false), eq(TEST_UID), any());
         verify(mWifiConfigManager).setNetworkCandidateScanResult(
                 eq(TEST_NETWORK_ID), any(ScanResult.class), anyInt(), any());
         verify(mWifiConfigManager).updateScanDetailForNetwork(
@@ -326,7 +326,7 @@ public class PasspointNetworkNominateHelperTest {
         assertEquals("", addedConfig.getValue().enterpriseConfig.getAnonymousIdentity());
         assertFalse(addedConfig.getValue().isHomeProviderNetwork);
         verify(mWifiConfigManager).enableNetwork(
-                eq(TEST_NETWORK_ID), eq(false), anyInt(), any());
+                eq(TEST_NETWORK_ID), eq(false), eq(TEST_UID), any());
         verify(mWifiConfigManager).setNetworkCandidateScanResult(
                 eq(TEST_NETWORK_ID), any(ScanResult.class), anyInt(), any());
         verify(mWifiConfigManager).updateScanDetailForNetwork(
@@ -754,7 +754,7 @@ public class PasspointNetworkNominateHelperTest {
         assertEquals("", addedConfig.getValue().enterpriseConfig.getAnonymousIdentity());
         assertTrue(addedConfig.getValue().isHomeProviderNetwork);
         verify(mWifiConfigManager).enableNetwork(
-                eq(TEST_NETWORK_ID), eq(false), anyInt(), any());
+                eq(TEST_NETWORK_ID), eq(false), eq(TEST_UID), any());
         verify(mWifiConfigManager).setNetworkCandidateScanResult(
                 eq(TEST_NETWORK_ID), any(ScanResult.class), anyInt(), any());
         verify(mWifiConfigManager).updateScanDetailForNetwork(
