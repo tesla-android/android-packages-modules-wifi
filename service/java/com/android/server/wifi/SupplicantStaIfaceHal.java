@@ -51,6 +51,7 @@ import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiAnnotations.WifiStandard;
 import android.net.wifi.WifiConfiguration;
 import android.os.Handler;
@@ -3833,5 +3834,21 @@ public class SupplicantStaIfaceHal {
             }
             return true;
         }
+    }
+
+    /**
+     * Gets the security params of the current network associated with this interface
+     *
+     * @param ifaceName Name of the interface
+     * @return Security params of the current network associated with the interface
+     */
+    public SecurityParams getCurrentNetworkSecurityParams(@NonNull String ifaceName) {
+        WifiConfiguration currentConfig = getCurrentNetworkLocalConfig(ifaceName);
+
+        if (currentConfig == null) {
+            return null;
+        }
+
+        return currentConfig.getNetworkSelectionStatus().getCandidateSecurityParams();
     }
 }

@@ -3518,4 +3518,21 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
 
     }
 
+    /**
+     * Tests the behavior of {@link SupplicantStaIfaceHal#getCurrentNetworkSecurityParams(String)}
+     * @throws Exception
+     */
+    @Test
+    public void testGetCurrentNetworkSecurityParams() throws Exception {
+        executeAndValidateInitializationSequence();
+
+        // Null current network should return null security params
+        assertNull(mDut.getCurrentNetworkSecurityParams(WLAN0_IFACE_NAME));
+
+        // Connecting to network with PSK candidate security params should return PSK params.
+        executeAndValidateConnectSequenceWithKeyMgmt(
+                0, false, WifiConfiguration.SECURITY_TYPE_PSK, "97CA326539");
+        assertTrue(mDut.getCurrentNetworkSecurityParams(WLAN0_IFACE_NAME)
+                .isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+    }
 }
