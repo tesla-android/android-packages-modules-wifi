@@ -6672,6 +6672,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return;
         }
 
+        // check for FT/PSK
+        ScanResult scanResult = mScanRequestProxy.getScanResult(mLastBssid);
+        if (scanResult == null || scanResult.capabilities.contains("FT/PSK")) {
+            return;
+        }
+
         mWifiConfigManager.updateLinkedNetworks(config.networkId);
         Map<String, WifiConfiguration> linkedNetworks = mWifiConfigManager
                 .getLinkedNetworksWithoutMasking(config.networkId);
