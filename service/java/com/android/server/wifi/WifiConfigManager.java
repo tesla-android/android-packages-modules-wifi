@@ -383,7 +383,7 @@ public class WifiConfigManager {
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
         mWifiScoreCard = wifiScoreCard;
 
-        mConfiguredNetworks = new ConfigurationMap(userManager);
+        mConfiguredNetworks = new ConfigurationMap(mWifiPermissionsUtil);
         mScanDetailCaches = new HashMap<>(16, 0.75f);
         mUserTemporarilyDisabledList =
                 new MissingCounterTimerLockList<>(SCAN_RESULT_MISSING_COUNT_THRESHOLD, mClock);

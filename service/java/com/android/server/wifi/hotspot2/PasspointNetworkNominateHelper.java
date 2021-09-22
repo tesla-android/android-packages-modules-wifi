@@ -19,7 +19,6 @@ package com.android.server.wifi.hotspot2;
 import android.annotation.NonNull;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.util.ScanResultUtil;
-import android.os.Process;
 import android.util.LocalLog;
 import android.util.Pair;
 
@@ -235,7 +234,7 @@ public class PasspointNetworkNominateHelper {
             return existingNetwork;
         }
         mWifiConfigManager.allowAutojoin(result.getNetworkId(), config.allowAutojoin);
-        mWifiConfigManager.enableNetwork(result.getNetworkId(), false, Process.WIFI_UID, null);
+        mWifiConfigManager.enableNetwork(result.getNetworkId(), false, config.creatorUid, null);
         mWifiConfigManager.setNetworkCandidateScanResult(result.getNetworkId(),
                 candidate.mScanDetail.getScanResult(), 0, null);
         mWifiConfigManager.updateScanDetailForNetwork(
