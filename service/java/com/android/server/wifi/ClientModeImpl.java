@@ -156,7 +156,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -6204,18 +6203,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         // This comes from wifi picker directly so there is no candidate security params.
         // Run network selection against this SSID.
-        List<ScanDetail> scanDetailsList = scanResults.stream()
+        scanResults.stream()
                 .filter(scanResult -> config.SSID.equals(
                         ScanResultUtil.createQuotedSSID(scanResult.SSID)))
                 .map(ScanResultUtil::toScanDetail)
-                .collect(Collectors.toList());
-        List<WifiNetworkSelector.ClientModeManagerState> cmmState = new ArrayList<>();
-        cmmState.add(new WifiNetworkSelector.ClientModeManagerState(mClientModeManager));
-        // getCandidatesFromScan updates candidate security params to configurations
-        // match these scanDetails.
-        mWifiNetworkSelector.getCandidatesFromScan(
-                scanDetailsList, new HashSet<String>(), cmmState,
-                true, true, true);
+                .forEach(scanDetail -> mWifiNetworkSelector
+                        .updateNetworkCandidateSecurityParams(config, scanDetail));
         // Get the fresh copy again to retrieve the candidate security params.
         WifiConfiguration freshConfig = mWifiConfigManager.getConfiguredNetwork(config.networkId);
         if (null != freshConfig

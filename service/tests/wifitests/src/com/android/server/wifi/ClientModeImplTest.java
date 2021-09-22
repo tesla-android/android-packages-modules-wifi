@@ -187,7 +187,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -878,20 +877,26 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void triggerConnectWithUpgradeType() throws Exception {
-        WifiConfiguration config = spy(WifiConfigurationTestUtil.createOpenOweNetwork());
+        String ssid = "TestOpenOweSsid";
+        WifiConfiguration config = spy(WifiConfigurationTestUtil.createOpenOweNetwork(
+                ScanResultUtil.createQuotedSSID(ssid)));
         doAnswer(new AnswerWithArguments() {
-            public List<WifiCandidates.Candidate> answer(
-                    List<ScanDetail> scanDetails, Set<String> bssidBlocklist,
-                    List<WifiNetworkSelector.ClientModeManagerState> cmmStates,
-                    boolean untrustedNetworkAllowed,
-                    boolean oemPaidNetworkAllowed, boolean oemPrivateNetworkAllowed) {
+            public void answer(
+                    WifiConfiguration network, ScanDetail scanDetail) {
+                if (!config.SSID.equals(network.SSID)) return;
                 config.getNetworkSelectionStatus().setCandidateSecurityParams(
                         SecurityParams.createSecurityParamsBySecurityType(
                                 WifiConfiguration.SECURITY_TYPE_OWE));
-                return null;
             }
-        }).when(mWifiNetworkSelector).getCandidatesFromScan(any(), any(), any(),
-                anyBoolean(), anyBoolean(), anyBoolean());
+        }).when(mWifiNetworkSelector).updateNetworkCandidateSecurityParams(any(), any());
+        String caps = "[RSN-OWE_TRANSITION]";
+        ScanResult scanResult = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid),
+                ssid, TEST_BSSID_STR, 1245, 0, caps, -78, 2412, 1025, 22, 33, 20, 0, 0, true);
+        ScanResult.InformationElement ie = createIE(ScanResult.InformationElement.EID_SSID,
+                ssid.getBytes(StandardCharsets.UTF_8));
+        scanResult.informationElements = new ScanResult.InformationElement[]{ie};
+        when(mScanRequestProxy.getScanResults()).thenReturn(Arrays.asList(scanResult));
+
         config.networkId = FRAMEWORK_NETWORK_ID;
         config.setRandomizedMacAddress(TEST_LOCAL_MAC_ADDRESS);
         config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
