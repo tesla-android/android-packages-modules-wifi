@@ -73,10 +73,11 @@ java_library {
     min_sdk_version: "30",
     static_libs: [
         "modules-utils-build",
-        "modules-utils-shell-command-handler",
+        "modules-utils-handlerexecutor",
         "modules-utils-list-slice",
         "modules-utils-preconditions",
-        "modules-utils-handlerexecutor",
+        "modules-utils-shell-command-handler",
+        "modules-utils-statemachine",
     ],
     apex_available: [
         "com.android.wifi",
