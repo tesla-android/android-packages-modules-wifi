@@ -2903,6 +2903,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                         otherNetwork.getProfileKey()));
             }
         }
+
+        // Verify that testGetLinkedNetworksWithoutMasking returns configs with
+        // candidate security type PSK
+        for (WifiConfiguration network : mWifiConfigManager.getLinkedNetworksWithoutMasking(
+                network1.networkId).values()) {
+            assertTrue(network.getNetworkSelectionStatus().getCandidateSecurityParams()
+                    .isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+        }
     }
 
     /**

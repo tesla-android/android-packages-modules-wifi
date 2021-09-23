@@ -6947,4 +6947,69 @@ public class ClientModeImplTest extends WifiBaseTest {
                 .setNetworkDefaultGwMacAddress(mConnectedNetwork.networkId, gatewayMac);
         verify(mWifiConfigManager, never()).updateLinkedNetworks(connectedConfig.networkId);
     }
+
+    @Test
+    public void testInvalidScanResultDoesNotUpdateLinkedNetworks() throws Exception {
+        mResources.setBoolean(R.bool.config_wifiEnableLinkedNetworkRoaming, true);
+        BufferedReader reader = mock(BufferedReader.class);
+        WifiConfiguration connectedConfig = WifiConfigurationTestUtil.createPskNetwork("\"ssid1\"");
+        connectedConfig.networkId = FRAMEWORK_NETWORK_ID;
+        when(mWifiConfigManager.getConfiguredNetwork(connectedConfig.networkId))
+                .thenReturn(connectedConfig);
+        mConnectedNetwork = connectedConfig;
+        connect();
+        verify(mWifiInjector).makeWifiNetworkAgent(any(), any(), any(), any(),
+                mWifiNetworkAgentCallbackCaptor.capture());
+
+        LinkProperties linkProperties = mock(LinkProperties.class);
+        RouteInfo routeInfo = mock(RouteInfo.class);
+        IpPrefix ipPrefix = mock(IpPrefix.class);
+        Inet4Address destinationAddress = mock(Inet4Address.class);
+        InetAddress gatewayAddress = mock(InetAddress.class);
+        String hostAddress = "127.0.0.1";
+        String gatewayMac = "192.168.0.1";
+        when(linkProperties.getRoutes()).thenReturn(Arrays.asList(routeInfo));
+        when(routeInfo.isDefaultRoute()).thenReturn(true);
+        when(routeInfo.getDestination()).thenReturn(ipPrefix);
+        when(ipPrefix.getAddress()).thenReturn(destinationAddress);
+        when(routeInfo.hasGateway()).thenReturn(true);
+        when(routeInfo.getGateway()).thenReturn(gatewayAddress);
+        when(gatewayAddress.getHostAddress()).thenReturn(hostAddress);
+        when(mWifiInjector.createBufferedReader(ARP_TABLE_PATH)).thenReturn(reader);
+        when(reader.readLine()).thenReturn(new StringJoiner(" ")
+                .add(hostAddress)
+                .add("HWType")
+                .add("Flags")
+                .add(gatewayMac)
+                .add("Mask")
+                .add("Device")
+                .toString());
+
+        mIpClientCallback.onLinkPropertiesChange(linkProperties);
+        mLooper.dispatchAll();
+        when(mWifiNative.getCurrentNetworkSecurityParams(any())).thenReturn(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        when(mWifiConfigManager.setNetworkDefaultGwMacAddress(anyInt(), any())).thenReturn(true);
+        when(mWifiConfigManager.saveToStore(anyBoolean())).thenReturn(true);
+
+        // FT/PSK scan, do not update linked networks
+        ScanResult ftPskScan = new ScanResult();
+        ftPskScan.capabilities = "FT/PSK";
+        when(mScanRequestProxy.getScanResult(any())).thenReturn(ftPskScan);
+        mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
+                NetworkAgent.VALIDATION_STATUS_VALID, null /* captivePortalUrl */);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager)
+                .setNetworkDefaultGwMacAddress(mConnectedNetwork.networkId, gatewayMac);
+        verify(mWifiConfigManager, never()).updateLinkedNetworks(connectedConfig.networkId);
+
+        // Null scan, do not update linked networks
+        mWifiNetworkAgentCallbackCaptor.getValue().onValidationStatus(
+                NetworkAgent.VALIDATION_STATUS_VALID, null /* captivePortalUrl */);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager)
+                .setNetworkDefaultGwMacAddress(mConnectedNetwork.networkId, gatewayMac);
+        verify(mWifiConfigManager, never()).updateLinkedNetworks(connectedConfig.networkId);
+    }
 }

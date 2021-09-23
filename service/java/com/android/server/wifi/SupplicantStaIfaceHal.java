@@ -3728,20 +3728,20 @@ public class SupplicantStaIfaceHal {
      * if we have.
      *
      * @param ifaceName Name of the interface.
-     * @param newNetworkId network id of the network we've roamed to.
+     * @param newNetworkId framework network id of the network we've roamed to.
      * @return true if we've roamed to a linked network, false if not.
      */
     public boolean updateOnLinkedNetworkRoaming(@NonNull String ifaceName, int newNetworkId) {
         synchronized (mLock) {
-            SupplicantStaNetworkHal networkHal = getCurrentNetworkRemoteHandle(ifaceName);
+            WifiConfiguration currentConfig = getCurrentNetworkLocalConfig(ifaceName);
             List<Pair<SupplicantStaNetworkHal, WifiConfiguration>> linkedNetworkHandles =
                     mLinkedNetworkLocalAndRemoteConfigs.get(ifaceName);
-            if (linkedNetworkHandles == null || networkHal == null
-                    || networkHal.getNetworkId() == newNetworkId) {
+            if (linkedNetworkHandles == null || currentConfig == null
+                    || currentConfig.networkId == newNetworkId) {
                 return false;
             }
             for (Pair<SupplicantStaNetworkHal, WifiConfiguration> pair : linkedNetworkHandles) {
-                if (pair.first.getNetworkId() != newNetworkId) {
+                if (pair.second.networkId != newNetworkId) {
                     continue;
                 }
                 Log.i(TAG, "Roamed to linked network, make linked network as current network");
@@ -3773,11 +3773,17 @@ public class SupplicantStaIfaceHal {
             }
 
             if (networkId != currentConfig.networkId) {
-                Log.e(TAG, "current network id is not matching");
+                Log.e(TAG, "current config network id is not matching");
                 return false;
             }
 
-            if (!removeAllNetworksExcept(ifaceName, networkId)) {
+            final int remoteNetworkId = currentHandle.getNetworkId();
+            if (remoteNetworkId == -1) {
+                Log.e(TAG, "current handle getNetworkId failed");
+                return false;
+            }
+
+            if (!removeAllNetworksExcept(ifaceName, remoteNetworkId)) {
                 Log.e(TAG, "couldn't remove non-current supplicant networks");
                 return false;
             }
