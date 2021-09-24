@@ -47,6 +47,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.SecurityType;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.util.ScanResultUtil;
@@ -152,6 +153,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     // successfully connect to the network, we transition that request to "connected".
     @Nullable private NetworkRequest mActiveSpecificNetworkRequest;
     @Nullable private WifiNetworkSpecifier mActiveSpecificNetworkRequestSpecifier;
+    private boolean mSkipUserDialogue;
     // Request corresponding to the the network that the device is currently connected to.
     @Nullable private NetworkRequest mConnectedSpecificNetworkRequest;
     @Nullable private WifiNetworkSpecifier mConnectedSpecificNetworkRequestSpecifier;
@@ -262,7 +264,7 @@ public class WifiNetworkFactory extends NetworkFactory {
                 Log.v(TAG, "Received " + scanResults.length + " scan results");
             }
             handleScanResults(scanResults);
-            if (mActiveMatchedScanResults != null) {
+            if (!mSkipUserDialogue && mActiveMatchedScanResults != null) {
                 sendNetworkRequestMatchCallbacksForActiveRequest(
                         mActiveMatchedScanResults.values());
             }
@@ -805,11 +807,10 @@ public class WifiNetworkFactory extends NetworkFactory {
             mActiveSpecificNetworkRequestSpecifier = new WifiNetworkSpecifier(
                     wns.ssidPatternMatcher, wns.bssidPatternMatcher, ScanResult.UNSPECIFIED,
                     wns.wifiConfiguration);
+            mSkipUserDialogue = false;
             mWifiMetrics.incrementNetworkRequestApiNumRequest();
 
             if (!triggerConnectIfUserApprovedMatchFound()) {
-                // Start UI to let the user grant/disallow this request from the app.
-                startUi();
                 // Didn't find an approved match, send the matching results to UI and trigger
                 // periodic scans for finding a network in the request.
                 // Fetch the latest cached scan results to speed up network matching.
@@ -818,9 +819,13 @@ public class WifiNetworkFactory extends NetworkFactory {
                     Log.v(TAG, "Using cached " + cachedScanResults.length + " scan results");
                 }
                 handleScanResults(cachedScanResults);
-                if (mActiveMatchedScanResults != null) {
-                    sendNetworkRequestMatchCallbacksForActiveRequest(
-                            mActiveMatchedScanResults.values());
+                // Start UI to let the user grant/disallow this request from the app.
+                if (!mSkipUserDialogue) {
+                    startUi();
+                    if (mActiveMatchedScanResults != null) {
+                        sendNetworkRequestMatchCallbacksForActiveRequest(
+                                mActiveMatchedScanResults.values());
+                    }
                 }
                 startPeriodicScans();
             }
@@ -1188,6 +1193,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         // Reset the active network request.
         mActiveSpecificNetworkRequest = null;
         mActiveSpecificNetworkRequestSpecifier = null;
+        mSkipUserDialogue = false;
         mUserSelectedNetwork = null;
         mUserSelectedNetworkConnectRetryCount = 0;
         mIsPeriodicScanEnabled = false;
@@ -1240,6 +1246,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         mConnectedSpecificNetworkRequestSpecifier = mActiveSpecificNetworkRequestSpecifier;
         mActiveSpecificNetworkRequest = null;
         mActiveSpecificNetworkRequestSpecifier = null;
+        mSkipUserDialogue = false;
         mActiveMatchedScanResults = null;
         mPendingConnectionSuccess = false;
         // Cancel connection timeout alarm.
@@ -1599,15 +1606,32 @@ public class WifiNetworkFactory extends NetworkFactory {
         if (approvedAccessPoints == null) return false;
         AccessPoint accessPoint =
                 new AccessPoint(ssid, bssid, networkType);
-        if (!approvedAccessPoints.contains(accessPoint)) return false;
-        // keep the most recently used AP in the end
-        approvedAccessPoints.remove(accessPoint);
-        approvedAccessPoints.add(accessPoint);
-        if (mVerboseLoggingEnabled) {
-            Log.v(TAG, "Found " + bssid
-                    + " in internal user approved access point for " + requestorPackageName);
+        if (approvedAccessPoints.contains(accessPoint)) {
+            // keep the most recently used AP in the end
+            approvedAccessPoints.remove(accessPoint);
+            approvedAccessPoints.add(accessPoint);
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "Found " + bssid
+                        + " in internal user approved access point for " + requestorPackageName);
+            }
+            return true;
         }
-        return true;
+        // AP does not match, but check if SSID + security type match
+        if (networkType == WifiConfiguration.SECURITY_TYPE_OPEN
+                || networkType == WifiConfiguration.SECURITY_TYPE_OWE) {
+            // require exact BSSID match for open networks
+            return false;
+        }
+        // Only require SSID and SecurityType match for non-open networks.
+        if (approvedAccessPoints.stream()
+                .anyMatch((ap) -> ap.ssid.equals(ssid) && ap.networkType == networkType)) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "Found SSID=" + ssid
+                        + " in internal user approved access point for " + requestorPackageName);
+            }
+            return true;
+        }
+        return false;
     }
 
     private boolean isAccessPointApprovedInCompanionDeviceManager(
@@ -1705,7 +1729,11 @@ public class WifiNetworkFactory extends NetworkFactory {
      */
     private boolean triggerConnectIfUserApprovedMatchFound() {
         if (mActiveSpecificNetworkRequestSpecifier == null) return false;
-        if (!isActiveRequestForSingleAccessPoint()) return false;
+        boolean requestForSingleAccessPoint = isActiveRequestForSingleAccessPoint();
+        if (!requestForSingleAccessPoint && !isActiveRequestForSingleNetwork()) {
+            return false;
+        }
+
         String ssid = mActiveSpecificNetworkRequestSpecifier.ssidPatternMatcher.getPath();
         MacAddress bssid = mActiveSpecificNetworkRequestSpecifier.bssidPatternMatcher.first;
         SecurityParams params =
@@ -1722,14 +1750,22 @@ public class WifiNetworkFactory extends NetworkFactory {
             }
             return false;
         }
-        Log.v(TAG, "Approved access point found in matching scan results. "
-                + "Triggering connect " + ssid + "/" + bssid);
-        WifiConfiguration config = mActiveSpecificNetworkRequestSpecifier.wifiConfiguration;
-        config.SSID = "\"" + ssid + "\"";
-        config.BSSID = bssid.toString();
-        handleConnectToNetworkUserSelectionInternal(config);
-        mWifiMetrics.incrementNetworkRequestApiNumUserApprovalBypass();
-        return true;
+        if (requestForSingleAccessPoint) {
+            Log.v(TAG, "Approved access point found in matching scan results. "
+                    + "Triggering connect " + ssid + "/" + bssid);
+            // Request is for a single AP which is already approved. Connect directly.
+            WifiConfiguration config = mActiveSpecificNetworkRequestSpecifier.wifiConfiguration;
+            config.SSID = "\"" + ssid + "\"";
+            config.BSSID = bssid.toString();
+            handleConnectToNetworkUserSelectionInternal(config);
+            mWifiMetrics.incrementNetworkRequestApiNumUserApprovalBypass();
+            return true;
+        }
+        // request is for a single network (but not a particular AP) that's already approved.
+        // Scanning is still needed to select the best BSSID, but allow skipping the UI.
+        Log.v(TAG, "Approved network found. Allowing user dialogue to get bypassed.");
+        mSkipUserDialogue = true;
+        return false;
     }
 
     /**
@@ -1759,6 +1795,16 @@ public class WifiNetworkFactory extends NetworkFactory {
         mActiveMatchedScanResults.entrySet().removeIf(
                 e -> ((currentTimeInMillis - (e.getValue().timestamp / 1000))
                         >= CACHED_SCAN_RESULTS_MAX_AGE_IN_MILLIS));
+        if (!mActiveMatchedScanResults.isEmpty() && mSkipUserDialogue) {
+            WifiConfiguration config = mActiveSpecificNetworkRequestSpecifier.wifiConfiguration;
+            config.SSID = "\""
+                    + mActiveSpecificNetworkRequestSpecifier.ssidPatternMatcher.getPath() + "\"";
+            config.BSSID = findBestBssidFromActiveMatchedScanResultsForNetwork(
+                    ScanResultMatchInfo.fromWifiConfiguration(config));
+            Log.v(TAG, "Bypassing user dialog for connection to SSID="
+                    + config.SSID + ", BSSID=" + config.BSSID);
+            handleConnectToNetworkUserSelection(config);
+        }
     }
 
     /**
