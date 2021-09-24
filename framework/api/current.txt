@@ -588,6 +588,7 @@ package android.net.wifi {
     method public int describeContents();
     method @Nullable public android.net.MacAddress getBssid();
     method @Nullable public android.net.wifi.WifiEnterpriseConfig getEnterpriseConfig();
+    method public int getMacRandomizationSetting();
     method @Nullable public String getPassphrase();
     method @Nullable public android.net.wifi.hotspot2.PasspointConfiguration getPasspointConfig();
     method @IntRange(from=0) public int getPriority();
