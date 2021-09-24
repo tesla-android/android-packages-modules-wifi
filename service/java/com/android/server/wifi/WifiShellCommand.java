@@ -1263,18 +1263,25 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         }
         String bssid = null;
         String option = getNextOption();
+        boolean nullBssid = false;
         while (option != null) {
             if (option.equals("-b")) {
                 bssid = getNextArgRequired();
+            } else if (option.equals("-n")) {
+                nullBssid = true;
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
             option = getNextOption();
         }
+        if (bssid != null && nullBssid) {
+            throw new IllegalArgumentException("Invalid option combination: "
+                    + "Should not use both -b and -n at the same time.");
+        }
 
         // Permission approval bypass is only available to requests with both ssid & bssid set.
         // So, find scan result with the best rssi level to set in the request.
-        if (bssid == null) {
+        if (bssid == null && !nullBssid) {
             ScanResult matchingScanResult =
                     mWifiService.getScanResults(SHELL_PACKAGE_NAME, null)
                             .stream()
@@ -1287,7 +1294,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 pw.println("No matching bssid found, request will need UI approval");
             }
         }
-        if (bssid != null) specifierBuilder.setBssid(MacAddress.fromString(bssid));
+        if (bssid != null && !nullBssid) specifierBuilder.setBssid(MacAddress.fromString(bssid));
         return new NetworkRequest.Builder()
                 .addTransportType(TRANSPORT_WIFI)
                 .removeCapability(NET_CAPABILITY_INTERNET)
@@ -1702,7 +1709,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    each on a separate line.");
         pw.println("  settings-reset");
         pw.println("    Initiates wifi settings reset");
-        pw.println("  add-request [-g] <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-b <bssid>]");
+        pw.println("  add-request [-g] <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-b <bssid>] [-n]");
         pw.println("    Add a network request with provided params");
         pw.println("    Use 'network-requests-set-user-approved android yes'"
                 +  " to pre-approve requests added via rooted shell (Not persisted)");
@@ -1716,6 +1723,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
         pw.println("    -b <bssid> - Set specific BSSID.");
+        pw.println("    -n - Prevent auto-selection of BSSID and force it to be null so that the "
+                + "request matches all BSSIDs.");
         pw.println("  remove-request <ssid>");
         pw.println("    Remove a network request with provided SSID of the network");
         pw.println("  remove-all-requests");
