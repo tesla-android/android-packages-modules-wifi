@@ -880,7 +880,7 @@ public class WifiNetworkSuggestionsManager {
     public @WifiManager.NetworkSuggestionsStatusCode int add(
             List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName,
             @Nullable String featureId) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL;
         }
@@ -1292,7 +1292,7 @@ public class WifiNetworkSuggestionsManager {
      */
     public @WifiManager.NetworkSuggestionsStatusCode int remove(
             List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL;
         }
@@ -1359,7 +1359,7 @@ public class WifiNetworkSuggestionsManager {
      */
     public @NonNull List<WifiNetworkSuggestion> get(@NonNull String packageName, int uid) {
         List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return networkSuggestionList;
         }
@@ -2206,7 +2206,7 @@ public class WifiNetworkSuggestionsManager {
     public boolean registerSuggestionConnectionStatusListener(
             @NonNull ISuggestionConnectionStatusListener listener,
             String packageName, int uid) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return false;
         }
@@ -2227,7 +2227,7 @@ public class WifiNetworkSuggestionsManager {
      */
     public void unregisterSuggestionConnectionStatusListener(
             @NonNull ISuggestionConnectionStatusListener listener, String packageName, int uid) {
-        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUser(uid)) {
+        if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return;
         }

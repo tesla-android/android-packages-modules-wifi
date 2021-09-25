@@ -256,7 +256,8 @@ public class PasspointManagerTest extends WifiBaseTest {
         when(mContext.getSystemService(Context.APP_OPS_SERVICE)).thenReturn(mAppOpsManager);
         when(mWifiInjector.getWifiNetworkSuggestionsManager())
                 .thenReturn(mWifiNetworkSuggestionsManager);
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(true);
         mLooper = new TestLooper();
         mHandler = new Handler(mLooper.getLooper());
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
@@ -577,7 +578,8 @@ public class PasspointManagerTest extends WifiBaseTest {
      */
     @Test
     public void addProviderWithBackgroundUser() throws Exception {
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(false);
 
         PasspointConfiguration config = createTestConfigWithUserCredential(TEST_FQDN,
                 TEST_FRIENDLY_NAME);
@@ -2048,7 +2050,8 @@ public class PasspointManagerTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementNumPasspointProviderInstallation();
         verify(mWifiMetrics).incrementNumPasspointProviderInstallSuccess();
 
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(false);
         assertFalse(mManager.removeProvider(TEST_CREATOR_UID, false, null, TEST_FQDN));
     }
 

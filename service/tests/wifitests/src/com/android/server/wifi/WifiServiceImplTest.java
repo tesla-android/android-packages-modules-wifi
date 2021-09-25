@@ -500,7 +500,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mActiveModeWarden.getClientModeManagersInRoles(
                 ROLE_CLIENT_LOCAL_ONLY, ROLE_CLIENT_SECONDARY_LONG_LIVED))
                 .thenReturn(Collections.emptyList());
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(true);
         when(mWifiInjector.getWifiCarrierInfoManager()).thenReturn(mWifiCarrierInfoManager);
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
         when(mClientSoftApCallback.asBinder()).thenReturn(mAppBinder);
@@ -7629,7 +7630,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test(expected = SecurityException.class)
     public void testAddSuggestionUserApprovalStatusListenerFromBackgroundUser() {
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(false);
         mWifiServiceImpl.addSuggestionUserApprovalStatusListener(
                 mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
     }
@@ -7639,7 +7641,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test(expected = SecurityException.class)
     public void testRemoveSuggestionUserApprovalStatusListenerFromBackgroundUser() {
-        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(anyInt()))
+                .thenReturn(false);
         mWifiServiceImpl.removeSuggestionUserApprovalStatusListener(
                 mSuggestionUserApprovalStatusListener, TEST_PACKAGE_NAME);
     }
