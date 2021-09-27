@@ -1526,4 +1526,13 @@ public final class WifiNetworkSuggestion implements Parcelable {
     public int getCarrierId() {
         return wifiConfiguration.carrierId;
     }
+
+    /**
+     * @see Builder#setMacRandomizationSetting(int)
+     */
+    public @MacRandomizationSetting int getMacRandomizationSetting() {
+        return wifiConfiguration.macRandomizationSetting
+                == WifiConfiguration.RANDOMIZATION_NON_PERSISTENT
+                ? RANDOMIZATION_NON_PERSISTENT : RANDOMIZATION_PERSISTENT;
+    }
 }

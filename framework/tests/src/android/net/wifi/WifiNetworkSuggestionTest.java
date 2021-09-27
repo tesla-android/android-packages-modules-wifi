@@ -951,6 +951,8 @@ public class WifiNetworkSuggestionTest {
                 .build();
         assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
                 suggestion.wifiConfiguration.macRandomizationSetting);
+        assertEquals(WifiNetworkSuggestion.RANDOMIZATION_PERSISTENT,
+                suggestion.getMacRandomizationSetting());
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setSsid(TEST_SSID)
@@ -959,6 +961,8 @@ public class WifiNetworkSuggestionTest {
                 .build();
         assertEquals(WifiConfiguration.RANDOMIZATION_NON_PERSISTENT,
                 suggestion.wifiConfiguration.macRandomizationSetting);
+        assertEquals(WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT,
+                suggestion.getMacRandomizationSetting());
     }
 
     /**
@@ -984,6 +988,8 @@ public class WifiNetworkSuggestionTest {
         assertEquals(false,
                 suggestion.passpointConfiguration.isNonPersistentMacRandomizationEnabled());
         assertTrue(suggestion.passpointConfiguration.isMacRandomizationEnabled());
+        assertEquals(WifiNetworkSuggestion.RANDOMIZATION_PERSISTENT,
+                suggestion.getMacRandomizationSetting());
 
         suggestion = new WifiNetworkSuggestion.Builder()
                 .setPasspointConfig(passpointConfiguration)
@@ -993,6 +999,8 @@ public class WifiNetworkSuggestionTest {
         assertEquals(true,
                 suggestion.passpointConfiguration.isNonPersistentMacRandomizationEnabled());
         assertTrue(suggestion.passpointConfiguration.isMacRandomizationEnabled());
+        assertEquals(WifiNetworkSuggestion.RANDOMIZATION_NON_PERSISTENT,
+                suggestion.getMacRandomizationSetting());
     }
 
     /**
