@@ -459,7 +459,7 @@ public class WifiVendorHal {
             @NonNull WorkSource requestorWs) {
         synchronized (sLock) {
             IWifiStaIface iface = mHalDeviceManager.createStaIface(
-                    new StaInterfaceDestroyedListenerInternal(destroyedListener), null,
+                    new StaInterfaceDestroyedListenerInternal(destroyedListener), mHalEventHandler,
                     requestorWs);
             if (iface == null) {
                 mLog.err("Failed to create STA iface").flush();
@@ -573,7 +573,7 @@ public class WifiVendorHal {
         synchronized (sLock) {
             IWifiApIface iface = mHalDeviceManager.createApIface(
                     getNecessaryCapabilitiesForSoftApMode(band),
-                    new ApInterfaceDestroyedListenerInternal(destroyedListener), null,
+                    new ApInterfaceDestroyedListenerInternal(destroyedListener), mHalEventHandler,
                     requestorWs, isBridged);
             if (iface == null) {
                 mLog.err("Failed to create AP iface").flush();

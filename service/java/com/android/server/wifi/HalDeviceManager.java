@@ -256,9 +256,10 @@ public class HalDeviceManager {
      * @param destroyedListener Optional (nullable) listener to call when the allocated interface
      *                          is removed. Will only be registered and used if an interface is
      *                          created successfully.
-     * @param handler Handler on which to dispatch listener. Null implies the listener will be
-     *                invoked synchronously from the context of the client which triggered the
-     *                iface destruction.
+     * @param handler Handler on which to dispatch listener. Must be non Null if destroyedListener
+     *                is set. If the this handler is running on the same thread as the client which
+     *                triggered the iface destruction, the listener will be invoked synchronously
+     *                from that context of the client.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
      *                    interface using rules based on the requestor app's context.
      * @return A newly created interface - or null if the interface could not be created.
@@ -278,9 +279,10 @@ public class HalDeviceManager {
      * @param destroyedListener Optional (nullable) listener to call when the allocated interface
      *                          is removed. Will only be registered and used if an interface is
      *                          created successfully.
-     * @param handler Handler on which to dispatch listener. Null implies the listener will be
-     *                invoked synchronously from the context of the client which triggered the
-     *                iface destruction.
+     * @param handler Handler on which to dispatch listener. Must be non Null if destroyedListener
+     *                is set. If the handler is running on the same thread as the client which
+     *                triggered the iface destruction, the listener will be invoked synchronously
+     *                from that context of the client.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
      *                    interface using rules based on the requestor app's context.
      * @return A newly created interface - or null if the interface could not be created.
@@ -425,37 +427,6 @@ public class HalDeviceManager {
         }
         if (!mSubsystemRestartListener.add(new SubsystemRestartListenerProxy(listener, handler))) {
             Log.w(TAG, "registerSubsystemRestartListener: duplicate registration ignored");
-        }
-    }
-
-    /**
-     * Register an InterfaceDestroyedListener to the specified iface - returns true on success
-     * and false on failure. This listener is in addition to the one registered when the interface
-     * was created - allowing non-creators to monitor interface status.
-     *
-     * @param destroyedListener Listener to call when the allocated interface is removed.
-     *                          Will only be registered and used if an interface is created
-     *                          successfully.
-     * @param handler Handler on which to dispatch listener. Null implies the listener will be
-     *                invoked synchronously from the context of the client which triggered the
-     *                iface destruction.
-     */
-    public boolean registerDestroyedListener(IWifiIface iface,
-            @NonNull InterfaceDestroyedListener destroyedListener,
-            @Nullable Handler handler) {
-        String name = getName(iface);
-        int type = getType(iface);
-        if (VDBG) Log.d(TAG, "registerDestroyedListener: iface(name)=" + name);
-
-        synchronized (mLock) {
-            InterfaceCacheEntry cacheEntry = mInterfaceInfoCache.get(Pair.create(name, type));
-            if (cacheEntry == null) {
-                Log.e(TAG, "registerDestroyedListener: no entry for iface(name)=" + name);
-                return false;
-            }
-
-            return cacheEntry.destroyedListeners.add(
-                    new InterfaceDestroyedListenerProxy(name, destroyedListener, handler));
         }
     }
 
@@ -1624,6 +1595,11 @@ public class HalDeviceManager {
                     + ", requiredChipCapabilities=" + requiredChipCapabilities
                     + ", requestorWs=" + requestorWs);
         }
+        if (destroyedListener != null && handler == null) {
+            Log.wtf(TAG, "createIface: createIfaceType=" + createIfaceType
+                    + "with NonNull destroyedListener but Null handler");
+            return null;
+        }
 
         synchronized (mLock) {
             WifiChipInfo[] chipInfos = getAllChipInfo();
@@ -2542,8 +2518,8 @@ public class HalDeviceManager {
             ListenerProxy<InterfaceDestroyedListener> {
         private final String mIfaceName;
         InterfaceDestroyedListenerProxy(@NonNull String ifaceName,
-                                        InterfaceDestroyedListener destroyedListener,
-                                        Handler handler) {
+                                        @NonNull InterfaceDestroyedListener destroyedListener,
+                                        @NonNull Handler handler) {
             super(destroyedListener, handler, "InterfaceDestroyedListenerProxy");
             mIfaceName = ifaceName;
         }
