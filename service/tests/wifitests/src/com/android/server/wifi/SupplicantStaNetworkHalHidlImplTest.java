@@ -65,10 +65,10 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * Unit tests for SupplicantStaNetworkHal
+ * Unit tests for SupplicantStaNetworkHalHidlImpl
  */
 @SmallTest
-public class SupplicantStaNetworkHalTest extends WifiBaseTest {
+public class SupplicantStaNetworkHalHidlImplTest extends WifiBaseTest {
     private static final String IFACE_NAME = "wlan0";
     private static final Map<String, String> NETWORK_EXTRAS_VALUES = new HashMap<>();
     static {
@@ -79,7 +79,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
             "%7B%22key1%22%3A%22value1%22%2C%22key2%22%3A%22value2%22%7D";
     private static final String ANONYMOUS_IDENTITY = "aaa@bbb.cc.ddd";
 
-    private SupplicantStaNetworkHal mSupplicantNetwork;
+    private SupplicantStaNetworkHalHidlImpl mSupplicantNetwork;
     private SupplicantStatus mStatusSuccess;
     private SupplicantStatus mStatusFailure;
     private android.hardware.wifi.supplicant.V1_4.SupplicantStatus mStatusSuccessV14;
@@ -115,7 +115,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
      * Spy used to return the V1_2 ISupplicantStaNetwork mock object to simulate the 1.2 HAL running
      * on the device.
      */
-    private class SupplicantStaNetworkHalSpyV1_2 extends SupplicantStaNetworkHal {
+    private class SupplicantStaNetworkHalSpyV1_2 extends SupplicantStaNetworkHalHidlImpl {
         SupplicantStaNetworkHalSpyV1_2(ISupplicantStaNetwork iSupplicantStaNetwork,
                 String ifaceName,
                 Context context, WifiMonitor monitor, WifiGlobals wifiGlobals,
@@ -1139,11 +1139,11 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         assertTrue(mSupplicantNetwork.loadWifiConfiguration(loadConfig, networkExtras));
         WifiConfigurationTestUtil.assertConfigurationEqualForSupplicant(config, loadConfig);
         assertEquals(config.getProfileKey(),
-                networkExtras.get(SupplicantStaNetworkHal.ID_STRING_KEY_CONFIG_KEY));
+                networkExtras.get(SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CONFIG_KEY));
         assertEquals(
                 config.creatorUid,
                 Integer.parseInt(networkExtras.get(
-                        SupplicantStaNetworkHal.ID_STRING_KEY_CREATOR_UID)));
+                        SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CREATOR_UID)));
         // There is no getter for this one, so check the supplicant variable.
         if (!TextUtils.isEmpty(config.updateIdentifier)) {
             assertEquals(Integer.parseInt(config.updateIdentifier),
@@ -1174,13 +1174,13 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
     @Test
     public void testNetworkExtra() {
         assertEquals(NETWORK_EXTRAS_SERIALIZED,
-                SupplicantStaNetworkHal.createNetworkExtra(NETWORK_EXTRAS_VALUES));
+                SupplicantStaNetworkHalHidlImpl.createNetworkExtra(NETWORK_EXTRAS_VALUES));
         assertEquals(NETWORK_EXTRAS_VALUES,
-                SupplicantStaNetworkHal.parseNetworkExtra(NETWORK_EXTRAS_SERIALIZED));
+                SupplicantStaNetworkHalHidlImpl.parseNetworkExtra(NETWORK_EXTRAS_SERIALIZED));
     }
 
     /**
-     * Verifies that fetachEapAnonymousIdentity() can get the anonymous identity from supplicant.
+     * Verifies that fetchEapAnonymousIdentity() can get the anonymous identity from supplicant.
      */
     @Test
     public void testFetchEapAnonymousIdentity() {
@@ -1193,8 +1193,8 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
         assertEquals(ANONYMOUS_IDENTITY, mSupplicantNetwork.fetchEapAnonymousIdentity());
     }
 
-    /** Verifies that setPmkCache can set PMK cache
-     *
+    /**
+     * Verifies that setPmkCache can set PMK cache
      */
     @Test
     public void testSetPmkCache() {
@@ -2289,7 +2289,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
     private void createSupplicantStaNetwork(SupplicantStaNetworkVersion version) {
         switch (version) {
             case V1_0:
-                mSupplicantNetwork = new SupplicantStaNetworkHal(
+                mSupplicantNetwork = new SupplicantStaNetworkHalHidlImpl(
                         mISupplicantStaNetworkMock, IFACE_NAME, mContext, mWifiMonitor,
                         mWifiGlobals, mAdvanceKeyMgmtFeatures);
                 break;

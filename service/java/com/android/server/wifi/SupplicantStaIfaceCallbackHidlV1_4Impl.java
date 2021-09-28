@@ -17,25 +17,26 @@ package com.android.server.wifi;
 
 
 import android.annotation.NonNull;
-import android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.AssociationRejectionData;
+import android.hardware.wifi.supplicant.V1_4.DppFailureCode;
 import android.net.wifi.WifiManager;
+import android.util.Log;
 
 import com.android.server.wifi.hotspot2.WnmData;
 import com.android.server.wifi.util.NativeUtil;
 
 import java.util.ArrayList;
 
-abstract class SupplicantStaIfaceCallbackV1_4Impl extends
+abstract class SupplicantStaIfaceCallbackHidlV1_4Impl extends
         android.hardware.wifi.supplicant.V1_4.ISupplicantStaIfaceCallback.Stub {
-    private static final String TAG = SupplicantStaIfaceCallbackV1_4Impl.class.getSimpleName();
-    private final SupplicantStaIfaceHal mStaIfaceHal;
+    private static final String TAG = SupplicantStaIfaceCallbackHidlV1_4Impl.class.getSimpleName();
+    private final SupplicantStaIfaceHalHidlImpl mStaIfaceHal;
     private final String mIfaceName;
     private final WifiMonitor mWifiMonitor;
     private final Object mLock;
-    private final SupplicantStaIfaceHal.SupplicantStaIfaceHalCallbackV1_3 mCallbackV13;
-    private final SupplicantStaIfaceHal.SupplicantStaIfaceHalCallback mCallbackV10;
+    private final SupplicantStaIfaceHalHidlImpl.SupplicantStaIfaceHalCallbackV1_3 mCallbackV13;
+    private final SupplicantStaIfaceHalHidlImpl.SupplicantStaIfaceHalCallback mCallbackV10;
 
-    SupplicantStaIfaceCallbackV1_4Impl(@NonNull SupplicantStaIfaceHal staIfaceHal,
+    SupplicantStaIfaceCallbackHidlV1_4Impl(@NonNull SupplicantStaIfaceHalHidlImpl staIfaceHal,
             @NonNull String ifaceName, @NonNull Object lock,
             @NonNull WifiMonitor wifiMonitor) {
         mStaIfaceHal = staIfaceHal;
@@ -188,9 +189,41 @@ abstract class SupplicantStaIfaceCallbackV1_4Impl extends
         mCallbackV13.onDppProgress(code);
     }
 
+    private int halToFrameworkDppFailureCode(int failureCode) {
+        switch(failureCode) {
+            case DppFailureCode.INVALID_URI:
+                return SupplicantStaIfaceHal.DppFailureCode.INVALID_URI;
+            case DppFailureCode.AUTHENTICATION:
+                return SupplicantStaIfaceHal.DppFailureCode.AUTHENTICATION;
+            case DppFailureCode.NOT_COMPATIBLE:
+                return SupplicantStaIfaceHal.DppFailureCode.NOT_COMPATIBLE;
+            case DppFailureCode.CONFIGURATION:
+                return SupplicantStaIfaceHal.DppFailureCode.CONFIGURATION;
+            case DppFailureCode.BUSY:
+                return SupplicantStaIfaceHal.DppFailureCode.BUSY;
+            case DppFailureCode.TIMEOUT:
+                return SupplicantStaIfaceHal.DppFailureCode.TIMEOUT;
+            case DppFailureCode.FAILURE:
+                return SupplicantStaIfaceHal.DppFailureCode.FAILURE;
+            case DppFailureCode.NOT_SUPPORTED:
+                return SupplicantStaIfaceHal.DppFailureCode.NOT_SUPPORTED;
+            case DppFailureCode.CONFIGURATION_REJECTED:
+                return SupplicantStaIfaceHal.DppFailureCode.CONFIGURATION_REJECTED;
+            case DppFailureCode.CANNOT_FIND_NETWORK:
+                return SupplicantStaIfaceHal.DppFailureCode.CANNOT_FIND_NETWORK;
+            case DppFailureCode.ENROLLEE_AUTHENTICATION:
+                return SupplicantStaIfaceHal.DppFailureCode.ENROLLEE_AUTHENTICATION;
+            case DppFailureCode.URI_GENERATION:
+                return SupplicantStaIfaceHal.DppFailureCode.URI_GENERATION;
+            default:
+                Log.e(TAG, "Invalid DppFailureCode received");
+                return -1;
+        }
+    }
+
     @Override
     public void onDppFailure(int code) {
-        mCallbackV13.onDppFailure(code);
+        mCallbackV13.onDppFailureInternal(halToFrameworkDppFailureCode(code));
     }
 
     @Override
@@ -206,7 +239,8 @@ abstract class SupplicantStaIfaceCallbackV1_4Impl extends
     @Override
     public void onDppFailure_1_3(int code, String ssid, String channelList,
             ArrayList<Short> bandList) {
-        mCallbackV13.onDppFailure_1_3(code, ssid, channelList, bandList);
+        mCallbackV13.onDppFailureInternal_1_3(
+                halToFrameworkDppFailureCode(code), ssid, channelList, bandList);
     }
 
     @Override
