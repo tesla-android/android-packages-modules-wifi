@@ -2445,4 +2445,41 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
                     network.getNetworkSelectionStatus().getCandidateSecurityParams());
         }
     }
+
+    /**
+     * Verify that PSK type is selected for a transition network
+     * when only 64-octet Hex PSK is set.
+     */
+    @Test
+    public void testPskWithPskOnlyForPskSaeTransitionNetworks() {
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(WIFI_FEATURE_WPA3_SAE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isWpa3SaeUpgradeOffloadEnabled()).thenReturn(true);
+
+        when(mScanRequestProxy.isWpa2PersonalOnlyNetworkInRange(eq(TEST_AUTO_UPGRADE_SSID)))
+                .thenReturn(true);
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs = setupAutoUpgradeNetworks(
+                WifiConfigurationTestUtil.createPskSaeNetwork(TEST_AUTO_UPGRADE_SSID),
+                new String[] {"[RSN-PSK+SAE-CCMP][ESS]", "[WPA2-PSK][ESS]"});
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        WifiConfiguration[] savedConfigs = scanDetailsAndConfigs.getWifiConfigs();
+        WifiConfiguration networkSelectorChoice = savedConfigs[0];
+        networkSelectorChoice.preSharedKey =
+                "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF";
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, new HashSet<>(),
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true);
+        assertEquals(2, candidates.size());
+
+        // Verify that PSK network is still selected if offload is not supported
+        // and no PSK network is shown.
+        when(mScanRequestProxy.isWpa2PersonalOnlyNetworkInRange(eq(networkSelectorChoice.SSID)))
+                .thenReturn(false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
+        WifiConfigurationTestUtil.assertConfigurationEqual(networkSelectorChoice, candidate);
+        assertTrue(networkSelectorChoice.getNetworkSelectionStatus().getCandidateSecurityParams()
+                .isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+    }
 }
