@@ -1062,8 +1062,12 @@ public class ConcreteClientModeManager implements ClientModeManager {
                             break;  // no change
                         }
                         if (!isUp) {
-                            if (mWifiGlobals.isConnectedMacRandomizationEnabled()
-                                    && getClientMode().isConnecting()) {
+                            // TODO(b/201584491) Figure out what to do with this block of code
+                            // handling iface down since most devices should have MAC randomization
+                            // enabled, which makes the "else" block essentially no-op. Also, the
+                            // "else" block would actually fully disable wifi which is not desirable
+                            // behavior because the firmware can recover the iface after it is down.
+                            if (mWifiGlobals.isConnectedMacRandomizationEnabled()) {
                                 return HANDLED; // For MAC randomization, ignore...
                             } else {
                                 // Handle the error case where our underlying interface went down if
