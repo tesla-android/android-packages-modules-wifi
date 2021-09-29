@@ -382,9 +382,9 @@ public class WifiVendorHalTest extends WifiBaseTest {
                 mLooper.dispatchAll();
             }
         }).when(mHalDeviceManager).stop();
-        when(mHalDeviceManager.createStaIface(any(), eq(null), any()))
+        when(mHalDeviceManager.createStaIface(any(), any(), any()))
                 .thenReturn(mIWifiStaIface);
-        when(mHalDeviceManager.createApIface(anyLong(), any(), eq(null), any(), anyBoolean()))
+        when(mHalDeviceManager.createApIface(anyLong(), any(), any(), any(), anyBoolean()))
                 .thenReturn(mIWifiApIface);
         when(mHalDeviceManager.removeIface(any())).thenReturn(true);
         when(mHalDeviceManager.getChip(any(IWifiIface.class)))
@@ -462,7 +462,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertTrue(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).getChip(eq(mIWifiStaIface));
         verify(mHalDeviceManager).isReady();
         verify(mHalDeviceManager).isStarted();
@@ -470,7 +470,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         verify(mIWifiChip).registerEventCallback(any(IWifiChipEventCallback.class));
 
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
     }
 
     /**
@@ -484,12 +484,12 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         verify(mHalDeviceManager).start();
         verify(mHalDeviceManager).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
         verify(mHalDeviceManager).getChip(eq(mIWifiApIface));
         verify(mHalDeviceManager).isReady();
         verify(mHalDeviceManager).isStarted();
 
-        verify(mHalDeviceManager, never()).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager, never()).createStaIface(any(), any(), any());
     }
 
     /**
@@ -510,9 +510,9 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         verify(mHalDeviceManager).start();
 
-        verify(mHalDeviceManager, never()).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager, never()).createStaIface(any(), any(), any());
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
         verify(mHalDeviceManager, never()).getChip(any(IWifiIface.class));
         verify(mIWifiStaIface, never())
                 .registerEventCallback(any(IWifiStaIfaceEventCallback.class));
@@ -524,16 +524,16 @@ public class WifiVendorHalTest extends WifiBaseTest {
      */
     @Test
     public void testStartHalFailureInIfaceCreationInStaMode() throws Exception {
-        when(mHalDeviceManager.createStaIface(any(), eq(null), any())).thenReturn(null);
+        when(mHalDeviceManager.createStaIface(any(), any(), any())).thenReturn(null);
         assertFalse(mWifiVendorHal.startVendorHalSta());
         assertFalse(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).stop();
 
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
         verify(mHalDeviceManager, never()).getChip(any(IWifiIface.class));
         verify(mIWifiStaIface, never())
                 .registerEventCallback(any(IWifiStaIfaceEventCallback.class));
@@ -550,13 +550,13 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertFalse(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).getChip(any(IWifiIface.class));
         verify(mHalDeviceManager).stop();
         verify(mIWifiStaIface).registerEventCallback(any(IWifiStaIfaceEventCallback.class));
 
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
     }
 
     /**
@@ -571,13 +571,13 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertFalse(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).stop();
         verify(mIWifiStaIface).registerEventCallback(any(IWifiStaIfaceEventCallback.class));
 
         verify(mHalDeviceManager, never()).getChip(any(IWifiIface.class));
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
     }
 
     /**
@@ -592,14 +592,14 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertFalse(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).getChip(any(IWifiIface.class));
         verify(mHalDeviceManager).stop();
         verify(mIWifiStaIface).registerEventCallback(any(IWifiStaIfaceEventCallback.class));
         verify(mIWifiChip).registerEventCallback(any(IWifiChipEventCallback.class));
 
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
     }
 
     /**
@@ -608,16 +608,16 @@ public class WifiVendorHalTest extends WifiBaseTest {
      */
     @Test
     public void testStartHalFailureInApMode() throws Exception {
-        when(mHalDeviceManager.createApIface(anyLong(), any(), eq(null), any(), anyBoolean()))
+        when(mHalDeviceManager.createApIface(anyLong(), any(), any(), any(), anyBoolean()))
                 .thenReturn(null);
         assertFalse(mWifiVendorHal.startVendorHalAp());
         assertFalse(mWifiVendorHal.isHalStarted());
 
         verify(mHalDeviceManager).start();
-        verify(mHalDeviceManager).createApIface(anyLong(), any(), eq(null), any(), anyBoolean());
+        verify(mHalDeviceManager).createApIface(anyLong(), any(), any(), any(), anyBoolean());
         verify(mHalDeviceManager).stop();
 
-        verify(mHalDeviceManager, never()).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager, never()).createStaIface(any(), any(), any());
         verify(mHalDeviceManager, never()).getChip(any(IWifiIface.class));
     }
 
@@ -635,13 +635,13 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         verify(mHalDeviceManager).start();
         verify(mHalDeviceManager).stop();
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager).createStaIface(any(), any(), any());
         verify(mHalDeviceManager).getChip(eq(mIWifiStaIface));
         verify(mHalDeviceManager, times(2)).isReady();
         verify(mHalDeviceManager, times(2)).isStarted();
 
         verify(mHalDeviceManager, never()).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
     }
 
     /**
@@ -659,12 +659,12 @@ public class WifiVendorHalTest extends WifiBaseTest {
         verify(mHalDeviceManager).start();
         verify(mHalDeviceManager).stop();
         verify(mHalDeviceManager).createApIface(
-                anyLong(), any(), eq(null), any(), anyBoolean());
+                anyLong(), any(), any(), any(), anyBoolean());
         verify(mHalDeviceManager).getChip(eq(mIWifiApIface));
         verify(mHalDeviceManager, times(2)).isReady();
         verify(mHalDeviceManager, times(2)).isStarted();
 
-        verify(mHalDeviceManager, never()).createStaIface(any(), eq(null), any());
+        verify(mHalDeviceManager, never()).createStaIface(any(), any(), any());
     }
 
     /**
@@ -682,7 +682,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         verify(mHalDeviceManager).start();
         verify(mHalDeviceManager).createStaIface(internalListenerCaptor.capture(),
-                eq(null), eq(TEST_WORKSOURCE));
+                any(), eq(TEST_WORKSOURCE));
         verify(mHalDeviceManager).getChip(eq(mIWifiStaIface));
         verify(mHalDeviceManager).isReady();
         verify(mHalDeviceManager).isStarted();
@@ -715,7 +715,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         verify(mHalDeviceManager).start();
         verify(mHalDeviceManager).createApIface(anyLong(),
-                internalListenerCaptor.capture(), eq(null), eq(TEST_WORKSOURCE), eq(false));
+                internalListenerCaptor.capture(), any(), eq(TEST_WORKSOURCE), eq(false));
         verify(mHalDeviceManager).getChip(eq(mIWifiApIface));
         verify(mHalDeviceManager).isReady();
         verify(mHalDeviceManager).isStarted();
@@ -3322,7 +3322,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
         assertTrue(mWifiVendorHal.startVendorHal());
         assertNull(mWifiVendorHal.createStaIface(null, TEST_WORKSOURCE));
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), eq(TEST_WORKSOURCE));
+        verify(mHalDeviceManager).createStaIface(any(), any(), eq(TEST_WORKSOURCE));
     }
 
     /**
@@ -3341,7 +3341,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         assertNull(mWifiVendorHal.createApIface(
                 null, TEST_WORKSOURCE, SoftApConfiguration.BAND_2GHZ, false));
         verify(mHalDeviceManager).createApIface(
-                anyLong(), any(), eq(null), eq(TEST_WORKSOURCE), eq(false));
+                anyLong(), any(), any(), eq(TEST_WORKSOURCE), eq(false));
     }
 
     /**
@@ -3351,7 +3351,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
     public void testCreateRemoveStaIface() throws RemoteException {
         assertTrue(mWifiVendorHal.startVendorHal());
         String ifaceName = mWifiVendorHal.createStaIface(null, TEST_WORKSOURCE);
-        verify(mHalDeviceManager).createStaIface(any(), eq(null), eq(TEST_WORKSOURCE));
+        verify(mHalDeviceManager).createStaIface(any(), any(), eq(TEST_WORKSOURCE));
         assertEquals(TEST_IFACE_NAME, ifaceName);
         assertTrue(mWifiVendorHal.removeStaIface(ifaceName));
         verify(mHalDeviceManager).removeIface(eq(mIWifiStaIface));
@@ -3366,7 +3366,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         String ifaceName = mWifiVendorHal.createApIface(
                 null, TEST_WORKSOURCE, SoftApConfiguration.BAND_2GHZ, false);
         verify(mHalDeviceManager).createApIface(
-                anyLong(), any(), eq(null), eq(TEST_WORKSOURCE), eq(false));
+                anyLong(), any(), any(), eq(TEST_WORKSOURCE), eq(false));
         assertEquals(TEST_IFACE_NAME, ifaceName);
         assertTrue(mWifiVendorHal.removeApIface(ifaceName));
         verify(mHalDeviceManager).removeIface(eq(mIWifiApIface));
