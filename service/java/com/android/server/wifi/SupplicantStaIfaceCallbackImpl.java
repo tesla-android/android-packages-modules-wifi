@@ -180,7 +180,7 @@ abstract class SupplicantStaIfaceCallbackImpl extends ISupplicantStaIfaceCallbac
 
             if (newState == State.ASSOCIATING || newState == State.ASSOCIATED
                     || newState == State.COMPLETED) {
-                mStaIfaceHal.updateOnLinkedNetworkRoaming(mIfaceName, id);
+                mStaIfaceHal.updateOnLinkedNetworkRoaming(mIfaceName, id, false);
             }
 
             if (newState == State.COMPLETED) {
