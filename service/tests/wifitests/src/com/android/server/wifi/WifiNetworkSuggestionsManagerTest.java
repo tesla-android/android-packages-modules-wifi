@@ -740,6 +740,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         // Set user connect choice, Anonymous Identity and auto join.
         WifiConfiguration config = new WifiConfiguration(eapSimConfig);
         config.fromWifiNetworkSuggestion = true;
+        config.shared = false;
         config.ephemeral = true;
         config.creatorName = TEST_PACKAGE_1;
         config.creatorUid = TEST_UID_1;
@@ -819,6 +820,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         configInWcm.creatorUid = TEST_UID_1;
         configInWcm.creatorName = TEST_PACKAGE_1;
         configInWcm.fromWifiNetworkSuggestion = true;
+        configInWcm.shared = false;
         setupGetConfiguredNetworksFromWcm(configInWcm);
 
         // Modify the original suggestion to mark it metered.
@@ -1413,6 +1415,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1452,6 +1455,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1553,6 +1557,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1597,6 +1602,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1654,6 +1660,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion1.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1715,6 +1722,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(true, TEST_UID_2, TEST_PACKAGE_2);
         WifiConfiguration connectNetwork = new WifiConfiguration(config);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1777,6 +1785,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion1.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1830,6 +1839,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1871,6 +1881,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -1915,6 +1926,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -2097,6 +2109,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         connectNetwork.providerFriendlyName = TEST_FRIENDLY_NAME;
         connectNetwork.setPasspointUniqueId(passpointConfiguration.getUniqueId());
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -2190,6 +2203,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -2226,6 +2240,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -2275,6 +2290,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         // Simulate connecting to the network.
         WifiConfiguration connectNetwork = new WifiConfiguration(config);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -3240,6 +3256,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         connectNetwork.FQDN = TEST_FQDN;
         connectNetwork.providerFriendlyName = TEST_FRIENDLY_NAME;
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -3572,6 +3589,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         networkSuggestion1.wifiConfiguration.fromWifiNetworkSuggestion = true;
         networkSuggestion2.wifiConfiguration.fromWifiNetworkSuggestion = true;
         networkSuggestion3.wifiConfiguration.fromWifiNetworkSuggestion = true;
+        networkSuggestion1.wifiConfiguration.shared = false;
+        networkSuggestion2.wifiConfiguration.shared = false;
+        networkSuggestion3.wifiConfiguration.shared = false;
         networkSuggestion1.wifiConfiguration.creatorName = TEST_PACKAGE_1;
         networkSuggestion2.wifiConfiguration.creatorName = TEST_PACKAGE_1;
         networkSuggestion3.wifiConfiguration.creatorName = TEST_PACKAGE_1;
@@ -3612,6 +3632,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 DEFAULT_PRIORITY_GROUP);
         networkSuggestion1.wifiConfiguration.carrierId = TEST_CARRIER_ID;
         networkSuggestion2.wifiConfiguration.carrierId = TEST_CARRIER_ID;
+        networkSuggestion1.wifiConfiguration.shared = false;
+        networkSuggestion2.wifiConfiguration.shared = false;
         WifiConfiguration configuration = networkSuggestion1.wifiConfiguration;
 
         // Suggestion1 has SIM present, suggestion2 has SIM absent
@@ -3673,12 +3695,15 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     }
 
     private void setupGetConfiguredNetworksFromWcm(WifiConfiguration...configs) {
+        List<WifiConfiguration> wcmConfigs = new ArrayList<>();
         for (int i = 0; i < configs.length; i++) {
-            WifiConfiguration config = configs[i];
+            WifiConfiguration config = new WifiConfiguration(configs[i]);
+            config.shared = false;
             when(mWifiConfigManager.getConfiguredNetwork(config.getProfileKey()))
                     .thenReturn(config);
+            wcmConfigs.add(config);
         }
-        when(mWifiConfigManager.getConfiguredNetworks()).thenReturn(Arrays.asList(configs));
+        when(mWifiConfigManager.getConfiguredNetworks()).thenReturn(wcmConfigs);
     }
 
     /**
@@ -3863,6 +3888,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration configuration =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         configuration.fromWifiNetworkSuggestion = true;
+        configuration.shared = false;
         configuration.ephemeral = true;
         configuration.creatorName = TEST_PACKAGE_1;
         configuration.creatorUid = TEST_UID_1;
@@ -3918,6 +3944,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         config.providerFriendlyName = TEST_FRIENDLY_NAME;
         config.setPasspointUniqueId(passpointConfiguration.getUniqueId());
         config.fromWifiNetworkSuggestion = true;
+        config.shared = false;
         config.ephemeral = true;
         config.creatorName = TEST_PACKAGE_1;
         config.creatorUid = TEST_UID_1;
@@ -4115,6 +4142,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
         // Simulate user approved carrier
         eapSimConfig.fromWifiNetworkSuggestion = true;
+        eapSimConfig.shared = false;
         eapSimConfig.creatorUid = TEST_UID_1;
         eapSimConfig.creatorName = TEST_PACKAGE_1;
         when(mWifiConfigManager.getConfiguredNetwork(anyString())).thenReturn(eapSimConfig);
@@ -4730,6 +4758,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration connectNetwork =
                 new WifiConfiguration(networkSuggestion.wifiConfiguration);
         connectNetwork.fromWifiNetworkSuggestion = true;
+        connectNetwork.shared = false;
         connectNetwork.ephemeral = true;
         connectNetwork.creatorName = TEST_PACKAGE_1;
         connectNetwork.creatorUid = TEST_UID_1;
@@ -4786,6 +4815,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration configuration =
                 new WifiConfiguration(eapSimConfig);
         configuration.fromWifiNetworkSuggestion = true;
+        configuration.shared = false;
         configuration.ephemeral = true;
         configuration.creatorName = TEST_PACKAGE_1;
         configuration.creatorUid = TEST_UID_1;
@@ -4828,6 +4858,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiConfiguration configuration =
                 new WifiConfiguration(config);
         configuration.fromWifiNetworkSuggestion = true;
+        configuration.shared = false;
         configuration.ephemeral = true;
         configuration.creatorName = TEST_PACKAGE_1;
         configuration.creatorUid = TEST_UID_1;

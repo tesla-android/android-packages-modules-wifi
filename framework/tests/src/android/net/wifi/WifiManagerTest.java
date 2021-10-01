@@ -93,6 +93,7 @@ import android.net.wifi.WifiManager.LocalOnlyHotspotReservation;
 import android.net.wifi.WifiManager.LocalOnlyHotspotSubscription;
 import android.net.wifi.WifiManager.NetworkRequestMatchCallback;
 import android.net.wifi.WifiManager.NetworkRequestUserSelectionCallback;
+import android.net.wifi.WifiManager.OnDriverCountryCodeChangedListener;
 import android.net.wifi.WifiManager.OnWifiUsabilityStatsListener;
 import android.net.wifi.WifiManager.ScanResultsCallback;
 import android.net.wifi.WifiManager.SoftApCallback;
@@ -176,6 +177,7 @@ public class WifiManagerTest {
     @Mock ActivityManager mActivityManager;
     @Mock WifiConnectedNetworkScorer mWifiConnectedNetworkScorer;
     @Mock SuggestionUserApprovalStatusListener mSuggestionUserApprovalStatusListener;
+    @Mock OnDriverCountryCodeChangedListener mOnDriverCountryCodeChangedListener;
 
     private Handler mHandler;
     private TestLooper mLooper;
@@ -3380,5 +3382,90 @@ public class WifiManagerTest {
         verify(mWifiService).getUsableChannels(eq(band), eq(mode),
                 eq(WifiAvailableChannel.FILTER_CONCURRENCY
                     | WifiAvailableChannel.FILTER_CELLULAR_COEXISTENCE));
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if listener is not provided.
+     */
+    @Test
+    public void testAddDriverCountryCodeChangedListenerThrowsExceptionOnNullListener() {
+        try {
+            mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler), null);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if executor is null.
+     */
+    @Test
+    public void testAddDriverCountryCodeChangedListenerThrowsExceptionOnNullExecutor() {
+        try {
+            mWifiManager.addDriverCountryCodeChangedListener(null,
+                    mOnDriverCountryCodeChangedListener);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if listener is not provided.
+     */
+    @Test
+    public void testRemoveDriverCountryCodeChangedListenerThrowsExceptionOnNullListener() {
+        try {
+            mWifiManager.removeDriverCountryCodeChangedListener(null);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify the call to addDriverCountryCodeChangedListener goes to WifiServiceImpl.
+     */
+    @Test
+    public void testAddDriverCountryCodeChangedListenerCallGoesToWifiServiceImpl()
+            throws Exception {
+        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
+                mOnDriverCountryCodeChangedListener);
+        verify(mWifiService).registerDriverCountryCodeChangedListener(
+                any(IOnWifiDriverCountryCodeChangedListener.Stub.class), anyString(),
+                any() /* getAttributionTag(), nullable */);
+    }
+
+    /**
+     * Verify the call to removeDriverCountryCodeChangedListener goes to WifiServiceImpl.
+     */
+    @Test
+    public void testRemoveDriverCountryCodeChangedListenerCallGoesToWifiServiceImpl()
+            throws Exception {
+        ArgumentCaptor<IOnWifiDriverCountryCodeChangedListener.Stub> listenerCaptor =
+                ArgumentCaptor.forClass(IOnWifiDriverCountryCodeChangedListener.Stub.class);
+        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
+                mOnDriverCountryCodeChangedListener);
+        verify(mWifiService).registerDriverCountryCodeChangedListener(listenerCaptor.capture(),
+                 anyString(), any() /* getAttributionTag(), nullable */);
+
+        mWifiManager.removeDriverCountryCodeChangedListener(mOnDriverCountryCodeChangedListener);
+        verify(mWifiService).unregisterDriverCountryCodeChangedListener(listenerCaptor.getValue());
+    }
+
+    /*
+     * Verify client-provided listener is being called through listener proxy
+     */
+    @Test
+    public void testDriverCountryCodeChangedListenerProxyCallsOnDriverCountryCodeChanged()
+            throws Exception {
+        ArgumentCaptor<IOnWifiDriverCountryCodeChangedListener.Stub> listenerCaptor =
+                ArgumentCaptor.forClass(IOnWifiDriverCountryCodeChangedListener.Stub.class);
+        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
+                mOnDriverCountryCodeChangedListener);
+        verify(mWifiService).registerDriverCountryCodeChangedListener(listenerCaptor.capture(),
+                 anyString(), any() /* getAttributionTag(), nullable */);
+
+        listenerCaptor.getValue().onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mOnDriverCountryCodeChangedListener).onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
     }
 }

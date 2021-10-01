@@ -1401,9 +1401,14 @@ public class ActiveModeWarden {
      * might fail if country code is updated while the scan is ongoing.
      * To mitigate that issue, send ACTION_WIFI_SCAN_AVAILABILITY_CHANGED again when the country
      * code update is completed.
+     *
+     * @param newCountryCode the new country code, null when there is no active mode enabled.
      */
-    public void updateClientScanModeAfterCountryCodeUpdate() {
-        updateClientScanMode();
+    public void updateClientScanModeAfterCountryCodeUpdate(@Nullable String newCountryCode) {
+        // Handle country code changed only during Wifi off -> on transition.
+        if (newCountryCode != null) {
+            updateClientScanMode();
+        }
     }
 
     /**

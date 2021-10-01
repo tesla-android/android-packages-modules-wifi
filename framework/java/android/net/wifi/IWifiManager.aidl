@@ -29,6 +29,7 @@ import android.net.wifi.IDppCallback;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
+import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
@@ -122,6 +123,13 @@ interface IWifiManager
     boolean setWifiEnabled(String packageName, boolean enable);
 
     int getWifiEnabledState();
+
+    void registerDriverCountryCodeChangedListener(
+            in IOnWifiDriverCountryCodeChangedListener listener, String packageName,
+            String featureId);
+
+    void unregisterDriverCountryCodeChangedListener(
+            in IOnWifiDriverCountryCodeChangedListener listener);
 
     String getCountryCode();
 

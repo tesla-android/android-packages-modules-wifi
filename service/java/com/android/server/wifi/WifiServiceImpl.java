@@ -69,6 +69,7 @@ import android.net.wifi.IDppCallback;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
+import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
@@ -235,6 +236,9 @@ public class WifiServiceImpl extends BaseWifiService {
 
     private final DefaultClientModeManager mDefaultClientModeManager;
 
+    @VisibleForTesting
+    public final CountryCodeTracker mCountryCodeTracker;
+
     /**
      * Callback for use with LocalOnlyHotspot to unregister requesting applications upon death.
      */
@@ -369,6 +373,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mLastCallerInfoManager = mWifiInjector.getLastCallerInfoManager();
         mBuildProperties = mWifiInjector.getBuildProperties();
         mDefaultClientModeManager = mWifiInjector.getDefaultClientModeManager();
+        mCountryCodeTracker = new CountryCodeTracker();
     }
 
     /**
@@ -581,8 +586,9 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().register();
             mWifiInjector.getOemWifiNetworkFactory().register();
             mWifiInjector.getWifiP2pConnection().handleBootCompleted();
-            // Start to listen country code change.
-            mCountryCode.registerListener(new CountryCodeListenerProxy());
+            // Start to listen country code change to avoid query supported channels causes boot
+            // time increased.
+            mCountryCode.registerListener(mCountryCodeTracker);
             mTetheredSoftApTracker.handleBootCompleted();
             mWifiInjector.getSarManager().handleBootCompleted();
         });
@@ -868,6 +874,11 @@ public class WifiServiceImpl extends BaseWifiService {
 
     private void enforceLocationPermission(String pkgName, @Nullable String featureId, int uid) {
         mWifiPermissionsUtil.enforceLocationPermission(pkgName, featureId, uid);
+    }
+
+    private void enforceCoarseLocationPermission(@Nullable String pkgName,
+            @Nullable String featureId, int uid) {
+        mWifiPermissionsUtil.enforceCoarseLocationPermission(pkgName, featureId, uid);
     }
 
     /**
@@ -1292,15 +1303,83 @@ public class WifiServiceImpl extends BaseWifiService {
         mActiveModeWarden.stopSoftAp(mode);
     }
 
-    private final class CountryCodeListenerProxy implements WifiCountryCode.ChangeListener {
+    /**
+     * Internal class for tracking country code changed event.
+     */
+    @VisibleForTesting
+    public final class CountryCodeTracker implements WifiCountryCode.ChangeListener {
+        private final RemoteCallbackList<IOnWifiDriverCountryCodeChangedListener>
+                mRegisteredDriverCountryCodeListeners = new RemoteCallbackList<>();
+
+        /**
+        * Register Driver Country code changed listener.
+        * Note: Calling API only in handler thread.
+        *
+        * @param listener listener for the driver country code changed events.
+        */
+        public void registerDriverCountryCodeChangedListener(
+                @NonNull IOnWifiDriverCountryCodeChangedListener listener,
+                @NonNull WifiPermissionsUtil.CallerIdentity identity) {
+            boolean result = mRegisteredDriverCountryCodeListeners.register(listener, identity);
+            if (isVerboseLoggingEnabled()) {
+                Log.i(TAG, "registerDriverCountryCodeChangedListener, listener:" + listener
+                        + ", CallerIdentity=" + identity.toString() + ", result: " + result);
+            }
+        }
+
+
+        /**
+         * Unregister Driver Country code changed listener.
+         * Note: Calling API only in handler thread.
+         *
+         * @param listener listener to remove.
+         */
+        public void unregisterDriverCountryCodeChangedListener(
+                @NonNull IOnWifiDriverCountryCodeChangedListener listener) {
+            boolean result = mRegisteredDriverCountryCodeListeners.unregister(listener);
+            if (isVerboseLoggingEnabled()) {
+                Log.i(TAG, "unregisterDriverCountryCodeChangedListener, listener:" + listener
+                        + ", result:" + result);
+            }
+        }
+
         @Override
-        public void onDriverCountryCodeChanged(String countryCode) {
+        public void onDriverCountryCodeChanged(@Nullable String countryCode) {
             // post operation to handler thread
             mWifiThreadRunner.post(() -> {
-                Log.i(TAG, "onDriverCountryCodeChanged " + countryCode);
-                mTetheredSoftApTracker.updateAvailChannelListInSoftApCapability();
-                mActiveModeWarden.updateSoftApCapability(
-                        mTetheredSoftApTracker.getSoftApCapability());
+                Log.i(TAG, "Receive onDriverCountryCodeChanged to " + countryCode
+                        + ", update available channel list");
+                // Update channel capability when country code is not null.
+                // Because the driver country code will reset to null when driver is non-active.
+                if (countryCode != null) {
+                    mTetheredSoftApTracker.updateAvailChannelListInSoftApCapability();
+                    mActiveModeWarden.updateSoftApCapability(
+                            mTetheredSoftApTracker.getSoftApCapability());
+                }
+                int itemCount = mRegisteredDriverCountryCodeListeners.beginBroadcast();
+                for (int i = 0; i < itemCount; i++) {
+                    try {
+                        WifiPermissionsUtil.CallerIdentity identity =
+                                (WifiPermissionsUtil.CallerIdentity)
+                                mRegisteredDriverCountryCodeListeners.getBroadcastCookie(i);
+                        if (!mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                                identity.getPackageName(), identity.getFeatureId(),
+                                identity.getUid(), null)) {
+                            Log.i(TAG, "ReceiverIdentity=" + identity.toString()
+                                    + " doesn't have ACCESS_COARSE_LOCATION permission now");
+                            continue;
+                        }
+                        if (isVerboseLoggingEnabled()) {
+                            Log.i(TAG, "onDriverCountryCodeChanged, ReceiverIdentity="
+                                    + identity.toString());
+                        }
+                        mRegisteredDriverCountryCodeListeners.getBroadcastItem(i)
+                                .onDriverCountryCodeChanged(countryCode);
+                    } catch (RemoteException e) {
+                        Log.e(TAG, "onDriverCountryCodeChanged: remote exception -- " + e);
+                    }
+                }
+                mRegisteredDriverCountryCodeListeners.finishBroadcast();
             });
         }
     }
@@ -3400,6 +3479,76 @@ public class WifiServiceImpl extends BaseWifiService {
     public int matchProviderWithCurrentNetwork(String fqdn) {
         mLog.info("matchProviderWithCurrentNetwork uid=%").c(Binder.getCallingUid()).flush();
         return 0;
+    }
+
+    /**
+     * see {@link android.net.wifi.WifiManager#addDriverCountryCodeChangedListener(
+     * WifiManager.OnDriverCountryCodeChangedListener)}
+     *
+     * @param listener country code listener to register
+     * @param packageName Package name of the calling app
+     * @param featureId The feature in the package
+     *
+     * @throws SecurityException if the caller does not have permission to register a callback
+     * @throws RemoteException if remote exception happens
+     * @throws IllegalArgumentException if the arguments are null or invalid
+     */
+    @Override
+    public void registerDriverCountryCodeChangedListener(@NonNull
+            IOnWifiDriverCountryCodeChangedListener listener, @Nullable String packageName,
+            @Nullable String featureId) {
+        // verify arguments
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        }
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
+        enforceCoarseLocationPermission(packageName, featureId, uid);
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("registerDriverCountryCodeChangedListener uid=%")
+                    .c(Binder.getCallingUid()).flush();
+        }
+
+        // post operation to handler thread
+        mWifiThreadRunner.post(() -> {
+            mCountryCodeTracker.registerDriverCountryCodeChangedListener(listener,
+                    new WifiPermissionsUtil.CallerIdentity(uid, pid, packageName, featureId));
+            // Update the client about the current driver country code immediately
+            // after registering.
+            try {
+                listener.onDriverCountryCodeChanged(mCountryCode.getCurrentDriverCountryCode());
+            } catch (RemoteException e) {
+                Log.e(TAG, "registerDriverCountryCodeChangedListener: remote exception -- " + e);
+            }
+        });
+    }
+
+    /**
+     * see {@link android.net.wifi.WifiManager#removeDriverCountryCodeChangedListener(Executor,
+     * WifiManager.OnDriverCountryCodeChangedListener)}
+     *
+     * @param listener country code listener to register
+     *
+     * @throws RemoteException if remote exception happens
+     * @throws IllegalArgumentException if the arguments are null or invalid
+     */
+    @Override
+    public void unregisterDriverCountryCodeChangedListener(@NonNull
+            IOnWifiDriverCountryCodeChangedListener listener) {
+        // verify arguments
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be null");
+        }
+        int uid = Binder.getCallingUid();
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("unregisterDriverCountryCodeChangedListener uid=%")
+                    .c(Binder.getCallingUid()).flush();
+        }
+
+        // post operation to handler thread
+        mWifiThreadRunner.post(() ->
+                mCountryCodeTracker.unregisterDriverCountryCodeChangedListener(listener));
     }
 
      /**

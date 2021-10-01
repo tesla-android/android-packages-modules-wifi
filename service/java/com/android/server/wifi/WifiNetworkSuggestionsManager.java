@@ -359,6 +359,7 @@ public class WifiNetworkSuggestionsManager {
         public WifiConfiguration createInternalWifiConfiguration(
                 @Nullable WifiCarrierInfoManager carrierInfoManager) {
             WifiConfiguration config = new WifiConfiguration(wns.getWifiConfiguration());
+            config.shared = false;
             config.allowAutojoin = isAutojoinEnabled;
             if (config.enterpriseConfig
                     != null && config.enterpriseConfig.isAuthenticationSimBased()) {
