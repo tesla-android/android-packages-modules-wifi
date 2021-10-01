@@ -17,6 +17,7 @@
 package android.net.wifi;
 
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.DhcpInfo;
 import android.net.Network;
 import android.net.wifi.CoexUnsafeChannel;
@@ -260,6 +261,19 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public int getWifiEnabledState() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void registerDriverCountryCodeChangedListener(
+            @NonNull IOnWifiDriverCountryCodeChangedListener listener,
+            @Nullable String packageName, @Nullable String featureId) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterDriverCountryCodeChangedListener(
+            @NonNull IOnWifiDriverCountryCodeChangedListener listener) {
         throw new UnsupportedOperationException();
     }
 

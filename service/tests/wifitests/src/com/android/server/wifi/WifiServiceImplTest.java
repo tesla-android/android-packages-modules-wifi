@@ -121,6 +121,7 @@ import android.net.wifi.IDppCallback;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
+import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
@@ -236,6 +237,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final String WIFI_IFACE_NAME = "wlan0";
     private static final String WIFI_IFACE_NAME2 = "wlan1";
     private static final String TEST_COUNTRY_CODE = "US";
+    private static final String TEST_NEW_COUNTRY_CODE = "TW";
     private static final String TEST_FACTORY_MAC = "10:22:34:56:78:92";
     private static final MacAddress TEST_FACTORY_MAC_ADDR = MacAddress.fromString(TEST_FACTORY_MAC);
     private static final String TEST_FQDN = "testfqdn";
@@ -379,6 +381,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock LastCallerInfoManager mLastCallerInfoManager;
     @Mock BuildProperties mBuildProperties;
     @Mock LinkProbeManager mLinkProbeManager;
+    @Mock IOnWifiDriverCountryCodeChangedListener mIOnWifiDriverCountryCodeChangedListener;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -506,6 +509,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getOpenNetworkNotifier()).thenReturn(mOpenNetworkNotifier);
         when(mClientSoftApCallback.asBinder()).thenReturn(mAppBinder);
         when(mAnotherSoftApCallback.asBinder()).thenReturn(mAnotherAppBinder);
+        when(mIOnWifiDriverCountryCodeChangedListener.asBinder()).thenReturn(mAppBinder);
         when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
         mClientModeManagers = Arrays.asList(mClientModeManager, mock(ClientModeManager.class));
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
@@ -8389,5 +8393,113 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         mLooper.stopAutoDispatchAndIgnoreExceptions();
         verify(mPasspointManager).setWifiPasspointEnabled(false);
+    }
+
+    /**
+     * Verify that a call to registerDriverCountryCodeChangedListener throws a SecurityException
+     * if the caller doesnot have ACCESS_COARSE_LOCATION permission.
+     */
+    @Test(expected = SecurityException.class)
+    public void registerDriverCountryCodeChangedListenerThrowsSecurityExceptionWithoutPermission() {
+        doThrow(new SecurityException())
+                .when(mWifiPermissionsUtil).enforceCoarseLocationPermission(eq(TEST_PACKAGE_NAME),
+                                                                      eq(TEST_FEATURE_ID),
+                                                                      anyInt());
+        mWifiServiceImpl.registerDriverCountryCodeChangedListener(
+                mIOnWifiDriverCountryCodeChangedListener, TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+    }
+
+    /**
+     * Verify that a call registerDriverCountryCodeChangedListener throws an
+     * IllegalArgumentException if the parameters are not provided.
+     */
+    @Test
+    public void registerDriverCountryCodeChangedListenerThrowsIllegalArgumentException() {
+        try {
+            mWifiServiceImpl.registerDriverCountryCodeChangedListener(
+                    null, TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verifies that we handle driver country code changed listener registration failure if we
+     * encounter an exception while linking to death.
+     */
+    @Test
+    public void registerDriverCountryCodeChangedListenerFailureOnLinkToDeath() throws Exception {
+        doThrow(new RemoteException())
+                .when(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
+        mWifiServiceImpl.registerDriverCountryCodeChangedListener(
+                mIOnWifiDriverCountryCodeChangedListener, TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+        mLooper.dispatchAll();
+        verify(mIOnWifiDriverCountryCodeChangedListener, never())
+                .onDriverCountryCodeChanged(anyString());
+    }
+
+    /**
+     * Verify that a call to registerDriverCountryCodeChangedListener succeeded.
+     */
+    private void verifyRegisterDriverCountryCodeChangedListenerSucceededAndTriggerListener(
+            IOnWifiDriverCountryCodeChangedListener listener)
+            throws Exception {
+        doNothing()
+                .when(mWifiPermissionsUtil).enforceCoarseLocationPermission(eq(TEST_PACKAGE_NAME),
+                                                                      eq(TEST_FEATURE_ID),
+                                                                      anyInt());
+        when(mWifiCountryCode.getCurrentDriverCountryCode()).thenReturn(TEST_COUNTRY_CODE);
+        mWifiServiceImpl.registerDriverCountryCodeChangedListener(
+                listener, TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+        mLooper.dispatchAll();
+        verify(listener)
+                .onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+    }
+
+    /**
+     * Verify that DriverCountryCodeChanged will be dropped if register permission was removed.
+     */
+    @Test
+    public void testDriverCountryCodeChangedDropWhenRegisterPermissionRemoved() throws Exception {
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID), anyInt(), any())).thenReturn(true);
+        verifyRegisterDriverCountryCodeChangedListenerSucceededAndTriggerListener(
+                mIOnWifiDriverCountryCodeChangedListener);
+        mWifiServiceImpl.mCountryCodeTracker.onDriverCountryCodeChanged(TEST_NEW_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mIOnWifiDriverCountryCodeChangedListener)
+                .onDriverCountryCodeChanged(TEST_NEW_COUNTRY_CODE);
+        // remove permission
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID), anyInt(), any())).thenReturn(false);
+        reset(mIOnWifiDriverCountryCodeChangedListener);
+        mWifiServiceImpl.mCountryCodeTracker.onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mIOnWifiDriverCountryCodeChangedListener, never())
+                .onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+    }
+
+    /**
+     * Verify that unregisterDriverCountryCodeChangedListener removes listener from registered
+     * listener list
+     */
+    @Test
+    public void unregisterDriverCountryCodeChangedListenerRemovesListener() throws Exception {
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID), anyInt(), any())).thenReturn(true);
+        verifyRegisterDriverCountryCodeChangedListenerSucceededAndTriggerListener(
+                mIOnWifiDriverCountryCodeChangedListener);
+        mWifiServiceImpl.mCountryCodeTracker.onDriverCountryCodeChanged(TEST_NEW_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mIOnWifiDriverCountryCodeChangedListener)
+                .onDriverCountryCodeChanged(TEST_NEW_COUNTRY_CODE);
+        mWifiServiceImpl.unregisterDriverCountryCodeChangedListener(
+                mIOnWifiDriverCountryCodeChangedListener);
+        mLooper.dispatchAll();
+        reset(mIOnWifiDriverCountryCodeChangedListener);
+        mWifiServiceImpl.mCountryCodeTracker.onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+        mLooper.dispatchAll();
+        verify(mIOnWifiDriverCountryCodeChangedListener, never())
+                .onDriverCountryCodeChanged(anyString());
     }
 }

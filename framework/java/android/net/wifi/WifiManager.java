@@ -1401,6 +1401,8 @@ public class WifiManager {
     private static final SparseArray<ITrafficStateCallback>
             sTrafficStateCallbackMap = new SparseArray();
     private static final SparseArray<ISoftApCallback> sSoftApCallbackMap = new SparseArray();
+    private static final SparseArray<IOnWifiDriverCountryCodeChangedListener>
+            sOnWifiDriverCountryCodeChangedListenerMap = new SparseArray();
 
     /**
      * Create a new WifiManager instance.
@@ -3329,6 +3331,126 @@ public class WifiManager {
     }
 
     /**
+     * Helper class to support country code changed listener.
+     */
+    private static class OnDriverCountryCodeChangedProxy
+            extends IOnWifiDriverCountryCodeChangedListener.Stub {
+
+        @NonNull private Executor mExecutor;
+        @NonNull private OnDriverCountryCodeChangedListener mListener;
+
+        OnDriverCountryCodeChangedProxy(@NonNull Executor executor,
+                @NonNull OnDriverCountryCodeChangedListener listener) {
+            Objects.requireNonNull(executor);
+            Objects.requireNonNull(listener);
+            mExecutor = executor;
+            mListener = listener;
+        }
+
+        @Override
+        public void onDriverCountryCodeChanged(String countryCode) {
+            Log.i(TAG, "OnDriverCountryCodeChangedProxy: sent onDriverCountryCodeChanged: "
+                    + countryCode);
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> mListener.onDriverCountryCodeChanged(countryCode));
+        }
+    }
+
+    /**
+     * Interface used to listen the driver country code changed event.
+     * @hide
+     */
+    @SystemApi
+    public interface OnDriverCountryCodeChangedListener {
+        /**
+         * Called when the driver country code changed, null when the driver isn't active.
+         *
+         * @param countryCode An ISO-3166-alpha2 country code which is 2-Character alphanumeric.
+         */
+        void onDriverCountryCodeChanged(@Nullable String countryCode);
+    }
+
+    /**
+     * Add the provided listener for the driver country code changed event.
+     * Caller will receive
+     * {@link WifiManager.OnDriverCountryCodeChangedListener#onDriverCountryCodeChanged(String)}
+     * on registration.
+     * Caller can remove a previously registered listener using
+     * {@link WifiManager#removeDriverCountryCodeChangedListener(
+     * OnDriverCountryCodeChangedListener)}.
+     *
+     * <p>
+     * Note:
+     * The value provided by
+     * {@link WifiManager.OnDriverCountryCodeChangedListener#onDriverCountryCodeChanged(String)}
+     * may be different from the returned value from {@link WifiManager#getCountryCode()} even if
+     * the WLAN driver is active. See: {@link WifiManager#getCountryCode()} for details.
+     * </p>
+     *
+     * @param executor The Executor on which to execute the callbacks.
+     * @param listener listener for the driver country code changed events.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+    public void addDriverCountryCodeChangedListener(
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull OnDriverCountryCodeChangedListener listener) {
+        if (executor == null) throw new IllegalArgumentException("executor cannot be null");
+        if (listener == null) throw new IllegalArgumentException("listener cannot be null");
+        if (mVerboseLoggingEnabled) {
+            Log.d(TAG, "addCountryCodeEventListener: listener=" + listener
+                    + ", executor=" + executor);
+        }
+        final int listenerIdentifier = System.identityHashCode(listener);
+        synchronized (sOnWifiDriverCountryCodeChangedListenerMap) {
+            try {
+                IOnWifiDriverCountryCodeChangedListener.Stub binderListener =
+                        new OnDriverCountryCodeChangedProxy(executor, listener);
+                sOnWifiDriverCountryCodeChangedListenerMap.put(listenerIdentifier,
+                        binderListener);
+                mService.registerDriverCountryCodeChangedListener(binderListener,
+                        mContext.getOpPackageName(), mContext.getAttributionTag());
+            } catch (RemoteException e) {
+                sOnWifiDriverCountryCodeChangedListenerMap.remove(listenerIdentifier);
+                throw e.rethrowFromSystemServer();
+            }
+        }
+    }
+
+    /**
+     * Allow callers to remove a previously registered listener. After calling this method,
+     * applications will no longer receive the country code changed events through that listener.
+     *
+     * @param listener Listener to remove the country code changed events.
+     *
+     * @hide
+     */
+    @SystemApi
+    public void removeDriverCountryCodeChangedListener(
+            @NonNull OnDriverCountryCodeChangedListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
+        if (mVerboseLoggingEnabled) {
+            Log.d(TAG, "removeDriverCountryCodeChangedListener: listener=" + listener);
+        }
+        final int listenerIdentifier = System.identityHashCode(listener);
+        synchronized (sOnWifiDriverCountryCodeChangedListenerMap) {
+            try {
+                if (!sOnWifiDriverCountryCodeChangedListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external listener " + listenerIdentifier);
+                    return;
+                }
+                mService.unregisterDriverCountryCodeChangedListener(
+                        sOnWifiDriverCountryCodeChangedListenerMap.get(listenerIdentifier));
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            } finally {
+                sOnWifiDriverCountryCodeChangedListenerMap.remove(listenerIdentifier);
+            }
+        }
+    }
+
+    /**
      * Get the country code as resolved by the Wi-Fi framework.
      * The Wi-Fi framework uses multiple sources to resolve a country code
      * - in order of priority (high to low):
@@ -3337,9 +3459,20 @@ public class WifiManager {
      * for testing.
      * 2. Country code supplied by the telephony module. Typically provided from the
      * current network or from emergency cell information.
-     * 3. Default country code set either via {@code ro.boot.wificountrycode}
+     * 3. Country code supplied by the wifi driver module. (802.11d)
+     * 4. Default country code set either via {@code ro.boot.wificountrycode}
      * or the {@link WifiManager#setDefaultCountryCode(String)}.
      *
+     * <p>
+     * Note:
+     * This method returns the Country Code value used by the framework - even if not currently
+     * used by the WLAN driver I.e. the returned value from this API may be different from the
+     * value provided by
+     * {@link WifiManager.OnDriverCountryCodeChangedListener#onDriverCountryCodeChanged(String)}.
+     * Such a difference may happen when there is an ongoing network connection (STA, AP, Direct,
+     * or Aware) and the WLAN driver does not support dynamic updates - at that point the framework
+     * may defer setting the Country Code to the WLAN driver.
+     * </p>
      * @return the country code in ISO 3166 alpha-2 (2-letter) upper format,
      * or null if there is no country code configured.
      *

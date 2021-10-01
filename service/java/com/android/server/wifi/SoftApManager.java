@@ -230,15 +230,8 @@ public class SoftApManager implements ActiveModeManager {
         }
     };
 
-    private final CoexListener mCoexListener = new CoexListener() {
-        @Override
-        public void onCoexUnsafeChannelsChanged() {
-            if (mCurrentSoftApConfiguration == null) {
-                return;
-            }
-            mStateMachine.sendMessage(SoftApStateMachine.CMD_SAFE_CHANNEL_FREQUENCY_CHANGED);
-        }
-    };
+    // This will only be null if SdkLevel is not at least S
+    @Nullable private final CoexListener mCoexListener;
 
     private void updateSafeChannelFrequencyList() {
         if (!SdkLevel.isAtLeastS() || mCurrentSoftApConfiguration == null) {
@@ -323,6 +316,20 @@ public class SoftApManager implements ActiveModeManager {
         mSoftApNotifier = softApNotifier;
         mWifiNative = wifiNative;
         mCoexManager = coexManager;
+        if (SdkLevel.isAtLeastS()) {
+            mCoexListener = new CoexListener() {
+                @Override
+                public void onCoexUnsafeChannelsChanged() {
+                    if (mCurrentSoftApConfiguration == null) {
+                        return;
+                    }
+                    mStateMachine.sendMessage(
+                            SoftApStateMachine.CMD_SAFE_CHANNEL_FREQUENCY_CHANGED);
+                }
+            };
+        } else {
+            mCoexListener = null;
+        }
         mCountryCode = countryCode;
         mModeListener = listener;
         mSoftApCallback = callback;
