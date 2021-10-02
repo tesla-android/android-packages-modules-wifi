@@ -4188,6 +4188,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             // Clear any timeout that was set. This is essential for devices
             // that reuse the main p2p interface for a created group.
             mWifiNative.setP2pGroupIdle(mGroup.getInterface(), 0);
+            mWifiNative.p2pFlush();
 
             boolean peersChanged = false;
             // Remove only peers part of the group, so that other devices discovered
