@@ -76,6 +76,7 @@ import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -2195,6 +2196,9 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_EAP));
         PmkCacheStoreData pmkCacheData =
                 new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
                         MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
