@@ -106,6 +106,7 @@ import android.net.wifi.util.ScanResultUtil;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -905,6 +906,15 @@ public class WifiServiceImpl extends BaseWifiService {
                 || isPrivileged(pid, uid)
                 || isDeviceOrProfileOwner(uid, packageName)
                 || mWifiPermissionsUtil.isSystem(packageName, uid);
+    }
+
+    private boolean isPlatformOrTargetSdkLessThanT(String packageName, int uid) {
+        if (!SdkLevel.isAtLeastT()) {
+            return true;
+        }
+        // TODO(b/197689548) use Build.VERSION_CODES.T here and in tests after T SDK is finalized
+        return mWifiPermissionsUtil.isTargetSdkLessThan(packageName, Build.VERSION_CODES.TIRAMISU,
+                uid);
     }
 
     /**
@@ -2114,6 +2124,7 @@ public class WifiServiceImpl extends BaseWifiService {
      * @param featureId The feature in the package
      * @param customConfig Custom configuration to be applied to the hotspot, or null for a shared
      *                     hotspot with framework-generated config.
+     * @param extras Bundle of extra information
      *
      * @return int return code for attempt to start LocalOnlyHotspot.
      *
@@ -2124,7 +2135,7 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public int startLocalOnlyHotspot(ILocalOnlyHotspotCallback callback, String packageName,
-            String featureId, SoftApConfiguration customConfig) {
+            String featureId, SoftApConfiguration customConfig, Bundle extras) {
         // first check if the caller has permission to start a local only hotspot
         // need to check for WIFI_STATE_CHANGE and location permission
         final int uid = Binder.getCallingUid();
@@ -2138,27 +2149,34 @@ public class WifiServiceImpl extends BaseWifiService {
             if (enforceChangePermission(packageName) != MODE_ALLOWED) {
                 return LocalOnlyHotspotCallback.ERROR_GENERIC;
             }
-            enforceLocationPermission(packageName, featureId, uid);
-            long ident = Binder.clearCallingIdentity();
-            try {
-                // also need to verify that Locations services are enabled.
-                if (!mWifiPermissionsUtil.isLocationModeEnabled()) {
-                    throw new SecurityException("Location mode is not enabled.");
+            if (isPlatformOrTargetSdkLessThanT(packageName, uid)) {
+                enforceLocationPermission(packageName, featureId, uid);
+                long ident = Binder.clearCallingIdentity();
+                try {
+                    // also need to verify that Locations services are enabled.
+                    if (!mWifiPermissionsUtil.isLocationModeEnabled()) {
+                        throw new SecurityException("Location mode is not enabled.");
+                    }
+
+                } finally {
+                    Binder.restoreCallingIdentity(ident);
                 }
-                // TODO(b/162344695): Exception added for LOHS. This exception is need to avoid
-                // breaking existing LOHS behavior: LOHS AP iface is allowed to delete STA iface
-                // (even if LOHS app has lower priority than user toggled on STA iface). This does
-                // not fit in with the new context based concurrency priority in HalDeviceManager,
-                // but we cannot break existing API's. So, we artificially boost the priority of
-                // the request by "faking" the requestor context as settings app.
-                // We probably need some UI dialog to allow the user to grant the app's LOHS
-                // request. Once that UI dialog is added, we can get rid of this hack and use the UI
-                // to elevate the priority of LOHS request only if user approves the request to
-                // toggle wifi off for LOHS.
-                requestorWs = mFrameworkFacade.getSettingsWorkSource(mContext);
-            } finally {
-                Binder.restoreCallingIdentity(ident);
+            } else {
+                mWifiPermissionsUtil.enforceNearbyDevicesPermission(
+                        extras.getParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE),
+                        false, TAG + " startLocalOnlyHotspot");
             }
+            // TODO(b/162344695): Exception added for LOHS. This exception is need to avoid
+            // breaking existing LOHS behavior: LOHS AP iface is allowed to delete STA iface
+            // (even if LOHS app has lower priority than user toggled on STA iface). This does
+            // not fit in with the new context based concurrency priority in HalDeviceManager,
+            // but we cannot break existing API's. So, we artificially boost the priority of
+            // the request by "faking" the requestor context as settings app.
+            // We probably need some UI dialog to allow the user to grant the app's LOHS
+            // request. Once that UI dialog is added, we can get rid of this hack and use the UI
+            // to elevate the priority of LOHS request only if user approves the request to
+            // toggle wifi off for LOHS.
+            requestorWs = mFrameworkFacade.getSettingsWorkSource(mContext);
         } else {
             if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
                 throw new SecurityException(TAG + ": Permission denied");
@@ -2636,24 +2654,41 @@ public class WifiServiceImpl extends BaseWifiService {
      *
      * @param packageName String name of the calling package
      * @param featureId The feature in the package
+     * @param extras - Bundle of extra information
      * @return the list of configured networks with real preSharedKey
      */
     @Override
     public ParceledListSlice<WifiConfiguration> getPrivilegedConfiguredNetworks(
-            String packageName, String featureId) {
+            String packageName, String featureId, Bundle extras) {
         enforceReadCredentialPermission();
         enforceAccessPermission();
         int callingUid = Binder.getCallingUid();
-        long ident = Binder.clearCallingIdentity();
-        try {
-            mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId, callingUid,
-                    null);
-        } catch (SecurityException e) {
-            Log.w(TAG, "Permission violation - getPrivilegedConfiguredNetworks not allowed for"
-                    + " uid=" + callingUid + ", packageName=" + packageName + ", reason=" + e);
-            return null;
-        } finally {
-            Binder.restoreCallingIdentity(ident);
+        if (isPlatformOrTargetSdkLessThanT(packageName, callingUid)) {
+            // For backward compatibility, do not check for nearby devices permission on pre-T
+            // SDK version or if the app targets pre-T.
+            long ident = Binder.clearCallingIdentity();
+            try {
+                mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId, callingUid,
+                        null);
+            } catch (SecurityException e) {
+                Log.w(TAG, "Permission violation - getPrivilegedConfiguredNetworks not allowed"
+                        + " for uid=" + callingUid + ", packageName=" + packageName + ", reason="
+                        + e);
+                return null;
+            } finally {
+                Binder.restoreCallingIdentity(ident);
+            }
+        } else {
+            try {
+                mWifiPermissionsUtil.enforceNearbyDevicesPermission(
+                        extras.getParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE),
+                        false, TAG + " getPrivilegedConfiguredNetworks");
+            } catch (SecurityException e) {
+                Log.w(TAG, "Permission violation - getPrivilegedConfiguredNetworks not allowed"
+                        + " for uid=" + callingUid + ", packageName=" + packageName + ", reason="
+                        + e);
+                return null;
+            }
         }
         if (isVerboseLoggingEnabled()) {
             mLog.info("getPrivilegedConfiguredNetworks uid=%").c(callingUid).flush();

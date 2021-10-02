@@ -57,6 +57,7 @@ import android.net.wifi.WifiSsid;
 import android.net.wifi.util.ScanResultUtil;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.PatternMatcher;
 import android.os.Process;
 import android.os.RemoteException;
@@ -1357,8 +1358,13 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private void setAutoJoin(PrintWriter pw, String ssid, boolean allowAutojoin) {
         // For suggestions, this will work only if the config has already been added
         // to WifiConfigManager.
+        Bundle extras = new Bundle();
+        if (SdkLevel.isAtLeastS()) {
+            extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                    mContext.getAttributionSource());
+        }
         WifiConfiguration retrievedConfig =
-                mWifiService.getPrivilegedConfiguredNetworks(SHELL_PACKAGE_NAME, null)
+                mWifiService.getPrivilegedConfiguredNetworks(SHELL_PACKAGE_NAME, null, extras)
                         .getList()
                         .stream()
                         .filter(n -> n.SSID.equals(ssid))
