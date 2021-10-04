@@ -19,6 +19,7 @@ package android.net.wifi;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.DhcpInfo;
+import android.net.DhcpOption;
 import android.net.Network;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
@@ -858,6 +859,16 @@ public class BaseWifiService extends IWifiManager.Stub {
     @Override
     public void replyToP2pInvitationReceivedDialog(
             int dialogId, boolean accepted, @Nullable String optionalPin) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void addCustomDhcpOptions(WifiSsid ssid, byte[] oui, @NonNull List<DhcpOption> options) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeCustomDhcpOptions(WifiSsid ssid, byte[] oui) {
         throw new UnsupportedOperationException();
     }
 }

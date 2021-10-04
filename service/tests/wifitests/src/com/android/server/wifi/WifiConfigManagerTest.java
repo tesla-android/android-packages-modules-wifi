@@ -51,6 +51,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.net.DhcpOption;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
@@ -62,6 +63,7 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
+import android.net.wifi.WifiSsid;
 import android.os.Handler;
 import android.os.Process;
 import android.os.UserHandle;
@@ -7259,5 +7261,47 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testAddTofuEnterpriseConfigWithoutTofuSupport() {
         verifyAddTofuEnterpriseConfig(false);
+    }
+
+    @Test
+    public void testCustomDhcpOptions() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        byte[] oui1 = new byte[]{0x01, 0x02, 0x03};
+        byte[] oui2 = new byte[]{0x04, 0x05, 0x06};
+        byte[] oui3 = new byte[]{0x07, 0x08, 0x09};
+
+        ArrayList<DhcpOption> option1 = new ArrayList<DhcpOption>(
+                Arrays.asList(new DhcpOption((byte) 0x10, new byte[]{0x11, 0x12})));
+        ArrayList<DhcpOption> option2 = new ArrayList<DhcpOption>(
+                Arrays.asList(new DhcpOption((byte) 0x13, new byte[]{0x14, 0x15})));
+        ArrayList<DhcpOption> option3 = new ArrayList<DhcpOption>(
+                Arrays.asList(new DhcpOption((byte) 0x16, new byte[]{0x17})));
+        ArrayList<DhcpOption> option23 = new ArrayList<DhcpOption>();
+        option23.addAll(option2);
+        option23.addAll(option3);
+
+        mWifiConfigManager.addCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), oui1, option1);
+        mWifiConfigManager.addCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), oui2, option2);
+        mWifiConfigManager.addCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), oui3, option3);
+        mLooper.dispatchAll();
+        assertEquals(1, mWifiConfigManager.getCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID), Arrays.asList(oui1)).size());
+        assertEquals(1, mWifiConfigManager.getCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID), Arrays.asList(oui2)).size());
+        assertEquals(2, mWifiConfigManager.getCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID), Arrays.asList(oui2, oui3)).size());
+
+        mWifiConfigManager.removeCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), oui1);
+        mLooper.dispatchAll();
+        assertEquals(0, mWifiConfigManager.getCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID), Arrays.asList(oui1)).size());
+        List<DhcpOption> actual2 = mWifiConfigManager
+                .getCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), Arrays.asList(oui2));
+        assertEquals(option2, actual2);
+        List<DhcpOption> actual23 = mWifiConfigManager
+                .getCustomDhcpOptions(WifiSsid.fromString(TEST_SSID), Arrays.asList(oui2, oui3));
+        assertTrue(option23.size() == actual23.size());
+        assertTrue(option23.containsAll(actual23));
+        assertTrue(actual23.containsAll(option23));
     }
 }

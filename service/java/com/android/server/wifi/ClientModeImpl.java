@@ -62,6 +62,7 @@ import android.net.Uri;
 import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
 import android.net.ip.IpClientManager;
+import android.net.networkstack.aidl.dhcp.DhcpOption;
 import android.net.shared.Layer2Information;
 import android.net.shared.ProvisioningConfiguration;
 import android.net.shared.ProvisioningConfiguration.ScanResultInfo;
@@ -79,6 +80,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkAgentSpecifier;
 import android.net.wifi.WifiNetworkSpecifier;
+import android.net.wifi.WifiSsid;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
@@ -136,6 +138,7 @@ import com.android.server.wifi.proto.nano.WifiMetricsProto.StaEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiIsUnusableEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.WifiUsabilityStats;
 import com.android.server.wifi.util.ActionListenerWrapper;
+import com.android.server.wifi.util.InformationElementUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.RssiUtil;
 import com.android.server.wifi.util.StateMachineObituary;
@@ -1061,6 +1064,20 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         /* Restore power save and suspend optimizations */
         handlePostDhcpSetup();
         stopIpClient();
+    }
+
+    private List<DhcpOption> convertToInternalDhcpOptions(List<android.net.DhcpOption> options) {
+        List<DhcpOption> internalOptions = new ArrayList<DhcpOption>();
+        for (android.net.DhcpOption option : options) {
+            DhcpOption internalOption = new DhcpOption();
+            internalOption.type = option.getType();
+            if (option.getValue() != null) {
+                byte[] value = option.getValue();
+                internalOption.value = Arrays.copyOf(value, value.length);
+            }
+            internalOptions.add(internalOption);
+        }
+        return internalOptions;
     }
 
     /**
@@ -6555,6 +6572,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 config.macRandomizationSetting
                         != WifiConfiguration.RANDOMIZATION_NONE
                         && mWifiGlobals.isConnectedMacRandomizationEnabled();
+        final List<byte[]> ouis = getOuiInternal(config);
+        final List<android.net.DhcpOption> options =
+                mWifiConfigManager.getCustomDhcpOptions(WifiSsid.fromString(config.SSID), ouis);
         if (mVerboseLoggingEnabled) {
             final String key = config.getProfileKey();
             log("startIpClient netId=" + Integer.toString(mLastNetworkId)
@@ -6596,6 +6616,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 // Use EUI64 address generation for link-local IPv6 addresses.
                 prov.withRandomMacAddress();
             }
+            prov.withDhcpOptions(convertToInternalDhcpOptions(options));
             mIpClient.startProvisioning(prov.build());
         } else {
             sendNetworkChangeBroadcast(DetailedState.OBTAINING_IPADDR);
@@ -6614,21 +6635,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // CONNECTED.
             stopDhcpSetup();
             setConfigurationsPriorToIpClientProvisioning(config);
-            ScanDetailCache scanDetailCache =
-                    mWifiConfigManager.getScanDetailCacheForNetwork(config.networkId);
-            ScanResult scanResult = null;
-            if (mLastBssid != null) {
-                if (scanDetailCache != null) {
-                    scanResult = scanDetailCache.getScanResult(mLastBssid);
-                }
-
-                // The cached scan result of connected network would be null at the first
-                // connection, try to check full scan result list again to look up matched
-                // scan result associated to the current BSSID.
-                if (scanResult == null) {
-                    scanResult = mScanRequestProxy.getScanResult(mLastBssid);
-                }
-            }
+            ScanResult scanResult = getScanResultInternal(config);
 
             final ProvisioningConfiguration.Builder prov;
             ProvisioningConfiguration.ScanResultInfo scanResultInfo = null;
@@ -6669,10 +6676,46 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 // Use EUI64 address generation for link-local IPv6 addresses.
                 prov.withRandomMacAddress();
             }
+            prov.withDhcpOptions(convertToInternalDhcpOptions(options));
             mIpClient.startProvisioning(prov.build());
         }
 
         return true;
+    }
+
+    private List<byte[]> getOuiInternal(WifiConfiguration config) {
+        List<byte[]> ouis = new ArrayList<>();
+        ScanResult scanResult = getScanResultInternal(config);
+        if (scanResult == null) {
+            return ouis;
+        }
+        List<InformationElementUtil.Vsa> vsas = InformationElementUtil.getVendorSpecificIE(
+                scanResult.informationElements);
+        for (InformationElementUtil.Vsa vsa : vsas) {
+            byte[] oui = vsa.oui;
+            if (oui != null) {
+                ouis.add(oui);
+            }
+        }
+        return ouis;
+    }
+
+    private ScanResult getScanResultInternal(WifiConfiguration config) {
+        ScanDetailCache scanDetailCache =
+                mWifiConfigManager.getScanDetailCacheForNetwork(config.networkId);
+        ScanResult scanResult = null;
+        if (mLastBssid != null) {
+            if (scanDetailCache != null) {
+                scanResult = scanDetailCache.getScanResult(mLastBssid);
+            }
+            // The cached scan result of connected network would be null at the first
+            // connection, try to check full scan result list again to look up matched
+            // scan result associated to the current BSSID.
+            if (scanResult == null) {
+                scanResult = mScanRequestProxy.getScanResult(mLastBssid);
+            }
+        }
+        return scanResult;
     }
 
     @Override

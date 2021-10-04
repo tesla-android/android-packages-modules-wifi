@@ -26,6 +26,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.net.DhcpOption;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.ProxyInfo;
@@ -38,6 +39,7 @@ import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
+import android.net.wifi.WifiSsid;
 import android.os.Process;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -67,6 +69,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -74,6 +77,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -350,6 +354,32 @@ public class WifiConfigManager {
     private final NetworkListSharedStoreData mNetworkListSharedStoreData;
     private final NetworkListUserStoreData mNetworkListUserStoreData;
     private final RandomizedMacStoreData mRandomizedMacStoreData;
+
+    private static class NetworkIdentifier {
+        private WifiSsid mSsid;
+        private byte[] mOui;
+        NetworkIdentifier(WifiSsid ssid, byte[] oui) {
+            mSsid = ssid;
+            mOui = oui;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(mSsid, Arrays.hashCode(mOui));
+        }
+
+        @Override
+        public boolean equals(Object otherObj) {
+            if (this == otherObj) {
+                return true;
+            } else if (!(otherObj instanceof NetworkIdentifier)) {
+                return false;
+            }
+            NetworkIdentifier other = (NetworkIdentifier) otherObj;
+            return Objects.equals(mSsid, other.mSsid) && Arrays.equals(mOui, other.mOui);
+        }
+    }
+    private final Map<NetworkIdentifier, List<DhcpOption>> mCustomDhcpOptions = new HashMap<>();
 
     /**
      * Create new instance of WifiConfigManager.
@@ -3935,5 +3965,48 @@ public class WifiConfigManager {
         if (!internalConfig.isEnterprise()) return;
         if (!internalConfig.enterpriseConfig.isEapMethodServerCertUsed()) return;
         internalConfig.enterpriseConfig.enableTrustOnFirstUse(enable);
+    }
+
+    /**
+     * Add custom DHCP options.
+     *
+     * @param ssid the network SSID.
+     * @param oui the 3-byte OUI.
+     * @param options the list of DHCP options.
+     */
+    public void addCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui,
+            @NonNull List<DhcpOption> options) {
+        mCustomDhcpOptions.put(new NetworkIdentifier(ssid, oui), options);
+    }
+
+    /**
+     * Remove custom DHCP options.
+     *
+     * @param ssid the network SSID.
+     * @param oui the 3-byte OUI.
+     */
+    public void removeCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui) {
+        mCustomDhcpOptions.remove(new NetworkIdentifier(ssid, oui));
+    }
+
+    /**
+     * Get custom DHCP options.
+     *
+     * @param ssid the network SSID.
+     * @param ouiList the list of OUIs.
+     *
+     * @return null if no entry in the map is keyed by the SSID and any OUI in the list.
+     *         all the DHCP options keyed by the SSID and the OUIs in the list.
+     */
+    public List<DhcpOption> getCustomDhcpOptions(@NonNull WifiSsid ssid,
+            @NonNull List<byte[]> ouiList) {
+        Set<DhcpOption> results = new HashSet<>();
+        for (byte[] oui : ouiList) {
+            List<DhcpOption> options = mCustomDhcpOptions.get(new NetworkIdentifier(ssid, oui));
+            if (options != null) {
+                results.addAll(options);
+            }
+        }
+        return new ArrayList<>(results);
     }
 }

@@ -118,6 +118,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.net.DhcpInfo;
+import android.net.DhcpOption;
 import android.net.DhcpResultsParcelable;
 import android.net.MacAddress;
 import android.net.NetworkStack;
@@ -284,6 +285,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private static final int TEST_NETWORK_ID = 567;
     private static final WorkSource TEST_SETTINGS_WORKSOURCE = new WorkSource();
     private static final int TEST_SUB_ID = 1;
+    private static final byte[] TEST_OUI = new byte[]{0x01, 0x02, 0x03};
 
     private SoftApInfo mTestSoftApInfo;
     private List<SoftApInfo> mTestSoftApInfoList;
@@ -7818,6 +7820,72 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.clearWifiConnectedNetworkScorer();
         mLooper.dispatchAll();
         verify(mActiveModeWarden).clearWifiConnectedNetworkScorer();
+    }
+
+    /**
+     * Verify that a call to addWifiCustomDhcpOptions throws a SecurityException if
+     * the caller does not have NETWORK_SETTINGS or OVERRIDE_WIFI_CONFIG permission.
+     */
+    @Test
+    public void testAddCustomDhcpOptionsThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkCallingOrSelfPermission(
+                android.Manifest.permission.OVERRIDE_WIFI_CONFIG))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        try {
+            mWifiServiceImpl.addCustomDhcpOptions(WifiSsid.fromString(TEST_SSID_WITH_QUOTES),
+                    TEST_OUI, new ArrayList<DhcpOption>());
+            fail("expected SecurityException");
+        } catch (SecurityException expected) {
+        }
+    }
+
+    /**
+     * Verify that a call to removeWifiCustomDhcpOptions throws a SecurityException if
+     * the caller does not have NETWORK_SETTINGS or OVERRIDE_WIFI_CONFIG permission.
+     */
+    @Test
+    public void testRemoveCustomDhcpOptionsThrowsSecurityExceptionOnMissingPermissions() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mContext.checkCallingOrSelfPermission(android.Manifest.permission.NETWORK_SETTINGS))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        when(mContext.checkCallingOrSelfPermission(
+                android.Manifest.permission.OVERRIDE_WIFI_CONFIG))
+                .thenReturn(PackageManager.PERMISSION_DENIED);
+        try {
+            mWifiServiceImpl.removeCustomDhcpOptions(WifiSsid.fromString(TEST_SSID_WITH_QUOTES),
+                    TEST_OUI);
+            fail("expected SecurityException");
+        } catch (SecurityException expected) {
+        }
+    }
+
+    /**
+     * Verify that addWifiCustomDhcpOptions adds DHCP option.
+     */
+    @Test
+    public void testAddCustomDhcpOptionsAndVerify() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        mWifiServiceImpl.addCustomDhcpOptions(WifiSsid.fromString(TEST_SSID_WITH_QUOTES), TEST_OUI,
+                new ArrayList<DhcpOption>());
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager).addCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID_WITH_QUOTES), TEST_OUI, new ArrayList<DhcpOption>());
+    }
+
+    /**
+     * Verify that removeWifiCustomDhcpOptions removes DHCP option.
+     */
+    @Test
+    public void testRemoveCustomDhcpOptionsAndVerify() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        mWifiServiceImpl.removeCustomDhcpOptions(WifiSsid.fromString(TEST_SSID_WITH_QUOTES),
+                TEST_OUI);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager).removeCustomDhcpOptions(
+                WifiSsid.fromString(TEST_SSID_WITH_QUOTES), TEST_OUI);
     }
 
     private long testGetSupportedFeaturesCaseForRtt(
