@@ -925,11 +925,14 @@ public class WifiNetworkSelector {
     private void removeAutoUpgradeSecurityParamsIfNecessary(
             WifiConfiguration config,
             List<SecurityParams> scanResultParamsList,
+            @WifiConfiguration.SecurityType int baseSecurityType,
             @WifiConfiguration.SecurityType int upgradableSecurityType,
             boolean isLegacyNetworkInRange,
             boolean isUpgradableTypeOnlyInRange,
             boolean isAutoUpgradeEnabled) {
         localLog("removeAutoUpgradeSecurityParamsIfNecessary:"
+                + " SSID: " + config.SSID
+                + " baseSecurityType: " + baseSecurityType
                 + " upgradableSecurityType: " + upgradableSecurityType
                 + " isLegacyNetworkInRange: " + isLegacyNetworkInRange
                 + " isUpgradableTypeOnlyInRange: " + isUpgradableTypeOnlyInRange
@@ -937,6 +940,9 @@ public class WifiNetworkSelector {
         if (isAutoUpgradeEnabled) {
             // Consider removing the auto-upgraded type if legacy networks are in range.
             if (!isLegacyNetworkInRange) return;
+            // If base params is disabled or removed, keep the auto-upgrade params.
+            SecurityParams baseParams = config.getSecurityParams(baseSecurityType);
+            if (null == baseParams || !baseParams.isEnabled()) return;
             // If there are APs with standalone-upgradeable security type is in range,
             // do not consider removing the auto-upgraded type.
             if (isUpgradableTypeOnlyInRange) return;
@@ -957,6 +963,7 @@ public class WifiNetworkSelector {
         if (!mWifiGlobals.isWpa3SaeUpgradeOffloadEnabled()) {
             removeAutoUpgradeSecurityParamsIfNecessary(
                     config, scanResultParamsList,
+                    WifiConfiguration.SECURITY_TYPE_PSK,
                     WifiConfiguration.SECURITY_TYPE_SAE,
                     mScanRequestProxy.isWpa2PersonalOnlyNetworkInRange(config.SSID),
                     mScanRequestProxy.isWpa3PersonalOnlyNetworkInRange(config.SSID),
@@ -964,12 +971,14 @@ public class WifiNetworkSelector {
         }
         removeAutoUpgradeSecurityParamsIfNecessary(
                 config, scanResultParamsList,
+                WifiConfiguration.SECURITY_TYPE_OPEN,
                 WifiConfiguration.SECURITY_TYPE_OWE,
                 mScanRequestProxy.isOpenOnlyNetworkInRange(config.SSID),
                 mScanRequestProxy.isOweOnlyNetworkInRange(config.SSID),
                 mWifiGlobals.isOweUpgradeEnabled());
         removeAutoUpgradeSecurityParamsIfNecessary(
                 config, scanResultParamsList,
+                WifiConfiguration.SECURITY_TYPE_EAP,
                 WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
                 mScanRequestProxy.isWpa2EnterpriseOnlyNetworkInRange(config.SSID),
                 mScanRequestProxy.isWpa3EnterpriseOnlyNetworkInRange(config.SSID),
