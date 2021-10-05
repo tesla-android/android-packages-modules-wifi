@@ -4313,7 +4313,8 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that we do not set the user connect choice after connecting to a newly added network.
+     * Verify that we do not set the user connect choice after connecting to a newly added saved
+     * network.
      */
     @Test
     public void testNoSetUserConnectChoiceOnFirstConnection() throws Exception {
@@ -4325,12 +4326,27 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that on the second successful connection to a network we set the user connect choice.
+     * Verify that on the second successful connection to a saved network we set the user connect
+     * choice.
      */
     @Test
     public void testConnectionSetUserConnectChoiceOnSecondConnection() throws Exception {
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         mTestNetworkParams.hasEverConnected = true;
+        connect();
+        verify(mWifiBlocklistMonitor).handleBssidConnectionSuccess(TEST_BSSID_STR, TEST_SSID);
+        verify(mWifiConfigManager).updateNetworkAfterConnect(eq(FRAMEWORK_NETWORK_ID), eq(true),
+                anyInt());
+    }
+
+    /**
+     * Verify that on the first successful connection to an ephemeral network we set the user
+     * connect choice.
+     */
+    @Test
+    public void testConnectionSetUserConnectChoiceOnEphemeralConfig() throws Exception {
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        mConnectedNetwork.ephemeral = true;
         connect();
         verify(mWifiBlocklistMonitor).handleBssidConnectionSuccess(TEST_BSSID_STR, TEST_SSID);
         verify(mWifiConfigManager).updateNetworkAfterConnect(eq(FRAMEWORK_NETWORK_ID), eq(true),
