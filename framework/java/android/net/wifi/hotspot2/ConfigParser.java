@@ -207,7 +207,7 @@ public final class ConfigParser {
                 config.getCredential().setClientCertificateChain(
                         clientKey.second.toArray(new X509Certificate[clientKey.second.size()]));
             } catch(GeneralSecurityException | IOException e) {
-                throw new IOException("Failed to parse PCKS12 string");
+                throw new IOException("Failed to parse PKCS12 string: " + e.getMessage());
             }
         }
         return config;

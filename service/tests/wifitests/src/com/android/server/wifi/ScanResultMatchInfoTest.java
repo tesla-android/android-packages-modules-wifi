@@ -15,22 +15,80 @@
  */
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.validateMockitoUsage;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
+import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 
 import androidx.test.filters.SmallTest;
 
-import org.junit.Test;
+import com.android.dx.mockito.inline.extended.ExtendedMockito;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.MockitoSession;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Unit tests for {@link com.android.server.wifi.ScanResultMatchInfoTest}.
  */
 @SmallTest
 public class ScanResultMatchInfoTest extends WifiBaseTest {
+    private static final String TEST_BSSID = "0a:08:5c:67:89:01";
+    private static final String TEST_SSID = "\"ScanResultMatchInfoSSID\"";
+
+    @Mock WifiInjector mWifiInjector;
+    @Mock WifiGlobals mWifiGlobals;
+    @Mock ActiveModeWarden mActiveModeWarden;
+    @Mock ClientModeManager mClientModeManager;
+    private MockitoSession mSession;
+    /**
+     * Sets up for unit test
+     */
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        // static mocking
+        mSession = ExtendedMockito.mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
+                .startMocking();
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(
+                WIFI_FEATURE_OWE | WIFI_FEATURE_WPA3_SAE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
+    }
+
+    /**
+     * Called after each test
+     */
+    @After
+    public void cleanup() {
+        validateMockitoUsage();
+        if (mSession != null) {
+            mSession.finishMocking();
+        }
+    }
+
     /**
      * Tests that equivalent ScanResultMatchInfo objects are created for WifiConfigurations and
      * their associated ScanResult
@@ -47,15 +105,16 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
         scan = createScanDetailForNetwork(conf, "BB:BB:BB:BB:BB:BB");
         assertEquals(ScanResultMatchInfo.fromWifiConfiguration(conf),
                 ScanResultMatchInfo.fromScanResult(scan.getScanResult()));
+        assertTrue(ScanResultMatchInfo.fromWifiConfiguration(conf)
+                .equals(ScanResultMatchInfo.fromScanResult(
+                        scan.getScanResult())));
 
-        conf =
-                WifiConfigurationTestUtil.createWapiPskNetwork();
+        conf = WifiConfigurationTestUtil.createWapiPskNetwork();
         scan = createScanDetailForNetwork(conf, "AA:AA:AA:AA:AA:AA");
         assertEquals(ScanResultMatchInfo.fromWifiConfiguration(conf),
                 ScanResultMatchInfo.fromScanResult(scan.getScanResult()));
 
-        conf =
-                WifiConfigurationTestUtil.createWapiPskNetwork();
+        conf = WifiConfigurationTestUtil.createWapiPskNetwork();
         scan = createScanDetailForNetwork(conf, "BB:BB:BB:BB:BB:BB");
         assertEquals(ScanResultMatchInfo.fromWifiConfiguration(conf),
                 ScanResultMatchInfo.fromScanResult(scan.getScanResult()));
@@ -238,39 +297,54 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
                 configuration, bssid, -40, 2402, 0, 0);
     }
 
+    private void verifyUpgradeMatching(
+            WifiConfiguration baseTypeConfig,
+            WifiConfiguration upgradeTypeConfig,
+            boolean isUpgradeEnabled) {
+
+        ScanDetail scanDetailUpgrade = createScanDetailForNetwork(upgradeTypeConfig,
+                "AC:AB:AD:AE:AF:FC");
+
+        ScanResultMatchInfo baseTypeKey = ScanResultMatchInfo
+                .fromWifiConfiguration(baseTypeConfig);
+        ScanResultMatchInfo upgradeTypeScanResultKey = ScanResultMatchInfo
+                .fromScanResult(scanDetailUpgrade.getScanResult());
+        ScanResultMatchInfo upgradeTypeKey = ScanResultMatchInfo
+                .fromWifiConfiguration(upgradeTypeConfig);
+
+        // Test a.equals(a)
+        assertTrue(baseTypeKey.equals(baseTypeKey));
+
+        // Test if a.equals(b) then b.equals(a)
+        assertEquals(isUpgradeEnabled,
+                baseTypeKey.equals(upgradeTypeScanResultKey));
+        assertEquals(isUpgradeEnabled,
+                upgradeTypeScanResultKey.equals(baseTypeKey));
+
+        // Test consistency
+        assertEquals(isUpgradeEnabled,
+                baseTypeKey.equals(upgradeTypeScanResultKey));
+        assertEquals(isUpgradeEnabled,
+                baseTypeKey.equals(upgradeTypeScanResultKey));
+        assertEquals(isUpgradeEnabled,
+                baseTypeKey.equals(upgradeTypeScanResultKey));
+        assertEquals(isUpgradeEnabled,
+                baseTypeKey.equals(upgradeTypeScanResultKey));
+
+        // Test WifiConfiguration objects are not equal
+        assertFalse(baseTypeKey.equals(upgradeTypeKey));
+        assertFalse(upgradeTypeKey.equals(baseTypeKey));
+    }
+
     /**
      * Tests equality properties for PSK to SAE upgrades
      */
     @Test
     public void testEqualityRulesForPskToSaeUpgrade() {
-        WifiConfiguration wifiConfigurationSae =
-                WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\"");
-        WifiConfiguration wifiConfigurationPsk =
-                WifiConfigurationTestUtil.createPskNetwork("\"Upgrade\"");
-        ScanDetail scanDetailSae = createScanDetailForNetwork(wifiConfigurationSae,
-                "AC:AB:AD:AE:AF:FC");
-
-        ScanResultMatchInfo key1 = ScanResultMatchInfo.fromWifiConfiguration(wifiConfigurationPsk);
-        ScanResultMatchInfo key2 = ScanResultMatchInfo
-                .fromScanResult(scanDetailSae.getScanResult());
-        ScanResultMatchInfo key3 = ScanResultMatchInfo.fromWifiConfiguration(wifiConfigurationSae);
-
-        // Test a.equals(a)
-        assertTrue(key1.matchForNetworkSelection(key1, true));
-
-        // Test if a.equals(b) then b.equals(a)
-        assertTrue(key1.matchForNetworkSelection(key2, true));
-        assertTrue(key2.matchForNetworkSelection(key1, true));
-
-        // Test consistency
-        assertTrue(key1.matchForNetworkSelection(key2, true));
-        assertTrue(key1.matchForNetworkSelection(key2, true));
-        assertTrue(key1.matchForNetworkSelection(key2, true));
-        assertTrue(key1.matchForNetworkSelection(key2, true));
-
-        // Test WifiConfiguration objects are not equal
-        assertFalse(key1.matchForNetworkSelection(key3, true));
-        assertFalse(key3.matchForNetworkSelection(key1, true));
+        verifyUpgradeMatching(
+                WifiConfigurationTestUtil.createPskSaeNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\""),
+                true);
     }
 
     /**
@@ -278,35 +352,14 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
      */
     @Test
     public void testEqualityRulesForPskToSaeUpgradeWithOverlayDisable() {
-        WifiConfiguration wifiConfigurationSae =
-                WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\"");
-        WifiConfiguration wifiConfigurationPsk =
-                WifiConfigurationTestUtil.createPskNetwork("\"Upgrade\"");
-        ScanDetail scanDetailSae = createScanDetailForNetwork(wifiConfigurationSae,
-                "AC:AB:AD:AE:AF:FC");
-
-        ScanResultMatchInfo key1 = ScanResultMatchInfo.fromWifiConfiguration(wifiConfigurationPsk);
-        ScanResultMatchInfo key2 = ScanResultMatchInfo
-                .fromScanResult(scanDetailSae.getScanResult());
-        ScanResultMatchInfo key3 = ScanResultMatchInfo.fromWifiConfiguration(wifiConfigurationSae);
-
-        // Test a.equals(a)
-        assertTrue(key1.matchForNetworkSelection(key1, false));
-
-        // Test if a.equals(b) then b.equals(a)
-        assertFalse(key1.matchForNetworkSelection(key2, false));
-        assertFalse(key2.matchForNetworkSelection(key1, false));
-
-        // Test consistency
-        assertFalse(key1.matchForNetworkSelection(key2, false));
-        assertFalse(key1.matchForNetworkSelection(key2, false));
-        assertFalse(key1.matchForNetworkSelection(key2, false));
-        assertFalse(key1.matchForNetworkSelection(key2, false));
-
-        // Test WifiConfiguration objects are not equal
-        assertFalse(key1.matchForNetworkSelection(key3, false));
-        assertFalse(key3.matchForNetworkSelection(key1, false));
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(false);
+        // Note: createPskSaeNetwork sets setIsAddedByAutoUpgrade
+        verifyUpgradeMatching(
+                WifiConfigurationTestUtil.createPskSaeNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createSaeNetwork("\"Upgrade\""),
+                /* isUpgradeEnabled */ false);
     }
+
     /**
      * Test that SAE saved network will never downgrade to a PSK AP (from scan result)
      */
@@ -316,6 +369,7 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
                 WifiConfigurationTestUtil.createSaeNetwork("\"Downgrade\"");
         WifiConfiguration wifiConfigurationPsk =
                 WifiConfigurationTestUtil.createPskNetwork("\"Downgrade\"");
+        wifiConfigurationPsk.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
         ScanDetail scanDetailPsk = createScanDetailForNetwork(wifiConfigurationPsk,
                 "AC:AB:AD:AE:AF:FC");
 
@@ -327,5 +381,163 @@ public class ScanResultMatchInfoTest extends WifiBaseTest {
         // i.e. SAE saved network will never downgrade to a PSK AP (from scan result)
         assertFalse(key1.equals(key2));
         assertFalse(key2.equals(key1));
+    }
+
+    /**
+     * Tests equality properties for OPEN to OWE upgrades
+     */
+    @Test
+    public void testEqualityRulesForOpenToOweUpgrade() {
+        verifyUpgradeMatching(
+                WifiConfigurationTestUtil.createOpenOweNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createOweNetwork("\"Upgrade\""),
+                true);
+    }
+
+    /**
+     * Tests equality properties for OPEN to OWE upgrades when feature is disabled
+     */
+    @Test
+    public void testEqualityRulesForOpenToOweUpgradeWithOverlayDisable() {
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(false);
+        // Note: createOpenOweNetwork sets setIsAddedByAutoUpgrade
+        verifyUpgradeMatching(
+                WifiConfigurationTestUtil.createOpenOweNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createOweNetwork("\"Upgrade\""),
+                /* isUpgradeEnabled */ false);
+    }
+
+    /**
+     * Test that OWE saved network will never downgrade to a OPEN AP (from scan result)
+     */
+    @Test
+    public void testOweToOpenDoesNotDowngrade() {
+        WifiConfiguration wifiConfigurationOwe =
+                WifiConfigurationTestUtil.createOweNetwork("\"Downgrade\"");
+        WifiConfiguration wifiConfigurationOpen =
+                WifiConfigurationTestUtil.createOpenNetwork("\"Downgrade\"");
+        wifiConfigurationOpen.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        ScanDetail scanDetailOpen = createScanDetailForNetwork(wifiConfigurationOpen,
+                "AC:AB:AD:AE:AF:FC");
+
+        ScanResultMatchInfo key1 = ScanResultMatchInfo
+                .fromWifiConfiguration(wifiConfigurationOwe);
+        ScanResultMatchInfo key2 = ScanResultMatchInfo
+                .fromScanResult(scanDetailOpen.getScanResult());
+
+        // Test both a.equals(b) and b.equals(a) are false:
+        // i.e. OWE saved network will never downgrade to a OPEN AP (from scan result)
+        assertFalse(key1.equals(key2));
+        assertFalse(key2.equals(key1));
+    }
+
+    @Test
+    public void testEqualityRulesForWpa2EnterpriseToWpa3EnterpriseUpgrade() {
+        verifyUpgradeMatching(
+                WifiConfigurationTestUtil.createWpa2Wpa3EnterpriseNetwork("\"Upgrade\""),
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork("\"Upgrade\""),
+                true);
+    }
+
+    /**
+     * Test that WPA3 Enterprise saved network will never downgrade to a
+     * WPA2 Enterprise AP (from scan result)
+     */
+    @Test
+    public void testWpa3EnterpriseToWpa2EnterpriseDoesNotDowngrade() {
+        WifiConfiguration wifiConfigurationWpa2Enterprise =
+                WifiConfigurationTestUtil.createEapNetwork("\"Downgrade\"");
+        WifiConfiguration wifiConfigurationWpa3Enterprise =
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork("\"Downgrade\"");
+        ScanDetail scanDetailWpa2Enterprise = createScanDetailForNetwork(
+                wifiConfigurationWpa2Enterprise,
+                "AC:AB:AD:AE:AF:FC");
+
+        ScanResultMatchInfo key1 = ScanResultMatchInfo
+                .fromWifiConfiguration(wifiConfigurationWpa3Enterprise);
+        ScanResultMatchInfo key2 = ScanResultMatchInfo
+                .fromScanResult(scanDetailWpa2Enterprise.getScanResult());
+
+        // Test both a.equals(b) and b.equals(a) are false:
+        // i.e. WPA3 Enterprise saved network will never downgrade to
+        // a WPA2 Enterprise AP (from scan result)
+        assertFalse(key1.equals(key2));
+        assertFalse(key2.equals(key1));
+    }
+
+    @Test
+    public void testMatchBehaviorWithWpa3AutoUpgradeFlagStates() {
+        // Add a PSK network and manually add SAE type (added by the framework)
+        WifiConfiguration configPskWithSaeSecurityType =
+                WifiConfigurationTestUtil.createPskSaeNetwork(TEST_SSID);
+
+        // Create a WPA3 SAE only scan result
+        WifiConfiguration configSaeOnly =
+                WifiConfigurationTestUtil.createSaeNetwork(TEST_SSID);
+        ScanResult scanResult = WifiConfigurationTestUtil.createScanDetailForNetwork(configSaeOnly,
+                TEST_BSSID, 0, 0, 0, 0).getScanResult();
+
+        // Default setting of the auto-upgrade flag is enabled.
+        assertNotNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configPskWithSaeSecurityType, scanResult));
+        SecurityParams params = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_SAE);
+        List<SecurityParams> securityParamsList = new ArrayList<>();
+        securityParamsList.add(params);
+        assertNotNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configPskWithSaeSecurityType, securityParamsList));
+
+        ScanResultMatchInfo fromScanResult = ScanResultMatchInfo.fromScanResult(scanResult);
+        ScanResultMatchInfo fromWifiConfig = ScanResultMatchInfo.fromWifiConfiguration(
+                configPskWithSaeSecurityType);
+        assertNotNull(fromWifiConfig.matchForNetworkSelection(fromScanResult));
+        assertTrue(fromWifiConfig.networkTypeEquals(fromScanResult));
+
+        // Now change the auto-upgrade flag to disabled.
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(false);
+        assertNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configPskWithSaeSecurityType, scanResult));
+        assertNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configPskWithSaeSecurityType, securityParamsList));
+        assertNull(fromWifiConfig.matchForNetworkSelection(fromScanResult));
+        assertFalse(fromWifiConfig.networkTypeEquals(fromScanResult));
+    }
+
+    @Test
+    public void testMatchBehaviorWithOweAutoUpgradeFlagStates() {
+        // Add a PSK network and manually add OWE type (added by the framework)
+        WifiConfiguration configOpenWithOweSecurityType =
+                WifiConfigurationTestUtil.createOpenOweNetwork(TEST_SSID);
+
+        // Create an OWE only scan result
+        WifiConfiguration configOweOnly =
+                WifiConfigurationTestUtil.createOweNetwork(TEST_SSID);
+        ScanResult scanResult = WifiConfigurationTestUtil.createScanDetailForNetwork(configOweOnly,
+                TEST_BSSID, 0, 0, 0, 0).getScanResult();
+
+        // Default setting of the auto-upgrade flag is enabled.
+        assertNotNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configOpenWithOweSecurityType, scanResult));
+        SecurityParams params = SecurityParams.createSecurityParamsBySecurityType(
+                WifiConfiguration.SECURITY_TYPE_OWE);
+        List<SecurityParams> securityParamsList = new ArrayList<>();
+        securityParamsList.add(params);
+        assertNotNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configOpenWithOweSecurityType, securityParamsList));
+
+        ScanResultMatchInfo fromScanResult = ScanResultMatchInfo.fromScanResult(scanResult);
+        ScanResultMatchInfo fromWifiConfig = ScanResultMatchInfo.fromWifiConfiguration(
+                configOpenWithOweSecurityType);
+        assertNotNull(fromWifiConfig.matchForNetworkSelection(fromScanResult));
+        assertTrue(fromWifiConfig.networkTypeEquals(fromScanResult));
+
+        // Now change the auto-upgrade flag to disabled.
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(false);
+        assertNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configOpenWithOweSecurityType, scanResult));
+        assertNull(ScanResultMatchInfo
+                .getBestMatchingSecurityParams(configOpenWithOweSecurityType, securityParamsList));
+        assertNull(fromWifiConfig.matchForNetworkSelection(fromScanResult));
+        assertFalse(fromWifiConfig.networkTypeEquals(fromScanResult));
     }
 }

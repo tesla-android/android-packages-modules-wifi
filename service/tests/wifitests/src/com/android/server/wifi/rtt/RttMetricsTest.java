@@ -586,16 +586,16 @@ public class RttMetricsTest extends WifiBaseTest {
 
     private RangingRequest getDummyRangingRequest(int countAp, int countAware) {
         RangingRequest.Builder builder = new RangingRequest.Builder();
-        byte[] dummyMacBase = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5};
+        byte[] placeholderMacBase = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5};
 
         for (int i = 0; i < countAp; ++i) {
-            dummyMacBase[0]++;
-            builder.addResponder(new ResponderConfig(MacAddress.fromBytes(dummyMacBase),
+            placeholderMacBase[0]++;
+            builder.addResponder(new ResponderConfig(MacAddress.fromBytes(placeholderMacBase),
                     ResponderConfig.RESPONDER_AP, true, 0, 0, 0, 0, 0));
         }
         for (int i = 0; i < countAware; ++i) {
-            dummyMacBase[0]++;
-            builder.addResponder(new ResponderConfig(MacAddress.fromBytes(dummyMacBase),
+            placeholderMacBase[0]++;
+            builder.addResponder(new ResponderConfig(MacAddress.fromBytes(placeholderMacBase),
                     ResponderConfig.RESPONDER_AWARE, true, 0, 0, 0, 0, 0));
         }
 
@@ -610,7 +610,7 @@ public class RttMetricsTest extends WifiBaseTest {
         for (ResponderConfig peer : request.mRttPeers) {
 
             RangingResult rttResult = new RangingResult(status, peer.macAddress,
-                    (int) (distance * 1000), 0, 0, 8, 8, null, null, null, 0);
+                    (int) (distance * 1000), 0, 0, 8, 8, null, null, null, 0, true);
             distance += incrDistanceM;
             rangingResults.add(rttResult);
         }

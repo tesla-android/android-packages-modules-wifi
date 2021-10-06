@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> ਦੇ ਸੁਝਾਏ ਨੈੱਟਵਰਕ। ਸ਼ਾਇਦ ਡੀਵਾਈਸ ਸਵੈਚਲਿਤ ਤੌਰ \'ਤੇ ਕਨੈਕਟ ਹੋਵੇ।"</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"ਵਰਤਣ ਦਿਓ"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"ਨਹੀਂ ਧੰਨਵਾਦ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"ਕੀ <xliff:g id="CARRIERNAME">%s</xliff:g> ਵਾਈ-ਫਾਈ ਨਾਲ ਕਨੈਕਟ ਕਰਨਾ ਹੈ?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ਇਹ ਨੈੱਟਵਰਕ ਇੱਕ ਸਿਮ ਆਈਡੀ ਪ੍ਰਾਪਤ ਕਰਦੇ ਹਨ ਜਿਨ੍ਹਾਂ ਨੂੰ ਡੀਵਾਈਸ ਦੇ ਟਿਕਾਣੇ ਨੂੰ ਟਰੈਕ ਕਰਨ ਲਈ ਵਰਤਿਆ ਜਾ ਸਕਦਾ ਹੈ"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"ਕਨੈਕਟ ਕਰੋ"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"ਕਨੈਕਟ ਨਾ ਕਰੋ"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"ਕੀ ਕਨੈਕਸ਼ਨ ਦੀ ਤਸਦੀਕ ਕਰਨੀ ਹੈ?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"ਜੇ ਤੁਸੀਂ ਕਨੈਕਟ ਕਰਦੇ ਹੋ, ਤਾਂ <xliff:g id="CARRIERNAME">%s</xliff:g> ਵਾਈ-ਫਾਈ ਨੈੱਟਵਰਕ ਤੁਹਾਡੇ ਸਿਮ ਨਾਲ ਸੰਬੰਧਿਤ ਵਿਲੱਖਣ ਆਈਡੀ ਤੱਕ ਪਹੁੰਚ ਜਾਂ ਉਸ ਨੂੰ ਸਾਂਝਾ ਕਰ ਸਕਦੇ ਹਨ। ਇਸ ਨਾਲ ਸ਼ਾਇਦ ਤੁਹਾਡੇ ਡੀਵਾਈਸ ਦਾ ਟਿਕਾਣਾ ਟਰੈਕ ਕੀਤਾ ਜਾ ਸਕੇ।"</string>

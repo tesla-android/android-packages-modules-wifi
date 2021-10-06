@@ -16,6 +16,11 @@
 
 package com.android.server.wifi.aware;
 
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER;
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB;
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_OOB_ANY_PEER;
+
 import android.hardware.wifi.V1_0.NanStatusType;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
 import android.text.TextUtils;
@@ -130,6 +135,7 @@ public class WifiAwareMetrics {
     private long mNdpCreationTimeNumSamples = 0;
 
     private SparseIntArray mHistogramNdpDuration = new SparseIntArray();
+    private SparseIntArray mHistogramNdpRequestType = new SparseIntArray();
 
     public WifiAwareMetrics(Clock clock) {
         mClock = clock;
@@ -583,6 +589,7 @@ public class WifiAwareMetrics {
             log.histogramNdpSessionDurationMs = histogramToProtoArray(
                     MetricsUtils.logHistogramToGenericBuckets(mHistogramNdpDuration,
                             DURATION_LOG_HISTOGRAM));
+            log.histogramNdpRequestType = histogramToNanRequestProtoArray(mHistogramNdpRequestType);
         }
         return log;
     }
@@ -651,6 +658,7 @@ public class WifiAwareMetrics {
             mNdpCreationTimeNumSamples = 0;
 
             mHistogramNdpDuration.clear();
+            mHistogramNdpRequestType.clear();
         }
     }
 
@@ -786,6 +794,11 @@ public class WifiAwareMetrics {
                 pw.println("  " + mHistogramNdpDuration.keyAt(i) + ": "
                         + mHistogramNdpDuration.valueAt(i));
             }
+            pw.println("mNdpRequestType:");
+            for (int i = 0; i < mHistogramNdpRequestType.size(); ++i) {
+                pw.println("  " + mHistogramNdpRequestType.keyAt(i) + ": "
+                        + mHistogramNdpRequestType.valueAt(i));
+            }
         }
     }
 
@@ -871,5 +884,48 @@ public class WifiAwareMetrics {
                 Log.e(TAG, "Unrecognized NanStatusType: " + nanStatusType);
                 return WifiMetricsProto.WifiAwareLog.UNKNOWN_HAL_STATUS;
         }
+    }
+
+    /**
+     * Record NDP request type
+     */
+    public void recordNdpRequestType(int type) {
+        int protoType = convertNdpRequestTypeToProtoEnum(type);
+        mHistogramNdpRequestType.put(protoType, mHistogramNdpRequestType.get(protoType) + 1);
+    }
+
+    private int convertNdpRequestTypeToProtoEnum(int ndpRequestType) {
+        switch (ndpRequestType) {
+            case NETWORK_SPECIFIER_TYPE_IB:
+                return WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_IB;
+            case NETWORK_SPECIFIER_TYPE_IB_ANY_PEER:
+                return WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER;
+            case NETWORK_SPECIFIER_TYPE_OOB:
+                return WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_OOB;
+            case NETWORK_SPECIFIER_TYPE_OOB_ANY_PEER:
+                return WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_OOB_ANY_PEER;
+            default:
+                Log.e(TAG, "Unrecognized NdpRequestType: " + ndpRequestType);
+                return WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_UNKNOWN;
+        }
+    }
+
+
+    /**
+     * Converts a histogram of proto NdpRequestTypeEnum to a raw proto histogram.
+     */
+    @VisibleForTesting
+    public static WifiMetricsProto.WifiAwareLog.NdpRequestTypeHistogramBucket[]
+            histogramToNanRequestProtoArray(SparseIntArray histogram) {
+        WifiMetricsProto.WifiAwareLog.NdpRequestTypeHistogramBucket[] protoArray =
+                new WifiMetricsProto.WifiAwareLog.NdpRequestTypeHistogramBucket[histogram.size()];
+
+        for (int i = 0; i < histogram.size(); ++i) {
+            protoArray[i] = new WifiMetricsProto.WifiAwareLog.NdpRequestTypeHistogramBucket();
+            protoArray[i].ndpRequestType = histogram.keyAt(i);
+            protoArray[i].count = histogram.valueAt(i);
+        }
+
+        return protoArray;
     }
 }

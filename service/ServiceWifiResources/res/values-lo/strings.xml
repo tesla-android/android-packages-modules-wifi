@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"ເຄືອຂ່າຍ <xliff:g id="NAME">%s</xliff:g> ທີ່ແນະນຳ. ອຸປະກອນອາດເຊື່ອມຕໍ່ເອງໂດຍອັດຕະໂນມັດ."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"ອະນຸຍາດ"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"ບໍ່, ຂອບໃຈ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"ເຊື່ອມຕໍ່ກັບ Wi-Fi <xliff:g id="CARRIERNAME">%s</xliff:g> ບໍ?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ເຄືອຂ່າຍເຫຼົ່ານີ້ຈະໄດ້ຮັບ ID ຊິມທີ່ສາມາດໃຊ້ເພື່ອຕິດຕາມສະຖານທີ່ຂອງອຸປະກອນໄດ້"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"ເຊື່ອມຕໍ່"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"ຢ່າເຊື່ອມຕໍ່"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"ຢືນຢັນການເຊື່ອມຕໍ່ບໍ?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"ຫາກທ່ານເຊື່ອມຕໍ່, ເຄືອຂ່າຍ Wi-Fi ຂອງ <xliff:g id="CARRIERNAME">%s</xliff:g> ຈະສາມາດເຂົ້າເຖິງ ແລະ ແບ່ງປັນ unique ID ທີ່ເຊື່ອມໂຍງກັບຊິມຂອງທ່ານໄດ້. ນີ້ອາດເຮັດໃຫ້ສາມາດຕິດຕາມສະຖານທີ່ຂອງອຸປະກອນທ່ານໄດ້."</string>

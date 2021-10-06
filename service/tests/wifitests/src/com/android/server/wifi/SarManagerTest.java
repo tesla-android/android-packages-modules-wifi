@@ -28,6 +28,7 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.PowerManager;
 import android.os.test.TestLooper;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
@@ -71,6 +72,7 @@ public class SarManagerTest extends WifiBaseTest {
     @Mock TelephonyManager mTelephonyManager;
     @Mock private ApplicationInfo mMockApplInfo;
     @Mock WifiNative mWifiNative;
+    @Mock PowerManager mPowerManager;
 
     @Before
     public void setUp() throws Exception {
@@ -88,6 +90,7 @@ public class SarManagerTest extends WifiBaseTest {
         mMockApplInfo.targetSdkVersion = Build.VERSION_CODES.P;
         when(mContext.getApplicationInfo()).thenReturn(mMockApplInfo);
         when(mContext.getOpPackageName()).thenReturn(OP_PACKAGE_NAME);
+        when(mContext.getSystemService(PowerManager.class)).thenReturn(mPowerManager);
     }
 
     @After

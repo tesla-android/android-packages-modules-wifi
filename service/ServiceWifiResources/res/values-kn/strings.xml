@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> ಸೂಚಿಸಿರುವ ನೆಟ್‌ವರ್ಕ್‌ಗಳು. ಸಾಧನಗಳು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಸಂಪರ್ಕಗೊಳ್ಳಬಹುದು."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"ಅನುಮತಿಸಿ"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"ಬೇಡ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> ವೈ-ಫೈ ಗೆ ಕನೆಕ್ಟ್ ಮಾಡುವುದೇ?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ಸಾಧನದ ಸ್ಥಳವನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಬಳಸಬಹುದಾದ SIM ಐಡಿಯನ್ನು ಈ ನೆಟ್‌ವರ್ಕ್‌ಗಳು ಸ್ವೀಕರಿಸುತ್ತವೆ"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"ಕನೆಕ್ಟ್ ಮಾಡಿ"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"ಕನೆಕ್ಟ್ ಮಾಡಬೇಡಿ"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"ಕನೆಕ್ಷನ್ ಅನ್ನು ಖಚಿತಪಡಿಸಬೇಕೇ?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"ನೀವು ಕನೆಕ್ಟ್ ಮಾಡಿದರೆ, <xliff:g id="CARRIERNAME">%s</xliff:g> ವೈ-ಫೈ ನೆಟ್‌ವರ್ಕ್‌ಗಳು ನಿಮ್ಮ SIM ಗೆ ಸಂಬಂಧಿಸಿದ ಅನನ್ಯ ಐಡಿಗೆ ಪ್ರವೇಶ ಪಡೆಯಬಹುದು ಅಥವಾ ಅದನ್ನು ಹಂಚಿಕೊಳ್ಳಬಹುದು. ನಿಮ್ಮ ಸಾಧನದ ಸ್ಥಳವನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಇದು ಅವಕಾಶ ನೀಡಬಹುದು."</string>

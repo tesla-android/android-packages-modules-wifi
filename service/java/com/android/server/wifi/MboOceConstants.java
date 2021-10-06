@@ -176,6 +176,29 @@ public class MboOceConstants {
     @Retention(RetentionPolicy.SOURCE)
     @interface MboCellularDataConnectionPreference{}
 
+    /** MBO spec v1.2, 4.2.4 Table 13: MBO Association Disallowed attribute */
+    public static final int MBO_ASSOC_DISALLOWED_REASON_INVALID = -1;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_RESERVED_0 = 0;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_UNSPECIFIED = 1;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_MAX_NUM_STA_ASSOCIATED = 2;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_AIR_INTERFACE_OVERLOADED = 3;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_AUTH_SERVER_OVERLOADED = 4;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_INSUFFICIENT_RSSI = 5;
+    public static final int MBO_ASSOC_DISALLOWED_REASON_RESERVED = 254;
+
+    @IntDef(prefix = { "MBO_ASSOC_DISALLOWED_REASON_" }, value = {
+            MBO_ASSOC_DISALLOWED_REASON_INVALID,
+            MBO_ASSOC_DISALLOWED_REASON_RESERVED_0,
+            MBO_ASSOC_DISALLOWED_REASON_UNSPECIFIED,
+            MBO_ASSOC_DISALLOWED_REASON_MAX_NUM_STA_ASSOCIATED,
+            MBO_ASSOC_DISALLOWED_REASON_AIR_INTERFACE_OVERLOADED,
+            MBO_ASSOC_DISALLOWED_REASON_AUTH_SERVER_OVERLOADED,
+            MBO_ASSOC_DISALLOWED_REASON_INSUFFICIENT_RSSI,
+            MBO_ASSOC_DISALLOWED_REASON_RESERVED
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @interface MboAssocDisallowedReasonCode{}
+
     /** default Blocklist duration when AP doesn't advertise non zero MBO assoc retry delay */
     public static final long DEFAULT_BLOCKLIST_DURATION_MS = 300_000; // 5 minutes
 

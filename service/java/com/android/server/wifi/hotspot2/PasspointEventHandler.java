@@ -19,7 +19,7 @@ package com.android.server.wifi.hotspot2;
 import android.util.Log;
 import android.util.Pair;
 
-import com.android.server.wifi.WifiNative;
+import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.hotspot2.anqp.ANQPElement;
 import com.android.server.wifi.hotspot2.anqp.Constants;
 
@@ -34,7 +34,7 @@ import java.util.Set;
  * event notifications.
  */
 public class PasspointEventHandler {
-    private final WifiNative mSupplicantHook;
+    private final WifiInjector mWifiInjector;
     private final Callbacks mCallbacks;
 
     /**
@@ -66,8 +66,8 @@ public class PasspointEventHandler {
         void onWnmFrameReceived(WnmData data);
     }
 
-    public PasspointEventHandler(WifiNative supplicantHook, Callbacks callbacks) {
-        mSupplicantHook = supplicantHook;
+    public PasspointEventHandler(WifiInjector wifiInjector, Callbacks callbacks) {
+        mWifiInjector = wifiInjector;
         mCallbacks = callbacks;
     }
 
@@ -80,14 +80,24 @@ public class PasspointEventHandler {
     public boolean requestANQP(long bssid, List<Constants.ANQPElementType> elements) {
         Pair<Set<Integer>, Set<Integer>> querySets = buildAnqpIdSet(elements);
         if (bssid == 0 || querySets == null) return false;
-        if (!mSupplicantHook.requestAnqp(
-                mSupplicantHook.getClientInterfaceName(),
+        if (!mWifiInjector.getActiveModeWarden().getPrimaryClientModeManager().requestAnqp(
                 Utils.macToString(bssid), querySets.first, querySets.second)) {
             Log.d(Utils.hs2LogTag(getClass()), "ANQP failed on " + Utils.macToString(bssid));
             return false;
         }
         Log.d(Utils.hs2LogTag(getClass()), "ANQP initiated on " + Utils.macToString(bssid));
         return true;
+    }
+
+    /**
+     * Request the Venue URL ANQP element from the specified AP |bssid|.
+     * @param bssid BSSID of the AP
+     * @return true if request is sent successfully, false otherwise
+     */
+    public boolean requestVenueUrlAnqp(long bssid) {
+        if (bssid == 0) return false;
+        return mWifiInjector.getActiveModeWarden().getPrimaryClientModeManager()
+                .requestVenueUrlAnqp(Utils.macToString(bssid));
     }
 
     /**
@@ -98,8 +108,8 @@ public class PasspointEventHandler {
      */
     public boolean requestIcon(long bssid, String fileName) {
         if (bssid == 0 || fileName == null) return false;
-        return mSupplicantHook.requestIcon(
-                mSupplicantHook.getClientInterfaceName(), Utils.macToString(bssid), fileName);
+        return mWifiInjector.getActiveModeWarden().getPrimaryClientModeManager()
+                .requestIcon(Utils.macToString(bssid), fileName);
     }
 
     /**
@@ -128,8 +138,7 @@ public class PasspointEventHandler {
 
     /**
      * Invoked when a Wireless Network Management (WNM) frame is received.
-     * TODO(zqiu): currently WNM frame notification is through WifiMonitor,
-     * this shouldn't be needed once we switch over to wificond for WNM frame monitoring.
+     *
      * @param data WNM frame data
      */
     public void notifyWnmFrameReceived(WnmData data) {

@@ -23,7 +23,9 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiMigration;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.SparseIntArray;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.SettingsMigrationDataHolder;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
@@ -58,6 +60,13 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
     private static final String XML_TAG_CLIENT_CONTROL_BY_USER = "ClientControlByUser";
     private static final String XML_TAG_BLOCKED_CLIENT_LIST = "BlockedClientList";
     private static final String XML_TAG_ALLOWED_CLIENT_LIST = "AllowedClientList";
+    private static final String XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED =
+            "BridgedModeOpportunisticShutdownEnabled";
+    private static final String XML_TAG_MAC_RAMDOMIZATION_SETTING = "MacRandomizationSetting";
+    private static final String XML_TAG_BAND_CHANNEL_MAP = "BandChannelMap";
+    private static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
+    private static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
+
 
     private final Context mContext;
     private final SettingsMigrationDataHolder mSettingsMigrationDataHolder;
@@ -114,8 +123,11 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
             if (softApConfig.getBssid() != null) {
                 XmlUtil.writeNextValue(out, XML_TAG_BSSID, softApConfig.getBssid().toString());
             }
-            XmlUtil.writeNextValue(out, XML_TAG_AP_BAND, softApConfig.getBand());
-            XmlUtil.writeNextValue(out, XML_TAG_CHANNEL, softApConfig.getChannel());
+            if (!SdkLevel.isAtLeastS()) {
+                // Band and channel change to store in Tag:BandChannelMap from S.
+                XmlUtil.writeNextValue(out, XML_TAG_AP_BAND, softApConfig.getBand());
+                XmlUtil.writeNextValue(out, XML_TAG_CHANNEL, softApConfig.getChannel());
+            }
             XmlUtil.writeNextValue(out, XML_TAG_HIDDEN_SSID, softApConfig.isHiddenSsid());
             XmlUtil.writeNextValue(out, XML_TAG_SECURITY_TYPE, softApConfig.getSecurityType());
             if (softApConfig.getSecurityType() != SoftApConfiguration.SECURITY_TYPE_OPEN) {
@@ -140,6 +152,21 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
             XmlUtil.SoftApConfigurationXmlUtil.writeClientListToXml(out,
                     softApConfig.getAllowedClientList());
             XmlUtil.writeNextSectionEnd(out, XML_TAG_ALLOWED_CLIENT_LIST);
+            if (SdkLevel.isAtLeastS()) {
+                XmlUtil.writeNextValue(out, XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED,
+                        softApConfig.isBridgedModeOpportunisticShutdownEnabled());
+                XmlUtil.writeNextValue(out, XML_TAG_MAC_RAMDOMIZATION_SETTING,
+                        softApConfig.getMacRandomizationSetting());
+
+                XmlUtil.writeNextSectionStart(out, XML_TAG_BAND_CHANNEL_MAP);
+                XmlUtil.SoftApConfigurationXmlUtil.writeChannelsToXml(out,
+                        softApConfig.getChannels());
+                XmlUtil.writeNextSectionEnd(out, XML_TAG_BAND_CHANNEL_MAP);
+                XmlUtil.writeNextValue(out, XML_TAG_80211_AX_ENABLED,
+                        softApConfig.isIeee80211axEnabled());
+                XmlUtil.writeNextValue(out, XML_TAG_USER_CONFIGURATION,
+                        softApConfig.isUserConfiguration());
+            }
         }
     }
 
@@ -162,6 +189,7 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
         // 6GHz band. If the old encoding is found, a conversion is done.
         int channel = -1;
         int apBand = -1;
+        boolean hasBandChannelMap = false;
         List<MacAddress> blockedList = new ArrayList<>();
         List<MacAddress> allowedList = new ArrayList<>();
         boolean autoShutdownEnabledTagPresent = false;
@@ -220,6 +248,27 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
                         case XML_TAG_CLIENT_CONTROL_BY_USER:
                             softApConfigBuilder.setClientControlByUserEnabled((boolean) value);
                             break;
+                        case XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_ENABLED:
+                            if (SdkLevel.isAtLeastS()) {
+                                softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
+                                        (boolean) value);
+                            }
+                            break;
+                        case XML_TAG_MAC_RAMDOMIZATION_SETTING:
+                            if (SdkLevel.isAtLeastS()) {
+                                softApConfigBuilder.setMacRandomizationSetting((int) value);
+                            }
+                            break;
+                        case XML_TAG_80211_AX_ENABLED:
+                            if (SdkLevel.isAtLeastS()) {
+                                softApConfigBuilder.setIeee80211axEnabled((boolean) value);
+                            }
+                            break;
+                        case XML_TAG_USER_CONFIGURATION:
+                            if (SdkLevel.isAtLeastS()) {
+                                softApConfigBuilder.setUserConfiguration((boolean) value);
+                            }
+                            break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name " + valueName[0]);
                             break;
@@ -243,6 +292,14 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
                                     in, outerTagDepth + 1);
                             if (parseredList != null) allowedList = new ArrayList<>(parseredList);
                             break;
+                        case XML_TAG_BAND_CHANNEL_MAP:
+                            if (SdkLevel.isAtLeastS()) {
+                                hasBandChannelMap = true;
+                                SparseIntArray channels = XmlUtil.SoftApConfigurationXmlUtil
+                                        .parseChannelsFromXml(in, outerTagDepth + 1);
+                                softApConfigBuilder.setChannels(channels);
+                            }
+                            break;
                         default:
                             Log.w(TAG, "Ignoring unknown tag found: " + tagName);
                             break;
@@ -251,11 +308,13 @@ public class SoftApStoreData implements WifiConfigStore.StoreData {
             }
             softApConfigBuilder.setBlockedClientList(blockedList);
             softApConfigBuilder.setAllowedClientList(allowedList);
-            // Set channel and band
-            if (channel == 0) {
-                softApConfigBuilder.setBand(apBand);
-            } else {
-                softApConfigBuilder.setChannel(channel, apBand);
+            if (!hasBandChannelMap) {
+                // Set channel and band
+                if (channel == 0) {
+                    softApConfigBuilder.setBand(apBand);
+                } else {
+                    softApConfigBuilder.setChannel(channel, apBand);
+                }
             }
 
             // We should at-least have SSID restored from store.

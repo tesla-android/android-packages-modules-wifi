@@ -150,6 +150,10 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 mDeviceConfigFacade.getConnectionFailureHighThrPercent());
         assertEquals(DeviceConfigFacade.DEFAULT_CONNECTION_FAILURE_COUNT_MIN,
                 mDeviceConfigFacade.getConnectionFailureCountMin());
+        assertEquals(DeviceConfigFacade.DEFAULT_CONNECTION_FAILURE_DISCONNECTION_HIGH_THR_PERCENT,
+                mDeviceConfigFacade.getConnectionFailureDisconnectionHighThrPercent());
+        assertEquals(DeviceConfigFacade.DEFAULT_CONNECTION_FAILURE_DISCONNECTION_COUNT_MIN,
+                mDeviceConfigFacade.getConnectionFailureDisconnectionCountMin());
         assertEquals(DeviceConfigFacade.DEFAULT_ASSOC_REJECTION_HIGH_THR_PERCENT,
                 mDeviceConfigFacade.getAssocRejectionHighThrPercent());
         assertEquals(DeviceConfigFacade.DEFAULT_ASSOC_REJECTION_COUNT_MIN,
@@ -193,6 +197,7 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 mDeviceConfigFacade.getTxLinkSpeedLowThresholdMbps());
         assertEquals(DeviceConfigFacade.DEFAULT_RX_LINK_SPEED_LOW_THRESHOLD_MBPS,
                 mDeviceConfigFacade.getRxLinkSpeedLowThresholdMbps());
+        assertEquals(false, mDeviceConfigFacade.isWifiBatterySaverEnabled());
         assertEquals(DeviceConfigFacade.DEFAULT_HEALTH_MONITOR_RSSI_POLL_VALID_TIME_MS,
                 mDeviceConfigFacade.getHealthMonitorRssiPollValidTimeMs());
         assertEquals(DeviceConfigFacade.DEFAULT_HEALTH_MONITOR_SHORT_CONNECTION_DURATION_THR_MS,
@@ -211,6 +216,11 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 mDeviceConfigFacade.getMinConfirmationDurationSendHighScoreMs());
         assertEquals(DeviceConfigFacade.DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM,
                 mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
+        assertEquals(false, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(DeviceConfigFacade.DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB,
+                mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
+        assertEquals(DeviceConfigFacade.DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC,
+                mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec());
     }
 
     /**
@@ -253,6 +263,12 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 anyInt())).thenReturn(31);
         when(DeviceConfig.getInt(anyString(), eq("connection_failure_count_min"),
                 anyInt())).thenReturn(4);
+        when(DeviceConfig.getInt(anyString(),
+                eq("connection_failure_disconnection_high_thr_percent"),
+                anyInt())).thenReturn(32);
+        when(DeviceConfig.getInt(anyString(),
+                eq("connection_failure_disconnection_count_min"),
+                anyInt())).thenReturn(8);
         when(DeviceConfig.getInt(anyString(), eq("assoc_rejection_high_thr_percent"),
                 anyInt())).thenReturn(10);
         when(DeviceConfig.getInt(anyString(), eq("assoc_rejection_count_min"),
@@ -301,6 +317,8 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 anyInt())).thenReturn(9);
         when(DeviceConfig.getInt(anyString(), eq("rx_link_speed_low_threshold_mbps"),
                 anyInt())).thenReturn(10);
+        when(DeviceConfig.getBoolean(anyString(), eq("battery_saver_enabled"), anyBoolean()))
+                .thenReturn(true);
         when(DeviceConfig.getInt(anyString(), eq("health_monitor_short_connection_duration_thr_ms"),
                 anyInt())).thenReturn(30_000);
         when(DeviceConfig.getLong(anyString(), eq("abnormal_disconnection_reason_code_mask"),
@@ -319,6 +337,13 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
                 anyInt())).thenReturn(1000);
         when(DeviceConfig.getInt(anyString(), eq("rssi_threshold_not_send_low_score_to_cs_dbm"),
                 anyInt())).thenReturn(-70);
+        when(DeviceConfig.getBoolean(anyString(),
+                eq("allow_enhanced_mac_randomization_on_open_ssids"),
+                anyBoolean())).thenReturn(true);
+        when(DeviceConfig.getInt(anyString(), eq("traffic_stats_threshold_max_kbyte"),
+                anyInt())).thenReturn(5000);
+        when(DeviceConfig.getInt(anyString(), eq("bandwidth_estimator_time_constant_large_sec"),
+                anyInt())).thenReturn(30);
         mOnPropertiesChangedListenerCaptor.getValue().onPropertiesChanged(null);
 
         // Verifying fields are updated to the new values
@@ -342,6 +367,8 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(5, mDeviceConfigFacade.getRxPktPerSecondThr());
         assertEquals(31, mDeviceConfigFacade.getConnectionFailureHighThrPercent());
         assertEquals(4, mDeviceConfigFacade.getConnectionFailureCountMin());
+        assertEquals(32, mDeviceConfigFacade.getConnectionFailureDisconnectionHighThrPercent());
+        assertEquals(8, mDeviceConfigFacade.getConnectionFailureDisconnectionCountMin());
         assertEquals(10, mDeviceConfigFacade.getAssocRejectionHighThrPercent());
         assertEquals(5, mDeviceConfigFacade.getAssocRejectionCountMin());
         assertEquals(12, mDeviceConfigFacade.getAssocTimeoutHighThrPercent());
@@ -367,6 +394,7 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(50000, mDeviceConfigFacade.getOverlappingConnectionDurationThresholdMs());
         assertEquals(9, mDeviceConfigFacade.getTxLinkSpeedLowThresholdMbps());
         assertEquals(10, mDeviceConfigFacade.getRxLinkSpeedLowThresholdMbps());
+        assertEquals(true, mDeviceConfigFacade.isWifiBatterySaverEnabled());
         assertEquals(30_000,
                 mDeviceConfigFacade.getHealthMonitorShortConnectionDurationThrMs());
         assertEquals(0xffff_fff3_0000_ffffL,
@@ -378,5 +406,8 @@ public class DeviceConfigFacadeTest extends WifiBaseTest {
         assertEquals(4000, mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs());
         assertEquals(1000, mDeviceConfigFacade.getMinConfirmationDurationSendHighScoreMs());
         assertEquals(-70, mDeviceConfigFacade.getRssiThresholdNotSendLowScoreToCsDbm());
+        assertEquals(true, mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids());
+        assertEquals(5000, mDeviceConfigFacade.getTrafficStatsThresholdMaxKbyte());
+        assertEquals(30, mDeviceConfigFacade.getBandwidthEstimatorLargeTimeConstantSec());
     }
 }

@@ -128,6 +128,12 @@ public class WifiAwareDiscoverySessionState {
      * if currently active.
      */
     public void terminate() {
+        try {
+            mCallback.onSessionTerminated(NanStatusType.SUCCESS);
+        } catch (RemoteException e) {
+            Log.w(TAG,
+                    "onSessionTerminatedLocal onSessionTerminated(): RemoteException (FYI): " + e);
+        }
         mCallback = null;
 
         if (mIsPublishSession) {
@@ -273,6 +279,33 @@ public class WifiAwareDiscoverySessionState {
             } else {
                 mCallback.onMatchWithDistance(peerId, serviceSpecificInfo, matchFilter, rangeMm);
             }
+        } catch (RemoteException e) {
+            Log.w(TAG, "onMatch: RemoteException (FYI): " + e);
+        }
+    }
+
+    /**
+     * Callback from HAL when a discovered peer is lost - i.e. when a discovered peer with a matched
+     * session is no longer visible.
+     *
+     * @param requestorInstanceId The ID used to identify the peer in this matched session.
+     */
+    public void onMatchExpired(int requestorInstanceId) {
+        int peerId = 0;
+        for (int i = 0; i < mPeerInfoByRequestorInstanceId.size(); ++i) {
+            PeerInfo peerInfo = mPeerInfoByRequestorInstanceId.valueAt(i);
+            if (peerInfo.mInstanceId == requestorInstanceId) {
+                peerId = mPeerInfoByRequestorInstanceId.keyAt(i);
+                mPeerInfoByRequestorInstanceId.delete(peerId);
+                break;
+            }
+        }
+        if (peerId == 0) {
+            return;
+        }
+
+        try {
+            mCallback.onMatchExpired(peerId);
         } catch (RemoteException e) {
             Log.w(TAG, "onMatch: RemoteException (FYI): " + e);
         }

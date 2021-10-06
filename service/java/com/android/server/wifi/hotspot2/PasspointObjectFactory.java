@@ -21,6 +21,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.WifiCarrierInfoManager;
+import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiKeyStore;
 import com.android.server.wifi.WifiMetrics;
 import com.android.server.wifi.WifiNative;
@@ -44,25 +45,29 @@ public class PasspointObjectFactory{
      * @param callbacks Instance of {@link PasspointEventHandler.Callbacks}
      * @return {@link PasspointEventHandler}
      */
-    public PasspointEventHandler makePasspointEventHandler(WifiNative wifiNative,
+    public PasspointEventHandler makePasspointEventHandler(WifiInjector wifiInjector,
             PasspointEventHandler.Callbacks callbacks) {
-        return new PasspointEventHandler(wifiNative, callbacks);
+        return new PasspointEventHandler(wifiInjector, callbacks);
     }
 
     /**
      * Create a PasspointProvider instance.
      *
-     * @param keyStore Instance of {@link WifiKeyStore}
      * @param config Configuration for the provider
+     * @param keyStore Instance of {@link WifiKeyStore}
+     * @param wifiCarrierInfoManager Instance of {@link WifiCarrierInfoManager}
      * @param providerId Unique identifier for the provider
+     * @param creatorUid Creator UID
      * @param packageName Package name of app adding/updating the {@code config}
+     * @param isFromSuggestion True if originated from a suggestion
+     * @param clock Instance of {@link Clock}
      * @return {@link PasspointProvider}
      */
     public PasspointProvider makePasspointProvider(PasspointConfiguration config,
             WifiKeyStore keyStore, WifiCarrierInfoManager wifiCarrierInfoManager, long providerId,
-            int creatorUid, String packageName, boolean isFromSuggestion) {
+            int creatorUid, String packageName, boolean isFromSuggestion, Clock clock) {
         return new PasspointProvider(config, keyStore, wifiCarrierInfoManager, providerId,
-                creatorUid, packageName, isFromSuggestion);
+                creatorUid, packageName, isFromSuggestion, clock);
     }
 
     /**
@@ -71,12 +76,14 @@ public class PasspointObjectFactory{
      * @param keyStore Instance of {@link WifiKeyStore}
      * @param wifiCarrierInfoManager Instance of {@link WifiCarrierInfoManager}
      * @param dataSource Passpoint configuration data source
+     * @param clock Instance of {@link Clock}
      * @return {@link PasspointConfigUserStoreData}
      */
     public PasspointConfigUserStoreData makePasspointConfigUserStoreData(WifiKeyStore keyStore,
             WifiCarrierInfoManager wifiCarrierInfoManager,
-            PasspointConfigUserStoreData.DataSource dataSource) {
-        return new PasspointConfigUserStoreData(keyStore, wifiCarrierInfoManager, dataSource);
+            PasspointConfigUserStoreData.DataSource dataSource, Clock clock) {
+        return new PasspointConfigUserStoreData(keyStore, wifiCarrierInfoManager, dataSource,
+                clock);
     }
 
     /**

@@ -25,6 +25,7 @@ import android.net.wifi.aware.IWifiAwareMacAddressProvider;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.Characteristics;
+import android.net.wifi.aware.AwareResources;
 
 /**
  * Interface that WifiAwareService implements
@@ -36,6 +37,10 @@ interface IWifiAwareManager
     // Aware API
     boolean isUsageEnabled();
     Characteristics getCharacteristics();
+    AwareResources getAvailableAwareResources();
+    boolean isDeviceAttached();
+    void enableInstantCommunicationMode(in String callingPackage, boolean enable);
+    boolean isInstantCommunicationModeEnabled();
 
     // client API
     void connect(in IBinder binder, in String callingPackage, in String callingFeatureId,

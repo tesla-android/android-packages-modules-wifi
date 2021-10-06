@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"Nätverk som föreslagits av <xliff:g id="NAME">%s</xliff:g>. Enheten kan anslutas automatiskt."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Tillåt"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Nej tack"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Vill du ansluta till Wi-Fi från <xliff:g id="CARRIERNAME">%s</xliff:g>?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Dessa nätverk får ett SIM-id som kan användas till att spåra enhetens plats"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Anslut"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Anslut inte"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Vill du bekräfta anslutningen?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Om du ansluter kan Wi-Fi-nätverk från <xliff:g id="CARRIERNAME">%s</xliff:g> få åtkomst till eller dela ett unikt id som är kopplat till ditt SIM-kort. Detta kan göra det möjligt att spåra enhetens plats."</string>

@@ -54,13 +54,13 @@ public class DeviceConfigFacade {
     // Default threshold of CCA level above which to trigger a data stall
     public static final int DEFAULT_DATA_STALL_CCA_LEVEL_THR = CHANNEL_UTILIZATION_SCALE;
     // Default low threshold of L2 sufficient Tx throughput in Kbps
-    public static final int DEFAULT_TX_TPUT_SUFFICIENT_THR_LOW_KBPS = 1000;
+    public static final int DEFAULT_TX_TPUT_SUFFICIENT_THR_LOW_KBPS = 2000;
     // Default high threshold of L2 sufficient Tx throughput in Kbps
-    public static final int DEFAULT_TX_TPUT_SUFFICIENT_THR_HIGH_KBPS = 4000;
+    public static final int DEFAULT_TX_TPUT_SUFFICIENT_THR_HIGH_KBPS = 8000;
     // Default low threshold of L2 sufficient Rx throughput in Kbps
-    public static final int DEFAULT_RX_TPUT_SUFFICIENT_THR_LOW_KBPS = 1000;
+    public static final int DEFAULT_RX_TPUT_SUFFICIENT_THR_LOW_KBPS = 2000;
     // Default high threshold of L2 sufficient Rx throughput in Kbps
-    public static final int DEFAULT_RX_TPUT_SUFFICIENT_THR_HIGH_KBPS = 4000;
+    public static final int DEFAULT_RX_TPUT_SUFFICIENT_THR_HIGH_KBPS = 8000;
     // Numerator part of default threshold of L2 throughput over L3 throughput ratio
     public static final int DEFAULT_TPUT_SUFFICIENT_RATIO_THR_NUM = 2;
     // Denominator part of default threshold of L2 throughput over L3 throughput ratio
@@ -68,10 +68,11 @@ public class DeviceConfigFacade {
     // Default threshold of Tx packet per second
     public static final int DEFAULT_TX_PACKET_PER_SECOND_THR = 2;
     // Default threshold of Rx packet per second
-    public static final int DEFAULT_RX_PACKET_PER_SECOND_THR = 1;
+    public static final int DEFAULT_RX_PACKET_PER_SECOND_THR = 2;
     // Default high threshold values for various connection/disconnection cases
     // All of them are in percent with respect to connection attempts
     static final int DEFAULT_CONNECTION_FAILURE_HIGH_THR_PERCENT = 40;
+    static final int DEFAULT_CONNECTION_FAILURE_DISCONNECTION_HIGH_THR_PERCENT = 30;
     static final int DEFAULT_ASSOC_REJECTION_HIGH_THR_PERCENT = 30;
     static final int DEFAULT_ASSOC_TIMEOUT_HIGH_THR_PERCENT = 30;
     static final int DEFAULT_AUTH_FAILURE_HIGH_THR_PERCENT = 30;
@@ -79,6 +80,7 @@ public class DeviceConfigFacade {
     static final int DEFAULT_DISCONNECTION_NONLOCAL_HIGH_THR_PERCENT = 25;
     // Default health monitor abnormal count minimum for various cases
     static final int DEFAULT_CONNECTION_FAILURE_COUNT_MIN = 6;
+    static final int DEFAULT_CONNECTION_FAILURE_DISCONNECTION_COUNT_MIN = 5;
     static final int DEFAULT_ASSOC_REJECTION_COUNT_MIN  = 3;
     static final int DEFAULT_ASSOC_TIMEOUT_COUNT_MIN  = 3;
     static final int DEFAULT_AUTH_FAILURE_COUNT_MIN  = 3;
@@ -142,6 +144,9 @@ public class DeviceConfigFacade {
     // Default RSSI threshold in dBm above which low score is not sent to connectivity service
     // when external scorer takes action.
     static final int DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM = -67;
+    // Maximum traffic stats threshold for link bandwidth estimator
+    static final int DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB = 8000;
+    static final int DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC = 6;
     // Cached values of fields updated via updateDeviceConfigFlags()
     private boolean mIsAbnormalConnectionBugreportEnabled;
     private int mAbnormalConnectionDurationMs;
@@ -160,6 +165,8 @@ public class DeviceConfigFacade {
     private int mRxPktPerSecondThr;
     private int mConnectionFailureHighThrPercent;
     private int mConnectionFailureCountMin;
+    private int mConnectionFailureDisconnectionHighThrPercent;
+    private int mConnectionFailureDisconnectionCountMin;
     private int mAssocRejectionHighThrPercent;
     private int mAssocRejectionCountMin;
     private int mAssocTimeoutHighThrPercent;
@@ -180,6 +187,7 @@ public class DeviceConfigFacade {
     private int mHealthMonitorMinNumConnectionAttempt;
     private int mBugReportMinWindowMs;
     private int mBugReportThresholdExtraRatio;
+    private boolean mWifiBatterySaverEnabled;
     private boolean mIsOverlappingConnectionBugreportEnabled;
     private int mOverlappingConnectionDurationThresholdMs;
     private int mTxLinkSpeedLowThresholdMbps;
@@ -193,6 +201,9 @@ public class DeviceConfigFacade {
     private int mMinConfirmationDurationSendLowScoreMs;
     private int mMinConfirmationDurationSendHighScoreMs;
     private int mRssiThresholdNotSendLowScoreToCsDbm;
+    private boolean mAllowEnhancedMacRandomizationOnOpenSsids;
+    private int mTrafficStatsThresholdMaxKbyte;
+    private int mBandwidthEstimatorLargeTimeConstantSec;
 
     public DeviceConfigFacade(Context context, Handler handler, WifiMetrics wifiMetrics) {
         mContext = context;
@@ -253,6 +264,12 @@ public class DeviceConfigFacade {
         mConnectionFailureCountMin = DeviceConfig.getInt(NAMESPACE,
                 "connection_failure_count_min",
                 DEFAULT_CONNECTION_FAILURE_COUNT_MIN);
+        mConnectionFailureDisconnectionHighThrPercent = DeviceConfig.getInt(NAMESPACE,
+                "connection_failure_disconnection_high_thr_percent",
+                DEFAULT_CONNECTION_FAILURE_DISCONNECTION_HIGH_THR_PERCENT);
+        mConnectionFailureDisconnectionCountMin = DeviceConfig.getInt(NAMESPACE,
+                "connection_failure_disconnection_count_min",
+                DEFAULT_CONNECTION_FAILURE_DISCONNECTION_COUNT_MIN);
         mAssocRejectionHighThrPercent = DeviceConfig.getInt(NAMESPACE,
                 "assoc_rejection_high_thr_percent",
                 DEFAULT_ASSOC_REJECTION_HIGH_THR_PERCENT);
@@ -321,6 +338,8 @@ public class DeviceConfigFacade {
         mRxLinkSpeedLowThresholdMbps = DeviceConfig.getInt(NAMESPACE,
                 "rx_link_speed_low_threshold_mbps",
                 DEFAULT_RX_LINK_SPEED_LOW_THRESHOLD_MBPS);
+        mWifiBatterySaverEnabled = DeviceConfig.getBoolean(NAMESPACE, "battery_saver_enabled",
+                false);
         mHealthMonitorShortConnectionDurationThrMs = DeviceConfig.getInt(NAMESPACE,
                 "health_monitor_short_connection_duration_thr_ms",
                 DEFAULT_HEALTH_MONITOR_SHORT_CONNECTION_DURATION_THR_MS);
@@ -349,6 +368,14 @@ public class DeviceConfigFacade {
         mRssiThresholdNotSendLowScoreToCsDbm = DeviceConfig.getInt(NAMESPACE,
                 "rssi_threshold_not_send_low_score_to_cs_dbm",
                 DEFAULT_RSSI_THRESHOLD_NOT_SEND_LOW_SCORE_TO_CS_DBM);
+        mAllowEnhancedMacRandomizationOnOpenSsids = DeviceConfig.getBoolean(NAMESPACE,
+                "allow_enhanced_mac_randomization_on_open_ssids", false);
+        mTrafficStatsThresholdMaxKbyte = DeviceConfig.getInt(NAMESPACE,
+                "traffic_stats_threshold_max_kbyte", DEFAULT_TRAFFIC_STATS_THRESHOLD_MAX_KB);
+        mBandwidthEstimatorLargeTimeConstantSec = DeviceConfig.getInt(NAMESPACE,
+                "bandwidth_estimator_time_constant_large_sec",
+                DEFAULT_BANDWIDTH_ESTIMATOR_TIME_CONSTANT_LARGE_SEC);
+
     }
 
     private Set<String> getUnmodifiableSetQuoted(String key) {
@@ -478,6 +505,20 @@ public class DeviceConfigFacade {
      */
     public int getConnectionFailureHighThrPercent() {
         return mConnectionFailureHighThrPercent;
+    }
+
+    /**
+     * Gets connection-failure-due-to-disconnection min count
+     */
+    public int getConnectionFailureDisconnectionCountMin() {
+        return mConnectionFailureDisconnectionCountMin;
+    }
+
+    /**
+     * Gets the high threshold of connection-failure-due-to-disconnection rate in percent
+     */
+    public int getConnectionFailureDisconnectionHighThrPercent() {
+        return mConnectionFailureDisconnectionHighThrPercent;
     }
 
     /**
@@ -656,6 +697,13 @@ public class DeviceConfigFacade {
     }
 
     /**
+     * Gets the feature flag for Wifi battery saver.
+     */
+    public boolean isWifiBatterySaverEnabled() {
+        return mWifiBatterySaverEnabled;
+    }
+
+    /**
      * Gets health monitor short connection duration threshold in ms
      */
     public int getHealthMonitorShortConnectionDurationThrMs() {
@@ -721,4 +769,26 @@ public class DeviceConfigFacade {
     public int getRssiThresholdNotSendLowScoreToCsDbm() {
         return mRssiThresholdNotSendLowScoreToCsDbm;
     }
+
+    /**
+     * Gets whether enhanced MAC randomization should be allowed on open networks.
+     */
+    public boolean allowEnhancedMacRandomizationOnOpenSsids() {
+        return mAllowEnhancedMacRandomizationOnOpenSsids;
+    }
+
+    /**
+     * Gets traffic stats maximum threshold in KByte
+     */
+    public int getTrafficStatsThresholdMaxKbyte() {
+        return mTrafficStatsThresholdMaxKbyte;
+    }
+
+    /**
+     * Gets bandwidth estimator large time constant in second
+     */
+    public int getBandwidthEstimatorLargeTimeConstantSec() {
+        return mBandwidthEstimatorLargeTimeConstantSec;
+    }
+
 }

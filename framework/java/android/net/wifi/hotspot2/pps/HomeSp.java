@@ -16,6 +16,8 @@
 
 package android.net.wifi.hotspot2.pps;
 
+import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
@@ -23,6 +25,7 @@ import android.util.Log;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -139,16 +142,26 @@ public final class HomeSp implements Parcelable {
      * (MO) tree for more detail.
      */
     private long[] mMatchAllOis = null;
+
     /**
-     * @hide
+     * Set a list of HomeOIs such that all OIs in the list must match an OI in the Roaming
+     * Consortium advertised by a hotspot operator. The list set by this API will have precedence
+     * over {@link #setMatchAnyOis(long[])}, meaning the list set in {@link #setMatchAnyOis(long[])}
+     * will only be used for matching if the list set by this API is null or empty.
+     *
+     * @param matchAllOis An array of longs containing the HomeOIs
      */
-    public void setMatchAllOis(long[] matchAllOis) {
+    public void setMatchAllOis(@Nullable long[] matchAllOis) {
         mMatchAllOis = matchAllOis;
     }
+
     /**
-     * @hide
+     * Get the list of HomeOIs such that all OIs in the list must match an OI in the Roaming
+     * Consortium advertised by a hotspot operator.
+     *
+     * @return An array of longs containing the HomeOIs
      */
-    public long[] getMatchAllOis() {
+    public @Nullable long[] getMatchAllOis() {
         return mMatchAllOis;
     }
 
@@ -159,23 +172,34 @@ public final class HomeSp implements Parcelable {
      * of that Hotspot provider (e.g. successful authentication with such Hotspot
      * is possible).
      *
-     * {@link #mMatchAllOIs} will have precedence over this one, meaning this list will
-     * only be used for matching if {@link #mMatchAllOIs} is null or empty.
+     * The list set by {@link #setMatchAllOis(long[])} will have precedence over this one, meaning
+     * this list will only be used for matching if the list set by {@link #setMatchAllOis(long[])}
+     * is null or empty.
      *
      * Refer to HomeSP/HomeOIList subtree in PerProviderSubscription (PPS) Management Object
      * (MO) tree for more detail.
      */
     private long[] mMatchAnyOis = null;
+
     /**
-     * @hide
+     * Set a list of HomeOIs such that any OI in the list matches an OI in the Roaming Consortium
+     * advertised by a hotspot operator. The list set by {@link #setMatchAllOis(long[])}
+     * will have precedence over this API, meaning this list will only be used for matching if the
+     * list set by {@link #setMatchAllOis(long[])} is null or empty.
+     *
+     * @param matchAnyOis An array of longs containing the HomeOIs
      */
-    public void setMatchAnyOis(long[] matchAnyOis) {
+    public void setMatchAnyOis(@Nullable long[] matchAnyOis) {
         mMatchAnyOis = matchAnyOis;
     }
+
     /**
-     * @hide
+     * Get a list of HomeOIs such that any OI in the list matches an OI in the Roaming Consortium
+     * advertised by a hotspot operator.
+     *
+     * @return An array of longs containing the HomeOIs
      */
-    public long[] getMatchAnyOis() {
+    public @Nullable long[] getMatchAnyOis() {
         return mMatchAnyOis;
     }
 
@@ -186,17 +210,55 @@ public final class HomeSp implements Parcelable {
      * operator merges between the providers.
      */
     private String[] mOtherHomePartners = null;
+
     /**
+     * Set the list of FQDN (Fully Qualified Domain Name) of other Home partner providers.
+     *
+     * @param otherHomePartners Array of Strings containing the FQDNs of other Home partner
+     *                         providers
      * @hide
      */
-    public void setOtherHomePartners(String[] otherHomePartners) {
+    public void setOtherHomePartners(@Nullable String[] otherHomePartners) {
         mOtherHomePartners = otherHomePartners;
     }
+
     /**
+     * Set the list of FQDN (Fully Qualified Domain Name) of other Home partner providers.
+     *
+     * @param otherHomePartners Collection of Strings containing the FQDNs of other Home partner
+     *                         providers
+     */
+    public void setOtherHomePartnersList(@NonNull Collection<String> otherHomePartners) {
+        if (otherHomePartners == null) {
+            return;
+        }
+        mOtherHomePartners = otherHomePartners.toArray(new String[otherHomePartners.size()]);
+    }
+
+    /**
+     * Get the list of FQDN (Fully Qualified Domain Name) of other Home partner providers set in
+     * the profile.
+     *
+     * @return Array of Strings containing the FQDNs of other Home partner providers set in the
+     * profile
      * @hide
      */
-    public String[] getOtherHomePartners() {
+    public @Nullable String[] getOtherHomePartners() {
         return mOtherHomePartners;
+    }
+
+    /**
+     * Get the list of FQDN (Fully Qualified Domain Name) of other Home partner providers set in
+     * the profile.
+     *
+     * @return Collection of Strings containing the FQDNs of other Home partner providers set in the
+     * profile
+     */
+    public @NonNull Collection<String> getOtherHomePartnersList() {
+        if (mOtherHomePartners == null) {
+            return Collections.emptyList();
+        }
+        return Arrays.asList(mOtherHomePartners);
     }
 
     /**

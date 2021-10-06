@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g>에서 네트워크를 제안했습니다. 기기가 자동으로 연결될 수 있습니다."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"허용"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"허용 안함"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> Wi-Fi에 연결하시겠습니까?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"이 네트워크는 기기 위치 추적에 사용할 수 있는 SIM ID를 수신합니다."</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"연결"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"연결 안 함"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"연결하시겠습니까?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"연결하면 <xliff:g id="CARRIERNAME">%s</xliff:g> Wi‑Fi 네트워크에서 SIM과 연결된 고유 ID에 액세스하거나 고유 ID를 공유할 수 있습니다. 이 경우 내 기기의 위치를 추적할 수도 있습니다."</string>

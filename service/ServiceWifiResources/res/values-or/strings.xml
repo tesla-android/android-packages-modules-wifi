@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> ପ୍ରସ୍ତାବିତ ନେଟ୍‌ୱାର୍କଗୁଡ଼ିକ। ଡିଭାଇସ୍ ହୁଏତ ସ୍ୱଚାଳିତ ଭାବେ ସଂଯୋଗ ହୋଇପାରେ।"</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"ଅନୁମତି ଦିଅନ୍ତୁ"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"ନାହିଁ, ଥାଉ"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> ୱାଇ-ଫାଇ ସହ ସଂଯୋଗ କରିବେ?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ଏହି ନେଟୱାର୍କଗୁଡ଼ିକ ଏକ SIM ID ପ୍ରାପ୍ତ କରେ ଯାହା ଡିଭାଇସର ଲୋକେସନ୍ ଟ୍ରାକ୍ କରିବାରେ ବ୍ୟବହାର କରାଯାଇପାରିବ"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"ସଂଯୋଗ କରନ୍ତୁ"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"ସଂଯୋଗ କରନ୍ତୁ ନାହିଁ"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"ସଂଯୋଗ ସୁନିଶ୍ଚିତ କରିବେ?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"ଯଦି ଆପଣ ସଂଯୋଗ କରିବେ, ତେବେ <xliff:g id="CARRIERNAME">%s</xliff:g> ୱାଇ-ଫାଇ ନେଟୱାର୍କଗୁଡ଼ିକ ଆପଣଙ୍କ SIM ସମ୍ବନ୍ଧିତ ଏକ ସ୍ଵତନ୍ତ୍ର ID ଆକ୍ସେସ୍ କିମ୍ବା ସେୟାର୍ କରିପାରେ। ଏହା ଆପଣଙ୍କ ଡିଭାଇସର ଲୋକେସନ୍ ଟ୍ରାକ୍ କରିବାକୁ ଅନୁମତି ଦେଇପାରେ।"</string>
@@ -52,7 +49,7 @@
     <string name="wifi_connect_alert_title" msgid="2368200646665663612">"ସଂଯୋଗର ଅନୁମତି ଦେବେ?"</string>
     <string name="wifi_connect_alert_message" msgid="7226456300982080746">"ଆପ୍ଲିକେଶନ୍‍ %1$s %2$s ୱାଇ-ଫାଇ ନେଟୱର୍କକୁ ସଂଯୋଗ କରିବାକୁ ଚାହେଁ"</string>
     <string name="wifi_connect_default_application" msgid="8917703737222707062">"ଏକ ଅନୁପ୍ରୟୋଗ"</string>
-    <string name="accept" msgid="8346431649376483879">"ସ୍ୱୀକାର କରନ୍ତୁ"</string>
+    <string name="accept" msgid="8346431649376483879">"ଗ୍ରହଣ କରନ୍ତୁ"</string>
     <string name="decline" msgid="4172251727603762084">"ପ୍ରତ୍ୟାଖ୍ୟାନ"</string>
     <string name="ok" msgid="847575529546290102">"ଠିକ୍‍ ଅଛି"</string>
     <string name="wifi_p2p_invitation_sent_title" msgid="6552639940428040869">"ନିମନ୍ତ୍ରଣ ପଠାଗଲା"</string>

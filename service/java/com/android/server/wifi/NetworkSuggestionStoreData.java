@@ -40,11 +40,11 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 /**
  * This class performs serialization and parsing of XML data block that contain the list of WiFi
@@ -75,6 +75,9 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
     private static final String XML_TAG_SUGGESTOR_MAX_SIZE = "SuggestorMaxSize";
     private static final String XML_TAG_SECTION_HEADER_PASSPOINT_CONFIGURATION =
             "PasspointConfiguration";
+    private static final String XML_TAG_PRIORITY_GROUP = "PriorityGroup";
+    private static final String XML_TAG_CONNECT_CHOICE = "ConnectChoice";
+    private static final String XML_TAG_CONNECT_CHOICE_RSSI = "ConnectChoiceRssi";
 
     /**
      * Interface define the data source for the network suggestions store data.
@@ -171,8 +174,8 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
             int maxSize = entry.getValue().maxSize;
             int uid = entry.getValue().uid;
             int carrierId = entry.getValue().carrierId;
-            Set<ExtendedWifiNetworkSuggestion> networkSuggestions =
-                    entry.getValue().extNetworkSuggestions;
+            Collection<ExtendedWifiNetworkSuggestion> networkSuggestions =
+                    entry.getValue().extNetworkSuggestions.values();
             XmlUtil.writeNextSectionStart(out, XML_TAG_SECTION_HEADER_NETWORK_SUGGESTION_PER_APP);
             XmlUtil.writeNextValue(out, XML_TAG_SUGGESTOR_PACKAGE_NAME, packageName);
             XmlUtil.writeNextValue(out, XML_TAG_SUGGESTOR_FEATURE_ID, featureId);
@@ -191,8 +194,8 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private void serializeExtNetworkSuggestions(
-            XmlSerializer out, final Set<ExtendedWifiNetworkSuggestion> extNetworkSuggestions,
+    private void serializeExtNetworkSuggestions(XmlSerializer out,
+            final Collection<ExtendedWifiNetworkSuggestion> extNetworkSuggestions,
             @Nullable WifiConfigStoreEncryptionUtil encryptionUtil)
             throws XmlPullParserException, IOException {
         for (ExtendedWifiNetworkSuggestion extNetworkSuggestion : extNetworkSuggestions) {
@@ -247,6 +250,9 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
                 suggestion.isInitialAutoJoinEnabled);
         XmlUtil.writeNextValue(out, XML_TAG_IS_AUTO_JOIN,
                 extSuggestion.isAutojoinEnabled);
+        XmlUtil.writeNextValue(out, XML_TAG_PRIORITY_GROUP, suggestion.priorityGroup);
+        XmlUtil.writeNextValue(out, XML_TAG_CONNECT_CHOICE, extSuggestion.connectChoice);
+        XmlUtil.writeNextValue(out, XML_TAG_CONNECT_CHOICE_RSSI, extSuggestion.connectChoiceRssi);
         XmlUtil.writeNextSectionEnd(out, XML_TAG_SECTION_HEADER_NETWORK_SUGGESTION);
     }
 
@@ -322,14 +328,9 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
                         }
                         switch (tagName) {
                             case XML_TAG_SECTION_HEADER_NETWORK_SUGGESTION:
-                                Pair<WifiNetworkSuggestion, Boolean> networkSuggestionData =
-                                        parseNetworkSuggestion(
-                                                in, outerTagDepth + 2, version, encryptionUtil,
-                                                perAppInfo);
-                                perAppInfo.extNetworkSuggestions.add(
-                                        ExtendedWifiNetworkSuggestion.fromWns(
-                                                networkSuggestionData.first, perAppInfo,
-                                                networkSuggestionData.second));
+                                ExtendedWifiNetworkSuggestion ewns = parseNetworkSuggestion(in,
+                                        outerTagDepth + 2, version, encryptionUtil, perAppInfo);
+                                perAppInfo.extNetworkSuggestions.put(ewns.hashCode(), ewns);
                                 break;
                             default:
                                 Log.w(TAG, "Ignoring unknown tag under "
@@ -365,7 +366,7 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
      * @throws XmlPullParserException
      * @throws IOException
      */
-    private Pair<WifiNetworkSuggestion, Boolean> parseNetworkSuggestion(XmlPullParser in,
+    private ExtendedWifiNetworkSuggestion parseNetworkSuggestion(XmlPullParser in,
             int outerTagDepth, @WifiConfigStore.Version int version,
             @Nullable WifiConfigStoreEncryptionUtil encryptionUtil, PerAppInfo perAppInfo)
             throws XmlPullParserException, IOException {
@@ -378,7 +379,10 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
         boolean isInitializedAutoJoinEnabled = true; // backward compat
         boolean isAutoJoinEnabled = true; // backward compat
         boolean isNetworkUntrusted = false;
+        int priorityGroup = WifiNetworkSuggestionsManager.DEFAULT_PRIORITY_GROUP;
         int suggestorUid = Process.INVALID_UID;
+        String connectChoice = null;
+        int connectChoiceRssi = 0;
 
         // Loop through and parse out all the elements from the stream within this section.
         while (XmlUtil.nextElementWithin(in, outerTagDepth)) {
@@ -406,6 +410,15 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
                         // Only needed for migration of data from Q to R.
                         suggestorUid = (int) value;
                         break;
+                    case XML_TAG_PRIORITY_GROUP:
+                        priorityGroup = (int) value;
+                        break;
+                    case XML_TAG_CONNECT_CHOICE:
+                        connectChoice = (String) value;
+                        break;
+                    case XML_TAG_CONNECT_CHOICE_RSSI:
+                        connectChoiceRssi = (int) value;
+                        break;
                     default:
                         Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);
                         break;
@@ -424,8 +437,8 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
                         }
                         parsedConfig = WifiConfigurationXmlUtil.parseFromXml(
                                 in, outerTagDepth + 1,
-                            version >= ENCRYPT_CREDENTIALS_CONFIG_STORE_DATA_VERSION,
-                            encryptionUtil);
+                                version >= ENCRYPT_CREDENTIALS_CONFIG_STORE_DATA_VERSION,
+                                encryptionUtil, true);
                         break;
                     case XML_TAG_SECTION_HEADER_WIFI_ENTERPRISE_CONFIGURATION:
                         if (enterpriseConfig != null) {
@@ -466,9 +479,14 @@ public class NetworkSuggestionStoreData implements WifiConfigStore.StoreData {
         if (enterpriseConfig != null) {
             wifiConfiguration.enterpriseConfig = enterpriseConfig;
         }
-        return Pair.create(new WifiNetworkSuggestion(wifiConfiguration, passpointConfiguration,
-                isAppInteractionRequired, isUserInteractionRequired, isUserAllowedToManuallyConnect,
-                isInitializedAutoJoinEnabled), isAutoJoinEnabled);
+        ExtendedWifiNetworkSuggestion ewns = ExtendedWifiNetworkSuggestion
+                .fromWns(new WifiNetworkSuggestion(wifiConfiguration, passpointConfiguration,
+                        isAppInteractionRequired, isUserInteractionRequired,
+                        isUserAllowedToManuallyConnect, isInitializedAutoJoinEnabled,
+                        priorityGroup), perAppInfo, isAutoJoinEnabled);
+        ewns.connectChoice = connectChoice;
+        ewns.connectChoiceRssi = connectChoiceRssi;
+        return ewns;
     }
 }
 

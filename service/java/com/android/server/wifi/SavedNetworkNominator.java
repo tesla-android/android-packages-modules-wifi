@@ -78,7 +78,11 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
      * Update the Nominator.
      */
     @Override
-    public void update(List<ScanDetail> scanDetails) { }
+    public void update(List<ScanDetail> scanDetails) {
+        // Update the matching profiles into WifiConfigManager, help displaying Passpoint networks
+        // in Wifi Picker
+        mPasspointNetworkNominateHelper.getPasspointNetworkCandidates(scanDetails, false);
+    }
 
     /**
      * Run through all scanDetails and nominate all connectable network as candidates.
@@ -86,9 +90,10 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
      */
     @Override
     public void nominateNetworks(List<ScanDetail> scanDetails,
-                    WifiConfiguration currentNetwork, String currentBssid, boolean connected,
-                    boolean untrustedNetworkAllowed,
-                    @NonNull OnConnectableListener onConnectableListener) {
+                    boolean untrustedNetworkAllowed /* unused */,
+                    boolean oemPaidNetworkAllowed /* unused */,
+                    boolean oemPrivateNetworkAllowed /* unused */,
+            @NonNull OnConnectableListener onConnectableListener) {
         findMatchedSavedNetworks(scanDetails, onConnectableListener);
         findMatchedPasspointNetworks(scanDetails, onConnectableListener);
     }
@@ -101,7 +106,7 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
             // One ScanResult can be associated with more than one network, hence we calculate all
             // the scores and use the highest one as the ScanResult's score.
             WifiConfiguration network =
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
 
             if (network == null) {
                 continue;
@@ -127,6 +132,10 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
                     network.getNetworkSelectionStatus();
             status.setSeenInLastQualifiedNetworkSelection(true);
 
+            if (mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(network)) {
+                localLog("Ignoring non-carrier-merged SSID: " + network.SSID);
+                continue;
+            }
             if (mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network.SSID)) {
                 localLog("Ignoring user disabled SSID: " + network.SSID);
                 continue;
@@ -192,7 +201,7 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
                 ? mWifiCarrierInfoManager.getDefaultDataSimCarrierId() : network.carrierId;
         int subId = mWifiCarrierInfoManager.getMatchingSubId(carrierId);
         // Ignore security type is EAP SIM/AKA/AKA' when SIM is not present.
-        if (!mWifiCarrierInfoManager.isSimPresent(subId)) {
+        if (!mWifiCarrierInfoManager.isSimReady(subId)) {
             localLog("No SIM card is good for Network "
                     + WifiNetworkSelector.toNetworkString(network));
             return false;

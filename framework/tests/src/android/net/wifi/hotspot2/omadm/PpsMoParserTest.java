@@ -27,6 +27,8 @@ import android.net.wifi.hotspot2.pps.UpdateParameter;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import org.junit.Test;
 
 import java.io.BufferedReader;
@@ -113,7 +115,8 @@ public class PpsMoParserTest {
 
         // Subscription parameters.
         config.setSubscriptionCreationTimeInMillis(format.parse("2016-02-01T10:00:00Z").getTime());
-        config.setSubscriptionExpirationTimeInMillis(format.parse("2016-03-01T10:00:00Z").getTime());
+        config.setSubscriptionExpirationTimeInMillis(
+                format.parse("2016-03-01T10:00:00Z").getTime());
         config.setSubscriptionType("Gold");
         config.setUsageLimitDataLimit(921890);
         config.setUsageLimitStartTimeInMillis(format.parse("2016-12-01T10:00:00Z").getTime());
@@ -124,19 +127,16 @@ public class PpsMoParserTest {
         HomeSp homeSp = new HomeSp();
         homeSp.setFriendlyName("Century House");
         homeSp.setFqdn("mi6.co.uk");
-        homeSp.setRoamingConsortiumOis(new long[] {0x112233L, 0x445566L});
+        homeSp.setRoamingConsortiumOis(new long[]{0x112233L, 0x445566L});
         homeSp.setIconUrl("icon.test.com");
         Map<String, Long> homeNetworkIds = new HashMap<>();
         homeNetworkIds.put("TestSSID", 0x12345678L);
         homeNetworkIds.put("NullHESSID", null);
         homeSp.setHomeNetworkIds(homeNetworkIds);
-        homeSp.setMatchAllOis(new long[] {0x11223344});
-        homeSp.setMatchAnyOis(new long[] {0x55667788});
-        homeSp.setOtherHomePartners(new String[] {"other.fqdn.com"});
+        homeSp.setMatchAllOis(new long[]{0x11223344});
+        homeSp.setMatchAnyOis(new long[]{0x55667788});
+        homeSp.setOtherHomePartners(new String[]{"other.fqdn.com"});
         config.setHomeSp(homeSp);
-
-        config.setAaaServerTrustedNames(
-                new String[] {"trusted.fqdn.com", "another-trusted.fqdn.com"});
 
         // Credential configuration.
         Credential credential = new Credential();
@@ -183,7 +183,7 @@ public class PpsMoParserTest {
         policy.setMinHomeUplinkBandwidth(9823);
         policy.setMinRoamingDownlinkBandwidth(9271);
         policy.setMinRoamingUplinkBandwidth(2315);
-        policy.setExcludedSsidList(new String[] {"excludeSSID"});
+        policy.setExcludedSsidList(new String[]{"excludeSSID"});
         Map<Integer, String> requiredProtoPortMap = new HashMap<>();
         requiredProtoPortMap.put(12, "34,92,234");
         policy.setRequiredProtoPortMap(requiredProtoPortMap);
@@ -199,6 +199,16 @@ public class PpsMoParserTest {
         policyUpdate.setTrustRootCertSha256Fingerprint(certFingerprint);
         policy.setPolicyUpdate(policyUpdate);
         config.setPolicy(policy);
+
+        // Extensions
+        // Android
+        config.setAaaServerTrustedNames(
+                new String[]{"trusted.fqdn.com", "another-trusted.fqdn.com"});
+
+        // WBA
+        if (SdkLevel.isAtLeastS()) {
+            config.setDecoratedIdentityPrefix("androidwifi.dev!");
+        }
         return config;
     }
 

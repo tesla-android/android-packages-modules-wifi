@@ -31,6 +31,8 @@ public final class ConcreteCandidate implements WifiCandidates.Candidate {
     private boolean mIsPasspoint;
     private boolean mIsEphemeral;
     private boolean mIsTrusted = true;
+    private boolean mIsOemPaid;
+    private boolean mIsOemPrivate;
     private boolean mCarrierOrPrivileged;
     private boolean mIsMetered;
     private boolean mHasNoInternetAccess;
@@ -57,6 +59,7 @@ public final class ConcreteCandidate implements WifiCandidates.Candidate {
         mIsPasspoint = candidate.isPasspoint();
         mIsEphemeral = candidate.isEphemeral();
         mIsTrusted = candidate.isTrusted();
+        mIsOemPaid = candidate.isOemPaid();
         mCarrierOrPrivileged = candidate.isCarrierOrPrivileged();
         mIsMetered = candidate.isMetered();
         mHasNoInternetAccess = candidate.hasNoInternetAccess();
@@ -134,6 +137,26 @@ public final class ConcreteCandidate implements WifiCandidates.Candidate {
     @Override
     public boolean isTrusted() {
         return mIsTrusted;
+    }
+
+    public ConcreteCandidate setOemPaid(boolean isOemPaid) {
+        mIsOemPaid = isOemPaid;
+        return this;
+    }
+
+    @Override
+    public boolean isOemPaid() {
+        return mIsOemPaid;
+    }
+
+    public ConcreteCandidate setOemPrivate(boolean isOemPrivate) {
+        mIsOemPrivate = isOemPrivate;
+        return this;
+    }
+
+    @Override
+    public boolean isOemPrivate() {
+        return mIsOemPrivate;
     }
 
     public ConcreteCandidate setCarrierOrPrivileged(boolean carrierOrPrivileged) {

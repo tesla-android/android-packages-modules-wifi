@@ -20,10 +20,18 @@ import static android.net.wifi.aware.WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_
 
 import android.annotation.IntRange;
 import android.annotation.NonNull;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
+
+import androidx.annotation.RequiresApi;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -287,7 +295,10 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
 
         /**
          * Create a builder for {@link WifiAwareNetworkSpecifier} used in requests to set up a
-         * Wi-Fi Aware connection with a peer.
+         * Wi-Fi Aware connection with a specific peer.
+         * <p>
+         * To set up a connection to any peer or to multiple peers use
+         * {@link #Builder(PublishDiscoverySession)}.
          *
          * @param discoverySession A Wi-Fi Aware discovery session in whose context the connection
          *                         is created.
@@ -307,6 +318,32 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
             }
             mDiscoverySession = discoverySession;
             mPeerHandle = peerHandle;
+        }
+
+        /**
+         * Create a builder for {@link WifiAwareNetworkSpecifier} used in requests to set up a
+         * Wi-Fi Aware connection. This configuration allows connections to any peers or to
+         * multiple peers (as opposed to only a specific peer with
+         * {@link #Builder(DiscoverySession, PeerHandle)}).
+         * <p>
+         * Multiple connections can be triggered by this configuration and using a single request
+         * via {@link ConnectivityManager#requestNetwork(NetworkRequest, ConnectivityManager.NetworkCallback)}
+         * and similar methods. Each successful connection will be signaled via the standard
+         * Connectivity Manager mechanisms -
+         * {@link ConnectivityManager.NetworkCallback#onAvailable(Network)}.
+         * Calling {@link ConnectivityManager#unregisterNetworkCallback(ConnectivityManager.NetworkCallback)}
+         * will terminate all connections.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        public Builder(@NonNull PublishDiscoverySession publishDiscoverySession) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (publishDiscoverySession == null) {
+                throw new IllegalArgumentException("Non-null publishDiscoverySession required");
+            }
+            mDiscoverySession = publishDiscoverySession;
+            mPeerHandle = null;
         }
 
         /**
@@ -413,9 +450,6 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
             if (mDiscoverySession == null) {
                 throw new IllegalStateException("Null discovery session!?");
             }
-            if (mPeerHandle == null) {
-                throw new IllegalStateException("Null peerHandle!?");
-            }
             if (mPskPassphrase != null & mPmk != null) {
                 throw new IllegalStateException(
                         "Can only specify a Passphrase or a PMK - not both!");
@@ -436,10 +470,12 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                             + "only be specified on a secure link");
                 }
             }
+            int type = mPeerHandle == null
+                    ? WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER :
+                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
 
-            return new WifiAwareNetworkSpecifier(
-                    WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB, role,
-                    mDiscoverySession.mClientId, mDiscoverySession.mSessionId, mPeerHandle.peerId,
+            return new WifiAwareNetworkSpecifier(type, role, mDiscoverySession.mClientId,
+                    mDiscoverySession.mSessionId, mPeerHandle != null ? mPeerHandle.peerId : 0,
                     null, mPmk, mPskPassphrase, mPort, mTransportProtocol);
         }
     }

@@ -17,9 +17,14 @@
 package android.net.wifi.aware;
 
 import android.annotation.IntDef;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -37,6 +42,9 @@ public final class Characteristics implements Parcelable {
     public static final String KEY_MAX_MATCH_FILTER_LENGTH = "key_max_match_filter_length";
     /** @hide */
     public static final String KEY_SUPPORTED_CIPHER_SUITES = "key_supported_cipher_suites";
+    /** @hide */
+    public static final String KEY_IS_INSTANT_COMMUNICATION_MODE_SUPPORTED =
+            "key_is_instant_communication_mode_supported";
 
     private Bundle mCharacteristics = new Bundle();
 
@@ -81,6 +89,19 @@ public final class Characteristics implements Parcelable {
      */
     public int getMaxMatchFilterLength() {
         return mCharacteristics.getInt(KEY_MAX_MATCH_FILTER_LENGTH);
+    }
+
+    /**
+     * Check if instant communication mode is supported by device. The instant communication mode is
+     * defined as per Wi-Fi Alliance (WFA) Wi-Fi Aware specifications version 3.1 Section 12.3.
+     * @return True if supported, false otherwise.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    public boolean isInstantCommunicationModeSupported() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mCharacteristics.getBoolean(KEY_IS_INSTANT_COMMUNICATION_MODE_SUPPORTED);
     }
 
     /** @hide */

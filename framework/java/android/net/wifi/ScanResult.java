@@ -16,6 +16,7 @@
 
 package android.net.wifi;
 
+import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
@@ -26,6 +27,10 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.android.modules.utils.build.SdkLevel;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,6 +85,12 @@ public final class ScanResult implements Parcelable {
      * supported by the access point.
      */
     public String capabilities;
+
+    /**
+     * The interface name on which the scan result was received.
+     * @hide
+     */
+    public String ifaceName;
 
     /**
      * @hide
@@ -219,6 +230,11 @@ public final class ScanResult implements Parcelable {
     public static final int KEY_MGMT_FILS_SHA384 = 16;
     /**
      * @hide
+     * Security key management scheme: any unknown AKM.
+     */
+    public static final int KEY_MGMT_UNKNOWN = 17;
+    /**
+     * @hide
      * No cipher suite.
      */
     @SystemApi
@@ -253,6 +269,30 @@ public final class ScanResult implements Parcelable {
      */
     @SystemApi
     public static final int CIPHER_SMS4 = 5;
+    /**
+     * @hide
+     * Cipher suite: GCMP_128
+     */
+    @SystemApi
+    public static final int CIPHER_GCMP_128 = 6;
+    /**
+     * @hide
+     * Cipher suite: BIP_GMAC_128
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_GMAC_128 = 7;
+    /**
+     * @hide
+     * Cipher suite: BIP_GMAC_256
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_GMAC_256 = 8;
+    /**
+     * @hide
+     * Cipher suite: BIP_CMAC_256
+     */
+    @SystemApi
+    public static final int CIPHER_BIP_CMAC_256 = 9;
 
     /**
      * The detected signal level in dBm, also known as the RSSI.
@@ -314,6 +354,43 @@ public final class ScanResult implements Parcelable {
     public static final int WIFI_STANDARD_11AX = 6;
 
     /**
+     * Wi-Fi 802.11ad
+     */
+    public static final int WIFI_STANDARD_11AD = 7;
+
+    /**
+     * Wi-Fi 2.4 GHz band.
+     */
+    public static final int WIFI_BAND_24_GHZ = WifiScanner.WIFI_BAND_24_GHZ;
+
+    /**
+     * Wi-Fi 5 GHz band.
+     */
+    public static final int WIFI_BAND_5_GHZ = WifiScanner.WIFI_BAND_5_GHZ;
+
+    /**
+     * Wi-Fi 6 GHz band.
+     */
+    public static final int WIFI_BAND_6_GHZ = WifiScanner.WIFI_BAND_6_GHZ;
+
+    /**
+     * Wi-Fi 60 GHz band.
+     */
+    public static final int WIFI_BAND_60_GHZ = WifiScanner.WIFI_BAND_60_GHZ;
+
+    /**
+     * @hide
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"WIFI_BAND_"}, value = {
+            UNSPECIFIED,
+            WIFI_BAND_24_GHZ,
+            WIFI_BAND_5_GHZ,
+            WIFI_BAND_6_GHZ,
+            WIFI_BAND_60_GHZ})
+    public @interface WifiBand {};
+
+    /**
      * AP wifi standard.
      */
     private @WifiStandard int mWifiStandard;
@@ -346,6 +423,8 @@ public final class ScanResult implements Parcelable {
                 return "11ac";
             case WIFI_STANDARD_11AX:
                 return "11ax";
+            case WIFI_STANDARD_11AD:
+                return "11ad";
             case WIFI_STANDARD_UNKNOWN:
                 return "unknown";
         }
@@ -453,7 +532,7 @@ public final class ScanResult implements Parcelable {
 
     /**
      * The approximate distance to the AP in centimeter, if available.  Else
-     * {@link UNSPECIFIED}.
+     * {@link #UNSPECIFIED}.
      * {@hide}
      */
     @UnsupportedAppUsage
@@ -461,7 +540,7 @@ public final class ScanResult implements Parcelable {
 
     /**
      * The standard deviation of the distance to the access point, if available.
-     * Else {@link UNSPECIFIED}.
+     * Else {@link #UNSPECIFIED}.
      * {@hide}
      */
     @UnsupportedAppUsage
@@ -513,16 +592,20 @@ public final class ScanResult implements Parcelable {
     /**
      * Indicates venue name (such as 'San Francisco Airport') published by access point; only
      * available on Passpoint network and if published by access point.
+     * @deprecated - This information is not provided
      */
+    @Deprecated
     public CharSequence venueName;
 
     /**
      * Indicates Passpoint operator name published by access point.
+     * @deprecated - Use {@link WifiInfo#getPasspointProviderFriendlyName()}
      */
+    @Deprecated
     public CharSequence operatorFriendlyName;
 
     /**
-     * {@hide}
+     * The unspecified value.
      */
     public final static int UNSPECIFIED = -1;
 
@@ -556,7 +639,7 @@ public final class ScanResult implements Parcelable {
      * 5 GHz band last channel number
      * @hide
      */
-    public static final int BAND_5_GHZ_LAST_CH_NUM = 173;
+    public static final int BAND_5_GHZ_LAST_CH_NUM = 177;
     /**
      * 5 GHz band frequency of first channel in MHz
      * @hide
@@ -566,7 +649,7 @@ public final class ScanResult implements Parcelable {
      * 5 GHz band frequency of last channel in MHz
      * @hide
      */
-    public static final int BAND_5_GHZ_END_FREQ_MHZ = 5865;
+    public static final int BAND_5_GHZ_END_FREQ_MHZ = 5885;
 
     /**
      * 6 GHz band first channel number
@@ -588,12 +671,45 @@ public final class ScanResult implements Parcelable {
      * @hide
      */
     public static final int BAND_6_GHZ_END_FREQ_MHZ = 7115;
+    /**
+     * The center frequency of the first 6Ghz preferred scanning channel, as defined by
+     * IEEE802.11ax draft 7.0 section 26.17.2.3.3.
+     * @hide
+     */
+    public static final int BAND_6_GHZ_PSC_START_MHZ = 5975;
+    /**
+     * The number of MHz to increment in order to get the next 6Ghz preferred scanning channel
+     * as defined by IEEE802.11ax draft 7.0 section 26.17.2.3.3.
+     * @hide
+     */
+    public static final int BAND_6_GHZ_PSC_STEP_SIZE_MHZ = 80;
 
     /**
      * 6 GHz band operating class 136 channel 2 center frequency in MHz
      * @hide
      */
     public static final int BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ = 5935;
+
+    /**
+     * 60 GHz band first channel number
+     * @hide
+     */
+    public static final int BAND_60_GHZ_FIRST_CH_NUM = 1;
+    /**
+     * 60 GHz band last channel number
+     * @hide
+     */
+    public static final int BAND_60_GHZ_LAST_CH_NUM = 6;
+    /**
+     * 60 GHz band frequency of first channel in MHz
+     * @hide
+     */
+    public static final int BAND_60_GHZ_START_FREQ_MHZ = 58320;
+    /**
+     * 60 GHz band frequency of last channel in MHz
+     * @hide
+     */
+    public static final int BAND_60_GHZ_END_FREQ_MHZ = 70200;
 
     /**
      * Utility function to check if a frequency within 2.4 GHz band
@@ -632,15 +748,46 @@ public final class ScanResult implements Parcelable {
     }
 
     /**
-     * Utility function to convert channel number/band to frequency in MHz
-     * @param channel number to convert
-     * @param band of channel to convert
-     * @return center frequency in Mhz of the channel, {@link UNSPECIFIED} if no match
+     * Utility function to check if a frequency is 6Ghz PSC channel.
+     * @param freqMhz
+     * @return true if the frequency is 6GHz PSC, false otherwise
      *
      * @hide
      */
-    public static int convertChannelToFrequencyMhz(int channel, @WifiScanner.WifiBand int band) {
-        if (band == WifiScanner.WIFI_BAND_24_GHZ) {
+    public static boolean is6GHzPsc(int freqMhz) {
+        if (!ScanResult.is6GHz(freqMhz)) {
+            return false;
+        }
+        return (freqMhz - BAND_6_GHZ_PSC_START_MHZ) % BAND_6_GHZ_PSC_STEP_SIZE_MHZ == 0;
+    }
+
+    /**
+     * Utility function to check if a frequency within 60 GHz band
+     * @param freqMhz
+     * @return true if within 60GHz, false otherwise
+     *
+     * @hide
+     */
+    public static boolean is60GHz(int freqMhz) {
+        return freqMhz >= BAND_60_GHZ_START_FREQ_MHZ && freqMhz <= BAND_60_GHZ_END_FREQ_MHZ;
+    }
+
+    /**
+     * Utility function to convert Wi-Fi channel number to frequency in MHz.
+     *
+     * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+     * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
+     *
+     * See also {@link #convertFrequencyMhzToChannelIfSupported(int)}.
+     *
+     * @param channel number to convert.
+     * @param band of channel to convert. One of the following bands:
+     *        {@link #WIFI_BAND_24_GHZ},  {@link #WIFI_BAND_5_GHZ},
+     *        {@link #WIFI_BAND_6_GHZ},  {@link #WIFI_BAND_60_GHZ}.
+     * @return center frequency in Mhz of the channel, {@link #UNSPECIFIED} if no match
+     */
+    public static int convertChannelToFrequencyMhzIfSupported(int channel, @WifiBand int band) {
+        if (band == WIFI_BAND_24_GHZ) {
             // Special case
             if (channel == 14) {
                 return 2484;
@@ -650,14 +797,14 @@ public final class ScanResult implements Parcelable {
                 return UNSPECIFIED;
             }
         }
-        if (band == WifiScanner.WIFI_BAND_5_GHZ) {
+        if (band == WIFI_BAND_5_GHZ) {
             if (channel >= BAND_5_GHZ_FIRST_CH_NUM && channel <= BAND_5_GHZ_LAST_CH_NUM) {
                 return ((channel - BAND_5_GHZ_FIRST_CH_NUM) * 5) + BAND_5_GHZ_START_FREQ_MHZ;
             } else {
                 return UNSPECIFIED;
             }
         }
-        if (band == WifiScanner.WIFI_BAND_6_GHZ) {
+        if (band == WIFI_BAND_6_GHZ) {
             if (channel >= BAND_6_GHZ_FIRST_CH_NUM && channel <= BAND_6_GHZ_LAST_CH_NUM) {
                 if (channel == 2) {
                     return BAND_6_GHZ_OP_CLASS_136_CH_2_FREQ_MHZ;
@@ -667,17 +814,25 @@ public final class ScanResult implements Parcelable {
                 return UNSPECIFIED;
             }
         }
+        if (band == WIFI_BAND_60_GHZ) {
+            if (channel >= BAND_60_GHZ_FIRST_CH_NUM && channel <= BAND_60_GHZ_LAST_CH_NUM) {
+                return ((channel - BAND_60_GHZ_FIRST_CH_NUM) * 2160) + BAND_60_GHZ_START_FREQ_MHZ;
+            } else {
+                return UNSPECIFIED;
+            }
+        }
         return UNSPECIFIED;
     }
 
     /**
-     * Utility function to convert frequency in MHz to channel number
-     * @param freqMhz frequency in MHz
-     * @return channel number associated with given frequency, {@link UNSPECIFIED} if no match
+     * Utility function to convert frequency in MHz to channel number.
      *
-     * @hide
+     * See also {@link #convertChannelToFrequencyMhzIfSupported(int, int)}.
+     *
+     * @param freqMhz frequency in MHz
+     * @return channel number associated with given frequency, {@link #UNSPECIFIED} if no match
      */
-    public static int convertFrequencyMhzToChannel(int freqMhz) {
+    public static int convertFrequencyMhzToChannelIfSupported(int freqMhz) {
         // Special case
         if (freqMhz == 2484) {
             return 14;
@@ -690,6 +845,8 @@ public final class ScanResult implements Parcelable {
                 return 2;
             }
             return ((freqMhz - BAND_6_GHZ_START_FREQ_MHZ) / 5) + BAND_6_GHZ_FIRST_CH_NUM;
+        } else if (is60GHz(freqMhz)) {
+            return ((freqMhz - BAND_60_GHZ_START_FREQ_MHZ) / 2160) + BAND_60_GHZ_FIRST_CH_NUM;
         }
 
         return UNSPECIFIED;
@@ -717,6 +874,20 @@ public final class ScanResult implements Parcelable {
     }
 
     /**
+     * @hide
+     */
+    public boolean is6GhzPsc() {
+        return ScanResult.is6GHzPsc(frequency);
+    }
+
+    /**
+     * @hide
+     */
+    public boolean is60GHz() {
+        return ScanResult.is60GHz(frequency);
+    }
+
+    /**
      *  @hide
      * anqp lines from supplicant BSS response
      */
@@ -726,7 +897,7 @@ public final class ScanResult implements Parcelable {
     /**
      * information elements from beacon.
      */
-    public static class InformationElement {
+    public static class InformationElement implements Parcelable {
         /** @hide */
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
         public static final int EID_SSID = 0;
@@ -793,6 +964,13 @@ public final class ScanResult implements Parcelable {
         public InformationElement() {
         }
 
+        /** @hide */
+        public InformationElement(int id, int idExt, byte[] bytes) {
+            this.id = id;
+            this.idExt = idExt;
+            this.bytes = bytes.clone();
+        }
+
         public InformationElement(@NonNull InformationElement rhs) {
             this.id = rhs.id;
             this.idExt = rhs.idExt;
@@ -821,6 +999,57 @@ public final class ScanResult implements Parcelable {
         @NonNull
         public ByteBuffer getBytes() {
             return ByteBuffer.wrap(bytes).asReadOnlyBuffer();
+        }
+
+        /** Implement the Parcelable interface {@hide} */
+        public int describeContents() {
+            return 0;
+        }
+
+        /** Implement the Parcelable interface {@hide} */
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeInt(id);
+            dest.writeInt(idExt);
+            dest.writeByteArray(bytes);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @NonNull Creator<InformationElement> CREATOR =
+                new Creator<InformationElement>() {
+                    public InformationElement createFromParcel(Parcel in) {
+                        InformationElement informationElement = new InformationElement();
+                        informationElement.id = in.readInt();
+                        informationElement.idExt = in.readInt();
+                        informationElement.bytes = in.createByteArray();
+                        return informationElement;
+                    }
+
+                    public InformationElement[] newArray(int size) {
+                        return new InformationElement[size];
+                    }
+                };
+
+        @Override
+        public boolean equals(Object that) {
+            if (this == that) return true;
+
+            // Potential API behavior change, so don't change behavior on older devices.
+            if (!SdkLevel.isAtLeastS()) return false;
+
+            if (!(that instanceof InformationElement)) return false;
+
+            InformationElement thatIE = (InformationElement) that;
+            return id == thatIE.id
+                    && idExt == thatIE.idExt
+                    && Arrays.equals(bytes, thatIE.bytes);
+        }
+
+        @Override
+        public int hashCode() {
+            // Potential API behavior change, so don't change behavior on older devices.
+            if (!SdkLevel.isAtLeastS()) return System.identityHashCode(this);
+
+            return Objects.hash(id, idExt, Arrays.hashCode(bytes));
         }
     }
 
@@ -955,6 +1184,7 @@ public final class ScanResult implements Parcelable {
             flags = source.flags;
             radioChainInfos = source.radioChainInfos;
             this.mWifiStandard = source.mWifiStandard;
+            this.ifaceName = source.ifaceName;
         }
     }
 
@@ -993,6 +1223,7 @@ public final class ScanResult implements Parcelable {
         sb.append(", 80211mcResponder: ");
         sb.append(((flags & FLAG_80211mc_RESPONDER) != 0) ? "is supported" : "is not supported");
         sb.append(", Radio Chain Infos: ").append(Arrays.toString(radioChainInfos));
+        sb.append(", interface name: ").append(ifaceName);
         return sb.toString();
     }
 
@@ -1029,18 +1260,7 @@ public final class ScanResult implements Parcelable {
         dest.writeString((venueName != null) ? venueName.toString() : "");
         dest.writeString((operatorFriendlyName != null) ? operatorFriendlyName.toString() : "");
         dest.writeLong(this.flags);
-
-        if (informationElements != null) {
-            dest.writeInt(informationElements.length);
-            for (int i = 0; i < informationElements.length; i++) {
-                dest.writeInt(informationElements[i].id);
-                dest.writeInt(informationElements[i].idExt);
-                dest.writeInt(informationElements[i].bytes.length);
-                dest.writeByteArray(informationElements[i].bytes);
-            }
-        } else {
-            dest.writeInt(0);
-        }
+        dest.writeTypedArray(informationElements, flags);
 
         if (anqpLines != null) {
             dest.writeInt(anqpLines.size());
@@ -1072,6 +1292,7 @@ public final class ScanResult implements Parcelable {
         } else {
             dest.writeInt(0);
         }
+        dest.writeString((ifaceName != null) ? ifaceName.toString() : "");
     }
 
     /** Implement the Parcelable interface */
@@ -1108,20 +1329,9 @@ public final class ScanResult implements Parcelable {
                 sr.venueName = in.readString();
                 sr.operatorFriendlyName = in.readString();
                 sr.flags = in.readLong();
-                int n = in.readInt();
-                if (n != 0) {
-                    sr.informationElements = new InformationElement[n];
-                    for (int i = 0; i < n; i++) {
-                        sr.informationElements[i] = new InformationElement();
-                        sr.informationElements[i].id = in.readInt();
-                        sr.informationElements[i].idExt = in.readInt();
-                        int len = in.readInt();
-                        sr.informationElements[i].bytes = new byte[len];
-                        in.readByteArray(sr.informationElements[i].bytes);
-                    }
-                }
+                sr.informationElements = in.createTypedArray(InformationElement.CREATOR);
 
-                n = in.readInt();
+                int n = in.readInt();
                 if (n != 0) {
                     sr.anqpLines = new ArrayList<String>();
                     for (int i = 0; i < n; i++) {
@@ -1150,6 +1360,7 @@ public final class ScanResult implements Parcelable {
                         sr.radioChainInfos[i].level = in.readInt();
                     }
                 }
+                sr.ifaceName = in.readString();
                 return sr;
             }
 

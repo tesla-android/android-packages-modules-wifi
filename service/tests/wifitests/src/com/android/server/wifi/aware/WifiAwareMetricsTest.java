@@ -16,6 +16,9 @@
 
 package com.android.server.wifi.aware;
 
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
+import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER;
+
 import static com.android.server.wifi.aware.WifiAwareMetrics.addNanHalStatusToHistogram;
 import static com.android.server.wifi.aware.WifiAwareMetrics.histogramToProtoArray;
 
@@ -629,6 +632,21 @@ public class WifiAwareMetricsTest extends WifiBaseTest {
                 WifiMetricsProto.WifiAwareLog.UNKNOWN_HAL_STATUS, 3);
     }
 
+    @Test
+    public void testNdpRequestTypeHistogram() {
+        mDut.recordNdpRequestType(NETWORK_SPECIFIER_TYPE_IB);
+        mDut.recordNdpRequestType(NETWORK_SPECIFIER_TYPE_IB);
+        mDut.recordNdpRequestType(NETWORK_SPECIFIER_TYPE_IB_ANY_PEER);
+
+        WifiMetricsProto.WifiAwareLog log;
+        log = mDut.consolidateProto();
+
+        validateNdpRequestProtoHistBucket("", log.histogramNdpRequestType[0],
+                WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_IB, 2);
+        validateNdpRequestProtoHistBucket("", log.histogramNdpRequestType[1],
+                WifiMetricsProto.WifiAwareLog.NETWORK_SPECIFIER_TYPE_IB_ANY_PEER, 1);
+    }
+
     // utilities
 
     /**
@@ -668,6 +686,13 @@ public class WifiAwareMetricsTest extends WifiBaseTest {
     private void validateNanStatusProtoHistBucket(String logPrefix,
             WifiMetricsProto.WifiAwareLog.NanStatusHistogramBucket bucket, int type, int count) {
         collector.checkThat(logPrefix + ": type", bucket.nanStatusType, equalTo(type));
+        collector.checkThat(logPrefix + ": count", bucket.count, equalTo(count));
+    }
+
+    private void validateNdpRequestProtoHistBucket(String logPrefix,
+            WifiMetricsProto.WifiAwareLog.NdpRequestTypeHistogramBucket bucket, int type,
+            int count) {
+        collector.checkThat(logPrefix + ": type", bucket.ndpRequestType, equalTo(type));
         collector.checkThat(logPrefix + ": count", bucket.count, equalTo(count));
     }
 

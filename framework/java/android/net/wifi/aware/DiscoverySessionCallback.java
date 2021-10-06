@@ -189,4 +189,20 @@ public class DiscoverySessionCallback {
     public void onMessageReceived(PeerHandle peerHandle, byte[] message) {
         /* empty */
     }
+
+    /**
+     * Called when the discovered service is not available. All further operations on this
+     * discovery session will fail. If the service is available again,
+     * {@link #onServiceDiscovered(PeerHandle, byte[], List)} or
+     * {@link #onServiceDiscoveredWithinRange(PeerHandle, byte[], List, int)} will be called.
+     *
+     * @param peerHandle An opaque handle to the peer matching our discovery operation.
+     * @param reason Discovered service lost reason code. One of
+     *               {@link WifiAwareManager#WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE},
+     *               {@link WifiAwareManager#WIFI_AWARE_DISCOVERY_LOST_REASON_UNKNOWN
+     */
+    public void onServiceLost(@NonNull PeerHandle peerHandle,
+            @WifiAwareManager.DiscoveryLostReasonCode int reason) {
+        /* empty */
+    }
 }

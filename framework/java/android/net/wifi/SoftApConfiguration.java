@@ -22,17 +22,21 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.net.MacAddress;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.SparseIntArray;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.Preconditions;
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -87,9 +91,21 @@ public final class SoftApConfiguration implements Parcelable {
     public static final int BAND_6GHZ = 1 << 2;
 
     /**
-     * Device is allowed to choose the optimal band (2Ghz, 5Ghz, 6Ghz) based on device capability,
+     * 60GHz band.
+     * @hide
+     */
+    @SystemApi
+    public static final int BAND_60GHZ = 1 << 3;
+
+    /**
+     * Device is allowed to choose the optimal band (2GHz, 5GHz, 6GHz) based on device capability,
      * operating country code and current radio conditions.
      * @hide
+     *
+     * @deprecated This is no longer supported. The value is fixed at
+     * (BAND_2GHZ | BAND_5GHZ | BAND_6GHZ) even if a new band is supported in the future, for
+     * instance {@code BAND_60GHZ}. The bands are a bit mask - use any combination of
+     * {@code BAND_}, for instance {@code BAND_2GHZ | BAND_5GHZ}.
      */
     @SystemApi
     public static final int BAND_ANY = BAND_2GHZ | BAND_5GHZ | BAND_6GHZ;
@@ -100,11 +116,19 @@ public final class SoftApConfiguration implements Parcelable {
             BAND_2GHZ,
             BAND_5GHZ,
             BAND_6GHZ,
+            BAND_60GHZ,
     })
     public @interface BandType {}
 
+    /**
+     * All of the supported band types.
+     * @hide
+     */
+    public static int[] BAND_TYPES = {BAND_2GHZ, BAND_5GHZ, BAND_6GHZ, BAND_60GHZ};
+
     private static boolean isBandValid(@BandType int band) {
-        return ((band != 0) && ((band & ~BAND_ANY) == 0));
+        int bandAny = BAND_2GHZ | BAND_5GHZ | BAND_6GHZ | BAND_60GHZ;
+        return ((band != 0) && ((band & ~bandAny) == 0));
     }
 
     private static final int MIN_CH_2G_BAND = 1;
@@ -113,6 +137,8 @@ public final class SoftApConfiguration implements Parcelable {
     private static final int MAX_CH_5G_BAND = 196;
     private static final int MIN_CH_6G_BAND = 1;
     private static final int MAX_CH_6G_BAND = 253;
+    private static final int MIN_CH_60G_BAND = 1;
+    private static final int MAX_CH_60G_BAND = 6;
 
 
 
@@ -135,6 +161,13 @@ public final class SoftApConfiguration implements Parcelable {
                     return false;
                 }
                 break;
+
+            case BAND_60GHZ:
+                if (channel < MIN_CH_60G_BAND || channel >  MAX_CH_60G_BAND) {
+                    return false;
+                }
+                break;
+
             default:
                 return false;
         }
@@ -164,16 +197,12 @@ public final class SoftApConfiguration implements Parcelable {
     private final boolean mHiddenSsid;
 
     /**
-     * The operating band of the AP.
-     * One or combination of the following band type:
-     * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, {@link #BAND_6GHZ}.
+     * The operating channels of the dual APs.
+     *
+     * The SparseIntArray that consists the band and the channel of matching the band.
      */
-    private final @BandType int mBand;
-
-    /**
-     * The operating channel of the AP.
-     */
-    private final int mChannel;
+    @NonNull
+    private final SparseIntArray mChannels;
 
     /**
      * The maximim allowed number of clients that can associate to the AP.
@@ -217,6 +246,49 @@ public final class SoftApConfiguration implements Parcelable {
      */
     private final long mShutdownTimeoutMillis;
 
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(prefix = {"RANDOMIZATION_"}, value = {
+            RANDOMIZATION_NONE,
+            RANDOMIZATION_PERSISTENT})
+    public @interface MacRandomizationSetting {}
+
+    /**
+     * Use factory MAC as BSSID for the AP
+     * @hide
+     */
+    @SystemApi
+    public static final int RANDOMIZATION_NONE = 0;
+    /**
+     * Generate a randomized MAC as BSSID for the AP
+     * @hide
+     */
+    @SystemApi
+    public static final int RANDOMIZATION_PERSISTENT = 1;
+
+    /**
+     * Level of MAC randomization for the AP BSSID.
+     */
+    @MacRandomizationSetting
+    private int mMacRandomizationSetting;
+
+
+    /**
+     * Whether opportunistic shutdown of an instance in bridged AP is enabled or not.
+     */
+    private boolean mBridgedModeOpportunisticShutdownEnabled;
+
+    /**
+     * Whether 802.11ax AP is enabled or not.
+     */
+    private boolean mIeee80211axEnabled;
+
+    /**
+     * Whether the current configuration is configured by user or not.
+     */
+    private boolean mIsUserConfiguration;
+
+
     /**
      * THe definition of security type OPEN.
      */
@@ -249,16 +321,22 @@ public final class SoftApConfiguration implements Parcelable {
 
     /** Private constructor for Builder and Parcelable implementation. */
     private SoftApConfiguration(@Nullable String ssid, @Nullable MacAddress bssid,
-            @Nullable String passphrase, boolean hiddenSsid, @BandType int band, int channel,
+            @Nullable String passphrase, boolean hiddenSsid, @NonNull SparseIntArray channels,
             @SecurityType int securityType, int maxNumberOfClients, boolean shutdownTimeoutEnabled,
             long shutdownTimeoutMillis, boolean clientControlByUser,
-            @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList) {
+            @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
+            int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
+            boolean ieee80211axEnabled, boolean isUserConfiguration) {
         mSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
         mHiddenSsid = hiddenSsid;
-        mBand = band;
-        mChannel = channel;
+        if (channels.size() != 0) {
+            mChannels = channels.clone();
+        } else {
+            mChannels = new SparseIntArray(1);
+            mChannels.put(BAND_2GHZ, 0);
+        }
         mSecurityType = securityType;
         mMaxNumberOfClients = maxNumberOfClients;
         mAutoShutdownEnabled = shutdownTimeoutEnabled;
@@ -266,6 +344,10 @@ public final class SoftApConfiguration implements Parcelable {
         mClientControlByUser = clientControlByUser;
         mBlockedClientList = new ArrayList<>(blockedList);
         mAllowedClientList = new ArrayList<>(allowedList);
+        mMacRandomizationSetting = macRandomizationSetting;
+        mBridgedModeOpportunisticShutdownEnabled = bridgedModeOpportunisticShutdownEnabled;
+        mIeee80211axEnabled = ieee80211axEnabled;
+        mIsUserConfiguration = isUserConfiguration;
     }
 
     @Override
@@ -281,42 +363,52 @@ public final class SoftApConfiguration implements Parcelable {
                 && Objects.equals(mBssid, other.mBssid)
                 && Objects.equals(mPassphrase, other.mPassphrase)
                 && mHiddenSsid == other.mHiddenSsid
-                && mBand == other.mBand
-                && mChannel == other.mChannel
+                && mChannels.toString().equals(other.mChannels.toString())
                 && mSecurityType == other.mSecurityType
                 && mMaxNumberOfClients == other.mMaxNumberOfClients
                 && mAutoShutdownEnabled == other.mAutoShutdownEnabled
                 && mShutdownTimeoutMillis == other.mShutdownTimeoutMillis
                 && mClientControlByUser == other.mClientControlByUser
                 && Objects.equals(mBlockedClientList, other.mBlockedClientList)
-                && Objects.equals(mAllowedClientList, other.mAllowedClientList);
+                && Objects.equals(mAllowedClientList, other.mAllowedClientList)
+                && mMacRandomizationSetting == other.mMacRandomizationSetting
+                && mBridgedModeOpportunisticShutdownEnabled
+                == other.mBridgedModeOpportunisticShutdownEnabled
+                && mIeee80211axEnabled == other.mIeee80211axEnabled
+                && mIsUserConfiguration == other.mIsUserConfiguration;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(mSsid, mBssid, mPassphrase, mHiddenSsid,
-                mBand, mChannel, mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
+                mChannels.toString(), mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
-                mAllowedClientList);
+                mAllowedClientList, mMacRandomizationSetting,
+                mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
+                mIsUserConfiguration);
     }
 
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
-        sbuf.append("ssid=").append(mSsid);
-        if (mBssid != null) sbuf.append(" \n bssid=").append(mBssid.toString());
-        sbuf.append(" \n Passphrase =").append(
+        sbuf.append("ssid = ").append(mSsid);
+        if (mBssid != null) sbuf.append(" \n bssid = ").append(mBssid.toString());
+        sbuf.append(" \n Passphrase = ").append(
                 TextUtils.isEmpty(mPassphrase) ? "<empty>" : "<non-empty>");
-        sbuf.append(" \n HiddenSsid =").append(mHiddenSsid);
-        sbuf.append(" \n Band =").append(mBand);
-        sbuf.append(" \n Channel =").append(mChannel);
-        sbuf.append(" \n SecurityType=").append(getSecurityType());
-        sbuf.append(" \n MaxClient=").append(mMaxNumberOfClients);
-        sbuf.append(" \n AutoShutdownEnabled=").append(mAutoShutdownEnabled);
-        sbuf.append(" \n ShutdownTimeoutMillis=").append(mShutdownTimeoutMillis);
-        sbuf.append(" \n ClientControlByUser=").append(mClientControlByUser);
-        sbuf.append(" \n BlockedClientList=").append(mBlockedClientList);
-        sbuf.append(" \n AllowedClientList=").append(mAllowedClientList);
+        sbuf.append(" \n HiddenSsid = ").append(mHiddenSsid);
+        sbuf.append(" \n Channels = ").append(mChannels);
+        sbuf.append(" \n SecurityType = ").append(getSecurityType());
+        sbuf.append(" \n MaxClient = ").append(mMaxNumberOfClients);
+        sbuf.append(" \n AutoShutdownEnabled = ").append(mAutoShutdownEnabled);
+        sbuf.append(" \n ShutdownTimeoutMillis = ").append(mShutdownTimeoutMillis);
+        sbuf.append(" \n ClientControlByUser = ").append(mClientControlByUser);
+        sbuf.append(" \n BlockedClientList = ").append(mBlockedClientList);
+        sbuf.append(" \n AllowedClientList= ").append(mAllowedClientList);
+        sbuf.append(" \n MacRandomizationSetting = ").append(mMacRandomizationSetting);
+        sbuf.append(" \n BridgedModeInstanceOpportunisticEnabled = ")
+                .append(mBridgedModeOpportunisticShutdownEnabled);
+        sbuf.append(" \n Ieee80211axEnabled = ").append(mIeee80211axEnabled);
+        sbuf.append(" \n isUserConfiguration = ").append(mIsUserConfiguration);
         return sbuf.toString();
     }
 
@@ -326,8 +418,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeParcelable(mBssid, flags);
         dest.writeString(mPassphrase);
         dest.writeBoolean(mHiddenSsid);
-        dest.writeInt(mBand);
-        dest.writeInt(mChannel);
+        writeSparseIntArray(dest, mChannels);
         dest.writeInt(mSecurityType);
         dest.writeInt(mMaxNumberOfClients);
         dest.writeBoolean(mAutoShutdownEnabled);
@@ -335,7 +426,47 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeBoolean(mClientControlByUser);
         dest.writeTypedList(mBlockedClientList);
         dest.writeTypedList(mAllowedClientList);
+        dest.writeInt(mMacRandomizationSetting);
+        dest.writeBoolean(mBridgedModeOpportunisticShutdownEnabled);
+        dest.writeBoolean(mIeee80211axEnabled);
+        dest.writeBoolean(mIsUserConfiguration);
     }
+
+    /* Reference from frameworks/base/core/java/android/os/Parcel.java */
+    private static void writeSparseIntArray(@NonNull Parcel dest,
+            @Nullable SparseIntArray val) {
+        if (val == null) {
+            dest.writeInt(-1);
+            return;
+        }
+        int n = val.size();
+        dest.writeInt(n);
+        int i = 0;
+        while (i < n) {
+            dest.writeInt(val.keyAt(i));
+            dest.writeInt(val.valueAt(i));
+            i++;
+        }
+    }
+
+
+    /* Reference from frameworks/base/core/java/android/os/Parcel.java */
+    @NonNull
+    private static SparseIntArray readSparseIntArray(@NonNull Parcel in) {
+        int n = in.readInt();
+        if (n < 0) {
+            return new SparseIntArray();
+        }
+        SparseIntArray sa = new SparseIntArray(n);
+        while (n > 0) {
+            int key = in.readInt();
+            int value = in.readInt();
+            sa.append(key, value);
+            n--;
+        }
+        return sa;
+    }
+
 
     @Override
     public int describeContents() {
@@ -349,10 +480,11 @@ public final class SoftApConfiguration implements Parcelable {
             return new SoftApConfiguration(
                     in.readString(),
                     in.readParcelable(MacAddress.class.getClassLoader()),
-                    in.readString(), in.readBoolean(), in.readInt(), in.readInt(), in.readInt(),
+                    in.readString(), in.readBoolean(), readSparseIntArray(in), in.readInt(),
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
                     in.createTypedArrayList(MacAddress.CREATOR),
-                    in.createTypedArrayList(MacAddress.CREATOR));
+                    in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
+                    in.readBoolean(), in.readBoolean());
         }
 
         @Override
@@ -363,7 +495,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     /**
      * Return String set to be the SSID for the AP.
-     * {@link Builder#setSsid(String)}.
+     * See also {@link Builder#setSsid(String)}.
      */
     @Nullable
     public String getSsid() {
@@ -372,7 +504,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     /**
      * Returns MAC address set to be BSSID for the AP.
-     * {@link Builder#setBssid(MacAddress)}.
+     * See also {@link Builder#setBssid(MacAddress)}.
      */
     @Nullable
     public MacAddress getBssid() {
@@ -381,7 +513,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     /**
      * Returns String set to be passphrase for current AP.
-     * {@link Builder#setPassphrase(String, int)}.
+     * See also {@link Builder#setPassphrase(String, int)}.
      */
     @Nullable
     public String getPassphrase() {
@@ -391,7 +523,7 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns Boolean set to be indicate hidden (true: doesn't broadcast its SSID) or
      * not (false: broadcasts its SSID) for the AP.
-     * {@link Builder#setHiddenSsid(boolean)}.
+     * See also {@link Builder#setHiddenSsid(boolean)}.
      */
     public boolean isHiddenSsid() {
         return mHiddenSsid;
@@ -400,27 +532,80 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns band type set to be the band for the AP.
      *
-     * One or combination of the following band type:
-     * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, {@link #BAND_6GHZ}.
+     * One or combination of {@code BAND_}, for instance
+     * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, or {@code BAND_2GHZ | BAND_5GHZ}.
      *
-     * {@link Builder#setBand(int)}.
+     * Note: Returns the lowest band when more than one band is set.
+     * Use {@link #getChannels()} to get dual bands setting.
+     *
+     * See also {@link Builder#setBand(int)}.
+     *
+     * @deprecated This API is deprecated. Use {@link #getChannels()} instead.
+     * @hide
+     */
+    @Deprecated
+    @SystemApi
+    public @BandType int getBand() {
+        return mChannels.keyAt(0);
+    }
+
+    /**
+     * Returns a sorted array in ascending order that consists of the configured band types
+     * for the APs.
+     *
+     * The band type is one or combination of {@code BAND_}, for instance
+     * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, or {@code BAND_2GHZ | BAND_5GHZ}.
+     *
+     * Note: return array may only include one band when current setting is single AP mode.
+     * See also {@link Builder#setBands(int[])}.
      *
      * @hide
      */
-    @SystemApi
-    public @BandType int getBand() {
-        return mBand;
+    public @NonNull int[] getBands() {
+        int[] bands = new int[mChannels.size()];
+        for (int i = 0; i < bands.length; i++) {
+            bands[i] = mChannels.keyAt(i);
+        }
+        return bands;
     }
 
     /**
      * Returns Integer set to be the channel for the AP.
-     * {@link Builder#setChannel(int)}.
+     *
+     * Note: Returns the channel which associated to the lowest band if more than one channel
+     * is set. Use {@link Builder#getChannels()} to get dual channel setting.
+     * See also {@link Builder#setChannel(int, int)}.
+     *
+     * @deprecated This API is deprecated. Use {@link #getChannels()} instead.
+     * @hide
+     */
+    @Deprecated
+    @SystemApi
+    public int getChannel() {
+        return mChannels.valueAt(0);
+    }
+
+
+    /**
+     * Returns SparseIntArray (key: {@code BandType} , value: channel) that consists of
+     * the configured bands and channels for the AP(s).
+     *
+     * The returned channel value is Wi-Fi channel numbering.
+     * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+     * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
+     *
+     * Note: return array may only include one channel when current setting is single AP mode.
+     * See also {@link Builder#setChannels(SparseIntArray)}.
      *
      * @hide
      */
+    @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
-    public int getChannel() {
-        return mChannel;
+    public @NonNull SparseIntArray getChannels() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return mChannels.clone();
     }
 
     /**
@@ -438,7 +623,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     /**
      * Returns the maximum number of clients that can associate to the AP.
-     * {@link Builder#setMaxNumberOfClients(int)}.
+     * See also {@link Builder#setMaxNumberOfClients(int)}.
      *
      * @hide
      */
@@ -450,7 +635,7 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns whether auto shutdown is enabled or not.
      * The Soft AP will shutdown when there are no devices associated to it for
-     * the timeout duration. See {@link Builder#setAutoShutdownEnabled(boolean)}.
+     * the timeout duration. See also {@link Builder#setAutoShutdownEnabled(boolean)}.
      *
      * @hide
      */
@@ -462,7 +647,7 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns the shutdown timeout in milliseconds.
      * The Soft AP will shutdown when there are no devices associated to it for
-     * the timeout duration. See {@link Builder#setShutdownTimeoutMillis(long)}.
+     * the timeout duration. See also {@link Builder#setShutdownTimeoutMillis(long)}.
      *
      * @hide
      */
@@ -474,7 +659,7 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * Returns a flag indicating whether clients need to be pre-approved by the user.
      * (true: authorization required) or not (false: not required).
-     * {@link Builder#setClientControlByUserEnabled(Boolean)}.
+     * See also {@link Builder#setClientControlByUserEnabled(Boolean)}.
      *
      * @hide
      */
@@ -509,6 +694,103 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns the level of MAC randomization for the AP BSSID.
+     * See also {@link Builder#setMacRandomizationSetting(int)}.
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @MacRandomizationSetting
+    public int getMacRandomizationSetting() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return getMacRandomizationSettingInternal();
+    }
+
+    /**
+     * @hide
+     */
+    @MacRandomizationSetting
+    public int getMacRandomizationSettingInternal() {
+        return mMacRandomizationSetting;
+    }
+
+    /**
+     * Returns whether opportunistic shutdown of an instance in bridged AP is enabled or not.
+     *
+     * See also {@link Builder#setBridgedModeOpportunisticShutdownEnabled(boolean}}
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    public boolean isBridgedModeOpportunisticShutdownEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return isBridgedModeOpportunisticShutdownEnabledInternal();
+    }
+
+    /**
+     * @see #isBridgedModeOpportunisticShutdownEnabled()
+     * @hide
+     */
+    public boolean isBridgedModeOpportunisticShutdownEnabledInternal() {
+        return mBridgedModeOpportunisticShutdownEnabled;
+    }
+
+    /**
+     * @see #isIeee80211axEnabled()
+     * @hide
+     */
+    public boolean isIeee80211axEnabledInternal() {
+        return mIeee80211axEnabled;
+    }
+
+    /**
+     * Returns whether or not 802.11ax is enabled on the SoftAP.
+     * This is an indication that if the device support 802.11ax AP then to enable or disable
+     * that feature. If the device does not support 802.11ax AP then this flag is ignored.
+     * See also {@link Builder#setIeee80211axEnabled(boolean}}
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    public boolean isIeee80211axEnabled() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return isIeee80211axEnabledInternal();
+    }
+
+    /**
+     * Returns whether or not the {@link SoftApConfiguration} was configured by the user
+     * (as opposed to the default system configuration).
+     * <p>
+     * The {@link SoftApConfiguration} is considered user edited once the
+     * {@link WifiManager#setSoftApConfiguration(SoftApConfiguration)} is called
+     * - whether or not that configuration is the same as the default system configuration!
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    public boolean isUserConfiguration() {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        return isUserConfigurationInternal();
+    }
+
+    /**
+     * @hide
+     */
+    public boolean isUserConfigurationInternal() {
+        return mIsUserConfiguration;
+    }
+
+    /**
      * Returns a {@link WifiConfiguration} representation of this {@link SoftApConfiguration}.
      * Note that SoftApConfiguration may contain configuration which is cannot be represented
      * by the legacy WifiConfiguration, in such cases a null will be returned.
@@ -527,7 +809,7 @@ public final class SoftApConfiguration implements Parcelable {
         wifiConfig.SSID = mSsid;
         wifiConfig.preSharedKey = mPassphrase;
         wifiConfig.hiddenSSID = mHiddenSsid;
-        wifiConfig.apChannel = mChannel;
+        wifiConfig.apChannel = getChannel();
         switch (mSecurityType) {
             case SECURITY_TYPE_OPEN:
                 wifiConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
@@ -541,7 +823,7 @@ public final class SoftApConfiguration implements Parcelable {
                 return null;
         }
 
-        switch (mBand) {
+        switch (getBand()) {
             case BAND_2GHZ:
                 wifiConfig.apBand  = WifiConfiguration.AP_BAND_2GHZ;
                 break;
@@ -555,7 +837,7 @@ public final class SoftApConfiguration implements Parcelable {
                 wifiConfig.apBand  = WifiConfiguration.AP_BAND_ANY;
                 break;
             default:
-                Log.e(TAG, "Convert fail, unsupported band setting :" + mBand);
+                Log.e(TAG, "Convert fail, unsupported band setting :" + getBand());
                 return null;
         }
         return wifiConfig;
@@ -576,8 +858,7 @@ public final class SoftApConfiguration implements Parcelable {
         private MacAddress mBssid;
         private String mPassphrase;
         private boolean mHiddenSsid;
-        private int mBand;
-        private int mChannel;
+        private SparseIntArray mChannels;
         private int mMaxNumberOfClients;
         private int mSecurityType;
         private boolean mAutoShutdownEnabled;
@@ -585,6 +866,10 @@ public final class SoftApConfiguration implements Parcelable {
         private boolean mClientControlByUser;
         private List<MacAddress> mBlockedClientList;
         private List<MacAddress> mAllowedClientList;
+        private int mMacRandomizationSetting;
+        private boolean mBridgedModeOpportunisticShutdownEnabled;
+        private boolean mIeee80211axEnabled;
+        private boolean mIsUserConfiguration;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -594,8 +879,8 @@ public final class SoftApConfiguration implements Parcelable {
             mBssid = null;
             mPassphrase = null;
             mHiddenSsid = false;
-            mBand = BAND_2GHZ;
-            mChannel = 0;
+            mChannels = new SparseIntArray(1);
+            mChannels.put(BAND_2GHZ, 0);
             mMaxNumberOfClients = 0;
             mSecurityType = SECURITY_TYPE_OPEN;
             mAutoShutdownEnabled = true; // enabled by default.
@@ -603,6 +888,10 @@ public final class SoftApConfiguration implements Parcelable {
             mClientControlByUser = false;
             mBlockedClientList = new ArrayList<>();
             mAllowedClientList = new ArrayList<>();
+            mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
+            mBridgedModeOpportunisticShutdownEnabled = true;
+            mIeee80211axEnabled = true;
+            mIsUserConfiguration = true;
         }
 
         /**
@@ -615,8 +904,7 @@ public final class SoftApConfiguration implements Parcelable {
             mBssid = other.mBssid;
             mPassphrase = other.mPassphrase;
             mHiddenSsid = other.mHiddenSsid;
-            mBand = other.mBand;
-            mChannel = other.mChannel;
+            mChannels = other.mChannels.clone();
             mMaxNumberOfClients = other.mMaxNumberOfClients;
             mSecurityType = other.mSecurityType;
             mAutoShutdownEnabled = other.mAutoShutdownEnabled;
@@ -624,6 +912,11 @@ public final class SoftApConfiguration implements Parcelable {
             mClientControlByUser = other.mClientControlByUser;
             mBlockedClientList = new ArrayList<>(other.mBlockedClientList);
             mAllowedClientList = new ArrayList<>(other.mAllowedClientList);
+            mMacRandomizationSetting = other.mMacRandomizationSetting;
+            mBridgedModeOpportunisticShutdownEnabled =
+                    other.mBridgedModeOpportunisticShutdownEnabled;
+            mIeee80211axEnabled = other.mIeee80211axEnabled;
+            mIsUserConfiguration = other.mIsUserConfiguration;
         }
 
         /**
@@ -639,9 +932,11 @@ public final class SoftApConfiguration implements Parcelable {
                 }
             }
             return new SoftApConfiguration(mSsid, mBssid, mPassphrase,
-                    mHiddenSsid, mBand, mChannel, mSecurityType, mMaxNumberOfClients,
+                    mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
-                    mBlockedClientList, mAllowedClientList);
+                    mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
+                    mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
+                    mIsUserConfiguration);
         }
 
         /**
@@ -670,17 +965,41 @@ public final class SoftApConfiguration implements Parcelable {
          * Specifies a BSSID for the AP.
          * <p>
          * <li>If not set, defaults to null.</li>
+         *
+         * If multiple bands are requested via {@link #setBands(int[])} or
+         * {@link #setChannels(SparseIntArray)}, HAL will derive 2 MAC addresses since framework
+         * only sends down 1 MAC address.
+         *
+         * An example (but different implementation may perform a different mapping):
+         * <li>MAC address 1: copy value of MAC address,
+         * and set byte 1 = (0xFF - BSSID[1])</li>
+         * <li>MAC address 2: copy value of MAC address,
+         * and set byte 2 = (0xFF - BSSID[2])</li>
+         *
+         * Example BSSID argument: e2:38:60:c4:0e:b7
+         * Derived MAC address 1: e2:c7:60:c4:0e:b7
+         * Derived MAC address 2: e2:38:9f:c4:0e:b7
+         *
+         * <p>
+         * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION} to determine
+         * whether or not this feature is supported.
+         *
          * @param bssid BSSID, or null to have the BSSID chosen by the framework. The caller is
          *              responsible for avoiding collisions.
          * @return Builder for chaining.
-         * @throws IllegalArgumentException when the given BSSID is the all-zero or broadcast MAC
-         *                                  address.
+         * @throws IllegalArgumentException when the given BSSID is the all-zero
+         *                                  , multicast or broadcast MAC address.
          */
         @NonNull
         public Builder setBssid(@Nullable MacAddress bssid) {
             if (bssid != null) {
                 Preconditions.checkArgument(!bssid.equals(WifiManager.ALL_ZEROS_MAC_ADDRESS));
-                Preconditions.checkArgument(!bssid.equals(MacAddress.BROADCAST_ADDRESS));
+                if (bssid.getAddressType() != MacAddress.TYPE_UNICAST) {
+                    throw new IllegalArgumentException("bssid doesn't support "
+                            + "multicast or broadcast mac address");
+                }
             }
             mBssid = bssid;
             return this;
@@ -712,10 +1031,6 @@ public final class SoftApConfiguration implements Parcelable {
                 }
             } else {
                 Preconditions.checkStringNotEmpty(passphrase);
-                final CharsetEncoder asciiEncoder = StandardCharsets.US_ASCII.newEncoder();
-                if (!asciiEncoder.canEncode(passphrase)) {
-                    throw new IllegalArgumentException("passphrase not ASCII encodable");
-                }
                 if (securityType == SECURITY_TYPE_WPA2_PSK
                         || securityType == SECURITY_TYPE_WPA3_SAE_TRANSITION) {
                     if (passphrase.length() < PSK_MIN_LEN || passphrase.length() > PSK_MAX_LEN) {
@@ -754,51 +1069,175 @@ public final class SoftApConfiguration implements Parcelable {
          * @param band One or combination of the following band type:
          * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, {@link #BAND_6GHZ}.
          * @return Builder for chaining.
+         * @throws IllegalArgumentException when an invalid band type is provided.
          */
         @NonNull
         public Builder setBand(@BandType int band) {
             if (!isBandValid(band)) {
-                throw new IllegalArgumentException("Invalid band type");
+                throw new IllegalArgumentException("Invalid band type: " + band);
             }
-            mBand = band;
-            // Since band preference is specified, no specific channel is selected.
-            mChannel = 0;
+            mChannels = new SparseIntArray(1);
+            mChannels.put(band, 0);
             return this;
         }
+
+        /**
+         * Specifies the bands for the APs.
+         * If more than 1 band is set, this will bring up concurrent APs.
+         * on the requested bands (if possible).
+         * <p>
+         *
+         * Use {@link WifiManager#isBridgedApConcurrencySupported()} to determine
+         * whether or not concurrent APs are supported.
+         *
+         * Requires the driver to support {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * when multiple bands are configured. Otherwise,
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
+         * Note: Only supports 2.4GHz + 5GHz bands. If any other band is set, will report error
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
+         * @param bands Array of the {@link #BandType}.
+         * @return Builder for chaining.
+         * @throws IllegalArgumentException when more than 2 bands are set or an invalid band type
+         *                                  is provided.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        @NonNull
+        public Builder setBands(@NonNull int[] bands) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (bands.length == 0 || bands.length > 2) {
+                throw new IllegalArgumentException("Unsupported number of bands("
+                        + bands.length + ") configured");
+            }
+            SparseIntArray channels = new SparseIntArray(bands.length);
+            for (int val : bands) {
+                if (!isBandValid(val)) {
+                    throw new IllegalArgumentException("Invalid band type: " + val);
+                }
+                channels.put(val, 0);
+            }
+            mChannels = channels;
+            return this;
+        }
+
 
         /**
          * Specifies the channel and associated band for the AP.
          *
          * The channel which AP resides on. Valid channels are country dependent.
+         * The {@link SoftApCapability#getSupportedChannelList(int)} can be used to obtain
+         * valid channels.
+         *
          * <p>
-         * The default for the channel is a the special value 0 to have the framework
-         * auto-select a valid channel from the band configured with
+         * If not set, the default for the channel is the special value 0 which has the
+         * framework auto-select a valid channel from the band configured with
          * {@link #setBand(int)}.
          *
-         * The channel auto selection will offload to driver when
-         * {@link SoftApCapability#areFeaturesSupported(
-         * SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)}
-         * return true. Driver will auto select best channel which based on environment
-         * interference to get best performance. Check {@link SoftApCapability} to get more detail.
+         * The channel auto selection will be offloaded to driver when
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * return true. The driver will auto select the best channel (e.g. best performance)
+         * based on environment interference. Check {@link SoftApCapability} for more detail.
          *
-         * Note, since 6GHz band use the same channel numbering of 2.4GHz and 5GHZ bands,
-         * the caller needs to pass the band containing the selected channel.
+         * The API contains (band, channel) input since the 6GHz band uses the same channel
+         * numbering scheme as is used in the 2.4GHz and 5GHz band. Therefore, both are needed to
+         * uniquely identify individual channels.
          *
          * <p>
-         * <li>If not set, defaults to 0.</li>
          * @param channel operating channel of the AP.
          * @param band containing this channel.
          * @return Builder for chaining.
+         * @throws IllegalArgumentException when the invalid channel or band type is configured.
          */
         @NonNull
         public Builder setChannel(int channel, @BandType int band) {
             if (!isChannelBandPairValid(channel, band)) {
-                throw new IllegalArgumentException("Invalid band type");
+                throw new IllegalArgumentException("Invalid channel(" + channel
+                        + ") & band (" + band + ") configured");
             }
-            mBand = band;
-            mChannel = channel;
+            mChannels = new SparseIntArray(1);
+            mChannels.put(band, channel);
             return this;
         }
+
+        /**
+         * Specifies the channels and associated bands for the APs.
+         *
+         * When more than 1 channel is set, this will bring up concurrent APs on the requested
+         * channels and bands (if possible).
+         *
+         * Valid channels are country dependent.
+         * The {@link SoftApCapability#getSupportedChannelList(int)} can be used to obtain
+         * valid channels in each band.
+         *
+         * Use {@link WifiManager#isBridgedApConcurrencySupported()} to determine
+         * whether or not concurrent APs are supported.
+         *
+         * <p>
+         * If not set, the default for the channel is the special value 0 which has the framework
+         * auto-select a valid channel from the band configured with {@link #setBands(int[])}.
+         *
+         * The channel auto selection will be offloaded to driver when
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * returns true. The driver will auto select the best channel (e.g. best performance)
+         * based on environment interference. Check {@link SoftApCapability} for more detail.
+         *
+         * Requires the driver to support {@link SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD}
+         * when multiple bands are configured without specified channel value (i.e. channel is
+         * the special value 0). Otherwise,
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
+         * Note: Only supports 2.4GHz + 5GHz bands. If any other band is set, will report error
+         * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
+         *
+         * The API contains (band, channel) input since the 6GHz band uses the same channel
+         * numbering scheme as is used in the 2.4GHz and 5GHz band. Therefore, both are needed to
+         * uniquely identify individual channels.
+         *
+         * Reference the Wi-Fi channel numbering and the channelization in IEEE 802.11-2016
+         * specifications, section 17.3.8.4.2, 17.3.8.4.3 and Table 15-6.
+         *
+         * <p>
+         * @param channels SparseIntArray (key: {@code #BandType} , value: channel) consists of
+         *                 {@code BAND_} and corresponding channel.
+         * @return Builder for chaining.
+         * @throws IllegalArgumentException when more than 2 channels are set or the invalid
+         *                                  channel or band type is configured.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        @NonNull
+        public Builder setChannels(@NonNull SparseIntArray channels) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            if (channels.size() == 0 || channels.size() > 2) {
+                throw new IllegalArgumentException("Unsupported number of channels("
+                        + channels.size() + ") configured");
+            }
+            for (int i = 0; i < channels.size(); i++) {
+                int channel = channels.valueAt(i);
+                int band = channels.keyAt(i);
+                if (channel == 0) {
+                    if (!isBandValid(band)) {
+                        throw new IllegalArgumentException("Invalid band type: " + band);
+                    }
+                } else {
+                    if (!isChannelBandPairValid(channel, band)) {
+                        throw new IllegalArgumentException("Invalid channel(" + channel
+                                + ") & band (" + band + ") configured");
+                    }
+                }
+            }
+            mChannels = channels.clone();
+            return this;
+        }
+
 
         /**
          * Specifies the maximum number of clients that can associate to the AP.
@@ -815,14 +1254,14 @@ public final class SoftApConfiguration implements Parcelable {
          * <p>
          * <li>If not set, defaults to 0.</li>
          *
-         * This method requires hardware support. If the method is used to set a
+         * This method requires HAL support. If the method is used to set a
          * non-zero {@code maxNumberOfClients} value then
-         * {@link WifiManager#startTetheredHotspot} will report error code
+         * {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will report error code
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
          * <p>
          * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
-         * {@link SoftApCapability#areFeaturesSupported(int)}
+         * {@link SoftApCapability#areFeaturesSupported(long)}
          * with {@link SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT} to determine whether
          * or not this feature is supported.
          *
@@ -896,13 +1335,13 @@ public final class SoftApConfiguration implements Parcelable {
          * {@link #setBlockedClientList(List)} and {@link #setAllowedClientList(List)}.
          *
          * <p>
-         * This method requires hardware support. Hardware support can be determined using
+         * This method requires HAL support. HAL support can be determined using
          * {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
-         * {@link SoftApCapability#areFeaturesSupported(int)}
+         * {@link SoftApCapability#areFeaturesSupported(long)}
          * with {@link SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT}
          *
          * <p>
-         * If the method is called on a device without hardware support then starting the soft AP
+         * If the method is called on a device without HAL support then starting the soft AP
          * using {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will fail with
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
@@ -951,13 +1390,13 @@ public final class SoftApConfiguration implements Parcelable {
          * to the Soft AP.
          *
          * <p>
-         * This method requires hardware support. Hardware support can be determined using
+         * This method requires HAL support. HAL support can be determined using
          * {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
-         * {@link SoftApCapability#areFeaturesSupported(int)}
+         * {@link SoftApCapability#areFeaturesSupported(long)}
          * with {@link SoftApCapability.SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT}
          *
          * <p>
-         * If the method is called on a device without hardware support then starting the soft AP
+         * If the method is called on a device without HAL support then starting the soft AP
          * using {@link WifiManager#startTetheredHotspot(SoftApConfiguration)} will fail with
          * {@link WifiManager#SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION}.
          *
@@ -967,6 +1406,122 @@ public final class SoftApConfiguration implements Parcelable {
         @NonNull
         public Builder setBlockedClientList(@NonNull List<MacAddress> blockedClientList) {
             mBlockedClientList = new ArrayList<>(blockedClientList);
+            return this;
+        }
+
+        /**
+         * Specifies the level of MAC randomization for the AP BSSID.
+         * The Soft AP BSSID will be randomized only if the BSSID isn't set
+         * {@link #setBssid(MacAddress)} and this method is either uncalled
+         * or called with {@link #RANDOMIZATION_PERSISTENT}.
+         *
+         * <p>
+         * <li>If not set, defaults to {@link #RANDOMIZATION_PERSISTENT}</li>
+         *
+         * <p>
+         * Requires HAL support when set to {@link #RANDOMIZATION_PERSISTENT}.
+         * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION} to determine
+         * whether or not this feature is supported.
+         *
+         * @param macRandomizationSetting One of the following setting:
+         * {@link #RANDOMIZATION_NONE} or {@link #RANDOMIZATION_PERSISTENT}.
+         * @return Builder for chaining.
+         *
+         * @see #setBssid(MacAddress)
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        @NonNull
+        public Builder setMacRandomizationSetting(
+                @MacRandomizationSetting int macRandomizationSetting) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mMacRandomizationSetting = macRandomizationSetting;
+            return this;
+        }
+
+
+        /**
+         * Specifies whether or not opportunistic shut down of an AP instance in bridged mode
+         * is enabled.
+         *
+         * <p>
+         * If enabled, the framework will shutdown one of the AP instances if it is idle for
+         * the timeout duration - meaning there are no devices connected to it.
+         * If both AP instances are idle for the timeout duration then the framework will
+         * shut down the AP instance operating on the higher frequency. For instance,
+         * if the AP instances operate at 2.4GHz and 5GHz and are both idle for the
+         * timeout duration then the 5GHz AP instance will be shut down.
+         * <p>
+         *
+         * Note: the opportunistic timeout only applies to one AP instance of the bridge AP.
+         * If one of the AP instances has already been disabled for any reason, including due to
+         * an opportunistic timeout or hardware issues or coexistence issues,
+         * then the opportunistic timeout is no longer active.
+         *
+         * <p>
+         * The shutdown timer specified by {@link #setShutdownTimeoutMillis(long)} controls the
+         * overall shutdown of the bridged AP and is still in use independently of the opportunistic
+         * timer controlled by this AP.
+         *
+         * <p>
+         * <li>If not set, defaults to true</li>
+         *
+         * @param enable true to enable, false to disable.
+         * @return Builder for chaining.
+         *
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        @NonNull
+        public Builder setBridgedModeOpportunisticShutdownEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mBridgedModeOpportunisticShutdownEnabled = enable;
+            return this;
+        }
+
+        /**
+         * Specifies whether or not to enable 802.11ax on the Soft AP.
+         *
+         * <p>
+         * Note: Only relevant when the device supports 802.11ax on the Soft AP.
+         * If enabled on devices that do not support 802.11ax then ignored.
+         * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_IEEE80211_AX} to determine
+         * whether or not 802.11ax is supported on the Soft AP.
+         * <p>
+         * <li>If not set, defaults to true - which will be ignored on devices
+         * which do not support 802.11ax</li>
+         *
+         * @param enable true to enable, false to disable.
+         * @return Builder for chaining.
+         *
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        @NonNull
+        public Builder setIeee80211axEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mIeee80211axEnabled = enable;
+            return this;
+        }
+
+        /**
+         * Specifies whether or not the configuration is configured by user.
+         *
+         * @param isUserConfigured true to user configuration, false otherwise.
+         * @return Builder for chaining.
+         *
+         * @hide
+         */
+        @NonNull
+        public Builder setUserConfiguration(boolean isUserConfigured) {
+            mIsUserConfiguration = isUserConfigured;
             return this;
         }
     }

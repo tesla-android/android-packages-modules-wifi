@@ -15,7 +15,12 @@
  */
 package com.android.server.wifi;
 
+import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
+
 import android.annotation.NonNull;
+import android.annotation.Nullable;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.wifi.V1_0.IWifiApIface;
 import android.hardware.wifi.V1_0.IWifiChip;
 import android.hardware.wifi.V1_0.IWifiChipEventCallback;
@@ -34,7 +39,6 @@ import android.hardware.wifi.V1_0.StaRoamingState;
 import android.hardware.wifi.V1_0.StaScanData;
 import android.hardware.wifi.V1_0.StaScanDataFlagMask;
 import android.hardware.wifi.V1_0.StaScanResult;
-import android.hardware.wifi.V1_0.WifiBand;
 import android.hardware.wifi.V1_0.WifiDebugHostWakeReasonStats;
 import android.hardware.wifi.V1_0.WifiDebugPacketFateFrameType;
 import android.hardware.wifi.V1_0.WifiDebugRingBufferFlags;
@@ -47,28 +51,43 @@ import android.hardware.wifi.V1_0.WifiInformationElement;
 import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_2.IWifiChipEventCallback.IfaceInfo;
+import android.hardware.wifi.V1_5.IWifiChip.MultiStaUseCase;
+import android.hardware.wifi.V1_5.IWifiChip.UsableChannelFilter;
+import android.hardware.wifi.V1_5.StaPeerInfo;
+import android.hardware.wifi.V1_5.StaRateStat;
+import android.hardware.wifi.V1_5.WifiBand;
+import android.hardware.wifi.V1_5.WifiIfaceMode;
+import android.hardware.wifi.V1_5.WifiUsableChannel;
 import android.net.MacAddress;
 import android.net.apf.ApfCapabilities;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SoftApConfiguration;
+import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
 import android.os.Handler;
 import android.os.RemoteException;
+import android.os.WorkSource;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.MutableBoolean;
-import android.util.MutableLong;
+import android.util.Pair;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.HexDump;
-import com.android.internal.util.Preconditions;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.WifiLinkLayerStats.ChannelStats;
-import com.android.server.wifi.util.ArrayUtils;
+import com.android.server.wifi.WifiLinkLayerStats.PeerInfo;
+import com.android.server.wifi.WifiLinkLayerStats.RadioStat;
+import com.android.server.wifi.WifiLinkLayerStats.RateStat;
+import com.android.server.wifi.WifiNative.RxFateReport;
+import com.android.server.wifi.WifiNative.TxFateReport;
 import com.android.server.wifi.util.BitMask;
+import com.android.server.wifi.util.GeneralUtil.Mutable;
 import com.android.server.wifi.util.NativeUtil;
+import com.android.wifi.resources.R;
 
 import com.google.errorprone.annotations.CompileTimeConstant;
 
@@ -156,13 +175,8 @@ public class WifiVendorHal {
         return result;
     }
 
-    /**
-     * Logs the argument along with the method name.
-     *
-     * Always returns its argument.
-     */
-    private String stringResult(String result) {
-        if (mVerboseLog == sNoLog) return result;
+    private <T> T objResult(T obj) {
+        if (mVerboseLog == sNoLog) return obj;
         // Currently only seen if verbose logging is on
 
         Thread cur = Thread.currentThread();
@@ -170,10 +184,30 @@ public class WifiVendorHal {
 
         mVerboseLog.err("% returns %")
                 .c(niceMethodName(trace, 3))
-                .c(result)
+                .c(String.valueOf(obj))
                 .flush();
 
-        return result;
+        return obj;
+    }
+
+    /**
+     * Logs the argument along with the method name.
+     *
+     * Always returns its argument.
+     */
+    private <T> T nullResult() {
+        if (mVerboseLog == sNoLog) return null;
+        // Currently only seen if verbose logging is on
+
+        Thread cur = Thread.currentThread();
+        StackTraceElement[] trace = cur.getStackTrace();
+
+        mVerboseLog.err("% returns %")
+                .c(niceMethodName(trace, 3))
+                .c(null)
+                .flush();
+
+        return null;
     }
 
     /**
@@ -239,11 +273,9 @@ public class WifiVendorHal {
     private IWifiChip mIWifiChip;
     private HashMap<String, IWifiStaIface> mIWifiStaIfaces = new HashMap<>();
     private HashMap<String, IWifiApIface> mIWifiApIfaces = new HashMap<>();
-    private HalDeviceManager.InterfaceAvailableForRequestListener
-            mStaIfaceAvailableForRequestListener;
-    private HalDeviceManager.InterfaceAvailableForRequestListener
-            mApIfaceAvailableForRequestListener;
+    private static Context sContext;
     private final HalDeviceManager mHalDeviceManager;
+    private final WifiGlobals mWifiGlobals;
     private final HalDeviceManagerStatusListener mHalDeviceManagerStatusCallbacks;
     private final IWifiStaIfaceEventCallback mIWifiStaIfaceEventCallback;
     private final ChipEventCallback mIWifiChipEventCallback;
@@ -257,9 +289,12 @@ public class WifiVendorHal {
     // https://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5
     private final Handler mHalEventHandler;
 
-    public WifiVendorHal(HalDeviceManager halDeviceManager, Handler handler) {
+    public WifiVendorHal(Context context, HalDeviceManager halDeviceManager, Handler handler,
+            WifiGlobals wifiGlobals) {
+        sContext = context;
         mHalDeviceManager = halDeviceManager;
         mHalEventHandler = handler;
+        mWifiGlobals = wifiGlobals;
         mHalDeviceManagerStatusCallbacks = new HalDeviceManagerStatusListener();
         mIWifiStaIfaceEventCallback = new StaIfaceEventCallback();
         mIWifiChipEventCallback = new ChipEventCallback();
@@ -272,7 +307,7 @@ public class WifiVendorHal {
     private void handleRemoteException(RemoteException e) {
         String methodName = niceMethodName(Thread.currentThread().getStackTrace(), 3);
         mVerboseLog.err("% RemoteException in HIDL call %").c(methodName).c(e.toString()).flush();
-        clearState();
+        // Recovery on HAL crash will be triggered by death listener.
     }
 
     private WifiNative.VendorHalDeathEventHandler mDeathEventHandler;
@@ -308,11 +343,30 @@ public class WifiVendorHal {
     }
 
     /**
+     * Register to listen for subsystem restart events from the HAL.
+     *
+     * @param listener SubsystemRestartListener listener object.
+     */
+    public void registerSubsystemRestartListener(
+            HalDeviceManager.SubsystemRestartListener listener) {
+        mHalDeviceManager.registerSubsystemRestartListener(listener, mHalEventHandler);
+    }
+
+    /**
      * Returns whether the vendor HAL is supported on this device or not.
      */
     public boolean isVendorHalSupported() {
         synchronized (sLock) {
             return mHalDeviceManager.isSupported();
+        }
+    }
+
+    /**
+     * Returns whether the vendor HAL is ready or not.
+     */
+    public boolean isVendorHalReady() {
+        synchronized (sLock) {
+            return mHalDeviceManager.isReady();
         }
     }
 
@@ -326,7 +380,8 @@ public class WifiVendorHal {
             if (!startVendorHal()) {
                 return false;
             }
-            if (TextUtils.isEmpty(createApIface(null))) {
+            if (TextUtils.isEmpty(createApIface(null, null,
+                    SoftApConfiguration.BAND_2GHZ, false))) {
                 stopVendorHal();
                 return false;
             }
@@ -344,7 +399,7 @@ public class WifiVendorHal {
             if (!startVendorHal()) {
                 return false;
             }
-            if (TextUtils.isEmpty(createStaIface(null))) {
+            if (TextUtils.isEmpty(createStaIface(null, null))) {
                 stopVendorHal();
                 return false;
             }
@@ -367,44 +422,6 @@ public class WifiVendorHal {
         }
     }
 
-    /**
-     * Register a STA iface availability listener listed with {@link HalDeviceManager}.
-     *
-     * @param listener Instance of {@link WifiNative.InterfaceAvailableForRequestListener}.
-     */
-    public void registerStaIfaceAvailabilityListener(
-            @NonNull WifiNative.InterfaceAvailableForRequestListener listener) {
-        synchronized (sLock) {
-            Preconditions.checkState(mStaIfaceAvailableForRequestListener == null);
-            mStaIfaceAvailableForRequestListener =
-                    (isAvailable) -> listener.onAvailabilityChanged(isAvailable);
-            if (mHalDeviceManager.isStarted()) {
-                mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                        IfaceType.STA, mStaIfaceAvailableForRequestListener,
-                        mHalEventHandler);
-            }
-        }
-    }
-
-    /**
-     * Register a AP iface availability listener listed with {@link HalDeviceManager}.
-     *
-     * @param listener Instance of {@link WifiNative.InterfaceAvailableForRequestListener}.
-     *
-     */
-    public void registerApIfaceAvailabilityListener(
-            @NonNull WifiNative.InterfaceAvailableForRequestListener listener) {
-        synchronized (sLock) {
-            Preconditions.checkState(mApIfaceAvailableForRequestListener == null);
-            mApIfaceAvailableForRequestListener =
-                    (isAvailable) -> listener.onAvailabilityChanged(isAvailable);
-            if (mHalDeviceManager.isStarted()) {
-                mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                        IfaceType.AP, mApIfaceAvailableForRequestListener,
-                        mHalEventHandler);
-            }
-        }
-    }
 
     /** Helper method to lookup the corresponding STA iface object using iface name. */
     private IWifiStaIface getStaIface(@NonNull String ifaceName) {
@@ -435,32 +452,56 @@ public class WifiVendorHal {
      * Create a STA iface using {@link HalDeviceManager}.
      *
      * @param destroyedListener Listener to be invoked when the interface is destroyed.
+     * @param requestorWs Requestor worksource.
      * @return iface name on success, null otherwise.
      */
-    public String createStaIface(InterfaceDestroyedListener destroyedListener) {
+    public String createStaIface(@Nullable InterfaceDestroyedListener destroyedListener,
+            @NonNull WorkSource requestorWs) {
         synchronized (sLock) {
             IWifiStaIface iface = mHalDeviceManager.createStaIface(
-                    new StaInterfaceDestroyedListenerInternal(destroyedListener), null);
+                    new StaInterfaceDestroyedListenerInternal(destroyedListener), null,
+                    requestorWs);
             if (iface == null) {
                 mLog.err("Failed to create STA iface").flush();
-                return stringResult(null);
+                return nullResult();
             }
             String ifaceName = mHalDeviceManager.getName((IWifiIface) iface);
             if (TextUtils.isEmpty(ifaceName)) {
                 mLog.err("Failed to get iface name").flush();
-                return stringResult(null);
+                return nullResult();
             }
             if (!registerStaIfaceCallback(iface)) {
                 mLog.err("Failed to register STA iface callback").flush();
-                return stringResult(null);
+                return nullResult();
             }
             if (!retrieveWifiChip((IWifiIface) iface)) {
                 mLog.err("Failed to get wifi chip").flush();
-                return stringResult(null);
+                return nullResult();
             }
             enableLinkLayerStats(iface);
             mIWifiStaIfaces.put(ifaceName, iface);
             return ifaceName;
+        }
+    }
+
+    /**
+     * Replace the requestor worksource info for a STA iface using {@link HalDeviceManager}.
+     *
+     * @param ifaceName Name of the interface being removed.
+     * @param requestorWs Requestor worksource.
+     * @return true on success, false otherwise.
+     */
+    public boolean replaceStaIfaceRequestorWs(@NonNull String ifaceName,
+            @NonNull WorkSource requestorWs) {
+        synchronized (sLock) {
+            IWifiStaIface iface = getStaIface(ifaceName);
+            if (iface == null) return boolResult(false);
+
+            if (!mHalDeviceManager.replaceRequestorWs(iface, requestorWs)) {
+                mLog.err("Failed to replace requestor worksource for STA iface").flush();
+                return boolResult(false);
+            }
+            return true;
         }
     }
 
@@ -474,7 +515,6 @@ public class WifiVendorHal {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
             if (iface == null) return boolResult(false);
-
             if (!mHalDeviceManager.removeIface((IWifiIface) iface)) {
                 mLog.err("Failed to remove STA iface").flush();
                 return boolResult(false);
@@ -509,31 +549,68 @@ public class WifiVendorHal {
         }
     }
 
+    private long getNecessaryCapabilitiesForSoftApMode(@SoftApConfiguration.BandType int band) {
+        long caps = HalDeviceManager.CHIP_CAPABILITY_ANY;
+        if ((band & SoftApConfiguration.BAND_60GHZ) != 0) {
+            caps |= android.hardware.wifi.V1_5.IWifiChip.ChipCapabilityMask.WIGIG;
+        }
+        return caps;
+    }
+
     /**
      * Create a AP iface using {@link HalDeviceManager}.
      *
      * @param destroyedListener Listener to be invoked when the interface is destroyed.
+     * @param requestorWs Requestor worksource.
+     * @param band The requesting band for this AP interface.
+     * @param isBridged Whether or not AP interface is a bridge interface.
      * @return iface name on success, null otherwise.
      */
-    public String createApIface(InterfaceDestroyedListener destroyedListener) {
+    public String createApIface(@Nullable InterfaceDestroyedListener destroyedListener,
+            @NonNull WorkSource requestorWs,
+            @SoftApConfiguration.BandType int band,
+            boolean isBridged) {
         synchronized (sLock) {
             IWifiApIface iface = mHalDeviceManager.createApIface(
-                    new ApInterfaceDestroyedListenerInternal(destroyedListener), null);
+                    getNecessaryCapabilitiesForSoftApMode(band),
+                    new ApInterfaceDestroyedListenerInternal(destroyedListener), null,
+                    requestorWs, isBridged);
             if (iface == null) {
                 mLog.err("Failed to create AP iface").flush();
-                return stringResult(null);
+                return nullResult();
             }
             String ifaceName = mHalDeviceManager.getName((IWifiIface) iface);
             if (TextUtils.isEmpty(ifaceName)) {
                 mLog.err("Failed to get iface name").flush();
-                return stringResult(null);
+                return nullResult();
             }
             if (!retrieveWifiChip((IWifiIface) iface)) {
                 mLog.err("Failed to get wifi chip").flush();
-                return stringResult(null);
+                return nullResult();
             }
             mIWifiApIfaces.put(ifaceName, iface);
             return ifaceName;
+        }
+    }
+
+    /**
+     * Replace the requestor worksource info for a AP iface using {@link HalDeviceManager}.
+     *
+     * @param ifaceName Name of the interface being removed.
+     * @param requestorWs Requestor worksource.
+     * @return true on success, false otherwise.
+     */
+    public boolean replaceApIfaceRequestorWs(@NonNull String ifaceName,
+            @NonNull WorkSource requestorWs) {
+        synchronized (sLock) {
+            IWifiApIface iface = getApIface(ifaceName);
+            if (iface == null) return boolResult(false);
+
+            if (!mHalDeviceManager.replaceRequestorWs((IWifiIface) iface, requestorWs)) {
+                mLog.err("Failed to replace requestor worksource for AP iface").flush();
+                return boolResult(false);
+            }
+            return true;
         }
     }
 
@@ -554,6 +631,108 @@ public class WifiVendorHal {
             }
             mIWifiApIfaces.remove(ifaceName);
             return true;
+        }
+    }
+
+    /**
+     * Helper function to remove specific instance in bridged AP iface.
+     *
+     * @param ifaceName Name of the iface.
+     * @param apIfaceInstance The identity of the ap instance.
+     * @return true if the operation succeeded, false if there is an error in Hal.
+     */
+    public boolean removeIfaceInstanceFromBridgedApIface(@NonNull String ifaceName,
+            @NonNull String apIfaceInstance) {
+        try {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 == null) return boolResult(false);
+            return ok(iWifiChipV15.removeIfaceInstanceFromBridgedApIface(
+                    ifaceName, apIfaceInstance));
+        } catch (RemoteException e) {
+            handleRemoteException(e);
+            return false;
+        }
+    }
+
+    @NonNull
+    private ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel>
+            frameworkCoexUnsafeChannelsToHidl(
+                    @NonNull List<android.net.wifi.CoexUnsafeChannel> frameworkUnsafeChannels) {
+        final ArrayList<android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel> hidlList =
+                new ArrayList<>();
+        if (!SdkLevel.isAtLeastS()) {
+            return hidlList;
+        }
+        for (android.net.wifi.CoexUnsafeChannel frameworkUnsafeChannel : frameworkUnsafeChannels) {
+            final android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel hidlUnsafeChannel =
+                    new android.hardware.wifi.V1_5.IWifiChip.CoexUnsafeChannel();
+            switch (frameworkUnsafeChannel.getBand()) {
+                case (WifiScanner.WIFI_BAND_24_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_24GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_5_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_5GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_6_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_6GHZ;
+                    break;
+                case (WifiScanner.WIFI_BAND_60_GHZ):
+                    hidlUnsafeChannel.band = WifiBand.BAND_60GHZ;
+                    break;
+                default:
+                    mLog.err("Tried to set unsafe channel with unknown band: %")
+                            .c(frameworkUnsafeChannel.getBand())
+                            .flush();
+                    continue;
+            }
+            hidlUnsafeChannel.channel = frameworkUnsafeChannel.getChannel();
+            final int powerCapDbm = frameworkUnsafeChannel.getPowerCapDbm();
+            if (powerCapDbm != POWER_CAP_NONE) {
+                hidlUnsafeChannel.powerCapDbm = powerCapDbm;
+            } else {
+                hidlUnsafeChannel.powerCapDbm =
+                        android.hardware.wifi.V1_5.IWifiChip.PowerCapConstant.NO_POWER_CAP;
+            }
+            hidlList.add(hidlUnsafeChannel);
+        }
+        return hidlList;
+    }
+
+    private int frameworkCoexRestrictionsToHidl(@WifiManager.CoexRestriction int restrictions) {
+        int hidlRestrictions = 0;
+        if (!SdkLevel.isAtLeastS()) {
+            return hidlRestrictions;
+        }
+        if ((restrictions & WifiManager.COEX_RESTRICTION_WIFI_DIRECT) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.WIFI_DIRECT;
+        }
+        if ((restrictions & WifiManager.COEX_RESTRICTION_SOFTAP) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.SOFTAP;
+        }
+        if ((restrictions & WifiManager.COEX_RESTRICTION_WIFI_AWARE) != 0) {
+            hidlRestrictions |= android.hardware.wifi.V1_5.IWifiChip.CoexRestriction.WIFI_AWARE;
+        }
+        return hidlRestrictions;
+    }
+
+    /**
+     * Set the current coex unsafe channels to avoid and their restrictions.
+     * @param unsafeChannels List of {@link android.net.wifi.CoexUnsafeChannel} to avoid.
+     * @param restrictions int containing a bitwise-OR combination of
+     *                     {@link WifiManager.CoexRestriction}.
+     * @return true if the operation succeeded, false if there is an error in Hal.
+     */
+    public boolean setCoexUnsafeChannels(
+            @NonNull List<android.net.wifi.CoexUnsafeChannel> unsafeChannels, int restrictions) {
+        try {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 == null) return boolResult(false);
+            return ok(iWifiChipV15.setCoexUnsafeChannels(
+                    frameworkCoexUnsafeChannelsToHidl(unsafeChannels),
+                    frameworkCoexRestrictionsToHidl(restrictions)));
+        } catch (RemoteException e) {
+            handleRemoteException(e);
+            return false;
         }
     }
 
@@ -668,7 +847,7 @@ public class WifiVendorHal {
             IWifiStaIface iface = getStaIface(ifaceName);
             if (iface == null) return boolResult(false);
             try {
-                MutableBoolean ans = new MutableBoolean(false);
+                Mutable<Boolean> ans = new Mutable<>(false);
                 WifiNative.ScanCapabilities out = capabilities;
                 iface.getBackgroundScanCapabilities((status, cap) -> {
                             if (!ok(status)) return;
@@ -770,6 +949,19 @@ public class WifiVendorHal {
                 return WifiBand.BAND_24GHZ_5GHZ;
             case WifiScanner.WIFI_BAND_BOTH_WITH_DFS:
                 return WifiBand.BAND_24GHZ_5GHZ_WITH_DFS;
+            case WifiScanner.WIFI_BAND_6_GHZ:
+                return WifiBand.BAND_6GHZ;
+            case WifiScanner.WIFI_BAND_24_5_6_GHZ:
+                return WifiBand.BAND_24GHZ_5GHZ_6GHZ;
+            case WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_GHZ:
+                return WifiBand.BAND_24GHZ_5GHZ_WITH_DFS_6GHZ;
+            case WifiScanner.WIFI_BAND_60_GHZ:
+                return WifiBand.BAND_60GHZ;
+            case WifiScanner.WIFI_BAND_24_5_6_60_GHZ:
+                return WifiBand.BAND_24GHZ_5GHZ_6GHZ_60GHZ;
+            case WifiScanner.WIFI_BAND_24_5_WITH_DFS_6_60_GHZ:
+                return WifiBand.BAND_24GHZ_5GHZ_WITH_DFS_6GHZ_60GHZ;
+            case WifiScanner.WIFI_BAND_24_GHZ_WITH_5GHZ_DFS:
             default:
                 throw new IllegalArgumentException("bad band " + frameworkBand);
         }
@@ -931,10 +1123,13 @@ public class WifiVendorHal {
      * @return the statistics, or null if unable to do so
      */
     public WifiLinkLayerStats getWifiLinkLayerStats(@NonNull String ifaceName) {
-        if (getWifiStaIfaceForV1_3Mockable(ifaceName) != null) {
+        if (getWifiStaIfaceForV1_5Mockable(ifaceName) != null) {
+            return getWifiLinkLayerStats_1_5_Internal(ifaceName);
+        } else if (getWifiStaIfaceForV1_3Mockable(ifaceName) != null) {
             return getWifiLinkLayerStats_1_3_Internal(ifaceName);
+        } else {
+            return getWifiLinkLayerStats_internal(ifaceName);
         }
-        return getWifiLinkLayerStats_internal(ifaceName);
     }
 
     private WifiLinkLayerStats getWifiLinkLayerStats_internal(@NonNull String ifaceName) {
@@ -982,6 +1177,29 @@ public class WifiVendorHal {
         return stats;
     }
 
+    private WifiLinkLayerStats getWifiLinkLayerStats_1_5_Internal(@NonNull String ifaceName) {
+        class AnswerBox {
+            public android.hardware.wifi.V1_5.StaLinkLayerStats value = null;
+        }
+        AnswerBox answer = new AnswerBox();
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiStaIface iface =
+                        getWifiStaIfaceForV1_5Mockable(ifaceName);
+                if (iface == null) return null;
+                iface.getLinkLayerStats_1_5((status, stats) -> {
+                    if (!ok(status)) return;
+                    answer.value = stats;
+                });
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            }
+        }
+        WifiLinkLayerStats stats = frameworkFromHalLinkLayerStats_1_5(answer.value);
+        return stats;
+    }
+
 
     /**
      * Makes the framework version of link layer stats from the hal version.
@@ -1012,6 +1230,21 @@ public class WifiVendorHal {
         return out;
     }
 
+    /**
+     * Makes the framework version of link layer stats from the hal version.
+     */
+    @VisibleForTesting
+    static WifiLinkLayerStats frameworkFromHalLinkLayerStats_1_5(
+            android.hardware.wifi.V1_5.StaLinkLayerStats stats) {
+        if (stats == null) return null;
+        WifiLinkLayerStats out = new WifiLinkLayerStats();
+        setIfaceStats_1_5(out, stats.iface);
+        setRadioStats_1_5(out, stats.radios);
+        setTimeStamp(out, stats.timeStampInMs);
+        out.version = WifiLinkLayerStats.V1_5;
+        return out;
+    }
+
     private static void setIfaceStats(WifiLinkLayerStats stats, StaLinkLayerIfaceStats iface) {
         if (iface == null) return;
         stats.beacon_rx = iface.beaconRx;
@@ -1039,10 +1272,61 @@ public class WifiVendorHal {
         stats.retries_vo = iface.wmeVoPktStats.retries;
     }
 
+    private static void setIfaceStats_1_5(WifiLinkLayerStats stats,
+            android.hardware.wifi.V1_5.StaLinkLayerIfaceStats iface) {
+        if (iface == null) return;
+        setIfaceStats(stats, iface.V1_0);
+        stats.timeSliceDutyCycleInPercent = iface.timeSliceDutyCycleInPercent;
+        // WME Best Effort Access Category
+        stats.contentionTimeMinBeInUsec = iface.wmeBeContentionTimeStats.contentionTimeMinInUsec;
+        stats.contentionTimeMaxBeInUsec = iface.wmeBeContentionTimeStats.contentionTimeMaxInUsec;
+        stats.contentionTimeAvgBeInUsec = iface.wmeBeContentionTimeStats.contentionTimeAvgInUsec;
+        stats.contentionNumSamplesBe = iface.wmeBeContentionTimeStats.contentionNumSamples;
+        // WME Background Access Category
+        stats.contentionTimeMinBkInUsec = iface.wmeBkContentionTimeStats.contentionTimeMinInUsec;
+        stats.contentionTimeMaxBkInUsec = iface.wmeBkContentionTimeStats.contentionTimeMaxInUsec;
+        stats.contentionTimeAvgBkInUsec = iface.wmeBkContentionTimeStats.contentionTimeAvgInUsec;
+        stats.contentionNumSamplesBk = iface.wmeBkContentionTimeStats.contentionNumSamples;
+        // WME Video Access Category
+        stats.contentionTimeMinViInUsec = iface.wmeViContentionTimeStats.contentionTimeMinInUsec;
+        stats.contentionTimeMaxViInUsec = iface.wmeViContentionTimeStats.contentionTimeMaxInUsec;
+        stats.contentionTimeAvgViInUsec = iface.wmeViContentionTimeStats.contentionTimeAvgInUsec;
+        stats.contentionNumSamplesVi = iface.wmeViContentionTimeStats.contentionNumSamples;
+        // WME Voice Access Category
+        stats.contentionTimeMinVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeMinInUsec;
+        stats.contentionTimeMaxVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeMaxInUsec;
+        stats.contentionTimeAvgVoInUsec = iface.wmeVoContentionTimeStats.contentionTimeAvgInUsec;
+        stats.contentionNumSamplesVo = iface.wmeVoContentionTimeStats.contentionNumSamples;
+        // Peer information statistics
+        stats.peerInfo = new PeerInfo[iface.peers.size()];
+        for (int i = 0; i < stats.peerInfo.length; i++) {
+            PeerInfo peer = new PeerInfo();
+            StaPeerInfo staPeerInfo = iface.peers.get(i);
+            peer.staCount = staPeerInfo.staCount;
+            peer.chanUtil = staPeerInfo.chanUtil;
+            RateStat[] rateStats = new RateStat[staPeerInfo.rateStats.size()];
+            for (int j = 0; j < staPeerInfo.rateStats.size(); j++) {
+                rateStats[j] = new RateStat();
+                StaRateStat staRateStat = staPeerInfo.rateStats.get(j);
+                rateStats[j].preamble = staRateStat.rateInfo.preamble;
+                rateStats[j].nss = staRateStat.rateInfo.nss;
+                rateStats[j].bw = staRateStat.rateInfo.bw;
+                rateStats[j].rateMcsIdx = staRateStat.rateInfo.rateMcsIdx;
+                rateStats[j].bitRateInKbps = staRateStat.rateInfo.bitRateInKbps;
+                rateStats[j].txMpdu = staRateStat.txMpdu;
+                rateStats[j].rxMpdu = staRateStat.rxMpdu;
+                rateStats[j].mpduLost = staRateStat.mpduLost;
+                rateStats[j].retries = staRateStat.retries;
+            }
+            peer.rateStats = rateStats;
+            stats.peerInfo[i] = peer;
+        }
+    }
+
     private static void setRadioStats(WifiLinkLayerStats stats,
             List<StaLinkLayerRadioStats> radios) {
         if (radios == null) return;
-        // NOTE(b/36176141): Figure out how to coalesce this info for multi radio devices.
+        // Do not coalesce this info for multi radio devices with older HALs.
         if (radios.size() > 0) {
             StaLinkLayerRadioStats radioStats = radios.get(0);
             stats.on_time = radioStats.onTimeInMs;
@@ -1053,38 +1337,105 @@ public class WifiVendorHal {
             }
             stats.rx_time = radioStats.rxTimeInMs;
             stats.on_time_scan = radioStats.onTimeInMsForScan;
+            stats.numRadios = 1;
         }
+    }
+
+    /**
+     * Set individual radio stats from the hal radio stats
+     */
+    private static void setFrameworkPerRadioStatsFromHidl(int radioId, RadioStat radio,
+            android.hardware.wifi.V1_3.StaLinkLayerRadioStats hidlRadioStats) {
+        radio.radio_id = radioId;
+        radio.on_time = hidlRadioStats.V1_0.onTimeInMs;
+        radio.tx_time = hidlRadioStats.V1_0.txTimeInMs;
+        radio.rx_time = hidlRadioStats.V1_0.rxTimeInMs;
+        radio.on_time_scan = hidlRadioStats.V1_0.onTimeInMsForScan;
+        radio.on_time_nan_scan = hidlRadioStats.onTimeInMsForNanScan;
+        radio.on_time_background_scan = hidlRadioStats.onTimeInMsForBgScan;
+        radio.on_time_roam_scan = hidlRadioStats.onTimeInMsForRoamScan;
+        radio.on_time_pno_scan = hidlRadioStats.onTimeInMsForPnoScan;
+        radio.on_time_hs20_scan = hidlRadioStats.onTimeInMsForHs20Scan;
+        /* Copy list of channel stats */
+        for (android.hardware.wifi.V1_3.WifiChannelStats channelStats
+                : hidlRadioStats.channelStats) {
+            ChannelStats channelStatsEntry = new ChannelStats();
+            channelStatsEntry.frequency = channelStats.channel.centerFreq;
+            channelStatsEntry.radioOnTimeMs = channelStats.onTimeInMs;
+            channelStatsEntry.ccaBusyTimeMs = channelStats.ccaBusyTimeInMs;
+            radio.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
+        }
+    }
+
+    /**
+     * If config_wifiLinkLayerAllRadiosStatsAggregationEnabled is set to true, aggregate
+     * the radio stats from all the radios else process the stats from Radio 0 only.
+     */
+    private static void aggregateFrameworkRadioStatsFromHidl(int radioIndex,
+            WifiLinkLayerStats stats,
+            android.hardware.wifi.V1_3.StaLinkLayerRadioStats hidlRadioStats) {
+        if (!sContext.getResources()
+                .getBoolean(R.bool.config_wifiLinkLayerAllRadiosStatsAggregationEnabled)
+                && radioIndex > 0) {
+            return;
+        }
+        // Aggregate the radio stats from all the radios
+        stats.on_time += hidlRadioStats.V1_0.onTimeInMs;
+        stats.tx_time += hidlRadioStats.V1_0.txTimeInMs;
+        // Aggregate tx_time_per_level based on the assumption that the length of
+        // txTimeInMsPerLevel is the same across all radios. So txTimeInMsPerLevel on other
+        // radios at array indices greater than the length of first radio will be dropped.
+        if (stats.tx_time_per_level == null) {
+            stats.tx_time_per_level = new int[hidlRadioStats.V1_0.txTimeInMsPerLevel.size()];
+        }
+        for (int i = 0; i < hidlRadioStats.V1_0.txTimeInMsPerLevel.size()
+                && i < stats.tx_time_per_level.length; i++) {
+            stats.tx_time_per_level[i] += hidlRadioStats.V1_0.txTimeInMsPerLevel.get(i);
+        }
+        stats.rx_time += hidlRadioStats.V1_0.rxTimeInMs;
+        stats.on_time_scan += hidlRadioStats.V1_0.onTimeInMsForScan;
+        stats.on_time_nan_scan += hidlRadioStats.onTimeInMsForNanScan;
+        stats.on_time_background_scan += hidlRadioStats.onTimeInMsForBgScan;
+        stats.on_time_roam_scan += hidlRadioStats.onTimeInMsForRoamScan;
+        stats.on_time_pno_scan += hidlRadioStats.onTimeInMsForPnoScan;
+        stats.on_time_hs20_scan += hidlRadioStats.onTimeInMsForHs20Scan;
+        /* Copy list of channel stats */
+        for (android.hardware.wifi.V1_3.WifiChannelStats channelStats
+                : hidlRadioStats.channelStats) {
+            ChannelStats channelStatsEntry =
+                    stats.channelStatsMap.get(channelStats.channel.centerFreq);
+            if (channelStatsEntry == null) {
+                channelStatsEntry = new ChannelStats();
+                channelStatsEntry.frequency = channelStats.channel.centerFreq;
+                stats.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
+            }
+            channelStatsEntry.radioOnTimeMs += channelStats.onTimeInMs;
+            channelStatsEntry.ccaBusyTimeMs += channelStats.ccaBusyTimeInMs;
+        }
+        stats.numRadios++;
     }
 
     private static void setRadioStats_1_3(WifiLinkLayerStats stats,
             List<android.hardware.wifi.V1_3.StaLinkLayerRadioStats> radios) {
         if (radios == null) return;
-        // NOTE(b/36176141): Figure out how to coalesce this info for multi radio devices.
-        if (radios.size() > 0) {
-            android.hardware.wifi.V1_3.StaLinkLayerRadioStats radioStats = radios.get(0);
-            stats.on_time = radioStats.V1_0.onTimeInMs;
-            stats.tx_time = radioStats.V1_0.txTimeInMs;
-            stats.tx_time_per_level = new int[radioStats.V1_0.txTimeInMsPerLevel.size()];
-            for (int i = 0; i < stats.tx_time_per_level.length; i++) {
-                stats.tx_time_per_level[i] = radioStats.V1_0.txTimeInMsPerLevel.get(i);
-            }
-            stats.rx_time = radioStats.V1_0.rxTimeInMs;
-            stats.on_time_scan = radioStats.V1_0.onTimeInMsForScan;
-            stats.on_time_nan_scan = radioStats.onTimeInMsForNanScan;
-            stats.on_time_background_scan = radioStats.onTimeInMsForBgScan;
-            stats.on_time_roam_scan = radioStats.onTimeInMsForRoamScan;
-            stats.on_time_pno_scan = radioStats.onTimeInMsForPnoScan;
-            stats.on_time_hs20_scan = radioStats.onTimeInMsForHs20Scan;
-            /* Copy list of channel stats */
-            for (int i = 0; i < radioStats.channelStats.size(); i++) {
-                android.hardware.wifi.V1_3.WifiChannelStats channelStats =
-                        radioStats.channelStats.get(i);
-                ChannelStats channelStatsEntry = new ChannelStats();
-                channelStatsEntry.frequency = channelStats.channel.centerFreq;
-                channelStatsEntry.radioOnTimeMs = channelStats.onTimeInMs;
-                channelStatsEntry.ccaBusyTimeMs = channelStats.ccaBusyTimeInMs;
-                stats.channelStatsMap.put(channelStats.channel.centerFreq, channelStatsEntry);
-            }
+        int radioIndex = 0;
+        for (android.hardware.wifi.V1_3.StaLinkLayerRadioStats radioStats : radios) {
+            aggregateFrameworkRadioStatsFromHidl(radioIndex, stats, radioStats);
+            radioIndex++;
+        }
+    }
+
+    private static void setRadioStats_1_5(WifiLinkLayerStats stats,
+            List<android.hardware.wifi.V1_5.StaLinkLayerRadioStats> radios) {
+        if (radios == null) return;
+        int radioIndex = 0;
+        stats.radioStats = new RadioStat[radios.size()];
+        for (android.hardware.wifi.V1_5.StaLinkLayerRadioStats radioStats : radios) {
+            RadioStat radio = new RadioStat();
+            setFrameworkPerRadioStatsFromHidl(radioStats.radioId, radio, radioStats.V1_3);
+            stats.radioStats[radioIndex] = radio;
+            aggregateFrameworkRadioStatsFromHidl(radioIndex, stats, radioStats.V1_3);
+            radioIndex++;
         }
     }
 
@@ -1133,6 +1484,16 @@ public class WifiVendorHal {
 
     /**
      * Translation table used by getSupportedFeatureSet for translating IWifiChip caps for
+     * additional capabilities introduced in V1.5
+     */
+    private static final long[][] sChipFeatureCapabilityTranslation15 = {
+            {WifiManager.WIFI_FEATURE_INFRA_60G,
+                    android.hardware.wifi.V1_5.IWifiChip.ChipCapabilityMask.WIGIG
+            }
+    };
+
+    /**
+     * Translation table used by getSupportedFeatureSet for translating IWifiChip caps for
      * additional capabilities introduced in V1.3
      */
     private static final long[][] sChipFeatureCapabilityTranslation13 = {
@@ -1157,6 +1518,26 @@ public class WifiVendorHal {
         for (int i = 0; i < sChipFeatureCapabilityTranslation.length; i++) {
             if ((capabilities & sChipFeatureCapabilityTranslation[i][1]) != 0) {
                 features |= sChipFeatureCapabilityTranslation[i][0];
+            }
+        }
+        return features;
+    }
+
+    /**
+     * Feature bit mask translation for Chip V1.5
+     *
+     * @param capabilities bitmask defined IWifiChip.ChipCapabilityMask
+     * @return bitmask defined by WifiManager.WIFI_FEATURE_*
+     */
+    @VisibleForTesting
+    long wifiFeatureMaskFromChipCapabilities_1_5(int capabilities) {
+        // First collect features from previous versions
+        long features = wifiFeatureMaskFromChipCapabilities_1_3(capabilities);
+
+        // Next collect features for V1_5 version
+        for (int i = 0; i < sChipFeatureCapabilityTranslation15.length; i++) {
+            if ((capabilities & sChipFeatureCapabilityTranslation15[i][1]) != 0) {
+                features |= sChipFeatureCapabilityTranslation15[i][0];
             }
         }
         return features;
@@ -1242,6 +1623,34 @@ public class WifiVendorHal {
     }
 
     /**
+     * Translation table used by getSupportedFeatureSetFromPackageManager
+     * for translating System caps
+     */
+    private static final Pair[] sSystemFeatureCapabilityTranslation = new Pair[] {
+            Pair.create(WifiManager.WIFI_FEATURE_INFRA, PackageManager.FEATURE_WIFI),
+            Pair.create(WifiManager.WIFI_FEATURE_P2P, PackageManager.FEATURE_WIFI_DIRECT),
+            Pair.create(WifiManager.WIFI_FEATURE_AWARE, PackageManager.FEATURE_WIFI_AWARE),
+    };
+
+    /**
+     * If VendorHal is not supported, reading PackageManager
+     * system features to return basic capabilities.
+     *
+     * @return bitmask defined by WifiManager.WIFI_FEATURE_*
+     */
+    private long getSupportedFeatureSetFromPackageManager() {
+        long featureSet = 0;
+        final PackageManager pm = sContext.getPackageManager();
+        for (Pair pair: sSystemFeatureCapabilityTranslation) {
+            if (pm.hasSystemFeature((String) pair.second)) {
+                featureSet |= (long) pair.first;
+            }
+        }
+        enter("System feature set: %").c(featureSet).flush();
+        return featureSet;
+    }
+
+    /**
      * Get the supported features
      *
      * The result may differ depending on the mode (STA or AP)
@@ -1251,14 +1660,20 @@ public class WifiVendorHal {
      */
     public long getSupportedFeatureSet(@NonNull String ifaceName) {
         long featureSet = 0;
-        if (!mHalDeviceManager.isStarted()) {
-            return featureSet; // TODO: can't get capabilities with Wi-Fi down
+        if (!mHalDeviceManager.isStarted() || !mHalDeviceManager.isSupported()) {
+            return getSupportedFeatureSetFromPackageManager();
         }
         try {
-            final MutableLong feat = new MutableLong(0);
+            final Mutable<Long> feat = new Mutable<>(0L);
             synchronized (sLock) {
                 android.hardware.wifi.V1_3.IWifiChip iWifiChipV13 = getWifiChipForV1_3Mockable();
-                if (iWifiChipV13 != null) {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 != null) {
+                    iWifiChipV15.getCapabilities_1_5((status, capabilities) -> {
+                        if (!ok(status)) return;
+                        feat.value = wifiFeatureMaskFromChipCapabilities_1_5(capabilities);
+                    });
+                } else if (iWifiChipV13 != null) {
                     iWifiChipV13.getCapabilities_1_3((status, capabilities) -> {
                         if (!ok(status)) return;
                         feat.value = wifiFeatureMaskFromChipCapabilities_1_3(capabilities);
@@ -1266,7 +1681,7 @@ public class WifiVendorHal {
                 } else if (mIWifiChip != null) {
                     mIWifiChip.getCapabilities((status, capabilities) -> {
                         if (!ok(status)) return;
-                        feat.value = wifiFeatureMaskFromChipCapabilities(capabilities);
+                        feat.value = (long) wifiFeatureMaskFromChipCapabilities(capabilities);
                     });
                 }
 
@@ -1282,6 +1697,10 @@ public class WifiVendorHal {
         } catch (RemoteException e) {
             handleRemoteException(e);
             return 0;
+        }
+
+        if (mWifiGlobals.isWpa3SaeH2eSupported()) {
+            featureSet |= WifiManager.WIFI_FEATURE_SAE_H2E;
         }
 
         Set<Integer> supportedIfaceTypes = mHalDeviceManager.getSupportedIfaceTypes();
@@ -1308,27 +1727,64 @@ public class WifiVendorHal {
      * @param mac MAC address to change into
      * @return true for success
      */
-    public boolean setMacAddress(@NonNull String ifaceName, @NonNull MacAddress mac) {
+    public boolean setStaMacAddress(@NonNull String ifaceName, @NonNull MacAddress mac) {
         byte[] macByteArray = mac.toByteArray();
         synchronized (sLock) {
             try {
                 android.hardware.wifi.V1_2.IWifiStaIface sta12 =
                         getWifiStaIfaceForV1_2Mockable(ifaceName);
-                if (sta12 != null) {
-                    return ok(sta12.setMacAddress(macByteArray));
-                }
-
-                android.hardware.wifi.V1_4.IWifiApIface ap14 =
-                        getWifiApIfaceForV1_4Mockable(ifaceName);
-                if (ap14 != null) {
-                    return ok(ap14.setMacAddress(macByteArray));
-                }
+                if (sta12 == null) return boolResult(false);
+                return ok(sta12.setMacAddress(macByteArray));
             } catch (RemoteException e) {
                 handleRemoteException(e);
                 return false;
             }
         }
-        return boolResult(false);
+    }
+
+    /**
+     * Reset MAC address to factory MAC address on the given interface
+     *
+     * @param ifaceName Name of the interface
+     * @return true for success
+     */
+    public boolean resetApMacToFactoryMacAddress(@NonNull String ifaceName) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiApIface ap15 =
+                        getWifiApIfaceForV1_5Mockable(ifaceName);
+                if (ap15 == null) {
+                    MacAddress mac = getApFactoryMacAddress(ifaceName);
+                    return mac != null && setApMacAddress(ifaceName, mac);
+                }
+                return ok(ap15.resetToFactoryMacAddress());
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Set Mac address on the given interface
+     *
+     * @param ifaceName Name of the interface
+     * @param mac MAC address to change into
+     * @return true for success
+     */
+    public boolean setApMacAddress(@NonNull String ifaceName, @NonNull MacAddress mac) {
+        byte[] macByteArray = mac.toByteArray();
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_4.IWifiApIface ap14 =
+                        getWifiApIfaceForV1_4Mockable(ifaceName);
+                if (ap14 == null) return boolResult(false);
+                return ok(ap14.setMacAddress(macByteArray));
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
     }
 
     /**
@@ -1336,21 +1792,25 @@ public class WifiVendorHal {
      *
      * @param ifaceName Name of the interface
      */
-    public boolean isSetMacAddressSupported(@NonNull String ifaceName) {
+    public boolean isStaSetMacAddressSupported(@NonNull String ifaceName) {
         synchronized (sLock) {
             android.hardware.wifi.V1_2.IWifiStaIface sta12 =
                     getWifiStaIfaceForV1_2Mockable(ifaceName);
-            if (sta12 != null) {
-                return true;
-            }
+            return sta12 != null;
+        }
+    }
 
+    /**
+     * Returns true if Hal version supports setMacAddress, otherwise false.
+     *
+     * @param ifaceName Name of the interface
+     */
+    public boolean isApSetMacAddressSupported(@NonNull String ifaceName) {
+        synchronized (sLock) {
             android.hardware.wifi.V1_4.IWifiApIface ap14 =
                     getWifiApIfaceForV1_4Mockable(ifaceName);
-            if (ap14 != null) {
-                return true;
-            }
+            return ap14 != null;
         }
-        return false;
     }
 
     /**
@@ -1359,7 +1819,7 @@ public class WifiVendorHal {
      * @param ifaceName Name of the interface
      * @return factory MAC address of the interface or null.
      */
-    public MacAddress getFactoryMacAddress(@NonNull String ifaceName) {
+    public MacAddress getStaFactoryMacAddress(@NonNull String ifaceName) {
         class AnswerBox {
             public MacAddress mac = null;
         }
@@ -1369,29 +1829,45 @@ public class WifiVendorHal {
 
                 android.hardware.wifi.V1_3.IWifiStaIface sta13 =
                         getWifiStaIfaceForV1_3Mockable(ifaceName);
-                if (sta13 != null) {
-                    sta13.getFactoryMacAddress((status, macBytes) -> {
-                        if (!ok(status)) return;
-                        box.mac = MacAddress.fromBytes(macBytes);
-                    });
-                    return box.mac;
-                }
-
-                android.hardware.wifi.V1_4.IWifiApIface ap14 =
-                        getWifiApIfaceForV1_4Mockable(ifaceName);
-                if (ap14 != null) {
-                    ap14.getFactoryMacAddress((status, macBytes) -> {
-                        if (!ok(status)) return;
-                        box.mac = MacAddress.fromBytes(macBytes);
-                    });
-                    return box.mac;
-                }
+                if (sta13 == null) return null;
+                sta13.getFactoryMacAddress((status, macBytes) -> {
+                    if (!ok(status)) return;
+                    box.mac = MacAddress.fromBytes(macBytes);
+                });
+                return box.mac;
             } catch (RemoteException e) {
                 handleRemoteException(e);
                 return null;
             }
         }
-        return null;
+    }
+
+    /**
+     * Get factory MAC address of the given interface
+     *
+     * @param ifaceName Name of the interface
+     * @return factory MAC address of the interface or null.
+     */
+    public MacAddress getApFactoryMacAddress(@NonNull String ifaceName) {
+        class AnswerBox {
+            public MacAddress mac = null;
+        }
+        synchronized (sLock) {
+            try {
+                AnswerBox box = new AnswerBox();
+                android.hardware.wifi.V1_4.IWifiApIface ap14 =
+                        getWifiApIfaceForV1_4Mockable(ifaceName);
+                if (ap14 == null) return null;
+                ap14.getFactoryMacAddress((status, macBytes) -> {
+                    if (!ok(status)) return;
+                    box.mac = MacAddress.fromBytes(macBytes);
+                });
+                return box.mac;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            }
+        }
     }
 
     /**
@@ -1484,13 +1960,68 @@ public class WifiVendorHal {
     }
 
     /**
+     * Set country code for this Wifi chip
+     *
+     * @param countryCode - two-letter country code (as ISO 3166)
+     * @return true for success
+     */
+    public boolean setChipCountryCode(String countryCode) {
+        if (countryCode == null) return boolResult(false);
+        if (countryCode.length() != 2) return boolResult(false);
+        byte[] code;
+        try {
+            code = NativeUtil.stringToByteArray(countryCode);
+        } catch (IllegalArgumentException e) {
+            return boolResult(false);
+        }
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) return boolResult(false);
+                WifiStatus status = iWifiChipV15.setCountryCode(code);
+                if (!ok(status)) return false;
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Get the names of the bridged AP instances.
+     *
+     * @param ifaceName Name of the bridged interface.
+     * @return A list which contains the names of the bridged AP instances.
+     */
+    @Nullable
+    public List<String> getBridgedApInstances(@NonNull String ifaceName) {
+        synchronized (sLock) {
+            try {
+                Mutable<List<String>> instancesResp  = new Mutable<>();
+                android.hardware.wifi.V1_5.IWifiApIface ap15 =
+                        getWifiApIfaceForV1_5Mockable(ifaceName);
+                if (ap15 == null) return null;
+                ap15.getBridgedInstances((status, instances) -> {
+                    if (!ok(status)) return;
+                    instancesResp.value = new ArrayList<>(instances);
+                });
+                return instancesResp.value;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            }
+        }
+    }
+
+    /**
      * Set country code for this AP iface.
      *
      * @param ifaceName Name of the interface.
      * @param countryCode - two-letter country code (as ISO 3166)
      * @return true for success
      */
-    public boolean setCountryCodeHal(@NonNull String ifaceName, String countryCode) {
+    public boolean setApCountryCode(@NonNull String ifaceName, String countryCode) {
         if (countryCode == null) return boolResult(false);
         if (countryCode.length() != 2) return boolResult(false);
         byte[] code;
@@ -1901,38 +2432,31 @@ public class WifiVendorHal {
      * Reports the outbound frames for the most recent association (space allowing).
      *
      * @param ifaceName Name of the interface.
-     * @param reportBufs
-     * @return true for success
+     * @return list of TxFateReports up to size {@link WifiLoggerHal#MAX_FATE_LOG_LEN}, or empty
+     * list on failure.
      */
-    public boolean getTxPktFates(@NonNull String ifaceName, WifiNative.TxFateReport[] reportBufs) {
-        if (ArrayUtils.isEmpty(reportBufs)) return boolResult(false);
+    public List<TxFateReport> getTxPktFates(@NonNull String ifaceName) {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
-            if (iface == null) return boolResult(false);
+            if (iface == null) return objResult(new ArrayList<>());
             try {
-                MutableBoolean ok = new MutableBoolean(false);
+                List<TxFateReport> reportBufs = new ArrayList<>();
                 iface.getDebugTxPacketFates((status, fates) -> {
-                            if (!ok(status)) return;
-                            int i = 0;
-                            for (WifiDebugTxPacketFateReport fate : fates) {
-                                if (i >= reportBufs.length) break;
-                                byte code = halToFrameworkTxPktFate(fate.fate);
-                                long us = fate.frameInfo.driverTimestampUsec;
-                                byte type =
-                                        halToFrameworkPktFateFrameType(fate.frameInfo.frameType);
-                                byte[] frame =
-                                        NativeUtil.byteArrayFromArrayList(
-                                                fate.frameInfo.frameContent);
-                                reportBufs[i++] =
-                                        new WifiNative.TxFateReport(code, us, type, frame);
-                            }
-                            ok.value = true;
-                        }
-                );
-                return ok.value;
+                    if (!ok(status)) return;
+                    for (WifiDebugTxPacketFateReport fate : fates) {
+                        if (reportBufs.size() >= WifiLoggerHal.MAX_FATE_LOG_LEN) break;
+                        byte code = halToFrameworkTxPktFate(fate.fate);
+                        long us = fate.frameInfo.driverTimestampUsec;
+                        byte type = halToFrameworkPktFateFrameType(fate.frameInfo.frameType);
+                        byte[] frame = NativeUtil.byteArrayFromArrayList(
+                                fate.frameInfo.frameContent);
+                        reportBufs.add(new TxFateReport(code, us, type, frame));
+                    }
+                });
+                return reportBufs;
             } catch (RemoteException e) {
                 handleRemoteException(e);
-                return false;
+                return new ArrayList<>();
             }
         }
     }
@@ -1943,38 +2467,31 @@ public class WifiVendorHal {
      * Reports the inbound frames for the most recent association (space allowing).
      *
      * @param ifaceName Name of the interface.
-     * @param reportBufs
-     * @return true for success
+     * @return list of RxFateReports up to size {@link WifiLoggerHal#MAX_FATE_LOG_LEN}, or empty
+     * list on failure.
      */
-    public boolean getRxPktFates(@NonNull String ifaceName, WifiNative.RxFateReport[] reportBufs) {
-        if (ArrayUtils.isEmpty(reportBufs)) return boolResult(false);
+    public List<RxFateReport> getRxPktFates(@NonNull String ifaceName) {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
-            if (iface == null) return boolResult(false);
+            if (iface == null) return objResult(new ArrayList<>());
             try {
-                MutableBoolean ok = new MutableBoolean(false);
+                List<RxFateReport> reportBufs = new ArrayList<>();
                 iface.getDebugRxPacketFates((status, fates) -> {
-                            if (!ok(status)) return;
-                            int i = 0;
-                            for (WifiDebugRxPacketFateReport fate : fates) {
-                                if (i >= reportBufs.length) break;
-                                byte code = halToFrameworkRxPktFate(fate.fate);
-                                long us = fate.frameInfo.driverTimestampUsec;
-                                byte type =
-                                        halToFrameworkPktFateFrameType(fate.frameInfo.frameType);
-                                byte[] frame =
-                                        NativeUtil.byteArrayFromArrayList(
-                                                fate.frameInfo.frameContent);
-                                reportBufs[i++] =
-                                        new WifiNative.RxFateReport(code, us, type, frame);
-                            }
-                            ok.value = true;
-                        }
-                );
-                return ok.value;
+                    if (!ok(status)) return;
+                    for (WifiDebugRxPacketFateReport fate : fates) {
+                        if (reportBufs.size() >= WifiLoggerHal.MAX_FATE_LOG_LEN) break;
+                        byte code = halToFrameworkRxPktFate(fate.fate);
+                        long us = fate.frameInfo.driverTimestampUsec;
+                        byte type = halToFrameworkPktFateFrameType(fate.frameInfo.frameType);
+                        byte[] frame = NativeUtil.byteArrayFromArrayList(
+                                fate.frameInfo.frameContent);
+                        reportBufs.add(new RxFateReport(code, us, type, frame));
+                    }
+                });
+                return reportBufs;
             } catch (RemoteException e) {
                 handleRemoteException(e);
-                return false;
+                return new ArrayList<>();
             }
         }
     }
@@ -2199,27 +2716,30 @@ public class WifiVendorHal {
      * Query the firmware roaming capabilities.
      *
      * @param ifaceName Name of the interface.
-     * @param capabilities object to be filled in
-     * @return true for success; false for failure
+     * @return capabilities object on success, null otherwise.
      */
-    public boolean getRoamingCapabilities(@NonNull String ifaceName,
-                                          WifiNative.RoamingCapabilities capabilities) {
+    @Nullable
+    public WifiNative.RoamingCapabilities getRoamingCapabilities(@NonNull String ifaceName) {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
-            if (iface == null) return boolResult(false);
+            if (iface == null) return nullResult();
             try {
-                MutableBoolean ok = new MutableBoolean(false);
-                WifiNative.RoamingCapabilities out = capabilities;
+                Mutable<Boolean> ok = new Mutable<>(false);
+                WifiNative.RoamingCapabilities out = new WifiNative.RoamingCapabilities();
                 iface.getRoamingCapabilities((status, cap) -> {
                     if (!ok(status)) return;
                     out.maxBlocklistSize = cap.maxBlacklistSize;
                     out.maxAllowlistSize = cap.maxWhitelistSize;
                     ok.value = true;
                 });
-                return ok.value;
+                if (ok.value) {
+                    return out;
+                } else {
+                    return null;
+                }
             } catch (RemoteException e) {
                 handleRemoteException(e);
-                return false;
+                return null;
             }
         }
     }
@@ -2232,7 +2752,8 @@ public class WifiVendorHal {
      * @return SET_FIRMWARE_ROAMING_SUCCESS, SET_FIRMWARE_ROAMING_FAILURE,
      *         or SET_FIRMWARE_ROAMING_BUSY
      */
-    public int enableFirmwareRoaming(@NonNull String ifaceName, int state) {
+    public @WifiNative.RoamingEnableStatus int enableFirmwareRoaming(@NonNull String ifaceName,
+            @WifiNative.RoamingEnableState int state) {
         synchronized (sLock) {
             IWifiStaIface iface = getStaIface(ifaceName);
             if (iface == null) return WifiNative.SET_FIRMWARE_ROAMING_FAILURE;
@@ -2291,7 +2812,15 @@ public class WifiVendorHal {
                     for (String ssidStr : config.allowlistSsids) {
                         byte[] ssid = NativeUtil.byteArrayFromArrayList(
                                 NativeUtil.decodeSsid(ssidStr));
-                        roamingConfig.ssidWhitelist.add(ssid);
+                        // HIDL code is throwing InvalidArgumentException when ssidWhitelist has
+                        // SSIDs with less than 32 byte length this is due to HAL definition of
+                        // SSID declared it as 32-byte fixed length array. Thus pad additional
+                        // bytes with 0's to pass SSIDs as byte arrays of 32 length
+                        byte[] ssid_32 = new byte[32];
+                        for (int i = 0; i < ssid.length; i++) {
+                            ssid_32[i] = ssid[i];
+                        }
+                        roamingConfig.ssidWhitelist.add(ssid_32);
                     }
                 }
 
@@ -2353,6 +2882,17 @@ public class WifiVendorHal {
     }
 
     /**
+     * Method to mock out the V1_5 IWifiChip retrieval in unit tests.
+     *
+     * @return 1.5 IWifiChip object if the device is running the 1.5 wifi hal service, null
+     * otherwise.
+     */
+    protected android.hardware.wifi.V1_5.IWifiChip getWifiChipForV1_5Mockable() {
+        if (mIWifiChip == null) return null;
+        return android.hardware.wifi.V1_5.IWifiChip.castFrom(mIWifiChip);
+    }
+
+    /**
      * Method to mock out the V1_2 IWifiStaIface retrieval in unit tests.
      *
      * @param ifaceName Name of the interface
@@ -2380,11 +2920,32 @@ public class WifiVendorHal {
         return android.hardware.wifi.V1_3.IWifiStaIface.castFrom(iface);
     }
 
+    /**
+     * Method to mock out the V1_5 IWifiStaIface retrieval in unit tests.
+     *
+     * @param ifaceName Name of the interface
+     * @return 1.5 IWifiStaIface object if the device is running the 1.5 wifi hal service, null
+     * otherwise.
+     */
+    protected android.hardware.wifi.V1_5.IWifiStaIface getWifiStaIfaceForV1_5Mockable(
+            @NonNull String ifaceName) {
+        IWifiStaIface iface = getStaIface(ifaceName);
+        if (iface == null) return null;
+        return android.hardware.wifi.V1_5.IWifiStaIface.castFrom(iface);
+    }
+
     protected android.hardware.wifi.V1_4.IWifiApIface getWifiApIfaceForV1_4Mockable(
             String ifaceName) {
         IWifiApIface iface = getApIface(ifaceName);
         if (iface == null) return null;
         return android.hardware.wifi.V1_4.IWifiApIface.castFrom(iface);
+    }
+
+    protected android.hardware.wifi.V1_5.IWifiApIface getWifiApIfaceForV1_5Mockable(
+            String ifaceName) {
+        IWifiApIface iface = getApIface(ifaceName);
+        if (iface == null) return null;
+        return android.hardware.wifi.V1_5.IWifiApIface.castFrom(iface);
     }
 
     /**
@@ -2635,7 +3196,7 @@ public class WifiVendorHal {
     }
 
     /**
-     * Returns whether STA/AP concurrency is supported or not.
+     * Returns whether STA + AP concurrency is supported or not.
      */
     public boolean isStaApConcurrencySupported() {
         synchronized (sLock) {
@@ -2643,6 +3204,119 @@ public class WifiVendorHal {
                     put(IfaceType.STA, 1);
                     put(IfaceType.AP, 1);
                 }});
+        }
+    }
+
+    /**
+     * Returns whether STA + STA concurrency is supported or not.
+     */
+    public boolean isStaStaConcurrencySupported() {
+        synchronized (sLock) {
+            return mHalDeviceManager.canSupportIfaceCombo(new SparseArray<Integer>() {{
+                    put(IfaceType.STA, 2);
+                }});
+        }
+    }
+
+    /**
+     * Returns whether a new AP iface can be created or not.
+     */
+    public boolean isItPossibleToCreateApIface(@NonNull WorkSource requestorWs) {
+        synchronized (sLock) {
+            return mHalDeviceManager.isItPossibleToCreateIface(IfaceType.AP, requestorWs);
+        }
+    }
+
+    /**
+     * Returns whether a new STA iface can be created or not.
+     */
+    public boolean isItPossibleToCreateStaIface(@NonNull WorkSource requestorWs) {
+        synchronized (sLock) {
+            return mHalDeviceManager.isItPossibleToCreateIface(IfaceType.STA, requestorWs);
+        }
+
+    }
+    /**
+     * Set primary connection when multiple STA ifaces are active.
+     *
+     * @param ifaceName Name of the interface.
+     * @return true for success
+     */
+    public boolean setMultiStaPrimaryConnection(@NonNull String ifaceName) {
+        if (TextUtils.isEmpty(ifaceName)) return boolResult(false);
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) return boolResult(false);
+                WifiStatus status = iWifiChipV15.setMultiStaPrimaryConnection(ifaceName);
+                if (!ok(status)) return false;
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
+    private byte frameworkMultiStaUseCaseToHidl(@WifiNative.MultiStaUseCase int useCase)
+            throws IllegalArgumentException {
+        switch (useCase) {
+            case WifiNative.DUAL_STA_TRANSIENT_PREFER_PRIMARY:
+                return MultiStaUseCase.DUAL_STA_TRANSIENT_PREFER_PRIMARY;
+            case WifiNative.DUAL_STA_NON_TRANSIENT_UNBIASED:
+                return MultiStaUseCase.DUAL_STA_NON_TRANSIENT_UNBIASED;
+            default:
+                throw new IllegalArgumentException("Invalid use case " + useCase);
+        }
+    }
+
+    /**
+     * Set use-case when multiple STA ifaces are active.
+     *
+     * @param useCase one of the use cases.
+     * @return true for success
+     */
+    public boolean setMultiStaUseCase(@WifiNative.MultiStaUseCase int useCase) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) return boolResult(false);
+                WifiStatus status = iWifiChipV15.setMultiStaUseCase(
+                        frameworkMultiStaUseCaseToHidl(useCase));
+                if (!ok(status)) return false;
+                return true;
+            } catch (IllegalArgumentException e) {
+                mLog.e("Invalid use case " + e);
+                return boolResult(false);
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Notify scan mode state to driver to save power in scan-only mode.
+     *
+     * @param ifaceName Name of the interface.
+     * @param enable whether is in scan-only mode
+     * @return true for success
+     */
+    public boolean setScanMode(@NonNull String ifaceName, boolean enable) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiStaIface iface =
+                        getWifiStaIfaceForV1_5Mockable(ifaceName);
+                if (iface != null) {
+                    WifiStatus status = iface.setScanMode(enable);
+                    if (!ok(status)) return false;
+                    return true;
+                }
+                return false;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return false;
+            }
         }
     }
 
@@ -3096,19 +3770,127 @@ public class WifiVendorHal {
                     handler.onDeath();
                 }
             }
-            if (isStarted) {
-                synchronized (sLock) {
-                    if (mStaIfaceAvailableForRequestListener != null) {
-                        mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                                IfaceType.STA, mStaIfaceAvailableForRequestListener,
-                                mHalEventHandler);
-                    }
-                    if (mApIfaceAvailableForRequestListener != null) {
-                        mHalDeviceManager.registerInterfaceAvailableForRequestListener(
-                                IfaceType.AP, mApIfaceAvailableForRequestListener,
-                                mHalEventHandler);
-                    }
+        }
+    }
+
+    /**
+     * Trigger subsystem restart in vendor side
+     */
+    public boolean startSubsystemRestart() {
+        synchronized (sLock) {
+            android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+            if (iWifiChipV15 != null) {
+                try {
+                    return ok(iWifiChipV15.triggerSubsystemRestart());
+                } catch (RemoteException e) {
+                    handleRemoteException(e);
+                    return false;
                 }
+            }
+            // HAL version does not support this api
+            return false;
+        }
+    }
+
+    /**
+     * Convert framework's operational mode to HAL's operational mode.
+     */
+    private int frameworkToHalIfaceMode(@WifiAvailableChannel.OpMode int mode) {
+        int halMode = 0;
+        if ((mode & WifiAvailableChannel.OP_MODE_STA) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_STA;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_SAP) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_SOFTAP;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_P2P_CLIENT;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_P2P_GO;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_WIFI_AWARE) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_NAN;
+        }
+        if ((mode & WifiAvailableChannel.OP_MODE_TDLS) != 0) {
+            halMode |= WifiIfaceMode.IFACE_MODE_TDLS;
+        }
+        return halMode;
+    }
+
+    /**
+     * Convert from HAL's operational mode to framework's operational mode.
+     */
+    private @WifiAvailableChannel.OpMode int frameworkFromHalIfaceMode(int halMode) {
+        int mode = 0;
+        if ((halMode & WifiIfaceMode.IFACE_MODE_STA) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_STA;
+        }
+        if ((halMode & WifiIfaceMode.IFACE_MODE_SOFTAP) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_SAP;
+        }
+        if ((halMode & WifiIfaceMode.IFACE_MODE_P2P_CLIENT) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_CLI;
+        }
+        if ((halMode & WifiIfaceMode.IFACE_MODE_P2P_GO) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_DIRECT_GO;
+        }
+        if ((halMode & WifiIfaceMode.IFACE_MODE_NAN) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_WIFI_AWARE;
+        }
+        if ((halMode & WifiIfaceMode.IFACE_MODE_TDLS) != 0) {
+            mode |= WifiAvailableChannel.OP_MODE_TDLS;
+        }
+        return mode;
+    }
+
+    /**
+     * Convert framework's WifiAvailableChannel.FILTER_* to HAL's UsableChannelFilter.
+     */
+    private int frameworkToHalUsableFilter(@WifiAvailableChannel.Filter int filter) {
+        int halFilter = 0;  // O implies no additional filter other than regulatory (default)
+
+        if ((filter & WifiAvailableChannel.FILTER_CONCURRENCY) != 0) {
+            halFilter |= UsableChannelFilter.CONCURRENCY;
+        }
+        if ((filter & WifiAvailableChannel.FILTER_CELLULAR_COEXISTENCE) != 0) {
+            halFilter |= UsableChannelFilter.CELLULAR_COEXISTENCE;
+        }
+        return halFilter;
+    }
+
+    /**
+     * Retrieve the list of usable Wifi channels.
+     */
+    public List<WifiAvailableChannel> getUsableChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode,
+            @WifiAvailableChannel.Filter int filter) {
+        synchronized (sLock) {
+            try {
+                android.hardware.wifi.V1_5.IWifiChip iWifiChipV15 = getWifiChipForV1_5Mockable();
+                if (iWifiChipV15 == null) {
+                    return null;
+                }
+                Mutable<List<WifiAvailableChannel>> answer = new Mutable<>();
+                iWifiChipV15.getUsableChannels(
+                        makeWifiBandFromFrameworkBand(band),
+                        frameworkToHalIfaceMode(mode),
+                        frameworkToHalUsableFilter(filter), (status, channels) -> {
+                            if (!ok(status)) return;
+                            answer.value = new ArrayList<>();
+                            for (WifiUsableChannel ch : channels) {
+                                answer.value.add(new WifiAvailableChannel(ch.channel,
+                                        frameworkFromHalIfaceMode(ch.ifaceModeMask)));
+                            }
+                        });
+                return answer.value;
+            } catch (RemoteException e) {
+                handleRemoteException(e);
+                return null;
+            } catch (IllegalArgumentException e) {
+                mLog.e("Illegal argument for getUsableChannels() " + e);
+                return null;
             }
         }
     }

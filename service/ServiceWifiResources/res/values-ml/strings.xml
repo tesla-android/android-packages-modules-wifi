@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"<xliff:g id="NAME">%s</xliff:g> നിർദ്ദേശിച്ച നെറ്റ്‌വർക്കുകൾ. ഉപകരണം സ്വയമേവ കണക്‌റ്റ് ചെയ്‌തേക്കാം."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"അനുവദിക്കുക"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"വേണ്ട"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"<xliff:g id="CARRIERNAME">%s</xliff:g> വൈഫൈയിൽ കണക്റ്റ് ചെയ്യണോ?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"ഉപകരണ ലൊക്കേഷൻ ട്രാക്ക് ചെയ്യാൻ ഉപയോഗിക്കാവുന്ന സിം ഐഡി ഈ നെറ്റ്‌വർക്കുകൾക്ക് ലഭിക്കും"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"കണക്‌റ്റ് ചെയ്യുക"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"കണക്റ്റ് ചെയ്യരുത്"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"കണക്ഷൻ സ്ഥിരീകരിക്കണോ?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"നിങ്ങൾ കണക്റ്റ് ചെയ്യുകയാണെങ്കിൽ, സിമ്മുമായി ബന്ധപ്പെട്ട തനത് ഐഡി <xliff:g id="CARRIERNAME">%s</xliff:g> വൈഫൈ നെറ്റ്‌വർക്കുകൾ ആക്സസ് ചെയ്യുകയോ പങ്കിടുകയോ ചെയ്തേക്കാം. നിങ്ങളുടെ ഉപകരണ ലൊക്കേഷൻ ട്രാക്ക് ചെയ്യാൻ ഇത് അനുവദിച്ചേക്കാം."</string>
@@ -57,7 +54,7 @@
     <string name="ok" msgid="847575529546290102">"ശരി"</string>
     <string name="wifi_p2p_invitation_sent_title" msgid="6552639940428040869">"ക്ഷണം അയച്ചു"</string>
     <string name="wifi_p2p_invitation_to_connect_title" msgid="8917157937652519251">"കണക്റ്റുചെയ്യാനുള്ള ക്ഷണം"</string>
-    <string name="wifi_p2p_from_message" msgid="5921308150192756898">"അയച്ചത്:"</string>
+    <string name="wifi_p2p_from_message" msgid="5921308150192756898">"അയയ്ക്കുന്നത്:"</string>
     <string name="wifi_p2p_to_message" msgid="3809923305696994787">"ടു:"</string>
     <string name="wifi_p2p_enter_pin_message" msgid="5200220251738047620">"ആവശ്യമായ പിൻ ടൈപ്പുചെയ്യുക:"</string>
     <string name="wifi_p2p_show_pin_message" msgid="1000091690967930798">"പിൻ:"</string>

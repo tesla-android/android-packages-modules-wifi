@@ -51,7 +51,7 @@ public class RttTestUtils {
     }
 
     /**
-     * Returns a dummy ranging request with 3 requests:
+     * Returns a placeholder ranging request with 3 requests and a non-default in-range burst size:
      * - First: 802.11mc capable
      * - Second: 802.11mc not capable
      * - Third: Aware peer
@@ -69,14 +69,15 @@ public class RttTestUtils {
         MacAddress mac1 = MacAddress.fromString("08:09:08:07:06:05");
 
         builder.addAccessPoint(scan1);
-        builder.addAccessPoint(scan2);
+        builder.addNon80211mcCapableAccessPoint(scan2);
+        // Changing default RTT burst size to a valid, but maximum, value
+        builder.setRttBurstSize(RangingRequest.getMaxRttBurstSize());
         builder.addWifiAwarePeer(mac1);
-
         return builder.build();
     }
 
     /**
-     * Returns a dummy ranging request with 2 requests:
+     * Returns a placeholder ranging request with 2 requests:
      * - First: 802.11mc capable
      */
     public static RangingRequest getDummyRangingRequestMcOnly(byte lastMacByte) {
@@ -93,7 +94,7 @@ public class RttTestUtils {
     }
 
     /**
-     * Returns a dummy ranging request with 2 requests - neither of which support 802.11mc.
+     * Returns a placeholder ranging request with 2 requests - neither of which support 802.11mc.
      */
     public static RangingRequest getDummyRangingRequestNo80211mcSupport(byte lastMacByte) {
         RangingRequest.Builder builder = new RangingRequest.Builder();
@@ -103,14 +104,14 @@ public class RttTestUtils {
         ScanResult scan2 = new ScanResult();
         scan2.BSSID = "0A:0B:0C:0D:0E:" + String.format("%02d", lastMacByte);
 
-        builder.addAccessPoint(scan1);
-        builder.addAccessPoint(scan2);
+        builder.addNon80211mcCapableAccessPoint(scan1);
+        builder.addNon80211mcCapableAccessPoint(scan2);
 
         return builder.build();
     }
 
     /**
-     * Returns a matched set of dummy ranging results: HAL RttResult and the public API
+     * Returns a matched set of placeholder ranging results: HAL RttResult and the public API
      * RangingResult.
      *
      * @param request If non-null will be used as a template (BSSID) for the range results.
@@ -125,15 +126,15 @@ public class RttTestUtils {
         List<RangingResult> results = new ArrayList<>();
 
         if (request != null) {
-            for (ResponderConfig peer: request.mRttPeers) {
+            for (ResponderConfig peer : request.mRttPeers) {
                 RangingResult rangingResult;
                 halResults.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                         peer.macAddress, rangeCmBase, rangeStdDevCmBase, rssiBase,
-                        8, 5, null, null, null, rangeTimestampBase));
+                        8, 5, null, null, null, rangeTimestampBase, true));
                 if (peer.peerHandle == null) {
                     rangingResult = new RangingResult(RangingResult.STATUS_SUCCESS,
                             peer.macAddress, rangeCmBase++, rangeStdDevCmBase++, rssiBase++,
-                            8, 5, null, null, null, rangeTimestampBase++);
+                            8, 5, null, null, null, rangeTimestampBase++, true);
                 } else {
                     rangingResult = new RangingResult(RangingResult.STATUS_SUCCESS,
                             peer.peerHandle, rangeCmBase++, rangeStdDevCmBase++, rssiBase++,
@@ -146,15 +147,15 @@ public class RttTestUtils {
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("10:01:02:03:04:05"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 8, 4, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("1A:0B:0C:0D:0E:0F"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 9, 3, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             results.add(new RangingResult(RangingResult.STATUS_SUCCESS,
                     MacAddress.fromString("08:09:08:07:06:05"), rangeCmBase++,
                     rangeStdDevCmBase++, rssiBase++, 10, 2, null, null,
-                    null, rangeTimestampBase++));
+                    null, rangeTimestampBase++, true));
             halResults.addAll(results);
         }
 

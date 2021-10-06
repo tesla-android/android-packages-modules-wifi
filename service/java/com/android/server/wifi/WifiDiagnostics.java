@@ -17,9 +17,12 @@
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.BugreportManager;
 import android.os.BugreportParams;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.ArraySet;
 import android.util.Base64;
 import android.util.Log;
@@ -40,7 +43,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -52,16 +54,23 @@ import java.util.zip.Deflater;
 /**
  * Tracks various logs for framework.
  */
-class WifiDiagnostics extends BaseWifiDiagnostics {
+public class WifiDiagnostics {
     /**
      * Thread-safety:
-     * 1) All non-private methods are |synchronized|.
-     * 2) Callbacks into WifiDiagnostics use non-private (and hence, synchronized) methods. See, e.g,
-     *    onRingBufferData(), onWifiAlert().
+     * 1) Most non-private methods are |synchronized| with the exception of
+     *      {@link #captureBugReportData(int)} and {@link #triggerBugReportDataCapture(int)}, and
+     *      a few others. See those methods' documentation.
+     * 2) Callbacks into WifiDiagnostics use non-private (and hence, synchronized) methods.
+     *      See, e.g, onRingBufferData(), onWifiAlert().
      */
 
     private static final String TAG = "WifiDiags";
     private static final boolean DBG = false;
+
+    public static final byte CONNECTION_EVENT_STARTED = 0;
+    public static final byte CONNECTION_EVENT_SUCCEEDED = 1;
+    public static final byte CONNECTION_EVENT_FAILED = 2;
+    public static final byte CONNECTION_EVENT_TIMEOUT = 3;
 
     /** log level flags; keep these consistent with wifi_logger.h */
 
@@ -122,29 +131,36 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
     @VisibleForTesting public static final String DRIVER_DUMP_SECTION_HEADER =
             "Driver state dump";
 
-    private int mLogLevel = VERBOSE_NO_LOG;
-    private boolean mIsLoggingEventHandlerRegistered;
-    private WifiNative.RingBufferStatus[] mRingBuffers;
-    private WifiNative.RingBufferStatus mPerPacketRingBuffer;
+    private final WifiNative mWifiNative;
     private final Context mContext;
     private final BuildProperties mBuildProperties;
     private final WifiLog mLog;
     private final LastMileLogger mLastMileLogger;
     private final Runtime mJavaRuntime;
     private final WifiMetrics mWifiMetrics;
+    private final WifiInjector mWifiInjector;
+    private final Clock mClock;
+    private final Handler mWorkerThreadHandler;
+
+    private int mLogLevel = VERBOSE_NO_LOG;
+    private boolean mIsLoggingEventHandlerRegistered;
+    private WifiNative.RingBufferStatus[] mRingBuffers;
+    private WifiNative.RingBufferStatus mPerPacketRingBuffer;
+    private String mFirmwareVersion;
+    private String mDriverVersion;
+    private int mSupportedFeatureSet;
     private int mMaxRingBufferSizeBytes;
-    private WifiInjector mWifiInjector;
-    private Clock mClock;
 
     /** Interfaces started logging */
     private final Set<String> mActiveInterfaces = new ArraySet<>();
+    private String mLatestIfaceLogged = "";
 
-    public WifiDiagnostics(Context context, WifiInjector wifiInjector,
-                           WifiNative wifiNative, BuildProperties buildProperties,
-                           LastMileLogger lastMileLogger, Clock clock) {
-        super(wifiNative);
-
+    public WifiDiagnostics(
+            Context context, WifiInjector wifiInjector,
+            WifiNative wifiNative, BuildProperties buildProperties,
+            LastMileLogger lastMileLogger, Clock clock, Looper workerLooper) {
         mContext = context;
+        mWifiNative = wifiNative;
         mBuildProperties = buildProperties;
         mIsLoggingEventHandlerRegistered = false;
         mLog = wifiInjector.makeLog(TAG);
@@ -153,6 +169,7 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         mWifiMetrics = wifiInjector.getWifiMetrics();
         mWifiInjector = wifiInjector;
         mClock = clock;
+        mWorkerThreadHandler = new Handler(workerLooper);
     }
 
     /**
@@ -162,7 +179,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
      *
      * @param ifaceName the interface requesting to start logging.
      */
-    @Override
     public synchronized void startLogging(@NonNull String ifaceName) {
         if (mActiveInterfaces.contains(ifaceName)) {
             Log.w(TAG, "Interface: " + ifaceName + " had already started logging");
@@ -181,12 +197,12 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         }
 
         mActiveInterfaces.add(ifaceName);
+        mLatestIfaceLogged = ifaceName;
 
         Log.d(TAG, "startLogging() iface list is " + mActiveInterfaces
                 + " after adding " + ifaceName);
     }
 
-    @Override
     public synchronized void startPacketLog() {
         if (mPerPacketRingBuffer != null) {
             startLoggingRingBuffer(mPerPacketRingBuffer);
@@ -195,7 +211,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         }
     }
 
-    @Override
     public synchronized void stopPacketLog() {
         if (mPerPacketRingBuffer != null) {
             stopLoggingRingBuffer(mPerPacketRingBuffer);
@@ -211,7 +226,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
      *
      * @param ifaceName the interface requesting to stop logging.
      */
-    @Override
     public synchronized void stopLogging(@NonNull String ifaceName) {
         if (!mActiveInterfaces.contains(ifaceName)) {
             Log.w(TAG, "ifaceName: " + ifaceName + " is not in the start log user list");
@@ -242,37 +256,75 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         }
     }
 
-    @Override
-    public synchronized void reportConnectionEvent(byte event) {
-        mLastMileLogger.reportConnectionEvent(event);
+    /**
+     * Inform the diagnostics module of a connection event.
+     * @param event The type of connection event (see CONNECTION_EVENT_* constants)
+     */
+    public synchronized void reportConnectionEvent(byte event,
+            ClientModeManager clientModeManager) {
+        mLastMileLogger.reportConnectionEvent(clientModeManager.getInterfaceName(), event);
         if (event == CONNECTION_EVENT_FAILED || event == CONNECTION_EVENT_TIMEOUT) {
-            mPacketFatesForLastFailure = fetchPacketFates();
+            mPacketFatesForLastFailure = new PacketFates(clientModeManager);
         }
     }
 
-    @Override
-    public synchronized void captureBugReportData(int reason) {
-        BugReport report = captureBugreport(reason, isVerboseLoggingEnabled());
-        mLastBugReports.addLast(report);
-        flushDump(reason);
-    }
-
-    @Override
-    public synchronized void captureAlertData(int errorCode, byte[] alertData) {
-        BugReport report = captureBugreport(errorCode, isVerboseLoggingEnabled());
-        report.alertData = alertData;
-        mLastAlerts.addLast(report);
-        /* Flush HAL ring buffer when detecting data stall */
-        if (Arrays.stream(mContext.getResources().getIntArray(
-                R.array.config_wifi_fatal_firmware_alert_error_code_list))
-                .boxed().collect(Collectors.toList()).contains(errorCode)) {
-            flushDump(REPORT_REASON_FATAL_FW_ALERT);
+    /**
+     * Synchronously capture bug report data.
+     *
+     * Note: this method is not marked as synchronized, but it is synchronized internally.
+     * getLogcat*() methods are very slow, so do not synchronize these calls (they are thread safe,
+     * do not need to be synchronized).
+     */
+    public void captureBugReportData(int reason) {
+        final boolean verbose;
+        synchronized (this) {
+            verbose = isVerboseLoggingEnabled();
+        }
+        BugReport report = captureBugreport(reason, verbose);
+        synchronized (this) {
+            mLastBugReports.addLast(report);
+            flushDump(reason);
         }
     }
 
-    @Override
+    /**
+     * Asynchronously capture bug report data.
+     *
+     * Not synchronized because no work is performed on the calling thread.
+     */
+    public void triggerBugReportDataCapture(int reason) {
+        mWorkerThreadHandler.post(() -> {
+            captureBugReportData(reason);
+        });
+    }
+
+    private void triggerAlertDataCapture(int errorCode, byte[] alertData) {
+        mWorkerThreadHandler.post(() -> {
+            final boolean verbose;
+            synchronized (this) {
+                verbose = isVerboseLoggingEnabled();
+            }
+            // This is very slow, don't put this inside `synchronized(this)`!
+            BugReport report = captureBugreport(errorCode, verbose);
+            synchronized (this) {
+                report.alertData = alertData;
+                mLastAlerts.addLast(report);
+
+                /* Flush HAL ring buffer when detecting data stall */
+                if (Arrays.stream(mContext.getResources().getIntArray(
+                        R.array.config_wifi_fatal_firmware_alert_error_code_list))
+                        .boxed().collect(Collectors.toList()).contains(errorCode)) {
+                    flushDump(REPORT_REASON_FATAL_FW_ALERT);
+                }
+            }
+        });
+    }
+
     public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        super.dump(pw);
+        pw.println("Chipset information :-----------------------------------------------");
+        pw.println("FW Version is: " + mFirmwareVersion);
+        pw.println("Driver Version is: " + mDriverVersion);
+        pw.println("Supported Feature set: " + mSupportedFeatureSet);
 
         for (int i = 0; i < mLastAlerts.size(); i++) {
             pw.println("--------------------------------------------------------------------");
@@ -301,7 +353,8 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
      * Initiates a system-level bug report if there is no bug report taken recently.
      * This is done in a non-blocking fashion.
      */
-    @Override
+    // TODO(b/193460475): BugReportManager changes from SystemApi to PublicApi, not a new API
+    @SuppressLint("NewApi")
     public void takeBugReport(String bugTitle, String bugDetail) {
         if (mBuildProperties.isUserBuild()
                 || !mContext.getResources().getBoolean(
@@ -315,6 +368,7 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
             return;
         }
         mLastBugReportTime = currentTime;
+        mWifiMetrics.logBugReport();
         BugreportManager bugreportManager = mContext.getSystemService(BugreportManager.class);
         BugreportParams params = new BugreportParams(BugreportParams.BUGREPORT_MODE_FULL);
         try {
@@ -421,7 +475,7 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         }
     }
 
-    class LimitedCircularArray<E> {
+    static class LimitedCircularArray<E> {
         private ArrayList<E> mArrayList;
         private int mMax;
         LimitedCircularArray(int max) {
@@ -471,8 +525,11 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
     }
 
     synchronized void onWifiAlert(int errorCode, @NonNull byte[] buffer) {
-        captureAlertData(errorCode, buffer);
-        mWifiMetrics.logFirmwareAlert(errorCode);
+        triggerAlertDataCapture(errorCode, buffer);
+        // TODO b/166309727 This currently assumes that the firmware alert comes from latest
+        // interface that started logging, as the callback does not tell us which interface
+        // caused the alert.
+        mWifiMetrics.logFirmwareAlert(mLatestIfaceLogged, errorCode);
         mWifiInjector.getWifiScoreCard().noteFirmwareAlert(errorCode);
     }
 
@@ -481,7 +538,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
      *
      * @param verbose - with the obvious interpretation
      */
-    @Override
     public synchronized void enableVerboseLogging(boolean verboseEnabled) {
         final int ringBufferByteLimitSmall = mContext.getResources().getInteger(
                 R.integer.config_wifi_logger_ring_buffer_default_size_limit_kb) * 1024;
@@ -507,7 +563,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
     }
 
     private void clearVerboseLogs() {
-
         for (int i = 0; i < mLastAlerts.size(); i++) {
             mLastAlerts.get(i).clearVerboseLogs();
         }
@@ -640,19 +695,22 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         report.systemTimeMs = System.currentTimeMillis();
         report.kernelTimeNanos = System.nanoTime();
 
-        if (mRingBuffers != null) {
-            for (WifiNative.RingBufferStatus buffer : mRingBuffers) {
-                /* this will push data in mRingBuffers */
-                mWifiNative.getRingBufferData(buffer.name);
-                ByteArrayRingBuffer data = mRingBufferData.get(buffer.name);
-                byte[][] buffers = new byte[data.getNumBuffers()][];
-                for (int i = 0; i < data.getNumBuffers(); i++) {
-                    buffers[i] = data.getBuffer(i).clone();
+        synchronized (this) {
+            if (mRingBuffers != null) {
+                for (WifiNative.RingBufferStatus buffer : mRingBuffers) {
+                    /* this will push data in mRingBuffers */
+                    mWifiNative.getRingBufferData(buffer.name);
+                    ByteArrayRingBuffer data = mRingBufferData.get(buffer.name);
+                    byte[][] buffers = new byte[data.getNumBuffers()][];
+                    for (int i = 0; i < data.getNumBuffers(); i++) {
+                        buffers[i] = data.getBuffer(i).clone();
+                    }
+                    report.ringBuffers.put(buffer.name, buffers);
                 }
-                report.ringBuffers.put(buffer.name, buffers);
             }
         }
 
+        // getLogcat*() is very slow, do not put them inside `synchronize(this)`!
         report.logcatLines = getLogcatSystem(127);
         report.kernelLogLines = getLogcatKernel(127);
 
@@ -664,12 +722,12 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
     }
 
     @VisibleForTesting
-    LimitedCircularArray<BugReport> getBugReports() {
+    synchronized LimitedCircularArray<BugReport> getBugReports() {
         return mLastBugReports;
     }
 
     @VisibleForTesting
-    LimitedCircularArray<BugReport> getAlertReports() {
+    synchronized LimitedCircularArray<BugReport> getAlertReports() {
         return mLastAlerts;
     }
 
@@ -727,6 +785,7 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
         }
     }
 
+    /** This method is thread safe */
     private ArrayList<String> getLogcat(String logcatSections, int maxLines) {
         ArrayList<String> lines = new ArrayList<>(maxLines);
         try {
@@ -741,71 +800,69 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
             mLog.dump("Exception while capturing logcat: %").c(e.toString()).flush();
         }
         return lines;
-
     }
 
+    /** This method is thread safe */
     private ArrayList<String> getLogcatSystem(int maxLines) {
         return getLogcat("main,system,crash", maxLines);
     }
 
+    /** This method is thread safe */
     private ArrayList<String> getLogcatKernel(int maxLines) {
         return getLogcat("kernel", maxLines);
     }
 
     /** Packet fate reporting */
-    private ArrayList<WifiNative.FateReport> mPacketFatesForLastFailure;
+    private PacketFates mPacketFatesForLastFailure;
 
-    private ArrayList<WifiNative.FateReport> fetchPacketFates() {
-        ArrayList<WifiNative.FateReport> mergedFates = new ArrayList<WifiNative.FateReport>();
-        WifiNative.TxFateReport[] txFates =
-                new WifiNative.TxFateReport[WifiLoggerHal.MAX_FATE_LOG_LEN];
-        if (mWifiNative.getTxPktFates(mWifiNative.getClientInterfaceName(), txFates)) {
-            for (int i = 0; i < txFates.length && txFates[i] != null; i++) {
-                mergedFates.add(txFates[i]);
-            }
+    static class PacketFates {
+        public final String clientModeManagerInfo;
+        @NonNull public final List<WifiNative.FateReport> mergedFates;
+
+        PacketFates(ClientModeManager clientModeManager) {
+            clientModeManagerInfo = clientModeManager.toString();
+            mergedFates = new ArrayList<WifiNative.FateReport>();
+            mergedFates.addAll(clientModeManager.getTxPktFates());
+            mergedFates.addAll(clientModeManager.getRxPktFates());
+            mergedFates.sort(Comparator.comparing(fateReport -> fateReport.mDriverTimestampUSec));
         }
+    }
 
-        WifiNative.RxFateReport[] rxFates =
-                new WifiNative.RxFateReport[WifiLoggerHal.MAX_FATE_LOG_LEN];
-        if (mWifiNative.getRxPktFates(mWifiNative.getClientInterfaceName(), rxFates)) {
-            for (int i = 0; i < rxFates.length && rxFates[i] != null; i++) {
-                mergedFates.add(rxFates[i]);
-            }
+    private @NonNull List<PacketFates> fetchPacketFatesForAllClientIfaces() {
+        List<ClientModeManager> clientModeManagers =
+                mWifiInjector.getActiveModeWarden().getClientModeManagers();
+        List<PacketFates> packetFates = new ArrayList<>();
+        for (ClientModeManager cm : clientModeManagers) {
+            packetFates.add(new PacketFates(cm));
         }
-
-        Collections.sort(mergedFates, new Comparator<WifiNative.FateReport>() {
-            @Override
-            public int compare(WifiNative.FateReport lhs, WifiNative.FateReport rhs) {
-                return Long.compare(lhs.mDriverTimestampUSec, rhs.mDriverTimestampUSec);
-            }
-        });
-
-        return mergedFates;
+        return packetFates;
     }
 
     private void dumpPacketFates(PrintWriter pw) {
         dumpPacketFatesInternal(pw, "Last failed connection fates", mPacketFatesForLastFailure,
                 isVerboseLoggingEnabled());
-        dumpPacketFatesInternal(pw, "Latest fates", fetchPacketFates(), isVerboseLoggingEnabled());
+        for (PacketFates fates : fetchPacketFatesForAllClientIfaces()) {
+            dumpPacketFatesInternal(pw, "Latest fates", fates, isVerboseLoggingEnabled());
+        }
     }
 
     private static void dumpPacketFatesInternal(PrintWriter pw, String description,
-            ArrayList<WifiNative.FateReport> fates, boolean verbose) {
-        if (fates == null) {
+            PacketFates packetFates, boolean verbose) {
+        if (packetFates == null) {
             pw.format("No fates fetched for \"%s\"\n", description);
             return;
         }
-
-        if (fates.size() == 0) {
+        if (packetFates.mergedFates.size() == 0) {
             pw.format("HAL provided zero fates for \"%s\"\n", description);
             return;
         }
 
         pw.format("--------------------- %s ----------------------\n", description);
+        pw.format("ClientModeManagerInfo=%s ---------------\n", packetFates.clientModeManagerInfo);
 
         StringBuilder verboseOutput = new StringBuilder();
         pw.print(WifiNative.FateReport.getTableHeader());
-        for (WifiNative.FateReport fate : fates) {
+        for (WifiNative.FateReport fate : packetFates.mergedFates) {
             pw.print(fate.toTableRowString());
             if (verbose) {
                 // Important: only print Personally Identifiable Information (PII) if verbose
@@ -828,7 +885,6 @@ class WifiDiagnostics extends BaseWifiDiagnostics {
      *
      * @param ifaceName Name of the interface.
      */
-    @Override
     public void startPktFateMonitoring(@NonNull String ifaceName) {
         if (!mWifiNative.startPktFateMonitoring(ifaceName)) {
             mLog.wC("Failed to start packet fate monitoring");

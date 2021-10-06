@@ -38,6 +38,7 @@ import android.hardware.wifi.supplicant.V1_0.SupplicantStatus;
 import android.hardware.wifi.supplicant.V1_0.SupplicantStatusCode;
 import android.hidl.manager.V1_0.IServiceManager;
 import android.hidl.manager.V1_0.IServiceNotification;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -66,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -701,7 +703,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 eq(mPeerMacAddressBytes), anyInt(), anyString(), anyBoolean(), anyBoolean(),
                 anyInt(), any(ISupplicantP2pIface.connectCallback.class));
 
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, "");
 
         // Default value when service is not initialized.
         assertNull(mDut.connect(config, false));
@@ -712,17 +714,17 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         assertTrue(methods.contains(ISupplicantP2pIface.WpsProvisionMethod.DISPLAY));
         methods.clear();
 
-        config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, configPin);
+        config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, configPin);
         assertTrue(mDut.connect(config, false).isEmpty());
         assertTrue(methods.contains(ISupplicantP2pIface.WpsProvisionMethod.DISPLAY));
         methods.clear();
 
-        config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
+        config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
         assertTrue(mDut.connect(config, false).isEmpty());
         assertTrue(methods.contains(ISupplicantP2pIface.WpsProvisionMethod.PBC));
         methods.clear();
 
-        config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.KEYPAD, configPin);
+        config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.KEYPAD, configPin);
         assertTrue(mDut.connect(config, false).isEmpty());
         assertTrue(methods.contains(ISupplicantP2pIface.WpsProvisionMethod.KEYPAD));
     }
@@ -744,7 +746,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 any(byte[].class), anyInt(), anyString(), anyBoolean(), anyBoolean(),
                 anyInt(), any(ISupplicantP2pIface.connectCallback.class));
 
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, "");
 
         // unsupported.
         config.wps.setup = -1;
@@ -774,7 +776,8 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     @Test
     public void testConnect_failure() throws Exception {
         final String configPin = "12345";
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, configPin);
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress,
+                WpsInfo.DISPLAY, configPin);
 
         executeAndValidateInitializationSequence(false, false, false);
         doAnswer(new AnswerWithArguments() {
@@ -799,7 +802,8 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     @Test
     public void testConnect_exception() throws Exception {
         final String configPin = "12345";
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.DISPLAY, configPin);
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress,
+                WpsInfo.DISPLAY, configPin);
 
         doThrow(mRemoteException)
         .when(mISupplicantP2pIfaceMock).connect(
@@ -858,7 +862,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testProvisionDiscovery_success() throws Exception {
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
 
         when(mISupplicantP2pIfaceMock.provisionDiscovery(
                 eq(mPeerMacAddressBytes), anyInt()))
@@ -879,7 +883,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 .thenReturn(mStatusSuccess);
         executeAndValidateInitializationSequence(false, false, false);
 
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
 
         // Unsupported method.
         config.wps.setup = -1;
@@ -897,7 +901,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testProvisionDiscovery_failure() throws Exception {
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.provisionDiscovery(
@@ -913,7 +917,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testProvisionDiscovery_exception() throws Exception {
-        WifiP2pConfig config = createDummyP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
+        WifiP2pConfig config = createPlaceholderP2pConfig(mPeerMacAddress, WpsInfo.PBC, "");
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.provisionDiscovery(
@@ -930,7 +934,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testInvite_success() throws Exception {
-        WifiP2pGroup group = createDummyP2pGroup();
+        WifiP2pGroup group = createPlaceholderP2pGroup();
 
         when(mISupplicantP2pIfaceMock.invite(
                 eq(mIfaceName), eq(mGroupOwnerMacAddressBytes), eq(mPeerMacAddressBytes)))
@@ -946,7 +950,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testInvite_invalidArguments() throws Exception {
-        WifiP2pGroup group = createDummyP2pGroup();
+        WifiP2pGroup group = createPlaceholderP2pGroup();
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.invite(
@@ -972,7 +976,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testInvite_failure() throws Exception {
-        WifiP2pGroup group = createDummyP2pGroup();
+        WifiP2pGroup group = createPlaceholderP2pGroup();
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.invite(
@@ -988,7 +992,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testInvite_exception() throws Exception {
-        WifiP2pGroup group = createDummyP2pGroup();
+        WifiP2pGroup group = createPlaceholderP2pGroup();
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.invite(
@@ -1607,45 +1611,14 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testSetListenChannel_success() throws Exception {
-        int lc = 4;
-        int oc = 163;
-        ISupplicantP2pIface.FreqRange range1 = new ISupplicantP2pIface.FreqRange();
-        range1.min = 1000;
-        range1.max = 5810;
-        ISupplicantP2pIface.FreqRange range2 = new ISupplicantP2pIface.FreqRange();
-        range2.min = 5820;
-        range2.max = 6000;
-        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-        ranges.add(range1);
-        ranges.add(range2);
+        int lc = 6;
 
-        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc),  anyInt()))
-                .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
+        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc), anyInt()))
                 .thenReturn(mStatusSuccess);
         // Default value when service is not initialized.
-        assertFalse(mDut.setListenChannel(lc, oc));
+        assertFalse(mDut.setListenChannel(lc));
         executeAndValidateInitializationSequence(false, false, false);
-        assertTrue(mDut.setListenChannel(lc, oc));
-    }
-
-    /**
-     * Sunny day scenario for setListenChannel()
-     */
-    @Test
-    public void testSetListenChannel_successResetDisallowedFreq() throws Exception {
-        int lc = 2;
-        int oc = 0;
-        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
-
-        when(mISupplicantP2pIfaceMock.setListenChannel(eq(lc),  anyInt()))
-                .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
-                .thenReturn(mStatusSuccess);
-        // Default value when service is not initialized.
-        assertFalse(mDut.setListenChannel(lc, oc));
-        executeAndValidateInitializationSequence(false, false, false);
-        assertTrue(mDut.setListenChannel(lc, oc));
+        assertTrue(mDut.setListenChannel(lc));
     }
 
     /**
@@ -1656,10 +1629,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenReturn(mStatusSuccess);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
-                .thenReturn(mStatusSuccess);
-        assertFalse(mDut.setListenChannel(-1, 1));
-        assertFalse(mDut.setListenChannel(1, -1));
+        assertFalse(mDut.setListenChannel(4));
     }
 
     /**
@@ -1670,9 +1640,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenReturn(mStatusFailure);
-        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
-                .thenReturn(mStatusSuccess);
-        assertFalse(mDut.setListenChannel(1, 1));
+        assertFalse(mDut.setListenChannel(1));
         // Check that service is still alive.
         assertTrue(mDut.isInitializationComplete());
     }
@@ -1685,18 +1653,81 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.setListenChannel(anyInt(), anyInt()))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.setListenChannel(1, 1));
+        assertFalse(mDut.setListenChannel(1));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
     }
 
+    /**
+     * Sunny day scenario for setOperatingChannel()
+     */
+    @Test
+    public void testSetOperatingChannel_success() throws Exception {
+        int oc = 163;
+        ISupplicantP2pIface.FreqRange range1 = new ISupplicantP2pIface.FreqRange();
+        range1.min = 1000;
+        range1.max = 5810;
+        ISupplicantP2pIface.FreqRange range2 = new ISupplicantP2pIface.FreqRange();
+        range2.min = 5820;
+        range2.max = 6000;
+        ArrayList<ISupplicantP2pIface.FreqRange> ranges = new ArrayList<>();
+        ranges.add(range1);
+        ranges.add(range2);
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
+
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(eq(ranges)))
+                .thenReturn(mStatusSuccess);
+        // Default value when service is not initialized.
+        assertFalse(mDut.setOperatingChannel(oc, unsafeChannels));
+        executeAndValidateInitializationSequence(false, false, false);
+        assertTrue(mDut.setOperatingChannel(oc, unsafeChannels));
+    }
+
+    /**
+     * Test setOperatingChannel with invalid parameters.
+     */
+    @Test
+    public void testSetOperatingChannel_invalidArguments() throws Exception {
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenReturn(mStatusSuccess);
+        assertFalse(mDut.setOperatingChannel(1, null));
+    }
+
+    /**
+     * Verify that setOperatingChannel returns false, if status is not SUCCESS.
+     */
+    @Test
+    public void testSetOperatingChannel_failure() throws Exception {
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenReturn(mStatusFailure);
+        assertFalse(mDut.setOperatingChannel(1, unsafeChannels));
+        // Check that service is still alive.
+        assertTrue(mDut.isInitializationComplete());
+    }
+
+    /**
+     * Verify that setOperatingChannel disconnects and returns false, if HAL throws exception.
+     */
+    @Test
+    public void testSetOperatingChannel_exception() throws Exception {
+        List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
+        executeAndValidateInitializationSequence(false, false, false);
+        when(mISupplicantP2pIfaceMock.setDisallowedFrequencies(any(ArrayList.class)))
+                .thenThrow(mRemoteException);
+        assertFalse(mDut.setOperatingChannel(65, unsafeChannels));
+        // Check service is dead.
+        assertFalse(mDut.isInitializationComplete());
+    }
 
     /**
      * Sunny day scenario for serviceAdd()
      */
     @Test
     public void testServiceAdd_success() throws Exception {
-        WifiP2pServiceInfo info = createDummyP2pServiceInfo(
+        WifiP2pServiceInfo info = createPlaceholderP2pServiceInfo(
                 mValidUpnpService, mValidBonjourService);
         final HashSet<String> services = new HashSet<String>();
 
@@ -1730,7 +1761,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         assertTrue(services.contains("bonjour"));
 
         // Empty services should cause no trouble.
-        assertTrue(mDut.serviceAdd(createDummyP2pServiceInfo()));
+        assertTrue(mDut.serviceAdd(createPlaceholderP2pServiceInfo()));
     }
 
     /**
@@ -1747,15 +1778,15 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 .thenReturn(mStatusSuccess);
 
         assertFalse(mDut.serviceAdd(null));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidService1)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidService2)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidUpnpService1)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidUpnpService2)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidUpnpService3)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidBonjourService1)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidBonjourService2)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidBonjourService3)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mInvalidBonjourService4)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidService1)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidService2)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidUpnpService1)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidUpnpService2)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidUpnpService3)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidBonjourService1)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidBonjourService2)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidBonjourService3)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mInvalidBonjourService4)));
     }
 
     /**
@@ -1771,8 +1802,8 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 any(ArrayList.class), any(ArrayList.class)))
                 .thenReturn(mStatusFailure);
 
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mValidUpnpService)));
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mValidBonjourService)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mValidUpnpService)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mValidBonjourService)));
 
         // Check that service is still alive.
         assertTrue(mDut.isInitializationComplete());
@@ -1787,7 +1818,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
 
         when(mISupplicantP2pIfaceMock.addUpnpService(anyInt(), anyString()))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mValidUpnpService)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mValidUpnpService)));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
 
@@ -1795,7 +1826,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         when(mISupplicantP2pIfaceMock.addBonjourService(
                 any(ArrayList.class), any(ArrayList.class)))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.serviceAdd(createDummyP2pServiceInfo(mValidBonjourService)));
+        assertFalse(mDut.serviceAdd(createPlaceholderP2pServiceInfo(mValidBonjourService)));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
     }
@@ -1806,7 +1837,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
      */
     @Test
     public void testServiceRemove_success() throws Exception {
-        WifiP2pServiceInfo info = createDummyP2pServiceInfo(
+        WifiP2pServiceInfo info = createPlaceholderP2pServiceInfo(
                 mValidUpnpService, mValidBonjourService);
         final HashSet<String> services = new HashSet<String>();
 
@@ -1838,7 +1869,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         assertTrue(services.contains("bonjour"));
 
         // Empty services should cause no trouble.
-        assertTrue(mDut.serviceRemove(createDummyP2pServiceInfo()));
+        assertTrue(mDut.serviceRemove(createPlaceholderP2pServiceInfo()));
     }
 
     /**
@@ -1854,19 +1885,19 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
                 .thenReturn(mStatusSuccess);
 
         assertFalse(mDut.serviceRemove(null));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidService1)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidService2)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidUpnpService1)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidUpnpService2)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidUpnpService3)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidBonjourService1)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidBonjourService2)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidBonjourService3)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidService1)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidService2)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidUpnpService1)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidUpnpService2)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidUpnpService3)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidBonjourService1)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidBonjourService2)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidBonjourService3)));
         // Response parameter is ignored by serviceRemove call, hence the following would pass.
         // The production code would need to parse otherwise redundant parameter to fail on this
         // one.
-        //
-        // assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mInvalidBonjourService4)));
+        // assertFalse(
+        //         mDut.serviceRemove(createPlaceholderP2pServiceInfo(mInvalidBonjourService4)));
     }
 
     /**
@@ -1881,8 +1912,8 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
         when(mISupplicantP2pIfaceMock.removeBonjourService(any(ArrayList.class)))
                 .thenReturn(mStatusFailure);
 
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mValidUpnpService)));
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mValidBonjourService)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mValidUpnpService)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mValidBonjourService)));
 
         // Check that service is still alive.
         assertTrue(mDut.isInitializationComplete());
@@ -1897,14 +1928,14 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
 
         when(mISupplicantP2pIfaceMock.removeUpnpService(anyInt(), anyString()))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mValidUpnpService)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mValidUpnpService)));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
 
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.removeBonjourService(any(ArrayList.class)))
                 .thenThrow(mRemoteException);
-        assertFalse(mDut.serviceRemove(createDummyP2pServiceInfo(mValidBonjourService)));
+        assertFalse(mDut.serviceRemove(createPlaceholderP2pServiceInfo(mValidBonjourService)));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
     }
@@ -2872,9 +2903,10 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     }
 
     /**
-     * Create new dummy WifiP2pConfig instance.
+     * Create new placeholder WifiP2pConfig instance.
      */
-    private WifiP2pConfig createDummyP2pConfig(String peerAddress, int wpsProvMethod, String pin) {
+    private WifiP2pConfig createPlaceholderP2pConfig(String peerAddress,
+                                                     int wpsProvMethod, String pin) {
         WifiP2pConfig config = new WifiP2pConfig();
         config.wps = new WpsInfo();
         config.deviceAddress = peerAddress;
@@ -2888,9 +2920,9 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     }
 
     /**
-     * Create new dummy WifiP2pGroup instance.
+     * Create new placeholder WifiP2pGroup instance.
      */
-    private WifiP2pGroup createDummyP2pGroup() {
+    private WifiP2pGroup createPlaceholderP2pGroup() {
         WifiP2pGroup group = new WifiP2pGroup();
         group.setInterface(mIfaceName);
 
@@ -2902,9 +2934,9 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     }
 
     /**
-     * Create new dummy WifiP2pServiceInfo instance.
+     * Create new placeholder WifiP2pServiceInfo instance.
      */
-    private WifiP2pServiceInfo createDummyP2pServiceInfo(String... services) {
+    private WifiP2pServiceInfo createPlaceholderP2pServiceInfo(String... services) {
         class TestP2pServiceInfo extends WifiP2pServiceInfo {
             TestP2pServiceInfo(String[] services) {
                 super(Arrays.asList(services));

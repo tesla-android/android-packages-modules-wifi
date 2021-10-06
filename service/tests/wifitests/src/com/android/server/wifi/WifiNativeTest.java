@@ -16,22 +16,31 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiScanner.WIFI_BAND_24_GHZ;
+import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.net.MacAddress;
+import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiScanner;
@@ -39,10 +48,15 @@ import android.net.wifi.nl80211.NativeScanResult;
 import android.net.wifi.nl80211.RadioChainInfo;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.nl80211.WifiNl80211Manager.SendMgmtFrameCallback;
+import android.os.Bundle;
 import android.os.Handler;
+import android.os.WorkSource;
+import android.text.TextUtils;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.NetdWrapper;
 
@@ -55,6 +69,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -220,6 +235,8 @@ public class WifiNativeTest extends WifiBaseTest {
 
     private static final RadioChainInfo MOCK_NATIVE_RADIO_CHAIN_INFO_1 = new RadioChainInfo(1, -89);
     private static final RadioChainInfo MOCK_NATIVE_RADIO_CHAIN_INFO_2 = new RadioChainInfo(0, -78);
+    private static final WorkSource TEST_WORKSOURCE = new WorkSource();
+    private static final WorkSource TEST_WORKSOURCE2 = new WorkSource();
 
     @Mock private WifiVendorHal mWifiVendorHal;
     @Mock private WifiNl80211Manager mWificondControl;
@@ -233,6 +250,10 @@ public class WifiNativeTest extends WifiBaseTest {
     @Mock private Random mRandom;
     @Mock private WifiInjector mWifiInjector;
     @Mock private NetdWrapper mNetdWrapper;
+    @Mock private CoexManager mCoexManager;
+    @Mock BuildProperties mBuildProperties;
+    @Mock private WifiNative.InterfaceCallback mInterfaceCallback;
+    @Mock private WifiCountryCode.ChangeListener mWifiCountryCodeChangeListener;
 
     ArgumentCaptor<WifiNl80211Manager.ScanEventCallback> mScanCallbackCaptor =
             ArgumentCaptor.forClass(WifiNl80211Manager.ScanEventCallback.class);
@@ -248,7 +269,11 @@ public class WifiNativeTest extends WifiBaseTest {
         when(mWifiVendorHal.startVendorHal()).thenReturn(true);
         when(mWifiVendorHal.startVendorHalSta()).thenReturn(true);
         when(mWifiVendorHal.startVendorHalAp()).thenReturn(true);
-        when(mWifiVendorHal.createStaIface(any())).thenReturn(WIFI_IFACE_NAME);
+        when(mWifiVendorHal.createStaIface(any(), any())).thenReturn(WIFI_IFACE_NAME);
+
+        when(mBuildProperties.isEngBuild()).thenReturn(false);
+        when(mBuildProperties.isUserdebugBuild()).thenReturn(false);
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
 
         when(mWificondControl.setupInterfaceForClientMode(any(), any(), any(), any())).thenReturn(
                 true);
@@ -260,11 +285,12 @@ public class WifiNativeTest extends WifiBaseTest {
         when(mStaIfaceHal.setupIface(any())).thenReturn(true);
 
         when(mWifiInjector.makeNetdWrapper()).thenReturn(mNetdWrapper);
+        when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
 
         mWifiNative = new WifiNative(
                 mWifiVendorHal, mStaIfaceHal, mHostapdHal, mWificondControl,
                 mWifiMonitor, mPropertyService, mWifiMetrics,
-                mHandler, mRandom, mWifiInjector);
+                mHandler, mRandom, mBuildProperties, mWifiInjector);
         mWifiNative.initialize();
     }
 
@@ -559,9 +585,8 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testGetTxPktFatesReturnsErrorWhenHalIsNotStarted() {
-        WifiNative.TxFateReport[] fateReports = null;
         assertFalse(mWifiNative.isHalStarted());
-        assertFalse(mWifiNative.getTxPktFates(WIFI_IFACE_NAME, fateReports));
+        assertEquals(0, mWifiNative.getTxPktFates(WIFI_IFACE_NAME).size());
     }
 
     /**
@@ -569,9 +594,8 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testGetRxPktFatesReturnsErrorWhenHalIsNotStarted() {
-        WifiNative.RxFateReport[] fateReports = null;
         assertFalse(mWifiNative.isHalStarted());
-        assertFalse(mWifiNative.getRxPktFates(WIFI_IFACE_NAME, fateReports));
+        assertEquals(0, mWifiNative.getRxPktFates(WIFI_IFACE_NAME).size());
     }
 
     // TODO(quiche): Add tests for the success cases (when HAL has been started). Specifically:
@@ -596,7 +620,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testClientModeScanSuccess() {
-        mWifiNative.setupInterfaceForClientInConnectivityMode(null);
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
 
@@ -609,7 +633,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testClientModeScanFailure() {
-        mWifiNative.setupInterfaceForClientInConnectivityMode(null);
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
 
@@ -622,7 +646,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testClientModePnoScanSuccess() {
-        mWifiNative.setupInterfaceForClientInConnectivityMode(null);
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 any(), mScanCallbackCaptor.capture());
 
@@ -636,7 +660,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testClientModePnoScanFailure() {
-        mWifiNative.setupInterfaceForClientInConnectivityMode(null);
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 any(), mScanCallbackCaptor.capture());
 
@@ -649,7 +673,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScanModeScanSuccess() {
-        mWifiNative.setupInterfaceForClientInScanMode(null);
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
 
@@ -662,7 +686,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScanModeScanFailure() {
-        mWifiNative.setupInterfaceForClientInScanMode(null);
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
 
@@ -675,7 +699,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScanModePnoScanSuccess() {
-        mWifiNative.setupInterfaceForClientInScanMode(null);
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 any(), mScanCallbackCaptor.capture());
 
@@ -689,7 +713,7 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScanModePnoScanFailure() {
-        mWifiNative.setupInterfaceForClientInScanMode(null);
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
         verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 any(), mScanCallbackCaptor.capture());
 
@@ -697,6 +721,31 @@ public class WifiNativeTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementPnoScanFailedCount();
     }
 
+    /**
+     * Verifies starting the hal results in coex unsafe channels being updated with cached values.
+     */
+    @Test
+    public void testStartHalUpdatesCoexUnsafeChannels() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        final List<CoexUnsafeChannel> unsafeChannels = new ArrayList<>();
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_24_GHZ, 6));
+        unsafeChannels.add(new CoexUnsafeChannel(WIFI_BAND_5_GHZ, 36));
+        final int restrictions = 0;
+        when(mCoexManager.getCoexUnsafeChannels()).thenReturn(unsafeChannels);
+        when(mCoexManager.getCoexRestrictions()).thenReturn(restrictions);
+        mWifiNative.setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
+        verify(mWifiVendorHal, times(2)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.teardownAllInterfaces();
+        mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
+        verify(mWifiVendorHal, times(3)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+
+        mWifiNative.teardownAllInterfaces();
+        mWifiNative.setupInterfaceForSoftApMode(null, TEST_WORKSOURCE, WIFI_BAND_24_GHZ, false);
+        verify(mWifiVendorHal, times(4)).setCoexUnsafeChannels(unsafeChannels, restrictions);
+    }
 
     /**
      * Verifies that signalPoll() calls underlying WificondControl.
@@ -721,14 +770,37 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScan() throws Exception {
+        // This test will not run if the device has SDK level S or later
+        assumeFalse(SdkLevel.isAtLeastS());
         mWifiNative.scan(WIFI_IFACE_NAME, WifiScanner.SCAN_TYPE_HIGH_ACCURACY, SCAN_FREQ_SET,
-                SCAN_HIDDEN_NETWORK_SSID_SET);
+                SCAN_HIDDEN_NETWORK_SSID_SET, false);
         ArgumentCaptor<List<byte[]>> ssidSetCaptor = ArgumentCaptor.forClass(List.class);
         verify(mWificondControl).startScan(
                 eq(WIFI_IFACE_NAME), eq(WifiScanner.SCAN_TYPE_HIGH_ACCURACY),
                 eq(SCAN_FREQ_SET), ssidSetCaptor.capture());
         List<byte[]> ssidSet = ssidSetCaptor.getValue();
         assertArrayEquals(ssidSet.toArray(), SCAN_HIDDEN_NETWORK_BYTE_SSID_SET.toArray());
+    }
+
+    /**
+     * Verifies that scan() calls the new startScan API with a Bundle when the Sdk level
+     * is S or above.
+     */
+    @Test
+    public void testScanWithBundle() throws Exception {
+        // This test will only run if the device has SDK level S and later.
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiNative.scan(WIFI_IFACE_NAME, WifiScanner.SCAN_TYPE_HIGH_ACCURACY, SCAN_FREQ_SET,
+                SCAN_HIDDEN_NETWORK_SSID_SET, true);
+        ArgumentCaptor<List<byte[]>> ssidSetCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Bundle> bundleCaptor = ArgumentCaptor.forClass(Bundle.class);
+        verify(mWificondControl).startScan(
+                eq(WIFI_IFACE_NAME), eq(WifiScanner.SCAN_TYPE_HIGH_ACCURACY),
+                eq(SCAN_FREQ_SET), ssidSetCaptor.capture(), bundleCaptor.capture());
+        List<byte[]> ssidSet = ssidSetCaptor.getValue();
+        assertArrayEquals(ssidSet.toArray(), SCAN_HIDDEN_NETWORK_BYTE_SSID_SET.toArray());
+        Bundle bundle = bundleCaptor.getValue();
+        assertTrue(bundle.getBoolean(WifiNl80211Manager.SCANNING_PARAM_ENABLE_6GHZ_RNR));
     }
 
     /**
@@ -856,22 +928,70 @@ public class WifiNativeTest extends WifiBaseTest {
     }
 
     /**
+     * Verifies that removeIfaceInstanceFromBridgedApIface() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testRemoveIfaceInstanceFromBridgedApIface() throws Exception {
+        mWifiNative.removeIfaceInstanceFromBridgedApIface(
+                "br_" + WIFI_IFACE_NAME, WIFI_IFACE_NAME);
+        verify(mWifiVendorHal).removeIfaceInstanceFromBridgedApIface(
+                "br_" + WIFI_IFACE_NAME, WIFI_IFACE_NAME);
+    }
+
+    /**
      * Verifies that setMacAddress() calls underlying WifiVendorHal.
      */
     @Test
-    public void testSetMacAddress() throws Exception {
-        mWifiNative.setMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
+    public void testStaSetMacAddress() throws Exception {
+        mWifiNative.setStaMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
         verify(mStaIfaceHal).disconnect(WIFI_IFACE_NAME);
-        verify(mWifiVendorHal).setMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
+        verify(mWifiVendorHal).setStaMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
+    }
+
+    /**
+     * Verifies that setMacAddress() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testApSetMacAddress() throws Exception {
+        mWifiNative.setApMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
+        verify(mWifiVendorHal).setApMacAddress(WIFI_IFACE_NAME, TEST_MAC_ADDRESS);
+    }
+
+    /**
+     * Verifies that resetApMacToFactoryMacAddress() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testResetApMacToFactoryMacAddress() throws Exception {
+        mWifiNative.resetApMacToFactoryMacAddress(WIFI_IFACE_NAME);
+        verify(mWifiVendorHal).resetApMacToFactoryMacAddress(WIFI_IFACE_NAME);
+    }
+
+    /**
+     * Verifies that setCoexUnsafeChannels() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testSetCoexUnsafeChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        mWifiNative.setCoexUnsafeChannels(Collections.emptyList(), 0);
+        verify(mWifiVendorHal).setCoexUnsafeChannels(Collections.emptyList(), 0);
     }
 
     /**
      * Verifies that isSetMacAddressSupported() calls underlying WifiVendorHal.
      */
     @Test
-    public void testIsSetMacAddressSupported() throws Exception {
-        mWifiNative.isSetMacAddressSupported(WIFI_IFACE_NAME);
-        verify(mWifiVendorHal).isSetMacAddressSupported(WIFI_IFACE_NAME);
+    public void testIsStaSetMacAddressSupported() throws Exception {
+        mWifiNative.isStaSetMacAddressSupported(WIFI_IFACE_NAME);
+        verify(mWifiVendorHal).isStaSetMacAddressSupported(WIFI_IFACE_NAME);
+    }
+
+    /**
+     * Verifies that isSetMacAddressSupported() calls underlying WifiVendorHal.
+     */
+    @Test
+    public void testIsApSetMacAddressSupported() throws Exception {
+        mWifiNative.isApSetMacAddressSupported(WIFI_IFACE_NAME);
+        verify(mWifiVendorHal).isApSetMacAddressSupported(WIFI_IFACE_NAME);
     }
 
     /**
@@ -946,10 +1066,19 @@ public class WifiNativeTest extends WifiBaseTest {
     }
 
     @Test
-    public void testGetFactoryMacAddress() throws Exception {
-        when(mWifiVendorHal.getFactoryMacAddress(any())).thenReturn(MacAddress.BROADCAST_ADDRESS);
-        assertNotNull(mWifiNative.getFactoryMacAddress(WIFI_IFACE_NAME));
-        verify(mWifiVendorHal).getFactoryMacAddress(any());
+    public void testStaGetFactoryMacAddress() throws Exception {
+        when(mWifiVendorHal.getStaFactoryMacAddress(any()))
+                .thenReturn(MacAddress.BROADCAST_ADDRESS);
+        assertNotNull(mWifiNative.getStaFactoryMacAddress(WIFI_IFACE_NAME));
+        verify(mWifiVendorHal).getStaFactoryMacAddress(any());
+    }
+
+
+    @Test
+    public void testGetApFactoryMacAddress() throws Exception {
+        when(mWifiVendorHal.getApFactoryMacAddress(any())).thenReturn(MacAddress.BROADCAST_ADDRESS);
+        assertNotNull(mWifiNative.getApFactoryMacAddress(WIFI_IFACE_NAME));
+        verify(mWifiVendorHal).getApFactoryMacAddress(any());
     }
 
     /**
@@ -1057,5 +1186,166 @@ public class WifiNativeTest extends WifiBaseTest {
         mWifiNative.flushAllHlp(WIFI_IFACE_NAME);
 
         verify(mStaIfaceHal).flushAllHlp(eq(WIFI_IFACE_NAME));
+    }
+
+    @Test
+    public void testIsItPossibleToCreateIface() {
+        when(mWifiVendorHal.isItPossibleToCreateApIface(any())).thenReturn(true);
+        assertTrue(mWifiNative.isItPossibleToCreateApIface(new WorkSource()));
+
+        when(mWifiVendorHal.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        assertTrue(mWifiNative.isItPossibleToCreateStaIface(new WorkSource()));
+    }
+
+    @Test
+    public void testReplaceStaIfaceRequestorWs() {
+        assertEquals(WIFI_IFACE_NAME,
+                mWifiNative.setupInterfaceForClientInConnectivityMode(
+                        mInterfaceCallback, TEST_WORKSOURCE));
+        when(mWifiVendorHal.replaceStaIfaceRequestorWs(WIFI_IFACE_NAME, TEST_WORKSOURCE2))
+                .thenReturn(true);
+
+        assertTrue(mWifiNative.replaceStaIfaceRequestorWs(WIFI_IFACE_NAME, TEST_WORKSOURCE2));
+        verify(mWifiVendorHal).replaceStaIfaceRequestorWs(
+                eq(WIFI_IFACE_NAME), same(TEST_WORKSOURCE2));
+    }
+
+    /**
+     * Verifies that updateLinkedNetworks() calls underlying SupplicantStaIfaceHal.
+     */
+    @Test
+    public void testUpdateLinkedNetworks() {
+        when(mStaIfaceHal.updateLinkedNetworks(any(), anyInt(), any())).thenReturn(true);
+
+        assertTrue(mWifiNative.updateLinkedNetworks(WIFI_IFACE_NAME, 0, null));
+        verify(mStaIfaceHal).updateLinkedNetworks(WIFI_IFACE_NAME, 0, null);
+    }
+
+    /**
+     * Verifies that getEapAnonymousIdentity() works as expected.
+     */
+    @Test
+    public void testGetEapAnonymousIdentity() {
+        // Verify the empty use case
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn("");
+        assertTrue(TextUtils.isEmpty(mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME)));
+
+        // Verify with an anonymous identity
+        final String anonymousId = "anonymous@homerealm.example.org";
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn(anonymousId);
+        assertEquals(anonymousId, mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+
+        // Verify with a pseudonym identity
+        final String pseudonymId = "a4624bc22490da3@homerealm.example.org";
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn(pseudonymId);
+        assertEquals(pseudonymId, mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+
+        // Verify that decorated anonymous identity is truncated
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn("otherrealm.example.net!" + anonymousId);
+        assertEquals(anonymousId, mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+
+        // Verify that recursive decorated anonymous identity is truncated
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn("proxyrealm.example.com!otherrealm.example.net!" + anonymousId);
+        assertEquals(anonymousId, mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+
+        // Verify an invalid decoration with no identity use cases
+        when(mStaIfaceHal.getCurrentNetworkEapAnonymousIdentity(WIFI_IFACE_NAME))
+                .thenReturn("otherrealm.example.net!");
+        assertNull(mWifiNative.getEapAnonymousIdentity(WIFI_IFACE_NAME));
+    }
+
+
+    @Test
+    public void testCountryCodeChangedListener() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        final String testCountryCode = "US";
+        ArgumentCaptor<WifiNl80211Manager.CountryCodeChangedListener>
+                mCountryCodeChangedListenerCaptor = ArgumentCaptor.forClass(
+                WifiNl80211Manager.CountryCodeChangedListener.class);
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        verify(mWificondControl).registerCountryCodeChangedListener(any(),
+                mCountryCodeChangedListenerCaptor.capture());
+        mCountryCodeChangedListenerCaptor.getValue().onCountryCodeChanged(testCountryCode);
+        verify(mWifiCountryCodeChangeListener).onDriverCountryCodeChanged(testCountryCode);
+    }
+
+    @Test
+    public void testSetStaCountryCodeSuccessful() {
+        when(mStaIfaceHal.setCountryCode(any(), any())).thenReturn(true);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setStaCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        verify(mStaIfaceHal).setCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener).onSetCountryCodeSucceeded(testCountryCode);
+        }
+    }
+
+    @Test
+    public void testSetStaCountryCodeFailure() {
+        when(mStaIfaceHal.setCountryCode(any(), any())).thenReturn(false);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setStaCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        verify(mStaIfaceHal).setCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener, never())
+                    .onSetCountryCodeSucceeded(testCountryCode);
+        }
+    }
+
+    @Test
+    public void testSetApCountryCodeSuccessful() {
+        when(mWifiVendorHal.setApCountryCode(any(), any())).thenReturn(true);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setApCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        verify(mWifiVendorHal).setApCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener).onSetCountryCodeSucceeded(testCountryCode);
+        }
+    }
+
+    @Test
+    public void testSetApCountryCodeFailure() {
+        when(mWifiVendorHal.setApCountryCode(any(), any())).thenReturn(false);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setApCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        verify(mWifiVendorHal).setApCountryCode(WIFI_IFACE_NAME, testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener, never())
+                    .onSetCountryCodeSucceeded(testCountryCode);
+        }
+    }
+
+    @Test
+    public void testSetChipCountryCodeSuccessful() {
+        when(mWifiVendorHal.setChipCountryCode(any())).thenReturn(true);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setChipCountryCode(testCountryCode);
+        verify(mWifiVendorHal).setChipCountryCode(testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener).onSetCountryCodeSucceeded(testCountryCode);
+        }
+    }
+
+    @Test
+    public void testSetChipCountryCodeFailure() {
+        when(mWifiVendorHal.setChipCountryCode(any())).thenReturn(false);
+        final String testCountryCode = "US";
+        mWifiNative.registerCountryCodeEventListener(mWifiCountryCodeChangeListener);
+        mWifiNative.setChipCountryCode(testCountryCode);
+        verify(mWifiVendorHal).setChipCountryCode(testCountryCode);
+        if (SdkLevel.isAtLeastS()) {
+            verify(mWifiCountryCodeChangeListener, never())
+                .onSetCountryCodeSucceeded(testCountryCode);
+        }
     }
 }

@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"„<xliff:g id="NAME">%s</xliff:g>“ siūlomi tinklai. Įrenginys gali prisijungti automatiškai."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Leisti"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Ne, ačiū"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Prisijungti prie „<xliff:g id="CARRIERNAME">%s</xliff:g>“ „Wi-Fi“?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Šie tinklai gauna SIM kortelės ID, kurį galima naudoti įrenginio vietovei stebėti"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Prisijungti"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Nesprisijungti"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Patvirtinti prijungimą?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Prisijungus „<xliff:g id="CARRIERNAME">%s</xliff:g>“ teikiami „Wi‑Fi“ tinklai gali pasiekti ar bendrinti su jūsų SIM susietą unikalų ID. Gali būti, kad jūsų įrenginio vieta bus stebima."</string>

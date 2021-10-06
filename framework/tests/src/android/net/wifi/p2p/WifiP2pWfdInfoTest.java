@@ -17,11 +17,15 @@
 package android.net.wifi.p2p;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import android.os.Parcel;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -74,6 +78,41 @@ public class WifiP2pWfdInfoTest {
         assertEquals(TEST_MAX_TPUT, info.getMaxThroughput());
 
         assertEquals("0110270f0400", info.getDeviceInfoHex());
+    }
+
+    /**
+     * Verify WFD R2 setters/getters.
+     */
+    @Test
+    public void testWfdR2SetterGetter() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiP2pWfdInfo info = new WifiP2pWfdInfo();
+        assertFalse(info.isR2Supported());
+        info.setR2DeviceType(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE);
+        assertEquals(WifiP2pWfdInfo.DEVICE_TYPE_WFD_SOURCE, info.getR2DeviceType());
+
+        info.setR2DeviceInfo(0x10f);
+        assertEquals(0x10f, info.getR2DeviceInfo());
+
+        assertTrue(info.isR2Supported());
+    }
+
+    /**
+     * Verify coupled-sink usage APIs.
+     */
+    @Test
+    public void testCoupledSinkUsage() throws Exception {
+        WifiP2pWfdInfo info = new WifiP2pWfdInfo();
+
+        info.setCoupledSinkSupportAtSink(true);
+        assertTrue(info.isCoupledSinkSupportedAtSink());
+        info.setCoupledSinkSupportAtSink(false);
+        assertFalse(info.isCoupledSinkSupportedAtSink());
+
+        info.setCoupledSinkSupportAtSource(true);
+        assertTrue(info.isCoupledSinkSupportedAtSource());
+        info.setCoupledSinkSupportAtSource(false);
+        assertFalse(info.isCoupledSinkSupportedAtSource());
     }
 
     /**

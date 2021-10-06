@@ -70,12 +70,13 @@ public class MissingCounterTimerLockList<E> {
      * Add a object to lock with timer duration
      * @param entry object to lock.
      * @param duration duration of the timer.
+     * @param maxTimeoutDuration always remove this entry after this duration.
      */
-    public void add(@NonNull E entry, long duration) {
+    public void add(@NonNull E entry, long duration, long maxTimeoutDuration) {
         if (entry == null) {
             return;
         }
-        mEntries.put(entry, new LockListEntry(duration));
+        mEntries.put(entry, new LockListEntry(duration, maxTimeoutDuration));
     }
 
     /**
@@ -116,13 +117,17 @@ public class MissingCounterTimerLockList<E> {
 
     class LockListEntry {
         private final long mExpiryMs;
+        private long mTimeFirstAddedMs;
+        private long mMaxDisableDurationMs;
         private long mStartTimeStamp;
         private int mCount;
 
-        LockListEntry(long expiryMs) {
+        LockListEntry(long expiryMs, long maxDisableDurationMs) {
             mCount = mConsecutiveMissingCountToTriggerTimer;
             mExpiryMs = expiryMs;
             mStartTimeStamp = mClock.getWallClockMillis();
+            mTimeFirstAddedMs = mStartTimeStamp;
+            mMaxDisableDurationMs = maxDisableDurationMs;
         }
 
         void onPresent() {
@@ -147,7 +152,12 @@ public class MissingCounterTimerLockList<E> {
         }
 
         boolean isExpired() {
-            return mCount == 0 && mStartTimeStamp + mExpiryMs < mClock.getWallClockMillis();
+            long curTimeMs = mClock.getWallClockMillis();
+            boolean maxDisableDurationPassed = mTimeFirstAddedMs + mMaxDisableDurationMs
+                    < curTimeMs;
+            boolean absentForLongEnough = mCount == 0 && mStartTimeStamp + mExpiryMs
+                    < curTimeMs;
+            return maxDisableDurationPassed || absentForLongEnough;
         }
     }
 }

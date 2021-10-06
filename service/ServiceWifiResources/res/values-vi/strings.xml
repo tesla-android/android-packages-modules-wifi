@@ -31,12 +31,9 @@
     <string name="wifi_suggestion_content" msgid="6985149577828091835">"Các mạng do <xliff:g id="NAME">%s</xliff:g> đề xuất. Thiết bị có thể kết nối tự động."</string>
     <string name="wifi_suggestion_action_allow_app" msgid="7757859972144671588">"Cho phép"</string>
     <string name="wifi_suggestion_action_disallow_app" msgid="4565857699629860726">"Không, cảm ơn"</string>
-    <!-- no translation found for wifi_suggestion_imsi_privacy_title (2218937297875316823) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_imsi_privacy_content (600053954955350404) -->
-    <skip />
-    <!-- no translation found for wifi_suggestion_action_allow_imsi_privacy_exemption_carrier (1953266435620254961) -->
-    <skip />
+    <string name="wifi_suggestion_imsi_privacy_title" msgid="8969261812845304079">"Kết nối với Wi-Fi của <xliff:g id="CARRIERNAME">%s</xliff:g>?"</string>
+    <string name="wifi_suggestion_imsi_privacy_content" msgid="4266931269306079184">"Các mạng này nhận được một mã nhận dạng SIM có thể dùng để theo dõi vị trí của thiết bị"</string>
+    <string name="wifi_suggestion_action_allow_imsi_privacy_exemption_carrier" msgid="3888538126440442636">"Kết nối"</string>
     <string name="wifi_suggestion_action_disallow_imsi_privacy_exemption_carrier" msgid="3225397664735676024">"Không kết nối"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_title" msgid="4407415300707014525">"Xác nhận kết nối?"</string>
     <string name="wifi_suggestion_imsi_privacy_exemption_confirmation_content" msgid="9211241189147807136">"Nếu bạn kết nối, các mạng Wi-Fi của <xliff:g id="CARRIERNAME">%s</xliff:g> có thể truy cập hoặc chia sẻ mã nhận dạng duy nhất liên kết với SIM của bạn. Từ đó, các mạng này có thể theo dõi vị trí thiết bị của bạn."</string>

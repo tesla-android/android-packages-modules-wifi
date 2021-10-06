@@ -16,8 +16,32 @@
 
 package com.android.server.wifi;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.validateMockitoUsage;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 import android.annotation.Nullable;
 import android.app.ActivityManager;
@@ -29,6 +53,7 @@ import android.content.pm.PackageManager;
 import android.net.IpConfiguration;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
@@ -54,7 +79,6 @@ import com.android.server.wifi.WifiScoreCard.PerNetwork;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.UserActionEvent;
 import com.android.server.wifi.util.LruConnectionTracker;
 import com.android.server.wifi.util.WifiPermissionsUtil;
-import com.android.server.wifi.util.WifiPermissionsWrapper;
 import com.android.wifi.resources.R;
 
 import org.junit.After;
@@ -66,12 +90,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.MockitoSession;
 import org.mockito.quality.Strictness;
+import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -79,6 +105,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiConfigManager}.
@@ -90,11 +118,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     private static final String TEST_BSSID = "0a:08:5c:67:89:00";
     private static final long TEST_WALLCLOCK_CREATION_TIME_MILLIS = 9845637;
     private static final long TEST_WALLCLOCK_UPDATE_TIME_MILLIS = 75455637;
-    private static final long TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS = 29457631;
     private static final int TEST_CREATOR_UID = WifiConfigurationTestUtil.TEST_UID;
     private static final int TEST_NO_PERM_UID = 7;
     private static final int TEST_UPDATE_UID = 4;
     private static final int TEST_SYSUI_UID = 56;
+    private static final int TEST_OTHER_USER_UID = 1000000000;
     private static final int TEST_DEFAULT_USER = UserHandle.USER_SYSTEM;
     private static final int TEST_MAX_NUM_ACTIVE_CHANNELS_FOR_PARTIAL_SCAN = 5;
     private static final Integer[] TEST_FREQ_LIST = {2400, 2450, 5150, 5175, 5650};
@@ -102,6 +130,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     private static final String TEST_UPDATE_NAME = "com.wificonfigmanager.update";
     private static final String TEST_NO_PERM_NAME = "com.wificonfigmanager.noperm";
     private static final String TEST_WIFI_NAME = "android.uid.system";
+    private static final String TEST_OTHER_USER_NAME = "com.test.package";
     private static final String TEST_DEFAULT_GW_MAC_ADDRESS = "0f:67:ad:ef:09:34";
     private static final String TEST_STATIC_PROXY_HOST_1 = "192.168.48.1";
     private static final int    TEST_STATIC_PROXY_PORT_1 = 8000;
@@ -113,11 +142,18 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     private static final String TEST_PAC_PROXY_LOCATION_2 = "http://blah";
     private static final int TEST_RSSI = -50;
     private static final int TEST_FREQUENCY_1 = 2412;
-    private static final int MAX_BLOCKED_BSSID_PER_NETWORK = 10;
     private static final MacAddress TEST_RANDOMIZED_MAC =
             MacAddress.fromString("d2:11:19:34:a5:20");
     private static final int DATA_SUBID = 1;
     private static final String SYSUI_PACKAGE_NAME = "com.android.systemui";
+    private static final int ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES = 30;
+    private static final int ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES = 480;
+    private static final int TEST_NETWORK_SELECTION_ENABLE_REASON =
+            NetworkSelectionStatus.DISABLED_NONE;
+    private static final int TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON =
+            NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY;
+    private static final int TEST_NETWORK_SELECTION_PERM_DISABLE_REASON =
+            NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER;
 
     @Mock private Context mContext;
     @Mock private Clock mClock;
@@ -129,7 +165,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Mock private WifiConfigStore mWifiConfigStore;
     @Mock private PackageManager mPackageManager;
     @Mock private WifiPermissionsUtil mWifiPermissionsUtil;
-    @Mock private WifiPermissionsWrapper mWifiPermissionsWrapper;
     @Mock private WifiInjector mWifiInjector;
     @Mock private WifiLastResortWatchdog mWifiLastResortWatchdog;
     @Mock private NetworkListSharedStoreData mNetworkListSharedStoreData;
@@ -139,11 +174,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Mock private FrameworkFacade mFrameworkFacade;
     @Mock private DeviceConfigFacade mDeviceConfigFacade;
     @Mock private MacAddressUtil mMacAddressUtil;
-    @Mock private BssidBlocklistMonitor mBssidBlocklistMonitor;
+    @Mock private WifiBlocklistMonitor mWifiBlocklistMonitor;
     @Mock private WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     @Mock private WifiScoreCard mWifiScoreCard;
     @Mock private PerNetwork mPerNetwork;
     @Mock private WifiMetrics mWifiMetrics;
+    @Mock private WifiConfigManager.OnNetworkUpdateListener mListener;
+    @Mock private ActiveModeWarden mActiveModeWarden;
+    @Mock private ClientModeManager mPrimaryClientModeManager;
+    @Mock private WifiGlobals mWifiGlobals;
+    @Mock private BuildProperties mBuildProperties;
     private LruConnectionTracker mLruConnectionTracker;
 
     private MockResources mResources;
@@ -173,12 +213,21 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         mResources = new MockResources();
         mResources.setBoolean(
-                R.bool.config_wifi_only_link_same_credential_configurations, true);
+                R.bool.config_wifi_only_link_same_credential_configurations, false);
+        mResources.setBoolean(
+                R.bool.config_wifiAllowLinkingUnknownDefaultGatewayConfigurations, true);
         mResources.setInteger(
                 R.integer.config_wifi_framework_associated_partial_scan_max_num_active_channels,
                 TEST_MAX_NUM_ACTIVE_CHANNELS_FOR_PARTIAL_SCAN);
         mResources.setBoolean(R.bool.config_wifi_connected_mac_randomization_supported, true);
         mResources.setInteger(R.integer.config_wifiMaxPnoSsidCount, 16);
+        mResources.setInteger(
+                R.integer.config_wifiAllNonCarrierMergedWifiMinDisableDurationMinutes,
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES);
+        mResources.setInteger(
+                R.integer.config_wifiAllNonCarrierMergedWifiMaxDisableDurationMinutes,
+                ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES);
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, -1);
         when(mContext.getResources()).thenReturn(mResources);
 
         // Setup UserManager profiles for the default user.
@@ -196,11 +245,32 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                     return TEST_NO_PERM_NAME;
                 } else if (uid == Process.WIFI_UID) {
                     return TEST_WIFI_NAME;
+                } else if (uid == TEST_OTHER_USER_UID) {
+                    return TEST_OTHER_USER_NAME;
                 }
                 fail("Unexpected UID: " + uid);
                 return "";
             }
         }).when(mPackageManager).getNameForUid(anyInt());
+        doAnswer(new AnswerWithArguments() {
+            public boolean answer(WifiConfiguration config, int reason) {
+                if (reason == TEST_NETWORK_SELECTION_ENABLE_REASON) {
+                    config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                            NetworkSelectionStatus.NETWORK_SELECTION_ENABLED);
+                    config.status = WifiConfiguration.Status.ENABLED;
+                } else if (reason == TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON) {
+                    config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                            NetworkSelectionStatus.NETWORK_SELECTION_TEMPORARY_DISABLED);
+                } else if (reason == TEST_NETWORK_SELECTION_PERM_DISABLE_REASON) {
+                    config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                            NetworkSelectionStatus.NETWORK_SELECTION_PERMANENTLY_DISABLED);
+                    config.status = WifiConfiguration.Status.DISABLED;
+                } else {
+                    // ignore all other failure reasons for simplicity of mocking.
+                }
+                return true;
+            }
+        }).when(mWifiBlocklistMonitor).updateNetworkSelectionStatus(any(), anyInt());
 
         when(mContext.getSystemService(ActivityManager.class))
                 .thenReturn(mock(ActivityManager.class));
@@ -212,34 +282,46 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         setupStoreDataForRead(new ArrayList<>(), new ArrayList<>());
 
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(false);
+        mockIsDeviceOwner(false);
         when(mWifiPermissionsUtil.isProfileOwner(anyInt(), any())).thenReturn(false);
-        when(mWifiInjector.getWifiNetworkSuggestionsManager())
-                .thenReturn(mWifiNetworkSuggestionsManager);
-        when(mWifiInjector.getBssidBlocklistMonitor()).thenReturn(mBssidBlocklistMonitor);
-        when(mWifiInjector.getWifiLastResortWatchdog()).thenReturn(mWifiLastResortWatchdog);
-        when(mWifiInjector.getWifiLastResortWatchdog().shouldIgnoreSsidUpdate())
-                .thenReturn(false);
-        when(mWifiInjector.getMacAddressUtil()).thenReturn(mMacAddressUtil);
-        when(mWifiInjector.getWifiMetrics()).thenReturn(mWifiMetrics);
         when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(anyInt())).thenReturn(true);
+        when(mWifiLastResortWatchdog.shouldIgnoreSsidUpdate()).thenReturn(false);
         when(mMacAddressUtil.calculatePersistentMac(any(), any())).thenReturn(TEST_RANDOMIZED_MAC);
         when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mPerNetwork);
 
-        mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
+        WifiContext wifiContext = mock(WifiContext.class);
+        when(wifiContext.getPackageManager()).thenReturn(mPackageManager);
+        when(mPackageManager.getPackagesHoldingPermissions(any(String[].class), anyInt()))
+                .thenReturn(Collections.emptyList());
+        mWifiCarrierInfoManager = spy(new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mock(FrameworkFacade.class),
-                mock(WifiContext.class), mock(WifiConfigStore.class), mock(Handler.class),
-                mWifiMetrics);
+                wifiContext, mock(WifiConfigStore.class), mock(Handler.class),
+                mWifiMetrics, mClock));
         mLruConnectionTracker = new LruConnectionTracker(100, mContext);
         createWifiConfigManager();
         mWifiConfigManager.addOnNetworkUpdateListener(mWcmListener);
         // static mocking
         mSession = ExtendedMockito.mockitoSession()
+                .mockStatic(WifiInjector.class, withSettings().lenient())
                 .mockStatic(WifiConfigStore.class, withSettings().lenient())
                 .strictness(Strictness.LENIENT)
                 .startMocking();
+        when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
+        when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
+        when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mPrimaryClientModeManager);
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
+                WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(true);
+        when(mWifiGlobals.isOweUpgradeEnabled()).thenReturn(true);
         when(WifiConfigStore.createUserFiles(anyInt(), anyBoolean())).thenReturn(mock(List.class));
         when(mTelephonyManager.createForSubscriptionId(anyInt())).thenReturn(mDataTelephonyManager);
+        when(mBuildProperties.isUserBuild()).thenReturn(false);
+    }
+
+    private void mockIsDeviceOwner(boolean result) {
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(result);
+        when(mWifiPermissionsUtil.isDeviceOwner(anyInt())).thenReturn(result);
     }
 
     /**
@@ -469,7 +551,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         Map<String, String> randomizedMacAddressMapping = new HashMap<>();
         final String randMac = "12:23:34:45:56:67";
-        randomizedMacAddressMapping.put(openNetwork.getKey(), randMac);
+        randomizedMacAddressMapping.put(openNetwork.getNetworkKey(), randMac);
         assertNotEquals(randMac, openNetwork.getRandomizedMacAddress());
         when(mRandomizedMacStoreData.getMacMapping()).thenReturn(randomizedMacAddressMapping);
 
@@ -573,6 +655,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertAndSetNetworkBSSID(openNetwork, TEST_BSSID);
         // Change the trusted bit.
         openNetwork.trusted = false;
+        // change the oem paid bit.
+        openNetwork.oemPaid = true;
+        openNetwork.oemPrivate = true;
         verifyUpdateNetworkToWifiConfigManagerWithoutIpChange(openNetwork);
 
         // Now verify that the modification has been effective.
@@ -586,9 +671,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration oldConfig = wifiConfigCaptor.getAllValues().get(0);
         assertEquals(openNetwork.networkId, newConfig.networkId);
         assertFalse(newConfig.trusted);
+        assertTrue(newConfig.oemPaid);
+        assertTrue(newConfig.oemPrivate);
         assertEquals(TEST_BSSID, newConfig.BSSID);
         assertEquals(openNetwork.networkId, oldConfig.networkId);
         assertTrue(oldConfig.trusted);
+        assertFalse(oldConfig.oemPaid);
+        assertFalse(oldConfig.oemPrivate);
         assertNull(oldConfig.BSSID);
     }
 
@@ -615,14 +704,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
             public void answer(String ssid) {
                 mBssidStatusMap.entrySet().removeIf(e -> e.getValue().equals(ssid));
             }
-        }).when(mBssidBlocklistMonitor).clearBssidBlocklistForSsid(
+        }).when(mWifiBlocklistMonitor).clearBssidBlocklistForSsid(
                 anyString());
         doAnswer(new AnswerWithArguments() {
             public int answer(String ssid) {
                 return (int) mBssidStatusMap.entrySet().stream()
                         .filter(e -> e.getValue().equals(ssid)).count();
             }
-        }).when(mBssidBlocklistMonitor).updateAndGetNumBlockedBssidsForSsid(
+        }).when(mWifiBlocklistMonitor).updateAndGetNumBlockedBssidsForSsid(
                 anyString());
         // add bssid to the blocklist
         mBssidStatusMap.put(TEST_BSSID, openNetwork.SSID);
@@ -632,6 +721,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertAndSetNetworkBSSID(openNetwork, TEST_BSSID);
         // Change the trusted bit.
         openNetwork.trusted = false;
+        // change the oem paid bit.
+        openNetwork.oemPaid = true;
+        openNetwork.oemPrivate = true;
         verifyUpdateNetworkToWifiConfigManagerWithoutIpChange(openNetwork);
 
         // Now verify that the modification has been effective.
@@ -645,12 +737,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration oldConfig = wifiConfigCaptor.getAllValues().get(0);
         assertEquals(openNetwork.networkId, newConfig.networkId);
         assertFalse(newConfig.trusted);
+        assertTrue(newConfig.oemPaid);
+        assertTrue(newConfig.oemPrivate);
         assertEquals(TEST_BSSID, newConfig.BSSID);
         assertEquals(openNetwork.networkId, oldConfig.networkId);
         assertTrue(oldConfig.trusted);
+        assertFalse(oldConfig.oemPaid);
+        assertFalse(oldConfig.oemPrivate);
         assertNull(oldConfig.BSSID);
 
-        assertEquals(0, mBssidBlocklistMonitor.updateAndGetNumBlockedBssidsForSsid(
+        assertEquals(0, mWifiBlocklistMonitor.updateAndGetNumBlockedBssidsForSsid(
                 openNetwork.SSID));
     }
 
@@ -664,9 +760,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(true);
+        mockIsDeviceOwner(true);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
 
         verifyAddNetworkToWifiConfigManager(openNetwork);
         verify(mWcmListener).onNetworkAdded(wifiConfigCaptor.capture());
@@ -694,7 +790,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
         List<WifiConfiguration> networks = new ArrayList<>();
         networks.add(openNetwork);
 
@@ -728,9 +824,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(true);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(true);
+        mockIsDeviceOwner(true);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
         List<WifiConfiguration> networks = new ArrayList<>();
         networks.add(openNetwork);
 
@@ -760,7 +856,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(WifiConfiguration.class);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(false);
+        mockIsDeviceOwner(false);
         WifiConfiguration passpointNetwork = WifiConfigurationTestUtil.createPasspointNetwork();
         // Disable MAC randomization and verify this is added in successfully.
         passpointNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
@@ -782,6 +878,38 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 networks, retrievedNetworks);
     }
 
+    /**
+     * Verify that the mac randomization setting could be modified when added by wifi suggestions.
+     */
+    @Test
+    public void testCanUpdateMacRandomizationSettingForSuggestions() throws Exception {
+        ArgumentCaptor<WifiConfiguration> wifiConfigCaptor =
+                ArgumentCaptor.forClass(WifiConfiguration.class);
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
+        mockIsDeviceOwner(false);
+
+        // Create 2 open networks. One is from suggestion and the other is not.
+        WifiConfiguration openNetworkSuggestion = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetworkSuggestion.macRandomizationSetting =
+                WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
+        openNetworkSuggestion.fromWifiNetworkSuggestion = true;
+
+        WifiConfiguration openNetworkSaved = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetworkSaved.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
+        openNetworkSaved.fromWifiNetworkSuggestion = false;
+
+        // Add both networks into WifiConfigManager, and verify only is network from suggestions is
+        // successfully added.
+        addNetworkToWifiConfigManager(openNetworkSuggestion);
+        addNetworkToWifiConfigManager(openNetworkSaved);
+
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+        assertEquals(openNetworkSuggestion.getProfileKey(),
+                retrievedNetworks.get(0).getProfileKey());
+    }
 
     /**
      * Verifies the addition of a single ephemeral network using
@@ -1004,7 +1132,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         List<WifiConfiguration> retrievedSavedNetworks = mWifiConfigManager.getSavedNetworks(
                 Process.WIFI_UID);
         assertEquals(retrievedSavedNetworks.size(), 1);
-        assertEquals(retrievedSavedNetworks.get(0).getKey(), pskNetwork.getKey());
+        assertEquals(retrievedSavedNetworks.get(0).getProfileKey(),
+                pskNetwork.getProfileKey());
         assertPasswordsMaskedInWifiConfiguration(retrievedSavedNetworks.get(0));
     }
 
@@ -1029,7 +1158,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         List<WifiConfiguration> retrievedSavedNetworks = mWifiConfigManager.getSavedNetworks(
                 Process.WIFI_UID);
         assertEquals(retrievedSavedNetworks.size(), 1);
-        assertEquals(retrievedSavedNetworks.get(0).getKey(), wepNetwork.getKey());
+        assertEquals(retrievedSavedNetworks.get(0).getProfileKey(),
+                wepNetwork.getProfileKey());
         assertPasswordsMaskedInWifiConfiguration(retrievedSavedNetworks.get(0));
     }
 
@@ -1233,187 +1363,109 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         int networkId = result.getNetworkId();
         // First set it to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                networkId, NetworkSelectionStatus.DISABLED_NONE, 0);
+        mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
 
-        // Now set it to temporarily disabled. The threshold for association rejection is 5, so
-        // disable it 5 times to actually mark it temporarily disabled.
-        int assocRejectReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
-        int assocRejectThreshold =
-                WifiConfigManager.getNetworkSelectionDisableThreshold(assocRejectReason);
-        for (int i = 1; i <= assocRejectThreshold; i++) {
-            verifyUpdateNetworkSelectionStatus(result.getNetworkId(), assocRejectReason, i);
-        }
+        // Now set it to temporarily disabled.
+        mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON);
         verify(mWcmListener).onNetworkTemporarilyDisabled(wifiConfigCaptor.capture(),
-                eq(NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION));
+                eq(TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON));
         assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
+        verifyNetworkUpdateBroadcast();
         // Now set it to permanently disabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER, 0);
+        mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                TEST_NETWORK_SELECTION_PERM_DISABLE_REASON);
         verify(mWcmListener).onNetworkPermanentlyDisabled(
-                wifiConfigCaptor.capture(), eq(NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER));
+                wifiConfigCaptor.capture(), eq(TEST_NETWORK_SELECTION_PERM_DISABLE_REASON));
         assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
+        verifyNetworkUpdateBroadcast();
         // Now set it back to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_NONE, 0);
-        verify(mWcmListener, times(2))
-                .onNetworkEnabled(wifiConfigCaptor.capture());
+        mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        verify(mWcmListener, times(2)).onNetworkEnabled(wifiConfigCaptor.capture());
         assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
+        verifyNetworkUpdateBroadcast();
     }
 
     /**
-     * Verifies the update of network status using
-     * {@link WifiConfigManager#updateNetworkSelectionStatus(int, int)}.
-     */
-    @Test
-    public void testNetworkSelectionStatusTemporarilyDisabledDueToNoInternet() {
-        ArgumentCaptor<WifiConfiguration> wifiConfigCaptor =
-                ArgumentCaptor.forClass(WifiConfiguration.class);
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-
-        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
-
-        int networkId = result.getNetworkId();
-        // First set it to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                networkId, NetworkSelectionStatus.DISABLED_NONE, 0);
-
-        // Now set it to temporarily disabled. The threshold for no internet is 1, so
-        // disable it once to actually mark it temporarily disabled.
-        verifyUpdateNetworkSelectionStatus(result.getNetworkId(),
-                NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY, 1);
-        verify(mWcmListener).onNetworkTemporarilyDisabled(
-                wifiConfigCaptor.capture(),
-                eq(NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY));
-        assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
-        // Now set it back to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_NONE, 0);
-        verify(mWcmListener, times(2))
-                .onNetworkEnabled(wifiConfigCaptor.capture());
-        assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
-    }
-
-    /**
-     * Verifies the update of network status using
-     * {@link WifiConfigManager#updateNetworkSelectionStatus(int, int)} and ensures that
-     * enabling a network clears out all the temporary disable counters.
-     */
-    @Test
-    public void testNetworkSelectionStatusEnableClearsDisableCounters() {
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-
-        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
-
-        // First set it to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_NONE, 0);
-
-        // Now set it to temporarily disabled 2 times for 2 different reasons.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION, 1);
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION, 2);
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_AUTHENTICATION_FAILURE, 1);
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_AUTHENTICATION_FAILURE, 2);
-
-        // Now set it back to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_NONE, 0);
-
-        // Ensure that the counters have all been reset now.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION, 1);
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_AUTHENTICATION_FAILURE, 1);
-    }
-
-    private void verifyDisableNetwork(NetworkUpdateResult result, int reason) {
-        // First set it to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                result.getNetworkId(), NetworkSelectionStatus.DISABLED_NONE, 0);
-
-        int disableThreshold =
-                WifiConfigManager.getNetworkSelectionDisableThreshold(reason);
-        for (int i = 1; i <= disableThreshold; i++) {
-            verifyUpdateNetworkSelectionStatus(result.getNetworkId(), reason, i);
-        }
-    }
-
-    private void verifyNetworkIsEnabledAfter(int networkId, long timeout) {
-        // try enabling this network 1 second earlier than the expected timeout. This
-        // should fail and the status should remain temporarily disabled.
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(timeout - 1);
-        assertFalse(mWifiConfigManager.tryEnableNetwork(networkId));
-        NetworkSelectionStatus retrievedStatus =
-                mWifiConfigManager.getConfiguredNetwork(networkId).getNetworkSelectionStatus();
-        assertTrue(retrievedStatus.isNetworkTemporaryDisabled());
-
-        // Now advance time by the timeout for association rejection and ensure that the
-        // network is now enabled.
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(timeout);
-        assertTrue(mWifiConfigManager.tryEnableNetwork(networkId));
-        retrievedStatus = mWifiConfigManager.getConfiguredNetwork(networkId)
-                .getNetworkSelectionStatus();
-        assertTrue(retrievedStatus.isNetworkEnabled());
-    }
-
-    /**
-     * Verifies the enabling of temporarily disabled network using
-     * {@link WifiConfigManager#tryEnableNetwork(int)}.
+     * Verify tryEnableNetwork sets NetworkSelectionStatus to NETWORK_SELECTION_ENABLED when
+     * WifiBlocklistMonitor.shouldEnableNetwork returns true.
      */
     @Test
     public void testTryEnableNetwork() {
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
+        when(mWifiBlocklistMonitor.shouldEnableNetwork(any())).thenReturn(true);
 
-        // Verify exponential backoff on the disable duration based on number of BSSIDs in the
-        // BSSID blocklist
-        long multiplier = 1;
-        int disableReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
-        long timeout = 0;
-        for (int i = 1; i < MAX_BLOCKED_BSSID_PER_NETWORK + 1; i++) {
-            verifyDisableNetwork(result, disableReason);
-            int numBssidsInBlocklist = i;
-            when(mBssidBlocklistMonitor.updateAndGetNumBlockedBssidsForSsid(anyString()))
-                    .thenReturn(numBssidsInBlocklist);
-            timeout = WifiConfigManager.getNetworkSelectionDisableTimeoutMillis(disableReason)
-                    * multiplier;
-            multiplier *= 2;
-            verifyNetworkIsEnabledAfter(result.getNetworkId(),
-                    TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS + timeout);
-        }
+        // first set the network to temporarily disabled
+        verifyDisableNetwork(result, false);
+        verifyNetworkUpdateBroadcast();
 
-        // Verify one last time that the disable duration is capped at some maximum.
-        verifyDisableNetwork(result, disableReason);
-        when(mBssidBlocklistMonitor.updateAndGetNumBlockedBssidsForSsid(anyString()))
-                .thenReturn(MAX_BLOCKED_BSSID_PER_NETWORK + 1);
-        verifyNetworkIsEnabledAfter(result.getNetworkId(),
-                TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS + timeout);
+        assertTrue(mWifiConfigManager.tryEnableNetwork(result.getNetworkId()));
+        assertEquals(NetworkSelectionStatus.NETWORK_SELECTION_ENABLED,
+                mWifiConfigManager.getConfiguredNetworks().get(0)
+                        .getNetworkSelectionStatus().getNetworkSelectionStatus());
+        verifyNetworkUpdateBroadcast();
     }
 
     /**
-     * Verifies that when no BSSIDs for a network is inside the BSSID blocklist then we
-     * re-enable a network.
+     * Verify enableTemporaryDisabledNetworks successfully enable temporarily disabled networks.
      */
     @Test
-    public void testTryEnableNetworkNoBssidsInBlocklist() {
+    public void testEnableTemporaryDisabledNetworks() {
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
-        int disableReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
+        verifyDisableNetwork(result, false);
+        assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
+                .getNetworkSelectionStatus().isNetworkTemporaryDisabled());
 
-        // Verify that with 0 BSSIDs in blocklist we enable the network immediately
-        verifyDisableNetwork(result, disableReason);
-        when(mBssidBlocklistMonitor.updateAndGetNumBlockedBssidsForSsid(anyString())).thenReturn(0);
-        when(mClock.getElapsedSinceBootMillis())
-                .thenReturn(TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS);
-        assertTrue(mWifiConfigManager.tryEnableNetwork(result.getNetworkId()));
-        NetworkSelectionStatus retrievedStatus =
-                mWifiConfigManager.getConfiguredNetwork(result.getNetworkId())
-                        .getNetworkSelectionStatus();
-        assertTrue(retrievedStatus.isNetworkEnabled());
+        mWifiConfigManager.enableTemporaryDisabledNetworks();
+        verify(mWifiBlocklistMonitor).clearBssidBlocklist();
+        assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
+                .getNetworkSelectionStatus().isNetworkEnabled());
+    }
+
+    /**
+     * Verify that permanently disabled network do not get affected by
+     * enableTemporaryDisabledNetworks
+     */
+    @Test
+    public void testEnableTemporaryDisabledNetworks_PermanentDisableNetworksStillDisabled() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
+        verifyDisableNetwork(result, true);
+        assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
+                .getNetworkSelectionStatus().isNetworkPermanentlyDisabled());
+
+        mWifiConfigManager.enableTemporaryDisabledNetworks();
+        verify(mWifiBlocklistMonitor).clearBssidBlocklist();
+        assertEquals(true, mWifiConfigManager.getConfiguredNetworks().get(0)
+                .getNetworkSelectionStatus().isNetworkPermanentlyDisabled());
+    }
+
+    private void verifyDisableNetwork(NetworkUpdateResult result, boolean permanentlyDisable) {
+        // First set it to enabled.
+        int networkId = result.getNetworkId();
+        assertTrue(mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON));
+        assertEquals(NetworkSelectionStatus.NETWORK_SELECTION_ENABLED,
+                mWifiConfigManager.getConfiguredNetworks().get(0)
+                        .getNetworkSelectionStatus().getNetworkSelectionStatus());
+
+        if (permanentlyDisable) {
+            assertTrue(mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                    TEST_NETWORK_SELECTION_PERM_DISABLE_REASON));
+            assertEquals(NetworkSelectionStatus.NETWORK_SELECTION_PERMANENTLY_DISABLED,
+                    mWifiConfigManager.getConfiguredNetworks().get(0)
+                            .getNetworkSelectionStatus().getNetworkSelectionStatus());
+        } else {
+            assertTrue(mWifiConfigManager.updateNetworkSelectionStatus(networkId,
+                    TEST_NETWORK_SELECTION_TEMP_DISABLE_REASON));
+            assertEquals(NetworkSelectionStatus.NETWORK_SELECTION_TEMPORARY_DISABLED,
+                    mWifiConfigManager.getConfiguredNetworks().get(0)
+                            .getNetworkSelectionStatus().getNetworkSelectionStatus());
+        }
     }
 
     /**
@@ -1536,14 +1588,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * {@link WifiConfigManager#updateLastConnectUid(int, int)}.
      */
     @Test
-    public void testUpdateLastConnectUid() throws Exception {
+    public void testConnectNetworkUpdatesLastConnectUid() throws Exception {
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
 
         NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
 
-        assertTrue(
-                mWifiConfigManager.updateLastConnectUid(
-                        result.getNetworkId(), TEST_CREATOR_UID));
+        mWifiConfigManager
+                .updateBeforeConnect(result.getNetworkId(), TEST_CREATOR_UID);
+
         WifiConfiguration retrievedNetwork =
                 mWifiConfigManager.getConfiguredNetwork(result.getNetworkId());
         assertEquals(TEST_CREATOR_UID, retrievedNetwork.lastConnectUid);
@@ -1610,8 +1662,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 result.getNetworkId() + 1, TEST_CREATOR_UID, TEST_CREATOR_NAME));
         assertFalse(mWifiConfigManager.updateNetworkSelectionStatus(
                 result.getNetworkId() + 1, NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER));
-        assertFalse(mWifiConfigManager.updateLastConnectUid(
-                result.getNetworkId() + 1, TEST_CREATOR_UID));
     }
 
     /**
@@ -1626,7 +1676,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testMultipleUpdatesSingleNetwork() {
-        WifiConfiguration network = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network);
 
         // Now add |wepKeys| to the network. We don't need to update the |allowedKeyManagement|
@@ -1641,25 +1691,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationEqualForConfigManagerAddOrUpdate(
                 network, mWifiConfigManager.getConfiguredNetworkWithPassword(network.networkId));
 
-        // Now empty out 3 of the |wepKeys[]| and ensure that those keys have been reset correctly.
-        for (int i = 1; i < network.wepKeys.length; i++) {
-            wepKeys[i] = "";
-        }
+        // Now shuffle the keys around
+        String[] wepKeysNew = Arrays.copyOf(wepKeys, wepKeys.length);
+        Collections.rotate(Arrays.asList(wepKeysNew), 2);
         wepTxKeyIdx = 0;
-        assertAndSetNetworkWepKeysAndTxIndex(network, wepKeys, wepTxKeyIdx);
-
-        verifyUpdateNetworkToWifiConfigManagerWithoutIpChange(network);
-        WifiConfigurationTestUtil.assertConfigurationEqualForConfigManagerAddOrUpdate(
-                network, mWifiConfigManager.getConfiguredNetworkWithPassword(network.networkId));
-
-        // Now change the config to a PSK network config by resetting the remaining |wepKey[0]|
-        // field and setting the |preSharedKey| and |allowedKeyManagement| fields.
-        wepKeys[0] = "";
-        wepTxKeyIdx = -1;
-        assertAndSetNetworkWepKeysAndTxIndex(network, wepKeys, wepTxKeyIdx);
-        network.allowedKeyManagement.clear();
-        network.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
-        assertAndSetNetworkPreSharedKey(network, WifiConfigurationTestUtil.TEST_PSK);
+        assertAndSetNetworkWepKeysAndTxIndex(network, wepKeysNew, wepTxKeyIdx);
 
         verifyUpdateNetworkToWifiConfigManagerWithoutIpChange(network);
         WifiConfigurationTestUtil.assertConfigurationEqualForConfigManagerAddOrUpdate(
@@ -1702,7 +1738,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testUpdateSingleNetworkWithNullValues() {
-        WifiConfiguration network = WifiConfigurationTestUtil.createEapNetwork();
+        WifiConfiguration network = WifiConfigurationTestUtil.createWpa2Wpa3EnterpriseNetwork();
         verifyAddNetworkToWifiConfigManager(network);
 
         // Save a copy of the original network for comparison.
@@ -1714,7 +1750,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         network.allowedKeyManagement.clear();
         network.allowedPairwiseCiphers.clear();
         network.allowedGroupCiphers.clear();
-        network.enterpriseConfig = null;
 
         // Update the network.
         NetworkUpdateResult result = updateNetworkToWifiConfigManager(network);
@@ -1735,6 +1770,22 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationEqualForConfigManagerAddOrUpdate(
                 originalNetwork,
                 mWifiConfigManager.getConfiguredNetworkWithPassword(originalNetwork.networkId));
+
+        // Save a copy of the original network for comparison.
+        network = new WifiConfiguration(originalNetwork);
+
+        // Now set all the public fields to null including enterprise config and try updating the
+        // network.
+        network.allowedAuthAlgorithms.clear();
+        network.allowedProtocols.clear();
+        network.allowedKeyManagement.clear();
+        network.allowedPairwiseCiphers.clear();
+        network.allowedGroupCiphers.clear();
+        network.enterpriseConfig = null;
+
+        // Update the network.
+        result = updateNetworkToWifiConfigManager(network);
+        assertTrue(result.getNetworkId() == WifiConfiguration.INVALID_NETWORK_ID);
     }
 
     /**
@@ -1787,7 +1838,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     /**
      * Verifies the matching of networks with different encryption types with the
      * corresponding scan detail using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)}.
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)}.
      * The test also verifies that the provided scan detail was cached,
      */
     @Test
@@ -1812,7 +1863,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Verifies that scan details with wrong SSID/authentication types are not matched using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)}
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)}
      * to the added networks.
      */
     @Test
@@ -1862,19 +1913,19 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
 
         // Try to lookup a saved network using the modified scan details. All of these should fail.
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 openNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 wepNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 pskNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 eapNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 saeNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 oweNetworkScanDetail));
-        assertNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 eapSuiteBNetworkScanDetail));
 
         // All the cache's should be empty as well.
@@ -1924,7 +1975,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail scanDetail = createScanDetailForNetwork(testNetwork);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
 
         // Now retrieve the scan detail cache and ensure that the new scan detail is in cache.
         ScanDetailCache retrievedScanDetailCache =
@@ -1957,7 +2008,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                     createScanDetailForNetwork(
                             openNetwork, String.format("%s%02x", testBssidPrefix, scanDetailNum));
             assertNotNull(
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail));
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail));
 
             // The size of scan detail cache should keep growing until it hits
             // |SCAN_CACHE_ENTRIES_MAX_SIZE|.
@@ -1970,7 +2021,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail scanDetail =
                 createScanDetailForNetwork(
                         openNetwork, String.format("%s%02x", testBssidPrefix, scanDetailNum));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail));
 
         // Retrieve the scan detail cache and ensure that the size was trimmed down to
         // |SCAN_CACHE_ENTRIES_TRIM_SIZE + 1|. The "+1" is to account for the new entry that
@@ -2000,7 +2051,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Verify that the |HasEverConnected| is set when
-     * {@link WifiConfigManager#updateNetworkAfterConnect(int)} is invoked.
+     * {@link WifiConfigManager#updateNetworkAfterConnect(int, boolean, int)} is invoked.
      */
     @Test
     public void testUpdateConfigAfterConnectHasEverConnectedTrue() {
@@ -2034,9 +2085,10 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkHasEverConnectedFalse(wepNetwork);
         verifyUpdateNetworkAfterConnectHasEverConnectedTrue(wepNetwork.networkId);
 
-        // Now update the same network with a different wep.
-        assertFalse(wepNetwork.wepKeys[0].equals("newpassword"));
-        wepNetwork.wepKeys[0] = "newpassword";
+        // Now update the same network with a different wep key.
+        assertFalse(wepNetwork.wepKeys[0].equals("\"pswrd\""));
+        wepNetwork.wepKeys = new String[] {"\"pswrd\"", null, null, null};
+        wepNetwork.wepTxKeyIndex = 0;
         verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(wepNetwork);
     }
 
@@ -2056,79 +2108,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedKeyManagement| is
-     * updated.
+     * Verifies that hasEverConnected is cleared when the security type of a network config
+     * is updated.
      */
     @Test
-    public void testUpdateAllowedKeyManagementClearsHasEverConnected() {
+    public void testUpdateSecurityTypeClearsHasEverConnected() {
         WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
         verifyAddNetworkHasEverConnectedFalse(pskNetwork);
         verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
 
-        assertFalse(pskNetwork.allowedKeyManagement.get(WifiConfiguration.KeyMgmt.IEEE8021X));
-        pskNetwork.allowedKeyManagement.clear();
-        pskNetwork.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.SAE);
-        pskNetwork.requirePmf = true;
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedProtocol| is
-     * updated.
-     */
-    @Test
-    public void testUpdateProtocolsClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedProtocols.get(WifiConfiguration.Protocol.OSEN));
-        pskNetwork.allowedProtocols.set(WifiConfiguration.Protocol.OSEN);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedAuthAlgorithms| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedAuthAlgorithmsClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedAuthAlgorithms.get(WifiConfiguration.AuthAlgorithm.LEAP));
-        pskNetwork.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.LEAP);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedPairwiseCiphers| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedPairwiseCiphersClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.allowedPairwiseCiphers.get(WifiConfiguration.PairwiseCipher.NONE));
-        pskNetwork.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.NONE);
-        verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |allowedGroup| is
-     * updated.
-     */
-    @Test
-    public void testUpdateAllowedGroupCiphersClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertTrue(pskNetwork.allowedGroupCiphers.get(WifiConfiguration.GroupCipher.WEP104));
-        pskNetwork.allowedGroupCiphers.clear(WifiConfiguration.GroupCipher.WEP104);
+        pskNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
         verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
     }
 
@@ -2145,28 +2134,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertFalse(pskNetwork.hiddenSSID);
         pskNetwork.hiddenSSID = true;
         verifyUpdateNetworkWithCredentialChangeHasEverConnectedFalse(pskNetwork);
-    }
-
-    /**
-     * Verifies that hasEverConnected is cleared when a network config |requirePMF| is
-     * updated.
-     */
-    @Test
-    public void testUpdateRequirePMFClearsHasEverConnected() {
-        WifiConfiguration pskNetwork = WifiConfigurationTestUtil.createPskNetwork();
-        verifyAddNetworkHasEverConnectedFalse(pskNetwork);
-        verifyUpdateNetworkAfterConnectHasEverConnectedTrue(pskNetwork.networkId);
-
-        assertFalse(pskNetwork.requirePmf);
-        pskNetwork.requirePmf = true;
-
-        NetworkUpdateResult result =
-                verifyUpdateNetworkToWifiConfigManagerWithoutIpChange(pskNetwork);
-        WifiConfiguration retrievedNetwork =
-                mWifiConfigManager.getConfiguredNetwork(result.getNetworkId());
-        assertFalse("Updating network credentials config must clear hasEverConnected.",
-                retrievedNetwork.getNetworkSelectionStatus().hasEverConnected());
-        assertTrue(result.hasCredentialChanged());
     }
 
     /**
@@ -2282,7 +2249,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * Verify that the aggressive randomization allowlist works for passpoints. (by checking FQDN)
      */
     @Test
-    public void testShouldUseAggressiveRandomizationPasspoint() {
+    public void testshouldUseEnhancedRandomizationPasspoint() {
         WifiConfiguration c = WifiConfigurationTestUtil.createPasspointNetwork();
         // Adds SSID to the allowlist.
         Set<String> ssidList = new HashSet<>();
@@ -2291,12 +2258,74 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 .thenReturn(ssidList);
 
         // Verify that if for passpoint networks we don't check for the SSID to be in the allowlist
-        assertFalse(mWifiConfigManager.shouldUseAggressiveRandomization(c));
+        assertFalse(mWifiConfigManager.shouldUseEnhancedRandomization(c));
 
         // instead we check for the FQDN
         ssidList.clear();
         ssidList.add(c.FQDN);
-        assertTrue(mWifiConfigManager.shouldUseAggressiveRandomization(c));
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(c));
+    }
+
+    /**
+     * Verify that macRandomizationSetting == RANDOMIZATION_NON_PERSISTENT enables
+     * enhanced MAC randomization.
+     */
+    @Test
+    public void testShouldUseEnhancedRandomization_randomizationEnhanced() {
+        WifiConfiguration c = WifiConfigurationTestUtil.createPasspointNetwork();
+        c.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NON_PERSISTENT;
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(c));
+    }
+
+    /**
+     * Verify that macRandomizationSetting = RANDOMIZATION_PERSISTENT disables enhanced
+     * randomization.
+     */
+    @Test
+    public void testShouldUseEnhancedRandomization_randomizationPersistent() {
+        WifiConfiguration c = WifiConfigurationTestUtil.createPasspointNetwork();
+        c.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_PERSISTENT;
+        assertFalse(mWifiConfigManager.shouldUseEnhancedRandomization(c));
+    }
+
+    /**
+     * Verify that shouldUseEnhancedRandomization returns true for an open network that has been
+     * connected before and never had captive portal detected.
+     */
+    @Test
+    public void testShouldUseEnhancedRandomization_openNetworkNoCaptivePortal() {
+        when(mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()).thenReturn(true);
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+
+        // verify enhanced randomization is not enabled because the config has never been connected.
+        assertTrue(config.getNetworkSelectionStatus().hasNeverDetectedCaptivePortal());
+        assertFalse(mWifiConfigManager.shouldUseEnhancedRandomization(config));
+
+        config.getNetworkSelectionStatus().setHasEverConnected(true);
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(config));
+    }
+
+    /**
+     * Verify that enhanced randomization on open networks could be turned on/off by 2 feature
+     * flags.
+     */
+    @Test
+    public void testShouldUseEnhancedRandomization_openNetworkFeatureFlag() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.getNetworkSelectionStatus().setHasEverConnected(true);
+
+        // Test with both feature flags off, and expected no enhanced randomization.
+        when(mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()).thenReturn(false);
+        mResources.setBoolean(R.bool.config_wifiAllowEnhancedMacRandomizationOnOpenSsids, false);
+        assertFalse(mWifiConfigManager.shouldUseEnhancedRandomization(config));
+
+        // Verify either feature flag turned on will enable enhanced randomization.
+        when(mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()).thenReturn(true);
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(config));
+
+        when(mDeviceConfigFacade.allowEnhancedMacRandomizationOnOpenSsids()).thenReturn(false);
+        mResources.setBoolean(R.bool.config_wifiAllowEnhancedMacRandomizationOnOpenSsids, true);
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(config));
     }
 
     /**
@@ -2309,10 +2338,38 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 eq(WifiConfigManager.ENHANCED_MAC_RANDOMIZATION_FEATURE_FORCE_ENABLE_FLAG),
                 anyInt())).thenReturn(1);
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
-        assertTrue(mWifiConfigManager.shouldUseAggressiveRandomization(config));
+        assertTrue(mWifiConfigManager.shouldUseEnhancedRandomization(config));
 
         config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
-        assertFalse(mWifiConfigManager.shouldUseAggressiveRandomization(config));
+        assertFalse(mWifiConfigManager.shouldUseEnhancedRandomization(config));
+    }
+
+    /**
+     * Verify that when enhanced MAC randomization is enabled the MAC address changes after 24 hours
+     * of the first connection this MAC address is used.
+     */
+    @Test
+    public void testEnhancedMacRandomizationEvery24Hours() {
+        setUpWifiConfigurationForEnhancedRandomization();
+        WifiConfiguration config = getFirstInternalWifiConfiguration();
+
+        assertEquals(TEST_WALLCLOCK_CREATION_TIME_MILLIS, config.randomizedMacLastModifiedTimeMs);
+        MacAddress firstMac = config.getRandomizedMacAddress();
+        for (int i = 0; i < 24; i++) {
+            when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
+                    + i * 60 * 60 * 1000);
+            mWifiConfigManager.updateNetworkAfterDisconnect(config.networkId);
+            assertEquals("Randomized MAC should be the same after " + i + " hours",
+                    firstMac, mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config));
+            config = getFirstInternalWifiConfiguration();
+        }
+
+        // verify that after 24 hours the randomized MAC address changes.
+        long timeAfter24Hours = TEST_WALLCLOCK_CREATION_TIME_MILLIS + 24 * 60 * 60 * 1000;
+        when(mClock.getWallClockMillis()).thenReturn(timeAfter24Hours);
+        assertNotEquals(firstMac, mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config));
+        config = getFirstInternalWifiConfiguration();
+        assertEquals(timeAfter24Hours, config.randomizedMacLastModifiedTimeMs);
     }
 
     /**
@@ -2324,25 +2381,25 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testRandomizedMacUpdateAndRestore() {
-        setUpWifiConfigurationForAggressiveRandomization();
+        setUpWifiConfigurationForEnhancedRandomization();
         // get the aggressive randomized MAC address.
         WifiConfiguration config = getFirstInternalWifiConfiguration();
-        final MacAddress aggressiveMac = config.getRandomizedMacAddress();
-        assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, aggressiveMac.toString());
+        final MacAddress randMac = config.getRandomizedMacAddress();
+        assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, randMac.toString());
         assertEquals(TEST_WALLCLOCK_CREATION_TIME_MILLIS
-                + WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS,
+                + WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS,
                 config.randomizedMacExpirationTimeMs);
 
         // verify the new randomized mac should be different from the original mac.
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
-                + WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS + 1);
-        MacAddress aggressiveMac2 = mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
+                + WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS + 1);
+        MacAddress randMac2 = mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
 
         // verify internal WifiConfiguration has MacAddress updated correctly by comparing the
         // MAC address from internal WifiConfiguration with the value returned by API.
         config = getFirstInternalWifiConfiguration();
-        assertEquals(aggressiveMac2, config.getRandomizedMacAddress());
-        assertNotEquals(aggressiveMac, aggressiveMac2);
+        assertEquals(randMac2, config.getRandomizedMacAddress());
+        assertNotEquals(randMac, randMac2);
 
         // Now disable aggressive randomization and verify the randomized MAC is changed back to
         // the persistent MAC.
@@ -2356,8 +2413,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // MAC address from internal WifiConfiguration with the value returned by API.
         config = getFirstInternalWifiConfiguration();
         assertEquals(persistentMac, config.getRandomizedMacAddress());
-        assertNotEquals(persistentMac, aggressiveMac);
-        assertNotEquals(persistentMac, aggressiveMac2);
+        assertNotEquals(persistentMac, randMac);
+        assertNotEquals(persistentMac, randMac2);
     }
 
     /**
@@ -2366,29 +2423,29 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testUpdateRandomizedMacExpireTime() {
-        setUpWifiConfigurationForAggressiveRandomization();
+        setUpWifiConfigurationForEnhancedRandomization();
         WifiConfiguration config = getFirstInternalWifiConfiguration();
         when(mClock.getWallClockMillis()).thenReturn(0L);
 
-        // verify that |AGGRESSIVE_MAC_REFRESH_MS_MIN| is honored as the lower bound.
-        long dhcpLeaseTimeInSeconds = (WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MIN / 1000) - 1;
+        // verify that |ENHANCED_MAC_REFRESH_MS_MIN| is honored as the lower bound.
+        long dhcpLeaseTimeInSeconds = (WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MIN / 1000) - 1;
         mWifiConfigManager.updateRandomizedMacExpireTime(config, dhcpLeaseTimeInSeconds);
         config = getFirstInternalWifiConfiguration();
-        assertEquals(WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MIN,
+        assertEquals(WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MIN,
                 config.randomizedMacExpirationTimeMs);
 
-        // verify that |AGGRESSIVE_MAC_REFRESH_MS_MAX| is honored as the upper bound.
-        dhcpLeaseTimeInSeconds = (WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MAX / 1000) + 1;
+        // verify that |ENHANCED_MAC_REFRESH_MS_MAX| is honored as the upper bound.
+        dhcpLeaseTimeInSeconds = (WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MAX / 1000) + 1;
         mWifiConfigManager.updateRandomizedMacExpireTime(config, dhcpLeaseTimeInSeconds);
         config = getFirstInternalWifiConfiguration();
-        assertEquals(WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MAX,
+        assertEquals(WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MAX,
                 config.randomizedMacExpirationTimeMs);
 
         // finally verify setting a valid value between the upper and lower bounds.
-        dhcpLeaseTimeInSeconds = (WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MIN / 1000) + 5;
+        dhcpLeaseTimeInSeconds = (WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MIN / 1000) + 5;
         mWifiConfigManager.updateRandomizedMacExpireTime(config, dhcpLeaseTimeInSeconds);
         config = getFirstInternalWifiConfiguration();
-        assertEquals(WifiConfigManager.AGGRESSIVE_MAC_REFRESH_MS_MIN + 5000,
+        assertEquals(WifiConfigManager.ENHANCED_MAC_REFRESH_MS_MIN + 5000,
                 config.randomizedMacExpirationTimeMs);
     }
 
@@ -2398,17 +2455,17 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testRandomizedMacExpirationTimeUpdatedAtDisconnect() {
-        setUpWifiConfigurationForAggressiveRandomization();
+        setUpWifiConfigurationForEnhancedRandomization();
         WifiConfiguration config = getFirstInternalWifiConfiguration();
         when(mClock.getWallClockMillis()).thenReturn(0L);
 
         // First set the DHCP expiration time to be longer than the predefined time.
-        long dhcpLeaseTimeInSeconds = (WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS
+        long dhcpLeaseTimeInSeconds = (WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS
                 / 1000) + 1;
         mWifiConfigManager.updateRandomizedMacExpireTime(config, dhcpLeaseTimeInSeconds);
         config = getFirstInternalWifiConfiguration();
         long expirationTime = config.randomizedMacExpirationTimeMs;
-        assertEquals(WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS + 1000,
+        assertEquals(WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS + 1000,
                 expirationTime);
 
         // Verify that network disconnect does not update the expiration time since the remaining
@@ -2422,7 +2479,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         when(mClock.getWallClockMillis()).thenReturn(5000L);
         mWifiConfigManager.updateNetworkAfterDisconnect(config.networkId);
         config = getFirstInternalWifiConfiguration();
-        assertEquals(WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS + 5000,
+        assertEquals(WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS + 5000,
                 config.randomizedMacExpirationTimeMs);
     }
 
@@ -2432,20 +2489,20 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testRandomizedMacIsNotUpdatedDueToTimeConstraint() {
-        setUpWifiConfigurationForAggressiveRandomization();
+        setUpWifiConfigurationForEnhancedRandomization();
         // get the persistent randomized MAC address.
         WifiConfiguration config = getFirstInternalWifiConfiguration();
-        final MacAddress aggressiveMac = config.getRandomizedMacAddress();
-        assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, aggressiveMac.toString());
+        final MacAddress randMac = config.getRandomizedMacAddress();
+        assertNotEquals(WifiInfo.DEFAULT_MAC_ADDRESS, randMac.toString());
         assertEquals(TEST_WALLCLOCK_CREATION_TIME_MILLIS
-                + WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS,
+                + WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS,
                 config.randomizedMacExpirationTimeMs);
 
         // verify that the randomized MAC is unchanged.
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
-                + WifiConfigManager.AGGRESSIVE_MAC_WAIT_AFTER_DISCONNECT_MS);
+                + WifiConfigManager.ENHANCED_MAC_WAIT_AFTER_DISCONNECT_MS);
         MacAddress newMac = mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
-        assertEquals(aggressiveMac, newMac);
+        assertEquals(randMac, newMac);
     }
 
     /**
@@ -2455,16 +2512,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testPerDeviceAggressiveRandomizationSsids() {
         // This will add the SSID to allowlist using DeviceConfig.
-        setUpWifiConfigurationForAggressiveRandomization();
+        setUpWifiConfigurationForEnhancedRandomization();
         WifiConfiguration config = getFirstInternalWifiConfiguration();
-        MacAddress aggressiveMac = config.getRandomizedMacAddress();
+        MacAddress randMac = config.getRandomizedMacAddress();
 
         // add to aggressive randomization blocklist using overlay.
         mResources.setStringArray(R.array.config_wifi_aggressive_randomization_ssid_blocklist,
                 new String[] {config.SSID});
         MacAddress persistentMac = mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
         // verify that now the persistent randomized MAC is used.
-        assertNotEquals(aggressiveMac, persistentMac);
+        assertNotEquals(randMac, persistentMac);
     }
 
     private WifiConfiguration getFirstInternalWifiConfiguration() {
@@ -2473,7 +2530,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         return configs.get(0);
     }
 
-    private void setUpWifiConfigurationForAggressiveRandomization() {
+    private void setUpWifiConfigurationForEnhancedRandomization() {
         // sets up a WifiConfiguration for aggressive randomization.
         WifiConfiguration c = WifiConfigurationTestUtil.createOpenNetwork();
         // Adds the WifiConfiguration to aggressive randomization allowlist.
@@ -2501,8 +2558,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Verify macRandomizationSetting is not masked out when feature is supported.
         List<WifiConfiguration> configs = mWifiConfigManager.getSavedNetworks(Process.WIFI_UID);
         assertEquals(1, configs.size());
-        assertEquals(WifiConfiguration.RANDOMIZATION_PERSISTENT,
-                configs.get(0).macRandomizationSetting);
+        assertEquals(WifiConfiguration.RANDOMIZATION_AUTO, configs.get(0).macRandomizationSetting);
     }
 
     /**
@@ -2566,6 +2622,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
+        network3.preSharedKey = "\"preSharedKey3\"";
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
@@ -2585,12 +2644,23 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
 
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworks();
@@ -2600,9 +2670,178 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 if (otherNetwork == network) {
                     continue;
                 }
-                assertNotNull(network.linkedConfigurations.get(otherNetwork.getKey()));
+                assertNotNull(network.linkedConfigurations.get(
+                        otherNetwork.getProfileKey()));
             }
         }
+    }
+
+    /**
+     * Verifies the linking of networks when they have the same default GW Mac address in
+     * {@link WifiConfigManager#getOrCreateScanDetailCacheForNetwork(WifiConfiguration)} AND the
+     * same pre-shared key.
+     */
+    @Test
+    public void testNetworkLinkOnlyIfCredentialsMatch() {
+        mResources.setBoolean(
+                R.bool.config_wifi_only_link_same_credential_configurations, true);
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        // Set the same pre-shared key for network 1 and 2 but not 3
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey1\"";
+        network3.preSharedKey = "\"preSharedKey2\"";
+        verifyAddNetworkToWifiConfigManager(network1);
+        verifyAddNetworkToWifiConfigManager(network2);
+        verifyAddNetworkToWifiConfigManager(network3);
+
+        // Set the same default GW mac address for all of the networks.
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network1.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network2.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network3.networkId, TEST_DEFAULT_GW_MAC_ADDRESS));
+
+        // Now create fake scan detail corresponding to the networks.
+        ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1);
+        ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2);
+        ScanDetail networkScanDetail3 = createScanDetailForNetwork(network3);
+
+        // Now save all these scan details corresponding to each of this network and expect
+        // all of these networks to be linked with each other.
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail1));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail2));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
+
+        Map<Integer, WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworks().stream().collect(
+                        Collectors.toMap(config -> config.networkId, Function.identity()));
+        // Networks 1 and 2 should link due to GW match + same pre-shared key
+        WifiConfiguration retrievedNetwork1 = retrievedNetworks.get(network1.networkId);
+        assertEquals(1, retrievedNetwork1.linkedConfigurations.size());
+        assertNotNull(retrievedNetwork1.linkedConfigurations.get(network2.getProfileKey()));
+        WifiConfiguration retrievedNetwork2 = retrievedNetworks.get(network2.networkId);
+        assertEquals(1, retrievedNetwork2.linkedConfigurations.size());
+        assertNotNull(retrievedNetwork2.linkedConfigurations.get(network1.getProfileKey()));
+        // Network 3 should not link due to different pre-shared key
+        WifiConfiguration retrievedNetwork3 = retrievedNetworks.get(network3.networkId);
+        assertNull(retrievedNetwork3.linkedConfigurations);
+    }
+
+    /**
+     * Verifies no linking of networks when the gateways have VRRP MAC addresses that match the VRRP
+     * prefix of 00:00:5E:00:01.
+     */
+    @Test
+    public void testNoNetworkLinkVrrpMacAddress() {
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
+        network3.preSharedKey = "\"preSharedKey3\"";
+        verifyAddNetworkToWifiConfigManager(network1);
+        verifyAddNetworkToWifiConfigManager(network2);
+        verifyAddNetworkToWifiConfigManager(network3);
+
+        final String vrrpMacAddress = "00:00:5E:00:01:00";
+        // Set the same VRRP GW mac address for all of the networks.
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network1.networkId, vrrpMacAddress));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network2.networkId, vrrpMacAddress));
+        assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
+                network3.networkId, vrrpMacAddress));
+
+        // Now create fake scan detail corresponding to the networks.
+        ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1);
+        ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2);
+        ScanDetail networkScanDetail3 = createScanDetailForNetwork(network3);
+
+        // Now save all these scan details corresponding to each of this network and expect
+        // all of these networks to be linked with each other.
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail1));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail2));
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
+                networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
+
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworks();
+        for (WifiConfiguration network : retrievedNetworks) {
+            assertNull(network.linkedConfigurations);
+        }
+    }
+
+    /**
+     * Verify that setRecentFailureAssociationStatus is setting the recent failure reason and
+     * expiration timestamp properly. Then, verify that cleanupExpiredRecentFailureReasons
+     * properly clears expired recent failure statuses.
+     */
+    @Test
+    public void testSetRecentFailureAssociationStatus() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(config);
+        int expectedStatusCode = WifiConfiguration.RECENT_FAILURE_POOR_CHANNEL_CONDITIONS;
+        long updateTimeMs = 1234L;
+        mResources.setInteger(R.integer.config_wifiRecentFailureReasonExpirationMinutes, 1);
+        long expectedExpirationTimeMs = updateTimeMs + 60_000;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(updateTimeMs);
+        mWifiConfigManager.setRecentFailureAssociationStatus(config.networkId, expectedStatusCode);
+
+        // Verify the config changed broadcast is sent
+        verifyNetworkUpdateBroadcast();
+
+        // Verify the recent failure association status is set properly
+        List<WifiConfiguration> configs = mWifiConfigManager.getSavedNetworks(Process.WIFI_UID);
+        assertEquals(1, configs.size());
+        verify(mWifiMetrics).incrementRecentFailureAssociationStatusCount(eq(expectedStatusCode));
+        assertEquals(expectedStatusCode, configs.get(0).getRecentFailureReason());
+        assertEquals(updateTimeMs,
+                configs.get(0).recentFailure.getLastUpdateTimeSinceBootMillis());
+
+        // Verify at t-1 the failure status is not cleared yet.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(expectedExpirationTimeMs - 1);
+        mWifiConfigManager.cleanupExpiredRecentFailureReasons();
+        assertEquals(expectedStatusCode, mWifiConfigManager.getSavedNetworks(Process.WIFI_UID)
+                .get(0).getRecentFailureReason());
+
+        // Verify at the expiration time the failure status is cleared.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(expectedExpirationTimeMs);
+        mWifiConfigManager.cleanupExpiredRecentFailureReasons();
+        assertEquals(WifiConfiguration.RECENT_FAILURE_NONE,
+                mWifiConfigManager.getSavedNetworks(Process.WIFI_UID)
+                        .get(0).getRecentFailureReason());
+
+        verifyNetworkUpdateBroadcast();
     }
 
     /**
@@ -2615,6 +2854,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network3 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
+        network3.preSharedKey = "\"preSharedKey3\"";
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
@@ -2626,12 +2868,23 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail3));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network3.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network3.networkId);
 
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworks();
@@ -2641,7 +2894,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 if (otherNetwork == network) {
                     continue;
                 }
-                assertNotNull(network.linkedConfigurations.get(otherNetwork.getKey()));
+                assertNotNull(network.linkedConfigurations.get(
+                        otherNetwork.getProfileKey()));
             }
         }
     }
@@ -2662,10 +2916,18 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail networkScanDetail1 = createScanDetailForNetwork(network1, "af:89:56:34:56:67");
         ScanDetail networkScanDetail2 = createScanDetailForNetwork(network2, "af:89:56:34:56:68");
 
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
 
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworks();
@@ -2684,6 +2946,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     public void testNoNetworkLinkUsingBSSIDMatchForNetworksWithHighScanDetailCacheSize() {
         WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
 
@@ -2696,7 +2960,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                     createScanDetailForNetwork(
                             network1, test_bssid_base + Integer.toString(scan_result_num));
             assertNotNull(
-                    mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                             networkScanDetail));
         }
 
@@ -2705,8 +2969,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail networkScanDetail2 =
                 createScanDetailForNetwork(
                         network2, test_bssid_base + Integer.toString(scan_result_num++));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
 
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworks();
@@ -2724,6 +2996,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     public void testNetworkLinkUsingBSSIDMatchAndThenUnlinkDueToGwMacAddress() {
         WifiConfiguration network1 = WifiConfigurationTestUtil.createPskNetwork();
         WifiConfiguration network2 = WifiConfigurationTestUtil.createPskNetwork();
+        network1.preSharedKey = "\"preSharedKey1\"";
+        network2.preSharedKey = "\"preSharedKey2\"";
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
 
@@ -2733,10 +3007,18 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Now save all these scan details corresponding to each of this network and expect
         // all of these networks to be linked with each other.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail1));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
+        assertNotNull(mWifiConfigManager.getSavedNetworkForScanDetailAndCache(
                 networkScanDetail2));
+
+        // Now update the linked networks for all of the networks
+        mWifiConfigManager.updateNetworkSelectionStatus(network1.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateNetworkSelectionStatus(network2.networkId,
+                TEST_NETWORK_SELECTION_ENABLE_REASON);
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
 
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworks();
@@ -2746,7 +3028,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 if (otherNetwork == network) {
                     continue;
                 }
-                assertNotNull(network.linkedConfigurations.get(otherNetwork.getKey()));
+                assertNotNull(network.linkedConfigurations.get(
+                        otherNetwork.getProfileKey()));
             }
         }
 
@@ -2755,12 +3038,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 network1.networkId, "de:ad:fe:45:23:34"));
         assertTrue(mWifiConfigManager.setNetworkDefaultGwMacAddress(
                 network2.networkId, "ad:de:fe:45:23:34"));
-
-        // Add some fake scan results again to re-evaluate the linking of networks.
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
-                createScanDetailForNetwork(network1, "af:89:56:34:45:67")));
-        assertNotNull(mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(
-                createScanDetailForNetwork(network1, "af:89:56:34:45:68")));
+        mWifiConfigManager.updateLinkedNetworks(network1.networkId);
+        mWifiConfigManager.updateLinkedNetworks(network2.networkId);
 
         retrievedNetworks = mWifiConfigManager.getConfiguredNetworks();
         for (WifiConfiguration network : retrievedNetworks) {
@@ -2817,9 +3096,10 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworksWithPasswords();
         for (WifiConfiguration network : retrievedNetworks) {
-            if (network.getKey().equals(sharedNetwork1.getKey())) {
+            if (network.getProfileKey().equals(sharedNetwork1.getProfileKey())) {
                 sharedNetwork1Id = network.networkId;
-            } else if (network.getKey().equals(sharedNetwork2.getKey())) {
+            } else if (network.getProfileKey().equals(
+                    sharedNetwork2.getProfileKey())) {
                 sharedNetwork2Id = network.networkId;
             }
         }
@@ -2845,9 +3125,10 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         int updatedSharedNetwork2Id = WifiConfiguration.INVALID_NETWORK_ID;
         retrievedNetworks = mWifiConfigManager.getConfiguredNetworksWithPasswords();
         for (WifiConfiguration network : retrievedNetworks) {
-            if (network.getKey().equals(sharedNetwork1.getKey())) {
+            if (network.getProfileKey().equals(sharedNetwork1.getProfileKey())) {
                 updatedSharedNetwork1Id = network.networkId;
-            } else if (network.getKey().equals(sharedNetwork2.getKey())) {
+            } else if (network.getProfileKey().equals(
+                    sharedNetwork2.getProfileKey())) {
                 updatedSharedNetwork2Id = network.networkId;
             }
         }
@@ -2900,7 +3181,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworksWithPasswords();
         for (WifiConfiguration network : retrievedNetworks) {
-            if (network.getKey().equals(user1Network.getKey())) {
+            if (network.getProfileKey().equals(user1Network.getProfileKey())) {
                 user1NetworkId = network.networkId;
             }
         }
@@ -2967,7 +3248,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         List<WifiConfiguration> retrievedNetworks =
                 mWifiConfigManager.getConfiguredNetworksWithPasswords();
         for (WifiConfiguration network : retrievedNetworks) {
-            if (network.getKey().equals(ephemeralNetwork.getKey())) {
+            if (network.getProfileKey().equals(ephemeralNetwork.getProfileKey())) {
                 ephemeralNetworkId = network.networkId;
             }
         }
@@ -3207,6 +3488,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // user2 is unlocked and switched to foreground.
         when(mUserManager.isUserUnlockingOrUnlocked(UserHandle.of(user2))).thenReturn(true);
         mWifiConfigManager.handleUserSwitch(user2);
+
+        verify(mWifiCarrierInfoManager).onUnlockedUserSwitching(eq(user2));
         // Ensure that the read was invoked.
         mContextConfigStoreMockOrder.verify(mWifiConfigStore)
                 .switchUserStoresAndRead(any(List.class));
@@ -3314,6 +3597,23 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Ensure that we only have 1 shared network in the database after the stop.
         assertEquals(1, mWifiConfigManager.getConfiguredNetworks().size());
         assertEquals(sharedNetwork.SSID, mWifiConfigManager.getConfiguredNetworks().get(0).SSID);
+    }
+
+    /**
+     * Verify that hasNeverDetectedCaptivePortal is set to false after noteCaptivePortalDetected
+     * gets called.
+     */
+    @Test
+    public void testNoteCaptivePortalDetected() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
+
+        assertTrue(mWifiConfigManager.getConfiguredNetworks().get(0).getNetworkSelectionStatus()
+                .hasNeverDetectedCaptivePortal());
+
+        mWifiConfigManager.noteCaptivePortalDetected(openNetwork.networkId);
+        assertFalse(mWifiConfigManager.getConfiguredNetworks().get(0).getNetworkSelectionStatus()
+                .hasNeverDetectedCaptivePortal());
     }
 
     /**
@@ -3621,7 +3921,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertTrue(mWifiConfigManager.enableNetwork(
                 result.getNetworkId(), true, TEST_CREATOR_UID, TEST_CREATOR_NAME));
         assertEquals(result.getNetworkId(), mWifiConfigManager.getLastSelectedNetwork());
-        assertEquals(openNetwork.getKey(), mWifiConfigManager.getLastSelectedNetworkConfigKey());
+        assertEquals(openNetwork.getProfileKey(),
+                mWifiConfigManager.getLastSelectedNetworkConfigKey());
 
         assertTrue(mWifiConfigManager.removeNetwork(
                 result.getNetworkId(), TEST_CREATOR_UID, TEST_CREATOR_NAME));
@@ -3670,6 +3971,18 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertTrue(mWifiConfigManager.getConfiguredNetworks().isEmpty());
     }
 
+    private void verifySetUserConnectChoice(int preferredNetId, int notPreferredNetId) {
+        assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(
+                notPreferredNetId, mock(ScanResult.class), 54, mock(SecurityParams.class)));
+        assertTrue(mWifiConfigManager.updateNetworkAfterConnect(preferredNetId, true, TEST_RSSI));
+        WifiConfiguration preferred = mWifiConfigManager.getConfiguredNetwork(preferredNetId);
+        assertNull(preferred.getNetworkSelectionStatus().getConnectChoice());
+        WifiConfiguration notPreferred = mWifiConfigManager.getConfiguredNetwork(notPreferredNetId);
+        assertEquals(preferred.getProfileKey(),
+                notPreferred.getNetworkSelectionStatus().getConnectChoice());
+        assertEquals(TEST_RSSI, notPreferred.getNetworkSelectionStatus().getConnectChoiceRssi());
+    }
+
     /**
      * Verifies that the connect choice is removed from all networks when
      * {@link WifiConfigManager#removeNetwork(int, int)} is invoked.
@@ -3682,16 +3995,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
-
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
         // Set connect choice of network 2 over network 1.
-        assertTrue(
-                mWifiConfigManager.setNetworkConnectChoice(
-                        network1.networkId, network2.getKey()));
+        verifySetUserConnectChoice(network2.networkId, network1.networkId);
 
         WifiConfiguration retrievedNetwork =
                 mWifiConfigManager.getConfiguredNetwork(network1.networkId);
         assertEquals(
-                network2.getKey(),
+                network2.getProfileKey(),
                 retrievedNetwork.getNetworkSelectionStatus().getConnectChoice());
 
         // Remove network 3 and ensure that the connect choice on network 1 is not removed.
@@ -3699,7 +4010,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 network3.networkId, TEST_CREATOR_UID, TEST_CREATOR_NAME));
         retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(network1.networkId);
         assertEquals(
-                network2.getKey(),
+                network2.getProfileKey(),
                 retrievedNetwork.getNetworkSelectionStatus().getConnectChoice());
 
         // Now remove network 2 and ensure that the connect choice on network 1 is removed..
@@ -3707,12 +4018,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 network2.networkId, TEST_CREATOR_UID, TEST_CREATOR_NAME));
         retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(network1.networkId);
         assertNotEquals(
-                network2.getKey(),
+                network2.getProfileKey(),
                 retrievedNetwork.getNetworkSelectionStatus().getConnectChoice());
 
         // This should have triggered 2 buffered writes. 1 for setting the connect choice, 1 for
         // clearing it after network removal.
         mContextConfigStoreMockOrder.verify(mWifiConfigStore, times(2)).write(eq(false));
+        verify(mListener, times(2)).onConnectChoiceRemoved(anyString());
     }
 
     /**
@@ -3726,19 +4038,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
 
         // Set connect choice of network 2 over network 1 and network 3.
-        assertTrue(
-                mWifiConfigManager.setNetworkConnectChoice(
-                        network1.networkId, network2.getKey()));
-        assertTrue(
-                mWifiConfigManager.setNetworkConnectChoice(
-                        network3.networkId, network2.getKey()));
+        verifySetUserConnectChoice(network2.networkId, network1.networkId);
+        verifySetUserConnectChoice(network2.networkId, network3.networkId);
 
         WifiConfiguration retrievedNetwork =
                 mWifiConfigManager.getConfiguredNetwork(network3.networkId);
         assertEquals(
-                network2.getKey(),
+                network2.getProfileKey(),
                 retrievedNetwork.getNetworkSelectionStatus().getConnectChoice());
 
         // Disable network 3
@@ -3751,8 +4060,10 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // Ensure that the connect choice on network 1 is not removed.
         retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(network1.networkId);
         assertEquals(
-                network2.getKey(),
+                network2.getProfileKey(),
                 retrievedNetwork.getNetworkSelectionStatus().getConnectChoice());
+
+        verify(mListener).onConnectChoiceRemoved(network3.getProfileKey());
     }
 
     /**
@@ -3764,18 +4075,22 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration savedOpenNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         WifiConfiguration ephemeralNetwork = WifiConfigurationTestUtil.createEphemeralNetwork();
         WifiConfiguration passpointNetwork = WifiConfigurationTestUtil.createPasspointNetwork();
+        WifiConfiguration suggestionNetwork = WifiConfigurationTestUtil.createEphemeralNetwork();
+        suggestionNetwork.fromWifiNetworkSuggestion = true;
 
         verifyAddNetworkToWifiConfigManager(savedOpenNetwork);
         verifyAddEphemeralNetworkToWifiConfigManager(ephemeralNetwork);
         verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork);
+        verifyAddEphemeralNetworkToWifiConfigManager(suggestionNetwork);
 
-        List<WifiConfiguration> expectedConfigsBeforeRemove = new ArrayList<WifiConfiguration>() {{
-                add(savedOpenNetwork);
-                add(ephemeralNetwork);
-                add(passpointNetwork);
-            }};
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
+
+        List<WifiConfiguration> expectedConfigsBeforeRemove = new ArrayList<WifiConfiguration>(
+                Arrays.asList(savedOpenNetwork, ephemeralNetwork, passpointNetwork,
+                        suggestionNetwork));
         WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
-                expectedConfigsBeforeRemove, mWifiConfigManager.getConfiguredNetworks());
+                expectedConfigsBeforeRemove,
+                mWifiConfigManager.getConfiguredNetworksWithPasswords());
 
         assertTrue(mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks());
 
@@ -3787,6 +4102,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // No more ephemeral or passpoint networks to remove now.
         assertFalse(mWifiConfigManager.removeAllEphemeralOrPasspointConfiguredNetworks());
+
+        // Suggestion and passpoint network will not trigger conncet choice remove.
+        verify(mListener).onConnectChoiceRemoved(ephemeralNetwork.getProfileKey());
     }
 
     /**
@@ -3800,7 +4118,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork);
 
         assertTrue(mWifiConfigManager.removePasspointConfiguredNetwork(
-                passpointNetwork.getKey()));
+                passpointNetwork.getProfileKey()));
     }
 
     /**
@@ -3811,11 +4129,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testRemoveSuggestionConfiguredNetwork() throws Exception {
         WifiConfiguration suggestedNetwork = WifiConfigurationTestUtil.createEphemeralNetwork();
+        suggestedNetwork.creatorUid = TEST_CREATOR_UID;
         suggestedNetwork.fromWifiNetworkSuggestion = true;
         verifyAddEphemeralNetworkToWifiConfigManager(suggestedNetwork);
 
-        assertTrue(mWifiConfigManager.removeSuggestionConfiguredNetwork(
-                suggestedNetwork.getKey()));
+        assertTrue(mWifiConfigManager.removeSuggestionConfiguredNetwork(suggestedNetwork));
     }
 
     /**
@@ -3900,12 +4218,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
-        mWifiConfigManager.updateNetworkAfterConnect(network3.networkId);
+        mWifiConfigManager.updateNetworkAfterConnect(network3.networkId, false, TEST_RSSI);
 
         // Now set scan results of network2 to set the corresponding
         // {@link NetworkSelectionStatus#mSeenInLastQualifiedNetworkSelection} field.
         assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(network2.networkId,
-                createScanDetailForNetwork(network2).getScanResult(), 54));
+                createScanDetailForNetwork(network2).getScanResult(), 54,
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK)));
 
         // Retrieve the hidden network list & verify the order of the networks returned.
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks =
@@ -3928,6 +4248,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // successfully.
         WifiConfiguration network1 = new WifiConfiguration();
         network1.SSID = ssid;
+        network1.convertLegacyFieldsToSecurityParamsIfNeeded();
         NetworkUpdateResult result = addNetworkToWifiConfigManager(network1);
         assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
         assertTrue(result.isNewNetwork());
@@ -3942,6 +4263,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // didn't add a new duplicate network.
         WifiConfiguration network2 = new WifiConfiguration();
         network2.SSID = ssid;
+        network2.convertLegacyFieldsToSecurityParamsIfNeeded();
         result = addNetworkToWifiConfigManager(network2);
         assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
         assertFalse(result.isNewNetwork());
@@ -3964,7 +4286,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // successfully.
         WifiConfiguration network1 = new WifiConfiguration();
         network1.SSID = ssid;
-        network1.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
+        network1.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
         network1.preSharedKey = "\"test_blah\"";
         NetworkUpdateResult result = addNetworkToWifiConfigManager(network1);
         assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
@@ -3980,7 +4302,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         // does add a new network.
         WifiConfiguration network2 = new WifiConfiguration();
         network2.SSID = ssid;
-        network2.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+        network2.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
         result = addNetworkToWifiConfigManager(network2);
         assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
         assertTrue(result.isNewNetwork());
@@ -4412,7 +4734,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     public void testResetSimNetworks() {
         String expectedIdentity = "13214561234567890@wlan.mnc456.mcc321.3gppnetwork.org";
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         List<SubscriptionInfo> subList = new ArrayList<>() {{
@@ -4468,7 +4791,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testResetSimNetworks_getSimIdentityNull_shouldResetAllNonPeapSimIdentities() {
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
         List<SubscriptionInfo> subList = new ArrayList<>() {{
@@ -4527,7 +4851,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     @Test
     public void testLoadFromStoreResetsSimIdentity() {
         when(mDataTelephonyManager.getSubscriberId()).thenReturn("3214561234567890");
-        when(mDataTelephonyManager.getSimState()).thenReturn(TelephonyManager.SIM_STATE_READY);
+        when(mDataTelephonyManager.getSimApplicationState())
+                .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
         when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(anyInt())).thenReturn(null);
 
@@ -4564,6 +4889,30 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertEquals("identity", retrievedPeapNetwork.enterpriseConfig.getIdentity());
         assertEquals("anonymous_identity",
                 retrievedPeapNetwork.enterpriseConfig.getAnonymousIdentity());
+    }
+
+    /**
+     * Verifies that SIM configs are reset on {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreIgnoresMalformedNetworks() {
+        WifiConfiguration validNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration invalidNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        // SSID larger than 32 chars.
+        invalidNetwork.SSID = "\"sdhdfsjdkdskkdfskldfslksflfdslsflfsalaladlalaala;lalalal\"";
+
+        // Set up the store data.
+        List<WifiConfiguration> sharedNetworks = Arrays.asList(validNetwork, invalidNetwork);
+        setupStoreDataForRead(sharedNetworks, new ArrayList<>());
+
+        // read from store now
+        assertTrue(mWifiConfigManager.loadFromStore());
+
+        // Ensure that the invalid network has been ignored.
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
+                Arrays.asList(validNetwork), retrievedNetworks);
     }
 
     /**
@@ -4618,15 +4967,14 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(savedNetwork);
         verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork);
 
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
         // Set connect choice of passpoint network over saved network.
-        assertTrue(
-                mWifiConfigManager.setNetworkConnectChoice(
-                        savedNetwork.networkId, passpointNetwork.getKey()));
+        verifySetUserConnectChoice(passpointNetwork.networkId, savedNetwork.networkId);
 
         WifiConfiguration retrievedSavedNetwork =
                 mWifiConfigManager.getConfiguredNetwork(savedNetwork.networkId);
         assertEquals(
-                passpointNetwork.getKey(),
+                passpointNetwork.getProfileKey(),
                 retrievedSavedNetwork.getNetworkSelectionStatus().getConnectChoice());
 
         // Disable the passpoint network & ensure the user choice is now removed from saved network.
@@ -4634,10 +4982,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         retrievedSavedNetwork = mWifiConfigManager.getConfiguredNetwork(savedNetwork.networkId);
         assertNull(retrievedSavedNetwork.getNetworkSelectionStatus().getConnectChoice());
+        verify(mListener).onConnectChoiceRemoved(passpointNetwork.getProfileKey());
     }
 
     @Test
-    public void  testUserEnableDisabledNetwork() {
+    public void testUserEnableDisabledNetwork() {
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
         List<WifiConfiguration> networks = new ArrayList<>();
@@ -4727,6 +5076,203 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertFalse(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
     }
 
+    @Test
+    public void testMaxDisableDurationEnableDisabledNetwork() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        List<WifiConfiguration> networks = new ArrayList<>();
+        networks.add(openNetwork);
+        verifyAddNetworkToWifiConfigManager(openNetwork);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
+                networks, retrievedNetworks);
+
+        // Disable the network.
+        long maxDisableDuration = ALL_NON_CARRIER_MERGED_WIFI_MAX_DISABLE_DURATION_MINUTES
+                * 60 * 1000;
+        when(mClock.getWallClockMillis()).thenReturn(0L);
+        String network = openNetwork.SSID;
+        mWifiConfigManager.userTemporarilyDisabledNetwork(network, TEST_UPDATE_UID);
+
+        // Verify that the network is disabled.
+        assertTrue(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+
+        // Before the maxDisableDuration, the network should still be disabled.
+        when(mClock.getWallClockMillis()).thenReturn(maxDisableDuration);
+        assertTrue(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+
+        // After the maxDisableDuration, the network should be enabled.
+        when(mClock.getWallClockMillis()).thenReturn(maxDisableDuration + 1);
+        assertFalse(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network));
+    }
+
+    /**
+     * Verify that when startRestrictingAutoJoinToSubscriptionId is called, all
+     * non-carrier-merged networks are disabled for a duration, and non-carrier-merged networks
+     * visible at the time of API call are disabled a longer duration, until they disappear from
+     * scan results for sufficiently long.
+     */
+    @Test
+    public void testStartTemporarilyDisablingAllNonCarrierMergedWifi() {
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfiguration visibleNetwork = retrievedNetworks.get(0);
+        ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
+        WifiConfiguration otherNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+
+        // verify both networks are disabled at the start
+        when(mClock.getWallClockMillis()).thenReturn(0L);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
+        mWifiConfigManager.updateUserDisabledList(new ArrayList<String>());
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+
+        // the network visible at the start of the API call should still be disabled, but the
+        // other non-carrier-merged network should now be free to connect
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+
+        // all networks should be clear to connect by now.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(
+                WifiConfigManager.USER_DISCONNECT_NETWORK_BLOCK_EXPIRY_MS + 1);
+        when(mClock.getWallClockMillis()).thenReturn(
+                WifiConfigManager.USER_DISCONNECT_NETWORK_BLOCK_EXPIRY_MS + 1);
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                visibleNetwork));
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+    }
+
+    /**
+     * Verify when there that non carrier merged networks disabled due to carrier selection gets
+     * re-enabled when cellular data becomes unavailable.
+     */
+    @Test
+    public void testNoCellularDataEnabledNonCarrierMergedWifi() {
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfiguration visibleNetwork = retrievedNetworks.get(0);
+        ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
+
+        // verify the network is disabled after startRestrictingAutoJoinToSubscriptionId is called
+        when(mClock.getWallClockMillis()).thenReturn(0L);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
+        mWifiConfigManager.updateUserDisabledList(new ArrayList<String>());
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
+
+        mWifiConfigManager.onCellularConnectivityChanged(WifiDataStall.CELLULAR_DATA_NOT_AVAILABLE);
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                visibleNetwork));
+    }
+
+    /**
+     * Verify that startRestrictingAutoJoinToSubscriptionId disables all passpoint networks
+     * with the same FQDN as the visible passpoint network, even if the SSID is different.
+     */
+    @Test
+    public void testStartTemporarilyDisablingAllNonCarrierMergedWifiPasspointFqdn()
+            throws Exception {
+        int testSubscriptionId = 5;
+        WifiConfiguration passpointNetwork_1 = WifiConfigurationTestUtil.createPasspointNetwork();
+        WifiConfiguration passpointNetwork_2 = WifiConfigurationTestUtil.createPasspointNetwork();
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        // Verify the 2 passpoint network have the same FQDN, but different SSID.
+        assertEquals(passpointNetwork_1.FQDN, passpointNetwork_2.FQDN);
+        assertNotEquals(passpointNetwork_1.SSID, passpointNetwork_2.SSID);
+        NetworkUpdateResult result =
+                verifyAddPasspointNetworkToWifiConfigManager(passpointNetwork_1);
+
+        // Make sure the passpointNetwork_1 is seen in a scan.
+        WifiConfiguration visibleNetwork = mWifiConfigManager.getConfiguredNetworksWithPasswords()
+                .get(0);
+        ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        mWifiConfigManager.updateScanDetailForNetwork(result.getNetworkId(), scanDetail);
+
+        // verify all networks are disabled at the start
+        when(mClock.getWallClockMillis()).thenReturn(0L);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                passpointNetwork_1));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                passpointNetwork_2));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(openNetwork));
+
+        // now the open network should be clear to connect because it is not visible at the start
+        // of the API call. But both passpoint network should still be disabled due to the FQDN
+        // of passpointNetwork_1 being disabled.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(
+                ALL_NON_CARRIER_MERGED_WIFI_MIN_DISABLE_DURATION_MINUTES * 60 * 1000 + 1L);
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                passpointNetwork_1));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                passpointNetwork_2));
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(openNetwork));
+    }
+
+    /**
+     * Verify that stopRestrictingAutoJoinToSubscriptionId cancels the effects of
+     * startRestrictingAutoJoinToSubscriptionId.
+     */
+    @Test
+    public void testStopRestrictAutoJoinToSubscriptionId() {
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfiguration visibleNetwork = retrievedNetworks.get(0);
+        ScanDetail scanDetail = createScanDetailForNetwork(visibleNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
+
+        WifiConfiguration otherNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+
+        // verify both networks are disabled at the start
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(5);
+        mWifiConfigManager.updateUserDisabledList(new ArrayList<String>());
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(visibleNetwork));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+
+        mWifiConfigManager.stopRestrictingAutoJoinToSubscriptionId();
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(
+                visibleNetwork));
+        assertFalse(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+    }
+
+    /**
+     * Verify that the carrier network with the matching subscription ID is still allowed for
+     * auto connect after startRestrictingAutoJoinToSubscriptionId is called.
+     */
+    @Test
+    public void testStartTemporarilyDisablingAllNonCarrierMergedWifiAllowCarrierNetwork() {
+        int testSubscriptionId = 5;
+        WifiConfiguration network = WifiConfigurationTestUtil.createOpenNetwork();
+        network.carrierMerged = true;
+        network.subscriptionId = testSubscriptionId;
+        verifyAddNetworkToWifiConfigManager(network);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfiguration carrierNetwork = retrievedNetworks.get(0);
+        WifiConfiguration otherNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+
+        // verify that the carrier network is not disabled.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+        mWifiConfigManager.startRestrictingAutoJoinToSubscriptionId(testSubscriptionId);
+        assertFalse(mWifiConfigManager
+                .isNonCarrierMergedNetworkTemporarilyDisabled(carrierNetwork));
+        assertTrue(mWifiConfigManager.isNonCarrierMergedNetworkTemporarilyDisabled(otherNetwork));
+    }
+
     private NetworkUpdateResult verifyAddOrUpdateNetworkWithProxySettingsAndPermissions(
             boolean withNetworkSettings,
             boolean withProfileOwnerPolicy,
@@ -4755,8 +5301,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
             network = mWifiConfigManager.getConfiguredNetwork(networkId);
         }
         network.setIpConfiguration(ipConfiguration);
-        when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any()))
-                .thenReturn(withDeviceOwnerPolicy);
+        mockIsDeviceOwner(withDeviceOwnerPolicy);
         when(mWifiPermissionsUtil.isProfileOwner(anyInt(), any()))
                 .thenReturn(withProfileOwnerPolicy);
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt()))
@@ -4778,12 +5323,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 new WifiConfigManager(
                         mContext, mClock, mUserManager, mWifiCarrierInfoManager,
                         mWifiKeyStore, mWifiConfigStore,
-                        mWifiPermissionsUtil, mWifiPermissionsWrapper, mWifiInjector,
+                        mWifiPermissionsUtil, mMacAddressUtil, mWifiMetrics, mWifiBlocklistMonitor,
+                        mWifiLastResortWatchdog,
                         mNetworkListSharedStoreData, mNetworkListUserStoreData,
                         mRandomizedMacStoreData,
-                        mFrameworkFacade, new Handler(mLooper.getLooper()), mDeviceConfigFacade,
-                        mWifiScoreCard, mLruConnectionTracker);
-        mWifiConfigManager.enableVerboseLogging(1);
+                        mFrameworkFacade, mDeviceConfigFacade,
+                        mWifiScoreCard, mLruConnectionTracker, mBuildProperties);
+        mWifiConfigManager.enableVerboseLogging(true);
     }
 
     /**
@@ -4792,30 +5338,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * WifiConfigManager.
      */
     private void setDefaults(WifiConfiguration configuration) {
-        if (configuration.allowedProtocols.isEmpty()) {
-            configuration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
-            configuration.allowedProtocols.set(WifiConfiguration.Protocol.WPA);
-        }
-        if (configuration.allowedKeyManagement.isEmpty()) {
-            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK);
-            configuration.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_EAP);
-        }
-        if (configuration.allowedPairwiseCiphers.isEmpty()) {
-            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.GCMP_256);
-            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.CCMP);
-            configuration.allowedPairwiseCiphers.set(WifiConfiguration.PairwiseCipher.TKIP);
-        }
-        if (configuration.allowedGroupCiphers.isEmpty()) {
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.GCMP_256);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.CCMP);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.TKIP);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP40);
-            configuration.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
-        }
-        if (configuration.allowedGroupManagementCiphers.isEmpty()) {
-            configuration.allowedGroupManagementCiphers
-                    .set(WifiConfiguration.GroupMgmtCipher.BIP_GMAC_256);
-        }
         if (configuration.getIpAssignment() == IpConfiguration.IpAssignment.UNASSIGNED) {
             configuration.setIpAssignment(IpConfiguration.IpAssignment.DHCP);
         }
@@ -4938,14 +5460,17 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     private boolean isNetworkInConfigStoreData(
             WifiConfiguration configuration, List<WifiConfiguration> networkList) {
-        boolean foundNetworkInStoreData = false;
         for (WifiConfiguration retrievedConfig : networkList) {
-            if (retrievedConfig.getKey().equals(configuration.getKey())) {
-                foundNetworkInStoreData = true;
-                break;
+            for (SecurityParams p: retrievedConfig.getSecurityParamsList()) {
+                WifiConfiguration tmpConfig = new WifiConfiguration(retrievedConfig);
+                tmpConfig.setSecurityParams(p);
+                if (tmpConfig.getProfileKey().equals(
+                        configuration.getProfileKey())) {
+                    return true;
+                }
             }
         }
-        return foundNetworkInStoreData;
+        return false;
     }
 
     /**
@@ -5249,7 +5774,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyNetworkRemoveBroadcast();
         // Verify if the config store write was triggered without this new configuration.
         verifyNetworkNotInConfigStoreData(configuration);
-        verify(mBssidBlocklistMonitor, atLeastOnce()).handleNetworkRemoved(configuration.SSID);
+        verify(mWifiBlocklistMonitor, atLeastOnce()).handleNetworkRemoved(configuration.SSID);
     }
 
     /**
@@ -5290,70 +5815,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies the network's selection status update.
-     *
-     * For temporarily disabled reasons, the method ensures that the status has changed only if
-     * disable reason counter has exceeded the threshold.
-     *
-     * For permanently disabled/enabled reasons, the method ensures that the public status has
-     * changed and the network change broadcast has been sent out.
-     */
-    private void verifyUpdateNetworkSelectionStatus(
-            int networkId, int reason, int temporaryDisableReasonCounter) {
-        when(mClock.getElapsedSinceBootMillis())
-                .thenReturn(TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS);
-
-        // Fetch the current status of the network before we try to update the status.
-        WifiConfiguration retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(networkId);
-        NetworkSelectionStatus currentStatus = retrievedNetwork.getNetworkSelectionStatus();
-        int currentDisableReason = currentStatus.getNetworkSelectionDisableReason();
-
-        // First set the status to the provided reason.
-        assertTrue(mWifiConfigManager.updateNetworkSelectionStatus(networkId, reason));
-
-        // Now fetch the network configuration and verify the new status of the network.
-        retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(networkId);
-
-        NetworkSelectionStatus retrievedStatus = retrievedNetwork.getNetworkSelectionStatus();
-        int retrievedDisableReason = retrievedStatus.getNetworkSelectionDisableReason();
-        long retrievedDisableTime = retrievedStatus.getDisableTime();
-        int retrievedDisableReasonCounter = retrievedStatus.getDisableReasonCounter(reason);
-        int disableReasonThreshold =
-                WifiConfigManager.getNetworkSelectionDisableThreshold(reason);
-
-        if (reason == NetworkSelectionStatus.DISABLED_NONE) {
-            assertEquals(reason, retrievedDisableReason);
-            assertTrue(retrievedStatus.isNetworkEnabled());
-            assertEquals(
-                    NetworkSelectionStatus.INVALID_NETWORK_SELECTION_DISABLE_TIMESTAMP,
-                    retrievedDisableTime);
-            verifyUpdateNetworkStatus(retrievedNetwork, WifiConfiguration.Status.ENABLED);
-        } else if (reason < NetworkSelectionStatus.PERMANENTLY_DISABLED_STARTING_INDEX) {
-            // For temporarily disabled networks, we need to ensure that the current status remains
-            // until the threshold is crossed.
-            assertEquals(temporaryDisableReasonCounter, retrievedDisableReasonCounter);
-            if (retrievedDisableReasonCounter < disableReasonThreshold) {
-                assertEquals(currentDisableReason, retrievedDisableReason);
-                assertEquals(
-                        currentStatus.getNetworkSelectionStatus(),
-                        retrievedStatus.getNetworkSelectionStatus());
-            } else {
-                assertEquals(reason, retrievedDisableReason);
-                assertTrue(retrievedStatus.isNetworkTemporaryDisabled());
-                assertEquals(
-                        TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS, retrievedDisableTime);
-            }
-        } else if (reason < NetworkSelectionStatus.NETWORK_SELECTION_DISABLED_MAX) {
-            assertEquals(reason, retrievedDisableReason);
-            assertTrue(retrievedStatus.isNetworkPermanentlyDisabled());
-            assertEquals(
-                    NetworkSelectionStatus.INVALID_NETWORK_SELECTION_DISABLE_TIMESTAMP,
-                    retrievedDisableTime);
-            verifyUpdateNetworkStatus(retrievedNetwork, WifiConfiguration.Status.DISABLED);
-        }
-    }
-
-    /**
      * Creates a scan detail corresponding to the provided network and given BSSID, level &frequency
      * values.
      */
@@ -5380,7 +5841,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      * Adds the provided network and then creates a scan detail corresponding to the network. The
      * method then creates a ScanDetail corresponding to the network and ensures that the network
      * is properly matched using
-     * {@link WifiConfigManager#getConfiguredNetworkForScanDetailAndCache(ScanDetail)} and also
+     * {@link WifiConfigManager#getSavedNetworkForScanDetailAndCache(ScanDetail)} and also
      * verifies that the provided scan detail was cached,
      */
     private void verifyAddSingleNetworkAndMatchScanDetailToNetworkAndCache(
@@ -5393,7 +5854,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanResult scanResult = scanDetail.getScanResult();
 
         WifiConfiguration retrievedNetwork =
-                mWifiConfigManager.getConfiguredNetworkForScanDetailAndCache(scanDetail);
+                mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail);
         // Retrieve the network with password data for comparison.
         retrievedNetwork =
                 mWifiConfigManager.getConfiguredNetworkWithPassword(retrievedNetwork.networkId);
@@ -5437,11 +5898,11 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Updates an existing network after connection using
-     * {@link WifiConfigManager#updateNetworkAfterConnect(int)} and asserts that the
+     * {@link WifiConfigManager#updateNetworkAfterConnect(int, boolean, int)} and asserts that the
      * |HasEverConnected| flag is set to true.
      */
     private void verifyUpdateNetworkAfterConnectHasEverConnectedTrue(int networkId) {
-        assertTrue(mWifiConfigManager.updateNetworkAfterConnect(networkId));
+        assertTrue(mWifiConfigManager.updateNetworkAfterConnect(networkId, false, TEST_RSSI));
         WifiConfiguration retrievedNetwork = mWifiConfigManager.getConfiguredNetwork(networkId);
         assertTrue("hasEverConnected expected to be true after connection.",
                 retrievedNetwork.getNetworkSelectionStatus().hasEverConnected());
@@ -5471,38 +5932,6 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Ensure all the networks are removed now.
         assertTrue(mWifiConfigManager.getConfiguredNetworks().isEmpty());
-    }
-
-    /**
-     * Verifies SSID blocklist consistent with Watchdog trigger.
-     *
-     * Expected behavior: A SSID won't gets blocklisted if there only single SSID
-     * be observed and Watchdog trigger is activated.
-     */
-    @Test
-    public void verifyConsistentWatchdogAndSsidBlocklist() {
-
-        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
-        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
-
-        when(mWifiInjector.getWifiLastResortWatchdog().shouldIgnoreSsidUpdate())
-                .thenReturn(true);
-
-        int networkId = result.getNetworkId();
-        // First set it to enabled.
-        verifyUpdateNetworkSelectionStatus(
-                networkId, NetworkSelectionStatus.DISABLED_NONE, 0);
-
-        int assocRejectReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
-        int assocRejectThreshold =
-                WifiConfigManager.getNetworkSelectionDisableThreshold(assocRejectReason);
-        for (int i = 1; i <= assocRejectThreshold; i++) {
-            assertFalse(mWifiConfigManager.updateNetworkSelectionStatus(
-                        networkId, assocRejectReason));
-        }
-
-        assertFalse(mWifiConfigManager.getConfiguredNetwork(networkId)
-                    .getNetworkSelectionStatus().isNetworkTemporaryDisabled());
     }
 
     /**
@@ -5546,7 +5975,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 TEST_RSSI, TEST_FREQUENCY_1);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS + 2000);
         assertEquals(mWifiConfigManager.findScanRssi(result.getNetworkId(), 5000), TEST_RSSI);
     }
@@ -5565,7 +5994,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
                 TEST_RSSI, TEST_FREQUENCY_1);
         ScanResult scanResult = scanDetail.getScanResult();
 
-        mWifiConfigManager.updateScanDetailCacheFromScanDetail(scanDetail);
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
         when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS + 15000);
         assertEquals(mWifiConfigManager.findScanRssi(result.getNetworkId(), 5000),
                 WifiInfo.INVALID_RSSI);
@@ -5580,7 +6009,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyAddNetworkToWifiConfigManager(testNetwork1);
         WifiConfiguration testNetwork2 = WifiConfigurationTestUtil.createOpenNetwork();
         verifyAddNetworkToWifiConfigManager(testNetwork2);
-        mWifiConfigManager.updateNetworkAfterConnect(testNetwork2.networkId);
+        mWifiConfigManager.updateNetworkAfterConnect(testNetwork2.networkId, false, TEST_RSSI);
         mWifiConfigManager.saveToStore(true);
         Pair<List<WifiConfiguration>, List<WifiConfiguration>> networkStoreData =
                 captureWriteNetworksListStoreData();
@@ -5594,13 +6023,13 @@ public class WifiConfigManagerTest extends WifiBaseTest {
      */
     @Test
     public void testScanComparator() {
-        WifiConfiguration network1 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network1 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network1);
-        WifiConfiguration network2 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network2 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network2);
-        WifiConfiguration network3 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network3 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network3);
-        WifiConfiguration network4 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration network4 = WifiConfigurationTestUtil.createOpenOweNetwork();
         verifyAddNetworkToWifiConfigManager(network4);
 
         // Connect two network in order, network3 --> network2
@@ -5608,7 +6037,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         verifyUpdateNetworkAfterConnectHasEverConnectedTrue(network2.networkId);
         // Set network4 {@link NetworkSelectionStatus#mSeenInLastQualifiedNetworkSelection} to true.
         assertTrue(mWifiConfigManager.setNetworkCandidateScanResult(network4.networkId,
-                createScanDetailForNetwork(network4).getScanResult(), 54));
+                createScanDetailForNetwork(network4).getScanResult(), 54,
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_OPEN)));
         List<WifiConfiguration> networkList = mWifiConfigManager.getConfiguredNetworks();
         // Expected order should be based on connection order and last qualified selection.
         Collections.sort(networkList, mWifiConfigManager.getScanListComparator());
@@ -5622,5 +6053,1071 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         assertEquals(0, mLruConnectionTracker.getAgeIndexOfNetwork(network2));
         mWifiConfigManager.removeNetwork(network2.networkId, TEST_CREATOR_UID, TEST_CREATOR_NAME);
         assertEquals(Integer.MAX_VALUE, mLruConnectionTracker.getAgeIndexOfNetwork(network2));
+    }
+
+    /**
+     * Ensures that setting the user connect choice updates the
+     * NetworkSelectionStatus#mConnectChoice for all other WifiConfigurations in range in the last
+     * round of network selection.
+     *
+     * Expected behavior: WifiConfiguration.NetworkSelectionStatus#mConnectChoice is set to
+     *                    test1's configkey for test2. test3's WifiConfiguration is unchanged.
+     */
+    @Test
+    public void testSetUserConnectChoice() throws Exception {
+        WifiConfiguration selectedWifiConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        selectedWifiConfig.getNetworkSelectionStatus().setCandidate(mock(ScanResult.class));
+        selectedWifiConfig.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                NetworkSelectionStatus.NETWORK_SELECTION_PERMANENTLY_DISABLED);
+        selectedWifiConfig.getNetworkSelectionStatus().setConnectChoice("bogusKey");
+
+        WifiConfiguration configInLastNetworkSelection =
+                WifiConfigurationTestUtil.createOpenNetwork();
+        configInLastNetworkSelection.getNetworkSelectionStatus()
+                .setSeenInLastQualifiedNetworkSelection(true);
+
+        WifiConfiguration configNotInLastNetworkSelection =
+                WifiConfigurationTestUtil.createOpenNetwork();
+
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
+        List<WifiConfiguration> sharedConfigs = Arrays.asList(
+                selectedWifiConfig, configInLastNetworkSelection, configNotInLastNetworkSelection);
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        assertTrue(mWifiConfigManager.updateNetworkAfterConnect(selectedWifiConfig.networkId,
+                true, TEST_RSSI));
+
+        selectedWifiConfig = mWifiConfigManager.getConfiguredNetwork(selectedWifiConfig.networkId);
+        assertEquals(NetworkSelectionStatus.DISABLED_NONE,
+                selectedWifiConfig.getNetworkSelectionStatus().getNetworkSelectionStatus());
+        assertNull(selectedWifiConfig.getNetworkSelectionStatus().getConnectChoice());
+
+        configInLastNetworkSelection = mWifiConfigManager.getConfiguredNetwork(
+                configInLastNetworkSelection.networkId);
+        assertEquals(selectedWifiConfig.getProfileKey(),
+                configInLastNetworkSelection.getNetworkSelectionStatus().getConnectChoice());
+
+        configNotInLastNetworkSelection = mWifiConfigManager.getConfiguredNetwork(
+                configNotInLastNetworkSelection.networkId);
+        assertNull(configNotInLastNetworkSelection.getNetworkSelectionStatus().getConnectChoice());
+
+        ArgumentCaptor<List<WifiConfiguration>> listArgumentCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mListener).onConnectChoiceSet(listArgumentCaptor.capture(),
+                eq(selectedWifiConfig.getProfileKey()), eq(TEST_RSSI));
+        Collection<WifiConfiguration> networks = listArgumentCaptor.getValue();
+        assertEquals(1, networks.size());
+    }
+
+    /**
+     * Ensures that setting the user connect choice updates the all the suggestion passpoint network
+     * by callback.
+     */
+    @Test
+    public void testSetUserConnectChoiceForSuggestionAndPasspointNetwork() throws Exception {
+        WifiConfiguration selectedWifiConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        selectedWifiConfig.getNetworkSelectionStatus().setCandidate(mock(ScanResult.class));
+        selectedWifiConfig.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                NetworkSelectionStatus.NETWORK_SELECTION_PERMANENTLY_DISABLED);
+        selectedWifiConfig.getNetworkSelectionStatus().setConnectChoice("bogusKey");
+
+        WifiConfiguration configInLastNetworkSelection1 =
+                WifiConfigurationTestUtil.createOpenNetwork();
+        configInLastNetworkSelection1.getNetworkSelectionStatus()
+                .setSeenInLastQualifiedNetworkSelection(true);
+        configInLastNetworkSelection1.fromWifiNetworkSuggestion = true;
+
+        WifiConfiguration configInLastNetworkSelection2 =
+                WifiConfigurationTestUtil.createPasspointNetwork();
+        configInLastNetworkSelection2.getNetworkSelectionStatus()
+                .setSeenInLastQualifiedNetworkSelection(true);
+
+        mWifiConfigManager.addOnNetworkUpdateListener(mListener);
+        List<WifiConfiguration> sharedConfigs = Arrays.asList(
+                selectedWifiConfig, configInLastNetworkSelection1, configInLastNetworkSelection2);
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        assertTrue(mWifiConfigManager.updateNetworkAfterConnect(selectedWifiConfig.networkId,
+                true, TEST_RSSI));
+
+        selectedWifiConfig = mWifiConfigManager.getConfiguredNetwork(selectedWifiConfig.networkId);
+        assertEquals(NetworkSelectionStatus.DISABLED_NONE,
+                selectedWifiConfig.getNetworkSelectionStatus().getNetworkSelectionStatus());
+        assertNull(selectedWifiConfig.getNetworkSelectionStatus().getConnectChoice());
+
+        ArgumentCaptor<List<WifiConfiguration>> listArgumentCaptor =
+                ArgumentCaptor.forClass(List.class);
+        verify(mListener).onConnectChoiceSet(listArgumentCaptor.capture(),
+                eq(selectedWifiConfig.getProfileKey()), eq(TEST_RSSI));
+        Collection<WifiConfiguration> networks = listArgumentCaptor.getValue();
+        assertEquals(2, networks.size());
+    }
+
+    @Test
+    public void testConnectToExistingNetworkSuccess() throws Exception {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                NetworkSelectionStatus.NETWORK_SELECTION_TEMPORARY_DISABLED);
+        config.getNetworkSelectionStatus().setConnectChoice("bogusKey");
+
+        List<WifiConfiguration> sharedConfigs = Arrays.asList(config);
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        config = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        assertFalse(config.getNetworkSelectionStatus().isNetworkEnabled());
+        assertNotEquals(TEST_CREATOR_UID, config.lastConnectUid);
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(TEST_CREATOR_UID))
+                .thenReturn(true);
+
+        mWifiConfigManager.updateBeforeConnect(config.networkId, TEST_CREATOR_UID);
+
+        config = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        // network became enabled
+        assertTrue(config.getNetworkSelectionStatus().isNetworkEnabled());
+        // lastConnectUid updated
+        assertEquals(TEST_CREATOR_UID, config.lastConnectUid);
+        // connect choice should still be "bogusKey". This should only get cleared after the
+        // connection has actually completed.
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+    }
+
+    /**
+     * Test that if callingUid doesn't have NETWORK_SETTINGS permission, the connect succeeds,
+     * but user connect choice isn't cleared.
+     */
+    @Test
+    public void testConnectToExistingNetworkSuccessNoNetworkSettingsPermission() throws Exception {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                NetworkSelectionStatus.NETWORK_SELECTION_TEMPORARY_DISABLED);
+        config.getNetworkSelectionStatus().setConnectChoice("bogusKey");
+
+        List<WifiConfiguration> sharedConfigs = Arrays.asList(config);
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        config = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        assertFalse(config.getNetworkSelectionStatus().isNetworkEnabled());
+        assertNotEquals(TEST_CREATOR_UID, config.lastConnectUid);
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(TEST_CREATOR_UID))
+                .thenReturn(false);
+
+        mWifiConfigManager.updateBeforeConnect(config.networkId, TEST_CREATOR_UID);
+
+        config = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        // network became enabled
+        assertTrue(config.getNetworkSelectionStatus().isNetworkEnabled());
+        // lastConnectUid updated
+        assertEquals(TEST_CREATOR_UID, config.lastConnectUid);
+        // connect choice not cleared
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+    }
+
+    @Test
+    public void testConnectToExistingNetworkFailure_UidDoesNotBelongToCurrentUser()
+            throws Exception {
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.getNetworkSelectionStatus().setNetworkSelectionStatus(
+                NetworkSelectionStatus.NETWORK_SELECTION_TEMPORARY_DISABLED);
+        config.getNetworkSelectionStatus().setConnectChoice("bogusKey");
+
+        List<WifiConfiguration> sharedConfigs = Arrays.asList(config);
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        config = mWifiConfigManager.getConfiguredNetwork(config.networkId);
+        assertFalse(config.getNetworkSelectionStatus().isNetworkEnabled());
+        assertNotEquals(TEST_OTHER_USER_UID, config.lastConnectUid);
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(TEST_OTHER_USER_UID))
+                .thenReturn(false);
+        when(mUserManager.isSameProfileGroup(any(), any())).thenReturn(false);
+
+        mWifiConfigManager.updateBeforeConnect(config.networkId, TEST_OTHER_USER_UID);
+
+        // network still disabled
+        assertFalse(config.getNetworkSelectionStatus().isNetworkEnabled());
+        // lastConnectUid wasn't changed
+        assertNotEquals(TEST_OTHER_USER_UID, config.lastConnectUid);
+        // connect choice wasn't changed
+        assertEquals("bogusKey", config.getNetworkSelectionStatus().getConnectChoice());
+    }
+
+    @Test
+    public void updateBeforeSaveNetworkSuccess() throws Exception {
+        // initialize WifiConfigManager and start off with one network
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+
+        NetworkUpdateResult result =
+                mWifiConfigManager.updateBeforeSaveNetwork(config, TEST_CREATOR_UID);
+
+        assertTrue(result.isSuccess());
+
+        config = mWifiConfigManager.getConfiguredNetwork(result.getNetworkId());
+
+        assertNotNull(config);
+        assertTrue(config.getNetworkSelectionStatus().isNetworkEnabled());
+    }
+
+    /** Verifies that configs save fails with an invalid UID. */
+    @Test
+    public void updateBeforeSaveNetworkConfigFailsWithInvalidUid() throws Exception {
+        // initialize WifiConfigManager and start off with one network
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(TEST_OTHER_USER_UID))
+                .thenReturn(false);
+        when(mWifiPermissionsUtil.doesUidBelongToCurrentUser(TEST_OTHER_USER_UID))
+                .thenReturn(false);
+
+        NetworkUpdateResult result =
+                mWifiConfigManager.updateBeforeSaveNetwork(config, TEST_OTHER_USER_UID);
+
+        assertFalse(result.isSuccess());
+        assertNull(mWifiConfigManager.getConfiguredNetwork(config.networkId));
+    }
+
+    /** Verifies that save fails with a null config. */
+    @Test
+    public void updateBeforeSaveNetworkNullConfigFails() throws Exception {
+        // initialize WifiConfigManager and start off with one network
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+
+        NetworkUpdateResult result =
+                mWifiConfigManager.updateBeforeSaveNetwork(null, TEST_OTHER_USER_UID);
+
+        assertFalse(result.isSuccess());
+    }
+
+    /**
+     * Verifies all ephemeral carrier networks are removed
+     */
+    @Test
+    public void testRemoveEphemeralCarrierNetwork() throws Exception {
+        WifiConfiguration savedPskNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        WifiConfiguration ephemeralCarrierNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        ephemeralCarrierNetwork.ephemeral = true;
+        ephemeralCarrierNetwork.subscriptionId = DATA_SUBID;
+        WifiConfiguration ephemeralNonCarrierNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        ephemeralNonCarrierNetwork.ephemeral = true;
+        verifyAddNetworkToWifiConfigManager(savedPskNetwork);
+        verifyAddEphemeralNetworkToWifiConfigManager(ephemeralCarrierNetwork);
+        verifyAddEphemeralNetworkToWifiConfigManager(ephemeralNonCarrierNetwork);
+
+        List<WifiConfiguration> networks = Arrays.asList(savedPskNetwork,
+                ephemeralNonCarrierNetwork);
+        mWifiConfigManager.removeEphemeralCarrierNetworks();
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        WifiConfigurationTestUtil.assertConfigurationsEqualForConfigManagerAddOrUpdate(
+                networks, retrievedNetworks);
+    }
+
+    /**
+     * Check persist random Mac Address is generated from stable Mac Random key.
+     */
+    @Test
+    public void testGetPersistRandomMacAddress() {
+        WifiConfiguration network = WifiConfigurationTestUtil.createPskNetwork();
+        mWifiConfigManager.getPersistentMacAddress(network);
+        verify(mMacAddressUtil).calculatePersistentMac(eq(network.getNetworkKey()), any());
+    }
+
+    private void verifyAddUpgradableNetwork(
+            WifiConfiguration baseConfig,
+            WifiConfiguration upgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int upgradableSecurityType = upgradableConfig.getDefaultSecurityParams().getSecurityType();
+
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration unmergedNetwork = retrievedNetworks.get(0);
+        assertTrue(unmergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(unmergedNetwork.isSecurityType(upgradableSecurityType));
+        assertTrue(unmergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+
+        result = addNetworkToWifiConfigManager(upgradableConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        // Two networks should be merged into one.
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(upgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForPskSae() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        upgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        upgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of an upgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddUpgradableNetworkForOpenOwe() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+
+        verifyAddUpgradableNetwork(baseConfig, upgradableConfig);
+    }
+
+    private void verifyAddDowngradableNetwork(
+            WifiConfiguration baseConfig,
+            WifiConfiguration downgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int downgradableSecurityType = downgradableConfig.getDefaultSecurityParams()
+                .getSecurityType();
+
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration unmergedNetwork = retrievedNetworks.get(0);
+        assertEquals(baseSecurityType,
+                unmergedNetwork.getDefaultSecurityParams().getSecurityType());
+        assertTrue(unmergedNetwork.isSecurityType(baseSecurityType));
+        assertFalse(unmergedNetwork.isSecurityType(downgradableSecurityType));
+        assertFalse(unmergedNetwork.getSecurityParams(baseSecurityType)
+                .isAddedByAutoUpgrade());
+
+        result = addNetworkToWifiConfigManager(downgradableConfig);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        // Two networks should be merged into one.
+        assertEquals(1, retrievedNetworks.size());
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        // default type is changed to downgrading one.
+        assertEquals(downgradableSecurityType,
+                mergedNetwork.getDefaultSecurityParams().getSecurityType());
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(downgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(baseSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkSaePsk() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        downgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        downgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    /**
+     * Verifies the addition of a downgradable network using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)}
+     */
+    @Test
+    public void testAddDowngradableNetworkOweOpen() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"downgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+        WifiConfiguration downgradableConfig = new WifiConfiguration();
+        downgradableConfig.SSID = "\"downgradableNetwork\"";
+        downgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+
+        verifyAddDowngradableNetwork(
+                baseConfig,
+                downgradableConfig);
+    }
+
+    private void verifyLoadFromStoreMergeUpgradableConfigurations(
+            WifiConfiguration baseConfig,
+            WifiConfiguration upgradableConfig) {
+        int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
+        int upgradableSecurityType = upgradableConfig.getDefaultSecurityParams().getSecurityType();
+
+        // Set up the store data.
+        List<WifiConfiguration> sharedNetworks = new ArrayList<WifiConfiguration>() {
+            {
+                add(baseConfig);
+                add(upgradableConfig);
+            }
+        };
+        setupStoreDataForRead(sharedNetworks, new ArrayList<>());
+
+        // read from store now
+        assertTrue(mWifiConfigManager.loadFromStore());
+
+        // assert that the expected identities are reset
+        List<WifiConfiguration> retrievedNetworks =
+                mWifiConfigManager.getConfiguredNetworksWithPasswords();
+        assertEquals(1, retrievedNetworks.size());
+
+        WifiConfiguration mergedNetwork = retrievedNetworks.get(0);
+        assertTrue(mergedNetwork.isSecurityType(baseSecurityType));
+        assertTrue(mergedNetwork.isSecurityType(upgradableSecurityType));
+        assertFalse(mergedNetwork.getSecurityParams(upgradableSecurityType)
+                .isAddedByAutoUpgrade());
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsPskSae() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
+        baseConfig.preSharedKey = "\"Passw0rd\"";
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        upgradableConfig.preSharedKey = "\"Passw0rd\"";
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsOpenOwe() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OWE);
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    /**
+     * Verifies that upgradable configuration are merged on
+     * {@link WifiConfigManager#loadFromStore()}.
+     */
+    @Test
+    public void testLoadFromStoreMergeUpgradableConfigurationsWpa2Wpa3Enterprise() {
+        WifiConfiguration baseConfig = new WifiConfiguration();
+        baseConfig.SSID = "\"upgradableNetwork\"";
+        baseConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        baseConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        WifiConfiguration upgradableConfig = new WifiConfiguration();
+        upgradableConfig.SSID = "\"upgradableNetwork\"";
+        upgradableConfig.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        upgradableConfig.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                baseConfig,
+                upgradableConfig);
+        // reverse ordered networks should still be merged.
+        verifyLoadFromStoreMergeUpgradableConfigurations(
+                upgradableConfig,
+                baseConfig);
+    }
+
+    private void verifyTransitionDisableIndicationForSecurityType(
+            WifiConfiguration testNetwork, int indication) {
+
+        int disabledType = testNetwork.getDefaultSecurityParams().getSecurityType();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configAfter.getSecurityParams(disabledType).isEnabled());
+    }
+
+    /**
+     * Verify Transition Disable Indication for the PSK/SAE configuration.
+     */
+    @Test
+    public void testPskSaeTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createPskNetwork(),
+                WifiMonitor.TDI_USE_WPA3_PERSONAL);
+    }
+
+    /**
+     * Verify Transition Disable Indication for WPA2/WPA3 Enterprise configuration.
+     */
+    @Test
+    public void testWpa2Wpa3EnterpriseValidationTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createEapNetwork(),
+                WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication for Open/OWE configuration.
+     */
+    @Test
+    public void testOpenOweValidationTransitionDisableIndication() {
+        verifyTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createOpenNetwork(),
+                WifiMonitor.TDI_USE_ENHANCED_OPEN);
+    }
+
+    /**
+     * Verify Transition Disable Indication for the AP validation enforcement.
+     */
+    @Test
+    public void testSaeApValidationTransitionDisableIndication() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configBefore.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+
+        int indication = WifiMonitor.TDI_USE_SAE_PK;
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configAfter.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+    }
+
+    private void verifyNonApplicableTransitionDisableIndicationForSecurityType(
+            WifiConfiguration testNetwork, int indication) {
+
+        int disabledType = testNetwork.getDefaultSecurityParams().getSecurityType();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertTrue(configBefore.getSecurityParams(disabledType).isEnabled());
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testOpenTransitionDisableIndicationNotAffectPskSaeType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createPskNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_ENHANCED_OPEN
+                        | WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectWpa2Wpa3EnterpriseType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createEapNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_ENHANCED_OPEN
+                        | WifiMonitor.TDI_USE_WPA3_PERSONAL);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectOpenOweType() {
+        verifyNonApplicableTransitionDisableIndicationForSecurityType(
+                WifiConfigurationTestUtil.createOpenNetwork(),
+                WifiMonitor.TDI_USE_SAE_PK
+                        | WifiMonitor.TDI_USE_WPA3_PERSONAL
+                        | WifiMonitor.TDI_USE_WPA3_ENTERPRISE);
+    }
+
+    /**
+     * Verify Transition Disable Indication does not change anything if
+     * the type is not applicable.
+     */
+    @Test
+    public void testNonApplicableTransitionDisableIndicationNotAffectApValidation() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(testNetwork);
+        int networkId = result.getNetworkId();
+
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configBefore.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+
+        int indication = WifiMonitor.TDI_USE_ENHANCED_OPEN
+                | WifiMonitor.TDI_USE_WPA3_PERSONAL
+                | WifiMonitor.TDI_USE_WPA3_ENTERPRISE;
+        mWifiConfigManager.updateNetworkTransitionDisable(result.getNetworkId(), indication);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkId);
+        assertFalse(configAfter.getSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE)
+                .isSaePkOnlyMode());
+    }
+
+    @Test
+    public void testLoadFromSharedAndUserStoreHandleFailureOnUserBuilds() throws Exception {
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+
+        List<WifiConfiguration> sharedConfigs =
+                Arrays.asList(WifiConfigurationTestUtil.createOpenNetwork());
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+
+        // Throw an exception when reading.
+        doThrow(new XmlPullParserException("")).when(mWifiConfigStore).read();
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        // Should have no existing saved networks.
+        assertTrue(mWifiConfigManager.getConfiguredNetworks().isEmpty());
+
+        // Verify that we can add a new network.
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        assertFalse(mWifiConfigManager.getConfiguredNetworks().isEmpty());
+    }
+
+    @Test
+    public void testLoadFromUserStoreHandleFailureOnUserBuilds() throws Exception {
+        when(mBuildProperties.isUserBuild()).thenReturn(true);
+        int user2 = TEST_DEFAULT_USER + 1;
+        setupUserProfiles(user2);
+
+        List<WifiConfiguration> sharedConfigs =
+                Arrays.asList(WifiConfigurationTestUtil.createOpenNetwork());
+        // Setup xml storage
+        setupStoreDataForRead(sharedConfigs, Arrays.asList());
+
+        // Throw an exception when reading.
+        assertTrue(mWifiConfigManager.loadFromStore());
+        verify(mWifiConfigStore).read();
+
+        // Should have 1 shared saved networks.
+        assertEquals(1, mWifiConfigManager.getConfiguredNetworks().size());
+
+        // Now trigger a user switch and throw an excepton when reading user store file.
+        doThrow(new XmlPullParserException("")).when(mWifiConfigStore).switchUserStoresAndRead(
+                any());
+        when(mUserManager.isUserUnlockingOrUnlocked(UserHandle.of(user2))).thenReturn(true);
+        mWifiConfigManager.handleUserSwitch(user2);
+        verify(mWifiConfigStore).switchUserStoresAndRead(any(List.class));
+
+        // Verify that we can add a new network.
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createOpenNetwork());
+        assertEquals(2, mWifiConfigManager.getConfiguredNetworks().size());
+    }
+
+    /**
+     * Verify that updating an existing config to a incompatible type works well.
+     */
+    @Test
+    public void testUpdateExistingConfigWithIncompatibleSecurityType() {
+        WifiConfiguration testNetwork = WifiConfigurationTestUtil.createPskNetwork();
+        int networkIdBefore = verifyAddNetworkToWifiConfigManager(testNetwork).getNetworkId();
+        WifiConfiguration configBefore = mWifiConfigManager.getConfiguredNetwork(networkIdBefore);
+        assertFalse(configBefore.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
+        assertTrue(configBefore.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+
+        // Change the type from PSK to Open.
+        testNetwork.networkId = networkIdBefore;
+        testNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_OPEN);
+        testNetwork.preSharedKey = null;
+        int networkIdAfter = addNetworkToWifiConfigManager(testNetwork).getNetworkId();
+        assertEquals(networkIdBefore, networkIdAfter);
+
+        WifiConfiguration configAfter = mWifiConfigManager.getConfiguredNetwork(networkIdAfter);
+        assertFalse(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
+        assertTrue(configAfter.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
+    }
+
+    @Test
+    public void testRemoveNonCallerConfiguredNetworks() {
+        final int callerUid = TEST_CREATOR_UID;
+        WifiConfiguration callerNetwork0 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(callerNetwork0, callerUid, null);
+        WifiConfiguration callerNetwork1 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(callerNetwork1, callerUid, null);
+        WifiConfiguration nonCallerNetwork0 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(nonCallerNetwork0, TEST_OTHER_USER_UID, null);
+        WifiConfiguration nonCallerNetwork1 = WifiConfigurationTestUtil.createPskNetwork();
+        addNetworkToWifiConfigManager(nonCallerNetwork1, TEST_OTHER_USER_UID, null);
+
+        assertTrue(mWifiConfigManager.removeNonCallerConfiguredNetwork(callerUid));
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                Arrays.asList(callerNetwork0, callerNetwork1),
+                mWifiConfigManager.getConfiguredNetworksWithPasswords());
+    }
+
+    /**
+     * Verify getMostRecentScanResultsForConfiguredNetworks returns most recent scan results.
+     */
+    @Test
+    public void testGetMostRecentScanResultsForConfiguredNetworks() {
+        int testMaxAgeMillis = 2000;
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        NetworkUpdateResult result = verifyAddNetworkToWifiConfigManager(openNetwork);
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS);
+        ScanDetail scanDetail = createScanDetailForNetwork(openNetwork, TEST_BSSID,
+                TEST_RSSI, TEST_FREQUENCY_1);
+        ScanResult scanResult = scanDetail.getScanResult();
+        mWifiConfigManager.updateScanDetailCacheFromScanDetailForSavedNetwork(scanDetail);
+
+        // verify the ScanResult is returned before the testMaxAgeMillis
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
+                + testMaxAgeMillis - 1);
+        List<ScanResult> scanResults = mWifiConfigManager
+                .getMostRecentScanResultsForConfiguredNetworks(testMaxAgeMillis);
+        assertEquals(1, scanResults.size());
+        assertEquals(TEST_BSSID, scanResults.get(0).BSSID);
+
+        // verify no ScanResult is returned after the timeout.
+        when(mClock.getWallClockMillis()).thenReturn(TEST_WALLCLOCK_CREATION_TIME_MILLIS
+                + testMaxAgeMillis);
+        assertEquals(0, mWifiConfigManager
+                .getMostRecentScanResultsForConfiguredNetworks(testMaxAgeMillis).size());
+    }
+
+    private void verifyAddUpgradableTypeNetwork(
+            WifiConfiguration baseConfig, WifiConfiguration newConfig,
+            boolean isNewConfigUpgradableType) {
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(baseConfig);
+        int baseConfigId = result.getNetworkId();
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        assertTrue(result.isNewNetwork());
+
+        result = addNetworkToWifiConfigManager(newConfig);
+        assertEquals(baseConfigId, result.getNetworkId());
+        assertFalse(result.isNewNetwork());
+
+        List<WifiConfiguration> retrievedSavedNetworks = mWifiConfigManager.getSavedNetworks(
+                Process.WIFI_UID);
+        assertEquals(1, retrievedSavedNetworks.size());
+        if (isNewConfigUpgradableType) {
+            assertEquals(baseConfig.getProfileKey(),
+                    retrievedSavedNetworks.get(0).getProfileKey());
+        } else {
+            assertEquals(newConfig.getProfileKey(),
+                    retrievedSavedNetworks.get(0).getProfileKey());
+        }
+    }
+
+    /**
+     * Verifies the new SAE network is merged to existing PSK network correctly.
+     */
+    @Test
+    public void testMergeSaeToPskNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createPskNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createSaeNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new PSK network is merged to existing SAE network correctly.
+     */
+    @Test
+    public void testMergePskToSaeNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createSaeNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createPskNetwork(TEST_SSID),
+                false);
+    }
+
+    /**
+     * Verifies the new OWE network is merged to existing Open network correctly.
+     */
+    @Test
+    public void testMergeOweToOpenNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createOweNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new Open network is merged to existing OWE network correctly.
+     */
+    @Test
+    public void testMergeOpenToOweNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createOweNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID),
+                false);
+    }
+
+    /**
+     * Verifies the new WPA3 Enterprise network is merged
+     * to existing WPA2 Enterprise network correctly.
+     */
+    @Test
+    public void testMergeWpa3EnterpriseToWpa2EnterprsieNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createEapNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID),
+                true);
+    }
+
+    /**
+     * Verifies the new WPA2 Enterprise network is merged
+     * to existing WPA3 Enterprise network correctly.
+     */
+    @Test
+    public void testMergeWpa2EnterpriseToWpa3EnterpriseNetwork() {
+        verifyAddUpgradableTypeNetwork(
+                WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID),
+                WifiConfigurationTestUtil.createEapNetwork(TEST_SSID),
+                false);
+    }
+
+    /**
+     * Verifies that excess networks are removed in the right order when more than the max amount of
+     * WifiConfigurations are added.
+     */
+    @Test
+    public void testRemoveExcessNetworksOnAdd() {
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, 9);
+        List<WifiConfiguration> configsInDeletionOrder = new ArrayList<>();
+        WifiConfiguration currentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        currentConfig.status = WifiConfiguration.Status.CURRENT;
+        WifiConfiguration lessDeletionPriorityConfig = WifiConfigurationTestUtil.createPskNetwork();
+        lessDeletionPriorityConfig.setDeletionPriority(1);
+        WifiConfiguration newlyAddedConfig = WifiConfigurationTestUtil.createPskNetwork();
+        newlyAddedConfig.lastUpdated = 1;
+        WifiConfiguration recentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        recentConfig.lastConnected = 2;
+        WifiConfiguration notRecentConfig = WifiConfigurationTestUtil.createPskNetwork();
+        notRecentConfig.lastConnected = 1;
+        WifiConfiguration oneRebootSaeConfig = WifiConfigurationTestUtil.createSaeNetwork();
+        oneRebootSaeConfig.numRebootsSinceLastUse = 1;
+        WifiConfiguration oneRebootOpenConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        oneRebootOpenConfig.numRebootsSinceLastUse = 1;
+        oneRebootOpenConfig.numAssociation = 1;
+        WifiConfiguration noAssociationConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        noAssociationConfig.numRebootsSinceLastUse = 1;
+        noAssociationConfig.numAssociation = 0;
+        WifiConfiguration invalidKeyMgmtConfig = WifiConfigurationTestUtil.createEapNetwork();
+        invalidKeyMgmtConfig.allowedKeyManagement.clear(WifiConfiguration.KeyMgmt.IEEE8021X);
+        invalidKeyMgmtConfig.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA2_PSK);
+        noAssociationConfig.numRebootsSinceLastUse = 1;
+        noAssociationConfig.numAssociation = 0;
+
+        configsInDeletionOrder.add(invalidKeyMgmtConfig);
+        configsInDeletionOrder.add(noAssociationConfig);
+        configsInDeletionOrder.add(oneRebootOpenConfig);
+        configsInDeletionOrder.add(oneRebootSaeConfig);
+        configsInDeletionOrder.add(notRecentConfig);
+        configsInDeletionOrder.add(recentConfig);
+        configsInDeletionOrder.add(newlyAddedConfig);
+        configsInDeletionOrder.add(lessDeletionPriorityConfig);
+        configsInDeletionOrder.add(currentConfig);
+
+        // Add carrier configs to flush out the other configs, since they are deleted last.
+        for (WifiConfiguration configToDelete : configsInDeletionOrder) {
+            WifiConfiguration carrierConfig = WifiConfigurationTestUtil.createPskNetwork();
+            carrierConfig.carrierId = 1;
+            verifyAddNetworkToWifiConfigManager(carrierConfig);
+
+            for (WifiConfiguration savedConfig : mWifiConfigManager.getConfiguredNetworks()) {
+                if (savedConfig.networkId == configToDelete.networkId) {
+                    fail("Config was not deleted: " + configToDelete);
+                }
+            }
+        }
+    }
+
+    /**
+     * Verifies that adding a network fails if the amount of saved networks is maxed out and the
+     * next network to be removed is the same as the added network.
+     */
+    @Test
+    public void testAddNetworkFailsIfNetworkMustBeRemoved() {
+        mResources.setInteger(R.integer.config_wifiMaxNumWifiConfigurations, 5);
+        // Max out number of configurations with SAE networks
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+        verifyAddNetworkToWifiConfigManager(WifiConfigurationTestUtil.createSaeNetwork());
+
+        // Add an open network, which should be deleted before SAE networks
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(
+                WifiConfigurationTestUtil.createOpenNetwork());
+
+        assertFalse(result.isSuccess());
+    }
+
+    /**
+     * Verifies that numRebootsSinceLastUse is reset after a connection.
+     */
+    @Test
+    public void testNumRebootsSinceLastUseUpdatedAfterConnect() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork();
+        verifyAddNetworkToWifiConfigManager(config);
+        mWifiConfigManager.incrementNumRebootsSinceLastUse();
+        assertEquals(1,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+
+        mWifiConfigManager.updateNetworkAfterConnect(config.networkId, false, TEST_RSSI);
+
+        assertEquals(0,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+    }
+
+    /**
+     * Verifies that numRebootsSinceLastUse is reset after a config update.
+     */
+    @Test
+    public void testNumRebootsSinceLastUseUpdatedAfterConfigUpdate() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork();
+        verifyAddNetworkToWifiConfigManager(config);
+        mWifiConfigManager.incrementNumRebootsSinceLastUse();
+        assertEquals(1,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+
+        verifyUpdateNetworkToWifiConfigManager(config);
+
+        assertEquals(0,
+                mWifiConfigManager.getConfiguredNetwork(config.networkId).numRebootsSinceLastUse);
+    }
+
+    /**
+     * Verifies the addition of a network with incomplete security parameters using
+     * {@link WifiConfigManager#addOrUpdateNetwork(WifiConfiguration, int)} does not cause a crash.
+     */
+    @Test
+    public void testAddIncompleteEnterpriseConfig() {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        // EAP method is kept as Eap.NONE - should not crash, but return invalid ID
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() == WifiConfiguration.INVALID_NETWORK_ID);
+
+        // Now add this network correctly
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        result = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+
+        // Now try to update
+        config = new WifiConfiguration();
+        config.SSID = "\"someNetwork\"";
+        config.enterpriseConfig.setEapMethod(WifiEnterpriseConfig.Eap.SIM);
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE);
+        config.networkId = result.getNetworkId();
+        NetworkUpdateResult updateResult = addNetworkToWifiConfigManager(config);
+        assertTrue(result.getNetworkId() == updateResult.getNetworkId());
     }
 }

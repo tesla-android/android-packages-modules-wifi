@@ -34,14 +34,15 @@ import android.annotation.SystemService;
 import android.app.ActivityManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
-import android.content.pm.ParceledListSlice;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.DhcpInfo;
+import android.net.LinkProperties;
 import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkStack;
+import android.net.Uri;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -51,18 +52,26 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.RemoteException;
 import android.os.WorkSource;
 import android.os.connectivity.WifiActivityEnergyInfo;
+import android.telephony.SubscriptionInfo;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.CloseGuard;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.HandlerExecutor;
+import com.android.modules.utils.ParceledListSlice;
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -263,6 +272,44 @@ public class WifiManager {
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface SuggestionConnectionStatusCode {}
+
+    /**
+     * Status code if suggestion approval status is unknown, an App which hasn't made any
+     * suggestions will get this code.
+     */
+    public static final int STATUS_SUGGESTION_APPROVAL_UNKNOWN = 0;
+
+    /**
+     * Status code if the calling app is still pending user approval for suggestions.
+     */
+    public static final int STATUS_SUGGESTION_APPROVAL_PENDING = 1;
+
+    /**
+     * Status code if the calling app got the user approval for suggestions.
+     */
+    public static final int STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER = 2;
+
+    /**
+     * Status code if the calling app suggestions were rejected by the user.
+     */
+    public static final int STATUS_SUGGESTION_APPROVAL_REJECTED_BY_USER = 3;
+
+    /**
+     * Status code if the calling app was approved by virtue of being a carrier privileged app.
+     * @see TelephonyManager#hasCarrierPrivileges().
+     */
+    public static final int STATUS_SUGGESTION_APPROVAL_APPROVED_BY_CARRIER_PRIVILEGE = 4;
+
+    /** @hide */
+    @IntDef(prefix = {"STATUS_SUGGESTION_APPROVAL_"},
+            value = {STATUS_SUGGESTION_APPROVAL_UNKNOWN,
+                    STATUS_SUGGESTION_APPROVAL_PENDING,
+                    STATUS_SUGGESTION_APPROVAL_APPROVED_BY_USER,
+                    STATUS_SUGGESTION_APPROVAL_REJECTED_BY_USER,
+                    STATUS_SUGGESTION_APPROVAL_APPROVED_BY_CARRIER_PRIVILEGE
+            })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface SuggestionUserApprovalStatus {}
 
     /**
      * Broadcast intent action indicating whether Wi-Fi scanning is currently available.
@@ -830,6 +877,20 @@ public class WifiManager {
             "android.net.wifi.action.NETWORK_SETTINGS_RESET";
 
     /**
+     * Broadcast intent action indicating that the wifi network profiles provisioned
+     * may need refresh.
+     *
+     * Note: This intent is sent as a directed broadcast to each manifest registered receiver;
+     * And restricted to those apps which have the NETWORK_CARRIER_PROVISIONING permission.
+     * Intent will not be received by dynamically registered receivers.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING)
+    public static final String ACTION_REFRESH_USER_PROVISIONING =
+            "android.net.wifi.action.REFRESH_USER_PROVISIONING";
+
+    /**
      * Broadcast intent action indicating that a connection to the supplicant has
      * been established (and it is now possible
      * to perform Wi-Fi operations) or the connection to the supplicant has been
@@ -933,9 +994,11 @@ public class WifiManager {
      * This can be as a result of adding/updating/deleting a network.
      * <br />
      * {@link #EXTRA_CHANGE_REASON} contains whether the configuration was added/changed/removed.
-     * {@link #EXTRA_WIFI_CONFIGURATION} is never set starting in Android 11.
+     * {@link #EXTRA_WIFI_CONFIGURATION} is never set beginning in
+     * {@link android.os.Build.VERSION_CODES#R}.
      * {@link #EXTRA_MULTIPLE_NETWORKS_CHANGED} is set for backwards compatibility reasons, but
-     * its value is always true, even if only a single network changed.
+     * its value is always true beginning in {@link android.os.Build.VERSION_CODES#R}, even if only
+     * a single network changed.
      * <br />
      * The {@link android.Manifest.permission#ACCESS_WIFI_STATE ACCESS_WIFI_STATE} permission is
      * required to receive this broadcast.
@@ -949,17 +1012,22 @@ public class WifiManager {
      * The lookup key for a {@link android.net.wifi.WifiConfiguration} object representing
      * the changed Wi-Fi configuration when the {@link #CONFIGURED_NETWORKS_CHANGED_ACTION}
      * broadcast is sent.
-     * Note: this extra is never set starting in Android 11.
+     * @deprecated This extra is never set beginning in {@link android.os.Build.VERSION_CODES#R},
+     * regardless of the target SDK version. Use {@link #getConfiguredNetworks} to get the full list
+     * of configured networks.
      * @hide
      */
+    @Deprecated
     @SystemApi
     public static final String EXTRA_WIFI_CONFIGURATION = "wifiConfiguration";
     /**
      * Multiple network configurations have changed.
      * @see #CONFIGURED_NETWORKS_CHANGED_ACTION
-     * Note: this extra is always true starting in Android 11.
+     * @deprecated This extra's value is always true beginning in
+     * {@link android.os.Build.VERSION_CODES#R}, regardless of the target SDK version.
      * @hide
      */
+    @Deprecated
     @SystemApi
     public static final String EXTRA_MULTIPLE_NETWORKS_CHANGED = "multipleChanges";
     /**
@@ -1024,7 +1092,7 @@ public class WifiManager {
      * A batch of access point scans has been completed and the results areavailable.
      * Call {@link #getBatchedScanResults()} to obtain the results.
      * @deprecated This API is nolonger supported.
-     * Use {@link android.net.wifi.WifiScanner} API
+     * Use {@link WifiScanner} API
      * @hide
      */
     @Deprecated
@@ -1055,9 +1123,6 @@ public class WifiManager {
 
     /**
      * Broadcast intent action indicating that the link configuration changed on wifi.
-     * <br />Included Extras:
-     * <br />{@link #EXTRA_LINK_PROPERTIES}: may not be set starting in Android 11. Check for
-     * <br /> null before reading its value.
      * <br /> No permissions are required to listen to this broadcast.
      * @hide
      */
@@ -1074,11 +1139,11 @@ public class WifiManager {
      *
      * Retrieve with {@link android.content.Intent#getParcelableExtra(String)}.
      *
-     * Note: this extra may not be set starting in Android 11. Check for null before reading its
-     * value.
+     * @deprecated this extra is no longer populated.
      *
      * @hide
      */
+    @Deprecated
     @SystemApi
     public static final String EXTRA_LINK_PROPERTIES = "android.net.wifi.extra.LINK_PROPERTIES";
 
@@ -1323,6 +1388,20 @@ public class WifiManager {
     @GuardedBy("mLock")
     private LocalOnlyHotspotObserverProxy mLOHSObserverProxy;
 
+    private static final SparseArray<IOnWifiUsabilityStatsListener>
+            sOnWifiUsabilityStatsListenerMap = new SparseArray();
+    private static final SparseArray<ISuggestionConnectionStatusListener>
+            sSuggestionConnectionStatusListenerMap = new SparseArray();
+    private static final SparseArray<ISuggestionUserApprovalStatusListener>
+            sSuggestionUserApprovalStatusListenerMap = new SparseArray();
+    private static final SparseArray<IWifiVerboseLoggingStatusChangedListener>
+            sWifiVerboseLoggingStatusChangedListenerMap = new SparseArray();
+    private static final SparseArray<INetworkRequestMatchCallback>
+            sNetworkRequestMatchCallbackMap = new SparseArray();
+    private static final SparseArray<ITrafficStateCallback>
+            sTrafficStateCallbackMap = new SparseArray();
+    private static final SparseArray<ISoftApCallback> sSoftApCallbackMap = new SparseArray();
+
     /**
      * Create a new WifiManager instance.
      * Applications will almost always want to use
@@ -1388,7 +1467,7 @@ public class WifiManager {
         try {
             ParceledListSlice<WifiConfiguration> parceledList =
                     mService.getConfiguredNetworks(mContext.getOpPackageName(),
-                            mContext.getAttributionTag());
+                            mContext.getAttributionTag(), false);
             if (parceledList == null) {
                 return Collections.emptyList();
             }
@@ -1397,6 +1476,32 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Return a list of all the networks previously configured by the calling app. Can
+     * be called by Device Owner (DO), Profile Owner (PO), Callers with Carrier privilege and
+     * system apps.
+     *
+     * @return a list of network configurations in the form of a list
+     * of {@link WifiConfiguration} objects.
+     * @throws {@link java.lang.SecurityException} if the caller is allowed to call this API
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    @NonNull
+    public List<WifiConfiguration> getCallerConfiguredNetworks() {
+        try {
+            ParceledListSlice<WifiConfiguration> parceledList =
+                    mService.getConfiguredNetworks(mContext.getOpPackageName(),
+                            mContext.getAttributionTag(), true);
+            if (parceledList == null) {
+                return Collections.emptyList();
+            }
+            return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
 
     /** @hide */
     @SystemApi
@@ -1416,10 +1521,11 @@ public class WifiManager {
     }
 
     /**
-     * Returns a list of all matching WifiConfigurations for a given list of ScanResult.
+     * Returns a list of all matching WifiConfigurations of PasspointConfiguration for a given list
+     * of ScanResult.
      *
-     * An empty list will be returned when no configurations are installed or if no configurations
-     * match the ScanResult.
+     * An empty list will be returned when no PasspointConfiguration are installed or if no
+     * PasspointConfiguration match the ScanResult.
      *
      * @param scanResults a list of scanResult that represents the BSSID
      * @return List that consists of {@link WifiConfiguration} and corresponding scanResults per
@@ -1446,7 +1552,7 @@ public class WifiManager {
                             new ArrayList<>(results.keySet()));
             for (WifiConfiguration configuration : wifiConfigurations) {
                 Map<Integer, List<ScanResult>> scanResultsPerNetworkType =
-                        results.get(configuration.getKey());
+                        results.get(configuration.getProfileKey());
                 if (scanResultsPerNetworkType != null) {
                     configs.add(Pair.create(configuration, scanResultsPerNetworkType));
                 }
@@ -1582,6 +1688,148 @@ public class WifiManager {
         }
         config.networkId = -1;
         return addOrUpdateNetwork(config);
+    }
+
+    /**
+     * This is a new version of {@link #addNetwork(WifiConfiguration)} which returns more detailed
+     * failure codes. The usage of this API is limited to Device Owner (DO), Profile Owner (PO),
+     * system app, and privileged apps.
+     * <p>
+     * Add a new network description to the set of configured networks. The {@code networkId}
+     * field of the supplied configuration object is ignored. The new network will be marked
+     * DISABLED by default. To enable it, call {@link #enableNetwork}.
+     * <p>
+     * @param config the set of variables that describe the configuration,
+     *            contained in a {@link WifiConfiguration} object.
+     *            If the {@link WifiConfiguration} has an Http Proxy set
+     *            the calling app must be System, or be provisioned as the Profile or Device Owner.
+     * @return A {@link AddNetworkResult} Object.
+     * @throws {@link SecurityException} if the calling app is not a Device Owner (DO),
+     *                           Profile Owner (PO), system app, or a privileged app that has one of
+     *                           the permissions required by this API.
+     * @throws {@link IllegalArgumentException} if the input configuration is null.
+     */
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_STACK,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD,
+            android.Manifest.permission.NETWORK_MANAGED_PROVISIONING
+    })
+    @NonNull
+    public AddNetworkResult addNetworkPrivileged(@NonNull WifiConfiguration config) {
+        if (config == null) throw new IllegalArgumentException("config cannot be null");
+        config.networkId = -1;
+        try {
+            return mService.addOrUpdateNetworkPrivileged(config, mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Provides the results of a call to {@link #addNetworkPrivileged(WifiConfiguration)}
+     */
+    public static final class AddNetworkResult implements Parcelable {
+        /**
+         * The operation has completed successfully.
+         */
+        public static final int STATUS_SUCCESS = 0;
+        /**
+         * The operation has failed due to an unknown reason.
+         */
+        public static final int STATUS_FAILURE_UNKNOWN = 1;
+        /**
+         * The calling app does not have permission to call this API.
+         */
+        public static final int STATUS_NO_PERMISSION = 2;
+        /**
+         * Generic failure code for adding a passpoint network.
+         */
+        public static final int STATUS_ADD_PASSPOINT_FAILURE = 3;
+        /**
+         * Generic failure code for adding a non-passpoint network.
+         */
+        public static final int STATUS_ADD_WIFI_CONFIG_FAILURE = 4;
+        /**
+         * The network configuration is invalid.
+         */
+        public static final int STATUS_INVALID_CONFIGURATION = 5;
+        /**
+         * The calling app has no permission to modify the configuration.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_CONFIG = 6;
+        /**
+         * The calling app has no permission to modify the proxy setting.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_PROXY_SETTING = 7;
+        /**
+         * The calling app has no permission to modify the MAC randomization setting.
+         */
+        public static final int STATUS_NO_PERMISSION_MODIFY_MAC_RANDOMIZATION = 8;
+        /**
+         * Internal failure in updating network keys..
+         */
+        public static final int STATUS_FAILURE_UPDATE_NETWORK_KEYS = 9;
+        /**
+         * The enterprise network is missing either the root CA or domain name.
+         */
+        public static final int STATUS_INVALID_CONFIGURATION_ENTERPRISE = 10;
+
+        /** @hide */
+        @IntDef(prefix = { "STATUS_" }, value = {
+                STATUS_SUCCESS,
+                STATUS_FAILURE_UNKNOWN,
+                STATUS_NO_PERMISSION,
+                STATUS_ADD_PASSPOINT_FAILURE,
+                STATUS_ADD_WIFI_CONFIG_FAILURE,
+                STATUS_INVALID_CONFIGURATION,
+                STATUS_NO_PERMISSION_MODIFY_CONFIG,
+                STATUS_NO_PERMISSION_MODIFY_PROXY_SETTING,
+                STATUS_NO_PERMISSION_MODIFY_MAC_RANDOMIZATION,
+                STATUS_FAILURE_UPDATE_NETWORK_KEYS,
+                STATUS_INVALID_CONFIGURATION_ENTERPRISE,
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface AddNetworkStatusCode {}
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(@NonNull Parcel dest, int flags) {
+            dest.writeInt(statusCode);
+            dest.writeInt(networkId);
+        }
+
+        /** Implement the Parcelable interface */
+        public static final @android.annotation.NonNull Creator<AddNetworkResult> CREATOR =
+                new Creator<AddNetworkResult>() {
+                    public AddNetworkResult createFromParcel(Parcel in) {
+                        return new AddNetworkResult(in.readInt(), in.readInt());
+                    }
+
+                    public AddNetworkResult[] newArray(int size) {
+                        return new AddNetworkResult[size];
+                    }
+                };
+
+        /**
+         * One of the {@code STATUS_} values. If the operation is successful this field
+         * will be set to {@code STATUS_SUCCESS}.
+         */
+        public final @AddNetworkStatusCode int statusCode;
+        /**
+         * The identifier of the added network, which could be used in other operations. This field
+         * will be set to {@code -1} if the operation failed.
+         */
+        public final int networkId;
+
+        public AddNetworkResult(@AddNetworkStatusCode int statusCode, int networkId) {
+            this.statusCode = statusCode;
+            this.networkId = networkId;
+        }
     }
 
     /**
@@ -1869,11 +2117,14 @@ public class WifiManager {
         Log.v(TAG, "registerNetworkRequestMatchCallback: callback=" + callback
                 + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerNetworkRequestMatchCallback(
-                    binder, new NetworkRequestMatchCallbackProxy(executor, callback),
-                    callback.hashCode());
+            synchronized (sNetworkRequestMatchCallbackMap) {
+                INetworkRequestMatchCallback.Stub binderCallback =
+                        new NetworkRequestMatchCallbackProxy(executor, callback);
+                sNetworkRequestMatchCallbackMap.put(System.identityHashCode(callback),
+                        binderCallback);
+                mService.registerNetworkRequestMatchCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -1898,9 +2149,41 @@ public class WifiManager {
         Log.v(TAG, "unregisterNetworkRequestMatchCallback: callback=" + callback);
 
         try {
-            mService.unregisterNetworkRequestMatchCallback(callback.hashCode());
+            synchronized (sNetworkRequestMatchCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sNetworkRequestMatchCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterNetworkRequestMatchCallback(
+                        sNetworkRequestMatchCallbackMap.get(callbackIdentifier));
+                sNetworkRequestMatchCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Privileged API to revoke all app state from wifi stack (equivalent to operations that the
+     * wifi stack performs to clear state for an app that was uninstalled.
+     * This removes:
+     * <li> All saved networks or passpoint profiles added by the app </li>
+     * <li> All previously approved peer to peer connection to access points initiated by the app
+     * using {@link WifiNetworkSpecifier}</li>
+     * <li> All network suggestions and approvals provided using {@link WifiNetworkSuggestion}</li>
+     * <p>
+     * @param targetAppUid UID of the app.
+     * @param targetAppPackageName Package name of the app.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public void removeAppState(int targetAppUid, @NonNull String targetAppPackageName) {
+        try {
+            mService.removeAppState(targetAppUid, targetAppPackageName);
+        } catch (RemoteException e) {
+            throw e.rethrowAsRuntimeException();
         }
     }
 
@@ -2017,10 +2300,6 @@ public class WifiManager {
      * first required to remove it using {@link WifiManager#removePasspointConfiguration(String)}.
      * Otherwise, a new profile will be added with both configuration.
      *
-     * @param config The Passpoint configuration to be added
-     * @throws IllegalArgumentException if configuration is invalid or Passpoint is not enabled on
-     *                                  the device.
-     *
      * Deprecated for general app usage - except DO/PO apps.
      * See {@link WifiNetworkSuggestion.Builder#setPasspointConfig(PasspointConfiguration)} to
      * create a passpoint suggestion.
@@ -2034,6 +2313,10 @@ public class WifiManager {
      * <ul>
      * <li>Device Owner (DO), Profile Owner (PO) and system apps.
      * </ul>
+     *
+     * @param config The Passpoint configuration to be added
+     * @throws IllegalArgumentException if configuration is invalid or Passpoint is not enabled on
+     *                                  the device.
      */
     public void addOrUpdatePasspointConfiguration(PasspointConfiguration config) {
         try {
@@ -2125,22 +2408,6 @@ public class WifiManager {
     }
 
     /**
-     * Deauthenticate and set the re-authentication hold off time for the current network
-     * @param holdoff hold off time in milliseconds
-     * @param ess set if the hold off pertains to an ESS rather than a BSS
-     * @hide
-     *
-     * TODO (140167680): This needs to be removed, the implementation is empty!
-     */
-    public void deauthenticateNetwork(long holdoff, boolean ess) {
-        try {
-            mService.deauthenticateNetwork(holdoff, ess);
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
-        }
-    }
-
-    /**
      * Remove the specified network from the list of configured networks.
      * This may result in the asynchronous delivery of state change
      * events.
@@ -2176,6 +2443,21 @@ public class WifiManager {
         }
     }
 
+    /**
+     * Remove all configured networks that were not created by the calling app. Can only
+     * be called by a Device Owner (DO) app.
+     *
+     * @return {@code true} if at least one network is removed, {@code false} otherwise
+     * @throws {@link java.lang.SecurityException} if the caller is not a Device Owner app
+     */
+    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    public boolean removeNonCallerConfiguredNetworks() {
+        try {
+            return mService.removeNonCallerConfiguredNetworks(mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
     /**
      * Allow a previously configured network to be associated with. If
      * <code>attemptConnect</code> is true, an attempt to connect to the selected
@@ -2355,6 +2637,7 @@ public class WifiManager {
         return isWifiEnabled();
     }
 
+    /** TODO(b/181364583): Convert all of these to 1 << X form. */
     /** @hide */
     public static final long WIFI_FEATURE_INFRA            = 0x0001L;  // Basic infrastructure mode
     /** @hide */
@@ -2376,7 +2659,7 @@ public class WifiManager {
     /** @hide */
     public static final long WIFI_FEATURE_PNO              = 0x0400L;  // Preferred network offload
     /** @hide */
-    public static final long WIFI_FEATURE_ADDITIONAL_STA   = 0x0800L;  // Support for two STAs
+    public static final long WIFI_FEATURE_ADDITIONAL_STA   = 0x0800L;  // (unused)
     /** @hide */
     public static final long WIFI_FEATURE_TDLS             = 0x1000L;  // Tunnel directed link setup
     /** @hide */
@@ -2431,10 +2714,64 @@ public class WifiManager {
     public static final long WIFI_FEATURE_WAPI             = 0x2000000000L; // WAPI
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA256     = 0x4000000000L; // FILS-SHA256
+    public static final long WIFI_FEATURE_FILS_SHA256      = 0x4000000000L; // FILS-SHA256
 
     /** @hide */
-    public static final long WIFI_FEATURE_FILS_SHA384     = 0x8000000000L; // FILS-SHA384
+    public static final long WIFI_FEATURE_FILS_SHA384      = 0x8000000000L; // FILS-SHA384
+
+    /** @hide */
+    public static final long WIFI_FEATURE_SAE_PK           = 0x10000000000L; // SAE-PK
+
+    /** @hide */
+    public static final long WIFI_FEATURE_STA_BRIDGED_AP   = 0x20000000000L; // STA + Bridged AP
+
+    /** @hide */
+    public static final long WIFI_FEATURE_BRIDGED_AP       = 0x40000000000L; // Bridged AP
+
+    /** @hide */
+    public static final long WIFI_FEATURE_INFRA_60G        = 0x80000000000L; // 60 GHz Band Support
+
+    /**
+     * Support for 2 STA's for the local-only (peer to peer) connection + internet connection
+     * concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY = 0x100000000000L;
+
+    /**
+     * Support for 2 STA's for the make before break concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_MBB = 0x200000000000L;
+
+    /**
+     * Support for 2 STA's for the restricted connection + internet connection concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED = 0x400000000000L;
+
+    /**
+     * DPP (Easy-Connect) Enrollee Responder mode support
+     * @hide
+     */
+    public static final long WIFI_FEATURE_DPP_ENROLLEE_RESPONDER = 0x800000000000L;
+
+    /**
+     * Passpoint Terms and Conditions feature support
+     * @hide
+     */
+    public static final long WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS = 0x1000000000000L;
+
+     /** @hide */
+    public static final long WIFI_FEATURE_SAE_H2E          = 0x2000000000000L; // Hash-to-Element
+
+     /** @hide */
+    public static final long WIFI_FEATURE_WFD_R2           = 0x4000000000000L; // Wi-Fi Display R2
+
+    /**
+     * RFC 7542 decorated identity support
+     * @hide */
+    public static final long WIFI_FEATURE_DECORATED_IDENTITY = 0x8000000000000L;
 
     private long getSupportedFeatures() {
         try {
@@ -2490,12 +2827,50 @@ public class WifiManager {
     }
 
     /**
-     * Query whether the device supports Station (STA) + Access point (AP) concurrency or not.
+     * Query whether or not the device supports Station (STA) + Access point (AP) concurrency.
      *
      * @return true if this device supports STA + AP concurrency, false otherwise.
      */
     public boolean isStaApConcurrencySupported() {
         return isFeatureSupported(WIFI_FEATURE_AP_STA);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for local-only
+     * connections using {@link WifiNetworkSpecifier}.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     */
+    public boolean isStaConcurrencyForLocalOnlyConnectionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for
+     * make-before-break wifi to wifi switching.
+     *
+     * Note: This is an internal feature which is not available to apps.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     */
+    public boolean isMakeBeforeBreakWifiSwitchingSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_MBB);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for restricted
+     * connections using {@link WifiNetworkSuggestion.Builder#setOemPaid(boolean)} /
+     * {@link WifiNetworkSuggestion.Builder#setOemPrivate(boolean)}.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     * @hide
+     */
+    @SystemApi
+    public boolean isStaConcurrencyForRestrictedConnectionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED);
     }
 
     /**
@@ -2531,14 +2906,6 @@ public class WifiManager {
     }
 
     /**
-     * @return true if this adapter supports multiple simultaneous connections
-     * @hide
-     */
-    public boolean isAdditionalStaSupported() {
-        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA);
-    }
-
-    /**
      * @return true if this adapter supports Tunnel Directed Link Setup
      */
     public boolean isTdlsSupported() {
@@ -2570,12 +2937,24 @@ public class WifiManager {
     }
 
     /**
-     * @return true if this device supports connected MAC randomization.
+     * @return true if this device supports AP MAC randomization.
      * @hide
      */
     @SystemApi
     public boolean isApMacRandomizationSupported() {
         return isFeatureSupported(WIFI_FEATURE_AP_RAND_MAC);
+    }
+
+    /**
+     * Check if the chipset supports 2.4GHz band.
+     * @return {@code true} if supported, {@code false} otherwise.
+     */
+    public boolean is24GHzBandSupported() {
+        try {
+            return mService.is24GHzBandSupported();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**
@@ -2585,6 +2964,20 @@ public class WifiManager {
     public boolean is5GHzBandSupported() {
         try {
             return mService.is5GHzBandSupported();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Check if the chipset supports the 60GHz frequency band.
+     *
+     * @return {@code true} if supported, {@code false} otherwise.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    public boolean is60GHzBandSupported() {
+        try {
+            return mService.is60GHzBandSupported();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -2614,6 +3007,36 @@ public class WifiManager {
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
+    }
+
+    /**
+     * Query whether or not the device supports concurrency of Station (STA) + multiple access
+     * points (AP) (where the APs bridged together).
+     *
+     * See {@link SoftApConfiguration.Builder#setBands(int[])}
+     * or {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)} to configure
+     * bridged AP when the bridged AP supported.
+     *
+     * @return true if this device supports concurrency of STA + multiple APs which are bridged
+     *         together, false otherwise.
+     */
+    public boolean isStaBridgedApConcurrencySupported() {
+        return isFeatureSupported(WIFI_FEATURE_STA_BRIDGED_AP);
+    }
+
+    /**
+     * Query whether or not the device supports multiple Access point (AP) which are bridged
+     * together.
+     *
+     * See {@link SoftApConfiguration.Builder#setBands(int[])}
+     * or {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)} to configure
+     * bridged AP when the bridged AP supported.
+     *
+     * @return true if this device supports concurrency of multiple AP which bridged together,
+     *         false otherwise.
+     */
+    public boolean isBridgedApConcurrencySupported() {
+        return isFeatureSupported(WIFI_FEATURE_BRIDGED_AP);
     }
 
     /**
@@ -2779,10 +3202,18 @@ public class WifiManager {
      * connectivityManager.registerNetworkCallback(request, networkCallback); // For listen
      * }</pre>
      * <p>
-     * <b>Compatibility Note:</b>
+     * <b>Compatibility Notes:</b>
      * <li>Apps can continue using this API, however newer features
      * such as ability to mask out location sensitive data in WifiInfo will not be supported
      * via this API. </li>
+     * <li>On devices supporting concurrent connections (indicated via
+     * {@link #isStaConcurrencyForLocalOnlyConnectionsSupported()}, etc) this API will return
+     * the details of the internet providing connection (if any) to all apps, except for the apps
+     * that triggered the creation of the concurrent connection. For such apps, this API will return
+     * the details of the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * trigger a concurrent connection on supported devices and hence this API will provide
+     * details of their peer to peer connection (not the internet providing connection). This
+     * is to maintain backwards compatibility with behavior on single STA devices.</li>
      * </p>
      */
     @Deprecated
@@ -2855,7 +3286,7 @@ public class WifiManager {
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public void setScanAlwaysAvailable(boolean isAvailable) {
         try {
-            mService.setScanAlwaysAvailable(isAvailable);
+            mService.setScanAlwaysAvailable(isAvailable, mContext.getOpPackageName());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -2898,9 +3329,20 @@ public class WifiManager {
     }
 
     /**
-     * Get the country code.
-     * @return the country code in ISO 3166 alpha-2 (2-letter) uppercase format, or null if
-     * there is no country code configured.
+     * Get the country code as resolved by the Wi-Fi framework.
+     * The Wi-Fi framework uses multiple sources to resolve a country code
+     * - in order of priority (high to low):
+     * 1. Override country code set by {@link WifiManager#setOverrideCountryCode(String)}
+     * and cleared by {@link WifiManager#clearOverrideCountryCode()}. Typically only used
+     * for testing.
+     * 2. Country code supplied by the telephony module. Typically provided from the
+     * current network or from emergency cell information.
+     * 3. Default country code set either via {@code ro.boot.wificountrycode}
+     * or the {@link WifiManager#setDefaultCountryCode(String)}.
+     *
+     * @return the country code in ISO 3166 alpha-2 (2-letter) upper format,
+     * or null if there is no country code configured.
+     *
      * @hide
      */
     @Nullable
@@ -2915,13 +3357,86 @@ public class WifiManager {
     }
 
     /**
+     * Set the override country code - may be used for testing. See the country code resolution
+     * order and format in {@link #getCountryCode()}.
+     * @param country A 2-Character alphanumeric country code.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void setOverrideCountryCode(@NonNull String country) {
+        try {
+            mService.setOverrideCountryCode(country);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * This clears the override country code which was previously set by
+     * {@link WifiManager#setOverrideCountryCode(String)} method.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void clearOverrideCountryCode() {
+        try {
+            mService.clearOverrideCountryCode();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+    /**
+     * Used to configure the default country code. See {@link #getCountryCode()} for resolution
+     * method of the country code.
+     * @param country A 2-character alphanumeric country code.
+     * @see #getCountryCode().
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_COUNTRY_CODE)
+    public void setDefaultCountryCode(@NonNull String country) {
+        try {
+            mService.setDefaultCountryCode(country);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Return the DHCP-assigned addresses from the last successful DHCP request,
      * if any.
+     *
      * @return the DHCP information
+     *
+     * @deprecated Use the methods on {@link android.net.LinkProperties} which can be obtained
+     * either via {@link NetworkCallback#onLinkPropertiesChanged(Network, LinkProperties)} or
+     * {@link ConnectivityManager#getLinkProperties(Network)}.
+     *
+     * <p>
+     * <b>Compatibility Notes:</b>
+     * <li>On devices supporting concurrent connections (indicated via
+     * {@link #isStaConcurrencyForLocalOnlyConnectionsSupported()}, etc), this API will return
+     * the details of the internet providing connection (if any) to all apps, except for the apps
+     * that triggered the creation of the concurrent connection. For such apps, this API will return
+     * the details of the connection they created. e.g. apps using {@link WifiNetworkSpecifier} will
+     * trigger a concurrent connection on supported devices and hence this API will provide
+     * details of their peer to peer connection (not the internet providing connection). This
+     * is to maintain backwards compatibility with behavior on single STA devices.</li>
+     * </p>
      */
+    @Deprecated
     public DhcpInfo getDhcpInfo() {
         try {
-            return mService.getDhcpInfo();
+            return mService.getDhcpInfo(mContext.getOpPackageName());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -2954,6 +3469,170 @@ public class WifiManager {
     public boolean setWifiEnabled(boolean enabled) {
         try {
             return mService.setWifiEnabled(mContext.getOpPackageName(), enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Abstract callback class for applications to receive updates about the Wi-Fi subsystem
+     * restarting. The Wi-Fi subsystem can restart due to internal recovery mechanisms or via user
+     * action.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    public abstract static class SubsystemRestartTrackingCallback {
+        private final SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy mProxy;
+
+        public SubsystemRestartTrackingCallback() {
+            mProxy = new SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy();
+        }
+
+        /*package*/ @NonNull
+        SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy getProxy() {
+            return mProxy;
+        }
+
+        /**
+         * Indicates that the Wi-Fi subsystem is about to restart.
+         */
+        public abstract void onSubsystemRestarting();
+
+        /**
+         * Indicates that the Wi-Fi subsystem has restarted.
+         */
+        public abstract void onSubsystemRestarted();
+
+        private static class SubsystemRestartCallbackProxy extends ISubsystemRestartCallback.Stub {
+            private final Object mLock = new Object();
+            @Nullable
+            @GuardedBy("mLock")
+            private Executor mExecutor;
+            @Nullable
+            @GuardedBy("mLock")
+            private SubsystemRestartTrackingCallback mCallback;
+
+            SubsystemRestartCallbackProxy() {
+                mExecutor = null;
+                mCallback = null;
+            }
+
+            /*package*/ void initProxy(@NonNull Executor executor,
+                    @NonNull SubsystemRestartTrackingCallback callback) {
+                synchronized (mLock) {
+                    mExecutor = executor;
+                    mCallback = callback;
+                }
+            }
+
+            /*package*/ void cleanUpProxy() {
+                synchronized (mLock) {
+                    mExecutor = null;
+                    mCallback = null;
+                }
+            }
+
+            @Override
+            public void onSubsystemRestarting() {
+                Executor executor;
+                SubsystemRestartTrackingCallback callback;
+                synchronized (mLock) {
+                    executor = mExecutor;
+                    callback = mCallback;
+                }
+                if (executor == null || callback == null) {
+                    return;
+                }
+                Binder.clearCallingIdentity();
+                executor.execute(callback::onSubsystemRestarting);
+            }
+
+            @Override
+            public void onSubsystemRestarted() {
+                Executor executor;
+                SubsystemRestartTrackingCallback callback;
+                synchronized (mLock) {
+                    executor = mExecutor;
+                    callback = mCallback;
+                }
+                if (executor == null || callback == null) {
+                    return;
+                }
+                Binder.clearCallingIdentity();
+                executor.execute(callback::onSubsystemRestarted);
+            }
+        }
+    }
+
+    /**
+     * Registers a {@link SubsystemRestartTrackingCallback} to listen to Wi-Fi subsystem restarts.
+     * The subsystem may restart due to internal recovery mechanisms or via user action.
+     *
+     * @see #unregisterSubsystemRestartTrackingCallback(SubsystemRestartTrackingCallback)
+     *
+     * @param executor Executor to execute callback on
+     * @param callback {@link SubsystemRestartTrackingCallback} to register
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
+    public void registerSubsystemRestartTrackingCallback(
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull SubsystemRestartTrackingCallback callback) {
+        if (executor == null) throw new IllegalArgumentException("executor must not be null");
+        if (callback == null) throw new IllegalArgumentException("callback must not be null");
+        SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy proxy = callback.getProxy();
+        proxy.initProxy(executor, callback);
+        try {
+            mService.registerSubsystemRestartCallback(proxy);
+        } catch (RemoteException e) {
+            proxy.cleanUpProxy();
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Unregisters a {@link SubsystemRestartTrackingCallback} registered with
+     * {@link #registerSubsystemRestartTrackingCallback(Executor, SubsystemRestartTrackingCallback)}
+     *
+     * @param callback {@link SubsystemRestartTrackingCallback} to unregister
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
+    public void unregisterSubsystemRestartTrackingCallback(
+            @NonNull SubsystemRestartTrackingCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("callback must not be null");
+        SubsystemRestartTrackingCallback.SubsystemRestartCallbackProxy proxy = callback.getProxy();
+        try {
+            mService.unregisterSubsystemRestartCallback(proxy);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        } finally {
+            proxy.cleanUpProxy();
+        }
+    }
+
+    /**
+     * Restart the Wi-Fi subsystem.
+     *
+     * Restarts the Wi-Fi subsystem - effectively disabling it and re-enabling it. All existing
+     * Access Point (AP) associations are torn down, all Soft APs are disabled, Wi-Fi Direct and
+     * Wi-Fi Aware are disabled.
+     *
+     * The state of the system after restart is not guaranteed to match its state before the API is
+     * called - for instance the device may associate to a different Access Point (AP), and tethered
+     * hotspots may or may not be restored.
+     *
+     * Use the
+     * {@link #registerSubsystemRestartTrackingCallback(Executor, SubsystemRestartTrackingCallback)}
+     * to track the operation.
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.RESTART_WIFI_SUBSYSTEM)
+    public void restartWifiSubsystem() {
+        try {
+            mService.restartWifiSubsystem();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3071,6 +3750,226 @@ public class WifiManager {
         }
     }
 
+    /* Wi-Fi/Cellular Coex */
+
+    /**
+     * Mandatory coex restriction flag for Wi-Fi Direct.
+     *
+     * @see #setCoexUnsafeChannels(List, int)
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
+    public static final int COEX_RESTRICTION_WIFI_DIRECT = 0x1 << 0;
+
+    /**
+     * Mandatory coex restriction flag for SoftAP
+     *
+     * @see #setCoexUnsafeChannels(List, int)
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
+    public static final int COEX_RESTRICTION_SOFTAP = 0x1 << 1;
+
+    /**
+     * Mandatory coex restriction flag for Wi-Fi Aware.
+     *
+     * @see #setCoexUnsafeChannels(List, int)
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
+    public static final int COEX_RESTRICTION_WIFI_AWARE = 0x1 << 2;
+
+    /** @hide */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(flag = true, prefix = {"COEX_RESTRICTION_"}, value = {
+            COEX_RESTRICTION_WIFI_DIRECT,
+            COEX_RESTRICTION_SOFTAP,
+            COEX_RESTRICTION_WIFI_AWARE
+    })
+    public @interface CoexRestriction {}
+
+    /**
+     * @return {@code true} if the default coex algorithm is enabled. {@code false} otherwise.
+     *
+     * @hide
+     */
+    public boolean isDefaultCoexAlgorithmEnabled() {
+        try {
+            return mService.isDefaultCoexAlgorithmEnabled();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Specify the list of {@link CoexUnsafeChannel} to propagate through the framework for
+     * Wi-Fi/Cellular coex channel avoidance if the default algorithm is disabled via overlay
+     * (i.e. config_wifiCoexDefaultAlgorithmEnabled = false). Otherwise do nothing.
+     *
+     * @param unsafeChannels List of {@link CoexUnsafeChannel} to avoid.
+     * @param restrictions Bitmap of {@code COEX_RESTRICTION_*} constants specifying the mode
+     *                     restrictions on the specified channels. If any restrictions are set,
+     *                     then the supplied CoexUnsafeChannels should be completely avoided for
+     *                     the specified modes, rather than be avoided with best effort.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void setCoexUnsafeChannels(
+            @NonNull List<CoexUnsafeChannel> unsafeChannels, @CoexRestriction int restrictions) {
+        if (unsafeChannels == null) {
+            throw new IllegalArgumentException("unsafeChannels must not be null");
+        }
+        try {
+            mService.setCoexUnsafeChannels(unsafeChannels, restrictions);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Registers a CoexCallback to listen on the current CoexUnsafeChannels and restrictions being
+     * used for Wi-Fi/cellular coex channel avoidance. The callback method
+     * {@link CoexCallback#onCoexUnsafeChannelsChanged(List, int)} will be called immediately after
+     * registration to return the current values.
+     *
+     * @param executor Executor to execute listener callback on
+     * @param callback CoexCallback to register
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void registerCoexCallback(
+            @NonNull @CallbackExecutor Executor executor, @NonNull CoexCallback callback) {
+        if (executor == null) throw new IllegalArgumentException("executor must not be null");
+        if (callback == null) throw new IllegalArgumentException("callback must not be null");
+        CoexCallback.CoexCallbackProxy proxy = callback.getProxy();
+        proxy.initProxy(executor, callback);
+        try {
+            mService.registerCoexCallback(proxy);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Unregisters a CoexCallback from listening on the current CoexUnsafeChannels and restrictions
+     * being used for Wi-Fi/cellular coex channel avoidance.
+     * @param callback CoexCallback to unregister
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.WIFI_ACCESS_COEX_UNSAFE_CHANNELS)
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void unregisterCoexCallback(@NonNull CoexCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("callback must not be null");
+        CoexCallback.CoexCallbackProxy proxy = callback.getProxy();
+        try {
+            mService.unregisterCoexCallback(proxy);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        } finally {
+            proxy.cleanUpProxy();
+        }
+    }
+
+    /**
+     * Abstract callback class for applications to receive updates about current CoexUnsafeChannels
+     * for Wi-Fi/Cellular coex channel avoidance.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.S)
+    public abstract static class CoexCallback {
+        private final CoexCallbackProxy mCoexCallbackProxy;
+
+        public CoexCallback() {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            mCoexCallbackProxy = new CoexCallbackProxy();
+        }
+
+        /*package*/ @NonNull
+        CoexCallbackProxy getProxy() {
+            return mCoexCallbackProxy;
+        }
+
+        /**
+         * This indicates the current CoexUnsafeChannels and restrictions calculated by the default
+         * coex algorithm if config_wifiCoexDefaultAlgorithmEnabled is {@code true}. Otherwise, the
+         * values will match the ones supplied to {@link #setCoexUnsafeChannels(List, int)}.
+         *
+         * @param unsafeChannels List of {@link CoexUnsafeChannel} to avoid.
+         * @param restrictions Bitmap of {@code COEX_RESTRICTION_*} constants specifying the mode
+         *                     restrictions on the specified channels. If any restrictions are set,
+         *                     then the supplied CoexUnsafeChannels should be completely avoided for
+         *                     the specified modes, rather than be avoided with best effort.
+         */
+        public abstract void onCoexUnsafeChannelsChanged(
+                @NonNull List<CoexUnsafeChannel> unsafeChannels, @CoexRestriction int restrictions);
+
+        /**
+         * Callback proxy for CoexCallback objects.
+         */
+        private static class CoexCallbackProxy extends ICoexCallback.Stub {
+            private final Object mLock = new Object();
+            @Nullable @GuardedBy("mLock") private Executor mExecutor;
+            @Nullable @GuardedBy("mLock") private CoexCallback mCallback;
+
+            CoexCallbackProxy() {
+                mExecutor = null;
+                mCallback = null;
+            }
+
+            /*package*/ void initProxy(@NonNull Executor executor,
+                    @NonNull CoexCallback callback) {
+                synchronized (mLock) {
+                    mExecutor = executor;
+                    mCallback = callback;
+                }
+            }
+
+            /*package*/ void cleanUpProxy() {
+                synchronized (mLock) {
+                    mExecutor = null;
+                    mCallback = null;
+                }
+            }
+
+            @Override
+            public void onCoexUnsafeChannelsChanged(
+                    @NonNull List<CoexUnsafeChannel> unsafeChannels,
+                    @CoexRestriction int restrictions) {
+                Executor executor;
+                CoexCallback callback;
+                synchronized (mLock) {
+                    executor = mExecutor;
+                    callback = mCallback;
+                }
+                if (executor == null || callback == null) {
+                    return;
+                }
+                Binder.clearCallingIdentity();
+                executor.execute(() ->
+                        callback.onCoexUnsafeChannelsChanged(unsafeChannels, restrictions));
+            }
+        }
+    }
+
     /**
      * Start Soft AP (hotspot) mode for tethering purposes with the specified configuration.
      * Note that starting Soft AP mode may disable station mode operation if the device does not
@@ -3088,7 +3987,7 @@ public class WifiManager {
     })
     public boolean startSoftAp(@Nullable WifiConfiguration wifiConfig) {
         try {
-            return mService.startSoftAp(wifiConfig);
+            return mService.startSoftAp(wifiConfig, mContext.getOpPackageName());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3112,7 +4011,7 @@ public class WifiManager {
     })
     public boolean startTetheredHotspot(@Nullable SoftApConfiguration softApConfig) {
         try {
-            return mService.startTetheredHotspot(softApConfig);
+            return mService.startTetheredHotspot(softApConfig, mContext.getOpPackageName());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3182,7 +4081,7 @@ public class WifiManager {
      * unexpectedly, but they will receive a notification if they have properly registered.
      * <p>
      * Applications should also be aware that this network will be shared with other applications.
-     * Applications are responsible for protecting their data on this network (e.g., TLS).
+     * Applications are responsible for protecting their data on this network (e.g. TLS).
      * <p>
      * Applications need to have the following permissions to start LocalOnlyHotspot: {@link
      * android.Manifest.permission#CHANGE_WIFI_STATE} and {@link
@@ -3429,7 +4328,10 @@ public class WifiManager {
      */
     @NonNull
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public SoftApConfiguration getSoftApConfiguration() {
         try {
             return mService.getSoftApConfiguration();
@@ -3467,6 +4369,8 @@ public class WifiManager {
      * or {@link SoftApConfiguration.Builder#setClientControlByUserEnabled(boolean)}
      * or {@link SoftApConfiguration.Builder#setBlockedClientList(List)}
      * or {@link SoftApConfiguration.Builder#setAllowedClientList(List)}
+     * or {@link SoftApConfiguration.Builder#setAutoShutdownEnabled(boolean)}
+     * or {@link SoftApConfiguration.Builder#setBridgedModeOpportunisticShutdownEnabled(boolean)}
      *
      * Otherwise, the configuration changes will be applied when the Soft AP is next started
      * (the framework will not stop/start the AP).
@@ -3477,7 +4381,10 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public boolean setSoftApConfiguration(@NonNull SoftApConfiguration softApConfig) {
         try {
             return mService.setSoftApConfiguration(
@@ -3660,22 +4567,85 @@ public class WifiManager {
          * Called when the connected clients to soft AP changes.
          *
          * @param clients the currently connected clients
+         *
+         * @deprecated This API is deprecated.
+         * Use {@link #onConnectedClientsChanged(SoftApInfo, List<WifiClient>)} instead.
          */
+        @Deprecated
         default void onConnectedClientsChanged(@NonNull List<WifiClient> clients) {}
 
+
         /**
-         * Called when information of softap changes.
+         * Called when the connected clients for a soft AP instance change.
          *
-         * @param softApInfo is the softap information. {@link SoftApInfo}
+         * When the Soft AP is configured in single AP mode, this callback is invoked
+         * with the same {@link SoftApInfo} for all connected clients changes.
+         * When the Soft AP is configured as multiple Soft AP instances (using
+         * {@link SoftApConfiguration.Builder#setBands(int[])} or
+         * {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)}), this
+         * callback is invoked with the corresponding {@link SoftApInfo} for the instance in which
+         * the connected clients changed.
+         *
+         * @param info The {@link SoftApInfo} of the AP.
+         * @param clients The currently connected clients on the AP instance specified by
+         *                {@code info}.
          */
+        default void onConnectedClientsChanged(@NonNull SoftApInfo info,
+                @NonNull List<WifiClient> clients) {}
+
+        /**
+         * Called when the Soft AP information changes.
+         *
+         * Note: this API remains valid only when the Soft AP is configured as a single AP -
+         * not as multiple Soft APs (which are bridged to each other). When multiple Soft APs are
+         * configured (using {@link SoftApConfiguration.Builder#setBands(int[])} or
+         * {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)})
+         * this callback will not be triggered -  use the
+         * {@link #onInfoChanged(List<SoftApInfo>)} callback in that case.
+         *
+         * @param softApInfo is the Soft AP information. {@link SoftApInfo}
+         *
+         * @deprecated This API is deprecated. Use {@link #onInfoChanged(List<SoftApInfo>)}
+         * instead.
+         */
+        @Deprecated
         default void onInfoChanged(@NonNull SoftApInfo softApInfo) {
             // Do nothing: can be updated to add SoftApInfo details (e.g. channel) to the UI.
         }
 
         /**
-         * Called when capability of softap changes.
+         * Called when the Soft AP information changes.
          *
-         * @param softApCapability is the softap capability. {@link SoftApCapability}
+         * Returns information on all configured Soft AP instances. The number of the elements in
+         * the list depends on Soft AP configuration and state:
+         * <ul>
+         * <li>An empty list will be returned when the Soft AP is disabled.
+         * <li>One information element will be returned in the list when the Soft AP is configured
+         *     as a single AP or when a single Soft AP remains active.
+         * <li>Two information elements will be returned in the list when the multiple Soft APs are
+         *     configured and are active.
+         *     (configured using {@link SoftApConfiguration.Builder#setBands(int[])} or
+         *     {@link SoftApConfiguration.Builder#setChannels(android.util.SparseIntArray)}).
+         * </ul>
+         *
+         * Note: When multiple Soft AP instances are configured, one of the Soft APs may
+         * be shut down independently of the other by the framework. This can happen if no devices
+         * are connected to it for some duration. In that case, one information element will be
+         * returned.
+         *
+         * See {@link #isBridgedApConcurrencySupported()} for support info of multiple (bridged) AP.
+         *
+         * @param softApInfoList is the list of the Soft AP information elements -
+         *        {@link SoftApInfo}.
+         */
+        default void onInfoChanged(@NonNull List<SoftApInfo> softApInfoList) {
+            // Do nothing: can be updated to add SoftApInfo details (e.g. channel) to the UI.
+        }
+
+        /**
+         * Called when capability of Soft AP changes.
+         *
+         * @param softApCapability is the Soft AP capability. {@link SoftApCapability}
          */
         default void onCapabilityChanged(@NonNull SoftApCapability softApCapability) {
             // Do nothing: can be updated to add SoftApCapability details (e.g. meximum supported
@@ -3707,6 +4677,16 @@ public class WifiManager {
     private class SoftApCallbackProxy extends ISoftApCallback.Stub {
         private final Executor mExecutor;
         private final SoftApCallback mCallback;
+        private Map<String, List<WifiClient>> mCurrentClients = new HashMap<>();
+        private Map<String, SoftApInfo> mCurrentInfos = new HashMap<>();
+
+        private List<WifiClient> getConnectedClientList(Map<String, List<WifiClient>> clientsMap) {
+            List<WifiClient> connectedClientList = new ArrayList<>();
+            for (List<WifiClient> it : clientsMap.values()) {
+                connectedClientList.addAll(it);
+            }
+            return connectedClientList;
+        }
 
         SoftApCallbackProxy(Executor executor, SoftApCallback callback) {
             mExecutor = executor;
@@ -3727,28 +4707,101 @@ public class WifiManager {
         }
 
         @Override
-        public void onConnectedClientsChanged(List<WifiClient> clients) {
+        public void onConnectedClientsOrInfoChanged(Map<String, SoftApInfo> infos,
+                Map<String, List<WifiClient>> clients, boolean isBridged, boolean isRegistration) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onConnectedClientsChanged: clients="
-                        + clients.size() + " clients");
+                Log.v(TAG, "SoftApCallbackProxy: onConnectedClientsOrInfoChanged: clients: "
+                        + clients + ", infos: " + infos + ", isBridged is " + isBridged
+                        + ", isRegistration is " + isRegistration);
             }
 
-            Binder.clearCallingIdentity();
-            mExecutor.execute(() -> {
-                mCallback.onConnectedClientsChanged(clients);
-            });
-        }
+            List<SoftApInfo> changedInfoList = new ArrayList<>(infos.values());
+            Map<SoftApInfo, List<WifiClient>> changedInfoClients = new HashMap<>();
+            // Some devices may not support infos callback, allow them to support client
+            // connection changed callback.
+            boolean areClientsChangedWithoutInfosChanged =
+                    infos.size() == 0 && getConnectedClientList(clients).size()
+                    != getConnectedClientList(mCurrentClients).size();
+            boolean isInfoChanged = infos.size() != mCurrentInfos.size();
 
-        @Override
-        public void onInfoChanged(SoftApInfo softApInfo) {
-            if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onInfoChange: softApInfo=" + softApInfo);
+            if (isRegistration) {
+                // Check if there are clients connected, put it to changedInfoClients
+                for (SoftApInfo currentInfo : infos.values()) {
+                    String instance = currentInfo.getApInstanceIdentifier();
+                    if (clients.getOrDefault(instance, Collections.emptyList()).size() > 0) {
+                        changedInfoClients.put(currentInfo, clients.get(instance));
+                    }
+                }
             }
 
+            // Check if old info removed or not (client changed case)
+            for (SoftApInfo info : mCurrentInfos.values()) {
+                String changedInstance = info.getApInstanceIdentifier();
+                if (!changedInfoList.contains(info)) {
+                    isInfoChanged = true;
+                    if (mCurrentClients.getOrDefault(changedInstance,
+                              Collections.emptyList()).size() > 0) {
+                        Log.d(TAG, "SoftApCallbackProxy: info changed on client connected"
+                                + " instance(Shut Down case)");
+                        //Here should notify client changed on old info
+                        changedInfoClients.put(info, Collections.emptyList());
+                    }
+                } else {
+                    // info doesn't change, check client list
+                    List<WifiClient> changedClientList = clients.getOrDefault(
+                            changedInstance, Collections.emptyList());
+                    if (changedClientList.size()
+                            != mCurrentClients
+                            .getOrDefault(changedInstance, Collections.emptyList()).size()) {
+                        // Here should notify client changed on new info(same as old info)
+                        changedInfoClients.put(info, changedClientList);
+                    }
+                }
+            }
+
+            mCurrentClients = clients;
+            mCurrentInfos = infos;
+            if (!isInfoChanged && changedInfoClients.isEmpty()
+                    && !isRegistration && !areClientsChangedWithoutInfosChanged) {
+                Log.v(TAG, "SoftApCallbackProxy: No changed & Not Registration,"
+                        + " don't need to notify the client");
+                return;
+            }
             Binder.clearCallingIdentity();
-            mExecutor.execute(() -> {
-                mCallback.onInfoChanged(softApInfo);
-            });
+            // Notify the clients changed first for old info shutdown case
+            for (SoftApInfo changedInfo : changedInfoClients.keySet()) {
+                Log.v(TAG, "SoftApCallbackProxy: send onConnectedClientsChanged, changedInfo is "
+                        + changedInfo + " and clients are " + changedInfoClients.get(changedInfo));
+                mExecutor.execute(() -> {
+                    mCallback.onConnectedClientsChanged(
+                            changedInfo, changedInfoClients.get(changedInfo));
+                });
+            }
+
+            if (isInfoChanged || isRegistration) {
+                if (!isBridged) {
+                    SoftApInfo newInfo = changedInfoList.isEmpty()
+                            ? new SoftApInfo() : changedInfoList.get(0);
+                    Log.v(TAG, "SoftApCallbackProxy: send InfoChanged, newInfo: " + newInfo);
+                    mExecutor.execute(() -> {
+                        mCallback.onInfoChanged(newInfo);
+                    });
+                }
+                Log.v(TAG, "SoftApCallbackProxy: send InfoChanged, changedInfoList: "
+                        + changedInfoList);
+                mExecutor.execute(() -> {
+                    mCallback.onInfoChanged(changedInfoList);
+                });
+            }
+
+            if (isRegistration || !changedInfoClients.isEmpty()
+                    || areClientsChangedWithoutInfosChanged) {
+                Log.v(TAG, "SoftApCallbackProxy: send onConnectedClientsChanged(clients): "
+                        + getConnectedClientList(clients));
+                mExecutor.execute(() -> {
+                    mCallback.onConnectedClientsChanged(getConnectedClientList(clients));
+                });
+            }
         }
 
         @Override
@@ -3785,8 +4838,18 @@ public class WifiManager {
      * <li> {@link SoftApCallback#onStateChanged(int, int)}</li>
      * <li> {@link SoftApCallback#onConnectedClientsChanged(List<WifiClient>)}</li>
      * <li> {@link SoftApCallback#onInfoChanged(SoftApInfo)}</li>
+     * <li> {@link SoftApCallback#onInfoChanged(List<SoftApInfo>)}</li>
      * <li> {@link SoftApCallback#onCapabilityChanged(SoftApCapability)}</li>
      * </ul>
+     *
+     * Use {@link SoftApCallback#onConnectedClientsChanged(SoftApInfo, List<WifiClient>)} to know
+     * if there are any clients connected to a specific bridged instance of this AP
+     * (if bridged AP is enabled).
+     *
+     * Note: Caller will receive the callback
+     * {@link SoftApCallback#onConnectedClientsChanged(SoftApInfo, List<WifiClient>)}
+     * on registration when there are clients connected to AP.
+     *
      * These will be dispatched on registration to provide the caller with the current state
      * (and are not an indication of any current change). Note that receiving an immediate
      * WIFI_AP_STATE_FAILED value for soft AP state indicates that the latest attempt to start
@@ -3804,17 +4867,23 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void registerSoftApCallback(@NonNull @CallbackExecutor Executor executor,
             @NonNull SoftApCallback callback) {
         if (executor == null) throw new IllegalArgumentException("executor cannot be null");
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "registerSoftApCallback: callback=" + callback + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerSoftApCallback(
-                    binder, new SoftApCallbackProxy(executor, callback), callback.hashCode());
+            synchronized (sSoftApCallbackMap) {
+                ISoftApCallback.Stub binderCallback = new SoftApCallbackProxy(executor, callback);
+                sSoftApCallbackMap.put(System.identityHashCode(callback), binderCallback);
+                mService.registerSoftApCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -3829,13 +4898,25 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
     public void unregisterSoftApCallback(@NonNull SoftApCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "unregisterSoftApCallback: callback=" + callback);
 
         try {
-            mService.unregisterSoftApCallback(callback.hashCode());
+            synchronized (sSoftApCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sSoftApCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterSoftApCallback(sSoftApCallbackMap.get(callbackIdentifier));
+                sSoftApCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -4181,14 +5262,11 @@ public class WifiManager {
     private void connectInternal(@Nullable WifiConfiguration config, int networkId,
             @Nullable ActionListener listener) {
         ActionListenerProxy listenerProxy = null;
-        Binder binder = null;
         if (listener != null) {
             listenerProxy = new ActionListenerProxy("connect", mLooper, listener);
-            binder = new Binder();
         }
         try {
-            mService.connect(config, networkId, binder, listenerProxy,
-                    listener == null ? 0 : listener.hashCode());
+            mService.connect(config, networkId, listenerProxy);
         } catch (RemoteException e) {
             if (listenerProxy != null) listenerProxy.onFailure(ERROR);
         } catch (SecurityException e) {
@@ -4250,6 +5328,51 @@ public class WifiManager {
     }
 
     /**
+     * Temporarily disable autojoin for all currently visible and provisioned (saved, suggested)
+     * wifi networks except merged carrier networks from the provided subscription ID.
+     *
+     * Disabled networks will get automatically re-enabled when they are out of range for a period
+     * of time, or after the maximum disable duration specified in the framework.
+     *
+     * Calling {@link #stopRestrictingAutoJoinToSubscriptionId()} will immediately re-enable
+     * autojoin on all disabled networks.
+     *
+     * @param subscriptionId the subscription ID of the carrier whose merged wifi networks won't be
+     *                       disabled {@link android.telephony.SubscriptionInfo#getSubscriptionId()}
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void startRestrictingAutoJoinToSubscriptionId(int subscriptionId) {
+        try {
+            mService.startRestrictingAutoJoinToSubscriptionId(subscriptionId);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Re-enable autojoin for all non carrier merged wifi networks temporarily disconnected by
+     * {@link #startRestrictingAutoJoinToSubscriptionId(int)}.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void stopRestrictingAutoJoinToSubscriptionId() {
+        try {
+            mService.stopRestrictingAutoJoinToSubscriptionId();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Save the given network to the list of configured networks for the
      * foreground user. If the network already exists, the configuration
      * is updated. Any new network is enabled by default.
@@ -4279,14 +5402,11 @@ public class WifiManager {
     public void save(@NonNull WifiConfiguration config, @Nullable ActionListener listener) {
         if (config == null) throw new IllegalArgumentException("config cannot be null");
         ActionListenerProxy listenerProxy = null;
-        Binder binder = null;
         if (listener != null) {
             listenerProxy = new ActionListenerProxy("save", mLooper, listener);
-            binder = new Binder();
         }
         try {
-            mService.save(config, binder, listenerProxy,
-                    listener == null ? 0 : listener.hashCode());
+            mService.save(config, listenerProxy);
         } catch (RemoteException e) {
             if (listenerProxy != null) listenerProxy.onFailure(ERROR);
         } catch (SecurityException e) {
@@ -4316,14 +5436,11 @@ public class WifiManager {
     public void forget(int netId, @Nullable ActionListener listener) {
         if (netId < 0) throw new IllegalArgumentException("Network id cannot be negative");
         ActionListenerProxy listenerProxy = null;
-        Binder binder = null;
         if (listener != null) {
             listenerProxy = new ActionListenerProxy("forget", mLooper, listener);
-            binder = new Binder();
         }
         try {
-            mService.forget(netId, binder, listenerProxy,
-                    listener == null ? 0 : listener.hashCode());
+            mService.forget(netId, listenerProxy);
         } catch (RemoteException e) {
             if (listenerProxy != null) listenerProxy.onFailure(ERROR);
         } catch (SecurityException e) {
@@ -4948,7 +6065,23 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public void setVerboseLoggingEnabled(boolean enable) {
-        enableVerboseLogging(enable ? 1 : 0);
+        enableVerboseLogging(enable ? VERBOSE_LOGGING_LEVEL_ENABLED
+                : VERBOSE_LOGGING_LEVEL_DISABLED);
+    }
+
+    /**
+     * Set Wi-Fi verbose logging level from developer settings.
+     *
+     * @param verbose the verbose logging mode which could be
+     * {@link #VERBOSE_LOGGING_LEVEL_DISABLED}, {@link #VERBOSE_LOGGING_LEVEL_ENABLED}, or
+     * {@link #VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY}.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public void setVerboseLoggingLevel(@VerboseLoggingLevel int verbose) {
+        enableVerboseLogging(verbose);
     }
 
     /** @hide */
@@ -4957,18 +6090,17 @@ public class WifiManager {
             publicAlternatives = "Use {@code #setVerboseLoggingEnabled(boolean)} instead."
     )
     @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
-    public void enableVerboseLogging (int verbose) {
+    public void enableVerboseLogging(@VerboseLoggingLevel int verbose) {
         try {
             mService.enableVerboseLogging(verbose);
-        } catch (Exception e) {
-            //ignore any failure here
-            Log.e(TAG, "enableVerboseLogging " + e.toString());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
         }
     }
 
     /**
      * Get the persisted Wi-Fi verbose logging level, set by
-     * {@link #setVerboseLoggingEnabled(boolean)}.
+     * {@link #setVerboseLoggingEnabled(boolean)} or {@link #setVerboseLoggingLevel(int)}.
      * No permissions are required to call this method.
      *
      * @return true to indicate that verbose logging is enabled, false to indicate that verbose
@@ -4981,13 +6113,19 @@ public class WifiManager {
         return getVerboseLoggingLevel() > 0;
     }
 
-    /** @hide */
-    // TODO(b/145484145): remove once SUW stops calling this via reflection
-    @UnsupportedAppUsage(
-            maxTargetSdk = Build.VERSION_CODES.Q,
-            publicAlternatives = "Use {@code #isVerboseLoggingEnabled()} instead."
-    )
-    public int getVerboseLoggingLevel() {
+    /**
+     * Get the persisted Wi-Fi verbose logging level, set by
+     * {@link #setVerboseLoggingEnabled(boolean)} or {@link #setVerboseLoggingLevel(int)}.
+     * No permissions are required to call this method.
+     *
+     * @return one of {@link #VERBOSE_LOGGING_LEVEL_DISABLED},
+     *         {@link #VERBOSE_LOGGING_LEVEL_ENABLED},
+     *         or {@link #VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY}.
+     *
+     * @hide
+     */
+    @SystemApi
+    public @VerboseLoggingLevel int getVerboseLoggingLevel() {
         try {
             return mService.getVerboseLoggingLevel();
         } catch (RemoteException e) {
@@ -5278,10 +6416,13 @@ public class WifiManager {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "registerTrafficStateCallback: callback=" + callback + ", executor=" + executor);
 
-        Binder binder = new Binder();
         try {
-            mService.registerTrafficStateCallback(
-                    binder, new TrafficStateCallbackProxy(executor, callback), callback.hashCode());
+            synchronized (sTrafficStateCallbackMap) {
+                ITrafficStateCallback.Stub binderCallback = new TrafficStateCallbackProxy(executor,
+                        callback);
+                sTrafficStateCallbackMap.put(System.identityHashCode(callback), binderCallback);
+                mService.registerTrafficStateCallback(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5301,7 +6442,16 @@ public class WifiManager {
         Log.v(TAG, "unregisterTrafficStateCallback: callback=" + callback);
 
         try {
-            mService.unregisterTrafficStateCallback(callback.hashCode());
+            synchronized (sTrafficStateCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sTrafficStateCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                mService.unregisterTrafficStateCallback(
+                        sTrafficStateCallbackMap.get(callbackIdentifier));
+                sTrafficStateCallbackMap.remove(callbackIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5349,10 +6499,55 @@ public class WifiManager {
     }
 
     /**
+     * @return true if this device supports Wi-Fi Easy Connect (DPP) Enrollee Responder mode.
+     */
+    public boolean isEasyConnectEnrolleeResponderModeSupported() {
+        return isFeatureSupported(WIFI_FEATURE_DPP_ENROLLEE_RESPONDER);
+    }
+
+    /**
      * @return true if this device supports WAPI.
      */
     public boolean isWapiSupported() {
         return isFeatureSupported(WIFI_FEATURE_WAPI);
+    }
+
+    /**
+     * @return true if this device supports WPA3 SAE Public Key.
+     */
+    public boolean isWpa3SaePublicKeySupported() {
+        // This feature is not fully implemented in the framework yet.
+        // After the feature complete, it returns whether WIFI_FEATURE_SAE_PK
+        // is supported or not directly.
+        return false;
+    }
+
+    /**
+     * @return true if this device supports Wi-Fi Passpoint Terms and Conditions feature.
+     */
+    public boolean isPasspointTermsAndConditionsSupported() {
+        return isFeatureSupported(WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS);
+    }
+
+    /**
+     * @return true if this device supports WPA3 SAE Hash-to-Element.
+     */
+    public boolean isWpa3SaeH2eSupported() {
+        return isFeatureSupported(WIFI_FEATURE_SAE_H2E);
+    }
+
+    /**
+     * @return true if this device supports Wi-Fi Display R2.
+     */
+    public boolean isWifiDisplayR2Supported() {
+        return isFeatureSupported(WIFI_FEATURE_WFD_R2);
+    }
+
+    /**
+     * @return true if this device supports RFC 7542 decorated identity.
+     */
+    public boolean isDecoratedIdentitySupported() {
+        return isFeatureSupported(WIFI_FEATURE_DECORATED_IDENTITY);
     }
 
     /**
@@ -5468,6 +6663,110 @@ public class WifiManager {
     public @interface EasyConnectNetworkRole {
     }
 
+    /** Easy Connect Device information maximum allowed length */
+    private static final int EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH = 40;
+
+    /**
+     * Easy Connect Cryptography Curve name: prime256v1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1 = 0;
+
+    /**
+     * Easy Connect Cryptography Curve name: secp384r1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1 = 1;
+
+    /**
+     * Easy Connect Cryptography Curve name: secp521r1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1 = 2;
+
+
+    /**
+     * Easy Connect Cryptography Curve name: brainpoolP256r1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1 = 3;
+
+
+    /**
+     * Easy Connect Cryptography Curve name: brainpoolP384r1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1 = 4;
+
+
+    /**
+     * Easy Connect Cryptography Curve name: brainpoolP512r1
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final int EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1 = 5;
+
+    /** @hide */
+    @IntDef(prefix = {"EASY_CONNECT_CRYPTOGRAPHY_CURVE_"}, value = {
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1,
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP384R1,
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_SECP521R1,
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP256R1,
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP384R1,
+            EASY_CONNECT_CRYPTOGRAPHY_CURVE_BRAINPOOLP512R1,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface EasyConnectCryptographyCurve {
+    }
+
+    /**
+     * Verbose logging mode: DISABLED.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_DISABLED = 0;
+
+    /**
+     * Verbose logging mode: ENABLED.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_ENABLED = 1;
+
+    /**
+     * Verbose logging mode: ENABLED_SHOW_KEY.
+     * This mode causes the Wi-Fi password and encryption keys to be output to the logcat.
+     * This is security sensitive information useful for debugging.
+     * This configuration is enabled for 30 seconds and then falls back to
+     * the regular verbose mode (i.e. to {@link VERBOSE_LOGGING_LEVEL_ENABLED}).
+     * Show key mode is not persistent, i.e. rebooting the device would fallback to
+     * the regular verbose mode.
+     * @hide
+     */
+    @SystemApi
+    public static final int VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY = 2;
+
+    /** @hide */
+    @IntDef(prefix = {"VERBOSE_LOGGING_LEVEL_"}, value = {
+            VERBOSE_LOGGING_LEVEL_DISABLED,
+            VERBOSE_LOGGING_LEVEL_ENABLED,
+            VERBOSE_LOGGING_LEVEL_ENABLED_SHOW_KEY,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface VerboseLoggingLevel {
+    }
+
     /**
      * Start Easy Connect (DPP) in Configurator-Initiator role. The current device will initiate
      * Easy Connect bootstrapping with a peer, and configure the peer with the SSID and password of
@@ -5490,8 +6789,9 @@ public class WifiManager {
             @NonNull EasyConnectStatusCallback callback) {
         Binder binder = new Binder();
         try {
-            mService.startDppAsConfiguratorInitiator(binder, enrolleeUri, selectedNetworkId,
-                    enrolleeNetworkRole, new EasyConnectCallbackProxy(executor, callback));
+            mService.startDppAsConfiguratorInitiator(binder, mContext.getOpPackageName(),
+                    enrolleeUri, selectedNetworkId, enrolleeNetworkRole,
+                    new EasyConnectCallbackProxy(executor, callback));
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5521,6 +6821,65 @@ public class WifiManager {
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
+    }
+
+    /**
+     * Start Easy Connect (DPP) in Enrollee-Responder role.
+     * The device will:
+     * 1. Generate a DPP bootstrap URI and return it using the
+     * {@link EasyConnectStatusCallback#onBootstrapUriGenerated(Uri)} method.
+     * 2. Start DPP as a Responder, waiting for an Initiator device to start the DPP
+     * authentication process.
+     * The caller should use the URI provided in step #1, for instance display it as a QR code
+     * or communicate it in some other way to the initiator device.
+     *
+     * @param deviceInfo      Device specific information to add to the DPP URI. This field allows
+     *                        the users of the configurators to identify the device.
+     *                        Optional - if not provided or in case of an empty string,
+     *                        Info field (I:) will be skipped in the generated DPP URI.
+     *                        Allowed Range of ASCII characters in deviceInfo - %x20-7E.
+     *                        semicolon and space are not allowed. Due to the limitation of maximum
+     *                        allowed characters in QR code, framework adds a limit to maximum
+     *                        characters in deviceInfo. Users must call
+     *                        {@link WifiManager#getEasyConnectMaxAllowedResponderDeviceInfoLength()
+     *                        } method to know max allowed length. Violation of these rules will
+     *                        result in an exception.
+     * @param curve           Elliptic curve cryptography used to generate DPP
+     *                        public/private key pair. If application is not interested in a
+     *                        specific curve, use specification mandated NIST P-256 elliptic curve,
+     *                        {@link WifiManager#EASY_CONNECT_CRYPTOGRAPHY_CURVE_PRIME256V1}.
+     * @param callback        Callback for status updates
+     * @param executor        The Executor on which to run the callback.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    @RequiresApi(Build.VERSION_CODES.S)
+    public void startEasyConnectAsEnrolleeResponder(@Nullable String deviceInfo,
+            @EasyConnectCryptographyCurve int curve,
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull EasyConnectStatusCallback callback) {
+        Binder binder = new Binder();
+        try {
+            mService.startDppAsEnrolleeResponder(binder, deviceInfo, curve,
+                    new EasyConnectCallbackProxy(executor, callback));
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Maximum allowed length of Device specific information that can be added to the URI of
+     * Easy Connect responder device.
+     * @see #startEasyConnectAsEnrolleeResponder(String, int, Executor, EasyConnectStatusCallback)}
+     *
+     * @hide
+     */
+    @SystemApi
+    public static int getEasyConnectMaxAllowedResponderDeviceInfoLength() {
+        return EASY_CONNECT_DEVICE_INFO_MAXIMUM_LENGTH;
     }
 
     /**
@@ -5597,6 +6956,19 @@ public class WifiManager {
                 mEasyConnectStatusCallback.onProgress(status);
             });
         }
+
+        @Override
+        public void onBootstrapUriGenerated(@NonNull String uri) {
+            Log.d(TAG, "Easy Connect onBootstrapUriGenerated callback");
+            if (!SdkLevel.isAtLeastS()) {
+                Log.e(TAG, "Easy Connect bootstrap URI callback supported only on S+");
+                return;
+            }
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> {
+                mEasyConnectStatusCallback.onBootstrapUriGenerated(Uri.parse(uri));
+            });
+        }
     }
 
     /**
@@ -5624,10 +6996,28 @@ public class WifiManager {
     }
 
     /**
+     * Interface for Wi-Fi verbose logging status listener. Should be implemented by applications
+     * and set when calling {@link WifiManager#addWifiVerboseLoggingStatusListener(Executor,
+     * WifiVerboseLoggingStatusListener)}.
+     *
+     * @hide
+     */
+    @SystemApi
+    public interface WifiVerboseLoggingStatusChangedListener {
+        /**
+         * Called when Wi-Fi verbose logging setting is updated.
+         *
+         * @param enabled true if verbose logging is enabled, false if verbose logging is disabled.
+         */
+        void onWifiVerboseLoggingStatusChanged(boolean enabled);
+    }
+
+    /**
      * Adds a listener for Wi-Fi usability statistics. See {@link OnWifiUsabilityStatsListener}.
      * Multiple listeners can be added. Callers will be invoked periodically by framework to
      * inform clients about the current Wi-Fi usability statistics. Callers can remove a previously
-     * added listener using {@link removeOnWifiUsabilityStatsListener}.
+     * added listener using
+     * {@link #removeOnWifiUsabilityStatsListener(OnWifiUsabilityStatsListener)}.
      *
      * @param executor The executor on which callback will be invoked.
      * @param listener Listener for Wifi usability statistics.
@@ -5644,22 +7034,25 @@ public class WifiManager {
             Log.v(TAG, "addOnWifiUsabilityStatsListener: listener=" + listener);
         }
         try {
-            mService.addOnWifiUsabilityStatsListener(new Binder(),
-                    new IOnWifiUsabilityStatsListener.Stub() {
-                        @Override
-                        public void onWifiUsabilityStats(int seqNum, boolean isSameBssidAndFreq,
-                                WifiUsabilityStatsEntry stats) {
-                            if (mVerboseLoggingEnabled) {
-                                Log.v(TAG, "OnWifiUsabilityStatsListener: "
-                                        + "onWifiUsabilityStats: seqNum=" + seqNum);
+            synchronized (sOnWifiUsabilityStatsListenerMap) {
+                IOnWifiUsabilityStatsListener.Stub binderCallback =
+                        new IOnWifiUsabilityStatsListener.Stub() {
+                            @Override
+                            public void onWifiUsabilityStats(int seqNum, boolean isSameBssidAndFreq,
+                                    WifiUsabilityStatsEntry stats) {
+                                if (mVerboseLoggingEnabled) {
+                                    Log.v(TAG, "OnWifiUsabilityStatsListener: "
+                                            + "onWifiUsabilityStats: seqNum=" + seqNum);
+                                }
+                                Binder.clearCallingIdentity();
+                                executor.execute(() -> listener.onWifiUsabilityStats(
+                                        seqNum, isSameBssidAndFreq, stats));
                             }
-                            Binder.clearCallingIdentity();
-                            executor.execute(() -> listener.onWifiUsabilityStats(
-                                    seqNum, isSameBssidAndFreq, stats));
-                        }
-                    },
-                    listener.hashCode()
-            );
+                        };
+                sOnWifiUsabilityStatsListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.addOnWifiUsabilityStatsListener(binderCallback);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5681,7 +7074,16 @@ public class WifiManager {
             Log.v(TAG, "removeOnWifiUsabilityStatsListener: listener=" + listener);
         }
         try {
-            mService.removeOnWifiUsabilityStatsListener(listener.hashCode());
+            synchronized (sOnWifiUsabilityStatsListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sOnWifiUsabilityStatsListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.removeOnWifiUsabilityStatsListener(
+                        sOnWifiUsabilityStatsListenerMap.get(listenerIdentifier));
+                sOnWifiUsabilityStatsListenerMap.remove(listenerIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5771,7 +7173,6 @@ public class WifiManager {
                 executor.execute(callback::onScanResultsAvailable);
             }
         }
-
     }
 
     /**
@@ -5873,6 +7274,91 @@ public class WifiManager {
     }
 
     /**
+     * Add a listener listening to wifi verbose logging changes.
+     * See {@link WifiVerboseLoggingStatusChangedListener}.
+     * Caller can remove a previously registered listener using
+     * {@link WifiManager#removeWifiVerboseLoggingStatusChangedListener(
+     * WifiVerboseLoggingStatusChangedListener)}
+     * Same caller can add multiple listeners to monitor the event.
+     * <p>
+     * Applications should have the
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Callers without the permission will trigger a {@link java.lang.SecurityException}.
+     * <p>
+     * @param executor The executor to execute the listener of the {@code listener} object.
+     * @param listener listener for changes in wifi verbose logging.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void addWifiVerboseLoggingStatusChangedListener(
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull WifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
+        if (executor == null) throw new IllegalArgumentException("Executor cannot be null");
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "addWifiVerboseLoggingStatusChangedListener listener=" + listener
+                    + ", executor=" + executor);
+        }
+        try {
+            synchronized (sWifiVerboseLoggingStatusChangedListenerMap) {
+                IWifiVerboseLoggingStatusChangedListener.Stub binderCallback =
+                        new IWifiVerboseLoggingStatusChangedListener.Stub() {
+                            @Override
+                            public void onStatusChanged(boolean enabled) {
+                                if (mVerboseLoggingEnabled) {
+                                    Log.v(TAG, "WifiVerboseLoggingStatusListener: "
+                                            + "onVerboseLoggingStatusChanged: enabled=" + enabled);
+                                }
+                                Binder.clearCallingIdentity();
+                                executor.execute(() -> listener.onWifiVerboseLoggingStatusChanged(
+                                        enabled));
+                            }
+                        };
+                sWifiVerboseLoggingStatusChangedListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.addWifiVerboseLoggingStatusChangedListener(binderCallback);
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Allow callers to remove a previously registered listener.
+     * <p>
+     * Applications should have the
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * Callers without the permission will trigger a {@link java.lang.SecurityException}.
+     * <p>
+     * @param listener listener to remove.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void removeWifiVerboseLoggingStatusChangedListener(
+            @NonNull WifiVerboseLoggingStatusChangedListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
+        Log.v(TAG, "removeWifiVerboseLoggingStatusChangedListener: listener=" + listener);
+        try {
+            synchronized (sWifiVerboseLoggingStatusChangedListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sWifiVerboseLoggingStatusChangedListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.removeWifiVerboseLoggingStatusChangedListener(
+                        sWifiVerboseLoggingStatusChangedListenerMap.get(listenerIdentifier));
+                sWifiVerboseLoggingStatusChangedListenerMap.remove(listenerIdentifier);
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Add a listener for suggestion networks. See {@link SuggestionConnectionStatusListener}.
      * Caller will receive the event when suggested network have connection failure.
      * Caller can remove a previously registered listener using
@@ -5897,9 +7383,14 @@ public class WifiManager {
         Log.v(TAG, "addSuggestionConnectionStatusListener listener=" + listener
                 + ", executor=" + executor);
         try {
-            mService.registerSuggestionConnectionStatusListener(new Binder(),
-                    new SuggestionConnectionStatusListenerProxy(executor, listener),
-                    listener.hashCode(), mContext.getOpPackageName(), mContext.getAttributionTag());
+            synchronized (sSuggestionConnectionStatusListenerMap) {
+                ISuggestionConnectionStatusListener.Stub binderCallback =
+                        new SuggestionConnectionStatusListenerProxy(executor, listener);
+                sSuggestionConnectionStatusListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.registerSuggestionConnectionStatusListener(binderCallback,
+                        mContext.getOpPackageName(), mContext.getAttributionTag());
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -5918,8 +7409,17 @@ public class WifiManager {
         if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
         Log.v(TAG, "removeSuggestionConnectionStatusListener: listener=" + listener);
         try {
-            mService.unregisterSuggestionConnectionStatusListener(listener.hashCode(),
-                    mContext.getOpPackageName());
+            synchronized (sSuggestionConnectionStatusListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sSuggestionConnectionStatusListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.unregisterSuggestionConnectionStatusListener(
+                        sSuggestionConnectionStatusListenerMap.get(listenerIdentifier),
+                        mContext.getOpPackageName());
+                sSuggestionConnectionStatusListenerMap.remove(listenerIdentifier);
+            }
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -6007,7 +7507,13 @@ public class WifiManager {
     @SystemApi
     public interface ScoreUpdateObserver {
         /**
-         * Called by applications to indicate network status.
+         * Called by applications to indicate network status. For applications targeting
+         * {@link android.os.Build.VERSION_CODES#S} or above: The score is not used to take action
+         * on network selection but for the purpose of Wifi metric collection only; Network
+         * selection is influenced by inputs from
+         * {@link ScoreUpdateObserver#notifyStatusUpdate(int, boolean)},
+         * {@link ScoreUpdateObserver#requestNudOperation(int, boolean)}, and
+         * {@link ScoreUpdateObserver#blocklistCurrentBssid(int)}.
          *
          * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
@@ -6025,6 +7531,40 @@ public class WifiManager {
          *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
          */
         void triggerUpdateOfWifiUsabilityStats(int sessionId);
+
+        /**
+         * Called by applications to indicate whether current Wi-Fi network is usable or not.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         * @param isUsable The boolean representing whether current Wi-Fi network is usable, and it
+         *                 may be sent to ConnectivityService and used for setting default network.
+         *                 Populated by connected network scorer in applications.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        default void notifyStatusUpdate(int sessionId, boolean isUsable) {}
+
+        /**
+         * Called by applications to start a NUD (Neighbor Unreachability Detection) operation. The
+         * framework throttles NUD operations to no more frequently than every five seconds
+         * (see {@link WifiScoreReport#NUD_THROTTLE_MILLIS}). The framework keeps track of requests
+         * and executes them as soon as possible based on the throttling criteria.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        default void requestNudOperation(int sessionId) {}
+
+        /**
+         * Called by applications to blocklist currently connected BSSID. No blocklisting operation
+         * if called after disconnection.
+         *
+         * @param sessionId The ID to indicate current Wi-Fi network connection obtained from
+         *                  {@link WifiConnectedNetworkScorer#onStart(int)}.
+         */
+        @RequiresApi(Build.VERSION_CODES.S)
+        default void blocklistCurrentBssid(int sessionId) {}
     }
 
     /**
@@ -6056,6 +7596,42 @@ public class WifiManager {
                 throw e.rethrowFromSystemServer();
             }
         }
+
+        @Override
+        public void notifyStatusUpdate(int sessionId, boolean isUsable) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.notifyStatusUpdate(sessionId, isUsable);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+
+        @Override
+        public void requestNudOperation(int sessionId) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.requestNudOperation(sessionId);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+
+        @Override
+        public void blocklistCurrentBssid(int sessionId) {
+            if (!SdkLevel.isAtLeastS()) {
+                throw new UnsupportedOperationException();
+            }
+            try {
+                mScoreUpdateObserver.blocklistCurrentBssid(sessionId);
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
     }
 
     /**
@@ -6070,8 +7646,20 @@ public class WifiManager {
         /**
          * Called by framework to indicate the start of a network connection.
          * @param sessionId The ID to indicate current Wi-Fi network connection.
+         * @deprecated This API is deprecated.  Please use
+         *             {@link WifiConnectedNetworkScorer#onStart(WifiConnectedSessionInfo)}.
          */
-        void onStart(int sessionId);
+        @Deprecated
+        default void onStart(int sessionId) {}
+
+        /**
+         * Called by framework to indicate the start of a network connection.
+         * @param sessionInfo The session information to indicate current Wi-Fi network connection.
+         *                    See {@link WifiConnectedSessionInfo}.
+         */
+        default void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
+            onStart(sessionInfo.getSessionId());
+        }
 
         /**
          * Called by framework to indicate the end of a network connection.
@@ -6103,12 +7691,12 @@ public class WifiManager {
         }
 
         @Override
-        public void onStart(int sessionId) {
+        public void onStart(@NonNull WifiConnectedSessionInfo sessionInfo) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionId=" + sessionId);
+                Log.v(TAG, "WifiConnectedNetworkScorer: " + "onStart: sessionInfo=" + sessionInfo);
             }
             Binder.clearCallingIdentity();
-            mExecutor.execute(() -> mScorer.onStart(sessionId));
+            mExecutor.execute(() -> mScorer.onStart(sessionInfo));
         }
 
         @Override
@@ -6265,6 +7853,306 @@ public class WifiManager {
     public boolean isAutoWakeupEnabled() {
         try {
             return mService.isAutoWakeupEnabled();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Sets the state of carrier offload on merged or unmerged networks for specified subscription.
+     *
+     * <p>
+     * When a subscription's carrier network offload is disabled, all network suggestions related to
+     * this subscription will not be considered for auto join.
+     * <p>
+     * If calling app want disable all carrier network offload from a specified subscription, should
+     * call this API twice to disable both merged and unmerged carrier network suggestions.
+     *
+     * @param subscriptionId See {@link SubscriptionInfo#getSubscriptionId()}.
+     * @param merged True for carrier merged network, false otherwise.
+     *               See {@link WifiNetworkSuggestion.Builder#setCarrierMerged(boolean)}
+     * @param enabled True for enable carrier network offload, false otherwise.
+     * @see #isCarrierNetworkOffloadEnabled(int, boolean)
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+    public void setCarrierNetworkOffloadEnabled(int subscriptionId, boolean merged,
+            boolean enabled) {
+        try {
+            mService.setCarrierNetworkOffloadEnabled(subscriptionId, merged, enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Get the carrier network offload state for merged or unmerged networks for specified
+     * subscription.
+     * @param subscriptionId subscription ID see {@link SubscriptionInfo#getSubscriptionId()}
+     * @param merged True for carrier merged network, false otherwise.
+     *               See {@link WifiNetworkSuggestion.Builder#setCarrierMerged(boolean)}
+     * @return True to indicate that carrier network offload is enabled, false otherwise.
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public boolean isCarrierNetworkOffloadEnabled(int subscriptionId, boolean merged) {
+        try {
+            return mService.isCarrierNetworkOffloadEnabled(subscriptionId, merged);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Interface for network suggestion user approval status change listener.
+     * Should be implemented by applications and registered using
+     * {@link #addSuggestionUserApprovalStatusListener(Executor,
+     * SuggestionUserApprovalStatusListener)} (
+     */
+    public interface SuggestionUserApprovalStatusListener {
+
+        /**
+         * Called when the user approval status of the App has changed.
+         * @param status The current status code for the user approval. One of the
+         *               {@code STATUS_SUGGESTION_APPROVAL_} values.
+         */
+        void onUserApprovalStatusChange(@SuggestionUserApprovalStatus int status);
+    }
+
+    private class SuggestionUserApprovalStatusListenerProxy extends
+            ISuggestionUserApprovalStatusListener.Stub {
+        private final Executor mExecutor;
+        private final SuggestionUserApprovalStatusListener mListener;
+
+        SuggestionUserApprovalStatusListenerProxy(@NonNull Executor executor,
+                @NonNull SuggestionUserApprovalStatusListener listener) {
+            mExecutor = executor;
+            mListener = listener;
+        }
+
+        @Override
+        public void onUserApprovalStatusChange(int status) {
+            mExecutor.execute(() -> mListener.onUserApprovalStatusChange(status));
+        }
+
+    }
+
+    /**
+     * Add a listener for Wi-Fi network suggestion user approval status.
+     * See {@link SuggestionUserApprovalStatusListener}.
+     * Caller will receive a callback immediately after adding a listener and when the user approval
+     * status of the caller has changed.
+     * Caller can remove a previously registered listener using
+     * {@link WifiManager#removeSuggestionUserApprovalStatusListener(
+     * SuggestionUserApprovalStatusListener)}
+     * A caller can add multiple listeners to monitor the event.
+     * @param executor The executor to execute the listener of the {@code listener} object.
+     * @param listener listener for suggestion user approval status changes.
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void addSuggestionUserApprovalStatusListener(
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull SuggestionUserApprovalStatusListener listener) {
+        if (listener == null) throw new NullPointerException("Listener cannot be null");
+        if (executor == null) throw new NullPointerException("Executor cannot be null");
+        Log.v(TAG, "addSuggestionUserApprovalStatusListener listener=" + listener
+                + ", executor=" + executor);
+        try {
+            synchronized (sSuggestionUserApprovalStatusListenerMap) {
+                ISuggestionUserApprovalStatusListener.Stub binderCallback =
+                        new SuggestionUserApprovalStatusListenerProxy(executor, listener);
+                sSuggestionUserApprovalStatusListenerMap.put(System.identityHashCode(listener),
+                        binderCallback);
+                mService.addSuggestionUserApprovalStatusListener(binderCallback,
+                        mContext.getOpPackageName());
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+
+    }
+
+    /**
+     * Allow callers to remove a previously registered listener using
+     * {@link #addSuggestionUserApprovalStatusListener(Executor,
+     * SuggestionUserApprovalStatusListener)}. After calling this method,
+     * applications will no longer receive network suggestion user approval status change through
+     * that listener.
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public void removeSuggestionUserApprovalStatusListener(
+            @NonNull SuggestionUserApprovalStatusListener listener) {
+        if (listener == null) throw new IllegalArgumentException("Listener cannot be null");
+        Log.v(TAG, "removeSuggestionUserApprovalStatusListener: listener=" + listener);
+        try {
+            synchronized (sSuggestionUserApprovalStatusListenerMap) {
+                int listenerIdentifier = System.identityHashCode(listener);
+                if (!sSuggestionUserApprovalStatusListenerMap.contains(listenerIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + listenerIdentifier);
+                    return;
+                }
+                mService.removeSuggestionUserApprovalStatusListener(
+                        sSuggestionUserApprovalStatusListenerMap.get(listenerIdentifier),
+                        mContext.getOpPackageName());
+                sSuggestionUserApprovalStatusListenerMap.remove(listenerIdentifier);
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Indicates the start/end of an emergency scan request being processed by {@link WifiScanner}.
+     * The wifi stack should ensure that the wifi chip remains on for the duration of the scan.
+     * WifiScanner detects emergency scan requests via
+     * {@link WifiScanner.ScanSettings#ignoreLocationSettings} flag.
+     *
+     * If the wifi stack is off (because location & wifi toggles are off) when this indication is
+     * received, the wifi stack will temporarily move to a scan only mode. Since location toggle
+     * is off, only scan with
+     * {@link WifiScanner.ScanSettings#ignoreLocationSettings} flag set will be
+     * allowed to be processed for this duration.
+     *
+     * @hide
+     */
+    @RequiresPermission(android.Manifest.permission.NETWORK_STACK)
+    public void setEmergencyScanRequestInProgress(boolean inProgress) {
+        try {
+            mService.setEmergencyScanRequestInProgress(inProgress);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Enable or disable Wi-Fi scoring.  Wi-Fi network status is evaluated by Wi-Fi scoring
+     * {@link WifiScoreReport}. This API enables/disables Wi-Fi scoring to take action on network
+     * selection.
+     *
+     * @param enabled {@code true} to enable, {@code false} to disable.
+     * @return true The status of Wifi scoring is set successfully.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    public boolean setWifiScoringEnabled(boolean enabled) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "setWifiScoringEnabled: " + enabled);
+        }
+        try {
+            return mService.setWifiScoringEnabled(enabled);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Flush Passpoint ANQP cache, and clear pending ANQP requests. Allows the caller to reset the
+     * Passpoint ANQP state, if required.
+     *
+     * Notes:
+     * 1. Flushing the ANQP cache may cause delays in discovering and connecting to Passpoint
+     * networks.
+     * 2. Intended to be used by Device Owner (DO), Profile Owner (PO), Settings and provisioning
+     * apps.
+     */
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
+            android.Manifest.permission.NETWORK_CARRIER_PROVISIONING
+            })
+    public void flushPasspointAnqpCache() {
+        try {
+            mService.flushPasspointAnqpCache(mContext.getOpPackageName());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Returns a list of {@link WifiAvailableChannel} for the specified band and operational
+     * mode(s), that is allowed for the current regulatory domain. An empty list implies that there
+     * are no available channels for use.
+     *
+     * @param band one of the following band constants defined in {@code WifiScanner#WIFI_BAND_*}
+     *             constants.
+     *             1. {@code WifiScanner#WIFI_BAND_UNSPECIFIED} - no band specified; Looks for the
+     *                channels in all the available bands - 2.4 GHz, 5 GHz, 6 GHz and 60 GHz
+     *             2. {@code WifiScanner#WIFI_BAND_24_GHZ}
+     *             3. {@code WifiScanner#WIFI_BAND_5_GHZ_WITH_DFS}
+     *             4. {@code WifiScanner#WIFI_BAND_BOTH_WITH_DFS}
+     *             5. {@code WifiScanner#WIFI_BAND_6_GHZ}
+     *             6. {@code WifiScanner#WIFI_BAND_24_5_WITH_DFS_6_GHZ}
+     *             7. {@code WifiScanner#WIFI_BAND_60_GHZ}
+     *             8. {@code WifiScanner#WIFI_BAND_24_5_WITH_DFS_6_60_GHZ}
+     * @param mode Bitwise OR of {@code WifiAvailableChannel#OP_MODE_*} constants
+     *        e.g. {@link WifiAvailableChannel#OP_MODE_WIFI_AWARE}
+     * @return a list of {@link WifiAvailableChannel}
+     *
+     * @throws UnsupportedOperationException - if this API is not supported on this device
+     *         or IllegalArgumentException - if the band specified is not one among the list
+     *         of bands mentioned above.
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @NonNull
+    @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE)
+    public List<WifiAvailableChannel> getAllowedChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.getUsableChannels(band, mode,
+                    WifiAvailableChannel.FILTER_REGULATORY);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Returns a list of {@link WifiAvailableChannel} for the specified band and operational
+     * mode(s) per the current regulatory domain and device-specific constraints such as concurrency
+     * state and interference due to other radios. An empty list implies that there are no available
+     * channels for use.
+     *
+     * @param band one of the following band constants defined in {@code WifiScanner#WIFI_BAND_*}
+     *             constants.
+     *             1. {@code WifiScanner#WIFI_BAND_UNSPECIFIED} - no band specified; Looks for the
+     *                channels in all the available bands - 2.4 GHz, 5 GHz, 6 GHz and 60 GHz
+     *             2. {@code WifiScanner#WIFI_BAND_24_GHZ}
+     *             3. {@code WifiScanner#WIFI_BAND_5_GHZ_WITH_DFS}
+     *             4. {@code WifiScanner#WIFI_BAND_BOTH_WITH_DFS}
+     *             5. {@code WifiScanner#WIFI_BAND_6_GHZ}
+     *             6. {@code WifiScanner#WIFI_BAND_24_5_WITH_DFS_6_GHZ}
+     *             7. {@code WifiScanner#WIFI_BAND_60_GHZ}
+     *             8. {@code WifiScanner#WIFI_BAND_24_5_WITH_DFS_6_60_GHZ}
+     * @param mode Bitwise OR of {@code WifiAvailableChannel#OP_MODE_*} constants
+     *        e.g. {@link WifiAvailableChannel#OP_MODE_WIFI_AWARE}
+     * @return a list of {@link WifiAvailableChannel}
+     *
+     * @throws UnsupportedOperationException - if this API is not supported on this device
+     *         or IllegalArgumentException - if the band specified is not one among the list
+     *         of bands mentioned above.
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    @SystemApi
+    @NonNull
+    @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE)
+    public List<WifiAvailableChannel> getUsableChannels(
+            @WifiScanner.WifiBand int band,
+            @WifiAvailableChannel.OpMode int mode) {
+        if (!SdkLevel.isAtLeastS()) {
+            throw new UnsupportedOperationException();
+        }
+        try {
+            return mService.getUsableChannels(band, mode,
+                    WifiAvailableChannel.getUsableFilter());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

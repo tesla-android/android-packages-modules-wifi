@@ -64,7 +64,8 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
                 new int[]{2400, 2450},
                 new int[]{5150, 5175},
                 new int[]{5600, 5650},
-                new int[]{5945, 5985});
+                new int[]{5945, 5985},
+                new int[]{58320, 60480});
         mWifiMonitorSpy = spy(mWifiMonitor);
         mScanner = new WificondScannerImpl(mContext, BaseWifiScannerImplTest.IFACE_NAME,
                 mWifiNative, mWifiMonitorSpy, new WificondChannelHelper(mWifiNative),
@@ -99,8 +100,34 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
         mLooper.dispatchAll();
 
         // No scan is issued to WifiNative.
-        verify(mWifiNative, never()).scan(any(), anyInt(), any(), any(List.class));
+        verify(mWifiNative, never()).scan(any(), anyInt(), any(), any(List.class), anyBoolean());
         // A scan failed event must be reported.
+        verify(eventHandler).onScanStatus(WifiNative.WIFI_SCAN_FAILED);
+    }
+
+    @Test
+    public void cleanupReportsFailureIfScanInProgress() {
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
+
+        // setup ongoing scan
+        WifiNative.ScanSettings settings = new NativeScanSettingsBuilder()
+                .withBasePeriod(10000) // ms
+                .withMaxApPerScan(10)
+                .addBucketWithBand(10000 /* ms */, WifiScanner.REPORT_EVENT_AFTER_EACH_SCAN,
+                        WifiScanner.WIFI_BAND_5_GHZ)
+                .build();
+        WifiNative.ScanEventHandler eventHandler = mock(WifiNative.ScanEventHandler.class);
+        mScanner.startSingleScan(settings, eventHandler);
+        mLooper.dispatchAll();
+
+        // no scan failure message
+        verify(eventHandler, never()).onScanStatus(WifiNative.WIFI_SCAN_FAILED);
+
+        // tear down the iface
+        mScanner.cleanup();
+
+        // verify received scan failure callback
         verify(eventHandler).onScanStatus(WifiNative.WIFI_SCAN_FAILED);
     }
 
@@ -129,7 +156,7 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
                 expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_GHZ),
                 new ArrayList<String>(),
                 ScanResults.create(0, WifiScanner.WIFI_BAND_24_GHZ,
-                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), false);
+                        2400, 2450, 2450, 2400, 2450, 2450, 2400, 2450, 2450), false, false);
 
         mWifiMonitor.sendMessage(IFACE_NAME, WifiMonitor.SCAN_RESULTS_EVENT);
         mLooper.dispatchAll();
@@ -151,7 +178,8 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
                 .build();
 
         // Kick off a scan
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
         WifiNative.ScanEventHandler eventHandler = mock(WifiNative.ScanEventHandler.class);
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
         mLooper.dispatchAll();
@@ -220,7 +248,8 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
         WifiNative.ScanEventHandler eventHandler = mock(WifiNative.ScanEventHandler.class);
         InOrder order = inOrder(eventHandler, mWifiNative);
         // scan succeeds
-        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class))).thenReturn(true);
+        when(mWifiNative.scan(eq(IFACE_NAME), anyInt(), any(), any(List.class), anyBoolean()))
+                .thenReturn(true);
         when(mWifiNative.getScanResults(eq(IFACE_NAME))).thenReturn(rawScanResults);
 
         int ap_count = rawScanResults.size();
@@ -255,7 +284,8 @@ public class WificondScannerTest extends BaseWifiScannerImplTest {
         // Trigger a scan to update mNativeScanResults in WificondScannerImpl.
         assertTrue(mScanner.startSingleScan(settings, eventHandler));
         Set<Integer> expectedScan = expectedBandScanFreqs(WifiScanner.WIFI_BAND_24_GHZ);
-        order.verify(mWifiNative).scan(eq(IFACE_NAME), anyInt(), eq(expectedScan), any(List.class));
+        order.verify(mWifiNative).scan(eq(IFACE_NAME), anyInt(), eq(expectedScan), any(List.class),
+                anyBoolean());
 
         // Notify scan has finished
         mWifiMonitor.sendMessage(eq(IFACE_NAME), WifiMonitor.SCAN_RESULTS_EVENT);

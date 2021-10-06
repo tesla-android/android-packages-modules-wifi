@@ -130,6 +130,8 @@ public class WifiAwareSession implements AutoCloseable {
      * Other results of the publish session operations will also be routed to callbacks
      * on the {@code callback} object. The resulting publish session can be modified using
      * {@link PublishDiscoverySession#updatePublish(PublishConfig)}.
+     * <p> The total count of currently available Wi-Fi Aware publish sessions is limited and is
+     * available via the {@link AwareResources#getAvailablePublishSessionsCount()} method.
      * <p>
      *      An application must use the {@link DiscoverySession#close()} to
      *      terminate the publish discovery session once it isn't needed. This will free
@@ -176,6 +178,8 @@ public class WifiAwareSession implements AutoCloseable {
      * Other results of the subscribe session operations will also be routed to callbacks
      * on the {@code callback} object. The resulting subscribe session can be modified using
      * {@link SubscribeDiscoverySession#updateSubscribe(SubscribeConfig)}.
+     * <p> The total count of currently available Wi-Fi Aware subscribe sessions is limited and is
+     * available via the {@link AwareResources#getAvailableSubscribeSessionsCount()} method.
      * <p>
      *      An application must use the {@link DiscoverySession#close()} to
      *      terminate the subscribe discovery session once it isn't needed. This will free
@@ -219,6 +223,11 @@ public class WifiAwareSession implements AutoCloseable {
      * To set up an encrypted link use the
      * {@link #createNetworkSpecifierPassphrase(int, byte[], String)} API.
      *
+     * @deprecated Please use in-band data-path setup, refer to
+     * {@link WifiAwareNetworkSpecifier.Builder},
+     * {@link #publish(PublishConfig, DiscoverySessionCallback, Handler)} and
+     * {@link #subscribe(SubscribeConfig, DiscoverySessionCallback, Handler)}
+     *
      * @param role  The role of this device:
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_INITIATOR} or
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_RESPONDER}
@@ -232,6 +241,7 @@ public class WifiAwareSession implements AutoCloseable {
      * android.net.ConnectivityManager.NetworkCallback)}
      * [or other varieties of that API].
      */
+    @Deprecated
     public NetworkSpecifier createNetworkSpecifierOpen(
             @WifiAwareManager.DataPathRole int role, @NonNull byte[] peer) {
         WifiAwareManager mgr = mMgr.get();
@@ -257,6 +267,11 @@ public class WifiAwareSession implements AutoCloseable {
      *     when using Aware discovery use the alternative network specifier method -
      *     {@link android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder}.
      *
+     * @deprecated Please use in-band data-path setup, refer to
+     * {@link WifiAwareNetworkSpecifier.Builder},
+     * {@link #publish(PublishConfig, DiscoverySessionCallback, Handler)} and
+     * {@link #subscribe(SubscribeConfig, DiscoverySessionCallback, Handler)}
+     *
      * @param role  The role of this device:
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_INITIATOR} or
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_RESPONDER}
@@ -273,6 +288,7 @@ public class WifiAwareSession implements AutoCloseable {
      * android.net.ConnectivityManager.NetworkCallback)}
      * [or other varieties of that API].
      */
+    @Deprecated
     public NetworkSpecifier createNetworkSpecifierPassphrase(
             @WifiAwareManager.DataPathRole int role, @NonNull byte[] peer,
             @NonNull String passphrase) {
@@ -303,6 +319,11 @@ public class WifiAwareSession implements AutoCloseable {
      *     when using Aware discovery use the alternative network specifier method -
      *     {@link android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder}.
      *
+     * @deprecated Please use in-band data-path setup, refer to
+     * {@link WifiAwareNetworkSpecifier.Builder},
+     * {@link #publish(PublishConfig, DiscoverySessionCallback, Handler)} and
+     * {@link #subscribe(SubscribeConfig, DiscoverySessionCallback, Handler)}
+     *
      * @param role  The role of this device:
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_INITIATOR} or
      *              {@link WifiAwareManager#WIFI_AWARE_DATA_PATH_ROLE_RESPONDER}
@@ -323,6 +344,7 @@ public class WifiAwareSession implements AutoCloseable {
      *
      * @hide
      */
+    @Deprecated
     @SystemApi
     public NetworkSpecifier createNetworkSpecifierPmk(
             @WifiAwareManager.DataPathRole int role, @NonNull byte[] peer, @NonNull byte[] pmk) {

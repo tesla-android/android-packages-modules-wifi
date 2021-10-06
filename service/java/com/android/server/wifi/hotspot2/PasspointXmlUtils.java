@@ -22,6 +22,7 @@ import android.net.wifi.hotspot2.pps.HomeSp;
 import android.net.wifi.hotspot2.pps.Policy;
 import android.net.wifi.hotspot2.pps.UpdateParameter;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.XmlUtil;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -110,9 +111,14 @@ public class PasspointXmlUtils {
     private static final String XML_TAG_USAGE_LIMIT_DATA_LIMIT = "UsageLimitDataLimit";
     private static final String XML_TAG_USAGE_LIMIT_TIME_LIMIT = "UsageLimitTimeLimit";
     private static final String XML_TAG_CARRIER_ID = "CarrierId";
+    private static final String XML_TAG_SUBSCRIPTION_ID = "SubscriptionId";
     private static final String XML_TAG_IS_AUTO_JOIN = "AutoJoinEnabled";
     private static final String XML_TAG_IS_MAC_RANDOMIZATION_ENABLED = "IsMacRandomizationEnabled";
     private static final String XML_TAG_METERED_OVERRIDE = "MeteredOverride";
+    private static final String XML_TAG_IS_CARRIER_MERGED = "IsCarrierMerged";
+    private static final String XML_TAG_IS_OEM_PAID = "IsOemPaid";
+    private static final String XML_TAG_IS_OEM_PRIVATE = "IsOemPrivate";
+    private static final String XML_TAG_DECORATED_IDENTITY_PREFIX = "DecoratedIdentityPrefix";
 
     /**
      * Serialize a {@link PasspointConfiguration} to the output stream as a XML block.
@@ -150,10 +156,18 @@ public class PasspointXmlUtils {
                     config.getServiceFriendlyNames());
         }
         XmlUtil.writeNextValue(out, XML_TAG_CARRIER_ID, config.getCarrierId());
+        XmlUtil.writeNextValue(out, XML_TAG_SUBSCRIPTION_ID, config.getSubscriptionId());
         XmlUtil.writeNextValue(out, XML_TAG_IS_AUTO_JOIN, config.isAutojoinEnabled());
         XmlUtil.writeNextValue(out, XML_TAG_IS_MAC_RANDOMIZATION_ENABLED,
                 config.isMacRandomizationEnabled());
         XmlUtil.writeNextValue(out, XML_TAG_METERED_OVERRIDE, config.getMeteredOverride());
+        XmlUtil.writeNextValue(out, XML_TAG_IS_CARRIER_MERGED, config.isCarrierMerged());
+        XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PAID, config.isOemPaid());
+        XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PRIVATE, config.isOemPrivate());
+        if (SdkLevel.isAtLeastS()) {
+            XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
+                    config.getDecoratedIdentityPrefix());
+        }
     }
 
     /**
@@ -210,6 +224,9 @@ public class PasspointXmlUtils {
                     case XML_TAG_CARRIER_ID:
                         config.setCarrierId((int) value);
                         break;
+                    case XML_TAG_SUBSCRIPTION_ID:
+                        config.setSubscriptionId((int) value);
+                        break;
                     case XML_TAG_IS_AUTO_JOIN:
                         config.setAutojoinEnabled((boolean) value);
                         break;
@@ -218,6 +235,20 @@ public class PasspointXmlUtils {
                         break;
                     case XML_TAG_METERED_OVERRIDE:
                         config.setMeteredOverride((int) value);
+                        break;
+                    case XML_TAG_IS_CARRIER_MERGED:
+                        config.setCarrierMerged((boolean) value);
+                        break;
+                    case XML_TAG_IS_OEM_PAID:
+                        config.setOemPaid((boolean) value);
+                        break;
+                    case XML_TAG_IS_OEM_PRIVATE:
+                        config.setOemPrivate((boolean) value);
+                        break;
+                    case XML_TAG_DECORATED_IDENTITY_PREFIX:
+                        if (SdkLevel.isAtLeastS()) {
+                            config.setDecoratedIdentityPrefix((String) value);
+                        }
                         break;
                     default:
                         throw new XmlPullParserException("Unknown value under "

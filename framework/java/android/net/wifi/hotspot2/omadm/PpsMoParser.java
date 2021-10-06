@@ -25,6 +25,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
 
+import com.android.modules.utils.build.SdkLevel;
+
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -186,6 +188,10 @@ public final class PpsMoParser {
      * <Node>
      */
     private static final String NODE_AAA_SERVER_TRUSTED_NAMES = "AAAServerTrustedNames";
+
+    private static final String NODE_VENDOR_WBA = "WBA";
+    private static final String NODE_EXTENSION_NAI = "NAI";
+    private static final String NODE_DECORATED_IDENTITY_PREFIX = "DecoratedPrefix";
 
     /**
      * Fields under HomeSP subtree.
@@ -385,9 +391,11 @@ public final class PpsMoParser {
         try {
             root = xmlParser.parse(xmlString);
         } catch(IOException | SAXException e) {
+            Log.e(TAG, "Failed to parse XML input");
             return null;
         }
         if (root == null) {
+            Log.e(TAG, "Root is not available");
             return null;
         }
 
@@ -1648,6 +1656,57 @@ public final class PpsMoParser {
     }
 
     /**
+     * Parse configurations under PerProviderSubscription/Extension/Android/NAI
+     * subtree.
+     *
+     * @param node PPSNode representing the root of the
+     *             PerProviderSubscription/Extension/Android/NAI subtree
+     * @throws ParsingException
+     */
+    private static void parseVendorWbaExtensionNai(PPSNode node,
+            PasspointConfiguration config) throws ParsingException {
+        if (node.isLeaf()) {
+            throw new ParsingException("Leaf node not expected for NAI instance");
+        }
+        for (PPSNode child : node.getChildren()) {
+            switch (child.getName()) {
+                case NODE_DECORATED_IDENTITY_PREFIX:
+                    if (SdkLevel.isAtLeastS()) {
+                        config.setDecoratedIdentityPrefix(parseDecoratedIdentityPrefix(child));
+                    }
+                    break;
+                default:
+                    Log.w(TAG, "Unknown node under NAI instance: " + child.getName());
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Parse configurations under PerProviderSubscription/Extension/Android/NAI/DecoratedPrefix
+     * leaf. This leaf node must contain a list of realms (could be a list of 1) delimited by a '!'
+     * character. e.g. homerealm.example.org! or proxyrealm.example.net!homerealm.example.org!
+     * as per RFC 7542.
+     *
+     * @param node PPSNode representing the root of the
+     *             PerProviderSubscription/Extension/Android/NAI/DecoratedPrefix leaf
+     * @return Decorated identity prefix
+     * @throws ParsingException
+     */
+    private static String parseDecoratedIdentityPrefix(PPSNode node) throws ParsingException {
+        if (!node.isLeaf()) {
+            throw new ParsingException("Leaf node expected for " + NODE_DECORATED_IDENTITY_PREFIX);
+        }
+        String decoratedIdentityPrefix = getPpsNodeValue(node);
+
+        if (TextUtils.isEmpty(decoratedIdentityPrefix) || !decoratedIdentityPrefix.endsWith("!")) {
+            throw new ParsingException("Invalid value for node " + NODE_DECORATED_IDENTITY_PREFIX);
+        }
+
+        return decoratedIdentityPrefix;
+    }
+
+    /**
      * Parse configurations under PerProviderSubscription/Extension/Android subtree.
      *
      * @param node PPSNode representing the root of PerProviderSubscription/Extension
@@ -1673,6 +1732,31 @@ public final class PpsMoParser {
     }
 
     /**
+     * Parse configurations under PerProviderSubscription/Extension/WBA subtree.
+     *
+     * @param node PPSNode representing the root of PerProviderSubscription/Extension
+     *             subtree
+     * @param config Instance of {@link PasspointConfiguration}
+     * @throws ParsingException
+     */
+    private static void parseVendorWbaExtension(PPSNode node, PasspointConfiguration config)
+            throws ParsingException {
+        if (node.isLeaf()) {
+            throw new ParsingException("Leaf node not expected for WBA Extension");
+        }
+        for (PPSNode child : node.getChildren()) {
+            switch (child.getName()) {
+                case NODE_EXTENSION_NAI:
+                    parseVendorWbaExtensionNai(child, config);
+                    break;
+                default:
+                    // Don't raise an exception for unknown nodes
+                    Log.w(TAG, "Unknown node under WBA Extension: " + child.getName());
+            }
+        }
+    }
+
+    /**
      * Parse configurations under PerProviderSubscription/Extension subtree.
      *
      * @param node PPSNode representing the root of PerProviderSubscription/Extension
@@ -1689,6 +1773,9 @@ public final class PpsMoParser {
             switch (child.getName()) {
                 case NODE_VENDOR_ANDROID:
                     parseVendorAndroidExtension(child, config);
+                    break;
+                case NODE_VENDOR_WBA:
+                    parseVendorWbaExtension(child, config);
                     break;
                 default:
                     // Unknown nodes under Extension won't raise exception.

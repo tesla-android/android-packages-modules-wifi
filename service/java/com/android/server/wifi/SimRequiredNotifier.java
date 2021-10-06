@@ -16,23 +16,15 @@
 
 package com.android.server.wifi;
 
-import android.app.ActivityManager;
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Icon;
 import android.net.wifi.WifiConfiguration;
-import android.os.UserHandle;
 import android.provider.Settings;
-import android.util.Log;
 
 import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
 import com.android.wifi.resources.R;
-
-import java.util.List;
 
 /**
  * Helper class to generate SIM required notification
@@ -43,13 +35,13 @@ public class SimRequiredNotifier {
     private static final String TAG = "SimRequiredNotifier";
     private final WifiContext mContext;
     private final FrameworkFacade mFrameworkFacade;
-    private final NotificationManager mNotificationManager;
+    private final WifiNotificationManager mNotificationManager;
 
-    public SimRequiredNotifier(WifiContext context, FrameworkFacade framework) {
+    public SimRequiredNotifier(WifiContext context, FrameworkFacade framework,
+            WifiNotificationManager wifiNotificationManager) {
         mContext = context;
         mFrameworkFacade = framework;
-        mNotificationManager =
-                mContext.getSystemService(NotificationManager.class);
+        mNotificationManager = wifiNotificationManager;
     }
 
     /**
@@ -69,24 +61,11 @@ public class SimRequiredNotifier {
      * Dismiss notification
      */
     public void dismissSimRequiredNotification() {
-        mNotificationManager.cancel(null, SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
-    }
-
-    private String getSettingsPackageName() {
-        Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
-        List<ResolveInfo> resolveInfos = mContext.getPackageManager().queryIntentActivitiesAsUser(
-                intent, PackageManager.MATCH_SYSTEM_ONLY | PackageManager.MATCH_DEFAULT_ONLY,
-                UserHandle.of(ActivityManager.getCurrentUser()));
-        if (resolveInfos == null || resolveInfos.isEmpty()) {
-            Log.e(TAG, "Failed to resolve wifi settings activity");
-            return null;
-        }
-        // Pick the first one if there are more than 1 since the list is ordered from best to worst.
-        return resolveInfos.get(0).activityInfo.packageName;
+        mNotificationManager.cancel(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED);
     }
 
     private void showNotification(String ssid, String carrier) {
-        String settingsPackage = getSettingsPackageName();
+        String settingsPackage = mFrameworkFacade.getSettingsPackageName(mContext);
         if (settingsPackage == null) return;
         Intent intent = new Intent(Settings.ACTION_WIRELESS_SETTINGS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -112,8 +91,8 @@ public class SimRequiredNotifier {
                 .setSmallIcon(Icon.createWithResource(mContext.getWifiOverlayApkPkgName(),
                         R.drawable.stat_notify_wifi_in_range))
                 .setContentIntent(mFrameworkFacade.getActivity(
-                        mContext, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
-        mNotificationManager.notify(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED,
-                builder.build());
+                        mContext, 0, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        mNotificationManager.notify(SystemMessage.NOTE_ID_WIFI_SIM_REQUIRED, builder.build());
     }
 }

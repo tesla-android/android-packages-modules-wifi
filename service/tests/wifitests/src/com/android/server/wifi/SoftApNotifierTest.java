@@ -24,7 +24,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Notification;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
@@ -47,7 +46,7 @@ public class SoftApNotifierTest extends WifiBaseTest {
 
     @Mock WifiContext mContext;
     @Mock Resources mResources;
-    @Mock NotificationManager mNotificationManager;
+    @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock FrameworkFacade mFrameworkFacade;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS) private Notification.Builder mNotificationBuilder;
     SoftApNotifier mSoftApNotifier;
@@ -58,11 +57,9 @@ public class SoftApNotifierTest extends WifiBaseTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        when(mContext.getSystemService(NotificationManager.class))
-                .thenReturn(mNotificationManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getWifiOverlayApkPkgName()).thenReturn("test.com.android.wifi.resources");
-        mSoftApNotifier = new SoftApNotifier(mContext, mFrameworkFacade);
+        mSoftApNotifier = new SoftApNotifier(mContext, mFrameworkFacade, mWifiNotificationManager);
     }
 
     /**
@@ -71,11 +68,11 @@ public class SoftApNotifierTest extends WifiBaseTest {
      * @throws Exception
      */
     @Test
-    public void showSoftApShutDownTimeoutExpiredNotification() throws Exception {
+    public void showSoftApShutdownTimeoutExpiredNotification() throws Exception {
         when(mFrameworkFacade.makeNotificationBuilder(any(),
                 eq(WifiService.NOTIFICATION_NETWORK_STATUS))).thenReturn(mNotificationBuilder);
-        mSoftApNotifier.showSoftApShutDownTimeoutExpiredNotification();
-        verify(mNotificationManager).notify(
+        mSoftApNotifier.showSoftApShutdownTimeoutExpiredNotification();
+        verify(mWifiNotificationManager).notify(
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED), any());
         ArgumentCaptor<Intent> intent = ArgumentCaptor.forClass(Intent.class);
         verify(mFrameworkFacade).getActivity(
@@ -90,9 +87,9 @@ public class SoftApNotifierTest extends WifiBaseTest {
      * @throws Exception
      */
     @Test
-    public void dismissSoftApShutDownTimeoutExpiredNotification() throws Exception {
-        mSoftApNotifier.dismissSoftApShutDownTimeoutExpiredNotification();
-        verify(mNotificationManager).cancel(any(),
+    public void dismissSoftApShutdownTimeoutExpiredNotification() throws Exception {
+        mSoftApNotifier.dismissSoftApShutdownTimeoutExpiredNotification();
+        verify(mWifiNotificationManager).cancel(
                 eq(mSoftApNotifier.NOTIFICATION_ID_SOFTAP_AUTO_DISABLED));
     }
 }
