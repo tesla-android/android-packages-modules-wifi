@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.wifi.util.HexEncoding;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
@@ -35,14 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
- * Stores SSID octets and handles conversion.
- *
- * For Ascii encoded string, any octet < 32 or > 127 is encoded as
- * a "\x" followed by the hex representation of the octet.
- * Exception chars are ", \, \e, \n, \r, \t which are escaped by a \
- * See src/utils/common.c for the implementation in the supplicant.
- *
- * @hide
+ * Representation of a Wi-Fi Service Set Identifier (SSID).
  */
 public final class WifiSsid implements Parcelable {
     private final byte[] mBytes;
@@ -197,7 +191,6 @@ public final class WifiSsid implements Parcelable {
     }
 
     /** Implement the Parcelable interface */
-    @UnsupportedAppUsage
     public static final @NonNull Creator<WifiSsid> CREATOR =
             new Creator<WifiSsid>() {
                 @Override
@@ -215,21 +208,24 @@ public final class WifiSsid implements Parcelable {
      * Use {@link #getBytes()} instead.
      * @hide
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.S,
+            publicAlternatives = "{@link #getBytes()}")
     public final ByteArrayOutputStream octets = new ByteArrayOutputStream(32);
 
     /**
      * Use {@link android.net.wifi.WifiManager#UNKNOWN_SSID} instead.
      * @hide
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.S,
+            publicAlternatives = "{@link android.net.wifi.WifiManager#UNKNOWN_SSID}")
     public static final String NONE = WifiManager.UNKNOWN_SSID;
 
     /**
      * Use {@link #fromUtf8Text(CharSequence)} instead.
      * @hide
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.S,
+            publicAlternatives = "{@link #fromUtf8Text(java.lang.CharSequence)}")
     public static WifiSsid createFromAsciiEncoded(String asciiEncoded) {
         return fromUtf8Text(asciiEncoded);
     }
@@ -238,7 +234,8 @@ public final class WifiSsid implements Parcelable {
      * Use {@link #getBytes()} instead.
      * @hide
      */
-    @UnsupportedAppUsage
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.S,
+            publicAlternatives = "{@link #getBytes()}")
     public byte[] getOctets() {
         return getBytes();
     }
