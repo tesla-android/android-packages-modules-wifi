@@ -270,7 +270,8 @@ public class WifiServiceImpl extends BaseWifiService {
                 Log.d(TAG, "OBSERVED active data subscription change, subId: " + subId);
                 mTetheredSoftApTracker.updateSoftApCapabilityWhenCarrierConfigChanged(subId);
                 mActiveModeWarden.updateSoftApCapability(
-                        mTetheredSoftApTracker.getSoftApCapability());
+                        mTetheredSoftApTracker.getSoftApCapability(),
+                        WifiManager.IFACE_IP_MODE_TETHERED);
             });
         }
     }
@@ -590,6 +591,7 @@ public class WifiServiceImpl extends BaseWifiService {
             // time increased.
             mCountryCode.registerListener(mCountryCodeTracker);
             mTetheredSoftApTracker.handleBootCompleted();
+            mLohsSoftApTracker.handleBootCompleted();
             mWifiInjector.getSarManager().handleBootCompleted();
         });
     }
@@ -1364,7 +1366,13 @@ public class WifiServiceImpl extends BaseWifiService {
                 if (countryCode != null) {
                     mTetheredSoftApTracker.updateAvailChannelListInSoftApCapability();
                     mActiveModeWarden.updateSoftApCapability(
-                            mTetheredSoftApTracker.getSoftApCapability());
+                            mTetheredSoftApTracker.getSoftApCapability(),
+                            WifiManager.IFACE_IP_MODE_TETHERED);
+                    // TODO: b/197529327 trigger Lohs capability callback & update available
+                    // channels
+                    mActiveModeWarden.updateSoftApCapability(
+                            mLohsSoftApTracker.getSoftApCapability(),
+                            WifiManager.IFACE_IP_MODE_LOCAL_ONLY);
                 }
                 int itemCount = mRegisteredDriverCountryCodeListeners.beginBroadcast();
                 for (int i = 0; i < itemCount; i++) {
@@ -1477,51 +1485,13 @@ public class WifiServiceImpl extends BaseWifiService {
 
         private SoftApCapability updateSoftApCapabilityWithAvailableChannelList(
                 @NonNull SoftApCapability softApCapability) {
-            SoftApCapability newSoftApCapability = new SoftApCapability(softApCapability);
             if (!mIsBootComplete) {
                 // The available channel list is from wificond.
                 // It might be a failure or stuck during wificond init.
-                return newSoftApCapability;
+                return softApCapability;
             }
-            List<Integer> supportedChannelList = null;
-            if (ApConfigUtil.isSoftAp24GhzSupported(mContext)) {
-                supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
-                    SoftApConfiguration.BAND_2GHZ, mWifiNative, mContext.getResources(), false);
-                if (supportedChannelList != null) {
-                    newSoftApCapability.setSupportedChannelList(
-                            SoftApConfiguration.BAND_2GHZ,
-                            supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
-                }
-            }
-            if (ApConfigUtil.isSoftAp5GhzSupported(mContext)) {
-                supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
-                        SoftApConfiguration.BAND_5GHZ, mWifiNative, mContext.getResources(), false);
-                if (supportedChannelList != null) {
-                    newSoftApCapability.setSupportedChannelList(
-                            SoftApConfiguration.BAND_5GHZ,
-                            supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
-                }
-            }
-            if (ApConfigUtil.isSoftAp6GhzSupported(mContext)) {
-                supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
-                        SoftApConfiguration.BAND_6GHZ, mWifiNative, mContext.getResources(), false);
-                if (supportedChannelList != null) {
-                    newSoftApCapability.setSupportedChannelList(
-                            SoftApConfiguration.BAND_6GHZ,
-                            supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
-                }
-            }
-            if (ApConfigUtil.isSoftAp60GhzSupported(mContext)) {
-                supportedChannelList = ApConfigUtil.getAvailableChannelFreqsForBand(
-                        SoftApConfiguration.BAND_60GHZ, mWifiNative, mContext.getResources(),
-                        false);
-                if (supportedChannelList != null) {
-                    newSoftApCapability.setSupportedChannelList(
-                            SoftApConfiguration.BAND_60GHZ,
-                            supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
-                }
-            }
-            return newSoftApCapability;
+            return ApConfigUtil.updateSoftApCapabilityWithAvailableChannelList(softApCapability,
+                    mContext, mWifiNative);
         }
 
         public void updateAvailChannelListInSoftApCapability() {
@@ -1706,12 +1676,31 @@ public class WifiServiceImpl extends BaseWifiService {
         private int mLohsInterfaceMode = WifiManager.IFACE_IP_MODE_UNSPECIFIED;
 
         private SoftApCapability mLohsSoftApCapability = null;
+        private boolean mIsBootComplete = false;
+
+        public void handleBootCompleted() {
+            mIsBootComplete = true;
+            // TODO: b/197529327 Update available channels and trigger the callback if any register
+        }
 
         public SoftApCapability getSoftApCapability() {
             if (mLohsSoftApCapability == null) {
                 mLohsSoftApCapability =  ApConfigUtil.updateCapabilityFromResource(mContext);
+                mLohsSoftApCapability = updateSoftApCapabilityWithAvailableChannelList(
+                        mLohsSoftApCapability);
             }
             return mLohsSoftApCapability;
+        }
+
+        private SoftApCapability updateSoftApCapabilityWithAvailableChannelList(
+                @NonNull SoftApCapability softApCapability) {
+            if (!mIsBootComplete) {
+                // The available channel list is from wificond.
+                // It might be a failure or stuck during wificond init.
+                return softApCapability;
+            }
+            return ApConfigUtil.updateSoftApCapabilityWithAvailableChannelList(softApCapability,
+                    mContext, mWifiNative);
         }
 
         public void updateInterfaceIpState(String ifaceName, int mode) {
@@ -3959,10 +3948,12 @@ public class WifiServiceImpl extends BaseWifiService {
                     public void onReceive(Context context, Intent intent) {
                         final int subId = SubscriptionManager.getActiveDataSubscriptionId();
                         Log.d(TAG, "ACTION_CARRIER_CONFIG_CHANGED, active subId: " + subId);
+                        // Tether mode only since carrier requirement only for tethered SoftAp.
                         mTetheredSoftApTracker
                                 .updateSoftApCapabilityWhenCarrierConfigChanged(subId);
                         mActiveModeWarden.updateSoftApCapability(
-                                mTetheredSoftApTracker.getSoftApCapability());
+                                mTetheredSoftApTracker.getSoftApCapability(),
+                                WifiManager.IFACE_IP_MODE_TETHERED);
                     }
                 },
                 filter,
