@@ -1528,6 +1528,8 @@ public final class WifiNetworkSuggestion implements Parcelable {
     }
 
     /**
+     * Get the MAC randomization method.
+     * @return one of {@code RANDOMIZATION_*} values
      * @see Builder#setMacRandomizationSetting(int)
      */
     public @MacRandomizationSetting int getMacRandomizationSetting() {
