@@ -1948,7 +1948,9 @@ public class WifiConnectivityManager {
         networks.addAll(mWifiNetworkSuggestionsManager.getAllScanOptimizationSuggestionNetworks());
         // remove all auto-join disabled or network selection disabled network.
         networks.removeIf(config -> !config.allowAutojoin
-                || !config.getNetworkSelectionStatus().isNetworkEnabled());
+                || !config.getNetworkSelectionStatus().isNetworkEnabled()
+                || mConfigManager.isNetworkTemporarilyDisabledByUser(
+                        config.isPasspoint() ? config.FQDN : config.SSID));
         return networks;
     }
 
