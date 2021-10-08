@@ -3561,6 +3561,15 @@ public class WifiNative {
         return mWifiVendorHal.getDriverStateDump();
     }
 
+    /**
+     * Dump information about the internal state
+     *
+     * @param pw PrintWriter to write dump to
+     */
+    protected void dump(PrintWriter pw) {
+        mHostapdHal.dump(pw);
+    }
+
     //---------------------------------------------------------------------------------
     /* Packet fate API */
 

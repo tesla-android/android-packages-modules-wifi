@@ -54,6 +54,7 @@ import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.wifi.resources.R;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -850,4 +851,12 @@ public class HostapdHalAidlImp implements IHostapdHal {
         }
     }
 
+    /**
+     * Dump information about the AIDL implementation.
+     *
+     * TODO (b/202302891) Log version information once we freeze the AIDL interface
+     */
+    public void dump(PrintWriter pw) {
+        pw.println("AIDL interface version: 1 (initial)");
+    }
 }
