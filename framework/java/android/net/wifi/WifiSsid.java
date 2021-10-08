@@ -45,143 +45,77 @@ import java.util.Arrays;
  * @hide
  */
 public final class WifiSsid implements Parcelable {
-    private static final String TAG = "WifiSsid";
+    private final byte[] mBytes;
 
-    @UnsupportedAppUsage
-    public final ByteArrayOutputStream octets = new ByteArrayOutputStream(32);
-
-    private static final int HEX_RADIX = 16;
-
-    @UnsupportedAppUsage
-    public static final String NONE = WifiManager.UNKNOWN_SSID;
-
-    private WifiSsid() {
+    /**
+     * Creates a WifiSsid from the raw bytes. If the byte array is null, creates an empty WifiSsid
+     * object which will return an empty byte array and empty text.
+     * @param bytes the SSID
+     * @throws IllegalArgumentException if the raw byte array is longer than 32 bytes.
+     */
+    private WifiSsid(@Nullable byte[] bytes) {
+        if (bytes == null) {
+            bytes = new byte[0];
+        }
+        if (bytes.length > 32) {
+            throw new IllegalArgumentException(
+                    "Max SSID length is 32 bytes, but received " + bytes.length + " bytes!");
+        }
+        mBytes = bytes;
+        // Duplicate the bytes to #octets for legacy apps.
+        octets.write(bytes, 0, bytes.length);
     }
 
     /**
-     * Create a WifiSsid from a raw byte array. If the byte array is null, return an empty WifiSsid
-     * object.
+     * Create a WifiSsid from the raw bytes. If the byte array is null, return an empty WifiSsid
+     * object which will return an empty byte array and empty text.
+     * @throws IllegalArgumentException if the raw byte array is longer than 32 bytes.
      */
     @NonNull
-    public static WifiSsid createFromByteArray(@Nullable byte[] ssid) {
-        WifiSsid wifiSsid = new WifiSsid();
-        if (ssid != null) {
-            wifiSsid.octets.write(ssid, 0 /* the start offset */, ssid.length);
-        }
-        return wifiSsid;
+    public static WifiSsid fromBytes(@Nullable byte[] bytes) {
+        return new WifiSsid(bytes);
     }
 
-    @UnsupportedAppUsage
-    public static WifiSsid createFromAsciiEncoded(String asciiEncoded) {
-        WifiSsid a = new WifiSsid();
-        a.convertToBytes(asciiEncoded);
-        return a;
+    /**
+     * Create a UTF-8 WifiSsid from unquoted plaintext. If the text is null, return an
+     * empty WifiSsid object which will return an empty byte array and empty text.
+     * @throws IllegalArgumentException if the encoded UTF-8 byte array is longer than 32 bytes.
+     */
+    @NonNull
+    public static WifiSsid fromUtf8Text(@Nullable CharSequence utf8Text) {
+        if (utf8Text == null) {
+            return new WifiSsid(null);
+        }
+        return new WifiSsid(utf8Text.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    public static WifiSsid createFromHex(String hexStr) {
-        WifiSsid a = new WifiSsid();
-        if (hexStr == null) return a;
-
-        if (hexStr.startsWith("0x") || hexStr.startsWith("0X")) {
-            hexStr = hexStr.substring(2);
+    /**
+     * Create a WifiSsid from a string matching the format of {@link WifiSsid#toString()}.
+     * If the string is null, return an empty WifiSsid object which will return an empty byte array
+     * and empty text.
+     * @throws IllegalArgumentException if the string is unquoted but not hexadecimal,
+     *                                  if the hexadecimal string is odd-length,
+     *                                  or if the encoded byte array is longer than 32 bytes.
+     */
+    @NonNull
+    public static WifiSsid fromString(@Nullable String string) {
+        if (string == null) {
+            return new WifiSsid(null);
         }
-
-        for (int i = 0; i < hexStr.length()-1; i += 2) {
-            int val;
-            try {
-                val = Integer.parseInt(hexStr.substring(i, i + 2), HEX_RADIX);
-            } catch(NumberFormatException e) {
-                val = 0;
-            }
-            a.octets.write(val);
+        final int length = string.length();
+        if ((length > 1) && (string.charAt(0) == '"') && (string.charAt(length - 1) == '"')) {
+            return new WifiSsid(string.substring(1, length - 1).getBytes(StandardCharsets.UTF_8));
         }
-        return a;
+        return new WifiSsid(HexEncoding.decode(string));
     }
 
-    /* This function is equivalent to printf_decode() at src/utils/common.c in
-     * the supplicant */
-    private void convertToBytes(String asciiEncoded) {
-        int i = 0;
-        int val = 0;
-        while (i< asciiEncoded.length()) {
-            char c = asciiEncoded.charAt(i);
-            switch (c) {
-                case '\\':
-                    i++;
-                    switch(asciiEncoded.charAt(i)) {
-                        case '\\':
-                            octets.write('\\');
-                            i++;
-                            break;
-                        case '"':
-                            octets.write('"');
-                            i++;
-                            break;
-                        case 'n':
-                            octets.write('\n');
-                            i++;
-                            break;
-                        case 'r':
-                            octets.write('\r');
-                            i++;
-                            break;
-                        case 't':
-                            octets.write('\t');
-                            i++;
-                            break;
-                        case 'e':
-                            octets.write(27); //escape char
-                            i++;
-                            break;
-                        case 'x':
-                            i++;
-                            try {
-                                val = Integer.parseInt(asciiEncoded.substring(i, i + 2), HEX_RADIX);
-                            } catch (NumberFormatException e) {
-                                val = -1;
-                            } catch (StringIndexOutOfBoundsException e) {
-                                val = -1;
-                            }
-                            if (val < 0) {
-                                val = Character.digit(asciiEncoded.charAt(i), HEX_RADIX);
-                                if (val < 0) break;
-                                octets.write(val);
-                                i++;
-                            } else {
-                                octets.write(val);
-                                i += 2;
-                            }
-                            break;
-                        case '0':
-                        case '1':
-                        case '2':
-                        case '3':
-                        case '4':
-                        case '5':
-                        case '6':
-                        case '7':
-                            val = asciiEncoded.charAt(i) - '0';
-                            i++;
-                            if (asciiEncoded.charAt(i) >= '0' && asciiEncoded.charAt(i) <= '7') {
-                                val = val * 8 + asciiEncoded.charAt(i) - '0';
-                                i++;
-                            }
-                            if (asciiEncoded.charAt(i) >= '0' && asciiEncoded.charAt(i) <= '7') {
-                                val = val * 8 + asciiEncoded.charAt(i) - '0';
-                                i++;
-                            }
-                            octets.write(val);
-                            break;
-                        default:
-                            break;
-                    }
-                    break;
-                default:
-                    octets.write(c);
-                    i++;
-                    break;
-            }
-        }
+    /**
+     * Returns the raw byte array representing this SSID.
+     * @return the SSID
+     */
+    @NonNull
+    public byte[] getBytes() {
+        return mBytes;
     }
 
     /**
@@ -191,8 +125,7 @@ public final class WifiSsid implements Parcelable {
      */
     @Nullable
     public CharSequence getUtf8Text() {
-        byte[] ssidBytes = octets.toByteArray();
-        return decodeSsid(ssidBytes, StandardCharsets.UTF_8);
+        return decodeSsid(mBytes, StandardCharsets.UTF_8);
     }
 
     /**
@@ -206,10 +139,9 @@ public final class WifiSsid implements Parcelable {
     @Override
     @NonNull
     public String toString() {
-        byte[] ssidBytes = octets.toByteArray();
-        String utf8String = decodeSsid(ssidBytes, StandardCharsets.UTF_8);
+        String utf8String = decodeSsid(mBytes, StandardCharsets.UTF_8);
         if (TextUtils.isEmpty(utf8String)) {
-            return HexEncoding.encodeToString(ssidBytes);
+            return HexEncoding.encodeToString(mBytes);
         }
         return "\"" + utf8String + "\"";
     }
@@ -244,18 +176,12 @@ public final class WifiSsid implements Parcelable {
             return false;
         }
         WifiSsid that = (WifiSsid) thatObject;
-        return Arrays.equals(octets.toByteArray(), that.octets.toByteArray());
+        return Arrays.equals(mBytes, that.mBytes);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(octets.toByteArray());
-    }
-
-    /** @hide */
-    @UnsupportedAppUsage
-    public byte[] getOctets() {
-        return octets.toByteArray();
+        return Arrays.hashCode(mBytes);
     }
 
     /** Implement the Parcelable interface */
@@ -267,8 +193,7 @@ public final class WifiSsid implements Parcelable {
     /** Implement the Parcelable interface */
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
-        dest.writeInt(octets.size());
-        dest.writeByteArray(octets.toByteArray());
+        dest.writeByteArray(mBytes);
     }
 
     /** Implement the Parcelable interface */
@@ -277,12 +202,7 @@ public final class WifiSsid implements Parcelable {
             new Creator<WifiSsid>() {
                 @Override
                 public WifiSsid createFromParcel(Parcel in) {
-                    WifiSsid ssid = new WifiSsid();
-                    int length = in.readInt();
-                    byte[] b = new byte[length];
-                    in.readByteArray(b);
-                    ssid.octets.write(b, 0, length);
-                    return ssid;
+                    return new WifiSsid(in.createByteArray());
                 }
 
                 @Override
@@ -290,4 +210,36 @@ public final class WifiSsid implements Parcelable {
                     return new WifiSsid[size];
                 }
             };
+
+    /**
+     * Use {@link #getBytes()} instead.
+     * @hide
+     */
+    @UnsupportedAppUsage
+    public final ByteArrayOutputStream octets = new ByteArrayOutputStream(32);
+
+    /**
+     * Use {@link android.net.wifi.WifiManager#UNKNOWN_SSID} instead.
+     * @hide
+     */
+    @UnsupportedAppUsage
+    public static final String NONE = WifiManager.UNKNOWN_SSID;
+
+    /**
+     * Use {@link #fromUtf8Text(CharSequence)} instead.
+     * @hide
+     */
+    @UnsupportedAppUsage
+    public static WifiSsid createFromAsciiEncoded(String asciiEncoded) {
+        return fromUtf8Text(asciiEncoded);
+    }
+
+    /**
+     * Use {@link #getBytes()} instead.
+     * @hide
+     */
+    @UnsupportedAppUsage
+    public byte[] getOctets() {
+        return getBytes();
+    }
 }

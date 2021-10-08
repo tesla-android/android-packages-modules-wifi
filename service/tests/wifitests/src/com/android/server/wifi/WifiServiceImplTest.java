@@ -2401,7 +2401,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
     private WifiInfo setupForGetConnectionInfo() {
         WifiInfo wifiInfo = new WifiInfo();
-        wifiInfo.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        wifiInfo.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
         wifiInfo.setBSSID(TEST_BSSID);
         wifiInfo.setNetworkId(TEST_NETWORK_ID);
         wifiInfo.setFQDN(TEST_FQDN);
@@ -7683,7 +7683,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     private List<ScanResult> createScanResultList() {
-        return Collections.singletonList(new ScanResult(WifiSsid.createFromAsciiEncoded(TEST_SSID),
+        return Collections.singletonList(new ScanResult(WifiSsid.fromUtf8Text(TEST_SSID),
                 TEST_SSID, TEST_BSSID, 1245, 0, TEST_CAP, -78, 2450, 1025, 22, 33, 20, 0, 0, true));
     }
 

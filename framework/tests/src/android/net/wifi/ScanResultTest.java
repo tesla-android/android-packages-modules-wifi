@@ -348,7 +348,7 @@ public class ScanResultTest {
 
     private static ScanResult createScanResult() {
         ScanResult result = new ScanResult();
-        result.wifiSsid = WifiSsid.createFromAsciiEncoded(TEST_SSID);
+        result.wifiSsid = WifiSsid.fromUtf8Text(TEST_SSID);
         result.BSSID = TEST_BSSID;
         result.capabilities = TEST_CAPS;
         result.level = TEST_LEVEL;

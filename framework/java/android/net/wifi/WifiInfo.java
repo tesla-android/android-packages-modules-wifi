@@ -578,7 +578,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
          */
         @NonNull
         public Builder setSsid(@NonNull byte[] ssid) {
-            mWifiInfo.setSSID(WifiSsid.createFromByteArray(ssid));
+            mWifiInfo.setSSID(WifiSsid.fromBytes(ssid));
             return this;
         }
 
