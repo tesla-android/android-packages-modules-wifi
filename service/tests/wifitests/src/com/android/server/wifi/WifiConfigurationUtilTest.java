@@ -1211,6 +1211,19 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
         assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(wapiCertConfig));
     }
 
+    /**
+     * Verify that a Passpoint config is not considered an OPEN config.
+     */
+    @Test
+    public void testPasspointConfigNotOpenConfig() {
+        WifiConfiguration passpointR1R2Config = new WifiConfiguration();
+        passpointR1R2Config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2);
+        assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(passpointR1R2Config));
+
+        WifiConfiguration passpointR3Config = new WifiConfiguration();
+        passpointR3Config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3);
+        assertFalse(WifiConfigurationUtil.isConfigForOpenNetwork(passpointR3Config));
+    }
 
     /**
      * Verify that the validate method fails to validate WifiConfiguration with malformed
