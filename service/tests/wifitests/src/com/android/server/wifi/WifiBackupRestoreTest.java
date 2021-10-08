@@ -281,7 +281,7 @@ public class WifiBackupRestoreTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt())).thenReturn(true);
         mWifiBackupRestore = new WifiBackupRestore(mWifiPermissionsUtil);
         // Enable verbose logging before tests to check the backup data dumps.
-        mWifiBackupRestore.enableVerboseLogging(1);
+        mWifiBackupRestore.enableVerboseLogging(true);
     }
 
     @After

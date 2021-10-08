@@ -415,8 +415,8 @@ public class WifiBackupRestore {
      *
      * @param verbose verbosity level.
      */
-    public void enableVerboseLogging(int verbose) {
-        mVerboseLoggingEnabled = (verbose > 0);
+    public void enableVerboseLogging(boolean verboseEnabled) {
+        mVerboseLoggingEnabled = verboseEnabled;
         if (!mVerboseLoggingEnabled) {
             mDebugLastBackupDataRetrieved = null;
             mDebugLastBackupDataRestored = null;

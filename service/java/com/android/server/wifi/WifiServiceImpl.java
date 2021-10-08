@@ -187,6 +187,12 @@ public class WifiServiceImpl extends BaseWifiService {
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
     @VisibleForTesting
     static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 24 * 60 * 60 * 1000;
+    // verbose logging controlled by user
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
+    // verbose logging on by default for userdebug
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
+    // verbose logging on by default for all builds -->
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
 
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
@@ -4111,6 +4117,7 @@ public class WifiServiceImpl extends BaseWifiService {
             pw.println(networkListBase64);
         } else {
             pw.println("Verbose logging is " + (isVerboseLoggingEnabled() ? "on" : "off"));
+            pw.println("mVerboseLoggingLevel " + mVerboseLoggingLevel);
             pw.println("Stay-awake conditions: " +
                     mFacade.getIntegerSetting(mContext,
                             Settings.Global.STAY_ON_WHILE_PLUGGED_IN, 0));
@@ -4289,6 +4296,20 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     private boolean isVerboseLoggingEnabled() {
+        final int alwaysOnLevel = mContext.getResources()
+                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
+        // If the overlay setting enabled for all builds
+        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL) {
+            return true;
+        }
+        //If it is a userdebug build and the overlay setting enabled for userdebug build.
+        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG
+                && mBuildProperties.isUserdebugBuild()) {
+            return true;
+        }
+        if (alwaysOnLevel != VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE) {
+            Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
+        }
         return WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
     }
 
@@ -4309,12 +4330,14 @@ public class WifiServiceImpl extends BaseWifiService {
             // Ensure the show key mode is disabled.
             mWifiGlobals.setShowKeyVerboseLoggingModeEnabled(false);
         }
-
-        mActiveModeWarden.enableVerboseLogging(isVerboseLoggingEnabled());
-        mWifiLockManager.enableVerboseLogging(verbose);
-        mWifiMulticastLockManager.enableVerboseLogging(verbose);
-        mWifiInjector.enableVerboseLogging(verbose);
-        mWifiInjector.getSarManager().enableVerboseLogging(verbose);
+        final boolean verboseEnabled = isVerboseLoggingEnabled();
+        final boolean halVerboseEnabled =
+                WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
+        mActiveModeWarden.enableVerboseLogging(verboseEnabled);
+        mWifiLockManager.enableVerboseLogging(verboseEnabled);
+        mWifiMulticastLockManager.enableVerboseLogging(verboseEnabled);
+        mWifiInjector.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        mWifiInjector.getSarManager().enableVerboseLogging(verboseEnabled);
     }
 
     @Override

@@ -737,7 +737,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
     @Test
     public void testEnterLogging() {
         mWifiVendorHal.mLog = spy(mWifiLog);
-        mWifiVendorHal.enableVerboseLogging(true);
+        mWifiVendorHal.enableVerboseLogging(true, false);
         mWifiVendorHal.installPacketFilter(TEST_IFACE_NAME, new byte[0]);
         verify(mWifiVendorHal.mLog).trace(eq("filter length %"), eq(1));
     }
@@ -749,8 +749,8 @@ public class WifiVendorHalTest extends WifiBaseTest {
     public void testEnterSilenceWhenNotEnabled() {
         mWifiVendorHal.mLog = spy(mWifiLog);
         mWifiVendorHal.installPacketFilter(TEST_IFACE_NAME, new byte[0]);
-        mWifiVendorHal.enableVerboseLogging(true);
-        mWifiVendorHal.enableVerboseLogging(false);
+        mWifiVendorHal.enableVerboseLogging(true, false);
+        mWifiVendorHal.enableVerboseLogging(false, false);
         mWifiVendorHal.installPacketFilter(TEST_IFACE_NAME, new byte[0]);
         verify(mWifiVendorHal.mLog, never()).trace(eq("filter length %"), anyInt());
     }
