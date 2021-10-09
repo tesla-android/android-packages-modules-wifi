@@ -2008,8 +2008,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
             ScanDetail scanDetail =
                     createScanDetailForNetwork(
                             openNetwork, String.format("%s%02x", testBssidPrefix, scanDetailNum));
-            assertNotNull(
-                    mWifiConfigManager.getSavedNetworkForScanDetailAndCache(scanDetail));
+            mWifiConfigManager.updateScanDetailForNetwork(openNetwork.networkId, scanDetail);
 
             // The size of scan detail cache should keep growing until it hits
             // |SCAN_CACHE_ENTRIES_MAX_SIZE|.
