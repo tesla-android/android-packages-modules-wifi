@@ -60,6 +60,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -72,6 +74,8 @@ import javax.annotation.concurrent.ThreadSafe;
 public class HostapdHalAidlImp implements IHostapdHal {
     private static final String TAG = "HostapdHalAidlImp";
     private static final String HAL_INSTANCE_NAME = IHostapd.DESCRIPTOR + "/default";
+    @VisibleForTesting
+    public static final long WAIT_FOR_DEATH_TIMEOUT_MS = 50L;
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
@@ -86,42 +90,41 @@ public class HostapdHalAidlImp implements IHostapdHal {
     private Set<String> mActiveInstances = new HashSet<>();
     private HostapdDeathEventHandler mDeathEventHandler;
     private boolean mServiceDeclared = false;
-    private HostapdDeathRecipient mIHostapdDeathRecipient;
+    private CountDownLatch mWaitForDeathLatch;
 
     /**
      * Default death recipient. Called any time the service dies.
      */
     private class HostapdDeathRecipient implements DeathRecipient {
+        private final IBinder mWho;
         @Override
+        /* Do nothing as we override the default function binderDied(IBinder who). */
         public void binderDied() {
-            mEventHandler.post(() -> {
-                synchronized (mLock) {
-                    Log.w(TAG, "IHostapd/IHostapd died");
-                    hostapdServiceDiedHandler();
+            synchronized (mLock) {
+                Log.w(TAG, "IHostapd/IHostapd died. who " + mWho + " service "
+                        + getServiceBinderMockable());
+                if (mWho == getServiceBinderMockable()) {
+                    if (mWaitForDeathLatch != null) {
+                        mWaitForDeathLatch.countDown();
+                    }
+                    mEventHandler.post(() -> {
+                        synchronized (mLock) {
+                            Log.w(TAG, "Handle IHostapd/IHostapd died.");
+                            hostapdServiceDiedHandler(mWho);
+                        }
+                    });
                 }
-            });
+            }
         }
-    }
 
-    /**
-     * Terminate death recipient. Linked to service death on call to terminate()
-     */
-    private class TerminateDeathRecipient implements DeathRecipient {
-        @Override
-        public void binderDied() {
-            mEventHandler.post(() -> {
-                synchronized (mLock) {
-                    Log.w(TAG, "IHostapd/IHostapd was killed by terminate()");
-                    // nothing more to be done here
-                }
-            });
+        HostapdDeathRecipient(IBinder who) {
+            mWho = who;
         }
     }
 
     public HostapdHalAidlImp(@NonNull Context context, @NonNull Handler handler) {
         mContext = context;
         mEventHandler = handler;
-        mIHostapdDeathRecipient = new HostapdDeathRecipient();
         Log.d(TAG, "init HostapdHalAidlImp");
     }
 
@@ -352,8 +355,12 @@ public class HostapdHalAidlImp implements IHostapdHal {
     /**
      * Handle hostapd death.
      */
-    private void hostapdServiceDiedHandler() {
+    private void hostapdServiceDiedHandler(IBinder who) {
         synchronized (mLock) {
+            if (who != getServiceBinderMockable()) {
+                Log.w(TAG, "Ignoring stale death recipient notification");
+                return;
+            }
             mIHostapd = null;
             if (mDeathEventHandler != null) {
                 mDeathEventHandler.onDeath();
@@ -479,7 +486,8 @@ public class HostapdHalAidlImp implements IHostapdHal {
             try {
                 IBinder serviceBinder = getServiceBinderMockable();
                 if (serviceBinder == null) return false;
-                serviceBinder.linkToDeath(mIHostapdDeathRecipient, /* flags= */ 0);
+                mWaitForDeathLatch = null;
+                serviceBinder.linkToDeath(new HostapdDeathRecipient(serviceBinder), /* flags= */ 0);
                 setDebugParams();
             } catch (RemoteException e) {
                 handleRemoteException(e, methodStr);
@@ -496,37 +504,39 @@ public class HostapdHalAidlImp implements IHostapdHal {
     }
 
     /**
-     * Terminate the hostapd daemon & register a DeathListener to confirm death
+     * Terminate the hostapd daemon & wait for it's death.
      */
     @Override
     public void terminate() {
         synchronized (mLock) {
-            // Register a new death listener to confirm that terminate() killed hostapd
             final String methodStr = "terminate";
             if (!checkHostapdAndLogFailure(methodStr)) {
                 return;
             }
+            Log.i(TAG, "Terminate HostApd Service.");
             try {
-                IBinder serviceBinder = getServiceBinderMockable();
-                if (serviceBinder == null) return;
-                serviceBinder.linkToDeath(new TerminateDeathRecipient(), /* flags= */ 0);
-            } catch (RemoteException e) {
-                Log.e(TAG, "Unable to register death recipient", e);
-                handleRemoteException(e, methodStr);
-                return;
-            }
-
-            try {
+                mWaitForDeathLatch = new CountDownLatch(1);
                 mIHostapd.terminate();
             } catch (RemoteException e) {
                 handleRemoteException(e, methodStr);
             }
         }
+
+        // Now wait for death listener callback to confirm that it's dead.
+        try {
+            if (!mWaitForDeathLatch.await(WAIT_FOR_DEATH_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                Log.w(TAG, "Timed out waiting for confirmation of hostapd death");
+            } else {
+                Log.d(TAG, "Got service death confirmation");
+            }
+        } catch (InterruptedException e) {
+            Log.w(TAG, "Failed to wait for hostapd death");
+        }
     }
 
     private void handleRemoteException(RemoteException e, String methodStr) {
         synchronized (mLock) {
-            hostapdServiceDiedHandler();
+            hostapdServiceDiedHandler(getServiceBinderMockable());
             Log.e(TAG, "IHostapd." + methodStr + " failed with exception", e);
         }
     }
