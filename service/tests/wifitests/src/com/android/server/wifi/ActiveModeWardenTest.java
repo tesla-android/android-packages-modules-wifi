@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.any;
@@ -72,6 +73,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
+import android.os.UserManager;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.telephony.TelephonyManager;
@@ -79,6 +81,7 @@ import android.util.Log;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.ActiveModeManager.ClientConnectivityRole;
 import com.android.server.wifi.ActiveModeManager.Listener;
 import com.android.server.wifi.ActiveModeManager.SoftApRole;
@@ -156,6 +159,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     @Mock DppManager mDppManager;
     @Mock SarManager mSarManager;
     @Mock HalDeviceManager mHalDeviceManager;
+    @Mock UserManager mUserManager;
 
     Listener<ConcreteClientModeManager> mClientListener;
     Listener<SoftApManager> mSoftApListener;
@@ -186,6 +190,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         when(mWifiInjector.getScanRequestProxy()).thenReturn(mScanRequestProxy);
         when(mWifiInjector.getSarManager()).thenReturn(mSarManager);
         when(mWifiInjector.getHalDeviceManager()).thenReturn(mHalDeviceManager);
+        when(mWifiInjector.getUserManager()).thenReturn(mUserManager);
         when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
         when(mClientModeManager.getInterfaceName()).thenReturn(WIFI_IFACE_NAME);
         when(mContext.getResources()).thenReturn(mResources);
@@ -1306,6 +1311,44 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         assertInEnabledState();
+    }
+
+    /**
+     * Do not change Wi-Fi state when airplane mode changes if
+     * DISALLOW_CHANGE_WIFI_STATE user restriction is set.
+     */
+    @Test
+    public void testWifiStateUnaffectedByAirplaneMode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_CHANGE_WIFI_STATE),
+                any())).thenReturn(true);
+        when(mSettingsStore.updateAirplaneModeTracker()).thenReturn(true);
+
+        reset(mContext);
+        when(mContext.getResources()).thenReturn(mResources);
+        mActiveModeWarden = createActiveModeWarden();
+        mActiveModeWarden.start();
+        mLooper.dispatchAll();
+
+        ArgumentCaptor<BroadcastReceiver> bcastRxCaptor =
+                ArgumentCaptor.forClass(BroadcastReceiver.class);
+        verify(mContext).registerReceiver(
+                bcastRxCaptor.capture(),
+                argThat(filter -> filter.hasAction(Intent.ACTION_AIRPLANE_MODE_CHANGED)));
+        BroadcastReceiver broadcastReceiver = bcastRxCaptor.getValue();
+
+        Intent intent = new Intent(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+        broadcastReceiver.onReceive(mContext, intent);
+        mLooper.dispatchAll();
+
+        verify(mSettingsStore, never()).handleAirplaneModeToggled();
+
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_CHANGE_WIFI_STATE),
+                any())).thenReturn(false);
+        broadcastReceiver.onReceive(mContext, intent);
+        mLooper.dispatchAll();
+
+        verify(mSettingsStore).handleAirplaneModeToggled();
     }
 
 

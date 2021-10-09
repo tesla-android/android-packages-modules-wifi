@@ -50,11 +50,8 @@ public class WifiSettingsStore {
     }
 
     public synchronized boolean isWifiToggleEnabled() {
-        if (mAirplaneModeOn) {
-            return mPersistWifiState == WIFI_ENABLED_AIRPLANE_OVERRIDE;
-        } else {
-            return mPersistWifiState != WIFI_DISABLED;
-        }
+        return mPersistWifiState == WIFI_ENABLED
+                || mPersistWifiState == WIFI_ENABLED_AIRPLANE_OVERRIDE;
     }
 
     /**
@@ -103,13 +100,17 @@ public class WifiSettingsStore {
         return true;
     }
 
-    synchronized boolean handleAirplaneModeToggled() {
+    synchronized boolean updateAirplaneModeTracker() {
         // Is Wi-Fi sensitive to airplane mode changes ?
         if (!isAirplaneSensitive()) {
             return false;
         }
 
         mAirplaneModeOn = getPersistedAirplaneModeOn();
+        return true;
+    }
+
+    synchronized void handleAirplaneModeToggled() {
         if (mAirplaneModeOn) {
             // Wifi disabled due to airplane on
             if (mPersistWifiState == WIFI_ENABLED) {
@@ -122,7 +123,6 @@ public class WifiSettingsStore {
                 persistWifiState(WIFI_ENABLED);
             }
         }
-        return true;
     }
 
     synchronized void handleWifiScanAlwaysAvailableToggled(boolean isAvailable) {
