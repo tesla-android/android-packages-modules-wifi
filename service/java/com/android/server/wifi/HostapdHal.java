@@ -27,6 +27,8 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.WifiNative.HostapdDeathEventHandler;
 import com.android.server.wifi.WifiNative.SoftApListener;
 
+import java.io.PrintWriter;
+
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
@@ -102,11 +104,14 @@ public class HostapdHal {
         synchronized (mLock) {
             // Prefer AIDL implementation if service is declared.
             if (HostapdHalAidlImp.serviceDeclared()) {
+                Log.i(TAG, "Initializing hostapd using AIDL implementation.");
                 return new HostapdHalAidlImp(mContext, mEventHandler);
 
             } else if (HostapdHalHidlImp.serviceDeclared()) {
+                Log.i(TAG, "Initializing hostapd using HIDL implementation.");
                 return new HostapdHalHidlImp(mContext, mEventHandler);
             }
+            Log.e(TAG, "No HIDL or AIDL service available for hostapd.");
             return null;
         }
     }
@@ -286,5 +291,19 @@ public class HostapdHal {
     private boolean handleNullIHostapd(String methodStr) {
         Log.e(TAG, "Cannot call " + methodStr + " because mIHostapd is null.");
         return false;
+    }
+
+    protected void dump(PrintWriter pw) {
+        synchronized (mLock) {
+            pw.println("Dump of HostapdHal");
+            pw.println("AIDL service declared: " + HostapdHalAidlImp.serviceDeclared());
+            pw.println("HIDL service declared: " + HostapdHalHidlImp.serviceDeclared());
+            boolean initialized = mIHostapd != null;
+            pw.println("Initialized: " + initialized);
+            if (initialized) {
+                pw.println("Implementation: " + mIHostapd.getClass().getSimpleName());
+                mIHostapd.dump(pw);
+            }
+        }
     }
 }

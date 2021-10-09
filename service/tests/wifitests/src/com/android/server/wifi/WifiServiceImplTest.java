@@ -914,6 +914,69 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that a user (NETWORK_SETTINGS) cannot enable wifi if DISALLOW_CHANGE_WIFI_STATE
+     * user restriction is set.
+     */
+    @Test
+    public void testSetWifiEnabledFromUserFailsWhenUserRestrictionSet() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        when(mSettingsStore.handleWifiToggled(eq(true))).thenReturn(true);
+        when(mSettingsStore.isAirplaneModeOn()).thenReturn(false);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_CHANGE_WIFI_STATE),
+                any())).thenReturn(true);
+
+        assertFalse(mWifiServiceImpl.setWifiEnabled(TEST_PACKAGE_NAME, true));
+        verify(mActiveModeWarden, never()).wifiToggled(any());
+    }
+
+    /**
+     * Verify that apps targeting pre-Q SDK cannot enable wifi if DISALLOW_CHANGE_WIFI_STATE
+     * user restriction is set.
+     */
+    @Test
+    public void testSetWifiEnabledFromAppTargetingBelowQSdkFailsWhenUserRestrictionSet()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(),
+                eq(Build.VERSION_CODES.Q), anyInt())).thenReturn(true);
+
+        when(mSettingsStore.handleWifiToggled(eq(true))).thenReturn(true);
+        when(mSettingsStore.isAirplaneModeOn()).thenReturn(false);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_CHANGE_WIFI_STATE),
+                any())).thenReturn(true);
+
+        assertFalse(mWifiServiceImpl.setWifiEnabled(TEST_PACKAGE_NAME, true));
+        verify(mActiveModeWarden, never()).wifiToggled(any());
+    }
+
+    /**
+     * Verify that wifi can be enabled by the DO apps even when DISALLOW_CHANGE_WIFI_STATE
+     * user restriction is set.
+     */
+    @Test
+    public void testSetWifiEnabledSuccessForDOAppsWhenUserRestrictionSet() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
+        when(mWifiPermissionsUtil.isDeviceOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+
+        when(mSettingsStore.handleWifiToggled(eq(true))).thenReturn(true);
+        when(mSettingsStore.isAirplaneModeOn()).thenReturn(false);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_CHANGE_WIFI_STATE),
+                any())).thenReturn(true);
+
+        assertTrue(mWifiServiceImpl.setWifiEnabled(TEST_PACKAGE_NAME, true));
+        verify(mActiveModeWarden).wifiToggled(
+                eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
+    }
+
+    /**
      * Helper to verify registering for state changes.
      */
     private void verifyApRegistration() {

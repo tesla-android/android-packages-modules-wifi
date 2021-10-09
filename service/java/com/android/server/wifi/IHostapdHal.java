@@ -22,6 +22,8 @@ import android.net.wifi.SoftApConfiguration;
 import com.android.server.wifi.WifiNative.HostapdDeathEventHandler;
 import com.android.server.wifi.WifiNative.SoftApListener;
 
+import java.io.PrintWriter;
+
 /** Abstraction of HAL interface */
 interface IHostapdHal {
     /**
@@ -121,4 +123,8 @@ interface IHostapdHal {
      */
     void terminate();
 
+    /**
+     * Dump information about the specific implementation.
+     */
+    void dump(PrintWriter pw);
 }

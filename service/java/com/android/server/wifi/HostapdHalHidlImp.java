@@ -46,6 +46,7 @@ import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.wifi.resources.R;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -187,6 +188,23 @@ public class HostapdHalHidlImp implements IHostapdHal {
                 handleRemoteException(e, "getTransport");
                 return false;
             }
+        }
+    }
+
+    /**
+     * Get HIDL interface version number.
+     * @return version number formatted as a string
+     */
+    private String getVersion() {
+        if (isV1_3()) {
+            return "1.3";
+        } else if (isV1_2()) {
+            return "1.2";
+        } else if (isV1_1()) {
+            return "1.1";
+        } else {
+            // Service exists, so at least V1_0 is supported
+            return "1.0";
         }
     }
 
@@ -1302,6 +1320,15 @@ public class HostapdHalHidlImp implements IHostapdHal {
                 Log.w(TAG, "HIDL doesn't support setDebugParams");
             }
             return false;
+        }
+    }
+
+    /**
+     * Dump information about the HIDL implementation.
+     */
+    public void dump(PrintWriter pw) {
+        synchronized (mLock) {
+            pw.println("HIDL interface version: " + getVersion());
         }
     }
 }
