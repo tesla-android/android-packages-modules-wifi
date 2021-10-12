@@ -26,6 +26,7 @@ package android.net.wifi {
     method public int describeContents();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @NonNull public int[] getSecurityTypes();
+    method @Nullable public android.net.wifi.WifiSsid getWifiSsid();
     method public int getWifiStandard();
     method public boolean is80211mcResponder();
     method public boolean isPasspointNetwork();
@@ -37,7 +38,7 @@ package android.net.wifi {
     field public static final int CHANNEL_WIDTH_80MHZ = 2; // 0x2
     field public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4; // 0x4
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.ScanResult> CREATOR;
-    field public String SSID;
+    field @Deprecated public String SSID;
     field public static final int UNSPECIFIED = -1; // 0xffffffff
     field public static final int WIFI_BAND_24_GHZ = 1; // 0x1
     field public static final int WIFI_BAND_5_GHZ = 2; // 0x2
