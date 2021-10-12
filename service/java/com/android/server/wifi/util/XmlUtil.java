@@ -33,7 +33,9 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WifiMigration;
+import android.net.wifi.WifiSsid;
 import android.os.ParcelUuid;
 import android.text.TextUtils;
 import android.util.Log;
@@ -1602,7 +1604,8 @@ public class XmlUtil {
          */
         public static final String XML_TAG_CLIENT_MACADDRESS = "ClientMacAddress";
         public static final String XML_TAG_BAND_CHANNEL = "BandChannel";
-        public static final String XML_TAG_SSID = "SSID";
+        public static final String XML_TAG_SSID = "SSID"; // Use XML_TAG_WIFI_SSID instead
+        public static final String XML_TAG_WIFI_SSID = "WifiSsid";
         public static final String XML_TAG_BSSID = "Bssid";
         public static final String XML_TAG_BAND = "Band";
         public static final String XML_TAG_CHANNEL = "Channel";
@@ -1738,7 +1741,7 @@ public class XmlUtil {
         public static void writeSoftApConfigurationToXml(@NonNull XmlSerializer out,
                 @NonNull SoftApConfiguration softApConfig)
                 throws XmlPullParserException, IOException {
-            XmlUtil.writeNextValue(out, XML_TAG_SSID, softApConfig.getSsid());
+            XmlUtil.writeNextValue(out, XML_TAG_WIFI_SSID, softApConfig.getWifiSsid().toString());
             if (softApConfig.getBssid() != null) {
                 XmlUtil.writeNextValue(out, XML_TAG_BSSID, softApConfig.getBssid().toString());
             }
@@ -1802,9 +1805,11 @@ public class XmlUtil {
             SoftApConfiguration.Builder softApConfigBuilder = new SoftApConfiguration.Builder();
             int securityType = SoftApConfiguration.SECURITY_TYPE_OPEN;
             String passphrase = null;
-            String ssid = null;
+            // SSID may be retrieved from the old encoding (XML_TAG_SSID) or the new encoding
+            // (XML_TAG_WIFI_SSID).
+            boolean hasSsid = false;
             String bssid = null;
-            // Note that, during deserializaion, we may read the old band encoding (XML_TAG_BAND)
+            // Note that, during deserialization, we may read the old band encoding (XML_TAG_BAND)
             // or the new band encoding (XML_TAG_AP_BAND) that is used after the introduction of the
             // 6GHz band. If the old encoding is found, a conversion is done.
             int channel = -1;
@@ -1823,8 +1828,23 @@ public class XmlUtil {
                         }
                         switch (valueName[0]) {
                             case XML_TAG_SSID:
-                                ssid = (String) value;
+                                hasSsid = true;
                                 softApConfigBuilder.setSsid((String) value);
+                                break;
+                            case XML_TAG_WIFI_SSID:
+                                hasSsid = true;
+                                final WifiSsid wifiSsid = WifiSsid.fromString((String) value);
+                                if (SdkLevel.isAtLeastT()) {
+                                    softApConfigBuilder.setWifiSsid(wifiSsid);
+                                } else {
+                                    // If the SSID is non-UTF-8, then use WifiManager.UNKNOWN_SSID.
+                                    // This should not happen since non-UTF-8 SSIDs may only be set
+                                    // with SoftApConfiguration#Builder#setWifiSsid(WifiSsid),
+                                    // which is only available in T and above.
+                                    final CharSequence utf8Ssid = wifiSsid.getUtf8Text();
+                                    softApConfigBuilder.setSsid(utf8Ssid != null
+                                            ? utf8Ssid.toString() : WifiManager.UNKNOWN_SSID);
+                                }
                                 break;
                             case XML_TAG_BSSID:
                                 bssid = (String) value;
@@ -1941,8 +1961,8 @@ public class XmlUtil {
                     }
                 }
 
-               // We should at-least have SSID restored from store.
-                if (ssid == null) {
+                // We should at least have an SSID restored from store.
+                if (!hasSsid) {
                     Log.e(TAG, "Failed to parse SSID");
                     return null;
                 }
@@ -1964,7 +1984,7 @@ public class XmlUtil {
                 Log.e(TAG, "Failed to parse configuration " + e);
                 return null;
             }
-            return softApConfigBuilder.setSsid(ssid).build();
+            return softApConfigBuilder.build();
         } // End of parseFromXml
     }
 }

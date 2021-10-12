@@ -1166,10 +1166,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     }
 
     private SoftApConfiguration buildSoftApConfiguration(PrintWriter pw) {
-        String ssid = getNextArgRequired();
+        String ssidStr = getNextArgRequired();
         String type = getNextArgRequired();
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder();
-        configBuilder.setSsid(ssid);
+        configBuilder.setSsid(ssidStr);
         if (TextUtils.equals(type, "wpa2")) {
             configBuilder.setPassphrase(getNextArgRequired(),
                     SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
@@ -1209,6 +1209,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 } else {
                     throw new IllegalArgumentException("Invalid band option " + preferredBand);
                 }
+            } else if (SdkLevel.isAtLeastT() && option.equals("-x")) {
+                configBuilder.setWifiSsid(WifiSsid.fromString(ssidStr));
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
@@ -1730,6 +1732,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Note: If the band option is not provided, 2.4GHz is the preferred band.");
         pw.println("          The exact channel is auto-selected by FW unless overridden by "
                 + "force-softap-channel command");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text (T and above)");
         pw.println("  stop-softap");
         pw.println("    Stop softap (hotspot)");
         pw.println("  pmksa-flush <networkId>");

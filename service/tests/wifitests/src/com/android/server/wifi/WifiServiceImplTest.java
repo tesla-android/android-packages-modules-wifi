@@ -3334,7 +3334,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isEqualTo("customSsid");
+        assertThat(callback.mSoftApConfig.getWifiSsid().getUtf8Text()).isEqualTo("customSsid");
         assertThat(callback.mSoftApConfig.getSecurityType())
                 .isEqualTo(SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertThat(callback.mSoftApConfig.getPassphrase()).isEqualTo("passphrase");
@@ -3360,7 +3360,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isEqualTo("customSsid");
+        assertThat(callback.mSoftApConfig.getWifiSsid().getUtf8Text()).isEqualTo("customSsid");
         assertThat(callback.mSoftApConfig.getSecurityType())
                 .isEqualTo(SoftApConfiguration.SECURITY_TYPE_OPEN);
         assertThat(callback.mSoftApConfig.getPassphrase()).isNull();
@@ -3389,7 +3389,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isNotEmpty();
+        assertThat(callback.mSoftApConfig.getWifiSsid()).isNotNull();
     }
 
     @Test
@@ -4495,7 +4495,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
             anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
         InOrder inorder = inOrder(mWifiApConfigStore);
-        SoftApConfiguration testConfig = new SoftApConfiguration.Builder().setSsid("test").build();
+        SoftApConfiguration testConfig = new SoftApConfiguration.Builder()
+                .setSsid("test").build();
         byte[] testData = testConfig.toString().getBytes();
         when(mSoftApBackupRestore.retrieveSoftApConfigurationFromBackupData(testData))
                 .thenReturn(testConfig);

@@ -201,7 +201,10 @@ public class WifiManagerTest {
      */
     private boolean compareWifiAndSoftApConfiguration(
             SoftApConfiguration softApConfig, WifiConfiguration wifiConfig) {
-        if (!Objects.equals(wifiConfig.SSID, softApConfig.getSsid())) {
+        // SoftApConfiguration#toWifiConfiguration() creates a config with an unquoted UTF-8 SSID
+        // instead of the double quoted behavior in the javadoc for WifiConfiguration#SSID. Thus,
+        // we need to compare the wifi config SSID directly with the unquoted UTF-8 text.
+        if (!Objects.equals(wifiConfig.SSID, softApConfig.getWifiSsid().getUtf8Text())) {
             return false;
         }
         if (!Objects.equals(wifiConfig.BSSID, softApConfig.getBssid())) {

@@ -35,6 +35,7 @@ import android.net.wifi.WifiAnnotations;
 import android.net.wifi.WifiClient;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiSsid;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -485,7 +486,8 @@ public class SoftApManager implements ActiveModeManager {
         pw.println("mSoftApCountryCode: " + mCountryCode);
         pw.println("mOriginalModeConfiguration.targetMode: "
                 + mOriginalModeConfiguration.getTargetMode());
-        pw.println("mCurrentSoftApConfiguration.SSID: " + mCurrentSoftApConfiguration.getSsid());
+        pw.println("mCurrentSoftApConfiguration.mWifiSsid: "
+                + mCurrentSoftApConfiguration.getWifiSsid());
         pw.println("mCurrentSoftApConfiguration.mBand: " + mCurrentSoftApConfiguration.getBand());
         pw.println("mCurrentSoftApConfiguration.hiddenSSID: "
                 + mCurrentSoftApConfiguration.isHiddenSsid());
@@ -859,8 +861,9 @@ public class SoftApManager implements ActiveModeManager {
                         break;
                     case CMD_START:
                         mRequestorWs = (WorkSource) message.obj;
-                        if (mCurrentSoftApConfiguration == null
-                                || mCurrentSoftApConfiguration.getSsid() == null) {
+                        WifiSsid wifiSsid = mCurrentSoftApConfiguration != null
+                                ? mCurrentSoftApConfiguration.getWifiSsid() : null;
+                        if (wifiSsid == null || wifiSsid.getBytes().length == 0) {
                             Log.e(getTag(), "Unable to start soft AP without valid configuration");
                             updateApState(WifiManager.WIFI_AP_STATE_FAILED,
                                     WifiManager.WIFI_AP_STATE_DISABLED,
