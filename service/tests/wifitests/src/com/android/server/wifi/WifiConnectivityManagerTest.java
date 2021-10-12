@@ -322,6 +322,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     private static final int LOW_RSSI_NETWORK_RETRY_START_DELAY_SEC = 20;
     private static final int LOW_RSSI_NETWORK_RETRY_MAX_DELAY_SEC = 80;
     private static final int SCAN_TRIGGER_TIMES = 7;
+    private static final long NETWORK_CHANGE_TRIGGER_PNO_THROTTLE_MS = 3000; // 3 seconds
 
     /**
     * A test Handler that stores one single incoming Message with delayed time internally, to be
@@ -4066,6 +4067,12 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         pnoNetworks = mWifiConnectivityManager.retrievePnoNetworkList();
         assertEquals(1, pnoNetworks.size());
         assertEquals(network2.SSID, pnoNetworks.get(0).ssid);
+
+        // Now set network2 to be temporarily disabled by the user. This should remove network 2
+        // from the list.
+        when(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network2.SSID)).thenReturn(true);
+        pnoNetworks = mWifiConnectivityManager.retrievePnoNetworkList();
+        assertEquals(0, pnoNetworks.size());
     }
 
     /**
@@ -4254,6 +4261,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     public void restartPnoScanForNetworkChanges() {
         setWifiEnabled(true);
 
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
         // starts a PNO scan
         mWifiConnectivityManager.handleConnectionStateChanged(
                 mPrimaryClientModeManager,
@@ -4267,12 +4275,20 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Add or update suggestions.
         mSuggestionUpdateListenerCaptor.getValue().onSuggestionsAddedOrUpdated(
                 Arrays.asList(mWifiNetworkSuggestion));
-        // Ensure that we restarted PNO.
-        inOrder.verify(mWifiScanner).stopPnoScan(any());
-        inOrder.verify(mWifiScanner).startDisconnectedPnoScan(any(), any(), any(), any());
-
         // Add saved network
         mNetworkUpdateListenerCaptor.getValue().onNetworkAdded(new WifiConfiguration());
+        // Ensure that we don't immediately restarted PNO.
+        inOrder.verify(mWifiScanner, never()).stopPnoScan(any());
+        inOrder.verify(mWifiScanner, never()).startDisconnectedPnoScan(any(), any(), any(), any());
+
+        // Verify there is only 1 delayed scan scheduled
+        assertEquals(1, mTestHandler.getIntervals().size());
+        assertEquals(NETWORK_CHANGE_TRIGGER_PNO_THROTTLE_MS,
+                (long) mTestHandler.getIntervals().get(0));
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(mTestHandler.getIntervals().get(0));
+        // Now advance the test handler and fire the periodic scan timer
+        mTestHandler.timeAdvance();
+
         // Ensure that we restarted PNO.
         inOrder.verify(mWifiScanner).stopPnoScan(any());
         inOrder.verify(mWifiScanner).startDisconnectedPnoScan(any(), any(), any(), any());
