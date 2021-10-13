@@ -1069,7 +1069,9 @@ public class WifiBlocklistMonitor {
 
         // Clear out all the disable reason counters.
         status.clearDisableReasonCounter();
-        config.status = WifiConfiguration.Status.ENABLED;
+        if (config.status == WifiConfiguration.Status.DISABLED) {
+            config.status = WifiConfiguration.Status.ENABLED;
+        }
     }
 
     /**
