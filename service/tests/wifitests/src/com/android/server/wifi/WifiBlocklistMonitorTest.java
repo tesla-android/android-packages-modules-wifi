@@ -1024,6 +1024,40 @@ public class WifiBlocklistMonitorTest {
     }
 
     /**
+     * Verifies the update of the current network's status using
+     * {@link WifiConfigManager#updateNetworkSelectionStatus(int, int)}.
+     */
+    @Test
+    public void testNetworkSelectionStatusCurrent() {
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetwork.status = WifiConfiguration.Status.CURRENT;
+        // First set it to enabled.
+        verifyUpdateNetworkSelectionStatus(
+                openNetwork, NetworkSelectionStatus.DISABLED_NONE, 0);
+
+        // Now set it to temporarily disabled. The threshold for association rejection is 5, so
+        // disable it 5 times to actually mark it temporarily disabled.
+        int assocRejectReason = NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION;
+        int assocRejectThreshold =
+                mWifiBlocklistMonitor.getNetworkSelectionDisableThreshold(assocRejectReason);
+        for (int i = 1; i <= assocRejectThreshold; i++) {
+            verifyUpdateNetworkSelectionStatus(openNetwork, assocRejectReason, i);
+        }
+        assertEquals(NetworkSelectionStatus.DISABLED_ASSOCIATION_REJECTION,
+                openNetwork.getNetworkSelectionStatus().getNetworkSelectionDisableReason());
+        // Now set it to permanently disabled.
+        verifyUpdateNetworkSelectionStatus(
+                openNetwork, NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER, 0);
+        assertEquals(NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER,
+                openNetwork.getNetworkSelectionStatus().getNetworkSelectionDisableReason());
+        // Now set it back to enabled.
+        verifyUpdateNetworkSelectionStatus(
+                openNetwork, NetworkSelectionStatus.DISABLED_NONE, 0);
+        assertEquals(NetworkSelectionStatus.DISABLED_NONE,
+                openNetwork.getNetworkSelectionStatus().getNetworkSelectionDisableReason());
+    }
+
+    /**
      * Verifies the update of network status using
      * {@link WifiBlocklistMonitor#updateNetworkSelectionStatus(int, int)}.
      */
@@ -1091,6 +1125,7 @@ public class WifiBlocklistMonitorTest {
                 .thenReturn(TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS);
         NetworkSelectionStatus currentStatus = config.getNetworkSelectionStatus();
         int currentDisableReason = currentStatus.getNetworkSelectionDisableReason();
+        boolean isCurrent = config.status == WifiConfiguration.Status.CURRENT;
 
         // First set the status to the provided reason.
         mWifiBlocklistMonitor.updateNetworkSelectionStatus(config, reason);
@@ -1108,7 +1143,11 @@ public class WifiBlocklistMonitorTest {
             assertEquals(
                     NetworkSelectionStatus.INVALID_NETWORK_SELECTION_DISABLE_TIMESTAMP,
                     retrievedDisableTime);
-            assertEquals(WifiConfiguration.Status.ENABLED, config.status);
+            if (isCurrent) {
+                assertEquals(WifiConfiguration.Status.CURRENT, config.status);
+            } else {
+                assertEquals(WifiConfiguration.Status.ENABLED, config.status);
+            }
         } else if (mWifiBlocklistMonitor.getNetworkSelectionDisableTimeoutMillis(reason)
                 != DisableReasonInfo.PERMANENT_DISABLE_TIMEOUT) {
             // For temporarily disabled networks, we need to ensure that the current status remains

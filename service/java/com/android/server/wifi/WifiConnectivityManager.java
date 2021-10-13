@@ -114,6 +114,8 @@ public class WifiConnectivityManager {
     private static final int TEMP_BSSID_BLOCK_DURATION = 10 * 1000; // 10 seconds
     // Maximum age of frequencies last seen to be included in pno scans. (30 days)
     private static final long MAX_PNO_SCAN_FREQUENCY_AGE_MS = (long) 1000 * 3600 * 24 * 30;
+    // Do not restart PNO scan if network changes happen more than once within this duration.
+    private static final long NETWORK_CHANGE_TRIGGER_PNO_THROTTLE_MS = 3000; // 3 seconds
     private static final int POWER_SAVE_SCAN_INTERVAL_MULTIPLIER = 2;
     // ClientModeManager has a bunch of states. From the
     // WifiConnectivityManager's perspective it only cares
@@ -186,6 +188,8 @@ public class WifiConnectivityManager {
     private long mLastPeriodicSingleScanTimeStamp = RESET_TIME_STAMP;
     private long mLastNetworkSelectionTimeStamp = RESET_TIME_STAMP;
     private boolean mPnoScanStarted = false;
+    private Object mDelayedPnoScanToken = new Object();
+    private boolean mDelayedPnoScanPending = false;
     private boolean mPeriodicScanTimerSet = false;
     private Object mPeriodicScanTimerToken = new Object();
     private boolean mDelayedPartialScanTimerSet = false;
@@ -1596,10 +1600,23 @@ public class WifiConnectivityManager {
                 startConnectivityScan(false);
             }
         } else {
+            // Trigger a delayed PNO scan to avoid frequent PNO scan restart since it's possible
+            // that many networks could be added back to back.
+            if (mDelayedPnoScanPending) {
+                localLog("PNO scan throttled for frequent Saved networks / suggestions update.");
+                return;
+            }
             // Update the PNO scan network list when screen is off. Here we
             // rely on startConnectivityScan() to perform all the checks and clean up.
-            localLog("Saved networks / suggestions updated impacting pno scan");
-            startConnectivityScan(false);
+            localLog("Saved networks / suggestions update will restart pno scan in "
+                    + NETWORK_CHANGE_TRIGGER_PNO_THROTTLE_MS + "ms");
+            mDelayedPnoScanPending = true;
+            mEventHandler.postDelayed(
+                    () -> {
+                        mDelayedPnoScanPending = false;
+                        startConnectivityScan(false);
+                    },
+                    mDelayedPnoScanToken, NETWORK_CHANGE_TRIGGER_PNO_THROTTLE_MS);
         }
     }
 
@@ -1931,7 +1948,9 @@ public class WifiConnectivityManager {
         networks.addAll(mWifiNetworkSuggestionsManager.getAllScanOptimizationSuggestionNetworks());
         // remove all auto-join disabled or network selection disabled network.
         networks.removeIf(config -> !config.allowAutojoin
-                || !config.getNetworkSelectionStatus().isNetworkEnabled());
+                || !config.getNetworkSelectionStatus().isNetworkEnabled()
+                || mConfigManager.isNetworkTemporarilyDisabledByUser(
+                        config.isPasspoint() ? config.FQDN : config.SSID));
         return networks;
     }
 
@@ -2124,6 +2143,11 @@ public class WifiConnectivityManager {
 
         mOpenNetworkNotifier.handleScreenStateChanged(screenOn);
 
+        if (mScreenOn) {
+            // cancel any queued PNO scans since the screen is turned on.
+            mDelayedPnoScanPending = false;
+            mEventHandler.removeCallbacksAndMessages(mDelayedPnoScanToken);
+        }
         startConnectivityScan(SCAN_ON_SCHEDULE);
     }
 
