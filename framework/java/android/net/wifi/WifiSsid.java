@@ -189,10 +189,6 @@ public final class WifiSsid implements Parcelable {
     @Override
     public String toString() {
         byte[] ssidBytes = octets.toByteArray();
-        // Supplicant returns \x00\x00\x00\x00\x00\x00\x00\x00 hex string
-        // for a hidden access point. Make sure we maintain the previous
-        // behavior of returning empty string for this case.
-        if (octets.size() <= 0 || isArrayAllZeroes(ssidBytes)) return "";
         // TODO: Handle conversion to other charsets upon failure
         Charset charset = Charset.forName("UTF-8");
         CharsetDecoder decoder = charset.newDecoder()
@@ -223,18 +219,6 @@ public final class WifiSsid implements Parcelable {
     @Override
     public int hashCode() {
         return Arrays.hashCode(octets.toByteArray());
-    }
-
-    private boolean isArrayAllZeroes(byte[] ssidBytes) {
-        for (int i = 0; i< ssidBytes.length; i++) {
-            if (ssidBytes[i] != 0) return false;
-        }
-        return true;
-    }
-
-    /** @hide */
-    public boolean isHidden() {
-        return isArrayAllZeroes(octets.toByteArray());
     }
 
     /** @hide */

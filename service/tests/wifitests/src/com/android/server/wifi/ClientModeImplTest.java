@@ -1667,6 +1667,36 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
+     * Tests that {@link WifiInfo#getHiddenSsid()} returns {@code true} if we've connected to a
+     * hidden SSID network.
+     * @throws Exception
+     */
+    @Test
+    public void testConnectHiddenSsid() throws Exception {
+        WifiConfiguration hiddenSsidConfig = createTestNetwork(true);
+        setupAndStartConnectSequence(hiddenSsidConfig);
+        validateSuccessfulConnectSequence(hiddenSsidConfig);
+
+        // Connect and verify WifiInfo.getHiddenSsid is true.
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(FRAMEWORK_NETWORK_ID, TEST_WIFI_SSID, TEST_BSSID_STR,
+                        SupplicantState.ASSOCIATING));
+        mLooper.dispatchAll();
+
+        assertNotNull(mWifiInfo);
+        assertTrue(mWifiInfo.getHiddenSSID());
+
+        // Disconnect and verify WifiInfo.getHiddenSsid is false.
+        DisconnectEventInfo disconnectEventInfo =
+                new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+
+        assertNotNull(mWifiInfo);
+        assertFalse(mWifiInfo.getHiddenSSID());
+    }
+
+    /**
      * Verify that WifiStateTracker is called if wifi is disabled while connected.
      */
     @Test
