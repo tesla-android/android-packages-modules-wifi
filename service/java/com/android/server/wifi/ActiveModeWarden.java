@@ -1016,6 +1016,12 @@ public class ActiveModeWarden {
         }
     }
 
+    private void stopSecondaryClientModeManagers() {
+        stopAllClientModeManagersInRole(ROLE_CLIENT_LOCAL_ONLY);
+        stopAllClientModeManagersInRole(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        stopAllClientModeManagersInRole(ROLE_CLIENT_SECONDARY_LONG_LIVED);
+    }
+
     /**
      * Method to switch all client mode manager mode of operation (from ScanOnly To Connect &
      * vice-versa) based on the toggle state.
@@ -1762,6 +1768,14 @@ public class ActiveModeWarden {
         private void handleStaToggleChangeInEnabledState(WorkSource requestorWs) {
             if (shouldEnableSta()) {
                 if (hasAnyClientModeManager()) {
+                    if (!mSettingsStore.isWifiToggleEnabled()) {
+                        // Wifi is turned off, so we should stop all the secondary CMMs which are
+                        // currently all for connectivity purpose. It's important to stops the
+                        // secondary CMMs before switch state of the primary CMM so features using
+                        // those secondary CMMs knows to abort properly, and won't react in strange
+                        // ways to the primary switching to scan only mode later.
+                        stopSecondaryClientModeManagers();
+                    }
                     switchAllPrimaryOrScanOnlyClientModeManagers();
                 } else {
                     startPrimaryOrScanOnlyClientModeManager(requestorWs);
