@@ -43,6 +43,7 @@ import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
@@ -94,6 +95,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -707,6 +709,52 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mPrimaryChangedCallback).onChange(mClientModeManager, null);
+    }
+
+    /**
+     * Test that wifi toggle switching the primary to scan only mode will also remove the additional
+     * CMMs.
+     */
+    @Test
+    public void testSwitchFromConnectModeToScanOnlyModeRemovesAdditionalCMMs() throws Exception {
+        // Ensure that we can create more client ifaces.
+        when(mWifiNative.isItPossibleToCreateStaIface(any())).thenReturn(true);
+        when(mResources.getBoolean(
+                R.bool.config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled))
+                .thenReturn(true);
+        assertTrue(mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                TEST_WORKSOURCE, ROLE_CLIENT_SECONDARY_TRANSIENT));
+
+        // request for an additional CMM
+        ConcreteClientModeManager additionalClientModeManager =
+                mock(ConcreteClientModeManager.class);
+        ExternalClientModeManagerRequestListener externalRequestListener = mock(
+                ExternalClientModeManagerRequestListener.class);
+        Listener<ConcreteClientModeManager> additionalClientListener =
+                requestAdditionalClientModeManager(ROLE_CLIENT_SECONDARY_TRANSIENT,
+                        additionalClientModeManager, externalRequestListener, TEST_SSID_2,
+                        TEST_BSSID_2);
+
+        // Verify that there exists both a primary and a secondary transient CMM
+        List<ClientModeManager> currentCMMs = mActiveModeWarden.getClientModeManagers();
+        assertEquals(2, currentCMMs.size());
+        assertTrue(currentCMMs.stream().anyMatch(cmm -> cmm.getRole() == ROLE_CLIENT_PRIMARY));
+        assertTrue(currentCMMs.stream().anyMatch(
+                cmm -> cmm.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT));
+
+        InOrder inOrder = inOrder(additionalClientModeManager, mClientModeManager);
+        // disable wifi and switch primary CMM to scan only mode
+        when(mWifiPermissionsUtil.isLocationModeEnabled()).thenReturn(true);
+        when(mSettingsStore.isAirplaneModeOn()).thenReturn(false);
+        when(mSettingsStore.isScanAlwaysAvailable()).thenReturn(true);
+        when(mSettingsStore.isWifiToggleEnabled()).thenReturn(false);
+        mActiveModeWarden.wifiToggled(TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+
+        // Verify that we first stop the additional CMM and then switch the primary to scan only
+        // mode
+        inOrder.verify(additionalClientModeManager).stop();
+        inOrder.verify(mClientModeManager).setRole(ROLE_CLIENT_SCAN_ONLY, INTERNAL_REQUESTOR_WS);
     }
 
     /**
