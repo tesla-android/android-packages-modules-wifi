@@ -1455,6 +1455,8 @@ message StaEvent {
     // Connected to a network that's not found in the database.
     DISCONNECT_UNKNOWN_NETWORK = 15;
 
+    // The network has been marked as untrusted.
+    DISCONNECT_NETWORK_UNTRUSTED = 16;
   }
 
   // Authentication Failure reasons as reported through the API.
