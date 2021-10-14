@@ -754,10 +754,12 @@ public class SupplicantStaIfaceHal {
             final long waitForDeathCookie = new Random().nextLong();
             final CountDownLatch waitForDeathLatch = new CountDownLatch(1);
             linkToSupplicantDeath((cookie) -> {
-                Log.d(TAG, "ISupplicant died: cookie=" + cookie);
-                if (cookie != waitForDeathCookie) return;
-                supplicantServiceDiedHandler(mDeathRecipientCookie);
-                waitForDeathLatch.countDown();
+                mEventHandler.post(() -> {
+                    Log.d(TAG, "ISupplicant died: cookie=" + cookie);
+                    if (cookie != waitForDeathCookie) return;
+                    supplicantServiceDiedHandler(mDeathRecipientCookie);
+                    waitForDeathLatch.countDown();
+                });
             }, waitForDeathCookie);
 
             if (isV1_1()) {
