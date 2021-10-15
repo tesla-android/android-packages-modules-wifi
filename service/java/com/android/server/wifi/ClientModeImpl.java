@@ -1027,31 +1027,36 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mWifiBlocklistMonitor.handleNetworkRemoved(newConfig.SSID);
             }
 
-            // Check if user/app change meteredOverride for connected network.
-            if (newConfig.networkId != mLastNetworkId
-                    || newConfig.meteredOverride == oldConfig.meteredOverride) {
+            if (newConfig.networkId != mLastNetworkId)  {
                 // nothing to do.
                 return;
             }
             boolean isMetered = WifiConfiguration.isMetered(newConfig, mWifiInfo);
             boolean wasMetered = WifiConfiguration.isMetered(oldConfig, mWifiInfo);
-            if (isMetered == wasMetered) {
-                // no meteredness change, nothing to do.
-                if (mVerboseLoggingEnabled) {
-                    Log.v(getTag(), "User/app changed meteredOverride, "
-                            + "but no change in meteredness");
-                }
+            // Check if user/app change meteredOverride or trusted for connected network.
+            if (isMetered == wasMetered
+                    && (!SdkLevel.isAtLeastT() || newConfig.trusted == oldConfig.trusted)) {
                 return;
             }
-            // If unmetered->metered trigger a disconnect.
-            // If metered->unmetered update capabilities.
+
+            if (SdkLevel.isAtLeastT()) {
+                mWifiInfo.setTrusted(newConfig.trusted);
+                if (!newConfig.trusted) {
+                    Log.w(getTag(), "Network marked untrusted, triggering disconnect");
+                    sendMessage(CMD_DISCONNECT, StaEvent.DISCONNECT_NETWORK_UNTRUSTED);
+                    return;
+                }
+            }
+
             if (isMetered) {
                 Log.w(getTag(), "Network marked metered, triggering disconnect");
                 sendMessage(CMD_DISCONNECT, StaEvent.DISCONNECT_NETWORK_METERED);
-            } else {
-                Log.i(getTag(), "Network marked unmetered, triggering capabilities update");
-                updateCapabilities(newConfig);
+                return;
             }
+
+            Log.i(getTag(), "Network marked metered=" + isMetered
+                    + " trusted=" + newConfig.trusted + ", triggering capabilities update");
+            updateCapabilities(newConfig);
         }
 
         @Override

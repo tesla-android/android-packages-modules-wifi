@@ -2200,6 +2200,7 @@ public class WifiManager {
      * permission.
      *<p>
      * NOTE:
+     * <ul>
      * <li> These networks are just a suggestion to the platform. The platform will ultimately
      * decide on which network the device connects to. </li>
      * <li> When an app is uninstalled or disabled, all its suggested networks are discarded.
@@ -2207,7 +2208,8 @@ public class WifiManager {
      * device will disconnect from that network.</li>
      * <li> If user reset network settings, all added suggestions will be discarded. Apps can use
      * {@link #getNetworkSuggestions()} to check if their suggestions are in the device.</li>
-     * <li> In-place modification of existing suggestions are allowed.
+     * <li> In-place modification of existing suggestions are allowed.</li>
+     * <ul>
      * <li> If the provided suggestions include any previously provided suggestions by the app,
      * previous suggestions will be updated.</li>
      * <li>If one of the provided suggestions marks a previously unmetered suggestion as metered and
@@ -2216,7 +2218,16 @@ public class WifiManager {
      * and possibly reconnect back to the same suggestion. This disconnect is to make sure that any
      * traffic flowing over unmetered networks isn't accidentally continued over a metered network.
      * </li>
+     * <li>
+     * On {@link android.os.Build.VERSION_CODES#TIRAMISU} or above If one of the provided
+     * suggestions marks a previously trusted suggestion as untrusted and the device is currently
+     * connected to that suggested network, then the device will disconnect from that network. The
+     * system will immediately re-evaluate all the network candidates. This disconnect is to make
+     * sure device will not remain connected to an untrusted network without a related
+     * {@link android.net.NetworkRequest}.
      * </li>
+     * </ul>
+     * </ul>
      *
      * @param networkSuggestions List of network suggestions provided by the app.
      * @return Status code for the operation. One of the STATUS_NETWORK_SUGGESTIONS_ values.

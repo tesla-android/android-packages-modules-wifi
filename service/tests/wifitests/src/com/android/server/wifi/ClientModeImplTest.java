@@ -45,6 +45,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -7033,5 +7034,95 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiConfigManager)
                 .setNetworkDefaultGwMacAddress(mConnectedNetwork.networkId, gatewayMac);
         verify(mWifiConfigManager, never()).updateLinkedNetworks(connectedConfig.networkId);
+    }
+
+    /**
+     * Verify that we disconnect when we mark a previous trusted network untrusted.
+     */
+    @Test
+    public void verifyDisconnectOnMarkingNetworkUntrusted() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((config) -> { }, (cap) -> {
+            assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED));
+        });
+
+        WifiConfiguration oldConfig = new WifiConfiguration(mConnectedNetwork);
+        mConnectedNetwork.trusted = false;
+
+        mConfigUpdateListenerCaptor.getValue().onNetworkUpdated(mConnectedNetwork, oldConfig);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+        verify(mWifiMetrics).logStaEvent(anyString(), eq(StaEvent.TYPE_FRAMEWORK_DISCONNECT),
+                eq(StaEvent.DISCONNECT_NETWORK_UNTRUSTED));
+    }
+
+    /**
+     * Verify that we only update capabilities when we mark a previous untrusted network trusted.
+     */
+    @Test
+    public void verifyUpdateCapabilitiesOnMarkingNetworkTrusted() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        mConnectedNetwork.trusted = false;
+        connect();
+        expectRegisterNetworkAgent((config) -> { }, (cap) -> {
+            assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED));
+        });
+        reset(mWifiNetworkAgent);
+
+        WifiConfiguration oldConfig = new WifiConfiguration(mConnectedNetwork);
+        mConnectedNetwork.trusted = true;
+
+        mConfigUpdateListenerCaptor.getValue().onNetworkUpdated(mConnectedNetwork, oldConfig);
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+
+        expectNetworkAgentUpdateCapabilities((cap) -> {
+            assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED));
+        });
+    }
+
+    /**
+     * Verify on device before T we will not disconnect when we mark a previous trusted network
+     * untrusted.
+     */
+    @Test
+    public void verifyNoDisconnectOnMarkingNetworkUntrustedBeforeT() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((config) -> { }, (cap) -> {
+            assertTrue(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED));
+        });
+
+        WifiConfiguration oldConfig = new WifiConfiguration(mConnectedNetwork);
+        mConnectedNetwork.trusted = false;
+
+        mConfigUpdateListenerCaptor.getValue().onNetworkUpdated(mConnectedNetwork, oldConfig);
+        mLooper.dispatchAll();
+        verify(mWifiNative, never()).disconnect(WIFI_IFACE_NAME);
+        verify(mWifiMetrics, never()).logStaEvent(anyString(), anyInt(), anyInt());
+    }
+
+    /**
+     * Verify on a build before T we will not update capabilities or disconnect when we mark a
+     * previous untrusted network trusted.
+     */
+    @Test
+    public void verifyNoUpdateCapabilitiesOnMarkingNetworkTrustedBeforeT() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        mConnectedNetwork.trusted = false;
+        connect();
+        expectRegisterNetworkAgent((config) -> { }, (cap) -> {
+            assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED));
+        });
+        reset(mWifiNetworkAgent);
+
+        WifiConfiguration oldConfig = new WifiConfiguration(mConnectedNetwork);
+        mConnectedNetwork.trusted = true;
+
+        mConfigUpdateListenerCaptor.getValue().onNetworkUpdated(mConnectedNetwork, oldConfig);
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+        verifyNoMoreInteractions(mWifiNetworkAgent);
     }
 }
