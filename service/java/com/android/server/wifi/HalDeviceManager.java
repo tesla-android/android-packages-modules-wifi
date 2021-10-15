@@ -1012,7 +1012,7 @@ public class HalDeviceManager {
                                 @Override
                                 public void onChipReconfigureFailure(WifiStatus status)
                                         throws RemoteException {
-                                    Log.d(TAG, "onChipReconfigureFailure: status=" + statusString(
+                                    Log.e(TAG, "onChipReconfigureFailure: status=" + statusString(
                                             status));
                                 }
 
@@ -1698,6 +1698,13 @@ public class HalDeviceManager {
                     mInterfaceInfoCache.put(
                             Pair.create(cacheEntry.name, cacheEntry.type), cacheEntry);
                     return iface;
+                } else if (bestIfaceCreationProposal.interfacesToBeRemovedFirst.isEmpty()) {
+                    // If this is the reconfiguration for creating new interfaces without removing
+                    // the existing interfaces, we'll need to clean up internal state.
+                    Log.e(TAG, "Teardown Wifi internal state");
+                    mWifi = null;
+                    mIsReady = false;
+                    teardownInternal();
                 }
             }
         }
