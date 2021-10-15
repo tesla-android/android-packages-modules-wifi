@@ -4882,7 +4882,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (mVcnManager == null && SdkLevel.isAtLeastS()) {
                 mVcnManager = mContext.getSystemService(VcnManager.class);
             }
-            if (mVcnManager != null) {
+            if (mVcnManager != null && mVcnPolicyChangeListener == null) {
                 mVcnPolicyChangeListener = new WifiVcnNetworkPolicyChangeListener();
                 mVcnManager.addVcnNetworkPolicyChangeListener(new HandlerExecutor(getHandler()),
                         mVcnPolicyChangeListener);
