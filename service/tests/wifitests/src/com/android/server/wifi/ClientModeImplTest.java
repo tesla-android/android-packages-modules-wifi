@@ -213,10 +213,9 @@ public class ClientModeImplTest extends WifiBaseTest {
 
     private static final int MANAGED_PROFILE_UID = 1100000;
     private static final int OTHER_USER_UID = 1200000;
-    private static final int LOG_REC_LIMIT_IN_VERBOSE_MODE =
-            (ActivityManager.isLowRamDeviceStatic()
-                    ? ClientModeImpl.NUM_LOG_RECS_VERBOSE_LOW_MEMORY
-                    : ClientModeImpl.NUM_LOG_RECS_VERBOSE);
+    private static final int LOG_REC_LIMIT_IN_VERBOSE_MODE = ClientModeImpl.NUM_LOG_RECS_VERBOSE;
+    private static final int LOG_REC_LIMIT_IN_VERBOSE_MODE_LOW_RAM =
+            ClientModeImpl.NUM_LOG_RECS_VERBOSE_LOW_MEMORY;
     private static final int FRAMEWORK_NETWORK_ID = 0;
     private static final int PASSPOINT_NETWORK_ID = 1;
     private static final int OTHER_NETWORK_ID = 47;
@@ -315,8 +314,7 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         when(context.getOpPackageName()).thenReturn(OP_PACKAGE_NAME);
 
-        when(context.getSystemService(ActivityManager.class)).thenReturn(
-                mock(ActivityManager.class));
+        when(context.getSystemService(ActivityManager.class)).thenReturn(mActivityManager);
 
         WifiP2pManager p2pm = mock(WifiP2pManager.class);
         when(context.getSystemService(WifiP2pManager.class)).thenReturn(p2pm);
@@ -430,6 +428,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     ExtendedWifiInfo mWifiInfo;
     ConnectionCapabilities mConnectionCapabilities = new ConnectionCapabilities();
 
+    @Mock ActivityManager mActivityManager;
     @Mock WifiNetworkAgent mWifiNetworkAgent;
     @Mock SupplicantStateTracker mSupplicantStateTracker;
     @Mock WifiMetrics mWifiMetrics;
@@ -2433,8 +2432,19 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void enablingVerboseLoggingUpdatesLogRecSize() {
+        when(mActivityManager.isLowRamDevice()).thenReturn(false);
         mCmi.enableVerboseLogging(true);
         assertEquals(LOG_REC_LIMIT_IN_VERBOSE_MODE, mCmi.getLogRecMaxSize());
+    }
+
+    /**
+     * Verifies that, in verbose mode, we allow a larger number of log records on a low ram device.
+     */
+    @Test
+    public void enablingVerboseLoggingUpdatesLogRecSizeLowRamDevice() {
+        when(mActivityManager.isLowRamDevice()).thenReturn(true);
+        mCmi.enableVerboseLogging(true);
+        assertEquals(LOG_REC_LIMIT_IN_VERBOSE_MODE_LOW_RAM, mCmi.getLogRecMaxSize());
     }
 
     @Test
