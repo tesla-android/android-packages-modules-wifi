@@ -109,6 +109,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     private String mBSSID;
     @UnsupportedAppUsage
     private WifiSsid mWifiSsid;
+    private boolean mIsHiddenSsid = false;
     private int mNetworkId;
     private int mSecurityType;
 
@@ -462,6 +463,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         setInetAddress(null);
         setBSSID(null);
         setSSID(null);
+        setHiddenSSID(false);
         setNetworkId(-1);
         setRssi(INVALID_RSSI);
         setLinkSpeed(LINK_SPEED_UNKNOWN);
@@ -1141,8 +1143,16 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * SSID-specific probe request must be used for scans.
      */
     public boolean getHiddenSSID() {
-        if (mWifiSsid == null) return false;
-        return mWifiSsid.isHidden();
+        return mIsHiddenSsid;
+    }
+
+    /**
+     * Sets whether or not this network is using a hidden SSID. This value should be set from the
+     * corresponding {@link WifiConfiguration} of the network.
+     * @hide
+     */
+    public void setHiddenSSID(boolean isHiddenSsid) {
+        mIsHiddenSsid = isHiddenSsid;
     }
 
     /**
