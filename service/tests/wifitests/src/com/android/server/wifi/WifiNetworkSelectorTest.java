@@ -1789,9 +1789,12 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
         WifiConfiguration[] configs = scanDetailsAndConfigs.getWifiConfigs();
         WifiConfiguration existingConfig = WifiConfigurationTestUtil.createPasspointNetwork();
+        existingConfig.networkId = configs[0].networkId;
         existingConfig.SSID = ssids[1];
         // Matched wifiConfig is an passpoint network with SSID from last scan.
         when(mWifiConfigManager.getConfiguredNetwork(configs[0].networkId))
+                .thenReturn(existingConfig);
+        when(mWifiConfigManager.getConfiguredNetworkWithPassword(configs[0].networkId))
                 .thenReturn(existingConfig);
         mWifiNetworkSelector.registerNetworkNominator(
                 new PlaceholderNominator(0, PLACEHOLDER_NOMINATOR_ID_2));
