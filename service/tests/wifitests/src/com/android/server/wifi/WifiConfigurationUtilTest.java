@@ -1320,7 +1320,7 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
      */
     @Test
     public void testAddAndRemoveSecurityTypeForNetworkId() {
-        List<Integer> securityList = Arrays.asList(
+        List<Integer> securityListNoPasspoint = Arrays.asList(
                 WifiConfiguration.SECURITY_TYPE_OPEN,
                 WifiConfiguration.SECURITY_TYPE_WEP,
                 WifiConfiguration.SECURITY_TYPE_PSK,
@@ -1331,10 +1331,17 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
                 WifiConfiguration.SECURITY_TYPE_WAPI_PSK,
                 WifiConfiguration.SECURITY_TYPE_WAPI_CERT,
                 WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE,
-                WifiConfiguration.SECURITY_TYPE_OSEN,
+                WifiConfiguration.SECURITY_TYPE_OSEN
+        );
+
+        List<Integer> securityListPasspoint = Arrays.asList(
                 WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2,
                 WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3
         );
+
+        List<Integer> securityList = new ArrayList<>();
+        securityList.addAll(securityListPasspoint);
+        securityList.addAll(securityListNoPasspoint);
 
         final int netId = 1;
         if (!SdkLevel.isAtLeastS()) {
@@ -1357,11 +1364,17 @@ public class WifiConfigurationUtilTest extends WifiBaseTest {
                                         WifiConfigurationUtil.addSecurityTypeToNetworkId(
                                                 netId, securityType))));
             }
-            // A unique net id should be created for each security type added
-            assertEquals(securityList.size(), securityList.stream()
+            // A unique net id should be created for each non-passpoint security type added
+            assertEquals(securityListNoPasspoint.size(), securityListNoPasspoint.stream()
                     .map(security -> addSecurityTypeToNetworkId(netId, security))
                     .distinct()
                     .count());
+
+            // Passpoint should keep its security type for R WifiTrackerLib
+            for (@WifiConfiguration.SecurityType int securityType : securityListPasspoint) {
+                assertEquals(netId, WifiConfigurationUtil.addSecurityTypeToNetworkId(
+                                netId, securityType));
+            }
         } else {
             // Add should do nothing for SDK level S and above.
             for (@WifiConfiguration.SecurityType int securityType : securityList) {

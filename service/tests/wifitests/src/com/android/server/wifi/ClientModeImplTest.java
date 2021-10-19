@@ -6491,7 +6491,7 @@ public class ClientModeImplTest extends WifiBaseTest {
             });
 
         // Verify VCN policy listener is registered
-        verify(vcnManager, atLeastOnce()).addVcnNetworkPolicyChangeListener(any(),
+        verify(vcnManager).addVcnNetworkPolicyChangeListener(any(),
                 policyChangeListenerCaptor.capture());
         assertNotNull(policyChangeListenerCaptor.getValue());
 
