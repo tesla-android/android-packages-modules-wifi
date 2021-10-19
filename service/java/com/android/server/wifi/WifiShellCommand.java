@@ -55,6 +55,7 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
@@ -66,6 +67,7 @@ import android.text.TextUtils;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.BasicShellCommandHandler;
@@ -1270,6 +1272,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 .build();
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     @NonNull
     private List<CoexUtils.CoexCellChannel> buildCoexCellChannels() {
         List<CoexUtils.CoexCellChannel> cellChannels = new ArrayList<>();
