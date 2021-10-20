@@ -4845,6 +4845,45 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertNotEquals("The currently programmed MAC address should be different from the factory "
                 + "MAC address after ClientModeImpl starts",
                 mCmi.getFactoryMacAddress(), currentMac.toString());
+
+        // Verify interface up will not re-randomize the MAC address again.
+        mCmi.onUpChanged(true);
+        verify(mWifiNative).setStaMacAddress(anyString(), macAddressCaptor.capture());
+    }
+
+    /**
+     * Verify if re-randomizing had failed, then we will retry the next time the interface comes up.
+     */
+    @Test
+    public void testRandomizeMacAddressFailedRetryOnInterfaceUp() throws Exception {
+        // mock setting the MAC address to fail
+        when(mWifiNative.setStaMacAddress(eq(WIFI_IFACE_NAME), anyObject())).thenReturn(false);
+        initializeCmi();
+
+        ArgumentCaptor<MacAddress> macAddressCaptor = ArgumentCaptor.forClass(MacAddress.class);
+        verify(mWifiNative, times(2)).setStaMacAddress(anyString(), macAddressCaptor.capture());
+        MacAddress currentMac = macAddressCaptor.getValue();
+
+        // mock setting the MAC address to succeed
+        when(mWifiNative.setStaMacAddress(eq(WIFI_IFACE_NAME), anyObject()))
+                .then(new AnswerWithArguments() {
+                    public boolean answer(String iface, MacAddress mac) {
+                        when(mWifiNative.getMacAddress(iface)).thenReturn(mac.toString());
+                        return true;
+                    }
+                });
+
+        // Verify interface up will re-randomize the MAC address since the last attempt failed.
+        mCmi.onUpChanged(true);
+        verify(mWifiNative, times(3)).setStaMacAddress(anyString(), macAddressCaptor.capture());
+        assertNotEquals("The currently programmed MAC address should be different from the factory "
+                        + "MAC address after ClientModeImpl starts",
+                mCmi.getFactoryMacAddress(), currentMac.toString());
+
+        // Verify interface up will not re-randomize the MAC address since the last attempt
+        // succeeded.
+        mCmi.onUpChanged(true);
+        verify(mWifiNative, times(3)).setStaMacAddress(anyString(), macAddressCaptor.capture());
     }
 
     /**
