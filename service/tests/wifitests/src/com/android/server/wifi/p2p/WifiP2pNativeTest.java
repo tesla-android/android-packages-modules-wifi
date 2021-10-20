@@ -168,16 +168,6 @@ public class WifiP2pNativeTest extends WifiBaseTest {
     }
 
     /**
-     * Verifies that the device name can be set.
-     */
-    @Test
-    public void testSetP2pDeviceName() {
-        when(mSupplicantP2pIfaceHalMock.setWpsDeviceName(anyString())).thenReturn(true);
-        assertTrue(mWifiP2pNative.setP2pDeviceName(TEST_DEVICE_NAME));
-        verify(mSupplicantP2pIfaceHalMock).setWpsDeviceName(eq(TEST_DEVICE_NAME));
-    }
-
-    /**
      * Verifies that networks could be listed.
      */
     @Test
