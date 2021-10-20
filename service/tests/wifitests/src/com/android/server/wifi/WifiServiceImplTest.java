@@ -8565,4 +8565,28 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mIOnWifiDriverCountryCodeChangedListener, never())
                 .onDriverCountryCodeChanged(anyString());
     }
+
+
+    /**
+     * Verify that onFailed is called when enabling Lohs with non-supported configuration.
+     */
+    @Test
+    public void testFailureCallbacksTriggeredWhenSoftApFailsBecauseNonSupportedConfiguration()
+            throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiSoftap6ghzSupported)).thenReturn(false);
+        setupForCustomLohs();
+        SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
+        SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
+                .setBand(SoftApConfiguration.BAND_6GHZ).build();
+        when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
+                any(), anyInt(), any())).thenReturn(customizedConfig);
+        // Expect the result is registered but it should get failure because non-supported
+        // configuration
+        int result = mWifiServiceImpl.startLocalOnlyHotspot(mLohsCallback, TEST_PACKAGE_NAME,
+                TEST_FEATURE_ID, customizedConfig);
+        assertEquals(LocalOnlyHotspotCallback.REQUEST_REGISTERED, result);
+        mLooper.dispatchAll();
+        verify(mLohsCallback).onHotspotFailed(ERROR_GENERIC);
+    }
+
 }
