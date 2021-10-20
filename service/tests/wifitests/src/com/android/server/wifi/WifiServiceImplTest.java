@@ -48,6 +48,7 @@ import static android.net.wifi.WifiScanner.WIFI_BAND_5_GHZ;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.LocalOnlyHotspotRequestInfo.HOTSPOT_NO_ERROR;
 import static com.android.server.wifi.SelfRecovery.REASON_API_CALL;
@@ -4654,6 +4655,64 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 any(ActionListenerWrapper.class), anyInt());
         verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK),
                 anyInt());
+    }
+
+    /**
+     * Verify that the CONNECT_NETWORK message received from an app with
+     * one of the privileged permission will stop secondary CMMs that are alraedy connected to
+     * the same network before initiating the connection.
+     */
+    @Test
+    public void testConnectNetworkStopSecondaryCmmOnSameNetwork() throws Exception {
+        // grant permissions to access WifiServiceImpl#connect
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt()))
+                .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID));
+        WifiConfiguration config = WifiConfigurationTestUtil.createWpa2Wpa3EnterpriseNetwork();
+        config.SSID = TEST_SSID;
+        WifiConfiguration localOnlyConfig = WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID);
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
+
+        // Mock ActiveModeWarden to return a primary CMM and a secondary CMM to be already
+        // connected to the target network.
+        List<ClientModeManager> clientModeManagers = new ArrayList<>();
+        ClientModeManager primaryCmm = mock(ClientModeManager.class);
+        when(primaryCmm.getRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        ClientModeManager localOnlyCmm = mock(ClientModeManager.class);
+        when(localOnlyCmm.getRole()).thenReturn(ROLE_CLIENT_LOCAL_ONLY);
+        when(localOnlyCmm.isConnected()).thenReturn(true);
+        when(localOnlyCmm.getConnectedWifiConfiguration()).thenReturn(localOnlyConfig);
+        clientModeManagers.add(primaryCmm);
+        clientModeManagers.add(localOnlyCmm);
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(clientModeManagers);
+
+        // Verify that the localOnlyCmm is not stopped since security type is different
+        mWifiServiceImpl.connect(config, TEST_NETWORK_ID, mock(IActionListener.class));
+        mLooper.dispatchAll();
+        verify(primaryCmm, never()).stop();
+        verify(localOnlyCmm, never()).stop();
+        verify(mWifiConfigManager).addOrUpdateNetwork(eq(config), anyInt());
+        verify(mConnectHelper).connectToNetwork(any(NetworkUpdateResult.class),
+                any(ActionListenerWrapper.class), anyInt());
+        verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK),
+                anyInt());
+
+        // update mock so that the localOnlyConfig matches with target config.
+        localOnlyConfig = WifiConfigurationTestUtil.createWpa3EnterpriseNetwork(TEST_SSID);
+        when(localOnlyCmm.getConnectedWifiConfiguration()).thenReturn(localOnlyConfig);
+
+        // Verify that the localOnlyCmm is stopped this time
+        mWifiServiceImpl.connect(config, TEST_NETWORK_ID, mock(IActionListener.class));
+        mLooper.dispatchAll();
+        verify(primaryCmm, never()).stop();
+        verify(localOnlyCmm).stop();
+        verify(mWifiConfigManager, times(2)).addOrUpdateNetwork(eq(config), anyInt());
+        verify(mConnectHelper, times(2)).connectToNetwork(any(NetworkUpdateResult.class),
+                any(ActionListenerWrapper.class), anyInt());
+        verify(mWifiMetrics, times(2)).logUserActionEvent(
+                eq(UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK), anyInt());
     }
 
     @Test

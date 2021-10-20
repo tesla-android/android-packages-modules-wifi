@@ -4984,6 +4984,34 @@ public class WifiServiceImpl extends BaseWifiService {
                     return;
                 }
             }
+
+            // Tear down secondary CMMs that are already connected to the same network to make
+            // sure the user's manual connection succeeds.
+            ScanResultMatchInfo targetMatchInfo =
+                    ScanResultMatchInfo.fromWifiConfiguration(configuration);
+            for (ClientModeManager cmm : mActiveModeWarden.getClientModeManagers()) {
+                if (!cmm.isConnected()) {
+                    continue;
+                }
+                ActiveModeManager.ClientRole role = cmm.getRole();
+                if (role == ROLE_CLIENT_LOCAL_ONLY || role == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
+                    WifiConfiguration connectedConfig = cmm.getConnectedWifiConfiguration();
+                    if (connectedConfig == null) {
+                        continue;
+                    }
+                    ScanResultMatchInfo connectedMatchInfo =
+                            ScanResultMatchInfo.fromWifiConfiguration(connectedConfig);
+                    if (targetMatchInfo.matchForNetworkSelection(connectedMatchInfo) == null) {
+                        continue;
+                    }
+                    if (isVerboseLoggingEnabled()) {
+                        Log.v(TAG, "Shutting down client mode manager to satisfy user "
+                                + "connection: " + cmm);
+                    }
+                    cmm.stop();
+                }
+            }
+
             mMakeBeforeBreakManager.stopAllSecondaryTransientClientModeManagers(() ->
                     mConnectHelper.connectToNetwork(result, wrapper, uid));
         });
