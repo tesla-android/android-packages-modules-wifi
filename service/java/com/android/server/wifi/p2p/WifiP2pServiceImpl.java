@@ -917,7 +917,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // Teardown P2P if it's up already.
                             sendMessage(DISABLE_P2P);
                         }
-                        checkAndSendP2pStateChangedBroadcast();
+                        if (wifistate == WifiManager.WIFI_STATE_ENABLED
+                                || wifistate == WifiManager.WIFI_STATE_DISABLING) {
+                            checkAndSendP2pStateChangedBroadcast();
+                        }
                     }
                 }, new IntentFilter(WifiManager.WIFI_STATE_CHANGED_ACTION));
                 // Register for location mode on/off broadcasts
