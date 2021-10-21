@@ -1679,7 +1679,13 @@ public class HalDeviceManager {
             if (bestIfaceCreationProposal != null) {
                 IWifiIface iface = executeChipReconfiguration(bestIfaceCreationProposal,
                         createIfaceType);
-                if (iface != null) {
+                if (iface == null) {
+                    // If the chip reconfiguration failed, we'll need to clean up internal state.
+                    Log.e(TAG, "Teardown Wifi internal state");
+                    mWifi = null;
+                    mIsReady = false;
+                    teardownInternal();
+                } else {
                     InterfaceCacheEntry cacheEntry = new InterfaceCacheEntry();
 
                     cacheEntry.chip = bestIfaceCreationProposal.chipInfo.chip;
@@ -1698,18 +1704,11 @@ public class HalDeviceManager {
                     mInterfaceInfoCache.put(
                             Pair.create(cacheEntry.name, cacheEntry.type), cacheEntry);
                     return iface;
-                } else if (bestIfaceCreationProposal.interfacesToBeRemovedFirst.isEmpty()) {
-                    // If this is the reconfiguration for creating new interfaces without removing
-                    // the existing interfaces, we'll need to clean up internal state.
-                    Log.e(TAG, "Teardown Wifi internal state");
-                    mWifi = null;
-                    mIsReady = false;
-                    teardownInternal();
                 }
             }
         }
 
-        Log.d(TAG, "createIfaceIfPossible: Failed to create iface for ifaceType=" + createIfaceType
+        Log.e(TAG, "createIfaceIfPossible: Failed to create iface for ifaceType=" + createIfaceType
                 + ", requestorWs=" + requestorWs);
         return null;
     }
