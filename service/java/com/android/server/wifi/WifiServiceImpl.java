@@ -1890,8 +1890,10 @@ public class WifiServiceImpl extends BaseWifiService {
                     WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
                     softApConfig, mLohsSoftApTracker.getSoftApCapability());
             mIsExclusive = (request.getCustomConfig() != null);
-
-            startSoftApInternal(mActiveConfig, request.getWorkSource());
+            // Report the error if we got failure in startSoftApInternal
+            if (!startSoftApInternal(mActiveConfig, request.getWorkSource())) {
+                onStateChanged(WIFI_AP_STATE_FAILED, ERROR_GENERIC);
+            }
         }
 
         /**
