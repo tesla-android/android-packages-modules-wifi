@@ -988,11 +988,14 @@ public class WifiNetworkSelector {
         // 64-octets that are assumed to be the output of it. BDKDF2 is not applicable to SAE
         // and to prevent interop issues with APs when 64-octet Hex PSK is configured, update
         // the configuration to use WPA2 only.
-        if (config.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
-                && config.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)
-                && !config.preSharedKey.startsWith("\"")
-                && config.preSharedKey.length() == 64
-                && config.preSharedKey.matches(String.format("[0-9A-Fa-f]{%d}", 64))) {
+        WifiConfiguration configWithPassword = mWifiConfigManager
+                .getConfiguredNetworkWithPassword(config.networkId);
+        if (configWithPassword.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
+                && configWithPassword.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE)
+                && !configWithPassword.preSharedKey.startsWith("\"")
+                && configWithPassword.preSharedKey.length() == 64
+                && configWithPassword.preSharedKey.matches(String.format("[0-9A-Fa-f]{%d}", 64))) {
+            localLog("Remove SAE type for " + configWithPassword.SSID + " with 64-octet Hex PSK.");
             scanResultParamsList
                     .removeIf(p -> p.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE));
         }
