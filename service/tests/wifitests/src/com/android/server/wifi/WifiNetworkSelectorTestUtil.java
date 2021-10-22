@@ -336,6 +336,17 @@ public class WifiNetworkSelectorTestUtil {
                         return null;
                     }
                 });
+        when(wifiConfigManager.getConfiguredNetworkWithPassword(anyInt()))
+                .then(new AnswerWithArguments() {
+                    public WifiConfiguration answer(int netId) {
+                        for (WifiConfiguration config : configs) {
+                            if (netId == config.networkId) {
+                                return new WifiConfiguration(config);
+                            }
+                        }
+                        return null;
+                    }
+                });
         when(wifiConfigManager.getConfiguredNetwork(anyString()))
                 .then(new AnswerWithArguments() {
                     public WifiConfiguration answer(String configKey) {
