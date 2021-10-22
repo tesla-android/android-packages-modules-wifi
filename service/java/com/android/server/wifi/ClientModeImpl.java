@@ -612,6 +612,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // internet is less than this value.
     @VisibleForTesting
     public static final int PROBABILITY_WITH_INTERNET_TO_PERMANENTLY_DISABLE_NETWORK = 60;
+    // Disable a network permanently due to wrong password even if the network had successfully
+    // connected before wrong password failure on this network reached this threshold.
+    public static final int THRESHOLD_TO_PERM_WRONG_PASSWORD = 3;
 
     // Maximum duration to continue to log Wifi usability stats after a data stall is triggered.
     @VisibleForTesting
@@ -2865,6 +2868,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         >= WifiBlocklistMonitor.NUM_CONSECUTIVE_FAILURES_PER_NETWORK_EXP_BACKOFF) {
                     mWifiConfigManager.updateNetworkSelectionStatus(mTargetNetworkId,
                             WifiConfiguration.NetworkSelectionStatus.DISABLED_CONSECUTIVE_FAILURES);
+                }
+                if (recentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE)
+                        >= THRESHOLD_TO_PERM_WRONG_PASSWORD) {
+                    mWifiConfigManager.updateNetworkSelectionStatus(mTargetNetworkId,
+                            WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD);
                 }
             }
         }
