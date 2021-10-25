@@ -2224,6 +2224,105 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
     }
 
     /**
+     * Test adding PMK cache entry to the supplicant when SAE is selected
+     * for a PSK/SAE configuration.
+     */
+    @Test
+    public void testSetPmkWhenSaeIsSelected() throws Exception {
+        int testFrameworkNetworkId = 9;
+        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
+        config.networkId = testFrameworkNetworkId;
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_SAE));
+        PmkCacheStoreData pmkCacheData =
+                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
+                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
+        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
+
+        setupMocksForHalV1_3();
+        setupMocksForPmkCache();
+        setupMocksForConnectSequence(false);
+
+        executeAndValidateInitializationSequenceV1_3();
+        assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
+
+        verify(mSupplicantStaNetworkMock).setPmkCache(eq(pmkCacheData.data));
+        verify(mISupplicantStaIfaceCallbackV13)
+                .onPmkCacheAdded(eq(PMK_CACHE_EXPIRATION_IN_SEC), eq(pmkCacheData.data));
+        // there is only one cache entry, the next expiration alarm should be the same as
+        // its expiration time.
+        verify(mHandler).postDelayed(
+                /* private listener */ any(),
+                eq(SupplicantStaIfaceHal.PMK_CACHE_EXPIRATION_ALARM_TAG),
+                eq((PMK_CACHE_EXPIRATION_IN_SEC - testStartSeconds) * 1000));
+    }
+
+    /**
+     * Test PMK cache entry is not added to the supplicant when PSK is selected
+     * for a PSK/SAE configuration.
+     */
+    @Test
+    public void testAddPmkEntryNotCalledIfPskIsSelected() throws Exception {
+        int testFrameworkNetworkId = 9;
+        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
+        config.networkId = testFrameworkNetworkId;
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_PSK));
+        PmkCacheStoreData pmkCacheData =
+                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
+                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
+        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
+
+        setupMocksForHalV1_3();
+        setupMocksForPmkCache();
+        setupMocksForConnectSequence(false);
+
+        executeAndValidateInitializationSequenceV1_3();
+        assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
+
+        verify(mSupplicantStaNetworkMock, never()).setPmkCache(any());
+        verify(mISupplicantStaIfaceCallbackV13, never())
+                .onPmkCacheAdded(anyLong(), any());
+    }
+
+    /**
+     * Test PMK cache entry is not added to the supplicant if no security
+     * params is selected.
+     */
+    @Test
+    public void testAddPmkEntryNotCalledIfNoSecurityParamsIsSelected() throws Exception {
+        int testFrameworkNetworkId = 9;
+        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
+        config.networkId = testFrameworkNetworkId;
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(null);
+        PmkCacheStoreData pmkCacheData =
+                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
+                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
+        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
+
+        setupMocksForHalV1_3();
+        setupMocksForPmkCache();
+        setupMocksForConnectSequence(false);
+
+        executeAndValidateInitializationSequenceV1_3();
+        assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
+
+        verify(mSupplicantStaNetworkMock, never()).setPmkCache(any());
+        verify(mISupplicantStaIfaceCallbackV13, never())
+                .onPmkCacheAdded(anyLong(), any());
+    }
+
+    /**
      * Test adding PMK cache entry is not called if there is no
      * valid PMK cache for a corresponding configuratoin.
      */
@@ -2292,6 +2391,9 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                SecurityParams.createSecurityParamsBySecurityType(
+                        WifiConfiguration.SECURITY_TYPE_EAP));
         PmkCacheStoreData pmkCacheData =
                 new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
                         MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
