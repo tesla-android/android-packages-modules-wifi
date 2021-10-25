@@ -478,7 +478,6 @@ public class WifiVendorHal {
                 mLog.err("Failed to get wifi chip").flush();
                 return nullResult();
             }
-            enableLinkLayerStats(iface);
             mIWifiStaIfaces.put(ifaceName, iface);
             return ifaceName;
         }
@@ -1453,10 +1452,16 @@ public class WifiVendorHal {
      *
      * @param iface Iface object.
      */
-    private void enableLinkLayerStats(IWifiStaIface iface) {
+    public void enableLinkLayerStats(@NonNull String ifaceName) {
         synchronized (sLock) {
             try {
                 WifiStatus status;
+                IWifiStaIface iface = getStaIface(ifaceName);
+                if (iface == null) {
+                    mLog.err("STA iface object is NULL - Failed to enable link layer stats")
+                            .flush();
+                    return;
+                }
                 status = iface.enableLinkLayerStatsCollection(mLinkLayerStatsDebug);
                 if (!ok(status)) {
                     mLog.err("unable to enable link layer stats collection").flush();

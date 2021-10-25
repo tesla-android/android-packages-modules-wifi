@@ -1168,6 +1168,7 @@ public class WifiNative {
                 mWifiMetrics.incrementNumSetupClientInterfaceFailureDueToWificond();
                 return null;
             }
+            mWifiVendorHal.enableLinkLayerStats(iface.name);
             if (!mSupplicantStaIfaceHal.setupIface(iface.name)) {
                 Log.e(TAG, "Failed to setup iface in supplicant on " + iface);
                 teardownInterface(iface.name);
@@ -1232,6 +1233,7 @@ public class WifiNative {
                 mWifiMetrics.incrementNumSetupClientInterfaceFailureDueToWificond();
                 return null;
             }
+            mWifiVendorHal.enableLinkLayerStats(iface.name);
             iface.networkObserver = new NetworkObserverInternal(iface.id);
             if (!registerNetworkObserver(iface.networkObserver)) {
                 Log.e(TAG, "Failed to register network observer for iface=" + iface.name);
