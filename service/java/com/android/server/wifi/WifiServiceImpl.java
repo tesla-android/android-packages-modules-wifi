@@ -42,6 +42,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.bluetooth.BluetoothAdapter;
+import android.content.AttributionSource;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -3218,7 +3219,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException("Caller is not a device owner, profile owner, system app,"
                     + " or privileged app");
         }
-        return addOrUpdateNetworkInternal(config, packageName, uid);
+        return addOrUpdateNetworkInternal(config, packageName, uid, packageName);
     }
 
     /**
@@ -3227,7 +3228,49 @@ public class WifiServiceImpl extends BaseWifiService {
      * network if the operation succeeds, or {@code -1} if it fails
      */
     @Override
-    public int addOrUpdateNetwork(WifiConfiguration config, String packageName) {
+    public int addOrUpdateNetwork(WifiConfiguration config, String packageName, Bundle extras) {
+        int uidToUse = getMockableCallingUid();
+        String packageNameToUse = packageName;
+
+        // if we're being called from the SYSTEM_UID then allow usage of the AttributionSource to
+        // reassign the WifiConfiguration to another app (reassignment == creatorUid)
+        if (SdkLevel.isAtLeastS() && uidToUse == Process.SYSTEM_UID) {
+            if (extras == null) {
+                throw new SecurityException("extras bundle is null");
+            }
+            AttributionSource as = extras.getParcelable(
+                    WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE);
+            if (as == null) {
+                throw new SecurityException("addOrUpdateNetwork attributionSource is null");
+            }
+
+            if (!as.checkCallingUid()) {
+                throw new SecurityException(
+                        "addOrUpdateNetwork invalid (checkCallingUid fails) attribution source="
+                                + as);
+            }
+
+            // an attribution chain is either of size 1: unregistered (valid by definition) or
+            // size >1: in which case all are validated.
+            if (as.getNext() != null) {
+                AttributionSource asIt = as;
+                AttributionSource asLast = as;
+                do {
+                    if (!asIt.isTrusted(mContext)) {
+                        throw new SecurityException(
+                                "addOrUpdateNetwork invalid (isTrusted fails) attribution source="
+                                        + asIt);
+                    }
+                    asIt = asIt.getNext();
+                    if (asIt != null) asLast = asIt;
+                } while (asIt != null);
+
+                // use the last AttributionSource in the chain - i.e. the original caller
+                uidToUse = asLast.getUid();
+                packageNameToUse = asLast.getPackageName();
+            }
+        }
+
         if (enforceChangePermission(packageName) != MODE_ALLOWED) {
             return -1;
         }
@@ -3249,11 +3292,12 @@ public class WifiServiceImpl extends BaseWifiService {
             return -1;
         }
         mLog.info("addOrUpdateNetwork uid=%").c(callingUid).flush();
-        return addOrUpdateNetworkInternal(config, packageName, callingUid).networkId;
+        return addOrUpdateNetworkInternal(config, packageName, uidToUse,
+                packageNameToUse).networkId;
     }
 
     private @NonNull AddNetworkResult addOrUpdateNetworkInternal(WifiConfiguration config,
-            String packageName, int callingUid) {
+            String packageName, int attributedCreatorUid, String attributedCreatorPackage) {
         if (config == null) {
             Log.e(TAG, "bad network configuration");
             return new AddNetworkResult(
@@ -3312,8 +3356,8 @@ public class WifiServiceImpl extends BaseWifiService {
         // TODO: b/171981339, add more detailed failure reason into
         //  WifiConfigManager.NetworkUpdateResult, and plumb that reason up.
         int networkId =  mWifiThreadRunner.call(
-                () -> mWifiConfigManager.addOrUpdateNetwork(config, callingUid, packageName)
-                        .getNetworkId(),
+                () -> mWifiConfigManager.addOrUpdateNetwork(config, attributedCreatorUid,
+                        attributedCreatorPackage).getNetworkId(),
                 WifiConfiguration.INVALID_NETWORK_ID);
         if (networkId >= 0) {
             return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, networkId);

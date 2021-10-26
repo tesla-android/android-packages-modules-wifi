@@ -146,6 +146,11 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public int addOrUpdateNetwork(WifiConfiguration config, String packageName, Bundle extras) {
+        throw new UnsupportedOperationException();
+    }
+
+    /** Deprecated - can be removed */
     public int addOrUpdateNetwork(WifiConfiguration config, String packageName) {
         throw new UnsupportedOperationException();
     }
