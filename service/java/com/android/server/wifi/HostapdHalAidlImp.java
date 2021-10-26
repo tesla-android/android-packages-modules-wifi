@@ -423,6 +423,10 @@ public class HostapdHalAidlImp implements IHostapdHal {
      * Indicates whether the AIDL service is declared
      */
     public static boolean serviceDeclared() {
+        // Service Manager API ServiceManager#isDeclared supported after T.
+        if (!SdkLevel.isAtLeastT()) {
+            return false;
+        }
         return ServiceManager.isDeclared(HAL_INSTANCE_NAME);
     }
 
