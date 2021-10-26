@@ -1133,8 +1133,10 @@ public class WifiScoreCard {
                             case WifiBlocklistMonitor.REASON_NONLOCAL_DISCONNECT_CONNECTING:
                                 mRecentStats.incrementCount(CNT_DISCONNECTION_NONLOCAL_CONNECTING);
                                 break;
-                            case WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA:
                             case WifiBlocklistMonitor.REASON_WRONG_PASSWORD:
+                                mRecentStats.incrementCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE);
+                                break;
+                            case WifiBlocklistMonitor.REASON_AP_UNABLE_TO_HANDLE_NEW_STA:
                             case WifiBlocklistMonitor.REASON_DHCP_FAILURE:
                             default:
                                 break;
@@ -1145,6 +1147,7 @@ public class WifiScoreCard {
                 case IP_CONFIGURATION_SUCCESS:
                     // Reset CNT_CONSECUTIVE_CONNECTION_FAILURE since L3 is also connected
                     mRecentStats.clearCount(CNT_CONSECUTIVE_CONNECTION_FAILURE);
+                    mRecentStats.clearCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE);
                     changed = true;
                     logd(this.toString());
                     break;
@@ -1911,8 +1914,9 @@ public class WifiScoreCard {
     public static final int CNT_DISCONNECTION = 8;
     public static final int CNT_CONSECUTIVE_CONNECTION_FAILURE = 9;
     public static final int CNT_DISCONNECTION_NONLOCAL_CONNECTING = 10;
+    public static final int CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE = 11;
     // Constant being used to keep track of how many counter there are.
-    public static final int NUMBER_CONNECTION_CNT_CODE = 11;
+    public static final int NUMBER_CONNECTION_CNT_CODE = 12;
     private static final String[] CONNECTION_CNT_NAME = {
         " ConnectAttempt: ",
         " ConnectFailure: ",
@@ -1924,7 +1928,8 @@ public class WifiScoreCard {
         " DisconnectNonlocal: ",
         " Disconnect: ",
         " ConsecutiveConnectFailure: ",
-        " ConnectFailureDiscon: "
+        " ConnectFailureDiscon: ",
+        " ConsecutiveWrongPassword: "
     };
 
     @IntDef(prefix = { "CNT_" }, value = {
@@ -1938,7 +1943,8 @@ public class WifiScoreCard {
         CNT_DISCONNECTION_NONLOCAL,
         CNT_DISCONNECTION,
         CNT_CONSECUTIVE_CONNECTION_FAILURE,
-        CNT_DISCONNECTION_NONLOCAL_CONNECTING
+        CNT_DISCONNECTION_NONLOCAL_CONNECTING,
+        CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ConnectionCountCode {}
