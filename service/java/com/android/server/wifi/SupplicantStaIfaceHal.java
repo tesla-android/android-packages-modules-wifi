@@ -1042,9 +1042,11 @@ public class SupplicantStaIfaceHal {
                 return false;
             }
 
+            SecurityParams params = config.getNetworkSelectionStatus()
+                    .getCandidateSecurityParams();
             PmkCacheStoreData pmkData = mPmkCacheEntries.get(config.networkId);
-            if (pmkData != null
-                    && !WifiConfigurationUtil.isConfigForPskNetwork(config)
+            if (pmkData != null && params != null
+                    && !params.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
                     && pmkData.expirationTimeInSec > mClock.getElapsedSinceBootMillis() / 1000) {
                 logi("Set PMK cache for config id " + config.networkId);
                 if (networkHandle.setPmkCache(pmkData.data)) {
