@@ -3732,6 +3732,53 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that a network that was successfully connected to before will get permanently disabled
+     * for wrong password when the number of wrong password failures exceed a threshold.
+     */
+    @Test
+    public void testUpgradeMultipleWrongPasswordFailuresToPermanentWrongPassword()
+            throws Exception {
+        initializeAndAddNetworkAndVerifySuccess();
+        startConnectSuccess();
+
+        // mock the target network to be something that had been successfully connected before
+        WifiConfiguration config = createTestNetwork(false);
+        config.getNetworkSelectionStatus().setHasEverConnected(true);
+        when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
+
+        // mock number of wrong password failures to be less than the threshold
+        when(mPerNetworkRecentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE))
+                .thenReturn(ClientModeImpl.THRESHOLD_TO_PERM_WRONG_PASSWORD - 1);
+
+        // trigger the wrong password failure
+        mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
+                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+        DisconnectEventInfo disconnectEventInfo =
+                new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+
+        // should not disable network permanently
+        verify(mWifiConfigManager, never()).updateNetworkSelectionStatus(FRAMEWORK_NETWORK_ID,
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD);
+
+        // Bump up the wrong password count to reach the threshold and verify the network is
+        // disabled permanently.
+        when(mPerNetworkRecentStats.getCount(WifiScoreCard.CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE))
+                .thenReturn(ClientModeImpl.THRESHOLD_TO_PERM_WRONG_PASSWORD);
+
+        startConnectSuccess();
+        // trigger the wrong password failure
+        mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
+                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+        mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
+        mLooper.dispatchAll();
+
+        verify(mWifiConfigManager).updateNetworkSelectionStatus(FRAMEWORK_NETWORK_ID,
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD);
+    }
+
+    /**
      * Verify that the recent failure association status is updated properly when
      * DENIED_POOR_CHANNEL_CONDITIONS occurs.
      */
