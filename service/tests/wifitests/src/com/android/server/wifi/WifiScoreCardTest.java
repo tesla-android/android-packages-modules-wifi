@@ -31,6 +31,7 @@ import static com.android.server.wifi.WifiScoreCard.CNT_CONNECTION_ATTEMPT;
 import static com.android.server.wifi.WifiScoreCard.CNT_CONNECTION_DURATION_SEC;
 import static com.android.server.wifi.WifiScoreCard.CNT_CONNECTION_FAILURE;
 import static com.android.server.wifi.WifiScoreCard.CNT_CONSECUTIVE_CONNECTION_FAILURE;
+import static com.android.server.wifi.WifiScoreCard.CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE;
 import static com.android.server.wifi.WifiScoreCard.CNT_DISCONNECTION_NONLOCAL;
 import static com.android.server.wifi.WifiScoreCard.CNT_DISCONNECTION_NONLOCAL_CONNECTING;
 import static com.android.server.wifi.WifiScoreCard.CNT_SHORT_CONNECTION_NONLOCAL;
@@ -604,6 +605,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(diag, 0, dailyStats.getCount(CNT_ASSOCIATION_REJECTION));
         assertEquals(diag, 0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(diag, 0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
+        assertEquals(diag, 0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
         List<Integer> frequencies = perNetwork.getFrequencies(Long.MAX_VALUE);
         assertEquals(diag, 2, frequencies.size());
         List<Integer> expectedFrequencies = new ArrayList<>(Arrays.asList(2432, 5805));
@@ -921,6 +923,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(1, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
         assertEquals(1, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
     }
 
     /**
@@ -941,6 +944,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
         assertEquals(2, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
     }
 
 
@@ -962,6 +966,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(1, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
         assertEquals(1, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
 
         makeNormalConnectionExample();
         assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
@@ -1002,9 +1007,11 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(1, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
         assertEquals(1, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+        assertEquals(1, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
 
         makeNormalConnectionExample();
         assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_CONNECTION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
     }
 
     private void makeDisconnectionConnectingExample(boolean nonlocal) {
@@ -1035,6 +1042,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_REJECTION));
         assertEquals(0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
+        assertEquals(0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
     }
 
     /**
@@ -1294,6 +1302,7 @@ public class WifiScoreCardTest extends WifiBaseTest {
         assertEquals(diag, 0, dailyStats.getCount(CNT_ASSOCIATION_REJECTION));
         assertEquals(diag, 0, dailyStats.getCount(CNT_ASSOCIATION_TIMEOUT));
         assertEquals(diag, 0, dailyStats.getCount(CNT_AUTHENTICATION_FAILURE));
+        assertEquals(diag, 0, dailyStats.getCount(CNT_CONSECUTIVE_WRONG_PASSWORD_FAILURE));
     }
 
     /**

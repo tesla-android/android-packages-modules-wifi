@@ -86,6 +86,7 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.net.DhcpInfo;
 import android.net.MacAddress;
+import android.net.wifi.WifiManager.ActiveCountryCodeChangedCallback;
 import android.net.wifi.WifiManager.CoexCallback;
 import android.net.wifi.WifiManager.LocalOnlyHotspotCallback;
 import android.net.wifi.WifiManager.LocalOnlyHotspotObserver;
@@ -93,7 +94,6 @@ import android.net.wifi.WifiManager.LocalOnlyHotspotReservation;
 import android.net.wifi.WifiManager.LocalOnlyHotspotSubscription;
 import android.net.wifi.WifiManager.NetworkRequestMatchCallback;
 import android.net.wifi.WifiManager.NetworkRequestUserSelectionCallback;
-import android.net.wifi.WifiManager.OnDriverCountryCodeChangedListener;
 import android.net.wifi.WifiManager.OnWifiUsabilityStatsListener;
 import android.net.wifi.WifiManager.ScanResultsCallback;
 import android.net.wifi.WifiManager.SoftApCallback;
@@ -177,7 +177,7 @@ public class WifiManagerTest {
     @Mock ActivityManager mActivityManager;
     @Mock WifiConnectedNetworkScorer mWifiConnectedNetworkScorer;
     @Mock SuggestionUserApprovalStatusListener mSuggestionUserApprovalStatusListener;
-    @Mock OnDriverCountryCodeChangedListener mOnDriverCountryCodeChangedListener;
+    @Mock ActiveCountryCodeChangedCallback mActiveCountryCodeChangedCallback;
 
     private Handler mHandler;
     private TestLooper mLooper;
@@ -3385,12 +3385,13 @@ public class WifiManagerTest {
     }
 
     /**
-     * Verify an IllegalArgumentException is thrown if listener is not provided.
+     * Verify an IllegalArgumentException is thrown if callback is not provided.
      */
     @Test
-    public void testAddDriverCountryCodeChangedListenerThrowsExceptionOnNullListener() {
+    public void testRegisterActiveCountryCodeChangedCallbackThrowsExceptionOnNullCallback() {
         try {
-            mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler), null);
+            mWifiManager.registerActiveCountryCodeChangedCallback(
+                    new HandlerExecutor(mHandler), null);
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
@@ -3400,72 +3401,91 @@ public class WifiManagerTest {
      * Verify an IllegalArgumentException is thrown if executor is null.
      */
     @Test
-    public void testAddDriverCountryCodeChangedListenerThrowsExceptionOnNullExecutor() {
+    public void testRegisterActiveCountryCodeChangedCallbackThrowsExceptionOnNullExecutor() {
         try {
-            mWifiManager.addDriverCountryCodeChangedListener(null,
-                    mOnDriverCountryCodeChangedListener);
+            mWifiManager.registerActiveCountryCodeChangedCallback(null,
+                    mActiveCountryCodeChangedCallback);
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
     }
 
     /**
-     * Verify an IllegalArgumentException is thrown if listener is not provided.
+     * Verify an IllegalArgumentException is thrown if callback is not provided.
      */
     @Test
-    public void testRemoveDriverCountryCodeChangedListenerThrowsExceptionOnNullListener() {
+    public void testUnregisterActiveCountryCodeChangedCallbackThrowsExceptionOnNullCallback() {
         try {
-            mWifiManager.removeDriverCountryCodeChangedListener(null);
+            mWifiManager.unregisterActiveCountryCodeChangedCallback(null);
             fail("expected IllegalArgumentException");
         } catch (IllegalArgumentException expected) {
         }
     }
 
     /**
-     * Verify the call to addDriverCountryCodeChangedListener goes to WifiServiceImpl.
+     * Verify the call to registerActiveCountryCodeChangedCallback goes to WifiServiceImpl.
      */
     @Test
-    public void testAddDriverCountryCodeChangedListenerCallGoesToWifiServiceImpl()
+    public void testRegisterActiveCountryCodeChangedCallbackCallGoesToWifiServiceImpl()
             throws Exception {
-        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
-                mOnDriverCountryCodeChangedListener);
+        mWifiManager.registerActiveCountryCodeChangedCallback(new HandlerExecutor(mHandler),
+                mActiveCountryCodeChangedCallback);
         verify(mWifiService).registerDriverCountryCodeChangedListener(
                 any(IOnWifiDriverCountryCodeChangedListener.Stub.class), anyString(),
                 any() /* getAttributionTag(), nullable */);
     }
 
     /**
-     * Verify the call to removeDriverCountryCodeChangedListener goes to WifiServiceImpl.
+     * Verify the call to unregisterActiveCountryCodeChangedCallback goes to WifiServiceImpl.
      */
     @Test
-    public void testRemoveDriverCountryCodeChangedListenerCallGoesToWifiServiceImpl()
+    public void testUnregisterActiveCountryCodeChangedCallbackCallGoesToWifiServiceImpl()
             throws Exception {
         ArgumentCaptor<IOnWifiDriverCountryCodeChangedListener.Stub> listenerCaptor =
                 ArgumentCaptor.forClass(IOnWifiDriverCountryCodeChangedListener.Stub.class);
-        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
-                mOnDriverCountryCodeChangedListener);
+        mWifiManager.registerActiveCountryCodeChangedCallback(new HandlerExecutor(mHandler),
+                mActiveCountryCodeChangedCallback);
         verify(mWifiService).registerDriverCountryCodeChangedListener(listenerCaptor.capture(),
                  anyString(), any() /* getAttributionTag(), nullable */);
 
-        mWifiManager.removeDriverCountryCodeChangedListener(mOnDriverCountryCodeChangedListener);
+        mWifiManager.unregisterActiveCountryCodeChangedCallback(
+                mActiveCountryCodeChangedCallback);
         verify(mWifiService).unregisterDriverCountryCodeChangedListener(listenerCaptor.getValue());
     }
 
     /*
-     * Verify client-provided listener is being called through listener proxy
+     * Verify client-provided callback is being called through callback proxy
      */
     @Test
-    public void testDriverCountryCodeChangedListenerProxyCallsOnDriverCountryCodeChanged()
+    public void testDriverCountryCodeChangedCallbackProxyCallsOnActiveCountryCodeChanged()
             throws Exception {
         ArgumentCaptor<IOnWifiDriverCountryCodeChangedListener.Stub> listenerCaptor =
                 ArgumentCaptor.forClass(IOnWifiDriverCountryCodeChangedListener.Stub.class);
-        mWifiManager.addDriverCountryCodeChangedListener(new HandlerExecutor(mHandler),
-                mOnDriverCountryCodeChangedListener);
+        mWifiManager.registerActiveCountryCodeChangedCallback(new HandlerExecutor(mHandler),
+                mActiveCountryCodeChangedCallback);
         verify(mWifiService).registerDriverCountryCodeChangedListener(listenerCaptor.capture(),
                  anyString(), any() /* getAttributionTag(), nullable */);
 
         listenerCaptor.getValue().onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
         mLooper.dispatchAll();
-        verify(mOnDriverCountryCodeChangedListener).onDriverCountryCodeChanged(TEST_COUNTRY_CODE);
+        verify(mActiveCountryCodeChangedCallback).onActiveCountryCodeChanged(TEST_COUNTRY_CODE);
+    }
+
+    /*
+     * Verify client-provided callback is being called through callback proxy
+     */
+    @Test
+    public void testDriverCountryCodeChangedCallbackProxyCallsOnCountryCodeInactiveWhenNull()
+            throws Exception {
+        ArgumentCaptor<IOnWifiDriverCountryCodeChangedListener.Stub> listenerCaptor =
+                ArgumentCaptor.forClass(IOnWifiDriverCountryCodeChangedListener.Stub.class);
+        mWifiManager.registerActiveCountryCodeChangedCallback(new HandlerExecutor(mHandler),
+                mActiveCountryCodeChangedCallback);
+        verify(mWifiService).registerDriverCountryCodeChangedListener(listenerCaptor.capture(),
+                 anyString(), any() /* getAttributionTag(), nullable */);
+
+        listenerCaptor.getValue().onDriverCountryCodeChanged(null);
+        mLooper.dispatchAll();
+        verify(mActiveCountryCodeChangedCallback).onCountryCodeInactive();
     }
 }
