@@ -2068,7 +2068,10 @@ public class WifiConnectivityManager {
                 + " wifiState=" + stateToString(mWifiState)
                 + " scanImmediately=" + scanImmediately
                 + " wifiEnabled=" + mWifiEnabled
-                + " mAutoJoinEnabled=" + mAutoJoinEnabled);
+                + " mAutoJoinEnabled=" + mAutoJoinEnabled
+                + " mAutoJoinEnabledExternal=" + mAutoJoinEnabledExternal
+                + " mSpecificNetworkRequestInProgress=" + mSpecificNetworkRequestInProgress
+                + " mTrustedConnectionAllowed=" + mTrustedConnectionAllowed);
 
         if (!mWifiEnabled || !mAutoJoinEnabled) {
             return;
