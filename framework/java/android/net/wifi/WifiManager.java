@@ -1714,7 +1714,7 @@ public class WifiManager {
             android.Manifest.permission.NETWORK_STACK,
             android.Manifest.permission.NETWORK_SETUP_WIZARD,
             android.Manifest.permission.NETWORK_MANAGED_PROVISIONING
-    })
+            }, conditional = true)
     @NonNull
     public AddNetworkResult addNetworkPrivileged(@NonNull WifiConfiguration config) {
         if (config == null) throw new IllegalArgumentException("config cannot be null");
@@ -2336,12 +2336,11 @@ public class WifiManager {
      * @throws IllegalArgumentException if no configuration is associated with the given FQDN or
      *                                  Passpoint is not enabled on the device.
      * @deprecated This will be non-functional in a future release.
+     * <br>
+     * Requires {@code android.Manifest.permission.NETWORK_SETTINGS} or
+     * {@code android.Manifest.permission.NETWORK_CARRIER_PROVISIONING}.
      */
     @Deprecated
-    @RequiresPermission(anyOf = {
-            android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_CARRIER_PROVISIONING
-    })
     public void removePasspointConfiguration(String fqdn) {
         try {
             if (!mService.removePasspointConfiguration(fqdn, mContext.getOpPackageName())) {
@@ -2359,12 +2358,11 @@ public class WifiManager {
      *
      * @return A list of {@link PasspointConfiguration} added by the caller
      * @deprecated This will be non-functional in a future release.
+     * <br>
+     * Requires {@code android.Manifest.permission.NETWORK_SETTINGS} or
+     * {@code android.Manifest.permission.NETWORK_SETUP_WIZARD}.
      */
     @Deprecated
-    @RequiresPermission(anyOf = {
-            android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_SETUP_WIZARD
-    })
     public List<PasspointConfiguration> getPasspointConfigurations() {
         try {
             return mService.getPasspointConfigurations(mContext.getOpPackageName());
@@ -8062,7 +8060,7 @@ public class WifiManager {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_MANAGED_PROVISIONING,
             android.Manifest.permission.NETWORK_CARRIER_PROVISIONING
-            })
+            }, conditional = true)
     public void flushPasspointAnqpCache() {
         try {
             mService.flushPasspointAnqpCache(mContext.getOpPackageName());

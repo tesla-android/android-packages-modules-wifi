@@ -845,11 +845,10 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * Returns the MAC address used for this connection.
      * @return MAC address of the connection or {@code "02:00:00:00:00:00"} if the caller has
      * insufficient permission.
+     *
+     * Requires {@code android.Manifest.permission#LOCAL_MAC_ADDRESS} and
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      */
-    @RequiresPermission(allOf = {
-            Manifest.permission.LOCAL_MAC_ADDRESS,
-            Manifest.permission.ACCESS_FINE_LOCATION
-    })
     public String getMacAddress() {
         return mMacAddress;
     }
