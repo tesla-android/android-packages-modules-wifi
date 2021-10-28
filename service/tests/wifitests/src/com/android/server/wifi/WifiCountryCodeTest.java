@@ -434,4 +434,11 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         assertEquals(WifiCountryCode.isValid("00"), true);
         assertEquals(WifiCountryCode.isValid("0U"), true);
     }
+
+    @Test
+    public void testSetTelephonyCountryCodeAndUpdateWithEmptyCCReturnFalseWhenDefaultSIMCCExist()
+            throws Exception {
+        when(mTelephonyManager.getNetworkCountryIso()).thenReturn(mTelephonyCountryCode);
+        assertFalse(mWifiCountryCode.setTelephonyCountryCodeAndUpdate(""));
+    }
 }
