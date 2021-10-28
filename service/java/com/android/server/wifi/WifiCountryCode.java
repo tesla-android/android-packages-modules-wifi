@@ -346,6 +346,12 @@ public class WifiCountryCode {
      * @return Returns true if the country code passed in is acceptable and passed to the driver.
      */
     public boolean setTelephonyCountryCodeAndUpdate(String countryCode) {
+        if (TextUtils.isEmpty(countryCode)
+                && !TextUtils.isEmpty(mTelephonyManager.getNetworkCountryIso())) {
+            Log.i(TAG, "Skip Telephony CC update to empty because there is "
+                    + "an available CC from default active SIM");
+            return false;
+        }
         // We do not check if the country code (CC) equals the current one because
         // 1. Wpa supplicant may silently modify the country code.
         // 2. If Wifi restarted therefore wpa_supplicant also restarted,
