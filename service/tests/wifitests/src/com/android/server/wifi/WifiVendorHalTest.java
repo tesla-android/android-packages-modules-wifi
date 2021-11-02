@@ -1047,6 +1047,31 @@ public class WifiVendorHalTest extends WifiBaseTest {
     }
 
     /**
+     * Test enablement of link layer stats after startup
+     *
+     * Request link layer stats before HAL start
+     * - should not make it to the HAL layer
+     * Start the HAL in STA mode
+     * Request link layer stats twice more
+     * - enable request should make it to the HAL layer
+     * - HAL layer should have been called to make the requests (i.e., two calls total)
+     */
+    @Test
+    public void testLinkLayerStatsEnableAfterStartup() throws Exception {
+        doNothing().when(mIWifiStaIface).getLinkLayerStats(any());
+
+        assertNull(mWifiVendorHal.getWifiLinkLayerStats(TEST_IFACE_NAME));
+        assertTrue(mWifiVendorHal.startVendorHalSta());
+        assertTrue(mWifiVendorHal.isHalStarted());
+
+        verify(mHalDeviceManager).start();
+        mWifiVendorHal.getWifiLinkLayerStats(TEST_IFACE_NAME);
+        mWifiVendorHal.getWifiLinkLayerStats(TEST_IFACE_NAME);
+        verify(mIWifiStaIface).enableLinkLayerStatsCollection(false); // mLinkLayerStatsDebug
+        verify(mIWifiStaIface, times(2)).getLinkLayerStats(any());
+    }
+
+    /**
      * Test getLinkLayerStats_1_3 gets called when the hal version is V1_3.
      */
     @Test
