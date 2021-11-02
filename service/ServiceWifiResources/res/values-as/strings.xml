@@ -21,9 +21,9 @@
     <string name="wifi_available_title_connecting" msgid="7233590022728579868">"ৱাই-ফাই নেটৱৰ্কৰ সৈতে সংযোগ কৰি থকা হৈছে"</string>
     <string name="wifi_available_title_connected" msgid="6329493859989844201">"ৱাই-ফাই নেটৱৰ্কৰ সৈতে সংযোগ কৰা হ’ল"</string>
     <string name="wifi_available_title_failed_to_connect" msgid="4840833680513368639">"ৱাই-ফাই নেটৱৰ্কৰ সৈতে সংযোগ কৰিবপৰা নগ\'ল"</string>
-    <string name="wifi_available_content_failed_to_connect" msgid="4330035988269701861">"সকলো নেটৱৰ্ক চাবলৈ টিপক"</string>
+    <string name="wifi_available_content_failed_to_connect" msgid="4330035988269701861">"আটাইবোৰ নেটৱৰ্ক চাবলৈ টিপক"</string>
     <string name="wifi_available_action_connect" msgid="5636634933476946222">"সংযোগ কৰক"</string>
-    <string name="wifi_available_action_all_networks" msgid="8491109932336522211">"সকলো নেটৱৰ্ক"</string>
+    <string name="wifi_available_action_all_networks" msgid="8491109932336522211">"আটাইবোৰ নেটৱৰ্ক"</string>
     <string name="notification_channel_network_status" msgid="1631786866932924838">"নেটৱৰ্কৰ স্থিতি"</string>
     <string name="notification_channel_network_alerts" msgid="1391603215241200880">"নেটৱৰ্ক সম্পৰ্কীয় সতৰ্কবাণী"</string>
     <string name="notification_channel_network_available" msgid="8454366142428864948">"নেটৱৰ্ক উপলব্ধ"</string>
