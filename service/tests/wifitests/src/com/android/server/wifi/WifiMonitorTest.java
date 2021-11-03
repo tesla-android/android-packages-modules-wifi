@@ -165,7 +165,8 @@ public class WifiMonitorTest extends WifiBaseTest {
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(mHandlerSpy).handleMessage(messageCaptor.capture());
         assertEquals(WifiMonitor.WPS_FAIL_EVENT, messageCaptor.getValue().what);
-        assertEquals(WifiManager.ERROR, messageCaptor.getValue().arg1);
+        assertEquals(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR,
+                messageCaptor.getValue().arg1);
         assertEquals(WpsConfigError.MSG_TIMEOUT, messageCaptor.getValue().arg2);
     }
 

@@ -3668,7 +3668,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     ConnectNetworkMessage cnm = (ConnectNetworkMessage) message.obj;
                     if (mIpClient == null) {
                         logd("IpClient is not ready, CONNECT_NETWORK dropped");
-                        cnm.listener.sendFailure(WifiManager.ERROR);
+                        cnm.listener.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                         break;
                     }
                     NetworkUpdateResult result = cnm.result;
@@ -3684,7 +3684,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     ConnectNetworkMessage cnm = (ConnectNetworkMessage) message.obj;
                     if (mIpClient == null) {
                         logd("IpClient is not ready, SAVE_NETWORK dropped");
-                        cnm.listener.sendFailure(WifiManager.ERROR);
+                        cnm.listener.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                         break;
                     }
                     NetworkUpdateResult result = cnm.result;

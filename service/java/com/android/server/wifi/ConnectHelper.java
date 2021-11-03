@@ -63,7 +63,7 @@ public class ConnectHelper {
         int netId = result.getNetworkId();
         if (mWifiConfigManager.getConfiguredNetwork(netId) == null) {
             Log.e(TAG, "connectToNetwork Invalid network Id=" + netId);
-            wrapper.sendFailure(WifiManager.ERROR);
+            wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
             return;
         }
         mWifiConfigManager.updateBeforeConnect(netId, callingUid);
