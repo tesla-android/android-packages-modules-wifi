@@ -152,6 +152,7 @@ import android.net.wifi.hotspot2.pps.Credential;
 import android.net.wifi.hotspot2.pps.HomeSp;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -299,6 +300,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     final ArgumentCaptor<SoftApModeConfiguration> mSoftApModeConfigCaptor =
             ArgumentCaptor.forClass(SoftApModeConfiguration.class);
 
+    @Mock Bundle mBundle;
     @Mock Context mContext;
     @Mock Context mContextAsUser;
     @Mock WifiInjector mWifiInjector;
@@ -515,6 +517,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mActiveModeWarden.getClientModeManagers()).thenReturn(mClientModeManagers);
         when(mWifiInjector.getSelfRecovery()).thenReturn(mSelfRecovery);
         when(mWifiInjector.getLastCallerInfoManager()).thenReturn(mLastCallerInfoManager);
+        when(mUserManager.getUserRestrictions()).thenReturn(mBundle);
 
         doAnswer(new AnswerWithArguments() {
             public void answer(Runnable onStoppedListener) throws Throwable {
@@ -1801,6 +1804,35 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(mSoftApModeConfigCaptor.capture(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(config).isEqualTo(mSoftApModeConfigCaptor.getValue().getSoftApConfiguration());
+    }
+
+    /**
+     * Verify that while the DISALLOW_WIFI_TETHERING user restriction is set, softap does not start.
+     */
+    @Test
+    public void testStartTetheredHotspotWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_WIFI_TETHERING),
+                any())).thenReturn(true);
+        SoftApConfiguration config = createValidSoftApConfiguration();
+        mLooper.startAutoDispatch();
+        boolean result = mWifiServiceImpl.startTetheredHotspot(config, TEST_PACKAGE_NAME);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        assertFalse(result);
+        verify(mActiveModeWarden, never()).startSoftAp(any(), any());
+    }
+
+    /**
+     * Verify that when the DISALLOW_WIFI_TETHERING user restriction is set, softap stops.
+     */
+    @Test
+    public void testTetheredHotspotDisabledWhenUserRestrictionSet() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mBundle.getBoolean(UserManager.DISALLOW_WIFI_TETHERING)).thenReturn(true);
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.onUserRestrictionsChanged();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mActiveModeWarden).stopSoftAp(WifiManager.IFACE_IP_MODE_TETHERED);
     }
 
     /**
