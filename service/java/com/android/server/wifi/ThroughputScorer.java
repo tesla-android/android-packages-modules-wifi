@@ -110,9 +110,10 @@ final class ThroughputScorer implements WifiCandidates.CandidateScorer {
         int savedNetworkAward = candidate.isEphemeral() ? 0 : mScoringParams.getSavedNetworkBonus();
 
         int trustedAward = TRUSTED_AWARD;
-        if (!candidate.isTrusted()) {
-            savedNetworkAward = 0; // Saved networks are not untrusted, but clear anyway
-            unmeteredAward = 0; // Ignore metered for untrusted networks
+        if (!candidate.isTrusted() || candidate.isRestricted()) {
+            // Saved networks are not untrusted or restricted, but clear anyway
+            savedNetworkAward = 0;
+            unmeteredAward = 0; // Ignore metered for untrusted and restricted networks
             if (candidate.isCarrierOrPrivileged()) {
                 trustedAward = HALF_TRUSTED_AWARD;
             } else if (candidate.getNominatorId() == NOMINATOR_ID_SCORED) {

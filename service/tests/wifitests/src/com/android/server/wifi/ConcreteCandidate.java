@@ -23,6 +23,7 @@ import com.android.server.wifi.proto.WifiScoreCardProto;
 import java.util.Map;
 
 public final class ConcreteCandidate implements WifiCandidates.Candidate {
+    private boolean mRestricted;
     private WifiCandidates.Key mKey;
     private int mNetworkConfigId = -1;
     private boolean mIsOpenNetwork;
@@ -59,6 +60,7 @@ public final class ConcreteCandidate implements WifiCandidates.Candidate {
         mIsPasspoint = candidate.isPasspoint();
         mIsEphemeral = candidate.isEphemeral();
         mIsTrusted = candidate.isTrusted();
+        mRestricted = candidate.isRestricted();
         mIsOemPaid = candidate.isOemPaid();
         mCarrierOrPrivileged = candidate.isCarrierOrPrivileged();
         mIsMetered = candidate.isMetered();
@@ -289,6 +291,11 @@ public final class ConcreteCandidate implements WifiCandidates.Candidate {
     @Override
     public WifiScoreCardProto.Signal getEventStatistics(WifiScoreCardProto.Event event) {
         return mEventStatisticsMap.get(event);
+    }
+
+    @Override
+    public boolean isRestricted() {
+        return mRestricted;
     }
 
 }
