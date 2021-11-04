@@ -257,6 +257,7 @@ public class WifiEnterpriseConfig implements Parcelable {
     private boolean mIsAppInstalledDeviceKeyAndCert = false;
     private boolean mIsAppInstalledCaCert = false;
     private String mKeyChainAlias;
+    private boolean mIsTrustOnFirstUseEnabled = false;
 
     private static final String TAG = "WifiEnterpriseConfig";
 
@@ -303,6 +304,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         mIsAppInstalledDeviceKeyAndCert = source.mIsAppInstalledDeviceKeyAndCert;
         mIsAppInstalledCaCert = source.mIsAppInstalledCaCert;
         mOcsp = source.mOcsp;
+        mIsTrustOnFirstUseEnabled = source.mIsTrustOnFirstUseEnabled;
     }
 
     /**
@@ -350,6 +352,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         dest.writeBoolean(mIsAppInstalledDeviceKeyAndCert);
         dest.writeBoolean(mIsAppInstalledCaCert);
         dest.writeInt(mOcsp);
+        dest.writeBoolean(mIsTrustOnFirstUseEnabled);
     }
 
     public static final @android.annotation.NonNull Creator<WifiEnterpriseConfig> CREATOR =
@@ -373,6 +376,7 @@ public class WifiEnterpriseConfig implements Parcelable {
                     enterpriseConfig.mIsAppInstalledDeviceKeyAndCert = in.readBoolean();
                     enterpriseConfig.mIsAppInstalledCaCert = in.readBoolean();
                     enterpriseConfig.mOcsp = in.readInt();
+                    enterpriseConfig.mIsTrustOnFirstUseEnabled = in.readBoolean();
                     return enterpriseConfig;
                 }
 
@@ -735,6 +739,16 @@ public class WifiEnterpriseConfig implements Parcelable {
             }
             setFieldValue(CA_CERT_KEY, sb.toString(), KEYSTORES_URI);
         }
+    }
+
+    /**
+     * Indicates whether or not this enterprise config has a CA certificate configured.
+     */
+    public boolean hasCaCertificate() {
+        if (getCaCertificateAliases() != null) return true;
+        if (getCaCertificates() != null) return true;
+        if (!TextUtils.isEmpty(getCaPath())) return true;
+        return false;
     }
 
     /**
@@ -1341,6 +1355,7 @@ public class WifiEnterpriseConfig implements Parcelable {
             sb.append("phase2_method: ").append(Phase2.strings[mPhase2Method]).append("\n");
         }
         sb.append(" ocsp: ").append(mOcsp).append("\n");
+        sb.append(" trust_on_first_use: ").append(mIsTrustOnFirstUseEnabled).append("\n");
         return sb.toString();
     }
 
@@ -1481,11 +1496,12 @@ public class WifiEnterpriseConfig implements Parcelable {
 
     /**
      * Determines whether an Enterprise configuration's EAP method requires a Root CA certification
-     * to validate the authentication server i.e. PEAP, TLS, or TTLS.
+     * to validate the authentication server i.e. PEAP, TLS, UNAUTH_TLS, or TTLS.
      * @return True if configuration requires a CA certification, false otherwise.
      */
     public boolean isEapMethodServerCertUsed() {
-        return mEapMethod == Eap.PEAP || mEapMethod == Eap.TLS || mEapMethod == Eap.TTLS;
+        return mEapMethod == Eap.PEAP || mEapMethod == Eap.TLS || mEapMethod == Eap.TTLS
+                || mEapMethod == Eap.UNAUTH_TLS;
     }
     /**
      * Determines whether an Enterprise configuration enables server certificate validation.
@@ -1614,5 +1630,33 @@ public class WifiEnterpriseConfig implements Parcelable {
         }
         final String decoratedId = getFieldValue(DECORATED_IDENTITY_PREFIX_KEY);
         return decoratedId.isEmpty() ? null : decoratedId;
+    }
+
+    /**
+     * Enable Trust On First Use.
+     *
+     * Trust On First Use (TOFU) simplifies manual or partial configurations
+     * of TLS-based EAP networks. TOFU operates by installing the Root CA cert
+     * which is received from the server during an initial connection to a new network.
+     * Such installation is gated by user approval.
+     * Use only when it is not possible to configure the Root CA cert for the server.
+     * <br>
+     * Note: If a Root CA cert is already configured, this option is ignored,
+     * e.g. if {@link #setCaCertificate(X509Certificate)}, or
+     * {@link #setCaCertificates(X509Certificate[])} is called.
+     *
+     * @param enable true to enable; false otherwise (the default if the method is not called).
+     */
+    public void enableTrustOnFirstUse(boolean enable) {
+        mIsTrustOnFirstUseEnabled = enable;
+    }
+
+    /**
+     * Indicates whether or not Trust On First Use (TOFU) is enabled.
+     *
+     * @return Trust On First Use is enabled or not.
+     */
+    public boolean isTrustOnFirstUseEnabled() {
+        return mIsTrustOnFirstUseEnabled;
     }
 }

@@ -230,6 +230,7 @@ package android.net.wifi {
     ctor public WifiEnterpriseConfig();
     ctor public WifiEnterpriseConfig(android.net.wifi.WifiEnterpriseConfig);
     method public int describeContents();
+    method public void enableTrustOnFirstUse(boolean);
     method public String getAltSubjectMatch();
     method public String getAnonymousIdentity();
     method @Nullable public java.security.cert.X509Certificate getCaCertificate();
@@ -247,9 +248,11 @@ package android.net.wifi {
     method public String getPlmn();
     method public String getRealm();
     method @Deprecated public String getSubjectMatch();
+    method public boolean hasCaCertificate();
     method public boolean isAuthenticationSimBased();
     method public boolean isEapMethodServerCertUsed();
     method public boolean isServerCertValidationEnabled();
+    method public boolean isTrustOnFirstUseEnabled();
     method public void setAltSubjectMatch(String);
     method public void setAnonymousIdentity(String);
     method public void setCaCertificate(@Nullable java.security.cert.X509Certificate);
@@ -406,6 +409,7 @@ package android.net.wifi {
     method public boolean isStaBridgedApConcurrencySupported();
     method public boolean isStaConcurrencyForLocalOnlyConnectionsSupported();
     method public boolean isTdlsSupported();
+    method public boolean isTrustOnFirstUseSupported();
     method public boolean isWapiSupported();
     method public boolean isWifiDisplayR2Supported();
     method public boolean isWifiEnabled();

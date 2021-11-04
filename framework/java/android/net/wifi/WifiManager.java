@@ -2947,6 +2947,12 @@ public class WifiManager {
      * @hide */
     public static final long WIFI_FEATURE_DECORATED_IDENTITY = 0x8000000000000L;
 
+    /**
+     * Trust On First Use support for WPA Enterprise network
+     * @hide
+     */
+    public static final long WIFI_FEATURE_TRUST_ON_FIRST_USE = 0x10000000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -7006,6 +7012,13 @@ public class WifiManager {
      */
     public boolean isDecoratedIdentitySupported() {
         return isFeatureSupported(WIFI_FEATURE_DECORATED_IDENTITY);
+    }
+
+    /**
+     * @return true if this device supports Trust On First Use (TOFU).
+     */
+    public boolean isTrustOnFirstUseSupported() {
+        return isFeatureSupported(WIFI_FEATURE_TRUST_ON_FIRST_USE);
     }
 
     /**

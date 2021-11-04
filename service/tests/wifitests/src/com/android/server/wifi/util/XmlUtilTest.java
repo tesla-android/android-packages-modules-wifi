@@ -165,6 +165,18 @@ public class XmlUtilTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that a EAP WifiConfiguration with TOFU is serialized & deserialized correctly
+     * only for ConfigStore.
+     */
+    @Test
+    public void testTofuEapWifiConfigurationSerializeDeserialize()
+            throws IOException, XmlPullParserException {
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        config.enterpriseConfig.enableTrustOnFirstUse(true);
+        serializeDeserializeWifiConfigurationForConfigStore(config);
+    }
+
+    /**
      * Verify that a static IpConfiguration with PAC proxy is serialized & deserialized correctly.
      */
     @Test

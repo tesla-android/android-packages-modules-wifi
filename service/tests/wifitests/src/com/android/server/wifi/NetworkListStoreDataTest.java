@@ -250,6 +250,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<null name=\"KeyChainAlias\" />\n"
                     + (SdkLevel.isAtLeastS()
                     ? "<null name=\"DecoratedIdentityPrefix\" />\n" : "")
+                    + "<boolean name=\"TrustOnFirstUse\" value=\"false\" />\n"
                     + "</WifiEnterpriseConfiguration>\n"
                     + "</Network>\n";;
 
@@ -425,6 +426,7 @@ public class NetworkListStoreDataTest extends WifiBaseTest {
                     + "<null name=\"KeyChainAlias\" />\n"
                     + (SdkLevel.isAtLeastS()
                     ? "<null name=\"DecoratedIdentityPrefix\" />\n" : "")
+                    + "<boolean name=\"TrustOnFirstUse\" value=\"false\" />\n"
                     + "</WifiEnterpriseConfiguration>\n"
                     + "</Network>\n";;
 

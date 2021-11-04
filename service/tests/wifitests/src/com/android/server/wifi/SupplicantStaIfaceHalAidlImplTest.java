@@ -1947,6 +1947,18 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     }
 
     /**
+     * Test Trust On First Use support (TOFU).
+     */
+    @Test
+    public void testGetWpaDriverCapabilitiesTofu() throws Exception {
+        executeAndValidateInitializationSequence();
+        doReturn(WpaDriverCapabilitiesMask.TRUST_ON_FIRST_USE)
+                .when(mISupplicantStaIfaceMock).getWpaDriverCapabilities();
+        assertEquals(WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE,
+                mDut.getWpaDriverFeatureSet(WLAN0_IFACE_NAME));
+    }
+
+    /**
      * Test the handling of BSS transition request callback.
      */
     @Test

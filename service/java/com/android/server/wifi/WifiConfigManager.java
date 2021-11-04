@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static android.net.wifi.WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE;
+
 import android.Manifest;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -1334,6 +1336,26 @@ public class WifiConfigManager {
         // network the certificates and keys are installed at the time the suggestion is added
         if (!config.isPasspoint() && !config.fromWifiNetworkSuggestion && config.isEnterprise()) {
             if (!(mWifiKeyStore.updateNetworkKeys(newInternalConfig, existingInternalConfig))) {
+                return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
+            }
+        }
+
+        // Validate an Enterprise network with Trust On First Use.
+        if (config.isEnterprise() && config.enterpriseConfig.isTrustOnFirstUseEnabled()) {
+            long supportedFeatures = WifiInjector.getInstance().getActiveModeWarden()
+                    .getPrimaryClientModeManager().getSupportedFeatures();
+            if ((supportedFeatures & WIFI_FEATURE_TRUST_ON_FIRST_USE) == 0) {
+                Log.e(TAG, "Trust On First Use could not be set "
+                        + "when Trust On First Use is not supported.");
+                return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
+            }
+            if (!config.enterpriseConfig.isEapMethodServerCertUsed()) {
+                Log.e(TAG, "Trust On First Use could not be set "
+                        + "when the server certificate is not used.");
+                return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
+            } else if (config.enterpriseConfig.hasCaCertificate()) {
+                Log.e(TAG, "Trust On First Use could not be set "
+                        + "when Root CA certificate is set.");
                 return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
             }
         }
