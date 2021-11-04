@@ -3228,6 +3228,7 @@ public class WifiManager {
      * </p>
      */
     @Deprecated
+    @RequiresPermission(allOf = {ACCESS_WIFI_STATE, ACCESS_FINE_LOCATION}, conditional = true)
     public WifiInfo getConnectionInfo() {
         try {
             return mService.getConnectionInfo(mContext.getOpPackageName(),
@@ -3241,8 +3242,10 @@ public class WifiManager {
      * Return the results of the latest access point scan.
      * @return the list of access points found in the most recent scan. An app must hold
      * {@link android.Manifest.permission#ACCESS_FINE_LOCATION ACCESS_FINE_LOCATION} permission
+     * and {@link android.Manifest.permission#ACCESS_WIFI_STATE} permission
      * in order to get valid results.
      */
+    @RequiresPermission(allOf = {ACCESS_WIFI_STATE, ACCESS_FINE_LOCATION})
     public List<ScanResult> getScanResults() {
         try {
             return mService.getScanResults(mContext.getOpPackageName(),

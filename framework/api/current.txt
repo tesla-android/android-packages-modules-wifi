@@ -362,13 +362,13 @@ package android.net.wifi {
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_SETTINGS, android.Manifest.permission.NETWORK_MANAGED_PROVISIONING, android.Manifest.permission.NETWORK_CARRIER_PROVISIONING}, conditional=true) public void flushPasspointAnqpCache();
     method @NonNull @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public java.util.List<android.net.wifi.WifiConfiguration> getCallerConfiguredNetworks();
     method @Deprecated @RequiresPermission(allOf={android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_WIFI_STATE}) public java.util.List<android.net.wifi.WifiConfiguration> getConfiguredNetworks();
-    method @Deprecated public android.net.wifi.WifiInfo getConnectionInfo();
+    method @Deprecated @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public android.net.wifi.WifiInfo getConnectionInfo();
     method @Deprecated public android.net.DhcpInfo getDhcpInfo();
     method public int getMaxNumberOfNetworkSuggestionsPerApp();
     method @IntRange(from=0) public int getMaxSignalLevel();
     method @NonNull @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public java.util.List<android.net.wifi.WifiNetworkSuggestion> getNetworkSuggestions();
     method @Deprecated public java.util.List<android.net.wifi.hotspot2.PasspointConfiguration> getPasspointConfigurations();
-    method public java.util.List<android.net.wifi.ScanResult> getScanResults();
+    method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION}) public java.util.List<android.net.wifi.ScanResult> getScanResults();
     method public int getWifiState();
     method public boolean is24GHzBandSupported();
     method public boolean is5GHzBandSupported();
