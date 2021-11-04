@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -64,6 +65,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -616,13 +618,28 @@ public class WifiNativeTest extends WifiBaseTest {
     // TODO(b/28005116): Add test for the success case of getDriverStateDump().
 
     /**
+     * Verifies getWifiLinkLayerStats() calls underlying WifiVendorHal.
+     *
+     */
+    @Test
+    public void testGetWifiLinkLayerStatsForClientInConnectivityMode() throws Exception {
+        mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
+        mWifiNative.getWifiLinkLayerStats(WIFI_IFACE_NAME);
+        mWifiNative.getWifiLinkLayerStats(WIFI_IFACE_NAME);
+        verify(mWifiVendorHal, times(2)).getWifiLinkLayerStats(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
      * Verifies client mode + scan success.
      */
     @Test
     public void testClientModeScanSuccess() {
+        InOrder order = inOrder(mWificondControl, mNetdWrapper, mWifiVendorHal);
         mWifiNative.setupInterfaceForClientInConnectivityMode(null, TEST_WORKSOURCE);
-        verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
+        order.verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
+        order.verify(mNetdWrapper).isInterfaceUp(eq(WIFI_IFACE_NAME));
+        order.verify(mWifiVendorHal).enableLinkLayerStats(eq(WIFI_IFACE_NAME));
 
         mScanCallbackCaptor.getValue().onScanResultReady();
         verify(mWifiMonitor).broadcastScanResultEvent(WIFI_IFACE_NAME);
@@ -673,9 +690,12 @@ public class WifiNativeTest extends WifiBaseTest {
      */
     @Test
     public void testScanModeScanSuccess() {
+        InOrder order = inOrder(mWificondControl, mNetdWrapper, mWifiVendorHal);
         mWifiNative.setupInterfaceForClientInScanMode(null, TEST_WORKSOURCE);
-        verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
+        order.verify(mWificondControl).setupInterfaceForClientMode(eq(WIFI_IFACE_NAME), any(),
                 mScanCallbackCaptor.capture(), any());
+        order.verify(mNetdWrapper).isInterfaceUp(eq(WIFI_IFACE_NAME));
+        order.verify(mWifiVendorHal).enableLinkLayerStats(eq(WIFI_IFACE_NAME));
 
         mScanCallbackCaptor.getValue().onScanResultReady();
         verify(mWifiMonitor).broadcastScanResultEvent(WIFI_IFACE_NAME);

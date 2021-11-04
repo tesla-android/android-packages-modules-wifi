@@ -1184,6 +1184,7 @@ public class WifiNative {
             // Just to avoid any race conditions with interface state change callbacks,
             // update the interface state before we exit.
             onInterfaceStateChanged(iface, isInterfaceUp(iface.name));
+            mWifiVendorHal.enableLinkLayerStats(iface.name);
             initializeNwParamsForClientInterface(iface.name);
             Log.i(TAG, "Successfully setup " + iface);
 
@@ -1242,6 +1243,7 @@ public class WifiNative {
             // Just to avoid any race conditions with interface state change callbacks,
             // update the interface state before we exit.
             onInterfaceStateChanged(iface, isInterfaceUp(iface.name));
+            mWifiVendorHal.enableLinkLayerStats(iface.name);
             Log.i(TAG, "Successfully setup " + iface);
 
             iface.featureSet = getSupportedFeatureSetInternal(iface.name);
