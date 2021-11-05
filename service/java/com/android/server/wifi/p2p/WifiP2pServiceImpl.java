@@ -274,7 +274,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private static final int IPC_PROVISIONING_SUCCESS       =   BASE + 33;
     private static final int IPC_PROVISIONING_FAILURE       =   BASE + 34;
 
-    private static final int GROUP_OWNER_TETHER_READY       =   BASE + 35;
+    private static final int TETHER_INTERFACE_STATE_CHANGED =   BASE + 35;
 
     private static final int UPDATE_P2P_DISALLOWED_CHANNELS =   BASE + 36;
 
@@ -964,16 +964,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 mContext.registerReceiver(new BroadcastReceiver() {
                     @Override
                     public void onReceive(Context context, Intent intent) {
-                        if (mGroup == null) return;
-                        if (!mGroup.isGroupOwner()) return;
-                        if (TextUtils.isEmpty(mGroup.getInterface())) return;
-
                         final ArrayList<String> interfaces = intent.getStringArrayListExtra(
                                 TetheringManager.EXTRA_ACTIVE_LOCAL_ONLY);
 
-                        if (interfaces.contains(mGroup.getInterface())) {
-                            sendMessage(GROUP_OWNER_TETHER_READY);
-                        }
+                        sendMessage(TETHER_INTERFACE_STATE_CHANGED, interfaces);
                     }
                 }, new IntentFilter(TetheringManager.ACTION_TETHER_STATE_CHANGED));
                 mSettingsConfigStore.registerChangeListener(
@@ -1383,7 +1377,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case IPC_DHCP_RESULTS:
                     case IPC_PROVISIONING_SUCCESS:
                     case IPC_PROVISIONING_FAILURE:
-                    case GROUP_OWNER_TETHER_READY:
+                    case TETHER_INTERFACE_STATE_CHANGED:
                     case UPDATE_P2P_DISALLOWED_CHANNELS:
                     case WifiP2pMonitor.P2P_PROV_DISC_FAILURE_EVENT:
                     case SET_MIRACAST_MODE:
@@ -2751,11 +2745,17 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         transitionTo(mGroupCreatedState);
                         break;
-                    case GROUP_OWNER_TETHER_READY:
-                        if (mGroup != null && mGroup.isGroupOwner()) {
-                            Log.d(TAG, "tether " + mGroup.getInterface() + " ready");
-                            transitionTo(mGroupCreatedState);
-                        }
+                    case TETHER_INTERFACE_STATE_CHANGED:
+                        if (mGroup == null) break;
+                        if (!mGroup.isGroupOwner()) break;
+                        if (TextUtils.isEmpty(mGroup.getInterface())) break;
+
+                        final ArrayList<String> interfaces = (ArrayList<String>) message.obj;
+                        if (interfaces == null) break;
+                        if (!interfaces.contains(mGroup.getInterface())) break;
+
+                        Log.d(TAG, "tether " + mGroup.getInterface() + " ready");
+                        transitionTo(mGroupCreatedState);
                         break;
                     case WifiP2pMonitor.P2P_GO_NEGOTIATION_FAILURE_EVENT:
                         P2pStatus status = (P2pStatus) message.obj;
