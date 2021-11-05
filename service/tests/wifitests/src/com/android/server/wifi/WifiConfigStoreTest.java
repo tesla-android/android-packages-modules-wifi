@@ -119,6 +119,7 @@ public class WifiConfigStoreTest extends WifiBaseTest {
                     + "</SecurityParams>\n"
                     + "</SecurityParamsList>\n"
                     + "<boolean name=\"Trusted\" value=\"true\" />\n"
+                    + "<boolean name=\"IsRestricted\" value=\"false\" />\n"
                     + "<boolean name=\"OemPaid\" value=\"false\" />\n"
                     + "<boolean name=\"OemPrivate\" value=\"false\" />\n"
                     + "<boolean name=\"CarrierMerged\" value=\"false\" />\n"
