@@ -37,7 +37,11 @@ import com.android.internal.messages.nano.SystemMessageProto.SystemMessage;
  */
 public class EapFailureNotifier {
     private static final String TAG = "EapFailureNotifier";
-    private static final String ERROR_MESSAGE_OVERLAY_PREFIX = "wifi_eap_error_message_code_";
+    @VisibleForTesting
+    static final String ERROR_MESSAGE_OVERLAY_PREFIX = "wifi_eap_error_message_code_";
+    @VisibleForTesting
+    static final String ERROR_MESSAGE_OVERLAY_UNKNOWN_ERROR_CODE =
+            "wifi_eap_error_message_unknown_error_code";
 
     private static final long CANCEL_TIMEOUT_MILLISECONDS = 5 * 60 * 1000;
     private final WifiContext mContext;
@@ -72,7 +76,11 @@ public class EapFailureNotifier {
         int resourceId = res.getIdentifier(ERROR_MESSAGE_OVERLAY_PREFIX + errorCode,
                 "string", mContext.getWifiOverlayApkPkgName());
 
-        if (resourceId == 0) return false;
+        if (resourceId == 0) {
+            // Use the generic error message if the code does not match any known code.
+            resourceId = res.getIdentifier(ERROR_MESSAGE_OVERLAY_UNKNOWN_ERROR_CODE,
+                    "string", mContext.getWifiOverlayApkPkgName());
+        }
         String errorMessage = res.getString(resourceId, config.SSID);
         if (TextUtils.isEmpty(errorMessage)) return false;
         StatusBarNotification[] activeNotifications = mNotificationManager.getActiveNotifications();
