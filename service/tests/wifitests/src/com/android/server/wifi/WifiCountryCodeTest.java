@@ -512,4 +512,11 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         assertEquals(mDefaultCountryCode, mWifiCountryCode.getCurrentDriverCountryCode());
         verify(mExternalChangeListener).onDriverCountryCodeChanged(mDefaultCountryCode);
     }
+
+    @Test
+    public void testSetTelephonyCountryCodeAndUpdateWithEmptyCCReturnFalseWhenDefaultSIMCCExist()
+            throws Exception {
+        when(mTelephonyManager.getNetworkCountryIso()).thenReturn(mTelephonyCountryCode);
+        assertFalse(mWifiCountryCode.setTelephonyCountryCodeAndUpdate(""));
+    }
 }
