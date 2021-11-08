@@ -486,13 +486,11 @@ public class WifiServiceImpl extends BaseWifiService {
 
     private void resetCarrierNetworks(@ClientModeImpl.ResetSimReason int resetReason) {
         Log.d(TAG, "resetting carrier networks since SIM was changed");
-        if (resetReason == RESET_SIM_REASON_SIM_INSERTED
-                || resetReason == RESET_SIM_REASON_DEFAULT_DATA_SIM_CHANGED) {
+        if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
             // clear all SIM related notifications since some action was taken to address
             // "missing" SIM issue
             mSimRequiredNotifier.dismissSimRequiredNotification();
-        }
-        if (resetReason != RESET_SIM_REASON_SIM_INSERTED) {
+        } else {
             mWifiConfigManager.resetSimNetworks();
             mWifiNetworkSuggestionsManager.resetSimNetworkSuggestions();
             mPasspointManager.resetSimPasspointNetwork();
@@ -503,7 +501,7 @@ public class WifiServiceImpl extends BaseWifiService {
         for (ClientModeManager cmm : mActiveModeWarden.getClientModeManagers()) {
             cmm.resetSimAuthNetworks(resetReason);
         }
-        mWifiNetworkSuggestionsManager.resetCarrierPrivilegedApps();
+        mWifiThreadRunner.post(mWifiNetworkSuggestionsManager::resetCarrierPrivilegedApps);
         if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
             // clear the blocklists in case any SIM based network were disabled due to the SIM
             // not being available.
@@ -511,7 +509,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiConnectivityManager.forceConnectivityScan(ClientModeImpl.WIFI_WORK_SOURCE);
         } else {
             // Remove all ephemeral carrier networks keep subscriptionId update with SIM changes
-            mWifiConfigManager.removeEphemeralCarrierNetworks();
+            mWifiThreadRunner.post(mWifiConfigManager::removeEphemeralCarrierNetworks);
         }
     }
 

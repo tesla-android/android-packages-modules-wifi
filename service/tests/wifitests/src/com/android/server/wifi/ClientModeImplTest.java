@@ -1183,6 +1183,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiNative, times(2)).removeAllNetworks(WIFI_IFACE_NAME);
         verify(mWifiMetrics).logStaEvent(anyString(), eq(StaEvent.TYPE_FRAMEWORK_DISCONNECT),
                 eq(StaEvent.DISCONNECT_RESET_SIM_NETWORKS));
+        verify(mSimRequiredNotifier, never()).showSimRequiredNotification(any(), anyString());
     }
 
     /**
