@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import static android.Manifest.permission.NETWORK_SETTINGS;
-import static android.telephony.TelephonyManager.DATA_ENABLED_REASON_USER;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -262,15 +261,13 @@ public class WifiCarrierInfoManager {
 
         @Override
         public void onDataEnabledChanged(boolean enabled, int reason) {
-            if (reason == DATA_ENABLED_REASON_USER) {
-                Log.d(TAG, "Mobile data change by user to "
-                        + (enabled ? "enabled" : "disabled") + " for subId: " + mSubscriptionId);
-                mUserDataEnabled.put(mSubscriptionId, enabled);
-                if (!enabled) {
-                    for (OnCarrierOffloadDisabledListener listener :
-                            mOnCarrierOffloadDisabledListeners) {
-                        listener.onCarrierOffloadDisabled(mSubscriptionId, true);
-                    }
+            Log.d(TAG, "Mobile data change by reason " + reason + " to "
+                    + (enabled ? "enabled" : "disabled") + " for subId: " + mSubscriptionId);
+            mUserDataEnabled.put(mSubscriptionId, enabled);
+            if (!enabled) {
+                for (OnCarrierOffloadDisabledListener listener :
+                        mOnCarrierOffloadDisabledListeners) {
+                    listener.onCarrierOffloadDisabled(mSubscriptionId, true);
                 }
             }
         }

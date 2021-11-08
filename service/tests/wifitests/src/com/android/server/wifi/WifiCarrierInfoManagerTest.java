@@ -17,6 +17,8 @@
 package com.android.server.wifi;
 
 import static android.telephony.CarrierConfigManager.KEY_CARRIER_CONFIG_APPLIED_BOOL;
+import static android.telephony.TelephonyManager.DATA_ENABLED_REASON_CARRIER;
+import static android.telephony.TelephonyManager.DATA_ENABLED_REASON_THERMAL;
 import static android.telephony.TelephonyManager.DATA_ENABLED_REASON_USER;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.doReturn;
@@ -1954,7 +1956,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         verify(mDataTelephonyManager).registerTelephonyCallback(any(), listenerCaptor.capture());
 
         // Verify result will change with state changes
-        listenerCaptor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_USER);
+        listenerCaptor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_THERMAL);
         assertFalse(mWifiCarrierInfoManager.isCarrierNetworkOffloadEnabled(DATA_SUBID, true));
 
         listenerCaptor.getValue().onDataEnabledChanged(true, DATA_ENABLED_REASON_USER);
@@ -2188,7 +2190,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         mWifiCarrierInfoManager.setCarrierNetworkOffloadEnabled(DATA_SUBID, true, false);
         verify(mOnCarrierOffloadDisabledListener).onCarrierOffloadDisabled(DATA_SUBID, true);
 
-        captor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_USER);
+        captor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_CARRIER);
         verify(mOnCarrierOffloadDisabledListener, times(2))
                 .onCarrierOffloadDisabled(DATA_SUBID, true);
     }
