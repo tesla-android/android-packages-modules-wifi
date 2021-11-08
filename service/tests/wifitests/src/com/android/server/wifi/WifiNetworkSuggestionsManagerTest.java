@@ -3986,12 +3986,12 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 add(nonPasspointSuggestion);
                 }};
         ScanResult passpointScanResult = new ScanResult();
-        passpointScanResult.wifiSsid = WifiSsid.createFromAsciiEncoded("passpoint");
+        passpointScanResult.wifiSsid = WifiSsid.fromUtf8Text("passpoint");
         List<ScanResult> ppSrList = new ArrayList<>() {{
                 add(passpointScanResult);
                 }};
         ScanResult nonPasspointScanResult = new ScanResult();
-        nonPasspointScanResult.wifiSsid = WifiSsid.createFromAsciiEncoded(
+        nonPasspointScanResult.wifiSsid = WifiSsid.fromUtf8Text(
                 nonPasspointSuggestion.wifiConfiguration.SSID);
         List<ScanResult> nonPpSrList = new ArrayList<>() {{
                 add(nonPasspointScanResult);
@@ -4037,7 +4037,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 add(nonPasspointSuggestion);
                 }};
         ScanResult nonPasspointScanResult = new ScanResult();
-        nonPasspointScanResult.wifiSsid = WifiSsid.createFromAsciiEncoded("non-passpoint");
+        nonPasspointScanResult.wifiSsid = WifiSsid.fromUtf8Text("non-passpoint");
         List<ScanResult> allSrList = new ArrayList<>() {{
                 add(nonPasspointScanResult);
             }};
@@ -4074,7 +4074,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 add(nonPasspointSuggestion);
             }};
         ScanResult nonPasspointScanResult = new ScanResult();
-        nonPasspointScanResult.wifiSsid = WifiSsid.createFromAsciiEncoded("non-passpoint");
+        nonPasspointScanResult.wifiSsid = WifiSsid.fromUtf8Text("non-passpoint");
         List<ScanResult> allSrList = new ArrayList<>() {{
                 add(nonPasspointScanResult);
             }};

@@ -77,8 +77,8 @@ import java.util.List;
 @SmallTest
 public class WifiHealthMonitorTest extends WifiBaseTest {
 
-    static final WifiSsid TEST_SSID_1 = WifiSsid.createFromAsciiEncoded("Joe's Place");
-    static final WifiSsid TEST_SSID_2 = WifiSsid.createFromAsciiEncoded("Poe's Place");
+    static final WifiSsid TEST_SSID_1 = WifiSsid.fromUtf8Text("Joe's Place");
+    static final WifiSsid TEST_SSID_2 = WifiSsid.fromUtf8Text("Poe's Place");
     static final MacAddress TEST_BSSID_1 = MacAddress.fromString("aa:bb:cc:dd:ee:ff");
     private static final long CURRENT_ELAPSED_TIME_MS = 1000;
     private static final String WIFI_IFACE_NAME = "wlanTest";

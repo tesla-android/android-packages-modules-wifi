@@ -101,7 +101,7 @@ public class AvailableNetworkNotifierTest extends WifiBaseTest {
                 AvailableNetworkNotifier.STATE_SHOWING_RECOMMENDATION_NOTIFICATION;
         final String ssid = "UnknownAkm-Network";
         final String caps = "[RSN-?-TKIP+CCMP][ESS][WPS]";
-        ScanResult result = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult result = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
         InformationElement ie = new InformationElement();

@@ -427,7 +427,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // This unfortunately needs to be a somewhat valid scan result, otherwise
         // |ScanDetailUtil.toScanDetail| raises exceptions.
         final ScanResult[] scanResults = new ScanResult[1];
-        scanResults[0] = new ScanResult(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID),
+        scanResults[0] = new ScanResult(WifiSsid.fromUtf8Text(CANDIDATE_SSID),
                 CANDIDATE_SSID, CANDIDATE_BSSID, 1245, 0, "some caps",
                 -78, 2450, 1025, 22, 33, 20, 0, 0, true);
         scanResults[0].informationElements = new InformationElement[1];
@@ -1898,7 +1898,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         List<ScanDetail> expectedOpenNetworks = new ArrayList<>();
         expectedOpenNetworks.add(
                 new ScanDetail(
-                        new ScanResult(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID),
+                        new ScanResult(WifiSsid.fromUtf8Text(CANDIDATE_SSID),
                                 CANDIDATE_SSID, CANDIDATE_BSSID, 1245, 0, "some caps", -78, 2450,
                                 1025, 22, 33, 20, 0, 0, true)));
 
@@ -1927,7 +1927,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         List<ScanDetail> expectedOpenNetworks = new ArrayList<>();
         expectedOpenNetworks.add(
                 new ScanDetail(
-                        new ScanResult(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID),
+                        new ScanResult(WifiSsid.fromUtf8Text(CANDIDATE_SSID),
                                 CANDIDATE_SSID, CANDIDATE_BSSID, 1245, 0, "some caps", -78, 2450,
                                 1025, 22, 33, 20, 0, 0, true)));
 
@@ -1950,7 +1950,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     @Test
     public void wifiConnected_openNetworkNotifierHandlesConnection() {
         // Set WiFi to connected state
-        mWifiInfo.setSSID(WifiSsid.createFromAsciiEncoded(CANDIDATE_SSID));
+        mWifiInfo.setSSID(WifiSsid.fromUtf8Text(CANDIDATE_SSID));
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_NONE, CANDIDATE_BSSID, CANDIDATE_SSID);

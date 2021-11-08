@@ -28,6 +28,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import android.net.NetworkCapabilities;
+import android.net.wifi.util.HexEncoding;
 import android.os.Parcel;
 import android.telephony.SubscriptionManager;
 
@@ -37,6 +38,7 @@ import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +72,7 @@ public class WifiInfoTest {
         info.txRetries = TEST_TX_RETRIES;
         info.txBad = TEST_TX_BAD;
         info.rxSuccess = TEST_RX_SUCCESS;
-        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
         info.setBSSID(TEST_BSSID);
         info.setNetworkId(TEST_NETWORK_ID);
         info.setTrusted(true);
@@ -164,7 +166,7 @@ public class WifiInfoTest {
         info.txRetries = TEST_TX_RETRIES;
         info.txBad = TEST_TX_BAD;
         info.rxSuccess = TEST_RX_SUCCESS;
-        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
         info.setBSSID(TEST_BSSID);
         info.setNetworkId(TEST_NETWORK_ID);
         info.setTrusted(true);
@@ -317,7 +319,7 @@ public class WifiInfoTest {
 
     private WifiInfo makeWifiInfoForLocationSensitiveAndLocalMacAddressRedaction() {
         WifiInfo info = new WifiInfo();
-        info.setSSID(WifiSsid.createFromAsciiEncoded(TEST_SSID));
+        info.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
         info.setBSSID(TEST_BSSID);
         info.setNetworkId(TEST_NETWORK_ID);
         info.setFQDN(TEST_FQDN);
@@ -517,6 +519,27 @@ public class WifiInfoTest {
     }
 
     @Test
+    public void testSetSsid() throws Exception {
+        WifiInfo.Builder builder = new WifiInfo.Builder();
+
+        // Null
+        assertEquals(WifiManager.UNKNOWN_SSID, builder.build().getSSID());
+
+        // Empty
+        builder.setSsid(new byte[0]);
+        assertEquals(WifiManager.UNKNOWN_SSID, builder.build().getSSID());
+
+        // UTF-8
+        builder.setSsid(TEST_SSID.getBytes(StandardCharsets.UTF_8));
+        assertEquals("\"" + TEST_SSID + "\"", builder.build().getSSID());
+
+        // Non-UTF-8
+        byte[] gbkBytes = "服務集識別碼".getBytes(Charset.forName("GBK"));
+        builder.setSsid(gbkBytes);
+        assertEquals(HexEncoding.encodeToString(gbkBytes), builder.build().getSSID());
+    }
+
+    @Test
     public void testWifiInfoEquals() throws Exception {
         WifiInfo.Builder builder = new WifiInfo.Builder()
                 .setSsid(TEST_SSID.getBytes(StandardCharsets.UTF_8))
@@ -544,10 +567,10 @@ public class WifiInfoTest {
             assertNotEquals(info1, info2);
         }
 
-        info1.setSSID(WifiSsid.createFromHex(null));
+        info1.setSSID(WifiSsid.fromBytes(null));
         assertNotEquals(info1, info2);
 
-        info2.setSSID(WifiSsid.createFromHex(null));
+        info2.setSSID(WifiSsid.fromBytes(null));
         if (SdkLevel.isAtLeastS()) {
             assertEquals(info1, info2);
         } else {
@@ -612,10 +635,10 @@ public class WifiInfoTest {
             assertNotEquals(info1.hashCode(), info2.hashCode());
         }
 
-        info1.setSSID(WifiSsid.createFromHex(null));
+        info1.setSSID(WifiSsid.fromBytes(null));
         assertNotEquals(info1.hashCode(), info2.hashCode());
 
-        info2.setSSID(WifiSsid.createFromHex(null));
+        info2.setSSID(WifiSsid.fromBytes(null));
         if (SdkLevel.isAtLeastS()) {
             assertEquals(info1.hashCode(), info2.hashCode());
         } else {

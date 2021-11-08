@@ -140,7 +140,7 @@ public class ScanResultUtilTest {
         final String ssid = "WPA3-Transition";
         String caps = "[WPA2-FT/PSK-CCMP][RSN-FT/PSK+PSK-SHA256+SAE+FT/SAE-CCMP][ESS][WPS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -159,7 +159,7 @@ public class ScanResultUtilTest {
         final String ssid = "WPA3-Transition";
         String caps = "[WPA2-FT/PSK+PSK+SAE+FT/SAE-CCMP][ESS][WPS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -178,7 +178,7 @@ public class ScanResultUtilTest {
         final String ssid = "WPA2-Network";
         String caps = "[WPA2-FT/PSK+PSK][ESS][WPS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -197,7 +197,7 @@ public class ScanResultUtilTest {
         final String ssid = "WPA3-Network";
         String caps = "[WPA2-FT/SAE+SAE][ESS][WPS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -216,7 +216,7 @@ public class ScanResultUtilTest {
         final String ssid = "FT-EAP-AP";
         String caps = " [WPA2-FT/EAP-CCMP][RSN-FT/EAP-CCMP][ESS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -236,7 +236,7 @@ public class ScanResultUtilTest {
         String caps = "[WPA2-EAP-FILS-SHA256-CCMP]"
                 + "[RSN-EAP-FILS-SHA256-CCMP][ESS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -257,7 +257,7 @@ public class ScanResultUtilTest {
         String caps = "[WPA2-EAP-FILS-SHA384-CCMP]"
                 + "[RSN-EAP-FILS-SHA384-CCMP][ESS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -277,7 +277,7 @@ public class ScanResultUtilTest {
         final String ssid = "EAP-NETWORK";
         String caps = "[EAP/SHA1][ESS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 
@@ -295,7 +295,7 @@ public class ScanResultUtilTest {
             boolean isR1R2Network, boolean isR3Network) {
         final String ssid = "PASSPOINT-NETWORK";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
         if (isPasspoint) {
@@ -352,7 +352,7 @@ public class ScanResultUtilTest {
         final String ssid = "UnknownAkm-Network";
         String caps = "[RSN-?-TKIP+CCMP][ESS][WPS]";
 
-        ScanResult input = new ScanResult(WifiSsid.createFromAsciiEncoded(ssid), ssid,
+        ScanResult input = new ScanResult(WifiSsid.fromUtf8Text(ssid), ssid,
                 "ab:cd:01:ef:45:89", 1245, 0, caps, -78, 2450, 1025, 22, 33, 20, 0,
                 0, true);
 

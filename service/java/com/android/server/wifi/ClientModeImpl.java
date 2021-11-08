@@ -4822,7 +4822,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             (NetworkConnectionEventInfo) message.obj;
                     String quotedOrHexConnectingSsid = getConnectingSsidInternal();
                     String quotedOrHexConnectedSsid = NativeUtil.encodeSsid(
-                            NativeUtil.byteArrayToArrayList(connectionInfo.wifiSsid.getOctets()));
+                            NativeUtil.byteArrayToArrayList(connectionInfo.wifiSsid.getBytes()));
                     if (quotedOrHexConnectingSsid != null
                             && !quotedOrHexConnectingSsid.equals(quotedOrHexConnectedSsid)) {
                         // possibly a NETWORK_CONNECTION_EVENT for a successful roam on the previous

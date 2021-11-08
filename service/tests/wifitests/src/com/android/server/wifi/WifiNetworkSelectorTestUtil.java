@@ -222,7 +222,7 @@ public class WifiNetworkSelectorTestUtil {
         long timeStamp = clock.getElapsedSinceBootMillis();
         for (int index = 0; index < ssids.length; index++) {
             byte[] ssid = NativeUtil.byteArrayFromArrayList(NativeUtil.decodeSsid(ssids[index]));
-            ScanDetail scanDetail = new ScanDetail(WifiSsid.createFromByteArray(ssid),
+            ScanDetail scanDetail = new ScanDetail(WifiSsid.fromBytes(ssid),
                     bssids[index], caps[index], levels[index], freqs[index], timeStamp, 0);
             scanDetailList.add(scanDetail);
         }
@@ -253,7 +253,7 @@ public class WifiNetworkSelectorTestUtil {
                 InformationElementUtil.parseInformationElements(iesByteStream[index]);
             NetworkDetail nd = new NetworkDetail(bssids[index], ies, new ArrayList<String>(),
                     freqs[index]);
-            ScanDetail scanDetail = new ScanDetail(nd, WifiSsid.createFromByteArray(ssid),
+            ScanDetail scanDetail = new ScanDetail(nd, WifiSsid.fromBytes(ssid),
                     bssids[index], caps[index], levels[index], freqs[index], timeStamp,
                     ies, new ArrayList<String>(),
                     ScanResults.generateIERawDatafromScanResultIE(ies));

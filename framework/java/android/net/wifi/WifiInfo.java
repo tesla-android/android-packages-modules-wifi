@@ -517,7 +517,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             mBSSID = shouldRedactLocationSensitiveFields(redactions)
                     ? DEFAULT_MAC_ADDRESS : source.mBSSID;
             mWifiSsid = shouldRedactLocationSensitiveFields(redactions)
-                    ? WifiSsid.createFromHex(null) : source.mWifiSsid;
+                    ? null : source.mWifiSsid;
             mNetworkId = shouldRedactLocationSensitiveFields(redactions)
                     ? INVALID_NETWORK_ID : source.mNetworkId;
             mRssi = source.mRssi;
@@ -578,7 +578,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
          */
         @NonNull
         public Builder setSsid(@NonNull byte[] ssid) {
-            mWifiInfo.setSSID(WifiSsid.createFromByteArray(ssid));
+            mWifiInfo.setSSID(WifiSsid.fromBytes(ssid));
             return this;
         }
 
@@ -653,12 +653,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
      */
     public String getSSID() {
         if (mWifiSsid != null) {
-            String unicode = mWifiSsid.toString();
-            if (!TextUtils.isEmpty(unicode)) {
-                return "\"" + unicode + "\"";
-            } else {
-                String hex = mWifiSsid.getHexString();
-                return (hex != null) ? hex : WifiManager.UNKNOWN_SSID;
+            String ssidString = mWifiSsid.toString();
+            if (!TextUtils.isEmpty(ssidString)) {
+                return ssidString;
             }
         }
         return WifiManager.UNKNOWN_SSID;

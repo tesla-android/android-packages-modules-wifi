@@ -3981,7 +3981,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
         ScanResult scanResult = new ScanResult();
         scanResult.SSID = NativeUtil.encodeSsid(staScanResult.ssid);
         scanResult.BSSID = NativeUtil.macAddressFromByteArray(staScanResult.bssid);
-        scanResult.wifiSsid = WifiSsid.createFromByteArray(ssid);
+        scanResult.wifiSsid = WifiSsid.fromBytes(ssid);
         scanResult.frequency = staScanResult.frequency;
         scanResult.level = staScanResult.rssi;
         scanResult.timestamp = staScanResult.timeStampInUs;
@@ -4014,7 +4014,7 @@ public class WifiVendorHalTest extends WifiBaseTest {
 
     private void assertScanResultEqual(ScanResult expected, ScanResult actual) {
         assertEquals(expected.SSID, actual.SSID);
-        assertEquals(expected.wifiSsid.getHexString(), actual.wifiSsid.getHexString());
+        assertEquals(expected.wifiSsid, actual.wifiSsid);
         assertEquals(expected.BSSID, actual.BSSID);
         assertEquals(expected.frequency, actual.frequency);
         assertEquals(expected.level, actual.level);
