@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
  */
 @SmallTest
 public class ScanResultTest {
-    public static final String TEST_SSID = "\"test_ssid\"";
+    public static final String TEST_SSID = "test_ssid";
     public static final String TEST_BSSID = "04:ac:fe:45:34:10";
     public static final String TEST_CAPS = "CCMP";
     public static final int TEST_LEVEL = -56;
@@ -348,7 +348,7 @@ public class ScanResultTest {
 
     private static ScanResult createScanResult() {
         ScanResult result = new ScanResult();
-        result.wifiSsid = WifiSsid.createFromAsciiEncoded(TEST_SSID);
+        result.wifiSsid = WifiSsid.fromUtf8Text(TEST_SSID);
         result.BSSID = TEST_BSSID;
         result.capabilities = TEST_CAPS;
         result.level = TEST_LEVEL;

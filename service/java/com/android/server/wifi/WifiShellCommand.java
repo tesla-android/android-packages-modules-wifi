@@ -944,7 +944,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "add-fake-scan": {
                     String option = getNextOption();
                     boolean isHex = (option != null && option.equals("-x"));
-                    WifiSsid wifiSsid = WifiSsid.createFromByteArray(isHex
+                    WifiSsid wifiSsid = WifiSsid.fromBytes(isHex
                             ? HexEncoding.decode(getNextArgRequired())
                             : getNextArgRequired().getBytes(StandardCharsets.UTF_8));
                     String bssid = getNextArgRequired();
@@ -976,7 +976,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     ScanResult.InformationElement ieSSid = new ScanResult.InformationElement(
                             ScanResult.InformationElement.EID_SSID,
                             0,
-                            wifiSsid.getOctets());
+                            wifiSsid.getBytes());
                     ScanResult.InformationElement[] ies =
                             new ScanResult.InformationElement[]{ieSSid};
                     ScanDetail sd = new ScanDetail(new NetworkDetail(bssid, ies, null, frequency),

@@ -424,20 +424,20 @@ public abstract class BaseWifiScannerImplTest extends WifiBaseTest {
 
         long approxScanStartNanos = mClock.getElapsedSinceBootNanos();
         ArrayList<ScanDetail> rawResults = new ArrayList<>(Arrays.asList(
-                new ScanDetail(WifiSsid.createFromAsciiEncoded("TEST AP 1"),
+                new ScanDetail(WifiSsid.fromUtf8Text("TEST AP 1"),
                         "00:00:00:00:00:00", "", -70, 2450,
                         approxScanStartNanos / 1_000 + 2000 * 1000, 0),
-                new ScanDetail(WifiSsid.createFromAsciiEncoded("TEST AP 2"),
+                new ScanDetail(WifiSsid.fromUtf8Text("TEST AP 2"),
                         "AA:BB:CC:DD:EE:FF", "", -66, 2400,
                         approxScanStartNanos / 1_000 + 2500 * 1000, 0),
                 // old result will be filtered
-                new ScanDetail(WifiSsid.createFromAsciiEncoded("TEST AP 3"),
+                new ScanDetail(WifiSsid.fromUtf8Text("TEST AP 3"),
                         "00:00:00:00:00:00", "", -80, 2450,
                         approxScanStartNanos / 1_0000 - 2000 * 1000, 0),
-                new ScanDetail(WifiSsid.createFromAsciiEncoded("TEST AP 4"),
+                new ScanDetail(WifiSsid.fromUtf8Text("TEST AP 4"),
                         "00:00:00:00:00:00", "", -80, 2450,
                         approxScanStartNanos / 1_000 + 200 , 0),
-                new ScanDetail(WifiSsid.createFromAsciiEncoded("TEST AP 5"),
+                new ScanDetail(WifiSsid.fromUtf8Text("TEST AP 5"),
                         "AA:BB:CC:11:22:33", "", -65, 2450,
                         approxScanStartNanos / 1_000 + 4000 * 1000, 0)));
 

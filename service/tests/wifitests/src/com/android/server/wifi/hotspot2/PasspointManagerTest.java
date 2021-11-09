@@ -1538,13 +1538,13 @@ public class PasspointManagerTest extends WifiBaseTest {
                 }
             }
             anqpElementMapOfAp1.put(ANQPElementType.HSOSUProviders,
-                    new HSOsuProvidersElement(WifiSsid.createFromAsciiEncoded("Test SSID"),
+                    new HSOsuProvidersElement(WifiSsid.fromUtf8Text("Test SSID"),
                             providerInfoListOfAp1));
             ANQPData anqpData = new ANQPData(mClock, anqpElementMapOfAp1);
             when(mAnqpCache.getEntry(TEST_ANQP_KEY)).thenReturn(anqpData);
 
             anqpElementMapOfAp2.put(ANQPElementType.HSOSUProviders,
-                    new HSOsuProvidersElement(WifiSsid.createFromAsciiEncoded("Test SSID2"),
+                    new HSOsuProvidersElement(WifiSsid.fromUtf8Text("Test SSID2"),
                             providerInfoListOfAp2));
             ANQPData anqpData2 = new ANQPData(mClock, anqpElementMapOfAp2);
             when(mAnqpCache.getEntry(TEST_ANQP_KEY2)).thenReturn(anqpData2);
