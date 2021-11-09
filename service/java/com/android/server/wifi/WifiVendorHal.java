@@ -3343,7 +3343,7 @@ public class WifiVendorHal {
         ScanResult frameworkScanResult = new ScanResult();
         frameworkScanResult.SSID = NativeUtil.encodeSsid(scanResult.ssid);
         frameworkScanResult.wifiSsid =
-                WifiSsid.createFromByteArray(NativeUtil.byteArrayFromArrayList(scanResult.ssid));
+                WifiSsid.fromBytes(NativeUtil.byteArrayFromArrayList(scanResult.ssid));
         frameworkScanResult.BSSID = NativeUtil.macAddressFromByteArray(scanResult.bssid);
         frameworkScanResult.level = scanResult.rssi;
         frameworkScanResult.frequency = scanResult.frequency;

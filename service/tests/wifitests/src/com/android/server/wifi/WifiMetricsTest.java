@@ -2590,7 +2590,7 @@ public class WifiMetricsTest extends WifiBaseTest {
     private static final int AUTH_FAILURE_REASON = WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD;
     private static final int NUM_TEST_STA_EVENTS = 19;
     private static final String   sSSID = "\"SomeTestSsid\"";
-    private static final WifiSsid sWifiSsid = WifiSsid.createFromAsciiEncoded(sSSID);
+    private static final WifiSsid sWifiSsid = WifiSsid.fromUtf8Text(sSSID);
     private static final String   sBSSID = "01:02:03:04:05:06";
 
     private final StateChangeResult mStateDisconnected =

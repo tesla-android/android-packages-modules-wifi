@@ -167,9 +167,9 @@ abstract class SupplicantStaIfaceCallbackV1_2Impl extends
 
         // Set up SSID
         WifiSsid wifiSsid =
-                WifiSsid.createFromByteArray(NativeUtil.byteArrayFromArrayList(ssid));
+                WifiSsid.fromBytes(NativeUtil.byteArrayFromArrayList(ssid));
 
-        newWifiConfiguration.SSID = "\"" + wifiSsid.toString() + "\"";
+        newWifiConfiguration.SSID = wifiSsid.toString();
 
         // Set up password or PSK
         if (password != null) {

@@ -85,8 +85,8 @@ import java.util.List;
 @SmallTest
 public class WifiScoreCardTest extends WifiBaseTest {
 
-    static final WifiSsid TEST_SSID_1 = WifiSsid.createFromAsciiEncoded("Joe's Place");
-    static final WifiSsid TEST_SSID_2 = WifiSsid.createFromAsciiEncoded("Poe's Ravn");
+    static final WifiSsid TEST_SSID_1 = WifiSsid.fromUtf8Text("Joe's Place");
+    static final WifiSsid TEST_SSID_2 = WifiSsid.fromUtf8Text("Poe's Ravn");
 
     static final MacAddress TEST_BSSID_1 = MacAddress.fromString("aa:bb:cc:dd:ee:ff");
     static final MacAddress TEST_BSSID_2 = MacAddress.fromString("1:2:3:4:5:6");

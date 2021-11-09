@@ -1687,7 +1687,7 @@ public class WifiNative {
             List<NativeScanResult> nativeResults) {
         ArrayList<ScanDetail> results = new ArrayList<>();
         for (NativeScanResult result : nativeResults) {
-            WifiSsid wifiSsid = WifiSsid.createFromByteArray(result.getSsid());
+            WifiSsid wifiSsid = WifiSsid.fromBytes(result.getSsid());
             MacAddress bssidMac = result.getBssid();
             if (bssidMac == null) {
                 Log.e(TAG, "Invalid MAC (BSSID) for SSID " + wifiSsid);

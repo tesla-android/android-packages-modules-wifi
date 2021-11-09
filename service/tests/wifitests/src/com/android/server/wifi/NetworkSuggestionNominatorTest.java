@@ -1633,7 +1633,7 @@ public class NetworkSuggestionNominatorTest extends WifiBaseTest {
         ScanDetail[] scanDetails = new ScanDetail[ssids.length];
         long timeStamp = clock.getElapsedSinceBootMillis();
         for (int index = 0; index < ssids.length; index++) {
-            scanDetails[index] = new ScanDetail(WifiSsid.createFromAsciiEncoded(ssids[index]),
+            scanDetails[index] = new ScanDetail(WifiSsid.fromUtf8Text(ssids[index]),
                     bssids[index], caps[index], levels[index], freqs[index], timeStamp, 0);
         }
         return scanDetails;

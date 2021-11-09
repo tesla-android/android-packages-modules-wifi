@@ -1180,7 +1180,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 NativeUtil.macAddressToByteArray(BSSID), SUPPLICANT_NETWORK_ID,
                 NativeUtil.decodeSsid(SUPPLICANT_SSID));
 
-        WifiSsid wifiSsid = WifiSsid.createFromByteArray(
+        WifiSsid wifiSsid = WifiSsid.fromBytes(
                 NativeUtil.byteArrayFromArrayList(NativeUtil.decodeSsid(SUPPLICANT_SSID)));
 
         wifiMonitorInOrder.verify(mWifiMonitor).broadcastNetworkConnectionEvent(
@@ -3552,7 +3552,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 NativeUtil.macAddressToByteArray(BSSID), SUPPLICANT_NETWORK_ID,
                 NativeUtil.decodeSsid(SUPPLICANT_SSID), false);
 
-        WifiSsid wifiSsid = WifiSsid.createFromByteArray(
+        WifiSsid wifiSsid = WifiSsid.fromBytes(
                 NativeUtil.byteArrayFromArrayList(NativeUtil.decodeSsid(SUPPLICANT_SSID)));
 
         wifiMonitorInOrder.verify(mWifiMonitor).broadcastNetworkConnectionEvent(
@@ -3636,7 +3636,7 @@ public class SupplicantStaIfaceHalTest extends WifiBaseTest {
                 NativeUtil.macAddressToByteArray(BSSID), SUPPLICANT_NETWORK_ID,
                 NativeUtil.decodeSsid(SUPPLICANT_SSID), true);
 
-        WifiSsid wifiSsid = WifiSsid.createFromByteArray(
+        WifiSsid wifiSsid = WifiSsid.fromBytes(
                 NativeUtil.byteArrayFromArrayList(NativeUtil.decodeSsid(SUPPLICANT_SSID)));
 
         wifiMonitorInOrder.verify(mWifiMonitor).broadcastNetworkConnectionEvent(

@@ -2313,9 +2313,7 @@ public class WifiConnectivityManager {
         }
         WifiInfo wifiInfo = getPrimaryWifiInfo();
         if (failureCode == WifiMetrics.ConnectionEvent.FAILURE_NONE) {
-            String ssidUnquoted = (wifiInfo.getWifiSsid() == null)
-                    ? null
-                    : wifiInfo.getWifiSsid().toString();
+            String ssidUnquoted = WifiInfo.removeDoubleQuotes(wifiInfo.getSSID());
             mOpenNetworkNotifier.handleWifiConnected(ssidUnquoted);
         } else {
             mOpenNetworkNotifier.handleConnectionFailure();
