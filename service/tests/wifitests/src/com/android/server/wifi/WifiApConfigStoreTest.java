@@ -40,6 +40,7 @@ import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.Builder;
 import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiSsid;
 import android.os.Build;
 import android.os.Handler;
 import android.os.test.TestLooper;
@@ -632,48 +633,18 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     }
 
     /**
-     * Verify the SSID checks in validateApWifiConfiguration.
-     *
-     * Cases to check and verify they trigger failed verification:
-     * null SoftApConfiguration.SSID
-     * empty SoftApConfiguration.SSID
-     * invalid WifiConfiguaration.SSID length
-     *
-     * Additionally check a valid SSID with a random (within valid ranges) length.
+     * Verify the SSID check in validateApWifiConfiguration.
      */
     @Test
     public void testSsidVerificationInValidateApWifiConfigurationCheck() {
         Builder configBuilder = new SoftApConfiguration.Builder();
-        configBuilder.setSsid(null);
-        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
-        // check a string if it's larger than 32 bytes with UTF-8 encode
-        // Case 1 : one byte per character (use english words and Arabic numerals)
-        configBuilder.setSsid(generateRandomString(WifiApConfigStore.SSID_MAX_LEN + 1));
-        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
-        // Case 2 : two bytes per character
-        configBuilder.setSsid(TEST_STRING_UTF8_WITH_34_BYTES);
-        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
-        // Case 3 : three bytes per character
-        configBuilder.setSsid(TEST_STRING_UTF8_WITH_33_BYTES);
+        configBuilder.setWifiSsid(null);
+        // Invalid due to null SSID.
         assertFalse(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
 
-        // now check a valid SSID within 32 bytes
-        // Case 1 :  one byte per character with random length
-        int validLength = WifiApConfigStore.SSID_MAX_LEN - WifiApConfigStore.SSID_MIN_LEN;
-        configBuilder.setSsid(generateRandomString(
-                mRandom.nextInt(validLength) + WifiApConfigStore.SSID_MIN_LEN));
-        assertTrue(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
-        // Case 2 : two bytes per character
-        configBuilder.setSsid(TEST_STRING_UTF8_WITH_32_BYTES);
-        assertTrue(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
-        // Case 3 : three bytes per character
-        configBuilder.setSsid(TEST_STRING_UTF8_WITH_30_BYTES);
+        // SSID is set, so the config is now valid.
+        configBuilder.setWifiSsid(WifiSsid.fromUtf8Text("ssid"));
         assertTrue(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
     }
