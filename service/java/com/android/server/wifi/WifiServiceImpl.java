@@ -106,6 +106,7 @@ import android.net.wifi.util.ScanResultUtil;
 import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -290,6 +291,8 @@ public class WifiServiceImpl extends BaseWifiService {
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final LastCallerInfoManager mLastCallerInfoManager;
 
+    private boolean mWifiTetheringDisallowed;
+
     /**
      * The wrapper of SoftApCallback is used in WifiService internally.
      * see: {@code WifiManager.SoftApCallback}
@@ -374,6 +377,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mBuildProperties = mWifiInjector.getBuildProperties();
         mDefaultClientModeManager = mWifiInjector.getDefaultClientModeManager();
         mCountryCodeTracker = new CountryCodeTracker();
+        mWifiTetheringDisallowed = false;
     }
 
     /**
@@ -477,6 +481,21 @@ public class WifiServiceImpl extends BaseWifiService {
                     new IntentFilter(Intent.ACTION_LOCALE_CHANGED),
                     null,
                     new Handler(mWifiHandlerThread.getLooper()));
+            if (SdkLevel.isAtLeastT()) {
+                mContext.registerReceiver(
+                        new BroadcastReceiver() {
+                            @Override
+                            public void onReceive(Context context, Intent intent) {
+                                Log.d(TAG, "user restrictions changed");
+                                onUserRestrictionsChanged();
+                            }
+                        },
+                        new IntentFilter(UserManager.ACTION_USER_RESTRICTIONS_CHANGED),
+                        null,
+                        new Handler(mWifiHandlerThread.getLooper()));
+                mWifiTetheringDisallowed = mUserManager.getUserRestrictions()
+                        .getBoolean(UserManager.DISALLOW_WIFI_TETHERING);
+            }
 
             // Adding optimizations of only receiving broadcasts when wifi is enabled
             // can result in race conditions when apps toggle wifi in the background
@@ -488,6 +507,25 @@ public class WifiServiceImpl extends BaseWifiService {
             registerForCarrierConfigChange();
             mWifiInjector.getAdaptiveConnectivityEnabledSettingObserver().initialize();
         });
+    }
+
+
+    /**
+     * Find which user restrictions have changed and take corresponding actions
+     */
+    @VisibleForTesting
+    public void onUserRestrictionsChanged() {
+        final Bundle restrictions = mUserManager.getUserRestrictions();
+        final boolean newWifiTetheringDisallowed =
+                restrictions.getBoolean(UserManager.DISALLOW_WIFI_TETHERING);
+
+        if (newWifiTetheringDisallowed != mWifiTetheringDisallowed) {
+            if (newWifiTetheringDisallowed) {
+                mLog.info("stopSoftAp DISALLOW_WIFI_TETHERING set").flush();
+                stopSoftApInternal(WifiManager.IFACE_IP_MODE_TETHERED);
+            }
+            mWifiTetheringDisallowed = newWifiTetheringDisallowed;
+        }
     }
 
     private void resetCarrierNetworks(@ClientModeImpl.ResetSimReason int resetReason) {
@@ -1224,6 +1262,14 @@ public class WifiServiceImpl extends BaseWifiService {
             @NonNull String packageName) {
         // NETWORK_STACK is a signature only permission.
         enforceNetworkStackPermission();
+
+        // If user restriction is set, cannot start softap
+        if (SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
+                UserManager.DISALLOW_WIFI_TETHERING,
+                UserHandle.getUserHandleForUid(Binder.getCallingUid()))) {
+            mLog.err("startTetheredHotspot with user restriction: not permitted").flush();
+            return false;
+        }
 
         mLog.info("startTetheredHotspot uid=%").c(Binder.getCallingUid()).flush();
 
