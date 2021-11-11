@@ -17,6 +17,7 @@
 package android.net.wifi.aware;
 
 import android.annotation.IntDef;
+import android.annotation.IntRange;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -45,8 +46,16 @@ public final class Characteristics implements Parcelable {
     /** @hide */
     public static final String KEY_IS_INSTANT_COMMUNICATION_MODE_SUPPORTED =
             "key_is_instant_communication_mode_supported";
+    /** @hide */
+    public static final String KEY_MAX_NDP_NUMBER = "key_max_ndp_number";
+    /** @hide */
+    public static final String KEY_MAX_Publish_NUMBER = "key_max_publish_number";
+    /** @hide */
+    public static final String KEY_MAX_SUBSCRIBE_NUMBER = "key_max_subscribe_number";
+    /** @hide */
+    public static final String KEY_MAX_NDI_NUMBER = "key_max_ndi_number";
 
-    private Bundle mCharacteristics = new Bundle();
+    private final Bundle mCharacteristics;
 
     /** @hide : should not be created by apps */
     public Characteristics(Bundle characteristics) {
@@ -89,6 +98,53 @@ public final class Characteristics implements Parcelable {
      */
     public int getMaxMatchFilterLength() {
         return mCharacteristics.getInt(KEY_MAX_MATCH_FILTER_LENGTH);
+    }
+
+    /**
+     * Returns the maximum number of Aware data interfaces supported by the device.
+     *
+     * @return A positive integer, maximum number of Aware data interfaces supported by the device.
+     */
+    @IntRange(from = 1)
+    public int getNumberOfSupportedDataInterfaces() {
+        return mCharacteristics.getInt(KEY_MAX_NDI_NUMBER);
+    }
+
+    /**
+     * Returns the maximum number of Aware publish sessions supported by the device.
+     * Use {@link AwareResources#getAvailablePublishSessionsCount()} to get the number of available
+     * publish sessions which are not currently used by any app.
+     *
+     * @return A positive integer, maximum number of publish sessions supported by the device.
+     */
+    @IntRange(from = 1)
+    public int getNumberOfSupportedPublishSessions() {
+        return mCharacteristics.getInt(KEY_MAX_Publish_NUMBER);
+    }
+
+    /**
+     * Returns the maximum number of Aware subscribe session supported by the device.
+     * Use {@link AwareResources#getAvailableSubscribeSessionsCount()} to get the number of
+     * available subscribe sessions which are not currently used by any app.
+     *
+     * @return A positive integer, maximum number of subscribe sessions supported by the device.
+     */
+    @IntRange(from = 1)
+    public int getNumberOfSupportedSubscribeSessions() {
+        return mCharacteristics.getInt(KEY_MAX_SUBSCRIBE_NUMBER);
+    }
+
+    /**
+     * Returns the maximum number of Aware data paths(also known as NDPs - NAN Data Paths) supported
+     * by the device.
+     * Use {@link AwareResources#getAvailableDataPathsCount()} to get the number of available Aware
+     * data paths which are not currently used by any app.
+     *
+     * @return A positive integer, maximum number of Aware data paths supported by the device.
+     */
+    @IntRange(from = 1)
+    public int getNumberOfSupportedDataPaths() {
+        return mCharacteristics.getInt(KEY_MAX_NDP_NUMBER);
     }
 
     /**
