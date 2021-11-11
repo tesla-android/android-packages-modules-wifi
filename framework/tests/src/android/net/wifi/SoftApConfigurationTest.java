@@ -109,6 +109,37 @@ public class SoftApConfigurationTest {
     }
 
     @Test
+    public void testSetWifiSsid() {
+        // UTF-8
+        WifiSsid wifiSsidUtf8 = WifiSsid.fromUtf8Text("ssid");
+        SoftApConfiguration utf8Config = new SoftApConfiguration.Builder()
+                .setWifiSsid(wifiSsidUtf8)
+                .build();
+        assertThat(utf8Config.getWifiSsid()).isEqualTo(wifiSsidUtf8);
+        assertThat(utf8Config.getSsid()).isEqualTo("ssid");
+
+        SoftApConfiguration unparceled = parcelUnparcel(utf8Config);
+        assertThat(unparceled).isNotSameInstanceAs(utf8Config);
+        assertThat(unparceled).isEqualTo(utf8Config);
+        assertThat(unparceled.hashCode()).isEqualTo(utf8Config.hashCode());
+
+        // Non-UTF-8
+        byte[] nonUtf8Bytes =
+                new byte[]{(byte) 0x01, (byte) 0x23, (byte) 0x45, (byte) 0x67, (byte) 0x89};
+        WifiSsid wifiSsidNonUtf8 = WifiSsid.fromBytes(nonUtf8Bytes);
+        SoftApConfiguration nonUtf8Config = new SoftApConfiguration.Builder()
+                .setWifiSsid(wifiSsidNonUtf8)
+                .build();
+        assertThat(nonUtf8Config.getWifiSsid()).isEqualTo(wifiSsidNonUtf8);
+        assertThat(nonUtf8Config.getSsid()).isEqualTo(WifiManager.UNKNOWN_SSID);
+
+        unparceled = parcelUnparcel(nonUtf8Config);
+        assertThat(unparceled).isNotSameInstanceAs(nonUtf8Config);
+        assertThat(unparceled).isEqualTo(nonUtf8Config);
+        assertThat(unparceled.hashCode()).isEqualTo(nonUtf8Config.hashCode());
+    }
+
+    @Test
     public void testWpa2() {
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setPassphrase("secretsecret", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)

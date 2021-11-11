@@ -177,7 +177,7 @@ public final class SoftApConfiguration implements Parcelable {
     /**
      * SSID for the AP, or null for a framework-determined SSID.
      */
-    private final @Nullable String mSsid;
+    private final @Nullable WifiSsid mWifiSsid;
 
     /**
      * BSSID for the AP, or null to use a framework-determined BSSID.
@@ -320,14 +320,14 @@ public final class SoftApConfiguration implements Parcelable {
     public @interface SecurityType {}
 
     /** Private constructor for Builder and Parcelable implementation. */
-    private SoftApConfiguration(@Nullable String ssid, @Nullable MacAddress bssid,
+    private SoftApConfiguration(@Nullable WifiSsid ssid, @Nullable MacAddress bssid,
             @Nullable String passphrase, boolean hiddenSsid, @NonNull SparseIntArray channels,
             @SecurityType int securityType, int maxNumberOfClients, boolean shutdownTimeoutEnabled,
             long shutdownTimeoutMillis, boolean clientControlByUser,
             @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
             int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
             boolean ieee80211axEnabled, boolean isUserConfiguration) {
-        mSsid = ssid;
+        mWifiSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
         mHiddenSsid = hiddenSsid;
@@ -359,7 +359,7 @@ public final class SoftApConfiguration implements Parcelable {
             return false;
         }
         SoftApConfiguration other = (SoftApConfiguration) otherObj;
-        return Objects.equals(mSsid, other.mSsid)
+        return Objects.equals(mWifiSsid, other.mWifiSsid)
                 && Objects.equals(mBssid, other.mBssid)
                 && Objects.equals(mPassphrase, other.mPassphrase)
                 && mHiddenSsid == other.mHiddenSsid
@@ -380,7 +380,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(mSsid, mBssid, mPassphrase, mHiddenSsid,
+        return Objects.hash(mWifiSsid, mBssid, mPassphrase, mHiddenSsid,
                 mChannels.toString(), mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
                 mAllowedClientList, mMacRandomizationSetting,
@@ -391,7 +391,7 @@ public final class SoftApConfiguration implements Parcelable {
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
-        sbuf.append("ssid = ").append(mSsid);
+        sbuf.append("ssid = ").append(mWifiSsid == null ? null : mWifiSsid.toString());
         if (mBssid != null) sbuf.append(" \n bssid = ").append(mBssid.toString());
         sbuf.append(" \n Passphrase = ").append(
                 TextUtils.isEmpty(mPassphrase) ? "<empty>" : "<non-empty>");
@@ -414,7 +414,7 @@ public final class SoftApConfiguration implements Parcelable {
 
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
-        dest.writeString(mSsid);
+        dest.writeParcelable(mWifiSsid, 0);
         dest.writeParcelable(mBssid, flags);
         dest.writeString(mPassphrase);
         dest.writeBoolean(mHiddenSsid);
@@ -478,7 +478,7 @@ public final class SoftApConfiguration implements Parcelable {
         @Override
         public SoftApConfiguration createFromParcel(Parcel in) {
             return new SoftApConfiguration(
-                    in.readString(),
+                    in.readParcelable(WifiSsid.class.getClassLoader()),
                     in.readParcelable(MacAddress.class.getClassLoader()),
                     in.readString(), in.readBoolean(), readSparseIntArray(in), in.readInt(),
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
@@ -494,12 +494,29 @@ public final class SoftApConfiguration implements Parcelable {
     };
 
     /**
-     * Return String set to be the SSID for the AP.
+     * Return the UTF-8 String set to be the SSID for the AP. If the SSID cannot be decoded as
+     * UTF-8, then this will return {@link WifiManager#UNKNOWN_SSID}
      * See also {@link Builder#setSsid(String)}.
+     *
+     * @deprecated Use {@link #getWifiSsid()} instead.
      */
     @Nullable
+    @Deprecated
     public String getSsid() {
-        return mSsid;
+        if (mWifiSsid == null) {
+            return null;
+        }
+        CharSequence utf8Text = mWifiSsid.getUtf8Text();
+        return utf8Text != null ? utf8Text.toString() : WifiManager.UNKNOWN_SSID;
+    }
+
+    /**
+     * Return WifiSsid set to be the SSID for the AP.
+     * See also {@link Builder#setWifiSsid(WifiSsid)}.
+     */
+    @Nullable
+    public WifiSsid getWifiSsid() {
+        return mWifiSsid;
     }
 
     /**
@@ -795,6 +812,11 @@ public final class SoftApConfiguration implements Parcelable {
      * Note that SoftApConfiguration may contain configuration which is cannot be represented
      * by the legacy WifiConfiguration, in such cases a null will be returned.
      *
+     * To maintain legacy behavior, the SSID of the WifiConfiguration will be the UTF-8
+     * representation of the SSID without double quotes, as opposed to the double-quoted UTF-8
+     * format documented in {@link WifiConfiguration#SSID}. If the SSID cannot be decoded as UTF-8,
+     * then the SSID of the WifiConfiguration will be {@link WifiManager#UNKNOWN_SSID}.
+     *
      * <li> SoftAp band in {@link WifiConfiguration.apBand} only supports
      * 2GHz, 5GHz, 2GHz+5GHz bands, so conversion is limited to these bands. </li>
      *
@@ -806,7 +828,8 @@ public final class SoftApConfiguration implements Parcelable {
     @SystemApi
     public WifiConfiguration toWifiConfiguration() {
         WifiConfiguration wifiConfig = new WifiConfiguration();
-        wifiConfig.SSID = mSsid;
+        CharSequence utf8Text = mWifiSsid != null ? mWifiSsid.getUtf8Text() : null;
+        wifiConfig.SSID = utf8Text != null ? utf8Text.toString() : WifiManager.UNKNOWN_SSID;
         wifiConfig.preSharedKey = mPassphrase;
         wifiConfig.hiddenSSID = mHiddenSsid;
         wifiConfig.apChannel = getChannel();
@@ -854,7 +877,7 @@ public final class SoftApConfiguration implements Parcelable {
      */
     @SystemApi
     public static final class Builder {
-        private String mSsid;
+        private WifiSsid mWifiSsid;
         private MacAddress mBssid;
         private String mPassphrase;
         private boolean mHiddenSsid;
@@ -875,7 +898,7 @@ public final class SoftApConfiguration implements Parcelable {
          * Constructs a Builder with default values (see {@link Builder}).
          */
         public Builder() {
-            mSsid = null;
+            mWifiSsid = null;
             mBssid = null;
             mPassphrase = null;
             mHiddenSsid = false;
@@ -900,7 +923,7 @@ public final class SoftApConfiguration implements Parcelable {
         public Builder(@NonNull SoftApConfiguration other) {
             Objects.requireNonNull(other);
 
-            mSsid = other.mSsid;
+            mWifiSsid = other.mWifiSsid;
             mBssid = other.mBssid;
             mPassphrase = other.mPassphrase;
             mHiddenSsid = other.mHiddenSsid;
@@ -931,7 +954,7 @@ public final class SoftApConfiguration implements Parcelable {
                     throw new IllegalArgumentException("A MacAddress exist in both client list");
                 }
             }
-            return new SoftApConfiguration(mSsid, mBssid, mPassphrase,
+            return new SoftApConfiguration(mWifiSsid, mBssid, mPassphrase,
                     mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
                     mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
@@ -940,7 +963,7 @@ public final class SoftApConfiguration implements Parcelable {
         }
 
         /**
-         * Specifies an SSID for the AP.
+         * Specifies a UTF-8 SSID for the AP.
          * <p>
          * Null SSID only support when configure a local-only hotspot.
          * <p>
@@ -950,14 +973,36 @@ public final class SoftApConfiguration implements Parcelable {
          *             chosen by the framework.
          * @return Builder for chaining.
          * @throws IllegalArgumentException when the SSID is empty or not valid Unicode.
+         *
+         * @deprecated Use {@link #setWifiSsid(WifiSsid)} instead.
          */
         @NonNull
+        @Deprecated
         public Builder setSsid(@Nullable String ssid) {
-            if (ssid != null) {
-                Preconditions.checkStringNotEmpty(ssid);
-                Preconditions.checkArgument(StandardCharsets.UTF_8.newEncoder().canEncode(ssid));
+            if (ssid == null) {
+                mWifiSsid = null;
+                return this;
             }
-            mSsid = ssid;
+
+            Preconditions.checkStringNotEmpty(ssid);
+            Preconditions.checkArgument(StandardCharsets.UTF_8.newEncoder().canEncode(ssid));
+            mWifiSsid = WifiSsid.fromUtf8Text(ssid);
+            return this;
+        }
+
+        /**
+         * Specifies an SSID for the AP in the form of WifiSsid.
+         * <p>
+         * Null SSID only support when configure a local-only hotspot.
+         * <p>
+         * <li>If not set, defaults to null.</li>
+         *
+         * @param wifiSsid SSID, or null ot have the SSID automatically chosen by the framework.
+         * @return Builder for chaining.
+         */
+        @NonNull
+        public Builder setWifiSsid(@Nullable WifiSsid wifiSsid) {
+            mWifiSsid = wifiSsid;
             return this;
         }
 
