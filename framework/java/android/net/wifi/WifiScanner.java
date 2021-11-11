@@ -1086,7 +1086,9 @@ public class WifiScanner {
      *                 key for this request, and must also be specified to cancel the request.
      *                 Multiple requests should also not share this object.
      */
-    @RequiresPermission(Manifest.permission.NETWORK_STACK)
+    @RequiresPermission(anyOf = {
+            Manifest.permission.LOCATION_HARDWARE,
+            Manifest.permission.NETWORK_STACK}, conditional = true)
     public void registerScanListener(@NonNull @CallbackExecutor Executor executor,
             @NonNull ScanListener listener) {
         Objects.requireNonNull(executor, "executor cannot be null");
