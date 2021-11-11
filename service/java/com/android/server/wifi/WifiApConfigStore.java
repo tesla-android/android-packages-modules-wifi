@@ -22,6 +22,7 @@ import android.content.IntentFilter;
 import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.BandType;
+import android.net.wifi.WifiSsid;
 import android.os.Handler;
 import android.os.Process;
 import android.text.TextUtils;
@@ -457,33 +458,6 @@ public class WifiApConfigStore {
     }
 
     /**
-     * Verify provided SSID for existence, length and conversion to bytes
-     *
-     * @param ssid String ssid name
-     * @return boolean indicating ssid met requirements
-     */
-    private static boolean validateApConfigSsid(String ssid) {
-        if (TextUtils.isEmpty(ssid)) {
-            Log.d(TAG, "SSID for softap configuration must be set.");
-            return false;
-        }
-
-        try {
-            byte[] ssid_bytes = ssid.getBytes(StandardCharsets.UTF_8);
-
-            if (ssid_bytes.length < SSID_MIN_LEN || ssid_bytes.length > SSID_MAX_LEN) {
-                Log.d(TAG, "softap SSID is defined as UTF-8 and it must be at least "
-                        + SSID_MIN_LEN + " byte and not more than " + SSID_MAX_LEN + " bytes");
-                return false;
-            }
-        } catch (IllegalArgumentException e) {
-            Log.e(TAG, "softap config SSID verification failed: malformed string " + ssid);
-            return false;
-        }
-        return true;
-    }
-
-    /**
      * Verify provided preSharedKey in ap config for WPA2_PSK network meets requirements.
      */
     private static boolean validateApConfigPreSharedKey(String preSharedKey) {
@@ -516,8 +490,9 @@ public class WifiApConfigStore {
     static boolean validateApWifiConfiguration(@NonNull SoftApConfiguration apConfig,
             boolean isPrivileged, Context context) {
         // first check the SSID
-        if (!validateApConfigSsid(apConfig.getSsid())) {
-            // failed SSID verificiation checks
+        WifiSsid ssid = apConfig.getWifiSsid();
+        if (ssid == null || ssid.getBytes().length == 0) {
+            Log.d(TAG, "SSID for softap configuration cannot be null or 0 length.");
             return false;
         }
 

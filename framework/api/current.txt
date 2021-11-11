@@ -75,7 +75,8 @@ package android.net.wifi {
     method @Nullable public android.net.MacAddress getBssid();
     method @Nullable public String getPassphrase();
     method public int getSecurityType();
-    method @Nullable public String getSsid();
+    method @Deprecated @Nullable public String getSsid();
+    method @Nullable public android.net.wifi.WifiSsid getWifiSsid();
     method public boolean isHiddenSsid();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.SoftApConfiguration> CREATOR;
