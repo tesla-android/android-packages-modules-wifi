@@ -420,6 +420,31 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
     }
 
+    private void updateWorkSourceByUid(int uid, boolean active) {
+        if (uid == -1) return;
+        if (active == mActiveClients.containsKey(uid)) return;
+        Log.d(TAG, "Update WorkSource UID=" + uid + " active=" + active);
+
+        if (!active) mActiveClients.remove(uid);
+        // The worksource is based on UID, just find the first one.
+        DeathHandlerData dhd = mDeathDataByBinder.values().stream()
+                .filter(d -> d.mUid == uid)
+                .findAny()
+                .orElse(null);
+        if (active && null == dhd) {
+            Log.w(TAG, "No WorkSource for UID " + uid);
+            return;
+        }
+
+        if (null != dhd) {
+            mActiveClients.put(uid, dhd.mWorkSource);
+        }
+        // If p2p is off, the first one activates P2P will merge all worksources.
+        // If p2p is already on, send ENABLE_P2P to merge the new worksource.
+        if (mP2pStateMachine.isP2pDisabled()) return;
+        mP2pStateMachine.sendMessage(ENABLE_P2P);
+    }
+
     /**
      * Handles client connections
      */
@@ -504,7 +529,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     }
 
     private class DeathHandlerData {
-        DeathHandlerData(DeathRecipient dr, Messenger m, WorkSource ws) {
+        DeathHandlerData(int uid, DeathRecipient dr, Messenger m, WorkSource ws) {
+            mUid = uid;
             mDeathRecipient = dr;
             mMessenger = m;
             mWorkSource = ws;
@@ -516,12 +542,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     + ", worksource=" + mWorkSource;
         }
 
+        final int mUid;
         final DeathRecipient mDeathRecipient;
         final Messenger mMessenger;
         final WorkSource mWorkSource;
     }
     private Object mLock = new Object();
     private final Map<IBinder, DeathHandlerData> mDeathDataByBinder = new ConcurrentHashMap<>();
+    private final Map<Integer, WorkSource> mActiveClients = new ConcurrentHashMap<>();
 
     public WifiP2pServiceImpl(Context context, WifiInjector wifiInjector) {
         mContext = context;
@@ -686,15 +714,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     : new WorkSource(Binder.getCallingUid());
             try {
                 binder.linkToDeath(dr, 0);
-                mDeathDataByBinder.put(binder, new DeathHandlerData(dr, messenger, ws));
+                mDeathDataByBinder.put(binder, new DeathHandlerData(
+                        Binder.getCallingUid(), dr, messenger, ws));
             } catch (RemoteException e) {
                 Log.e(TAG, "Error on linkToDeath: e=" + e);
                 // fall-through here - won't clean up
-            }
-            // If p2p is already on, send ENABLE_P2P to merge the new worksource.
-            // If p2p is off, the first one activates P2P will merge all worksources.
-            if (!mP2pStateMachine.isP2pDisabled()) {
-                mP2pStateMachine.sendMessage(ENABLE_P2P);
             }
             return messenger;
         }
@@ -730,9 +754,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 return;
             }
 
-            mP2pStateMachine.sendMessage(REMOVE_CLIENT_INFO, 0, 0, binder);
             binder.unlinkToDeath(dhd.mDeathRecipient, 0);
             mDeathDataByBinder.remove(binder);
+            updateWorkSourceByUid(Binder.getCallingUid(), false);
+            mP2pStateMachine.sendMessage(REMOVE_CLIENT_INFO, 0, 0, binder);
 
             // clean-up if there are no more clients registered
             // TODO: what does the ClientModeImpl client do? It isn't tracked through here!
@@ -1082,10 +1107,49 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         private WorkSource createMergedRequestorWs() {
             WorkSource requestorWs = new WorkSource();
-            for (DeathHandlerData deathHandlerData : mDeathDataByBinder.values()) {
-                requestorWs.add(deathHandlerData.mWorkSource);
+            for (WorkSource ws: mActiveClients.values()) {
+                requestorWs.add(ws);
             }
+            logd("Requestor WorkSource: " + requestorWs);
             return requestorWs;
+        }
+
+        private boolean needsActiveP2p(int cmd) {
+            if (cmd < Protocol.BASE_WIFI_P2P_MANAGER) return false;
+            if (cmd >= Protocol.BASE_WIFI_P2P_SERVICE) return false;
+            switch (cmd) {
+                case WifiP2pManager.UPDATE_CHANNEL_INFO:
+                case WifiP2pManager.SET_WFD_INFO:
+                // If P2P is not active, these commands do not take effect actually.
+                case WifiP2pManager.STOP_DISCOVERY:
+                case WifiP2pManager.STOP_LISTEN:
+                case WifiP2pManager.CANCEL_CONNECT:
+                case WifiP2pManager.REMOVE_GROUP:
+                case WifiP2pManager.REMOVE_LOCAL_SERVICE:
+                case WifiP2pManager.CLEAR_LOCAL_SERVICES:
+                case WifiP2pManager.REMOVE_SERVICE_REQUEST:
+                case WifiP2pManager.CLEAR_SERVICE_REQUESTS:
+                // These commands return wifi service p2p information which
+                // does not need active P2P.
+                case WifiP2pManager.REQUEST_P2P_STATE:
+                case WifiP2pManager.REQUEST_DISCOVERY_STATE:
+                case WifiP2pManager.REQUEST_NETWORK_INFO:
+                case WifiP2pManager.REQUEST_CONNECTION_INFO:
+                case WifiP2pManager.REQUEST_GROUP_INFO:
+                case WifiP2pManager.REQUEST_DEVICE_INFO:
+                case WifiP2pManager.REQUEST_PEERS:
+                // These commands could be cached and executed on activating P2P.
+                case WifiP2pManager.SET_DEVICE_NAME:
+                    return false;
+            }
+            return true;
+        }
+
+        @Override
+        protected void onPreHandleMessage(Message msg) {
+            if (needsActiveP2p(msg.what)) {
+                updateWorkSourceByUid(msg.sendingUid, true);
+            }
         }
 
         class DefaultState extends State {
@@ -1563,6 +1627,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             public void enter() {
                 if (mVerboseLoggingEnabled) logd(getName());
                 mInterfaceName = null; // reset iface name on disable.
+                mActiveClients.clear();
                 clearP2pInternalDataIfNecessary();
             }
 
@@ -1600,35 +1665,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 return true;
             }
 
-            private boolean needsActiveP2p(int cmd) {
-                switch (cmd) {
-                    case WifiP2pManager.UPDATE_CHANNEL_INFO:
-                    case WifiP2pManager.SET_WFD_INFO:
-                    // If P2P is not active, these commands do not take effect actually.
-                    case WifiP2pManager.STOP_DISCOVERY:
-                    case WifiP2pManager.STOP_LISTEN:
-                    case WifiP2pManager.CANCEL_CONNECT:
-                    case WifiP2pManager.REMOVE_GROUP:
-                    case WifiP2pManager.REMOVE_LOCAL_SERVICE:
-                    case WifiP2pManager.CLEAR_LOCAL_SERVICES:
-                    case WifiP2pManager.REMOVE_SERVICE_REQUEST:
-                    case WifiP2pManager.CLEAR_SERVICE_REQUESTS:
-                    // These commands return wifi service p2p information which
-                    // does not need active P2P.
-                    case WifiP2pManager.REQUEST_P2P_STATE:
-                    case WifiP2pManager.REQUEST_DISCOVERY_STATE:
-                    case WifiP2pManager.REQUEST_NETWORK_INFO:
-                    case WifiP2pManager.REQUEST_CONNECTION_INFO:
-                    case WifiP2pManager.REQUEST_GROUP_INFO:
-                    case WifiP2pManager.REQUEST_DEVICE_INFO:
-                    case WifiP2pManager.REQUEST_PEERS:
-                    // These commands could be cached and executed on activating P2P.
-                    case WifiP2pManager.SET_DEVICE_NAME:
-                        return false;
-                }
-                return true;
-            }
-
             @Override
             public boolean processMessage(Message message) {
                 if (mVerboseLoggingEnabled) logd(getName() + message.toString());
@@ -1655,9 +1691,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     default:
                         // only handle commands from clients and only commands
                         // which require P2P to be active.
-                        if (message.what < Protocol.BASE_WIFI_P2P_MANAGER
-                                || Protocol.BASE_WIFI_P2P_SERVICE <= message.what
-                                || !needsActiveP2p(message.what)) {
+                        if (!needsActiveP2p(message.what)) {
                             return NOT_HANDLED;
                         }
                         // If P2P is not ready, it might be disabled due
