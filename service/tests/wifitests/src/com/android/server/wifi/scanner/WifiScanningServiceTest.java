@@ -2809,6 +2809,9 @@ public class WifiScanningServiceTest extends WifiBaseTest {
     /**
      * Verifies that only clients with NETWORK_STACK permission can issues restricted messages
      * (from API's).
+     *
+     * Also verifies that starting in Android T CMD_REGISTER_SCAN_LISTENER is callable without
+     * NEWORK_STACK permission.
      */
     @Test
     public void rejectRestrictedMessagesFromNonPrivilegedApps() throws Exception {
@@ -2849,8 +2852,17 @@ public class WifiScanningServiceTest extends WifiBaseTest {
                 "Not authorized", messageCaptor.getAllValues().get(2));
         assertFailedResponse(0, WifiScanner.REASON_NOT_AUTHORIZED,
                 "Not authorized", messageCaptor.getAllValues().get(3));
-        assertFailedResponse(0, WifiScanner.REASON_NOT_AUTHORIZED,
-                "Not authorized", messageCaptor.getAllValues().get(4));
+        if (SdkLevel.isAtLeastT()) {
+            assertSuccessfulResponse(0, messageCaptor.getAllValues().get(4));
+            verify(mWifiPermissionsUtil).enforceCanAccessScanResultsForWifiScanner(
+                    any(), any(), eq(Binder.getCallingUid()),
+                    eq(false), eq(false));
+        } else {
+            assertFailedResponse(0, WifiScanner.REASON_NOT_AUTHORIZED,
+                    "Not authorized", messageCaptor.getAllValues().get(4));
+            verify(mWifiPermissionsUtil, never()).enforceCanAccessScanResultsForWifiScanner(
+                    any(), any(), anyInt(), anyBoolean(), anyBoolean());
+        }
 
         // Ensure we didn't create scanner instance.
         verify(mWifiScannerImplFactory, never()).create(any(), any(), any(), any());

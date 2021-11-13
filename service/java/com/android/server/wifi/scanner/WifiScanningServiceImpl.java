@@ -171,11 +171,14 @@ public class WifiScanningServiceImpl extends IWifiScanner.Stub {
 
     // Helper method to check if the incoming message is for a privileged request.
     private boolean isPrivilegedMessage(int msgWhat) {
-        return (msgWhat == WifiScanner.CMD_ENABLE
+        boolean isPrivileged = (msgWhat == WifiScanner.CMD_ENABLE
                 || msgWhat == WifiScanner.CMD_DISABLE
                 || msgWhat == WifiScanner.CMD_START_PNO_SCAN
-                || msgWhat == WifiScanner.CMD_STOP_PNO_SCAN
-                || msgWhat == WifiScanner.CMD_REGISTER_SCAN_LISTENER);
+                || msgWhat == WifiScanner.CMD_STOP_PNO_SCAN);
+        if (!SdkLevel.isAtLeastT()) {
+            isPrivileged = isPrivileged || msgWhat == WifiScanner.CMD_REGISTER_SCAN_LISTENER;
+        }
+        return isPrivileged;
     }
 
     // For non-privileged requests, retrieve the bundled package name for app-op & permission
