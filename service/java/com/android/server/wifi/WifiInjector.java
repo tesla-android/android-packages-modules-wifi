@@ -27,9 +27,7 @@ import android.net.LinkProperties;
 import android.net.MatchAllNetworkSpecifier;
 import android.net.NetworkAgentConfig;
 import android.net.NetworkCapabilities;
-import android.net.NetworkKey;
 import android.net.NetworkProvider;
-import android.net.NetworkScoreManager;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.os.BatteryStatsManager;
@@ -48,7 +46,6 @@ import android.util.LocalLog;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
-import com.android.modules.utils.HandlerExecutor;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.aware.WifiAwareMetrics;
 import com.android.server.wifi.coex.CoexManager;
@@ -184,8 +181,6 @@ public class WifiInjector {
     private final WifiNetworkSelector mWifiNetworkSelector;
     private final SavedNetworkNominator mSavedNetworkNominator;
     private final NetworkSuggestionNominator mNetworkSuggestionNominator;
-    private final WifiNetworkScoreCache mWifiNetworkScoreCache;
-    private final NetworkScoreManager mNetworkScoreManager;
     private final ClientModeManagerBroadcastQueue mBroadcastQueue;
     private WifiScanner mWifiScanner;
     private final WifiPermissionsWrapper mWifiPermissionsWrapper;
@@ -273,11 +268,6 @@ public class WifiInjector {
                 mContext, mFrameworkFacade);
         mBatteryStats = context.getSystemService(BatteryStatsManager.class);
         mWifiPermissionsWrapper = new WifiPermissionsWrapper(mContext);
-        mNetworkScoreManager = mContext.getSystemService(NetworkScoreManager.class);
-        mWifiNetworkScoreCache = new WifiNetworkScoreCache(mContext);
-        mNetworkScoreManager.registerNetworkScoreCallback(NetworkKey.TYPE_WIFI,
-                NetworkScoreManager.SCORE_FILTER_NONE,
-                new HandlerExecutor(wifiHandler), mWifiNetworkScoreCache);
         mUserManager = mContext.getSystemService(UserManager.class);
         mWifiPermissionsUtil = new WifiPermissionsUtil(mWifiPermissionsWrapper, mContext,
                 mUserManager, this);
@@ -967,10 +957,6 @@ public class WifiInjector {
 
     public WifiThreadRunner getWifiThreadRunner() {
         return mWifiThreadRunner;
-    }
-
-    public WifiNetworkScoreCache getWifiNetworkScoreCache() {
-        return mWifiNetworkScoreCache;
     }
 
     public NetdWrapper makeNetdWrapper() {

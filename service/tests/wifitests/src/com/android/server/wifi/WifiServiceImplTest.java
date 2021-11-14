@@ -469,8 +469,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.getInterfaceName()).thenReturn(WIFI_IFACE_NAME);
         when(mWifiInjector.getWifiScoreCard()).thenReturn(mWifiScoreCard);
         when(mWifiInjector.getWifiHealthMonitor()).thenReturn(mWifiHealthMonitor);
-        when(mWifiInjector.getWifiNetworkScoreCache())
-                .thenReturn(mock(WifiNetworkScoreCache.class));
 
         mWifiThreadRunner = new WifiThreadRunner(new Handler(mLooper.getLooper()));
         mWifiThreadRunner.setTimeoutsAreErrors(true);
