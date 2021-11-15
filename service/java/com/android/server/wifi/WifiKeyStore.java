@@ -111,8 +111,13 @@ public class WifiKeyStore {
         }
         X509Certificate[] caCertificates = config.getCaCertificates();
         Set<String> oldCaCertificatesToRemove = new ArraySet<>();
+
+        // Create a list of old Root CA certificate aliases from the existing configuration.
+        // Note that when updating from Settings, caCertificates is empty, therefore, all
+        // certificates must be kept. This happens because the certificate material is already
+        // stored in KeyStore and the only reference left is the alias.
         if (existingConfig != null && existingConfig.getCaCertificateAliases() != null
-                && existingConfig.isAppInstalledCaCert()) {
+                && existingConfig.isAppInstalledCaCert() && caCertificates != null) {
             oldCaCertificatesToRemove.addAll(
                     Arrays.asList(existingConfig.getCaCertificateAliases()));
         }
