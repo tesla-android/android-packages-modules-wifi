@@ -4865,7 +4865,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mClientModeManager, never()).connectNetwork(any(), any(), anyInt());
         verify(mContextAsUser, never()).sendBroadcastWithMultiplePermissions(any(), any());
-        verify(mActionListener).onFailure(WifiManager.ERROR);
+        verify(mActionListener).onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         verify(mActionListener, never()).onSuccess();
     }
 
@@ -5021,7 +5021,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mClientModeManager, never()).saveNetwork(any(), any(), anyInt());
         verify(mContext, never()).sendBroadcastWithMultiplePermissions(any(), any());
-        verify(mActionListener).onFailure(WifiManager.ERROR);
+        verify(mActionListener).onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         verify(mActionListener, never()).onSuccess();
     }
 
@@ -5059,7 +5059,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mWifiConfigManager).removeNetwork(eq(TEST_NETWORK_ID), anyInt(), any());
         verify(mActionListener).onSuccess();
-        verify(mActionListener, never()).onFailure(WifiManager.ERROR);
+        verify(mActionListener, never())
+                .onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
 
         verify(mContextAsUser).sendBroadcastWithMultiplePermissions(
                 mIntentCaptor.capture(),
@@ -5091,7 +5092,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mWifiConfigManager).removeNetwork(eq(TEST_NETWORK_ID), anyInt(), any());
         verify(mActionListener).onSuccess();
-        verify(mActionListener, never()).onFailure(WifiManager.ERROR);
+        verify(mActionListener, never())
+                .onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
 
         verify(mContextAsUser).sendBroadcastWithMultiplePermissions(
                 mIntentCaptor.capture(),
@@ -5120,7 +5122,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mActionListener, never()).onSuccess();
-        verify(mActionListener).onFailure(WifiManager.ERROR);
+        verify(mActionListener).onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         verify(mWifiConfigManager).removeNetwork(eq(TEST_NETWORK_ID), anyInt(), any());
         verify(mContextAsUser, never()).sendBroadcastWithMultiplePermissions(any(), any());
     }

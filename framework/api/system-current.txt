@@ -669,6 +669,11 @@ package android.net.wifi {
   public static interface WifiManager.ActionListener {
     method public void onFailure(int);
     method public void onSuccess();
+    field public static final int FAILURE_BUSY = 2; // 0x2
+    field public static final int FAILURE_INTERNAL_ERROR = 0; // 0x0
+    field public static final int FAILURE_INVALID_ARGS = 3; // 0x3
+    field public static final int FAILURE_IN_PROGRESS = 1; // 0x1
+    field public static final int FAILURE_NOT_AUTHORIZED = 4; // 0x4
   }
 
   public static interface WifiManager.ActiveCountryCodeChangedCallback {

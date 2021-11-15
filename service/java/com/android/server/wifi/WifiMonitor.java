@@ -327,7 +327,8 @@ public class WifiMonitor {
                 break;
         }
         //For all other errors, return a generic internal error
-        sendMessage(iface, WPS_FAIL_EVENT, WifiManager.ERROR, reason);
+        sendMessage(iface, WPS_FAIL_EVENT, WifiManager.ActionListener.FAILURE_INTERNAL_ERROR,
+                reason);
     }
 
    /**

@@ -1715,7 +1715,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         // Send failure message beyond the retry limit to trigger the failure handling.
         for (int i = 0; i <= WifiNetworkFactory.USER_SELECTED_NETWORK_CONNECT_RETRY_MAX; i++) {
             assertNotNull(mConnectionTimeoutAlarmListenerArgumentCaptor.getValue());
-            mConnectListenerArgumentCaptor.getValue().sendFailure(WifiManager.ERROR);
+            mConnectListenerArgumentCaptor.getValue()
+                    .sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         }
         mLooper.dispatchAll();
 

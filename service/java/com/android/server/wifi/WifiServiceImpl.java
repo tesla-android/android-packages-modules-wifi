@@ -5159,7 +5159,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 result = mWifiConfigManager.addOrUpdateNetwork(config, uid);
                 if (!result.isSuccess()) {
                     Log.e(TAG, "connect adding/updating config=" + config + " failed");
-                    wrapper.sendFailure(WifiManager.ERROR);
+                    wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                     return;
                 }
                 broadcastWifiCredentialChanged(WifiManager.WIFI_CREDENTIAL_SAVED, config);
@@ -5174,7 +5174,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     .getConfiguredNetwork(result.getNetworkId());
             if (configuration == null) {
                 Log.e(TAG, "connect to Invalid network Id=" + netIdArg);
-                wrapper.sendFailure(WifiManager.ERROR);
+                wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                 return;
             }
             if (configuration.enterpriseConfig != null
@@ -5183,14 +5183,14 @@ public class WifiServiceImpl extends BaseWifiService {
                 if (!mWifiCarrierInfoManager.isSimReady(subId)) {
                     Log.e(TAG, "connect to SIM-based config=" + configuration
                             + "while SIM is absent");
-                    wrapper.sendFailure(WifiManager.ERROR);
+                    wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                     return;
                 }
                 if (mWifiCarrierInfoManager.requiresImsiEncryption(subId)
                         && !mWifiCarrierInfoManager.isImsiEncryptionInfoAvailable(subId)) {
                     Log.e(TAG, "Imsi protection required but not available for Network="
                             + configuration);
-                    wrapper.sendFailure(WifiManager.ERROR);
+                    wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
                     return;
                 }
             }
@@ -5255,7 +5255,7 @@ public class WifiServiceImpl extends BaseWifiService {
                             UserActionEvent.EVENT_ADD_OR_UPDATE_NETWORK, config.networkId);
                 }
             } else {
-                wrapper.sendFailure(WifiManager.ERROR);
+                wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
             }
         });
     }
@@ -5285,7 +5285,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 broadcastWifiCredentialChanged(WifiManager.WIFI_CREDENTIAL_FORGOT, config);
             } else {
                 Log.e(TAG, "Failed to remove network");
-                wrapper.sendFailure(WifiManager.ERROR);
+                wrapper.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
             }
         });
     }
