@@ -460,6 +460,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiNetworkFactory mWifiNetworkFactory;
     @Mock UntrustedWifiNetworkFactory mUntrustedWifiNetworkFactory;
     @Mock OemWifiNetworkFactory mOemWifiNetworkFactory;
+    @Mock RestrictedWifiNetworkFactory mRestrictedWifiNetworkFactory;
     @Mock WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     @Mock LinkProbeManager mLinkProbeManager;
     @Mock PackageManager mPackageManager;
@@ -693,7 +694,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 mDeviceConfigFacade, mScanRequestProxy, mWifiInfo, mWifiConnectivityManager,
                 mWifiBlocklistMonitor, mConnectionFailureNotifier,
                 WifiInjector.REGULAR_NETWORK_CAPABILITIES_FILTER, mWifiNetworkFactory,
-                mUntrustedWifiNetworkFactory, mOemWifiNetworkFactory,
+                mUntrustedWifiNetworkFactory, mOemWifiNetworkFactory, mRestrictedWifiNetworkFactory,
                 mWifiLastResortWatchdog, mWakeupController,
                 mWifiLockManager, mFrameworkFacade, mLooper.getLooper(),
                 mWifiNative, mWrongPasswordNotifier, mWifiTrafficPoller, mLinkProbeManager,
@@ -5005,10 +5006,12 @@ public class ClientModeImplTest extends WifiBaseTest {
         mConnectedNetwork.ephemeral = true;
         mConnectedNetwork.trusted = true;
         mConnectedNetwork.creatorName = OP_PACKAGE_NAME;
+        mConnectedNetwork.restricted = true;
         connect();
 
         assertTrue(mWifiInfo.isEphemeral());
         assertTrue(mWifiInfo.isTrusted());
+        assumeTrue(mWifiInfo.isRestricted());
         assertEquals(OP_PACKAGE_NAME,
                 mWifiInfo.getRequestingPackageName());
     }
@@ -5022,10 +5025,12 @@ public class ClientModeImplTest extends WifiBaseTest {
         mConnectedNetwork.ephemeral = true;
         mConnectedNetwork.trusted = true;
         mConnectedNetwork.creatorName = OP_PACKAGE_NAME;
+        mConnectedNetwork.restricted = true;
         connect();
 
         assertTrue(mWifiInfo.isEphemeral());
         assertTrue(mWifiInfo.isTrusted());
+        assumeTrue(mWifiInfo.isRestricted());
         assertEquals(OP_PACKAGE_NAME,
                 mWifiInfo.getRequestingPackageName());
     }
@@ -5603,6 +5608,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals(mConnectedNetwork.ephemeral, mWifiInfo.isEphemeral());
         assertEquals(mConnectedNetwork.trusted, mWifiInfo.isTrusted());
         assertEquals(mConnectedNetwork.osu, mWifiInfo.isOsuAp());
+        assertEquals(mConnectedNetwork.restricted, mWifiInfo.isRestricted());
         if (SdkLevel.isAtLeastS()) {
             assertEquals(mConnectedNetwork.oemPaid, mWifiInfo.isOemPaid());
             assertEquals(mConnectedNetwork.oemPrivate, mWifiInfo.isOemPrivate());
@@ -6143,6 +6149,19 @@ public class ClientModeImplTest extends WifiBaseTest {
                 (cap) -> {
                     assertFalse(cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID));
                     assertTrue(cap.hasCapability(NetworkCapabilities
+                            .NET_CAPABILITY_NOT_RESTRICTED));
+                });
+    }
+
+    @Test
+    public void testRestrictedetworkCapability() throws Exception {
+        // oemPaid introduced in S, not applicable to R
+        assumeTrue(SdkLevel.isAtLeastS());
+        mConnectedNetwork.restricted = true;
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { },
+                (cap) -> {
+                    assertFalse(cap.hasCapability(NetworkCapabilities
                             .NET_CAPABILITY_NOT_RESTRICTED));
                 });
     }

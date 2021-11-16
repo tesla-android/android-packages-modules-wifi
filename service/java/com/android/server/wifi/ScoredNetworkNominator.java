@@ -149,6 +149,7 @@ public class ScoredNetworkNominator implements WifiNetworkSelector.NetworkNomina
     public void nominateNetworks(List<ScanDetail> scanDetails,
             boolean untrustedNetworkAllowed, boolean oemPaidNetworkAllowed /* unused */,
             boolean oemPrivateNetworkAllowed /* unused */,
+            boolean restrictedNetworkAllowed /* unused */,
             @NonNull OnConnectableListener onConnectableListener) {
         if (!mNetworkRecommendationsEnabled) {
             mLocalLog.log("Skipping nominateNetworks; Network recommendations disabled.");

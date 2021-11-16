@@ -226,6 +226,11 @@ public final class WifiNetworkSuggestion implements Parcelable {
          */
         private boolean mSaeH2eOnlyMode;
 
+        /**
+         * Whether this network will be brought up as restricted
+         */
+        private boolean mIsNetworkRestricted;
+
         public Builder() {
             mSsid = null;
             mBssid =  null;
@@ -254,6 +259,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
             mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
             mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
             mSaeH2eOnlyMode = false;
+            mIsNetworkRestricted = false;
         }
 
         /**
@@ -760,6 +766,30 @@ public final class WifiNetworkSuggestion implements Parcelable {
         }
 
         /**
+         * Specifies whether the system will bring up the network (if selected) as restricted. A
+         * restricted network has its {@link NetworkCapabilities#NET_CAPABILITY_NOT_RESTRICTED}
+         * capability removed. The Wi-Fi network selection process may use this information to
+         * influence priority of the suggested network for Wi-Fi network selection (most likely to
+         * reduce it). The connectivity service may use this information to influence the overall
+         * network configuration of the device.
+         * <p>
+         * <li> These suggestions are only considered for network selection if a
+         * {@link NetworkRequest} without {@link NetworkCapabilities#NET_CAPABILITY_NOT_RESTRICTED}
+         * capability is filed.
+         * <li> A restricted network's credentials may not be shared with the user using
+         * {@link #setCredentialSharedWithUser(boolean)}.</li>
+         * <li> If not set, defaults to false (i.e. network is unrestricted).</li>
+         *
+         * @param isRestricted Boolean indicating whether the network should be brought up
+         *                     restricted (if true) or unrestricted (if false).
+         * @return Instance of {@link Builder} to enable chaining of the builder method.
+         */
+        public @NonNull Builder setRestricted(boolean isRestricted) {
+            mIsNetworkRestricted = isRestricted;
+            return this;
+        }
+
+        /**
          * Specifies whether the system will bring up the network (if selected) as OEM paid. An
          * OEM paid network has {@link NetworkCapabilities#NET_CAPABILITY_OEM_PAID} capability
          * added.
@@ -976,6 +1006,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                     ? WifiConfiguration.RANDOMIZATION_NON_PERSISTENT
                     : WifiConfiguration.RANDOMIZATION_PERSISTENT;
             wifiConfiguration.subscriptionId = mSubscriptionId;
+            wifiConfiguration.restricted = mIsNetworkRestricted;
             return wifiConfiguration;
         }
 
@@ -1012,6 +1043,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                     mMacRandomizationSetting == RANDOMIZATION_NON_PERSISTENT
                             ? WifiConfiguration.RANDOMIZATION_NON_PERSISTENT
                             : WifiConfiguration.RANDOMIZATION_PERSISTENT;
+            wifiConfiguration.restricted = mIsNetworkRestricted;
             mPasspointConfiguration.setCarrierId(mCarrierId);
             mPasspointConfiguration.setSubscriptionId(mSubscriptionId);
             mPasspointConfiguration.setMeteredOverride(wifiConfiguration.meteredOverride);
@@ -1122,11 +1154,11 @@ public final class WifiNetworkSuggestion implements Parcelable {
                         + "setCredentialSharedWithUser and "
                         + "setIsAutojoinEnabled set to false");
             }
-            if (mIsNetworkUntrusted) {
+            if (mIsNetworkUntrusted || mIsNetworkRestricted) {
                 if (mIsSharedWithUserSet && mIsSharedWithUser) {
                     throw new IllegalStateException("Should not be both"
                             + "setCredentialSharedWithUser and +"
-                            + "setUntrusted to true");
+                            + "setUntrusted or setRestricted to true");
                 }
                 mIsSharedWithUser = false;
             }
@@ -1341,6 +1373,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 .append(", carrierId=").append(wifiConfiguration.carrierId)
                 .append(", priority=").append(wifiConfiguration.priority)
                 .append(", meteredness=").append(wifiConfiguration.meteredOverride)
+                .append(", restricted=").append(wifiConfiguration.restricted)
                 .append(" ]");
         return sb.toString();
     }
@@ -1432,6 +1465,15 @@ public final class WifiNetworkSuggestion implements Parcelable {
     /** @see Builder#setUntrusted(boolean)  */
     public boolean isUntrusted() {
         return !wifiConfiguration.trusted;
+    }
+
+    /**
+     * Return if a suggestion is for a restricted network
+     * @see Builder#setRestricted(boolean)
+     * @return true if the suggestion is restricted, false otherwise
+     */
+    public boolean isRestricted() {
+        return wifiConfiguration.restricted;
     }
 
     /**

@@ -90,9 +90,10 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
      */
     @Override
     public void nominateNetworks(List<ScanDetail> scanDetails,
-                    boolean untrustedNetworkAllowed /* unused */,
-                    boolean oemPaidNetworkAllowed /* unused */,
-                    boolean oemPrivateNetworkAllowed /* unused */,
+            boolean untrustedNetworkAllowed /* unused */,
+            boolean oemPaidNetworkAllowed /* unused */,
+            boolean oemPrivateNetworkAllowed /* unused */,
+            boolean restrictedNetworkAllowed /* unused */,
             @NonNull OnConnectableListener onConnectableListener) {
         findMatchedSavedNetworks(scanDetails, onConnectableListener);
         findMatchedPasspointNetworks(scanDetails, onConnectableListener);

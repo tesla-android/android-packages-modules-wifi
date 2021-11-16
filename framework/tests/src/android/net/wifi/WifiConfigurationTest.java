@@ -98,6 +98,7 @@ public class WifiConfigurationTest {
         MacAddress macBeforeParcel = config.getRandomizedMacAddress();
         config.subscriptionId = 1;
         config.carrierId = 1189;
+        config.restricted = true;
         Parcel parcelW = Parcel.obtain();
         config.writeToParcel(parcelW, 0);
         byte[] bytes = parcelW.marshall();
@@ -118,6 +119,9 @@ public class WifiConfigurationTest {
         assertTrue(reconfig.oemPaid);
         assertTrue(reconfig.oemPrivate);
         assertTrue(reconfig.carrierMerged);
+        assertEquals(config.carrierId, reconfig.carrierId);
+        assertEquals(config.subscriptionId, reconfig.subscriptionId);
+        assertTrue(reconfig.restricted);
 
         Parcel parcelWW = Parcel.obtain();
         reconfig.writeToParcel(parcelWW, 0);
@@ -141,6 +145,7 @@ public class WifiConfigurationTest {
         MacAddress macBeforeParcel = config.getRandomizedMacAddress();
         config.subscriptionId = 1;
         config.carrierId = 1189;
+        config.restricted = true;
 
         WifiConfiguration reconfig = new WifiConfiguration(config);
 
@@ -153,6 +158,9 @@ public class WifiConfigurationTest {
         assertTrue(reconfig.oemPaid);
         assertTrue(reconfig.oemPrivate);
         assertTrue(reconfig.carrierMerged);
+        assertEquals(config.carrierId, reconfig.carrierId);
+        assertEquals(config.subscriptionId, reconfig.subscriptionId);
+        assertTrue(reconfig.restricted);
     }
 
     @Test
