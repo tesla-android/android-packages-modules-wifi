@@ -18,17 +18,14 @@ package android.net.wifi;
 
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
 import static android.net.wifi.WifiManager.ActionListener;
-import static android.net.wifi.WifiManager.BUSY;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_DIRECT;
-import static android.net.wifi.WifiManager.ERROR;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_GENERIC;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_TETHERING_DISALLOWED;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.REQUEST_REGISTERED;
-import static android.net.wifi.WifiManager.NOT_AUTHORIZED;
 import static android.net.wifi.WifiManager.OnWifiActivityEnergyInfoListener;
 import static android.net.wifi.WifiManager.SAP_START_FAILURE_GENERAL;
 import static android.net.wifi.WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS;
@@ -1892,7 +1889,7 @@ public class WifiManagerTest {
         WpsCallbackTester wpsCallback = new WpsCallbackTester();
         mWifiManager.startWps(null, wpsCallback);
         assertTrue(wpsCallback.mFailed);
-        assertEquals(ERROR, wpsCallback.mFailureCode);
+        assertEquals(ActionListener.FAILURE_INTERNAL_ERROR, wpsCallback.mFailureCode);
         assertFalse(wpsCallback.mStarted);
         assertFalse(wpsCallback.mSucceeded);
         verifyNoMoreInteractions(mWifiService);
@@ -1915,7 +1912,7 @@ public class WifiManagerTest {
         WpsCallbackTester wpsCallback = new WpsCallbackTester();
         mWifiManager.cancelWps(wpsCallback);
         assertTrue(wpsCallback.mFailed);
-        assertEquals(ERROR, wpsCallback.mFailureCode);
+        assertEquals(ActionListener.FAILURE_INTERNAL_ERROR, wpsCallback.mFailureCode);
         assertFalse(wpsCallback.mStarted);
         assertFalse(wpsCallback.mSucceeded);
         verifyNoMoreInteractions(mWifiService);
@@ -2775,9 +2772,9 @@ public class WifiManagerTest {
         verify(externalListener).onSuccess();
 
         // Trigger on failure.
-        binderListenerCaptor.getValue().onFailure(BUSY);
+        binderListenerCaptor.getValue().onFailure(WifiManager.ActionListener.FAILURE_BUSY);
         mLooper.dispatchAll();
-        verify(externalListener).onFailure(BUSY);
+        verify(externalListener).onFailure(WifiManager.ActionListener.FAILURE_BUSY);
     }
 
     /**
@@ -2791,7 +2788,7 @@ public class WifiManagerTest {
         mWifiManager.connect(TEST_NETWORK_ID, externalListener);
 
         mLooper.dispatchAll();
-        verify(externalListener).onFailure(NOT_AUTHORIZED);
+        verify(externalListener).onFailure(ActionListener.FAILURE_NOT_AUTHORIZED);
     }
 
     /**
@@ -2805,7 +2802,7 @@ public class WifiManagerTest {
         mWifiManager.connect(TEST_NETWORK_ID, externalListener);
 
         mLooper.dispatchAll();
-        verify(externalListener).onFailure(ERROR);
+        verify(externalListener).onFailure(ActionListener.FAILURE_INTERNAL_ERROR);
     }
 
     /**

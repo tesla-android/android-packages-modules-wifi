@@ -717,7 +717,7 @@ public class OpenNetworkNotifierTest extends WifiBaseTest {
                 ConnectToNetworkNotificationAndActionCount.ACTION_CONNECT_TO_NETWORK);
         verify(mWifiNotificationManager, times(2)).notify(anyInt(), any());
 
-        connectListener.sendFailure(WifiManager.ERROR);
+        connectListener.sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         mLooper.dispatchAll();
 
         // Failed to Connect Notification
