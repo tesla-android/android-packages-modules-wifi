@@ -46,7 +46,7 @@ public interface ClientModeDefaults extends ClientMode {
     default void connectNetwork(NetworkUpdateResult result, ActionListenerWrapper wrapper,
             int callingUid) {
         // wifi off, can't connect.
-        wrapper.sendFailure(WifiManager.BUSY);
+        wrapper.sendFailure(WifiManager.ActionListener.FAILURE_BUSY);
     }
 
     default void saveNetwork(NetworkUpdateResult result, ActionListenerWrapper wrapper,

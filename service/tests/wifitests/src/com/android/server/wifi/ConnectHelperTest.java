@@ -90,7 +90,7 @@ public class ConnectHelperTest extends WifiBaseTest {
 
         verify(mWifiConfigManager, never()).updateBeforeConnect(TEST_NETWORK_ID, TEST_CALLING_UID);
         verify(mClientModeManager, never()).connectNetwork(any(), any(), anyInt());
-        verify(mActionListener).sendFailure(WifiManager.ERROR);
+        verify(mActionListener).sendFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         verify(mActionListener, never()).sendSuccess();
     }
 }
