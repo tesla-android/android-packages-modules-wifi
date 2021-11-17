@@ -47,6 +47,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
 
+import android.os.Bundle;
 import android.os.Messenger;
 import android.os.ResultReceiver;
 import android.os.WorkSource;
@@ -66,7 +67,7 @@ interface IWifiManager
 
     ParceledListSlice getConfiguredNetworks(String packageName, String featureId, boolean callerNetworksOnly);
 
-    ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId);
+    ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId, in Bundle extras);
 
     Map getAllMatchingFqdnsForScanResults(in List<ScanResult> scanResult);
 
@@ -186,7 +187,7 @@ interface IWifiManager
     boolean stopSoftAp();
 
     int startLocalOnlyHotspot(in ILocalOnlyHotspotCallback callback, String packageName,
-                              String featureId, in SoftApConfiguration customConfig);
+                              String featureId, in SoftApConfiguration customConfig, in Bundle extras);
 
     void stopLocalOnlyHotspot();
 

@@ -16,14 +16,21 @@
 
 package com.android.server.wifi.util;
 
+import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
+import static android.Manifest.permission.RENOUNCE_PERMISSIONS;
+import static android.content.pm.PackageManager.GET_PERMISSIONS;
+
 import android.Manifest;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.app.admin.DevicePolicyManager;
+import android.content.AttributionSource;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.net.NetworkStack;
@@ -31,6 +38,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.permission.PermissionManager;
 import android.provider.Settings;
 import android.util.EventLog;
 import android.util.Log;
@@ -58,6 +66,7 @@ public class WifiPermissionsUtil {
     private final FrameworkFacade mFrameworkFacade;
     private final AppOpsManager mAppOps;
     private final UserManager mUserManager;
+    private final PermissionManager mPermissionManager;
     private final Object mLock = new Object();
     @GuardedBy("mLock")
     private LocationManager mLocationManager;
@@ -71,6 +80,7 @@ public class WifiPermissionsUtil {
         mFrameworkFacade = wifiInjector.getFrameworkFacade();
         mUserManager = userManager;
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mPermissionManager = mContext.getSystemService(PermissionManager.class);
         mLog = wifiInjector.makeLog(TAG);
     }
 
@@ -146,6 +156,97 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Check and enforce NEARBY_WIFI_DEVICES permission and optionally enforce for either location
+     * disavowal or location permission.
+     *
+     * Note, this is only callable on SDK version T and later.
+     *
+     * @param attributionSource AttributionSource of the caller.
+     * @param checkForLocation If true will require the caller to either disavow location
+     *                         or actually have location permission.
+     * @param message String to log as the reason for performing permission checks.
+     */
+    public void enforceNearbyDevicesPermission(AttributionSource attributionSource,
+            boolean checkForLocation, String message) throws SecurityException {
+        if (!SdkLevel.isAtLeastT()) {
+            Log.wtf(TAG, "enforceNearbyDevicesPermission should never be called on pre-T "
+                    + "devices");
+            throw new SecurityException("enforceNearbyDevicesPermission requires at least "
+                    + "Android T");
+        }
+        if (attributionSource == null) {
+            throw new SecurityException("enforceNearbyDevicesPermission attributionSource is null");
+        }
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "enforceNearbyDevicesPermission(attributionSource="
+                    + attributionSource + ", checkForLocation=" + checkForLocation);
+        }
+        if (!attributionSource.checkCallingUid()) {
+            throw new SecurityException("enforceNearbyDevicesPermission invalid attribution source="
+                    + attributionSource);
+        }
+        String packageName = attributionSource.getPackageName();
+        int uid = attributionSource.getUid();
+        int permissionCheckResult = mPermissionManager.checkPermissionForDataDelivery(
+                Manifest.permission.NEARBY_WIFI_DEVICES, attributionSource, message);
+        if (permissionCheckResult != PermissionManager.PERMISSION_GRANTED) {
+            throw new SecurityException("package=" + packageName + " UID=" + uid
+                    + " does not have nearby devices permission.");
+        }
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "pkg=" + packageName + " has NEARBY_WIFI_DEVICES permission.");
+        }
+        if (!checkForLocation) {
+            // No need to check for location permission. All done now and return.
+            return;
+        }
+
+        // There are 2 ways to disavow location. Skip location permission check if any of the
+        // 2 ways are used to disavow location usage.
+        // First check if the app renounced location.
+        if (attributionSource.getRenouncedPermissions().contains(ACCESS_FINE_LOCATION)
+                && mWifiPermissionsWrapper.getUidPermission(RENOUNCE_PERMISSIONS, uid)
+                == PackageManager.PERMISSION_GRANTED) {
+            // TODO(b/197776854): check along the AttributionSource chain for any app that
+            // renounced location instead of only the direct caller.
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "package=" + packageName + " UID=" + uid
+                        + " has renounced location permission - bypassing location check.");
+            }
+            return;
+        }
+        // If the app did not renounce location, check if "neverForLocation" is set.
+        PackageManager pm = mContext.getPackageManager();
+        try {
+            PackageInfo pkgInfo = pm.getPackageInfo(packageName, GET_PERMISSIONS);
+            for (int i = 0; i < pkgInfo.requestedPermissions.length; i++) {
+                if (pkgInfo.requestedPermissions[i].equals(NEARBY_WIFI_DEVICES)
+                        && (pkgInfo.requestedPermissionsFlags[i]
+                        & PackageInfo.REQUESTED_PERMISSION_NEVER_FOR_LOCATION) != 0) {
+                    if (mVerboseLoggingEnabled) {
+                        Log.v(TAG, "package=" + packageName + " UID=" + uid
+                                + " has declared neverForLocation - bypassing location check.");
+                    }
+                    return;
+                }
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.w(TAG, "Could not find package for disavowal check: " + packageName);
+        }
+        // App did not disavow location. Check for location permission.
+        if (mPermissionManager.checkPermissionForDataDelivery(
+                ACCESS_FINE_LOCATION, attributionSource, message)
+                == PermissionManager.PERMISSION_GRANTED) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "package=" + packageName + " UID=" + uid + " has location permission.");
+            }
+            return;
+        }
+        throw new SecurityException("package=" + packageName + ", UID=" + uid
+                + " does not have Fine Location permission");
+    }
+
+    /**
      * Checks whether than the target SDK of the package is less than the specified version code.
      */
     public boolean isTargetSdkLessThan(String packageName, int versionCode, int callingUid) {
@@ -191,7 +292,7 @@ public class WifiPermissionsUtil {
             int uid, boolean coarseForTargetSdkLessThanQ, @Nullable String message) {
         boolean isTargetSdkLessThanQ = isTargetSdkLessThan(pkgName, Build.VERSION_CODES.Q, uid);
 
-        String permissionType = Manifest.permission.ACCESS_FINE_LOCATION;
+        String permissionType = ACCESS_FINE_LOCATION;
         if (coarseForTargetSdkLessThanQ && isTargetSdkLessThanQ) {
             // Having FINE permission implies having COARSE permission (but not the reverse)
             permissionType = Manifest.permission.ACCESS_COARSE_LOCATION;
@@ -264,7 +365,7 @@ public class WifiPermissionsUtil {
             int uid, boolean hideFromAppOps) {
         // Having FINE permission implies having COARSE permission (but not the reverse)
         if (mWifiPermissionsWrapper.getUidPermission(
-                Manifest.permission.ACCESS_FINE_LOCATION, uid)
+                ACCESS_FINE_LOCATION, uid)
                 == PackageManager.PERMISSION_DENIED) {
             return false;
         }

@@ -18,6 +18,8 @@ package android.net.wifi;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.ACCESS_WIFI_STATE;
+import static android.Manifest.permission.CHANGE_WIFI_STATE;
+import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
 import static android.Manifest.permission.READ_WIFI_CREDENTIAL;
 
 import android.annotation.CallbackExecutor;
@@ -49,6 +51,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.ProvisioningCallback;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -310,6 +313,13 @@ public class WifiManager {
             })
     @Retention(RetentionPolicy.SOURCE)
     public @interface SuggestionUserApprovalStatus {}
+
+    /**
+     * Only available on Android S or later.
+     * @hide
+     **/
+    public static final String EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE =
+            "EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE";
 
     /**
      * Broadcast intent action indicating whether Wi-Fi scanning is currently available.
@@ -1505,14 +1515,31 @@ public class WifiManager {
     }
 
 
-    /** @hide */
+    /**
+     * Applications targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later need to have
+     * the following permissions: {@link android.Manifest.permission#NEARBY_WIFI_DEVICES},
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE} and
+     * {@link android.Manifest.permission#READ_WIFI_CREDENTIAL}.
+     * Applications targeting {@link Build.VERSION_CODES#S} or prior SDK levels need to have the
+     * following permissions: {@link android.Manifest.permission#ACCESS_FINE_LOCATION},
+     * {@link android.Manifest.permission#CHANGE_WIFI_STATE} and
+     * {@link android.Manifest.permission#READ_WIFI_CREDENTIAL}.
+     *
+     * @hide
+     **/
     @SystemApi
-    @RequiresPermission(allOf = {ACCESS_FINE_LOCATION, ACCESS_WIFI_STATE, READ_WIFI_CREDENTIAL})
+    @RequiresPermission(allOf = {NEARBY_WIFI_DEVICES, ACCESS_WIFI_STATE, READ_WIFI_CREDENTIAL},
+            conditional = true)
     public List<WifiConfiguration> getPrivilegedConfiguredNetworks() {
         try {
+            Bundle extras = new Bundle();
+            if (SdkLevel.isAtLeastS()) {
+                extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+            }
             ParceledListSlice<WifiConfiguration> parceledList =
                     mService.getPrivilegedConfiguredNetworks(mContext.getOpPackageName(),
-                            mContext.getAttributionTag());
+                            mContext.getAttributionTag(), extras);
             if (parceledList == null) {
                 return Collections.emptyList();
             }
@@ -2234,7 +2261,7 @@ public class WifiManager {
      * @throws {@link SecurityException} if the caller is missing required permissions.
      * @see WifiNetworkSuggestion#equals(Object)
      */
-    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    @RequiresPermission(CHANGE_WIFI_STATE)
     public @NetworkSuggestionsStatusCode int addNetworkSuggestions(
             @NonNull List<WifiNetworkSuggestion> networkSuggestions) {
         try {
@@ -2259,7 +2286,7 @@ public class WifiManager {
      * Any matching suggestions are removed from the device and will not be considered for any
      * further connection attempts.
      */
-    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    @RequiresPermission(CHANGE_WIFI_STATE)
     public @NetworkSuggestionsStatusCode int removeNetworkSuggestions(
             @NonNull List<WifiNetworkSuggestion> networkSuggestions) {
         try {
@@ -2461,7 +2488,7 @@ public class WifiManager {
      * @return {@code true} if at least one network is removed, {@code false} otherwise
      * @throws {@link java.lang.SecurityException} if the caller is not a Device Owner app
      */
-    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    @RequiresPermission(CHANGE_WIFI_STATE)
     public boolean removeNonCallerConfiguredNetworks() {
         try {
             return mService.removeNonCallerConfiguredNetworks(mContext.getOpPackageName());
@@ -4244,9 +4271,13 @@ public class WifiManager {
      * Applications should also be aware that this network will be shared with other applications.
      * Applications are responsible for protecting their data on this network (e.g. TLS).
      * <p>
-     * Applications need to have the following permissions to start LocalOnlyHotspot: {@link
-     * android.Manifest.permission#CHANGE_WIFI_STATE} and {@link
-     * android.Manifest.permission#ACCESS_FINE_LOCATION ACCESS_FINE_LOCATION}.  Callers without
+     * Applications targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later need to have
+     * the following permissions: {@link android.Manifest.permission#CHANGE_WIFI_STATE} and
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES}.
+     * Applications targeting {@link Build.VERSION_CODES#S} or prior SDK levels need to have the
+     * following permissions: {@link android.Manifest.permission#CHANGE_WIFI_STATE} and
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}
+     * Callers without
      * the permissions will trigger a {@link java.lang.SecurityException}.
      * <p>
      * @param callback LocalOnlyHotspotCallback for the application to receive updates about
@@ -4254,9 +4285,7 @@ public class WifiManager {
      * @param handler Handler to be used for callbacks.  If the caller passes a null Handler, the
      * main thread will be used.
      */
-    @RequiresPermission(allOf = {
-            android.Manifest.permission.CHANGE_WIFI_STATE,
-            android.Manifest.permission.ACCESS_FINE_LOCATION})
+    @RequiresPermission(allOf = {CHANGE_WIFI_STATE, NEARBY_WIFI_DEVICES}, conditional = true)
     public void startLocalOnlyHotspot(LocalOnlyHotspotCallback callback,
             @Nullable Handler handler) {
         Executor executor = handler == null ? null : new HandlerExecutor(handler);
@@ -4313,8 +4342,13 @@ public class WifiManager {
             try {
                 String packageName = mContext.getOpPackageName();
                 String featureId = mContext.getAttributionTag();
+                Bundle extras = new Bundle();
+                if (SdkLevel.isAtLeastS()) {
+                    extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                            mContext.getAttributionSource());
+                }
                 int returnCode = mService.startLocalOnlyHotspot(proxy, packageName, featureId,
-                        config);
+                        config, extras);
                 if (returnCode != LocalOnlyHotspotCallback.REQUEST_REGISTERED) {
                     // Send message to the proxy to make sure we call back on the correct thread
                     proxy.onHotspotFailed(returnCode);
@@ -4510,7 +4544,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE)
+    @RequiresPermission(CHANGE_WIFI_STATE)
     @Deprecated
     public boolean setWifiApConfiguration(WifiConfiguration wifiConfig) {
         try {
