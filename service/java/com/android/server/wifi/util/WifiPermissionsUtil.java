@@ -564,6 +564,15 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Returns true if the |uid| holds MANAGE_WIFI_AUTO_JOIN permission.
+     */
+    public boolean checkManageWifiAutoJoinPermission(int uid) {
+        return mWifiPermissionsWrapper.getUidPermission(
+                android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN, uid)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
      * Returns true if the |uid| holds NETWORK_SETTINGS permission.
      */
     public boolean checkNetworkSettingsPermission(int uid) {
