@@ -258,6 +258,11 @@ public class WifiInfo implements TransportInfo, Parcelable {
     private boolean mTrusted;
 
     /**
+     * Whether the network is restricted or not.
+     */
+    private boolean mRestricted;
+
+    /**
      * Whether the network is oem paid or not.
      */
     private boolean mOemPaid;
@@ -486,6 +491,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         setSubscriptionId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         setInformationElements(null);
         setIsPrimary(false);
+        setRestricted(false);
         txBad = 0;
         txSuccess = 0;
         rxSuccess = 0;
@@ -532,6 +538,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             mMeteredHint = source.mMeteredHint;
             mEphemeral = source.mEphemeral;
             mTrusted = source.mTrusted;
+            mRestricted = source.mRestricted;
             mOemPaid = source.mOemPaid;
             mOemPrivate = source.mOemPrivate;
             mCarrierMerged = source.mCarrierMerged;
@@ -891,13 +898,13 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mMeteredHint = meteredHint;
     }
 
-    /** {@hide} */
+    /** @hide */
     @UnsupportedAppUsage
     public boolean getMeteredHint() {
         return mMeteredHint;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setEphemeral(boolean ephemeral) {
         mEphemeral = ephemeral;
     }
@@ -915,7 +922,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mEphemeral;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setTrusted(boolean trusted) {
         mTrusted = trusted;
     }
@@ -923,14 +930,29 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Returns true if the current Wifi network is a trusted network, false otherwise.
      * @see WifiNetworkSuggestion.Builder#setUntrusted(boolean).
-     * {@hide}
+     * @hide
      */
     @SystemApi
     public boolean isTrusted() {
         return mTrusted;
     }
 
-    /** {@hide} */
+    /** @hide */
+    public void setRestricted(boolean restricted) {
+        mRestricted = restricted;
+    }
+
+    /**
+     * Returns true if the current Wifi network is a restricted network, false otherwise.
+     * A restricted network has its {@link NetworkCapabilities#NET_CAPABILITY_NOT_RESTRICTED}
+     * capability removed.
+     * @see WifiNetworkSuggestion.Builder#setRestricted(boolean).
+     */
+    public boolean isRestricted() {
+        return mRestricted;
+    }
+
+    /** @hide */
     public void setOemPaid(boolean oemPaid) {
         mOemPaid = oemPaid;
     }
@@ -938,7 +960,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Returns true if the current Wifi network is an oem paid network, false otherwise.
      * @see WifiNetworkSuggestion.Builder#setOemPaid(boolean).
-     * {@hide}
+     * @hide
      */
     @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
@@ -949,7 +971,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mOemPaid;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setOemPrivate(boolean oemPrivate) {
         mOemPrivate = oemPrivate;
     }
@@ -957,7 +979,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Returns true if the current Wifi network is an oem private network, false otherwise.
      * @see WifiNetworkSuggestion.Builder#setOemPrivate(boolean).
-     * {@hide}
+     * @hide
      */
     @RequiresApi(Build.VERSION_CODES.S)
     @SystemApi
@@ -969,7 +991,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * {@hide}
+     * @hide
      */
     public void setCarrierMerged(boolean carrierMerged) {
         mCarrierMerged = carrierMerged;
@@ -978,7 +1000,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Returns true if the current Wifi network is a carrier merged network, false otherwise.
      * @see WifiNetworkSuggestion.Builder#setCarrierMerged(boolean).
-     * {@hide}
+     * @hide
      */
     @SystemApi
     @RequiresApi(Build.VERSION_CODES.S)
@@ -990,24 +1012,24 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
 
-    /** {@hide} */
+    /** @hide */
     public void setOsuAp(boolean osuAp) {
         mOsuAp = osuAp;
     }
 
-    /** {@hide} */
+    /** @hide */
     @SystemApi
     public boolean isOsuAp() {
         return mOsuAp;
     }
 
-    /** {@hide} */
+    /** @hide */
     @SystemApi
     public boolean isPasspointAp() {
         return mFqdn != null && mProviderFriendlyName != null;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setFQDN(@Nullable String fqdn) {
         mFqdn = fqdn;
     }
@@ -1024,7 +1046,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mFqdn;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setProviderFriendlyName(@Nullable String providerFriendlyName) {
         mProviderFriendlyName = providerFriendlyName;
     }
@@ -1042,7 +1064,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mProviderFriendlyName;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setRequestingPackageName(@Nullable String packageName) {
         mRequestingPackageName = packageName;
     }
@@ -1058,7 +1080,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mRequestingPackageName;
     }
 
-    /** {@hide} */
+    /** @hide */
     public void setSubscriptionId(int subId) {
         mSubscriptionId = subId;
     }
@@ -1236,6 +1258,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(", SubscriptionId: ").append(mSubscriptionId)
                 .append(", IsPrimary: ").append(mIsPrimary)
                 .append(", Trusted: ").append(mTrusted)
+                .append(", Restricted: ").append(mRestricted)
                 .append(", Ephemeral: ").append(mEphemeral)
                 .append(", OEM paid: ").append(mOemPaid)
                 .append(", OEM private: ").append(mOemPrivate)
@@ -1318,6 +1341,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             dest.writeInt(mIsPrimary);
         }
         dest.writeInt(mSecurityType);
+        dest.writeInt(mRestricted ? 1 : 0);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1374,6 +1398,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                     info.mIsPrimary = in.readInt();
                 }
                 info.mSecurityType = in.readInt();
+                info.mRestricted = in.readInt() != 0;
                 return info;
             }
 
@@ -1517,8 +1542,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 && Objects.equals(mMaxSupportedRxLinkSpeed, thatWifiInfo.mMaxSupportedRxLinkSpeed)
                 && Objects.equals(mPasspointUniqueId, thatWifiInfo.mPasspointUniqueId)
                 && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements)
-                && Objects.equals(mIsPrimary, thatWifiInfo.mIsPrimary)
-                && Objects.equals(mSecurityType, thatWifiInfo.mSecurityType);
+                && mIsPrimary ==  thatWifiInfo.mIsPrimary
+                && mSecurityType == thatWifiInfo.mSecurityType
+                && mRestricted == thatWifiInfo.mRestricted;
     }
 
     @Override
@@ -1564,7 +1590,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mPasspointUniqueId,
                 mInformationElements,
                 mIsPrimary,
-                mSecurityType);
+                mSecurityType,
+                mRestricted);
     }
 
     /**

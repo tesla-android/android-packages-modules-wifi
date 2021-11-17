@@ -130,6 +130,11 @@ public class WifiInjector {
     private static final NetworkCapabilities OEM_NETWORK_CAPABILITIES_FILTER =
             makeOemNetworkCapatibilitiesFilter();
 
+    private static final NetworkCapabilities RESTRICTED_NETWORK_CAPABILITIES_FILTER =
+            makeBaseNetworkCapatibilitiesFilterBuilder()
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+                    .build();
+
 
     static WifiInjector sWifiInjector = null;
 
@@ -225,6 +230,7 @@ public class WifiInjector {
     private final WifiNetworkFactory mWifiNetworkFactory;
     private final UntrustedWifiNetworkFactory mUntrustedWifiNetworkFactory;
     private final OemWifiNetworkFactory mOemWifiNetworkFactory;
+    private final RestrictedWifiNetworkFactory mRestrictedWifiNetworkFactory;
     private final WifiP2pConnection mWifiP2pConnection;
     private final WifiGlobals mWifiGlobals;
     private final SimRequiredNotifier mSimRequiredNotifier;
@@ -493,6 +499,10 @@ public class WifiInjector {
         mOemWifiNetworkFactory = new OemWifiNetworkFactory(
                 wifiLooper, mContext, OEM_NETWORK_CAPABILITIES_FILTER,
                 mWifiConnectivityManager);
+        mRestrictedWifiNetworkFactory = new RestrictedWifiNetworkFactory(
+                wifiLooper, mContext, RESTRICTED_NETWORK_CAPABILITIES_FILTER,
+                mWifiConnectivityManager);
+
         mWifiScanAlwaysAvailableSettingsCompatibility =
                 new WifiScanAlwaysAvailableSettingsCompatibility(mContext, wifiHandler,
                         mSettingsStore, mActiveModeWarden, mFrameworkFacade);
@@ -744,7 +754,7 @@ public class WifiInjector {
                 mDeviceConfigFacade, mScanRequestProxy, wifiInfo, mWifiConnectivityManager,
                 mWifiBlocklistMonitor, mConnectionFailureNotifier,
                 REGULAR_NETWORK_CAPABILITIES_FILTER, mWifiNetworkFactory,
-                mUntrustedWifiNetworkFactory, mOemWifiNetworkFactory,
+                mUntrustedWifiNetworkFactory, mOemWifiNetworkFactory, mRestrictedWifiNetworkFactory,
                 mWifiLastResortWatchdog, mWakeupController,
                 mLockManager, mFrameworkFacade, mWifiHandlerThread.getLooper(),
                 mWifiNative, new WrongPasswordNotifier(mContext, mFrameworkFacade,
@@ -1015,6 +1025,10 @@ public class WifiInjector {
 
     public OemWifiNetworkFactory getOemWifiNetworkFactory() {
         return mOemWifiNetworkFactory;
+    }
+
+    public RestrictedWifiNetworkFactory getRestrictedWifiNetworkFactory() {
+        return mRestrictedWifiNetworkFactory;
     }
 
     public WifiDiagnostics getWifiDiagnostics() {

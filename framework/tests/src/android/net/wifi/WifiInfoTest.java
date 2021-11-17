@@ -103,6 +103,7 @@ public class WifiInfoTest {
         assertEquals(TEST_BSSID, info.getBSSID());
         assertEquals(TEST_NETWORK_ID, info.getNetworkId());
         assertTrue(info.isTrusted());
+        assertFalse((info.isRestricted()));
         assertTrue(info.isOsuAp());
         assertTrue(info.isPasspointAp());
         assertEquals(TEST_PACKAGE_NAME, info.getRequestingPackageName());
@@ -197,6 +198,7 @@ public class WifiInfoTest {
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getBSSID());
         assertEquals(WifiConfiguration.INVALID_NETWORK_ID, info.getNetworkId());
         assertTrue(info.isTrusted());
+        assertFalse(info.isRestricted());
         assertTrue(info.isOsuAp());
         assertFalse(info.isPasspointAp()); // fqdn & friendly name is masked.
         assertEquals(TEST_PACKAGE_NAME, info.getRequestingPackageName());
@@ -428,6 +430,7 @@ public class WifiInfoTest {
         writeWifiInfo.setMaxSupportedRxLinkSpeedMbps(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS);
         writeWifiInfo.setSubscriptionId(TEST_SUB_ID);
         writeWifiInfo.setIsPrimary(true);
+        writeWifiInfo.setRestricted(true);
 
         WifiInfo readWifiInfo = new WifiInfo(writeWifiInfo);
 
@@ -446,6 +449,7 @@ public class WifiInfoTest {
                 readWifiInfo.getMaxSupportedTxLinkSpeedMbps());
         assertEquals(TEST_MAX_SUPPORTED_RX_LINK_SPEED_MBPS,
                 readWifiInfo.getMaxSupportedRxLinkSpeedMbps());
+        assertTrue(readWifiInfo.isRestricted());
         if (SdkLevel.isAtLeastS()) {
             assertTrue(readWifiInfo.isOemPaid());
             assertTrue(readWifiInfo.isOemPrivate());

@@ -1623,4 +1623,34 @@ public class WifiNetworkSuggestionTest {
                 .setIsWpa3SaeH2eOnlyModeEnabled(true)
                 .build();
     }
+
+    /**
+     * Test set a network suggestion with restricted
+     */
+    @Test
+    public void testSetRestrictedNetwork() {
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setRestricted(true)
+                .build();
+        assertTrue(suggestion.isRestricted());
+        assertFalse(suggestion.isUserAllowedToManuallyConnect);
+    }
+
+    /**
+     * Ensure {@link WifiNetworkSuggestion.Builder#build()} throws an exception
+     * when set {@link WifiNetworkSuggestion.Builder#setRestricted(boolean)} to true and
+     * set {@link WifiNetworkSuggestion.Builder#setCredentialSharedWithUser(boolean)} to true
+     * together.
+     */
+    @Test(expected = IllegalStateException.class)
+    public void testCredentialSharedWithUserWithSetRestrictedNetwork() {
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setRestricted(true)
+                .setCredentialSharedWithUser(true)
+                .build();
+    }
 }

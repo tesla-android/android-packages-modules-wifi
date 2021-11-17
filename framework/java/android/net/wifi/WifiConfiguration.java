@@ -1523,6 +1523,15 @@ public class WifiConfiguration implements Parcelable {
     @SystemApi
     public boolean meteredHint;
 
+    /**
+     * Indicate whether the network is restricted or not.
+     *
+     * This bit can only be used by suggestion network, see
+     * {@link WifiNetworkSuggestion.Builder#setRestricted(boolean)}
+     * @hide
+     */
+    public boolean restricted;
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"METERED_OVERRIDE_"}, value = {
@@ -2899,6 +2908,7 @@ public class WifiConfiguration implements Parcelable {
         dtimInterval = 0;
         mRandomizedMacAddress = MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS);
         numRebootsSinceLastUse = 0;
+        restricted = false;
     }
 
     /**
@@ -2966,8 +2976,8 @@ public class WifiConfiguration implements Parcelable {
                 .append(" PRIO: ").append(this.priority)
                 .append(" HIDDEN: ").append(this.hiddenSSID)
                 .append(" PMF: ").append(this.requirePmf)
-                .append("CarrierId: ").append(this.carrierId)
-                .append("SubscriptionId").append(this.subscriptionId)
+                .append(" CarrierId: ").append(this.carrierId)
+                .append(" SubscriptionId: ").append(this.subscriptionId)
                 .append('\n');
 
 
@@ -3016,6 +3026,7 @@ public class WifiConfiguration implements Parcelable {
         if (this.ephemeral) sbuf.append(" ephemeral");
         if (this.osu) sbuf.append(" osu");
         if (this.trusted) sbuf.append(" trusted");
+        if (this.restricted) sbuf.append(" restricted");
         if (this.oemPaid) sbuf.append(" oemPaid");
         if (this.oemPrivate) sbuf.append(" oemPrivate");
         if (this.carrierMerged) sbuf.append(" carrierMerged");
@@ -3025,7 +3036,8 @@ public class WifiConfiguration implements Parcelable {
         if (this.useExternalScores) sbuf.append(" useExternalScores");
         if (this.validatedInternetAccess || this.ephemeral || this.trusted || this.oemPaid
                 || this.oemPrivate || this.carrierMerged || this.fromWifiNetworkSuggestion
-                || this.fromWifiNetworkSpecifier || this.meteredHint || this.useExternalScores) {
+                || this.fromWifiNetworkSpecifier || this.meteredHint || this.useExternalScores
+                || this.restricted) {
             sbuf.append("\n");
         }
         if (this.meteredOverride != METERED_OVERRIDE_NONE) {
@@ -3566,6 +3578,7 @@ public class WifiConfiguration implements Parcelable {
             ephemeral = source.ephemeral;
             osu = source.osu;
             trusted = source.trusted;
+            restricted = source.restricted;
             oemPaid = source.oemPaid;
             oemPrivate = source.oemPrivate;
             carrierMerged = source.carrierMerged;
@@ -3687,6 +3700,7 @@ public class WifiConfiguration implements Parcelable {
         dest.writeInt(carrierId);
         dest.writeString(mPasspointUniqueId);
         dest.writeInt(subscriptionId);
+        dest.writeBoolean(restricted);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -3772,6 +3786,7 @@ public class WifiConfiguration implements Parcelable {
                 config.carrierId = in.readInt();
                 config.mPasspointUniqueId = in.readString();
                 config.subscriptionId = in.readInt();
+                config.restricted = in.readBoolean();
                 return config;
             }
 
