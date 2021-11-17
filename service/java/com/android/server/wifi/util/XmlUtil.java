@@ -374,6 +374,7 @@ public class XmlUtil {
         public static final String XML_TAG_SAE_IS_PK_ONLY_MODE = "SaeIsPkOnlyMode";
         public static final String XML_TAG_IS_ADDED_BY_AUTO_UPGRADE = "IsAddedByAutoUpgrade";
         private static final String XML_TAG_IS_MOST_RECENTLY_CONNECTED = "IsMostRecentlyConnected";
+        private static final String XML_TAG_IS_RESTRICTED = "IsRestricted";
 
         /**
          * Write WepKeys to the XML stream.
@@ -535,6 +536,7 @@ public class XmlUtil {
                 throws XmlPullParserException, IOException {
             writeCommonElementsToXml(out, configuration, encryptionUtil);
             XmlUtil.writeNextValue(out, XML_TAG_IS_TRUSTED, configuration.trusted);
+            XmlUtil.writeNextValue(out, XML_TAG_IS_RESTRICTED, configuration.restricted);
             XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PAID, configuration.oemPaid);
             XmlUtil.writeNextValue(out, XML_TAG_IS_OEM_PRIVATE, configuration.oemPrivate);
             XmlUtil.writeNextValue(out, XML_TAG_IS_CARRIER_MERGED,
@@ -843,6 +845,10 @@ public class XmlUtil {
                             break;
                         case XML_TAG_IS_CARRIER_MERGED:
                             configuration.carrierMerged = (boolean) value;
+                            break;
+                        case XML_TAG_IS_RESTRICTED:
+                            configuration.restricted = (boolean) value;
+                            break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);
                             break;

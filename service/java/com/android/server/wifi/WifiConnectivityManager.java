@@ -176,6 +176,7 @@ public class WifiConnectivityManager {
     private int mInitialScanState = INITIAL_SCAN_STATE_COMPLETE;
     private boolean mAutoJoinEnabledExternal = true; // enabled by default
     private boolean mUntrustedConnectionAllowed = false;
+    private boolean mRestrictedConnectionAllowed = false;
     private boolean mOemPaidConnectionAllowed = false;
     private boolean mOemPrivateConnectionAllowed = false;
     private WorkSource mOemPaidConnectionRequestorWs = null;
@@ -392,7 +393,8 @@ public class WifiConnectivityManager {
 
         List<WifiCandidates.Candidate> candidates = mNetworkSelector.getCandidatesFromScan(
                 scanDetails, bssidBlocklist, cmmStates, mUntrustedConnectionAllowed,
-                mOemPaidConnectionAllowed, mOemPrivateConnectionAllowed);
+                mOemPaidConnectionAllowed, mOemPrivateConnectionAllowed,
+                mRestrictedConnectionAllowed);
         mLatestCandidates = candidates;
         mLatestCandidatesTimestampMs = mClock.getElapsedSinceBootMillis();
 
@@ -2381,7 +2383,8 @@ public class WifiConnectivityManager {
         // External triggers to disable always trumps any internal state.
         setAutoJoinEnabled(mAutoJoinEnabledExternal
                 && (mUntrustedConnectionAllowed || mOemPaidConnectionAllowed
-                || mOemPrivateConnectionAllowed || mTrustedConnectionAllowed)
+                || mOemPrivateConnectionAllowed || mTrustedConnectionAllowed
+                || mRestrictedConnectionAllowed)
                 && !mSpecificNetworkRequestInProgress);
         startConnectivityScan(SCAN_IMMEDIATELY);
     }
@@ -2409,6 +2412,20 @@ public class WifiConnectivityManager {
             checkAllStatesAndEnableAutoJoin();
         }
     }
+
+    /**
+     * Triggered when {@link RestrictedWifiNetworkFactory} has a pending ephemeral network request.
+     */
+    public void setRestrictionConnectionAllowed(boolean allowed) {
+        localLog("setRestrictionConnectionAllowed: allowed=" + allowed);
+
+        if (mRestrictedConnectionAllowed != allowed) {
+            mRestrictedConnectionAllowed = allowed;
+            checkAllStatesAndEnableAutoJoin();
+        }
+    }
+
+
 
     /**
      * Triggered when {@link OemPaidWifiNetworkFactory} has a pending network request.

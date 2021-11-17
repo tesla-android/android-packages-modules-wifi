@@ -312,6 +312,7 @@ package android.net.wifi {
     method public android.net.wifi.SupplicantState getSupplicantState();
     method @IntRange(from=0xffffffff) public int getTxLinkSpeedMbps();
     method public int getWifiStandard();
+    method public boolean isRestricted();
     method @NonNull public android.net.wifi.WifiInfo makeCopy(long);
     method public void writeToParcel(android.os.Parcel, int);
     field public static final String FREQUENCY_UNITS = "MHz";
@@ -603,6 +604,7 @@ package android.net.wifi {
     method public boolean isHiddenSsid();
     method public boolean isInitialAutojoinEnabled();
     method public boolean isMetered();
+    method public boolean isRestricted();
     method public boolean isUntrusted();
     method public boolean isUserInteractionRequired();
     method public void writeToParcel(android.os.Parcel, int);
@@ -628,6 +630,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPasspointConfig(@NonNull android.net.wifi.hotspot2.PasspointConfiguration);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriority(@IntRange(from=0) int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setPriorityGroup(@IntRange(from=0) int);
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setRestricted(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setSsid(@NonNull String);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setSubscriptionId(int);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setUntrusted(boolean);

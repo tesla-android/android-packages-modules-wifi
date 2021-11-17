@@ -158,16 +158,17 @@ public class WifiNetworkSelector {
 
         /**
          * Evaluate all the networks from the scan results.
-         *
          * @param scanDetails              a list of scan details constructed from the scan results
          * @param untrustedNetworkAllowed  a flag to indicate if untrusted networks are allowed
          * @param oemPaidNetworkAllowed    a flag to indicate if oem paid networks are allowed
          * @param oemPrivateNetworkAllowed a flag to indicate if oem private networks are allowed
+         * @param restrictedNetworkAllowed a flag to indicate if restrictednetworks are allowed
          * @param onConnectableListener    callback to record all of the connectable networks
          */
         void nominateNetworks(List<ScanDetail> scanDetails,
                 boolean untrustedNetworkAllowed, boolean oemPaidNetworkAllowed,
-                boolean oemPrivateNetworkAllowed, OnConnectableListener onConnectableListener);
+                boolean oemPrivateNetworkAllowed, boolean restrictedNetworkAllowed,
+                OnConnectableListener onConnectableListener);
 
         /**
          * Callback for recording connectable candidates
@@ -802,12 +803,14 @@ public class WifiNetworkSelector {
      * @param untrustedNetworkAllowed  True if untrusted networks are allowed for connection
      * @param oemPaidNetworkAllowed    True if oem paid networks are allowed for connection
      * @param oemPrivateNetworkAllowed True if oem private networks are allowed for connection
+     * @param restrictedNetworkAllowed True if restricted networks are allowed for connection
      * @return list of valid Candidate(s)
      */
     public List<WifiCandidates.Candidate> getCandidatesFromScan(
             @NonNull List<ScanDetail> scanDetails, @NonNull Set<String> bssidBlocklist,
             @NonNull List<ClientModeManagerState> cmmStates, boolean untrustedNetworkAllowed,
-            boolean oemPaidNetworkAllowed, boolean oemPrivateNetworkAllowed) {
+            boolean oemPaidNetworkAllowed, boolean oemPrivateNetworkAllowed,
+            boolean restrictedNetworkAllowed) {
         mFilteredNetworks.clear();
         mConnectableNetworks.clear();
         if (scanDetails.size() == 0) {
@@ -880,7 +883,7 @@ public class WifiNetworkSelector {
             registeredNominator.nominateNetworks(
                     new ArrayList<>(mFilteredNetworks),
                     untrustedNetworkAllowed, oemPaidNetworkAllowed, oemPrivateNetworkAllowed,
-                    (scanDetail, config) -> {
+                    restrictedNetworkAllowed, (scanDetail, config) -> {
                         WifiCandidates.Key key = wifiCandidates.keyFromScanDetailAndConfig(
                                 scanDetail, config);
                         if (key != null) {

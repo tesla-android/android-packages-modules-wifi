@@ -401,6 +401,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final WifiNetworkFactory mNetworkFactory;
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
     private final OemWifiNetworkFactory mOemWifiNetworkFactory;
+    private final RestrictedWifiNetworkFactory mRestrictedWifiNetworkFactory;
 
     @VisibleForTesting
     @Nullable
@@ -660,6 +661,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull WifiNetworkFactory networkFactory,
             @NonNull UntrustedWifiNetworkFactory untrustedWifiNetworkFactory,
             @NonNull OemWifiNetworkFactory oemPaidWifiNetworkFactory,
+            @NonNull RestrictedWifiNetworkFactory restrictedWifiNetworkFactory,
             @NonNull WifiLastResortWatchdog wifiLastResortWatchdog,
             @NonNull WakeupController wakeupController,
             @NonNull WifiLockManager wifiLockManager,
@@ -746,6 +748,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         mUntrustedNetworkFactory = untrustedWifiNetworkFactory;
         mOemWifiNetworkFactory = oemPaidWifiNetworkFactory;
+        mRestrictedWifiNetworkFactory = restrictedWifiNetworkFactory;
 
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
         mWakeupController = wakeupController;
@@ -2566,6 +2569,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiInfo.setCarrierMerged(config.carrierMerged);
         mWifiInfo.setSubscriptionId(config.subscriptionId);
         mWifiInfo.setOsuAp(config.osu);
+        mWifiInfo.setRestricted(config.restricted);
         if (config.fromWifiNetworkSpecifier || config.fromWifiNetworkSuggestion) {
             mWifiInfo.setRequestingPackageName(config.creatorName);
         }
@@ -3969,6 +3973,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         } else {
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED);
         }
+
+        if (mWifiInfo.isRestricted()) {
+            builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        }
+
         if (SdkLevel.isAtLeastS()) {
             if (mWifiInfo.isOemPaid()) {
                 builder.addCapability(NetworkCapabilities.NET_CAPABILITY_OEM_PAID);
@@ -6045,7 +6054,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private boolean hasConnectionRequests() {
         return mNetworkFactory.hasConnectionRequests()
                 || mUntrustedNetworkFactory.hasConnectionRequests()
-                || mOemWifiNetworkFactory.hasConnectionRequests();
+                || mOemWifiNetworkFactory.hasConnectionRequests()
+                || mRestrictedWifiNetworkFactory.hasConnectionRequests();
     }
 
     /**

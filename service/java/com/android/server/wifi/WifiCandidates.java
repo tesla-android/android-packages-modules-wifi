@@ -160,6 +160,11 @@ public class WifiCandidates {
          * Gets statistics from the scorecard.
          */
         @Nullable WifiScoreCardProto.Signal getEventStatistics(WifiScoreCardProto.Event event);
+
+        /**
+         * Returns true for a restricted network.
+         */
+        boolean isRestricted();
     }
 
     /**
@@ -181,6 +186,7 @@ public class WifiCandidates {
         private final boolean mPasspoint;
         private final boolean mEphemeral;
         private final boolean mTrusted;
+        private final boolean mRestricted;
         private final boolean mOemPaid;
         private final boolean mOemPrivate;
         private final boolean mCarrierOrPrivileged;
@@ -219,6 +225,7 @@ public class WifiCandidates {
             this.mPredictedThroughputMbps = predictedThroughputMbps;
             this.mEstimatedPercentInternetAvailability = perBssid == null ? 50 :
                     perBssid.estimatePercentInternetAvailability();
+            this.mRestricted = config.restricted;
         }
 
         @Override
@@ -249,6 +256,11 @@ public class WifiCandidates {
         @Override
         public boolean isTrusted() {
             return mTrusted;
+        }
+
+        @Override
+        public boolean isRestricted() {
+            return mRestricted;
         }
 
         @Override
@@ -355,6 +367,7 @@ public class WifiCandidates {
                     + (isCurrentNetwork() ? "current, " : "")
                     + (isEphemeral() ? "ephemeral" : "saved") + ", "
                     + (isTrusted() ? "trusted, " : "")
+                    + (isRestricted() ? "restricted, " : "")
                     + (isOemPaid() ? "oemPaid, " : "")
                     + (isOemPrivate() ? "oemPrivate, " : "")
                     + (isCarrierOrPrivileged() ? "priv, " : "")
