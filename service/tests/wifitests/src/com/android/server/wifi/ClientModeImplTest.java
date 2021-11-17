@@ -1009,6 +1009,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         }
         assertEquals(Arrays.asList(scanResult.informationElements),
                     wifiInfo.getInformationElements());
+        assertNotNull(wifiInfo.getCurrentNetworkKey());
         expectRegisterNetworkAgent((na) -> {
             if (!mConnectedNetwork.carrierMerged) {
                 assertNull(na.subscriberId);
