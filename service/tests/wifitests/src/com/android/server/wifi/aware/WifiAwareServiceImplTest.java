@@ -676,6 +676,10 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         assertEquals(characteristics.getMaxMatchFilterLength(), maxMatchFilter);
         assertEquals(characteristics.getSupportedCipherSuites(),
                 Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256);
+        assertEquals(characteristics.getNumberOfSupportedDataPaths(), 1);
+        assertEquals(characteristics.getNumberOfSupportedDataInterfaces(), 1);
+        assertEquals(characteristics.getNumberOfSupportedPublishSessions(), 2);
+        assertEquals(characteristics.getNumberOfSupportedSubscribeSessions(), 2);
         if (SdkLevel.isAtLeastS()) {
             assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
         }

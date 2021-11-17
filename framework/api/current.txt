@@ -696,6 +696,10 @@ package android.net.wifi.aware {
     method public int getMaxMatchFilterLength();
     method public int getMaxServiceNameLength();
     method public int getMaxServiceSpecificInfoLength();
+    method @IntRange(from=1) public int getNumberOfSupportedDataInterfaces();
+    method @IntRange(from=1) public int getNumberOfSupportedDataPaths();
+    method @IntRange(from=1) public int getNumberOfSupportedPublishSessions();
+    method @IntRange(from=1) public int getNumberOfSupportedSubscribeSessions();
     method public int getSupportedCipherSuites();
     method public boolean isInstantCommunicationModeSupported();
     method public void writeToParcel(android.os.Parcel, int);
