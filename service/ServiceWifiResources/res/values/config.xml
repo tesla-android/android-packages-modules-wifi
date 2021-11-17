@@ -423,6 +423,60 @@
         <item>160</item>
     </integer-array>
 
+    <!-- Array describing scanning schedule in seconds when device is connected and screen is on
+     and the connected network is the only saved network.
+     When this array is set to an empty array, the normal connected scan schedule defined
+     in config_wifiConnectedScanIntervalScheduleSec will be used -->
+    <integer-array translatable="false" name="config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec">
+    </integer-array>
+
+    <!-- This controls the scan type when config_wifiDisconnectedScanIntervalScheduleSec is being
+    used as the scan schedule.
+
+    Valid values: a non-empty list of WifiAnnotations#ScanType of variable length.
+    For example, if this is programmed as
+        <item>2</item>
+        <item>2</item>
+        <item>1</item>
+    then the first 2 periodic scan will be of type WifiScanner.SCAN_TYPE_HIGH_ACCURACY, and from
+    the 3rd scan onward, the scan type will be WifiScanner.SCAN_TYPE_LOW_POWER.
+    -->
+    <integer-array translatable="false" name="config_wifiDisconnectedScanType">
+        <item>2</item>
+    </integer-array>
+
+    <!-- This controls the scan type when config_wifiConnectedScanIntervalScheduleSec is being
+    used as the scan schedule.
+
+    Valid values: a non-empty list of WifiAnnotations#ScanType of variable length.
+    For example, if this is programmed as
+        <item>2</item>
+        <item>2</item>
+        <item>1</item>
+    then the first 2 periodic scan will be of type WifiScanner.SCAN_TYPE_HIGH_ACCURACY, and from
+    the 3rd scan onward, the scan type will be WifiScanner.SCAN_TYPE_LOW_POWER.
+    -->
+    <integer-array translatable="false" name="config_wifiConnectedScanType">
+        <item>2</item>
+    </integer-array>
+
+    <!-- This controls the scan type when config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec
+    is being used as the scan schedule.
+
+    Valid values: Leave as empty, or a list of WifiAnnotations#ScanType of variable length.
+    For example, if this is programmed as
+        <item>2</item>
+        <item>2</item>
+        <item>1</item>
+    then the first 2 periodic scan will be of type WifiScanner.SCAN_TYPE_HIGH_ACCURACY, and from
+    the 3rd scan onward, the scan type will be WifiScanner.SCAN_TYPE_LOW_POWER.
+
+    When this array is set to an empty array, the normal scan type defined in
+    config_wifiConnectedScanType will be used.
+    -->
+    <integer-array translatable="false" name="config_wifiSingleSavedNetworkConnectedScanType">
+    </integer-array>
+
     <!-- Integer specifying minimum wait time in seconds for next PNO scan when a network is found
     by PNO scan but gets rejected by Wifi Network Selector due to its low RSSI value-->
     <integer translatable="false" name="config_wifiPnoScanLowRssiNetworkRetryStartDelaySec"> 20 </integer>
@@ -434,13 +488,6 @@
     <!-- Integer for minimum time between the last network selection and next high RSSI scan
          in seconds when device is connected and screen is on -->
     <integer translatable="false" name="config_wifiConnectedHighRssiScanMinimumWindowSizeSec"> 600 </integer>
-
-    <!-- Array describing scanning schedule in seconds when device is connected and screen is on
-         and the connected network is the only saved network.
-         When this array is set to an empty array, the noraml connected scan schedule defined
-         in config_wifiConnectedScanIntervalScheduleSec will be used -->
-    <integer-array translatable="false" name="config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec">
-    </integer-array>
 
     <!-- List of constants to indicate how many failures are needed to temporarily disable a network
     from auto-connect -->

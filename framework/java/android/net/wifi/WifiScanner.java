@@ -328,6 +328,11 @@ public class WifiScanner {
      * @see ScanSettings#type
      */
     public static final int SCAN_TYPE_HIGH_ACCURACY = 2;
+    /**
+     * Max valid value of SCAN_TYPE_
+     * @hide
+     */
+    public static final int SCAN_TYPE_MAX = 2;
 
     /** {@hide} */
     public static final String SCAN_PARAMS_SCAN_SETTINGS_KEY = "ScanSettings";
