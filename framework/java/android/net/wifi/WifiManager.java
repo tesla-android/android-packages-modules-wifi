@@ -1496,7 +1496,7 @@ public class WifiManager {
      *
      * @return a list of network configurations in the form of a list
      * of {@link WifiConfiguration} objects.
-     * @throws {@link java.lang.SecurityException} if the caller is allowed to call this API
+     * @throws {@link java.lang.SecurityException} if the caller is not allowed to call this API
      */
     @RequiresPermission(ACCESS_WIFI_STATE)
     @NonNull
