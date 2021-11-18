@@ -363,7 +363,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // verify: service and callback calls
         mInOrder.verify(mWifiMock).start();
-        mInOrder.verify(mManagerStatusListenerMock).onStatusChanged();
+        mInOrder.verify(mManagerStatusListenerMock, times(2)).onStatusChanged();
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
