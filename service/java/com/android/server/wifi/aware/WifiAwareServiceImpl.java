@@ -24,6 +24,7 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.wifi.V1_0.NanStatusType;
+import android.net.wifi.WifiManager;
 import android.net.wifi.aware.AwareResources;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.ConfigRequest;
@@ -35,6 +36,8 @@ import android.net.wifi.aware.IWifiAwareManager;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.os.Binder;
+import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -44,6 +47,7 @@ import android.util.Log;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.util.NetdWrapper;
@@ -192,7 +196,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     @Override
     public void connect(final IBinder binder, String callingPackage, String callingFeatureId,
             IWifiAwareEventCallback callback, ConfigRequest configRequest,
-            boolean notifyOnIdentityChanged) {
+            boolean notifyOnIdentityChanged, Bundle extras) {
         enforceAccessPermission();
         enforceChangePermission();
 
@@ -207,7 +211,8 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
         }
 
         if (notifyOnIdentityChanged) {
-            enforceLocationPermission(callingPackage, callingFeatureId, getMockableCallingUid());
+            enforceNearbyOrLocationPermission(callingPackage, callingFeatureId,
+                    getMockableCallingUid(), extras, "Wifi Aware attach");
         }
 
         if (configRequest != null) {
@@ -308,14 +313,16 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
 
     @Override
     public void publish(String callingPackage, String callingFeatureId, int clientId,
-            PublishConfig publishConfig, IWifiAwareDiscoverySessionCallback callback) {
+            PublishConfig publishConfig, IWifiAwareDiscoverySessionCallback callback,
+            Bundle extras) {
         enforceAccessPermission();
         enforceChangePermission();
 
         int uid = getMockableCallingUid();
         mAppOps.checkPackage(uid, callingPackage);
 
-        enforceLocationPermission(callingPackage, callingFeatureId, getMockableCallingUid());
+        enforceNearbyOrLocationPermission(callingPackage, callingFeatureId,
+                getMockableCallingUid(), extras, "Wifi Aware publish");
 
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
@@ -358,14 +365,16 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
 
     @Override
     public void subscribe(String callingPackage, String callingFeatureId, int clientId,
-            SubscribeConfig subscribeConfig, IWifiAwareDiscoverySessionCallback callback) {
+            SubscribeConfig subscribeConfig, IWifiAwareDiscoverySessionCallback callback,
+            Bundle extras) {
         enforceAccessPermission();
         enforceChangePermission();
 
         int uid = getMockableCallingUid();
         mAppOps.checkPackage(uid, callingPackage);
 
-        enforceLocationPermission(callingPackage, callingFeatureId, getMockableCallingUid());
+        enforceNearbyOrLocationPermission(callingPackage, callingFeatureId,
+                getMockableCallingUid(), extras, "Wifi Aware subscribe");
 
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
@@ -489,9 +498,17 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
         mContext.enforceCallingOrSelfPermission(android.Manifest.permission.CHANGE_WIFI_STATE, TAG);
     }
 
-    private void enforceLocationPermission(String callingPackage, String callingFeatureId,
-            int uid) {
-        mWifiPermissionsUtil.enforceLocationPermission(callingPackage, callingFeatureId, uid);
+    private void enforceNearbyOrLocationPermission(String callingPackage, String callingFeatureId,
+            int uid, Bundle extras, String message) {
+        if (!SdkLevel.isAtLeastT() || mWifiPermissionsUtil.isTargetSdkLessThan(callingPackage,
+                Build.VERSION_CODES.TIRAMISU,
+                uid)) {
+            mWifiPermissionsUtil.enforceLocationPermission(callingPackage, callingFeatureId, uid);
+        } else {
+            mWifiPermissionsUtil.enforceNearbyDevicesPermission(extras.getParcelable(
+                    WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE), true, message);
+        }
+
     }
 
     private void enforceNetworkStackPermission() {

@@ -16,6 +16,11 @@
 
 package android.net.wifi.aware;
 
+import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.ACCESS_WIFI_STATE;
+import static android.Manifest.permission.CHANGE_WIFI_STATE;
+import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
+
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
@@ -28,6 +33,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
+import android.net.wifi.WifiManager;
 import android.net.wifi.util.HexEncoding;
 import android.os.Binder;
 import android.os.Build;
@@ -315,6 +321,10 @@ public class WifiAwareManager {
      * attachCallback} object. If a null is provided then the application's main thread will be
      *                used.
      */
+    @RequiresPermission(allOf = {
+            ACCESS_WIFI_STATE,
+            CHANGE_WIFI_STATE
+    })
     public void attach(@NonNull AttachCallback attachCallback, @Nullable Handler handler) {
         attach(handler, null, attachCallback, null);
     }
@@ -333,11 +343,22 @@ public class WifiAwareManager {
      * <p>
      * This version of the API attaches a listener to receive the MAC address of the Aware interface
      * on startup and whenever it is updated (it is randomized at regular intervals for privacy).
-     * The application must have the {@link android.Manifest.permission#ACCESS_FINE_LOCATION}
-     * permission to execute this attach request. Otherwise, use the
-     * {@link #attach(AttachCallback, Handler)} version. Note that aside from permission
-     * requirements this listener will wake up the host at regular intervals causing higher power
-     * consumption, do not use it unless the information is necessary (e.g. for OOB discovery).
+     *
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * Apps without {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} or
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} can use the
+     * {@link #attach(AttachCallback, Handler)} version.
+     * Note that aside from permission requirements this listener will wake up the host at regular
+     * intervals causing higher power consumption, do not use it unless the information is
+     * necessary (e.g. for OOB discovery).
      *
      * @param attachCallback A callback for attach events, extended from
      * {@link AttachCallback}.
@@ -347,6 +368,11 @@ public class WifiAwareManager {
      * attachCallback} and {@code identityChangedListener} objects. If a null is provided then the
      *                application's main thread will be used.
      */
+    @RequiresPermission(allOf = {
+            ACCESS_WIFI_STATE,
+            CHANGE_WIFI_STATE,
+            ACCESS_FINE_LOCATION,
+            NEARBY_WIFI_DEVICES}, conditional = true)
     public void attach(@NonNull AttachCallback attachCallback,
             @NonNull IdentityChangedListener identityChangedListener,
             @Nullable Handler handler) {
@@ -372,10 +398,15 @@ public class WifiAwareManager {
 
             try {
                 Binder binder = new Binder();
+                Bundle extras = new Bundle();
+                if (SdkLevel.isAtLeastS()) {
+                    extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                            mContext.getAttributionSource());
+                }
                 mService.connect(binder, mContext.getOpPackageName(), mContext.getAttributionTag(),
                         new WifiAwareEventCallbackProxy(this, looper, binder, attachCallback,
                                 identityChangedListener), configRequest,
-                        identityChangedListener != null);
+                        identityChangedListener != null, extras);
             } catch (RemoteException e) {
                 throw e.rethrowFromSystemServer();
             }
@@ -403,10 +434,15 @@ public class WifiAwareManager {
         }
 
         try {
+            Bundle extras = new Bundle();
+            if (SdkLevel.isAtLeastS()) {
+                extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+            }
             mService.publish(mContext.getOpPackageName(), mContext.getAttributionTag(), clientId,
                     publishConfig,
                     new WifiAwareDiscoverySessionCallbackProxy(this, looper, true, callback,
-                            clientId));
+                            clientId), extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -441,10 +477,15 @@ public class WifiAwareManager {
         }
 
         try {
+            Bundle extras = new Bundle();
+            if (SdkLevel.isAtLeastS()) {
+                extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+            }
             mService.subscribe(mContext.getOpPackageName(), mContext.getAttributionTag(), clientId,
                     subscribeConfig,
                     new WifiAwareDiscoverySessionCallbackProxy(this, looper, false, callback,
-                            clientId));
+                            clientId), extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
