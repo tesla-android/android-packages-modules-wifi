@@ -3641,8 +3641,14 @@ public class WifiServiceImpl extends BaseWifiService {
      * Returns null when there is no country code available.
      */
     @Override
-    public String getCountryCode() {
-        enforceNetworkSettingsPermission();
+    public String getCountryCode(String packageName, String featureId) {
+        int uid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
+        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                && !mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                        packageName, featureId, uid, "getCountryCode")) {
+            throw new SecurityException("Caller has no permission to get country code.");
+        }
         if (isVerboseLoggingEnabled()) {
             mLog.info("getCountryCode uid=%").c(Binder.getCallingUid()).flush();
         }

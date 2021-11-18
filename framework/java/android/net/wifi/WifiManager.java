@@ -3532,10 +3532,14 @@ public class WifiManager {
      */
     @Nullable
     @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+    })
     public String getCountryCode() {
         try {
-            return mService.getCountryCode();
+            return mService.getCountryCode(mContext.getOpPackageName(),
+                    mContext.getAttributionTag());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
