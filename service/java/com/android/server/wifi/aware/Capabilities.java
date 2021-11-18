@@ -55,6 +55,10 @@ public class Capabilities {
                 toPublicCipherSuites(supportedCipherSuites));
         bundle.putBoolean(Characteristics.KEY_IS_INSTANT_COMMUNICATION_MODE_SUPPORTED,
                 isInstantCommunicationModeSupported);
+        bundle.putInt(Characteristics.KEY_MAX_NDP_NUMBER, maxNdpSessions);
+        bundle.putInt(Characteristics.KEY_MAX_NDI_NUMBER, maxNdiInterfaces);
+        bundle.putInt(Characteristics.KEY_MAX_Publish_NUMBER, maxPublishes);
+        bundle.putInt(Characteristics.KEY_MAX_SUBSCRIBE_NUMBER, maxSubscribes);
         return new Characteristics(bundle);
     }
 
