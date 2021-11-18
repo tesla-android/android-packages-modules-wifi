@@ -7337,7 +7337,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
         mLooper.dispatchAll();
-        verify(mActiveModeWarden).updateSoftApCapability(any());
+        verify(mActiveModeWarden).updateSoftApCapability(any(),
+                eq(WifiManager.IFACE_IP_MODE_TETHERED));
         staticMockSession.finishMocking();
     }
 
@@ -7363,7 +7364,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertNotNull(mPhoneStateListener);
         mPhoneStateListener.onActiveDataSubscriptionIdChanged(2);
         mLooper.dispatchAll();
-        verify(mActiveModeWarden).updateSoftApCapability(any());
+        verify(mActiveModeWarden).updateSoftApCapability(any(),
+                eq(WifiManager.IFACE_IP_MODE_TETHERED));
         staticMockSession.finishMocking();
     }
 
