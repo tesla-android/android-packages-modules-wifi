@@ -47,6 +47,7 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.WorkSource;
@@ -100,7 +101,8 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId) {
+    public ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId,
+            Bundle extras) {
         throw new UnsupportedOperationException();
     }
 
@@ -414,7 +416,7 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public int startLocalOnlyHotspot(ILocalOnlyHotspotCallback callback, String packageName,
-            String featureId, SoftApConfiguration customConfig) {
+            String featureId, SoftApConfiguration customConfig, Bundle extras) {
         throw new UnsupportedOperationException();
     }
 
