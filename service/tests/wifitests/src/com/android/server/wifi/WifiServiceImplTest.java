@@ -7631,6 +7631,29 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager).stopRestrictingAutoJoinToSubscriptionId();
     }
 
+    @Test(expected = SecurityException.class)
+    public void testGetCountryCodeThrowsException() {
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                any(), any(), anyInt(), any())).thenReturn(false);
+        mWifiServiceImpl.getCountryCode(TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+    }
+
+    @Test
+    public void testGetCountryCode() {
+        // verify get country code with network settings permission.
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                any(), any(), anyInt(), any())).thenReturn(false);
+        mWifiServiceImpl.getCountryCode(TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+
+        // verify get country code with coarse location permission.
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkCallersCoarseLocationPermission(
+                any(), any(), anyInt(), any())).thenReturn(true);
+        mWifiServiceImpl.getCountryCode(TEST_PACKAGE_NAME, TEST_FEATURE_ID);
+    }
+
     /**
      * Verifies that syncGetSupportedFeatures() adds capabilities based on interface
      * combination.
