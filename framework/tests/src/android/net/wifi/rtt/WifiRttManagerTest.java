@@ -30,6 +30,7 @@ import android.content.Context;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
 import android.net.wifi.aware.PeerHandle;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Parcel;
 import android.os.test.TestLooper;
@@ -92,7 +93,7 @@ public class WifiRttManagerTest {
         // verify ranging request passed to service
         mDut.startRanging(request, mMockLooperExecutor, callbackMock);
         verify(mockRttService).startRanging(any(IBinder.class), eq(packageName), eq(featureId),
-                eq(null),  eq(request), callbackCaptor.capture());
+                eq(null),  eq(request), callbackCaptor.capture(), any(Bundle.class));
 
         // service calls back with success
         callbackCaptor.getValue().onRangingResults(results);
@@ -116,7 +117,7 @@ public class WifiRttManagerTest {
         // verify ranging request passed to service
         mDut.startRanging(request, mMockLooperExecutor, callbackMock);
         verify(mockRttService).startRanging(any(IBinder.class), eq(packageName), eq(featureId),
-                eq(null), eq(request), callbackCaptor.capture());
+                eq(null), eq(request), callbackCaptor.capture(), any(Bundle.class));
 
         // service calls back with failure code
         callbackCaptor.getValue().onRangingFailure(failureCode);
