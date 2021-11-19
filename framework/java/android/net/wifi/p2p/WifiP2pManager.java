@@ -1353,30 +1353,36 @@ public class WifiP2pManager {
     }
 
     /**
-     * Force p2p to enter listen state
+     * Force p2p to enter listen state.
+     *
+     * When this API is called, this device will periodically enter LISTENING state until
+     * {@link #stopListening(Channel, ActionListener)} or
+     * {@link #stopPeerDiscovery(Channel, ActionListener)} are called.
+     * While in LISTENING state, this device will dwell at its social channel and respond
+     * to probe requests from other Wi-Fi Direct peers.
      *
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}
-     * @param listener for callbacks on success or failure. Can be null.
-     *
-     * @hide
+     * @param listener for callbacks on success or failure.
      */
-    @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
     public void startListening(@NonNull Channel c, @Nullable ActionListener listener) {
         checkChannel(c);
         c.mAsyncChannel.sendMessage(START_LISTEN, 0, c.putListener(listener));
     }
 
     /**
-     * Force p2p to exit listen state
+     * Force p2p to exit listen state.
+     *
+     * When this API is called, this device will stop entering LISTENING state periodically
+     * which is triggered by {@link #startListening(Channel, ActionListener)}.
+     * If there are running peer discovery which is triggered by
+     * {@link #discoverPeers(Channel, ActionListener)} or running service discovery which is
+     * triggered by {@link #discoverServices(Channel, ActionListener)}, they will be stopped
+     * as well.
      *
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}
-     * @param listener for callbacks on success or failure. Can be null.
-     *
-     * @hide
+     * @param listener for callbacks on success or failure.
      */
-    @SystemApi
-    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
     public void stopListening(@NonNull Channel c, @Nullable ActionListener listener) {
         checkChannel(c);
         c.mAsyncChannel.sendMessage(STOP_LISTEN, 0, c.putListener(listener));

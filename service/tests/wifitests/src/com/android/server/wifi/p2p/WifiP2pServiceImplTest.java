@@ -1707,7 +1707,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testStartListenFailureWhenPermissionDenied() throws Exception {
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkCanAccessWifiDirect(anyString(), anyString(), anyInt(),
+                anyBoolean())).thenReturn(false);
         forceP2pEnabled(mClient1);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.START_LISTEN);
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_FAILED));
@@ -1721,9 +1722,9 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testStartListenFailureWhenNativeCallFailure() throws Exception {
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiNative.p2pExtListen(eq(true), anyInt(), anyInt())).thenReturn(false);
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.START_LISTEN);
         // p2pFlush would be invoked in forceP2pEnabled and startListen both.
         verify(mWifiNative, times(2)).p2pFlush();
@@ -1737,8 +1738,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Test
     public void testStartListenSuccess() throws Exception {
         when(mWifiNative.p2pExtListen(eq(true), anyInt(), anyInt())).thenReturn(true);
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.START_LISTEN);
         // p2pFlush would be invoked in forceP2pEnabled and startListen both.
         verify(mWifiNative, times(2)).p2pFlush();
@@ -1747,24 +1748,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify WifiP2pManager.STOP_LISTEN_FAILED is returned when a caller
-     * without proper permission attempts to sends WifiP2pManager.STOP_LISTEN.
-     */
-    @Test
-    public void testStopListenFailureWhenPermissionDenied() throws Exception {
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
-        forceP2pEnabled(mClient1);
-        sendSimpleMsg(mClientMessenger, WifiP2pManager.STOP_LISTEN);
-        assertTrue(mClientHandler.hasMessages(WifiP2pManager.STOP_LISTEN_FAILED));
-        verify(mWifiNative, never()).p2pExtListen(anyBoolean(), anyInt(), anyInt());
-    }
-
-    /**
      * Verify WifiP2pManager.STOP_LISTEN_FAILED is returned when native call failure.
      */
     @Test
     public void testStopListenFailureWhenNativeCallFailure() throws Exception {
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiNative.p2pExtListen(eq(false), anyInt(), anyInt())).thenReturn(false);
         forceP2pEnabled(mClient1);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.STOP_LISTEN);
@@ -1777,7 +1764,6 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testStopListenSuccess() throws Exception {
-        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiNative.p2pExtListen(eq(false), anyInt(), anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.STOP_LISTEN);
