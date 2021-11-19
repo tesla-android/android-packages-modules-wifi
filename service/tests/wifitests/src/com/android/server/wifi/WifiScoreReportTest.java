@@ -1632,4 +1632,29 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID, TEST_USER_SELECTED);
         verify(mWifiConnectedNetworkScorer, never()).onStart(any());
     }
+
+    /**
+     * Verify BSSID is added onto blocklist when the score value of -2 is sent from external Wi-Fi
+     * scorer.
+     */
+    @Test
+    public void verifyBssidBlocklistWithScoreValueOfMinus2() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+        WifiConnectedNetworkScorerImpl scorerImpl = new WifiConnectedNetworkScorerImpl();
+        // Register Client for verification.
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, scorerImpl);
+        verify(mExternalScoreUpdateObserverProxy).registerCallback(
+                mExternalScoreUpdateObserverCbCaptor.capture());
+        when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID, TEST_USER_SELECTED);
+        assertEquals(TEST_SESSION_ID, scorerImpl.mSessionId);
+        mExternalScoreUpdateObserverCbCaptor.getValue()
+                .notifyScoreUpdate(scorerImpl.mSessionId, -2);
+        mClock.mStepMillis = 0;
+        mClock.mWallClockMillis = 10;
+        mWifiInfo.setRssi(-65);
+        mLooper.dispatchAll();
+        verify(mWifiBlocklistMonitor).handleBssidConnectionFailure(any(), any(),
+                eq(WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE), anyInt());
+    }
 }
