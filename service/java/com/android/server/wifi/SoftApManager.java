@@ -253,7 +253,10 @@ public class SoftApManager implements ActiveModeManager {
             mSafeChannelFrequencyList.removeAll(
                     ApConfigUtil.getUnsafeChannelFreqsFromCoex(mCoexManager));
         }
-        Log.d(getTag(), "SafeChannelFrequencyList = " + mSafeChannelFrequencyList);
+        if (isBridgedMode() && mCurrentSoftApInfoMap.size() == 2) {
+            // Logging only for bridged use case since it only used to fallback to single AP mode.
+            Log.d(getTag(), "SafeChannelFrequencyList = " + mSafeChannelFrequencyList);
+        }
     }
 
     private void configureInternalConfiguration() {
@@ -949,13 +952,9 @@ public class SoftApManager implements ActiveModeManager {
                         transitionTo(mStartedState);
                         break;
                     case CMD_UPDATE_CAPABILITY:
-                        // Capability should only changed by carrier requirement. Only apply to
-                        // Tether Mode
-                        if (mOriginalModeConfiguration.getTargetMode()
-                                ==  WifiManager.IFACE_IP_MODE_TETHERED) {
-                            SoftApCapability capability = (SoftApCapability) message.obj;
-                            mCurrentSoftApCapability = new SoftApCapability(capability);
-                        }
+                        SoftApCapability capability = (SoftApCapability) message.obj;
+                        mCurrentSoftApCapability = new SoftApCapability(capability);
+                        updateSafeChannelFrequencyList();
                         break;
                     case CMD_UPDATE_CONFIG:
                         SoftApConfiguration newConfig = (SoftApConfiguration) message.obj;
@@ -1488,16 +1487,12 @@ public class SoftApManager implements ActiveModeManager {
                         quitNow();
                         break;
                     case CMD_UPDATE_CAPABILITY:
-                        // Capability should only changed by carrier requirement. Only apply to
-                        // Tether Mode
-                        if (mOriginalModeConfiguration.getTargetMode()
-                                ==  WifiManager.IFACE_IP_MODE_TETHERED) {
-                            SoftApCapability capability = (SoftApCapability) message.obj;
-                            mCurrentSoftApCapability = new SoftApCapability(capability);
-                            mWifiMetrics.updateSoftApCapability(mCurrentSoftApCapability,
-                                    mOriginalModeConfiguration.getTargetMode(), isBridgedMode());
-                            updateClientConnection();
-                        }
+                        SoftApCapability capability = (SoftApCapability) message.obj;
+                        mCurrentSoftApCapability = new SoftApCapability(capability);
+                        mWifiMetrics.updateSoftApCapability(mCurrentSoftApCapability,
+                                mOriginalModeConfiguration.getTargetMode(), isBridgedMode());
+                        updateClientConnection();
+                        updateSafeChannelFrequencyList();
                         break;
                     case CMD_UPDATE_CONFIG:
                         SoftApConfiguration newConfig = (SoftApConfiguration) message.obj;

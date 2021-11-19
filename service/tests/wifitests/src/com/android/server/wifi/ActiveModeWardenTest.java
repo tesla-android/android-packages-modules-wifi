@@ -2624,7 +2624,8 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     public void testUpdateCapabilityInSoftApActiveMode() throws Exception {
         SoftApCapability testCapability = new SoftApCapability(0);
         enterSoftApActiveMode();
-        mActiveModeWarden.updateSoftApCapability(testCapability);
+        mActiveModeWarden.updateSoftApCapability(testCapability,
+                WifiManager.IFACE_IP_MODE_TETHERED);
         mLooper.dispatchAll();
         verify(mSoftApManager).updateCapability(testCapability);
     }
@@ -2643,7 +2644,18 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     public void testUpdateCapabilityInNonSoftApActiveMode() throws Exception {
         SoftApCapability testCapability = new SoftApCapability(0);
         enterClientModeActiveState();
-        mActiveModeWarden.updateSoftApCapability(testCapability);
+        mActiveModeWarden.updateSoftApCapability(testCapability,
+                WifiManager.IFACE_IP_MODE_TETHERED);
+        mLooper.dispatchAll();
+        verify(mSoftApManager, never()).updateCapability(any());
+    }
+
+    @Test
+    public void testUpdateLocalModeSoftApCapabilityInTetheredSoftApActiveMode() throws Exception {
+        SoftApCapability testCapability = new SoftApCapability(0);
+        enterSoftApActiveMode(); // Tethered mode
+        mActiveModeWarden.updateSoftApCapability(testCapability,
+                WifiManager.IFACE_IP_MODE_LOCAL_ONLY);
         mLooper.dispatchAll();
         verify(mSoftApManager, never()).updateCapability(any());
     }
