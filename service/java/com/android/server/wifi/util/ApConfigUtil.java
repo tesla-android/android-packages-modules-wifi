@@ -986,4 +986,59 @@ public class ApConfigUtil {
         }
         return deepCopyMap;
     }
+
+
+    /**
+     * Observer the available channel from native layer (wificond) and update the SoftApCapability
+     *
+     * @param softApCapability the current softap capability
+     * @param context the caller context used to get value from resource file
+     * @param wifiNative reference used to collect regulatory restrictions.
+     *
+     * @return updated soft AP capability
+     */
+    public static SoftApCapability updateSoftApCapabilityWithAvailableChannelList(
+                @NonNull SoftApCapability softApCapability, @NonNull Context context,
+                @NonNull WifiNative wifiNative) {
+        SoftApCapability newSoftApCapability = new SoftApCapability(softApCapability);
+        List<Integer> supportedChannelList = null;
+        if (isSoftAp24GhzSupported(context)) {
+            supportedChannelList = getAvailableChannelFreqsForBand(
+                    SoftApConfiguration.BAND_2GHZ, wifiNative, context.getResources(), false);
+            if (supportedChannelList != null) {
+                newSoftApCapability.setSupportedChannelList(
+                        SoftApConfiguration.BAND_2GHZ,
+                        supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+            }
+        }
+        if (isSoftAp5GhzSupported(context)) {
+            supportedChannelList = getAvailableChannelFreqsForBand(
+                    SoftApConfiguration.BAND_5GHZ, wifiNative, context.getResources(), false);
+            if (supportedChannelList != null) {
+                newSoftApCapability.setSupportedChannelList(
+                        SoftApConfiguration.BAND_5GHZ,
+                        supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+            }
+        }
+        if (isSoftAp6GhzSupported(context)) {
+            supportedChannelList = getAvailableChannelFreqsForBand(
+                    SoftApConfiguration.BAND_6GHZ, wifiNative, context.getResources(), false);
+            if (supportedChannelList != null) {
+                newSoftApCapability.setSupportedChannelList(
+                        SoftApConfiguration.BAND_6GHZ,
+                        supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+            }
+        }
+        if (isSoftAp60GhzSupported(context)) {
+            supportedChannelList = getAvailableChannelFreqsForBand(
+                    SoftApConfiguration.BAND_60GHZ, wifiNative, context.getResources(),
+                    false);
+            if (supportedChannelList != null) {
+                newSoftApCapability.setSupportedChannelList(
+                        SoftApConfiguration.BAND_60GHZ,
+                        supportedChannelList.stream().mapToInt(Integer::intValue).toArray());
+            }
+        }
+        return newSoftApCapability;
+    }
 }

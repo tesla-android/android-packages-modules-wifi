@@ -1908,47 +1908,6 @@ public class SoftApManagerTest extends WifiBaseTest {
                         any(), any(), anyInt());
     }
 
-    @Test
-    public void testCapabilityChangeNotApplyForLohsMode() throws Exception {
-        mTestSoftApCapability.setMaxSupportedClients(2);
-        SoftApModeConfiguration apConfig =
-                new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_LOCAL_ONLY, null,
-                mTestSoftApCapability);
-        startSoftApAndVerifyEnabled(apConfig);
-        reset(mCallback);
-        mockApInfoChangedEvent(mTestSoftApInfo);
-        mLooper.dispatchAll();
-        verify(mCallback).onConnectedClientsOrInfoChanged(mTestSoftApInfoMap,
-                  mTestWifiClientsMap, false);
-        mockClientConnectedEvent(TEST_CLIENT_MAC_ADDRESS, true, TEST_INTERFACE_NAME, true);
-        mLooper.dispatchAll();
-
-        verify(mCallback, times(2)).onConnectedClientsOrInfoChanged(mTestSoftApInfoMap,
-                  mTestWifiClientsMap, false);
-
-        verify(mWifiMetrics).addSoftApNumAssociatedStationsChangedEvent(1, 1,
-                apConfig.getTargetMode(), mTestSoftApInfo);
-        // Verify timer is canceled at this point
-        verify(mAlarmManager.getAlarmManager()).cancel(eq(mSoftApManager.mSoftApTimeoutMessage));
-
-        // Second client connect and max client set is 1.
-        mockClientConnectedEvent(TEST_CLIENT_MAC_ADDRESS_2, true, TEST_INTERFACE_NAME, true);
-        mLooper.dispatchAll();
-
-        verify(mCallback, times(3)).onConnectedClientsOrInfoChanged(mTestSoftApInfoMap,
-                  mTestWifiClientsMap, false);
-        verify(mWifiMetrics).addSoftApNumAssociatedStationsChangedEvent(2, 2,
-                apConfig.getTargetMode(), mTestSoftApInfo);
-
-        // Trigger Capability Change
-        mTestSoftApCapability.setMaxSupportedClients(1);
-        mSoftApManager.updateCapability(mTestSoftApCapability);
-        mLooper.dispatchAll();
-        // Verify Disconnect will NOT trigger even capability changed
-        verify(mWifiNative, never()).forceClientDisconnect(
-                        any(), any(), anyInt());
-    }
-
     /** Starts soft AP and verifies that it is enabled successfully. */
     protected void startSoftApAndVerifyEnabled(
             SoftApModeConfiguration softApConfig) throws Exception {

@@ -6943,17 +6943,24 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertFalse(succeeded);
     }
 
+    @Test(expected = SecurityException.class)
+    public void testAllowAutojoinGlobalFailureNoPermission() throws Exception {
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(false);
+        mWifiServiceImpl.allowAutojoinGlobal(true);
+    }
+
     @Test
-    public void testAllowAutojoinGlobalFailureNoNetworkSettingsPermission() throws Exception {
-        doThrow(new SecurityException()).when(mContext)
-                .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
-                        eq("WifiService"));
-        try {
-            mWifiServiceImpl.allowAutojoinGlobal(true);
-            fail("Expected SecurityException");
-        } catch (SecurityException e) {
-            // Test succeeded
-        }
+    public void testAllowAutojoinGlobalWithPermission() throws Exception {
+        // verify allowAutojoinGlobal with MANAGE_WIFI_AUTO_JOIN
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(true);
+        mWifiServiceImpl.allowAutojoinGlobal(true);
+
+        // verify allowAutojoinGlobal with NETWORK_SETTINGS
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(false);
+        mWifiServiceImpl.allowAutojoinGlobal(true);
     }
 
     @Test
@@ -7330,7 +7337,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mBroadcastReceiverCaptor.getValue().onReceive(mContext, intent);
         mLooper.dispatchAll();
-        verify(mActiveModeWarden).updateSoftApCapability(any());
+        verify(mActiveModeWarden).updateSoftApCapability(any(),
+                eq(WifiManager.IFACE_IP_MODE_TETHERED));
         staticMockSession.finishMocking();
     }
 
@@ -7356,7 +7364,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         assertNotNull(mPhoneStateListener);
         mPhoneStateListener.onActiveDataSubscriptionIdChanged(2);
         mLooper.dispatchAll();
-        verify(mActiveModeWarden).updateSoftApCapability(any());
+        verify(mActiveModeWarden).updateSoftApCapability(any(),
+                eq(WifiManager.IFACE_IP_MODE_TETHERED));
         staticMockSession.finishMocking();
     }
 
