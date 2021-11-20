@@ -132,7 +132,7 @@ interface IWifiManager
     void unregisterDriverCountryCodeChangedListener(
             in IOnWifiDriverCountryCodeChangedListener listener);
 
-    String getCountryCode();
+    String getCountryCode(in String packageName, in String featureId);
 
     void setOverrideCountryCode(String country);
 
