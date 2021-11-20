@@ -24,7 +24,7 @@
     <string name="wifi_available_content_failed_to_connect" msgid="4330035988269701861">"అన్ని నెట్‌వర్క్‌లు చూడటానికి నొక్కండి"</string>
     <string name="wifi_available_action_connect" msgid="5636634933476946222">"కనెక్ట్ చేయి"</string>
     <string name="wifi_available_action_all_networks" msgid="8491109932336522211">"అన్ని నెట్‌వర్క్‌లు"</string>
-    <string name="notification_channel_network_status" msgid="1631786866932924838">"నెట్‌వర్క్ స్థితి"</string>
+    <string name="notification_channel_network_status" msgid="1631786866932924838">"నెట్‌వర్క్ స్టేటస్‌"</string>
     <string name="notification_channel_network_alerts" msgid="1391603215241200880">"నెట్‌వర్క్ హెచ్చరికలు"</string>
     <string name="notification_channel_network_available" msgid="8454366142428864948">"నెట్‌వర్క్ అందుబాటులో ఉంది"</string>
     <string name="wifi_suggestion_title" msgid="2564179935989099139">"సూచించిన Wi‑Fi నెట్‌వర్క్‌లను అనుమతించాలా?"</string>
@@ -77,18 +77,12 @@
     <string name="wifi_eap_error_message_code_32764" msgid="7349538467012877101">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32764"</string>
     <string name="wifi_eap_error_message_code_32765" msgid="2167528358066037980">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32765"</string>
     <string name="wifi_eap_error_message_code_32766" msgid="2335996367705677670">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32766"</string>
-    <!-- no translation found for wifi_eap_error_message_code_32767 (7094289719914089006) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_32768 (8606872176767773962) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_32769 (5805559627556918450) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_16384 (575394783233092922) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_16385 (8392878664662215609) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_unknown_error_code (4480884285384231323) -->
-    <skip />
+    <string name="wifi_eap_error_message_code_32767" msgid="7094289719914089006">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32767"</string>
+    <string name="wifi_eap_error_message_code_32768" msgid="8606872176767773962">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32768"</string>
+    <string name="wifi_eap_error_message_code_32769" msgid="5805559627556918450">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 32769"</string>
+    <string name="wifi_eap_error_message_code_16384" msgid="575394783233092922">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 16384"</string>
+    <string name="wifi_eap_error_message_code_16385" msgid="8392878664662215609">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్ 16385"</string>
+    <string name="wifi_eap_error_message_unknown_error_code" msgid="4480884285384231323">"<xliff:g id="SSID">%1$s</xliff:g> : EAP ప్రామాణీకరణ ఎర్రర్, తెలియని ఎర్రర్ కోడ్"</string>
     <string name="wifi_softap_auto_shutdown_timeout_expired_title" msgid="4896534374569504484">"హాట్‌స్పాట్ ఆఫ్ చేయబడింది"</string>
     <string name="wifi_softap_auto_shutdown_timeout_expired_summary" msgid="7975476698140267728">"పరికరాలు ఏవీ కనెక్ట్ కాలేదు. మార్చడానికి నొక్కండి."</string>
     <string name="wifi_sim_required_title" msgid="2262227800991155459">"Wifi డిస్‌కనెక్ట్ చేయబడింది"</string>

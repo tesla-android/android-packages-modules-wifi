@@ -280,7 +280,7 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public String getCountryCode() {
+    public String getCountryCode(String packageName, String featureId) {
         throw new UnsupportedOperationException();
     }
 
