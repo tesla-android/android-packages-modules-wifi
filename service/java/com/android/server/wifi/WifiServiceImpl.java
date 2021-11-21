@@ -1020,6 +1020,8 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         if (mWifiPermissionsUtil.checkNetworkSettingsPermission(callingUid)) {
             if (enable) {
+                mWifiThreadRunner.post(
+                        () -> mWifiConnectivityManager.setAutoJoinEnabledExternal(true));
                 mWifiMetrics.logUserActionEvent(UserActionEvent.EVENT_TOGGLE_WIFI_ON);
             } else {
                 WifiInfo wifiInfo =

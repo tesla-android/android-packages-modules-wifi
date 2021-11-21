@@ -5691,6 +5691,8 @@ public class WifiManager {
 
     /**
      * Enable/disable auto-join globally.
+     * When auto-join is disabled globally via this API, the user toggling wifi will re-enable
+     * auto-join.
      *
      * @param allowAutojoin true to allow auto-join, false to disallow auto-join
      * @hide
