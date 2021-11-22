@@ -41,6 +41,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Build;
 import android.os.Handler;
+import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.telephony.CarrierConfigManager;
@@ -73,9 +74,11 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.crypto.BadPaddingException;
@@ -198,6 +201,7 @@ public class WifiCarrierInfoManager {
     private final List<OnCarrierOffloadDisabledListener> mOnCarrierOffloadDisabledListeners =
             new ArrayList<>();
     private final SparseArray<SimInfo> mSubIdToSimInfoSparseArray = new SparseArray<>();
+    private final Map<ParcelUuid, List<Integer>> mSubscriptionGroupMap = new HashMap<>();
 
     private List<SubscriptionInfo> mActiveSubInfos = null;
 
@@ -447,6 +451,7 @@ public class WifiCarrierInfoManager {
         public void onSubscriptionsChanged() {
             mActiveSubInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
             mSubIdToSimInfoSparseArray.clear();
+            mSubscriptionGroupMap.clear();
             if (mVerboseLogEnabled) {
                 Log.v(TAG, "active subscription changes: " + mActiveSubInfos);
             }
@@ -702,6 +707,9 @@ public class WifiCarrierInfoManager {
         }
         if (config.subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             return config.subscriptionId;
+        }
+        if (config.getSubscriptionGroup() != null) {
+            return getActiveSubscriptionIdInGroup(config.getSubscriptionGroup());
         }
         if (config.isPasspoint()) {
             return getMatchingSubId(config.carrierId);
@@ -1975,5 +1983,43 @@ public class WifiCarrierInfoManager {
             return false;
         }
         return bundle.getBoolean(CarrierConfigManager.ENABLE_EAP_METHOD_PREFIX_BOOL);
+    }
+
+    private @NonNull List<Integer> getSubscriptionsInGroup(@NonNull ParcelUuid groupUuid) {
+        if (groupUuid == null) {
+            return Collections.emptyList();
+        }
+        if (mSubscriptionGroupMap.containsKey(groupUuid)) {
+            return mSubscriptionGroupMap.get(groupUuid);
+        }
+        List<Integer> subIdList = mSubscriptionManager.getSubscriptionsInGroup(groupUuid)
+                .stream()
+                .map(SubscriptionInfo::getSubscriptionId)
+                .collect(Collectors.toList());
+        mSubscriptionGroupMap.put(groupUuid, subIdList);
+        return subIdList;
+    }
+
+    /**
+     * Get an active subscription id in this Subscription Group. If multiple subscriptions are
+     * active, will return default data subscription id if possible, otherwise an arbitrary one.
+     * @param groupUuid UUID of the Subscription group
+     * @return SubscriptionId which is active.
+     */
+    public int getActiveSubscriptionIdInGroup(@NonNull ParcelUuid groupUuid) {
+        if (groupUuid == null) {
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        }
+        int activeSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        int dataSubId = SubscriptionManager.getDefaultDataSubscriptionId();
+        for (int subId : getSubscriptionsInGroup(groupUuid)) {
+            if (isSimReady(subId)) {
+                if (subId == dataSubId) {
+                    return subId;
+                }
+                activeSubId = subId;
+            }
+        }
+        return activeSubId;
     }
 }

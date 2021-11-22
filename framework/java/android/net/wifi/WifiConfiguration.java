@@ -32,6 +32,7 @@ import android.net.StaticIpConfiguration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Parcel;
+import android.os.ParcelUuid;
 import android.os.Parcelable;
 import android.os.SystemClock;
 import android.os.UserHandle;
@@ -1340,6 +1341,9 @@ public class WifiConfiguration implements Parcelable {
      */
     @SystemApi
     public int subscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
+    @Nullable
+    private ParcelUuid mSubscriptionGroup = null;
 
     /**
      * Auto-join is allowed by user for this network.
@@ -2980,6 +2984,7 @@ public class WifiConfiguration implements Parcelable {
                 .append(" PMF: ").append(this.requirePmf)
                 .append(" CarrierId: ").append(this.carrierId)
                 .append(" SubscriptionId: ").append(this.subscriptionId)
+                .append(" SubscriptionGroup: ").append(this.mSubscriptionGroup)
                 .append('\n');
 
 
@@ -3619,6 +3624,7 @@ public class WifiConfiguration implements Parcelable {
             carrierId = source.carrierId;
             subscriptionId = source.subscriptionId;
             mPasspointUniqueId = source.mPasspointUniqueId;
+            mSubscriptionGroup = source.mSubscriptionGroup;
         }
     }
 
@@ -3703,6 +3709,7 @@ public class WifiConfiguration implements Parcelable {
         dest.writeString(mPasspointUniqueId);
         dest.writeInt(subscriptionId);
         dest.writeBoolean(restricted);
+        dest.writeParcelable(mSubscriptionGroup, flags);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -3789,6 +3796,7 @@ public class WifiConfiguration implements Parcelable {
                 config.mPasspointUniqueId = in.readString();
                 config.subscriptionId = in.readInt();
                 config.restricted = in.readBoolean();
+                config.mSubscriptionGroup = in.readParcelable(null);
                 return config;
             }
 
@@ -3978,5 +3986,21 @@ public class WifiConfiguration implements Parcelable {
             keys.add(getNetworkKeyFromSecurityType(securityParam.getSecurityType()));
         }
         return keys;
+    }
+
+    /**
+     * Set the subscription group uuid associated with current configuration.
+     * @hide
+     */
+    public void setSubscriptionGroup(@Nullable ParcelUuid subscriptionGroup) {
+        this.mSubscriptionGroup = subscriptionGroup;
+    }
+
+    /**
+     * Get the subscription group uuid associated with current configuration.
+     * @hide
+     */
+    public @Nullable ParcelUuid getSubscriptionGroup() {
+        return this.mSubscriptionGroup;
     }
 }

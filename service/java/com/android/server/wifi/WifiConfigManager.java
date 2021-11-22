@@ -1126,6 +1126,7 @@ public class WifiConfigManager {
         internalConfig.carrierId = externalConfig.carrierId;
         internalConfig.isHomeProviderNetwork = externalConfig.isHomeProviderNetwork;
         internalConfig.subscriptionId = externalConfig.subscriptionId;
+        internalConfig.setSubscriptionGroup(externalConfig.getSubscriptionGroup());
         internalConfig.getNetworkSelectionStatus()
                 .setConnectChoice(externalConfig.getNetworkSelectionStatus().getConnectChoice());
         internalConfig.getNetworkSelectionStatus().setConnectChoiceRssi(

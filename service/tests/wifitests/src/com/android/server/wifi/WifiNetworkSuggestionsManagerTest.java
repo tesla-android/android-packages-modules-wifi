@@ -64,6 +64,7 @@ import android.net.wifi.hotspot2.pps.Credential;
 import android.net.wifi.hotspot2.pps.HomeSp;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.ParcelUuid;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.test.TestLooper;
@@ -134,6 +135,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     private static final String TEST_ANONYMOUS_IDENTITY = "AnonymousIdentity";
     private static final String USER_CONNECT_CHOICE = "SomeNetworkProfileId";
     private static final int TEST_RSSI = -50;
+    private static final ParcelUuid GROUP_UUID = ParcelUuid
+            .fromString("0000110B-0000-1000-8000-00805F9B34FB");
 
     private @Mock WifiContext mContext;
     private @Mock Resources mResources;
@@ -280,6 +283,8 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 .thenReturn(false);
         when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(anyInt())).thenReturn(
                 false);
+        when(mWifiCarrierInfoManager.getActiveSubscriptionIdInGroup(GROUP_UUID))
+                .thenReturn(TEST_SUBID);
 
         when(mWifiKeyStore.updateNetworkKeys(any(), any())).thenReturn(true);
 
@@ -602,6 +607,18 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         List<WifiNetworkSuggestion> networkSuggestionList = Arrays.asList(networkSuggestion);
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
                 mWifiNetworkSuggestionsManager.add(networkSuggestionList, TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+    }
+
+    @Test
+    public void testSetSubscriptionGroupOnPreTDevices() {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createEapNetwork(), null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        networkSuggestion.wifiConfiguration.setSubscriptionGroup(GROUP_UUID);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion), TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
     }
 
@@ -4910,6 +4927,45 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         assertEquals(0, ewns.size());
     }
 
+    /**
+     * Verify we return the merged network suggestion matches the target ScanDetail when merged
+     * network is allowed .
+     */
+    @Test
+    public void testGetMergedNetworkSuggestionsWithSubscriptionGroupForScanDetail() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
+                .thenReturn(true);
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(true);
+        when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(any()))
+                .thenReturn(TEST_SUBID);
+        WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
+        ScanDetail scanDetail = createScanDetailForNetwork(config);
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                config, null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        config.setSubscriptionGroup(GROUP_UUID);
+        config.carrierMerged = true;
+        config.meteredOverride = WifiConfiguration.METERED_OVERRIDE_METERED;
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion), TEST_UID_1,
+                        TEST_PACKAGE_1, TEST_FEATURE));
+
+        Set<ExtendedWifiNetworkSuggestion> ewns = mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail);
+        assertEquals(1, ewns.size());
+        assertEquals(TEST_SUBID, ewns.iterator().next()
+                .createInternalWifiConfiguration(mWifiCarrierInfoManager).subscriptionId);
+
+        // Change to disallow merged network, no matching suggestion should return.
+        when(mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(TEST_SUBID))
+                .thenReturn(false);
+        ewns = mWifiNetworkSuggestionsManager
+                .getNetworkSuggestionsForScanDetail(scanDetail);
+        assertEquals(0, ewns.size());
+    }
+
     @Test
     public void testAddNonRandomizedNetworkSuggestionForcedToRandomized() {
         WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
@@ -4984,5 +5040,19 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         return new WifiNetworkSuggestion(config, passpointConfiguration, isAppInteractionRequired,
                 isUserInteractionRequired, isUserAllowedToManuallyConnect, isInitialAutoJoinEnabled,
                 priorityGroup);
+    }
+
+    @Test
+    public void testSuggestionWithBothSubscriptionIdAndSubscriptionGroupSetIsInvalid() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.setSubscriptionGroup(GROUP_UUID);
+        config.subscriptionId = TEST_SUBID;
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                config, null, false, false, true, true,
+                DEFAULT_PRIORITY_GROUP);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
+                mWifiNetworkSuggestionsManager.add(List.of(networkSuggestion), TEST_UID_1,
+                TEST_PACKAGE_1, TEST_FEATURE));
     }
 }

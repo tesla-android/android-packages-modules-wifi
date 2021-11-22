@@ -28,6 +28,7 @@ import android.net.MacAddress;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.PasspointTestUtils;
 import android.os.Parcel;
+import android.os.ParcelUuid;
 import android.telephony.SubscriptionManager;
 
 import androidx.test.filters.SmallTest;
@@ -53,6 +54,8 @@ public class WifiNetworkSuggestionTest {
     private static final int DEFAULT_PRIORITY_GROUP = 0;
     private static final int TEST_PRIORITY_GROUP = 1;
     private static final int TEST_CARRIER_ID = 1998;
+    private static final ParcelUuid GROUP_UUID = ParcelUuid
+            .fromString("0000110B-0000-1000-8000-00805F9B34FB");
 
     /**
      * Validate correctness of WifiNetworkSuggestion object created by
@@ -1651,6 +1654,65 @@ public class WifiNetworkSuggestionTest {
                 .setWpa2Passphrase(TEST_PRESHARED_KEY)
                 .setRestricted(true)
                 .setCredentialSharedWithUser(true)
+                .build();
+    }
+
+    /**
+     * Test set a network suggestion with Subscription Group
+     */
+    @Test
+    public void testSetSubscriptionGroup() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setSubscriptionGroup(GROUP_UUID)
+                .build();
+        assertEquals(suggestion.getSubscriptionGroup(), GROUP_UUID);
+    }
+
+    /**
+     * Test set a passpoint network suggestion with Subscription Group
+     */
+    @Test
+    public void testSetSubscriptionGroupOnPasspoint() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setPasspointConfig(PasspointTestUtils.createConfig())
+                .setSubscriptionGroup(GROUP_UUID)
+                .build();
+        assertEquals(suggestion.getSubscriptionGroup(), GROUP_UUID);
+        assertEquals(suggestion.getPasspointConfig().getSubscriptionGroup(), GROUP_UUID);
+    }
+
+
+    /**
+     * Ensure {@link WifiNetworkSuggestion.Builder#build()} throws an exception
+     * when set {@link WifiNetworkSuggestion.Builder#setSubscriptionGroup(ParcelUuid)} to null
+     */
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetSubscriptionGroupWithNull() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setSubscriptionGroup(null)
+                .build();
+    }
+
+    /**
+     * Ensure {@link WifiNetworkSuggestion.Builder#build()} throws an exception
+     * when set both {@link WifiNetworkSuggestion.Builder#setSubscriptionGroup(ParcelUuid)} and
+     * {@link WifiNetworkSuggestion.Builder#setSubscriptionId(int)}
+     */
+    @Test(expected = IllegalStateException.class)
+    public void testSetBothSubscriptionGroupAdnSubscriptionId() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setSsid(TEST_SSID)
+                .setWpa2Passphrase(TEST_PRESHARED_KEY)
+                .setSubscriptionGroup(GROUP_UUID)
+                .setSubscriptionId(1)
                 .build();
     }
 }
