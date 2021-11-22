@@ -368,6 +368,9 @@ public class WifiNetworkFactory extends NetworkFactory {
                 }
                 mClientModeManager = modeManager;
                 mClientModeManagerRole = modeManager.getRole();
+                if (mVerboseLoggingEnabled) {
+                    Log.v(TAG, "retrieve CMM: " + mClientModeManager.toString());
+                }
                 handleClientModeManagerRetrieval();
             } else {
                 handleClientModeManagerRemovalOrFailure();
@@ -1208,11 +1211,13 @@ public class WifiNetworkFactory extends NetworkFactory {
 
     private void removeClientModeManagerIfNecessary() {
         if (mClientModeManager != null) {
-            if (mClientModeManagerRole == ROLE_CLIENT_PRIMARY) {
-                mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
-            }
+            // Set to false anyway, because no network request is active.
+            mWifiConnectivityManager.setSpecificNetworkRequestInProgress(false);
             if (mContext.getResources().getBoolean(R.bool.config_wifiUseHalApiToDisableFwRoaming)) {
                 mClientModeManager.enableRoaming(true); // Re-enable roaming.
+            }
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "removeClientModeManager, role: " + mClientModeManagerRole);
             }
             mActiveModeWarden.removeClientModeManager(mClientModeManager);
             // For every connection attempt, get the appropriate client mode impl to use.
