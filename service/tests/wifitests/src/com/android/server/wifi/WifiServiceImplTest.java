@@ -23,6 +23,7 @@ import static android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS;
 import static android.net.wifi.WifiAvailableChannel.FILTER_REGULATORY;
 import static android.net.wifi.WifiAvailableChannel.OP_MODE_STA;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_DIRECT;
@@ -6235,22 +6236,25 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRemoveNetworkSuggestions() {
-        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString()))
+        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString(), anyInt()))
                 .thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID);
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
-        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString()))
+        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString(),
+                anyInt()))
                 .thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mWifiNetworkSuggestionsManager, times(2)).remove(any(), anyInt(),
-                eq(TEST_PACKAGE_NAME));
+                eq(TEST_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
     }
 
     /**
@@ -6263,11 +6267,26 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mWifiNetworkSuggestionsManager, never()).remove(any(), anyInt(),
-                eq(TEST_PACKAGE_NAME));
+                eq(TEST_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
+    }
+
+    /**
+     * Ensure that we don't invoke {@link WifiNetworkSuggestionsManager} to remove network
+     * suggestions when the action is invalid.
+     */
+    @Test
+    public void testRemoveNetworkSuggestionsFailureWithInvalidAction() {
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME, 0));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiNetworkSuggestionsManager, never()).remove(any(), anyInt(),
+                eq(TEST_PACKAGE_NAME), anyInt());
     }
 
     @Test(expected = SecurityException.class)
@@ -8695,7 +8714,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mLohsCallback).onHotspotFailed(ERROR_GENERIC);
     }
-
     /**
      * Registers a soft AP callback, then verifies that the current soft AP state and num clients
      * are sent to caller immediately after callback is registered.

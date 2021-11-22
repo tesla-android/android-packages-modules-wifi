@@ -597,6 +597,14 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public int removeNetworkSuggestions(
+            List<WifiNetworkSuggestion> networkSuggestions, String callingPackageName, int action) {
+        throw new UnsupportedOperationException();
+    }
+    /**
+     * @deprecated Replaced by {@link #removeNetworkSuggestions(List, String, int)}
+     */
+    @Deprecated
+    public int removeNetworkSuggestions(
             List<WifiNetworkSuggestion> networkSuggestions, String callingPackageName) {
         throw new UnsupportedOperationException();
     }

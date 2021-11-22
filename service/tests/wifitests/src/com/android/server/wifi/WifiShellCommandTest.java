@@ -21,6 +21,7 @@ import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PAID;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_TRUSTED;
 import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
 import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
 import static com.android.server.wifi.WifiShellCommand.SHELL_PACKAGE_NAME;
@@ -637,7 +638,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
             return (sL.size() == 1)
                     && (sL.get(0).getSsid().equals("ssid1234"))
                     && (sL.get(0).isUntrusted());
-        }), eq(SHELL_PACKAGE_NAME));
+        }), eq(SHELL_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
         verify(mConnectivityManager).unregisterNetworkCallback(
                 any(ConnectivityManager.NetworkCallback.class));
     }
@@ -672,7 +673,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
             return (sL.size() == 1)
                     && (sL.get(0).getSsid().equals("ssid1234"))
                     && (sL.get(0).isOemPaid());
-        }), eq(SHELL_PACKAGE_NAME));
+        }), eq(SHELL_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
         verify(mConnectivityManager).unregisterNetworkCallback(
                 any(ConnectivityManager.NetworkCallback.class));
     }
@@ -707,7 +708,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
             return (sL.size() == 1)
                     && (sL.get(0).getSsid().equals("ssid1234"))
                     && (sL.get(0).isOemPrivate());
-        }), eq(SHELL_PACKAGE_NAME));
+        }), eq(SHELL_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
         verify(mConnectivityManager).unregisterNetworkCallback(
                 any(ConnectivityManager.NetworkCallback.class));
     }

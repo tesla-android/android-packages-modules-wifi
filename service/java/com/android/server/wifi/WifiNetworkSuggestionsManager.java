@@ -18,6 +18,8 @@ package com.android.server.wifi;
 
 import static android.app.AppOpsManager.MODE_IGNORED;
 import static android.app.AppOpsManager.OPSTR_CHANGE_WIFI_STATE;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_LINGER;
 
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -50,6 +52,7 @@ import android.os.Handler;
 import android.os.Process;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -142,6 +145,16 @@ public class WifiNetworkSuggestionsManager {
      * Notification update delay in milliseconds. (10 min)
      */
     private static final long NOTIFICATION_UPDATE_DELAY_MILLS = 10 * 60 * 1000;
+
+    /**
+     * Modifiable only for testing.
+     */
+    private static final String LINGER_DELAY_PROPERTY = "persist.netmon.linger";
+    /**
+     * Default to 30s linger time-out. Should be same as ConnectivityService#DEFAULT_LINGER_DELAY_MS
+     */
+    @VisibleForTesting
+    public static final int DEFAULT_LINGER_DELAY_MS = 30_000;
 
     private final WifiContext mContext;
     private final Resources mResources;
@@ -1231,7 +1244,7 @@ public class WifiNetworkSuggestionsManager {
     private void removeInternal(
             @NonNull Collection<ExtendedWifiNetworkSuggestion> extNetworkSuggestions,
             @NonNull String packageName,
-            @NonNull PerAppInfo perAppInfo) {
+            @NonNull PerAppInfo perAppInfo, @WifiManager.ActionAfterRemovingSuggestion int action) {
         // Get internal suggestions
         Set<ExtendedWifiNetworkSuggestion> removingExtSuggestions =
                 new HashSet<>(perAppInfo.extNetworkSuggestions.values());
@@ -1252,40 +1265,70 @@ public class WifiNetworkSuggestionsManager {
             stopTrackingAppOpsChange(packageName);
         }
         // Clear the cache.
+        WifiConfiguration connected = mWifiInjector.getActiveModeWarden()
+                .getPrimaryClientModeManager().getConnectedWifiConfiguration();
         List<WifiNetworkSuggestion> removingSuggestions = new ArrayList<>();
         for (ExtendedWifiNetworkSuggestion ewns : removingExtSuggestions) {
-            if (ewns.wns.passpointConfiguration != null) {
-                // Clear the Passpoint config.
-                mWifiInjector.getPasspointManager().removeProvider(
-                        ewns.perAppInfo.uid,
-                        false,
-                        ewns.wns.passpointConfiguration.getUniqueId(), null);
-                removeFromPassPointInfoMap(ewns);
-            } else {
-                if (ewns.wns.wifiConfiguration.isEnterprise()) {
-                    mWifiKeyStore.removeKeys(ewns.wns.wifiConfiguration.enterpriseConfig);
-                }
-                removeFromScanResultMatchInfoMapAndRemoveRelatedScoreCard(ewns);
-                mWifiConfigManager.removeConnectChoiceFromAllNetworks(ewns
-                        .createInternalWifiConfiguration(mWifiCarrierInfoManager)
-                        .getProfileKey());
-            }
+            removeNetworkSuggestionCache(ewns);
             removingSuggestions.add(ewns.wns);
-            // Remove the config from WifiConfigManager. If current connected suggestion is remove,
-            // would trigger a disconnect.
-            mWifiConfigManager.removeSuggestionConfiguredNetwork(
-                    ewns.createInternalWifiConfiguration(mWifiCarrierInfoManager));
+            WifiConfiguration removing = ewns
+                    .createInternalWifiConfiguration(mWifiCarrierInfoManager);
+            WifiConfiguration cached = mWifiConfigManager.getConfiguredNetwork(
+                    removing.getProfileKey());
+            if (connected != null && cached != null && cached.networkId == connected.networkId
+                    && action == ACTION_REMOVE_SUGGESTION_LINGER) {
+                mWifiInjector.getActiveModeWarden().getPrimaryClientModeManager()
+                        .setShouldReduceNetworkScore(true);
+                // Execute when linger time out clean up the cache in WifiConfigManager.
+                mHandler.postDelayed(() -> removeSuggestionFromWifiConfigManager(ewns),
+                        getLingerDelayMs());
+            } else {
+                // Remove the config from WifiConfigManager. If current connected suggestion is
+                // remove, would trigger a disconnect.
+                mWifiConfigManager.removeSuggestionConfiguredNetwork(removing);
+            }
         }
         for (OnSuggestionUpdateListener listener : mListeners) {
             listener.onSuggestionsRemoved(removingSuggestions);
         }
     }
 
+    private void removeNetworkSuggestionCache(ExtendedWifiNetworkSuggestion ewns) {
+        if (ewns.wns.passpointConfiguration != null) {
+            // Clear the Passpoint config.
+            mWifiInjector.getPasspointManager().removeProvider(
+                    ewns.perAppInfo.uid,
+                    false,
+                    ewns.wns.passpointConfiguration.getUniqueId(), null);
+            removeFromPassPointInfoMap(ewns);
+        } else {
+            if (ewns.wns.wifiConfiguration.isEnterprise()) {
+                mWifiKeyStore.removeKeys(ewns.wns.wifiConfiguration.enterpriseConfig);
+            }
+            removeFromScanResultMatchInfoMapAndRemoveRelatedScoreCard(ewns);
+            mWifiConfigManager.removeConnectChoiceFromAllNetworks(ewns
+                    .createInternalWifiConfiguration(mWifiCarrierInfoManager)
+                    .getProfileKey());
+        }
+    }
+
+    private void removeSuggestionFromWifiConfigManager(
+            ExtendedWifiNetworkSuggestion extendedWifiNetworkSuggestion) {
+        PerAppInfo perAppInfo = extendedWifiNetworkSuggestion.perAppInfo;
+        if (perAppInfo.extNetworkSuggestions.containsValue(extendedWifiNetworkSuggestion)) {
+            // If the suggestion is added by app again, do not remove it from WifiConfigManager.
+            return;
+        }
+        mWifiConfigManager.removeSuggestionConfiguredNetwork(extendedWifiNetworkSuggestion
+                .createInternalWifiConfiguration(mWifiCarrierInfoManager));
+    }
+
     /**
      * Remove the provided list of network suggestions from the corresponding app's active list.
      */
     public @WifiManager.NetworkSuggestionsStatusCode int remove(
-            List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName) {
+            List<WifiNetworkSuggestion> networkSuggestions, int uid, String packageName,
+            @WifiManager.ActionAfterRemovingSuggestion int action) {
         if (!mWifiPermissionsUtil.doesUidBelongToCurrentUserOrDeviceOwner(uid)) {
             Log.e(TAG, "UID " + uid + " not visible to the current user");
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL;
@@ -1324,7 +1367,7 @@ public class WifiNetworkSuggestionsManager {
                     + ". Network suggestions not found in active network suggestions");
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID;
         }
-        removeInternal(extNetworkSuggestions, packageName, perAppInfo);
+        removeInternal(extNetworkSuggestions, packageName, perAppInfo, action);
         saveToStore();
         mWifiMetrics.incrementNetworkSuggestionApiNumModification();
         mWifiMetrics.noteNetworkSuggestionApiListSizeHistogram(getAllMaxSizes());
@@ -1337,7 +1380,7 @@ public class WifiNetworkSuggestionsManager {
     public void removeApp(@NonNull String packageName) {
         PerAppInfo perAppInfo = mActiveNetworkSuggestionsPerApp.get(packageName);
         if (perAppInfo == null) return;
-        removeInternal(List.of(), packageName, perAppInfo);
+        removeInternal(List.of(), packageName, perAppInfo, ACTION_REMOVE_SUGGESTION_DISCONNECT);
         // Remove the package fully from the internal database.
         mActiveNetworkSuggestionsPerApp.remove(packageName);
         RemoteCallbackList<ISuggestionConnectionStatusListener> listenerTracker =
@@ -1379,7 +1422,8 @@ public class WifiNetworkSuggestionsManager {
                 mActiveNetworkSuggestionsPerApp.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<String, PerAppInfo> entry = iter.next();
-            removeInternal(List.of(), entry.getKey(), entry.getValue());
+            removeInternal(List.of(), entry.getKey(), entry.getValue(),
+                    ACTION_REMOVE_SUGGESTION_DISCONNECT);
             iter.remove();
         }
         mSuggestionStatusListenerPerApp.clear();
@@ -2249,7 +2293,8 @@ public class WifiNetworkSuggestionsManager {
             }
             if (carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
                 Log.i(TAG, "Carrier privilege revoked for " + appInfo.packageName);
-                removeInternal(List.of(), appInfo.packageName, appInfo);
+                removeInternal(List.of(), appInfo.packageName, appInfo,
+                        ACTION_REMOVE_SUGGESTION_DISCONNECT);
                 iter.remove();
                 continue;
             }
@@ -2627,5 +2672,9 @@ public class WifiNetworkSuggestionsManager {
     public void resetNotification() {
         mNotificationManager.cancel(SystemMessage.NOTE_NETWORK_SUGGESTION_AVAILABLE);
         mNotificationUpdateTime = 0;
+    }
+
+    private int getLingerDelayMs() {
+        return SystemProperties.getInt(LINGER_DELAY_PROPERTY, DEFAULT_LINGER_DELAY_MS);
     }
 }
