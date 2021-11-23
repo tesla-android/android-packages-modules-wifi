@@ -562,6 +562,7 @@ public class ConcreteClientModeManager implements ClientModeManager {
         pw.println("Dump of ClientModeManager id=" + mId);
         pw.println("current StateMachine mode: " + getCurrentStateName());
         pw.println("mRole: " + mRole);
+        pw.println("mPreviousRole: " + mPreviousRole);
         pw.println("mTargetRoleChangeInfo: " + mTargetRoleChangeInfo);
         pw.println("mClientInterfaceName: " + mClientInterfaceName);
         pw.println("mIfaceIsUp: " + mIfaceIsUp);
