@@ -103,6 +103,7 @@ import android.net.wifi.WifiUsabilityStatsEntry.ContentionTimeStats;
 import android.net.wifi.WifiUsabilityStatsEntry.RadioStats;
 import android.net.wifi.WifiUsabilityStatsEntry.RateStats;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
@@ -3490,5 +3491,120 @@ public class WifiManagerTest {
         listenerCaptor.getValue().onDriverCountryCodeChanged(null);
         mLooper.dispatchAll();
         verify(mActiveCountryCodeChangedCallback).onCountryCodeInactive();
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if callback is not provided.
+     */
+    @Test
+    public void registerLohsSoftApCallbackThrowsIllegalArgumentExceptionOnNullCallback() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        try {
+            mWifiManager.registerLocalOnlyHotspotSoftApCallback(
+                    new HandlerExecutor(mHandler), null);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if executor is null.
+     */
+    @Test
+    public void registerLohsSoftApCallbackThrowsIllegalArgumentExceptionOnNullExecutor() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        try {
+            mWifiManager.registerLocalOnlyHotspotSoftApCallback(null, mSoftApCallback);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify an IllegalArgumentException is thrown if callback is not provided.
+     */
+    @Test
+    public void unregisterLohsSoftApCallbackThrowsIllegalArgumentExceptionOnNullCallback() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        try {
+            mWifiManager.unregisterLocalOnlyHotspotSoftApCallback(null);
+            fail("expected IllegalArgumentException");
+        } catch (IllegalArgumentException expected) {
+        }
+    }
+
+    /**
+     * Verify the call to registerLocalOnlyHotspotSoftApCallback goes to WifiServiceImpl.
+     */
+    @Test
+    public void registerLocalOnlyHotspotSoftApCallbackCallGoesToWifiServiceImpl()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        mWifiManager.registerLocalOnlyHotspotSoftApCallback(new HandlerExecutor(mHandler),
+                mSoftApCallback);
+        verify(mWifiService).registerLocalOnlyHotspotSoftApCallback(
+                any(ISoftApCallback.Stub.class), any(Bundle.class));
+    }
+
+    /**
+     * Verify the call to unregisterLocalOnlyHotspotSoftApCallback goes to WifiServiceImpl.
+     */
+    @Test
+    public void unregisterLocalOnlyHotspotSoftApCallbackCallGoesToWifiServiceImpl()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        ArgumentCaptor<ISoftApCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISoftApCallback.Stub.class);
+        mWifiManager.registerLocalOnlyHotspotSoftApCallback(new HandlerExecutor(mHandler),
+                mSoftApCallback);
+        verify(mWifiService).registerLocalOnlyHotspotSoftApCallback(callbackCaptor.capture(),
+                any(Bundle.class));
+
+        mWifiManager.unregisterLocalOnlyHotspotSoftApCallback(mSoftApCallback);
+        verify(mWifiService).unregisterLocalOnlyHotspotSoftApCallback(eq(callbackCaptor.getValue()),
+                any(Bundle.class));
+    }
+
+    /**
+     * Verify lohs client-provided callback is being called through callback proxy.
+     */
+    @Test
+    public void softApCallbackProxyCallsCallbackForLohsRegister() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiClient testWifiClient = new WifiClient(MacAddress.fromString("22:33:44:55:66:77"),
+                TEST_AP_INSTANCES[0]);
+        SoftApCapability testSoftApCapability = new SoftApCapability(0);
+        // Prepare test info and clients
+        initTestInfoAndAddToTestMap(1);
+        List<WifiClient> clientList = initWifiClientAndAddToTestMap(TEST_AP_INSTANCES[0], 1, 0);
+
+        ArgumentCaptor<ISoftApCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISoftApCallback.Stub.class);
+        mWifiManager.registerLocalOnlyHotspotSoftApCallback(
+                new HandlerExecutor(mHandler), mSoftApCallback);
+        verify(mWifiService).registerLocalOnlyHotspotSoftApCallback(callbackCaptor.capture(),
+                any(Bundle.class));
+
+        callbackCaptor.getValue().onStateChanged(WIFI_AP_STATE_ENABLED, 0);
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, true);
+        callbackCaptor.getValue().onCapabilityChanged(testSoftApCapability);
+        callbackCaptor.getValue().onBlockedClientConnecting(testWifiClient,
+                WifiManager.SAP_CLIENT_BLOCK_REASON_CODE_NO_MORE_STAS);
+
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onStateChanged(WIFI_AP_STATE_ENABLED, 0);
+
+        verify(mSoftApCallback).onConnectedClientsChanged(clientList);
+        verify(mSoftApCallback).onConnectedClientsChanged(mTestApInfo1, clientList);
+        verify(mSoftApCallback).onInfoChanged(mTestApInfo1);
+        verify(mSoftApCallback).onInfoChanged(Mockito.argThat((List<SoftApInfo> infos) ->
+                        infos.contains(mTestApInfo1)));
+
+        verify(mSoftApCallback).onCapabilityChanged(testSoftApCapability);
+
+        verify(mSoftApCallback).onBlockedClientConnecting(testWifiClient,
+                WifiManager.SAP_CLIENT_BLOCK_REASON_CODE_NO_MORE_STAS);
     }
 }
