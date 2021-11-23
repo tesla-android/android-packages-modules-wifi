@@ -2367,7 +2367,9 @@ public class WifiServiceImpl extends BaseWifiService {
         long ident = Binder.clearCallingIdentity();
         try {
             // also need to verify that Locations services are enabled.
-            if (!mFrameworkFacade.isAppForeground(mContext, uid)) {
+            // bypass shell with root uid
+            if (uid != Process.ROOT_UID
+                    && !mFrameworkFacade.isAppForeground(mContext, uid)) {
                 return LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE;
             }
         } finally {

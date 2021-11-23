@@ -569,6 +569,32 @@ public class WifiShellCommandTest extends WifiBaseTest {
         verify(mWifiService).stopSoftAp();
     }
 
+    @Test
+    public void testStartLohs() {
+        BinderUtil.setUid(Process.ROOT_UID);
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"start-lohs", "ap1", "wpa2", "xyzabc321", "-b", "5"});
+        ArgumentCaptor<SoftApConfiguration> softApConfigurationCaptor = ArgumentCaptor.forClass(
+                SoftApConfiguration.class);
+        verify(mWifiService).startLocalOnlyHotspot(any(), eq(SHELL_PACKAGE_NAME), any(),
+                softApConfigurationCaptor.capture(), any());
+        assertEquals(SoftApConfiguration.BAND_5GHZ,
+                softApConfigurationCaptor.getValue().getBand());
+        assertEquals(SoftApConfiguration.SECURITY_TYPE_WPA2_PSK,
+                softApConfigurationCaptor.getValue().getSecurityType());
+        assertEquals("ap1", softApConfigurationCaptor.getValue().getSsid());
+        assertEquals("xyzabc321", softApConfigurationCaptor.getValue().getPassphrase());
+    }
+
+    @Test
+    public void testStopLohs() {
+        BinderUtil.setUid(Process.ROOT_UID);
+        mWifiShellCommand.exec(
+                new Binder(), new FileDescriptor(), new FileDescriptor(), new FileDescriptor(),
+                new String[]{"stop-lohs"});
+        verify(mWifiService).stopLocalOnlyHotspot();
+    }
 
     @Test
     public void testSetScanAlwaysAvailable() {
