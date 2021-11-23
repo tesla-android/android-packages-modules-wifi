@@ -3861,6 +3861,83 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         verifyNoMoreInteractions(mMockNative, mockCallback, mAwareMetricsMock);
     }
 
+    @Test
+    public void testInternalStateCleanUp() throws Exception {
+        final int clientId = 2005;
+        final int uid = 1000;
+        final int pid = 2000;
+        final String callingPackage = "com.google.somePackage";
+        final String callingFeature = "com.google.someFeature";
+        final byte publishId = 15;
+        final int reasonFail = NanStatusType.INTERNAL_FAILURE;
+
+        ConfigRequest configRequest = new ConfigRequest.Builder().build();
+        PublishConfig publishConfig = new PublishConfig.Builder().setRangingEnabled(true).build();
+
+        IWifiAwareEventCallback mockCallback = mock(IWifiAwareEventCallback.class);
+        IWifiAwareDiscoverySessionCallback mockSessionCallback = mock(
+                IWifiAwareDiscoverySessionCallback.class);
+        ArgumentCaptor<Short> transactionId = ArgumentCaptor.forClass(Short.class);
+        ArgumentCaptor<Integer> sessionId = ArgumentCaptor.forClass(Integer.class);
+        InOrder inOrder = inOrder(mockCallback, mockSessionCallback, mMockNative);
+        InOrder inOrderM = inOrder(mAwareMetricsMock);
+
+        mDut.enableUsage();
+        mMockLooper.dispatchAll();
+        inOrder.verify(mMockNative).getCapabilities(transactionId.capture());
+        inOrderM.verify(mAwareMetricsMock).recordEnableUsage();
+
+        // (0) connect
+        mDut.connect(clientId, uid, pid, callingPackage, callingFeature, mockCallback,
+                configRequest, true);
+        mMockLooper.dispatchAll();
+        inOrder.verify(mMockNative).enableAndConfigure(transactionId.capture(), eq(configRequest),
+                eq(true), eq(true), eq(true), eq(false), eq(false), eq(false));
+        mDut.onConfigSuccessResponse(transactionId.getValue());
+        mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onConnectSuccess(clientId);
+        inOrderM.verify(mAwareMetricsMock).recordAttachSession(eq(uid), eq(true), any());
+
+        // (1) initial publish
+        mDut.publish(clientId, publishConfig, mockSessionCallback);
+        mMockLooper.dispatchAll();
+        inOrder.verify(mMockNative).publish(transactionId.capture(), eq((byte) 0),
+                eq(publishConfig));
+
+        // (2) publish success
+        mDut.onSessionConfigSuccessResponse(transactionId.getValue(), true, publishId);
+        mMockLooper.dispatchAll();
+        inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
+        inOrderM.verify(mAwareMetricsMock).recordDiscoverySessionWithRanging(eq(uid), eq(false),
+                eq(-1), eq(-1), any());
+        inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, true);
+        mMockLooper.dispatchAll();
+        // Verify reconfigure aware to enable ranging.
+        inOrder.verify(mMockNative).enableAndConfigure(transactionId.capture(), eq(configRequest),
+                eq(true), eq(false), eq(true), eq(false), eq(true), eq(false));
+        mDut.onConfigSuccessResponse(transactionId.getValue());
+        mMockLooper.dispatchAll();
+
+        mDut.disconnect(clientId);
+        mMockLooper.dispatchAll();
+        inOrder.verify(mockSessionCallback).onSessionTerminated(NanStatusType.SUCCESS);
+        inOrder.verify(mMockNative).stopPublish(anyShort(), eq(publishId));
+        inOrder.verify(mMockNative).disable(transactionId.capture());
+        mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
+        mMockLooper.dispatchAll();
+        inOrderM.verify(mAwareMetricsMock).recordAttachSessionDuration(anyLong());
+        inOrderM.verify(mAwareMetricsMock).recordDiscoverySessionDuration(anyLong(), eq(true));
+        inOrderM.verify(mAwareMetricsMock).recordDisableAware();
+
+        mDut.connect(clientId, uid, pid, callingPackage, callingFeature, mockCallback,
+                configRequest, false);
+        mMockLooper.dispatchAll();
+        inOrder.verify(mMockNative).enableAndConfigure(transactionId.capture(), eq(configRequest),
+                eq(false), eq(true), eq(true), eq(false), eq(false), eq(false));
+
+        verifyNoMoreInteractions(mockCallback, mockSessionCallback, mMockNative, mAwareMetricsMock);
+    }
+
     /*
      * Tests of internal state of WifiAwareStateManager: very limited (not usually
      * a good idea). However, these test that the internal state is cleaned-up
