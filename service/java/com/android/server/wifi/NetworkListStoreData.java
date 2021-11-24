@@ -297,9 +297,10 @@ public abstract class NetworkListStoreData implements WifiConfigStore.StoreData 
 
         String configKeyCalculated = configuration.getKey();
         if (!configKeyParsed.equals(configKeyCalculated)) {
-            throw new IllegalStateException(
-                    "Configuration key does not match. Retrieved: " + configKeyParsed
-                            + ", Calculated: " + configKeyCalculated);
+            // configKey is not part of the SDK. So, we can't expect this to be the same
+            // across OEM's. Just log a warning & continue.
+            Log.w(TAG, "Configuration key does not match. Retrieved: " + configKeyParsed
+                    + ", Calculated: " + configKeyCalculated);
         }
         // Set creatorUid/creatorName for networks which don't have it set to valid value.
         String creatorName = mContext.getPackageManager().getNameForUid(configuration.creatorUid);
