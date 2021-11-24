@@ -115,9 +115,7 @@ public class SavedNetworkNominator implements WifiNetworkSelector.NetworkNominat
 
             /**
              * Ignore Passpoint and Ephemeral networks. They are configured networks,
-             * but without being persisted to the storage. They are nominated by
-             * {@link PasspointNetworkNominator} and {@link ScoredNetworkNominator}
-             * respectively.
+             * but without being persisted to the storage.
              */
             if (network.isPasspoint() || network.isEphemeral()) {
                 continue;

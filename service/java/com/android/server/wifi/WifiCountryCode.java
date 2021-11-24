@@ -80,27 +80,32 @@ public class WifiCountryCode {
     private String mDriverCountryCode = null;
     private long mDriverCountryCodeUpdatedTimestamp = 0;
     private String mTelephonyCountryTimestamp = null;
-    private String mReadyTimestamp = null;
+    private String mAllCmmReadyTimestamp = null;
     private int mDisconnectWifiToForceUpdateCount = 0;
 
     private class ModeChangeCallbackInternal implements ActiveModeWarden.ModeChangeCallback {
         @Override
         public void onActiveModeManagerAdded(@NonNull ActiveModeManager activeModeManager) {
-            if (activeModeManager.getRole() instanceof ActiveModeManager.ClientRole
-                    || activeModeManager instanceof SoftApManager) {
+            if (activeModeManager.getRole() instanceof ActiveModeManager.ClientRole) {
                 // Add this CMM for tracking. Interface is up and HAL is initialized at this point.
                 // If this device runs the 1.5 HAL version, use the IWifiChip.setCountryCode()
                 // to set the country code.
                 mAmmToReadyForChangeMap.put(activeModeManager, true);
                 evaluateAllCmmStateAndApplyIfAllReady();
+            } else if (activeModeManager instanceof SoftApManager) {
+                // Put SoftApManager ready for consistence behavior in mAmmToReadyForChangeMap.
+                // No need to trigger CC change because SoftApManager takes CC when starting up.
+                mAmmToReadyForChangeMap.put(activeModeManager, true);
             }
         }
 
         @Override
         public void onActiveModeManagerRemoved(@NonNull ActiveModeManager activeModeManager) {
             if (mAmmToReadyForChangeMap.remove(activeModeManager) != null) {
-                // Remove this CMM from tracking.
-                evaluateAllCmmStateAndApplyIfAllReady();
+                if (activeModeManager instanceof ActiveModeManager.ClientRole) {
+                    // Remove this CMM from tracking.
+                    evaluateAllCmmStateAndApplyIfAllReady();
+                }
             }
             if (mAmmToReadyForChangeMap.size() == 0) {
                 handleCountryCodeChanged(null);
@@ -265,9 +270,17 @@ public class WifiCountryCode {
      *
      * @return true if there are active CMM's and all are ready for country code change.
      */
-    private boolean isReady() {
-        return !mAmmToReadyForChangeMap.isEmpty()
-                && mAmmToReadyForChangeMap.values().stream().allMatch(r -> r);
+    private boolean isAllCmmReady() {
+        boolean isAnyCmmExist = false;
+        for (ActiveModeManager am : mAmmToReadyForChangeMap.keySet()) {
+            if (am instanceof ConcreteClientModeManager) {
+                isAnyCmmExist = true;
+                if (!mAmmToReadyForChangeMap.get(am)) {
+                    return false;
+                }
+            }
+        }
+        return isAnyCmmExist;
     }
 
     /**
@@ -275,12 +288,12 @@ public class WifiCountryCode {
      */
     private void evaluateAllCmmStateAndApplyIfAllReady() {
         Log.d(TAG, "evaluateAllCmmStateAndApplyIfAllReady: " + mAmmToReadyForChangeMap);
-        if (isReady()) {
-            mReadyTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
+        if (isAllCmmReady()) {
+            mAllCmmReadyTimestamp = FORMATTER.format(new Date(System.currentTimeMillis()));
             // We are ready to set country code now.
             // We need to post pending country code request.
             initializeTelephonyCountryCodeIfNeeded();
-            updateCountryCode();
+            updateCountryCode(true);
         }
     }
 
@@ -297,14 +310,7 @@ public class WifiCountryCode {
             return;
         }
         mOverrideCountryCode = countryCode.toUpperCase(Locale.US);
-
-        // If wpa_supplicant is ready we set the country code now, otherwise it will be
-        // set once wpa_supplicant is ready.
-        if (isReady()) {
-            updateCountryCode();
-        } else {
-            Log.d(TAG, "skip update supplicant not ready yet");
-        }
+        updateCountryCode(false);
     }
 
     /**
@@ -312,14 +318,7 @@ public class WifiCountryCode {
      */
     public synchronized void clearOverrideCountryCode() {
         mOverrideCountryCode = null;
-
-        // If wpa_supplicant is ready we set the country code now, otherwise it will be
-        // set once wpa_supplicant is ready.
-        if (isReady()) {
-            updateCountryCode();
-        } else {
-            Log.d(TAG, "skip update supplicant not ready yet");
-        }
+        updateCountryCode(false);
     }
 
     private void setTelephonyCountryCode(String countryCode) {
@@ -361,15 +360,7 @@ public class WifiCountryCode {
             return false;
         }
 
-        // If wpa_supplicant is ready we set the country code now, otherwise it will be
-        // set once wpa_supplicant is ready.
-        if (isReady()) {
-            updateCountryCode();
-        } else {
-            Log.d(TAG, "skip update supplicant not ready yet");
-            disconnectWifiToForceUpdateIfNeeded();
-        }
-
+        updateCountryCode(false);
         return true;
     }
 
@@ -453,14 +444,7 @@ public class WifiCountryCode {
         mSettingsConfigStore.put(WIFI_DEFAULT_COUNTRY_CODE,
                 countryCode.toUpperCase(Locale.US));
         Log.i(TAG, "Default country code updated in config store: " + countryCode);
-
-        // If wpa_supplicant is ready we set the country code now, otherwise it will be
-        // set once wpa_supplicant is ready.
-        if (isReady()) {
-            updateCountryCode();
-        } else {
-            Log.d(TAG, "skip update supplicant not ready yet");
-        }
+        updateCountryCode(false);
     }
 
     /**
@@ -476,8 +460,8 @@ public class WifiCountryCode {
         pw.println("mTelephonyCountryCode: " + mTelephonyCountryCode);
         pw.println("mTelephonyCountryTimestamp: " + mTelephonyCountryTimestamp);
         pw.println("mOverrideCountryCode: " + mOverrideCountryCode);
-        pw.println("mReadyTimestamp: " + mReadyTimestamp);
-        pw.println("isReady: " + isReady());
+        pw.println("mAllCmmReadyTimestamp: " + mAllCmmReadyTimestamp);
+        pw.println("isAllCmmReady: " + isAllCmmReady());
         pw.println("mAmmToReadyForChangeMap: " + mAmmToReadyForChangeMap);
         pw.println("mDisconnectWifiToForceUpdateCount: " + mDisconnectWifiToForceUpdateCount);
         pw.println("mDriverCountryCode: " + mDriverCountryCode);
@@ -493,7 +477,7 @@ public class WifiCountryCode {
                 R.bool.config_wifiDriverSupportedNl80211RegChangedEvent);
     }
 
-    private void updateCountryCode() {
+    private void updateCountryCode(boolean isClientModeOnly) {
         String country = pickCountryCode();
         Log.d(TAG, "updateCountryCode to " + country);
 
@@ -503,7 +487,7 @@ public class WifiCountryCode {
         // 2. If Wifi restarted therefore wpa_supplicant also restarted,
         // the country code could be reset to '00' by wpa_supplicant.
         if (country != null) {
-            setCountryCodeNative(country);
+            setCountryCodeNative(country, isClientModeOnly);
         }
         // We do not set country code if there is no candidate. This is reasonable
         // because wpa_supplicant usually starts with an international safe country
@@ -525,12 +509,19 @@ public class WifiCountryCode {
         return mSettingsConfigStore.get(WIFI_DEFAULT_COUNTRY_CODE);
     }
 
-    private boolean setCountryCodeNative(String country) {
+    private boolean setCountryCodeNative(String country, boolean isClientModeOnly) {
         Set<ActiveModeManager> amms = mAmmToReadyForChangeMap.keySet();
         boolean isConcreteClientModeManagerUpdated = false;
         boolean anyAmmConfigured = false;
+        boolean isAllCmmReady = isAllCmmReady();
+        if (!isAllCmmReady) {
+            Log.d(TAG, "skip update supplicant not ready yet");
+            disconnectWifiToForceUpdateIfNeeded();
+        }
+        Log.d(TAG, "setCountryCodeNative" + country + ", isClientModeOnly" + isClientModeOnly);
         for (ActiveModeManager am : amms) {
-            if (!isConcreteClientModeManagerUpdated && am instanceof ConcreteClientModeManager) {
+            if (isAllCmmReady && !isConcreteClientModeManagerUpdated
+                    && am instanceof ConcreteClientModeManager) {
                 // Set the country code using one of the active mode managers. Since
                 // country code is a chip level global setting, it can be set as long
                 // as there is at least one active interface to communicate to Wifi chip
@@ -547,7 +538,7 @@ public class WifiCountryCode {
                         handleCountryCodeChanged(country);
                     }
                 }
-            } else if (am instanceof SoftApManager) {
+            } else if (!isClientModeOnly && am instanceof SoftApManager) {
                 // The API:updateCountryCode in SoftApManager is asynchronous, it requires a new
                 // callback support in S to trigger "notifyListener" for
                 // the new S API: SoftApCapability#getSupportedChannelList(band).

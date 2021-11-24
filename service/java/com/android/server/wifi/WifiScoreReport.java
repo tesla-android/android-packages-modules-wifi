@@ -64,6 +64,7 @@ public class WifiScoreReport {
     private static final int INVALID_SESSION_ID = -1;
     private static final long MIN_TIME_TO_WAIT_BEFORE_BLOCKLIST_BSSID_MILLIS = 29000;
     private static final long INVALID_WALL_CLOCK_MILLIS = -1;
+    private static final int WIFI_SCORE_TO_TERMINATE_CONNECTION_BLOCKLIST_BSSID = -2;
 
     /**
      * Set lingering score to be artificially lower than all other scores so that it will force
@@ -134,6 +135,21 @@ public class WifiScoreReport {
             if (SdkLevel.isAtLeastS()) {
                 mLegacyIntScore = score;
                 updateWifiMetrics(millis, -1);
+                return;
+            }
+            // TODO (b/207058915): Disconnect WiFi and blocklist current BSSID.  This is to
+            //  maintain backward compatibility for WiFi mainline module on Android 11, and can be
+            //  removed when the WiFi mainline module is no longer updated on Android 11.
+            if (score == WIFI_SCORE_TO_TERMINATE_CONNECTION_BLOCKLIST_BSSID) {
+                mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfoNoReset.getBSSID(),
+                        mWifiInfoNoReset.getSSID(),
+                        WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE,
+                        mWifiInfoNoReset.getRssi());
+                return;
+            }
+            if (score > ConnectedScore.WIFI_MAX_SCORE
+                    || score < ConnectedScore.WIFI_MIN_SCORE) {
+                Log.e(TAG, "Invalid score value from external scorer: " + score);
                 return;
             }
             if (score < ConnectedScore.WIFI_TRANSITION_SCORE) {

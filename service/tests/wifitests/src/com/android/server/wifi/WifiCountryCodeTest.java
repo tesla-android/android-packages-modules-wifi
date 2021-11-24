@@ -64,6 +64,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
     @Mock TelephonyManager mTelephonyManager;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock ConcreteClientModeManager mClientModeManager;
+    @Mock SoftApManager mSoftApManager;
     @Mock ClientModeImplMonitor mClientModeImplMonitor;
     @Mock WifiNative mWifiNative;
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
@@ -518,5 +519,30 @@ public class WifiCountryCodeTest extends WifiBaseTest {
             throws Exception {
         when(mTelephonyManager.getNetworkCountryIso()).thenReturn(mTelephonyCountryCode);
         assertFalse(mWifiCountryCode.setTelephonyCountryCodeAndUpdate(""));
+    }
+
+    @Test
+    public void testClientModeManagerAndSoftApManagerDoesntImpactEachOther()
+            throws Exception {
+        // Supplicant started.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mClientModeManager);
+        verify(mClientModeManager).setCountryCode(anyString());
+
+        // SoftApManager actived, it shouldn't impact to client mode, the times keep 1.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mSoftApManager);
+        verify(mClientModeManager).setCountryCode(anyString());
+        // Verify the SoftAp enable shouldn't trigger the update CC event.
+        verify(mSoftApManager, never()).updateCountryCode(anyString());
+
+        // Remove and add client mode manager again.
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRemoved(mClientModeManager);
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerAdded(mClientModeManager);
+        // Verify the SoftApManager doesn't impact when client mode changed
+        verify(mSoftApManager, never()).updateCountryCode(anyString());
+
+        // Test telephony CC changed, check both of client mode and softap mode update the CC.
+        mWifiCountryCode.setTelephonyCountryCodeAndUpdate(mTelephonyCountryCode);
+        verify(mClientModeManager).setCountryCode(mTelephonyCountryCode);
+        verify(mSoftApManager).updateCountryCode(mTelephonyCountryCode);
     }
 }
