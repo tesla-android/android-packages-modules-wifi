@@ -4066,6 +4066,12 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         pnoNetworks = mWifiConnectivityManager.retrievePnoNetworkList();
         assertEquals(1, pnoNetworks.size());
         assertEquals(network2.SSID, pnoNetworks.get(0).ssid);
+
+        // Now set network2 to be temporarily disabled by the user. This should remove network 2
+        // from the list.
+        when(mWifiConfigManager.isNetworkTemporarilyDisabledByUser(network2.SSID)).thenReturn(true);
+        pnoNetworks = mWifiConnectivityManager.retrievePnoNetworkList();
+        assertEquals(0, pnoNetworks.size());
     }
 
     /**
