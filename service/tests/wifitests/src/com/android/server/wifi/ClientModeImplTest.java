@@ -1120,6 +1120,42 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals("L3ProvisioningState", getCurrentState().getName());
     }
 
+    @Test
+    public void testSimAuthRequestIsHandledWhileAlreadyConnectedSuccess() throws Exception {
+        connect();
+
+        WifiCarrierInfoManager.SimAuthRequestData requestData =
+                new WifiCarrierInfoManager.SimAuthRequestData();
+        requestData.protocol = WifiEnterpriseConfig.Eap.SIM;
+        requestData.networkId = FRAMEWORK_NETWORK_ID;
+        String testSimAuthResponse = "TEST_SIM_AUTH_RESPONSE";
+        when(mWifiCarrierInfoManager.getGsmSimAuthResponse(any(), any()))
+                .thenReturn(testSimAuthResponse);
+        mCmi.sendMessage(WifiMonitor.SUP_REQUEST_SIM_AUTH, requestData);
+        mLooper.dispatchAll();
+
+        // Expect success
+        verify(mWifiNative).simAuthResponse(WIFI_IFACE_NAME, WifiNative.SIM_AUTH_RESP_TYPE_GSM_AUTH,
+                testSimAuthResponse);
+    }
+
+    @Test
+    public void testSimAuthRequestIsHandledWhileAlreadyConnectedFail() throws Exception {
+        connect();
+
+        WifiCarrierInfoManager.SimAuthRequestData requestData =
+                new WifiCarrierInfoManager.SimAuthRequestData();
+        requestData.protocol = WifiEnterpriseConfig.Eap.SIM;
+        requestData.networkId = FRAMEWORK_NETWORK_ID;
+        // Mock WifiCarrierInfoManager to return null so that sim auth fails.
+        when(mWifiCarrierInfoManager.getGsmSimAuthResponse(any(), any())).thenReturn(null);
+        mCmi.sendMessage(WifiMonitor.SUP_REQUEST_SIM_AUTH, requestData);
+        mLooper.dispatchAll();
+
+        // Expect failure
+        verify(mWifiNative).simAuthFailedResponse(WIFI_IFACE_NAME);
+    }
+
     /**
      * When the SIM card was removed, if the current wifi connection is not using it, the connection
      * should be kept.
