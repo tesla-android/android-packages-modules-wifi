@@ -20,6 +20,7 @@ import static android.content.Intent.ACTION_SCREEN_OFF;
 import static android.content.Intent.ACTION_SCREEN_ON;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
+import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SCAN_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TRANSIENT;
 import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
@@ -114,6 +115,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -558,6 +560,35 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mWifiConnectivityManager.handleConnectionStateChanged(
                 mPrimaryClientModeManager,
                 WifiConnectivityManager.WIFI_STATE_CONNECTED);
+    }
+
+    /**
+     * Verify that a primary CMM changing role to secondary transient (MBB) will not trigger cleanup
+     * that's meant to be done when wifi is disabled.
+     */
+    @Test
+    public void testPrimaryToSecondaryTransientDoesNotDisableWifi() {
+        ConcreteClientModeManager cmm = mock(ConcreteClientModeManager.class);
+        when(cmm.getPreviousRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        when(cmm.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        when(mActiveModeWarden.getInternetConnectivityClientModeManagers()).thenReturn(
+                Collections.EMPTY_LIST);
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(cmm);
+        verify(mWifiConfigManager, never()).removeAllEphemeralOrPasspointConfiguredNetworks();
+    }
+
+    /**
+     * Verify that the primary CMM switching to scan only mode will trigger cleanup code.
+     */
+    @Test
+    public void testPrimaryToScanOnlyWillDisableWifi() {
+        ConcreteClientModeManager cmm = mock(ConcreteClientModeManager.class);
+        when(cmm.getPreviousRole()).thenReturn(ROLE_CLIENT_PRIMARY);
+        when(cmm.getRole()).thenReturn(ROLE_CLIENT_SCAN_ONLY);
+        when(mActiveModeWarden.getInternetConnectivityClientModeManagers()).thenReturn(
+                Collections.EMPTY_LIST);
+        mModeChangeCallbackCaptor.getValue().onActiveModeManagerRoleChanged(cmm);
+        verify(mWifiConfigManager).removeAllEphemeralOrPasspointConfiguredNetworks();
     }
 
     /**

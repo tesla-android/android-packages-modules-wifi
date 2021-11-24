@@ -970,6 +970,13 @@ public class WifiConnectivityManager {
 
         @Override
         public void onActiveModeManagerRoleChanged(@NonNull ActiveModeManager activeModeManager) {
+            // MBB will result in a brief period where there is no primary STA.
+            // Need to detect these cases and avoid calling setWifiEnabled(false) since wifi is
+            // not actually getting disabled.
+            if (activeModeManager.getPreviousRole() == ROLE_CLIENT_PRIMARY
+                    && activeModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                return;
+            }
             update();
         }
 
