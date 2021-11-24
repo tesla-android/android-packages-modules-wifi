@@ -120,6 +120,8 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
             Manifest.permission.ACCESS_FINE_LOCATION;
     private final String mManifestStringHardware =
             Manifest.permission.LOCATION_HARDWARE;
+    private final String mScanWithoutLocation =
+            Manifest.permission.RADIO_SCAN_WITHOUT_LOCATION;
 
     // Test variables
     private int mWifiScanAllowApps;
@@ -1420,13 +1422,35 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
                 eq(Manifest.permission.ACCESS_FINE_LOCATION), any(), any());
     }
 
+    /**
+     * Verify that the nearby device permission check can be bypassed by very privileged apps.
+     */
+    @Test
+    public void testEnforceNearbyDevicesPermission_BypassCheckWithPrivilegedPermission()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.getUid()).thenReturn(mUid);
+        // caller no nearby permission
+        when(mPermissionManager.checkPermissionForDataDelivery(eq(NEARBY_WIFI_DEVICES),
+                eq(attributionSource), any())).thenReturn(PermissionManager.PERMISSION_SOFT_DENIED);
+
+        // but caller has another permission that allows bypassing nearby permission check.
+        mPermissionsList.put(mScanWithoutLocation, mUid);
+
+        setupTestCase();
+        WifiPermissionsUtil codeUnderTest = new WifiPermissionsUtil(mMockPermissionsWrapper,
+                mMockContext, mMockUserManager, mWifiInjector);
+        codeUnderTest.enforceNearbyDevicesPermission(attributionSource, true, "");
+    }
+
     private Answer<Integer> createPermissionAnswer() {
         return new Answer<Integer>() {
             @Override
             public Integer answer(InvocationOnMock invocation) {
                 int myUid = (int) invocation.getArguments()[1];
                 String myPermission = (String) invocation.getArguments()[0];
-                mPermissionsList.get(myPermission);
                 if (mPermissionsList.containsKey(myPermission)) {
                     int uid = mPermissionsList.get(myPermission);
                     if (myUid == uid) {
@@ -1496,8 +1520,6 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
 
     private void setupMockInterface() {
         BinderUtil.setUid(mUid);
-        doAnswer(mReturnPermission).when(mMockPermissionsWrapper).getUidPermission(
-                        anyString(), anyInt());
         doAnswer(mReturnPermission).when(mMockPermissionsWrapper).getUidPermission(
                         anyString(), anyInt());
         when(mMockUserManager.isSameProfileGroup(

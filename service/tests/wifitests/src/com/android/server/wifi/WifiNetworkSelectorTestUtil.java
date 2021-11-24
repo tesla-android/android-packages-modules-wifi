@@ -33,10 +33,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
-import android.net.NetworkKey;
-import android.net.RssiCurve;
-import android.net.ScoredNetwork;
-import android.net.WifiKey;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
@@ -442,47 +438,6 @@ public class WifiNetworkSelectorTestUtil {
                         eq(scanDetails.get(i)))).thenReturn(null);
             }
         }
-    }
-
-
-    /**
-     * Configure the score cache for externally scored networks
-     *
-     * @param scoreCache   Wifi network score cache to be configured
-     * @param scanDetails  a list of ScanDetail
-     * @param scores       scores of the networks
-     * @param meteredHints hints of if the networks are metered
-     */
-    public static void configureScoreCache(WifiNetworkScoreCache scoreCache,
-            List<ScanDetail> scanDetails, Integer[] scores, boolean[] meteredHints) {
-        List<ScoredNetwork> networks = new ArrayList<>();
-
-        for (int i = 0; i < scanDetails.size(); i++) {
-            ScanDetail scanDetail = scanDetails.get(i);
-            ScanResult scanResult = scanDetail.getScanResult();
-            WifiKey wifiKey = new WifiKey("\"" + scanResult.SSID + "\"", scanResult.BSSID);
-            NetworkKey ntwkKey = new NetworkKey(wifiKey);
-            RssiCurve rssiCurve;
-
-            if (scores != null) { // fixed score
-                byte rssiScore;
-                Integer score = scores[i];
-
-                if (scores[i] == null) {
-                    rssiScore = WifiNetworkScoreCache.INVALID_NETWORK_SCORE;
-                } else {
-                    rssiScore = scores[i].byteValue();
-                }
-                rssiCurve = new RssiCurve(-100, 100, new byte[] {rssiScore});
-            } else {
-                rssiCurve = new RssiCurve(-80, 20, new byte[] {-10, 0, 10, 20, 30, 40});
-            }
-            ScoredNetwork scoredNetwork = new ScoredNetwork(ntwkKey, rssiCurve, meteredHints[i]);
-
-            networks.add(scoredNetwork);
-        }
-
-        scoreCache.onScoresUpdated(networks);
     }
 
     /**
