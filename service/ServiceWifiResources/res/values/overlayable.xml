@@ -74,6 +74,8 @@
           <item type="integer" name="config_wifi_framework_recovery_timeout_delay" />
           <item type="bool" name="config_wifi_framework_enable_associated_network_selection" />
           <item type="integer" name="config_wifiSufficientDurationAfterUserSelectionMilliseconds" />
+          <item type="integer" name="config_wifiLowConnectedScoreThresholdToTriggerScanForMbb" />
+          <item type="integer" name="config_wifiLowConnectedScoreScanPeriodSeconds" />
           <item type="bool" name="config_wifiEnable6ghzPscScanning" />
           <item type="bool" name="config_wifiEnablePartialInitialScan" />
           <item type="integer" name="config_wifiInitialPartialScanChannelMaxCount" />

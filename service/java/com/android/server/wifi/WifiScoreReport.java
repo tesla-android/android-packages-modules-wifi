@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
+
 import android.annotation.Nullable;
 import android.content.Context;
 import android.net.Network;
@@ -115,6 +117,10 @@ public class WifiScoreReport {
     private final DeviceConfigFacade mDeviceConfigFacade;
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     private final WifiInfo mWifiInfoNoReset;
+    private final WifiGlobals mWifiGlobals;
+    private final ActiveModeWarden mActiveModeWarden;
+    private final WifiConnectivityManager mWifiConnectivityManager;
+    private long mLastLowScoreScanTimestampMs = -1;
 
     /**
      * Callback from {@link ExternalScoreUpdateObserverProxy}
@@ -500,7 +506,10 @@ public class WifiScoreReport {
             AdaptiveConnectivityEnabledSettingObserver adaptiveConnectivityEnabledSettingObserver,
             String interfaceName,
             ExternalScoreUpdateObserverProxy externalScoreUpdateObserverProxy,
-            WifiSettingsStore wifiSettingsStore) {
+            WifiSettingsStore wifiSettingsStore,
+            WifiGlobals wifiGlobals,
+            ActiveModeWarden activeModeWarden,
+            WifiConnectivityManager wifiConnectivityManager) {
         mScoringParams = scoringParams;
         mClock = clock;
         mAdaptiveConnectivityEnabledSettingObserver = adaptiveConnectivityEnabledSettingObserver;
@@ -518,6 +527,9 @@ public class WifiScoreReport {
         mExternalScoreUpdateObserverProxy = externalScoreUpdateObserverProxy;
         mWifiSettingsStore = wifiSettingsStore;
         mWifiInfoNoReset = new WifiInfo(mWifiInfo);
+        mWifiGlobals = wifiGlobals;
+        mActiveModeWarden = activeModeWarden;
+        mWifiConnectivityManager = wifiConnectivityManager;
     }
 
     /**
@@ -535,6 +547,7 @@ public class WifiScoreReport {
         mLastDownwardBreachTimeMillis = 0;
         mLastScoreBreachLowTimeMillis = INVALID_WALL_CLOCK_MILLIS;
         mLastScoreBreachHighTimeMillis = INVALID_WALL_CLOCK_MILLIS;
+        mLastLowScoreScanTimestampMs = -1;
         if (mVerboseLoggingEnabled) Log.d(TAG, "reset");
     }
 
@@ -615,10 +628,23 @@ public class WifiScoreReport {
             score = 0;
         }
 
+        if (score < mWifiGlobals.getWifiLowConnectedScoreThresholdToTriggerScanForMbb()
+                && enoughTimePassedSinceLastLowConnectedScoreScan()
+                && mActiveModeWarden.canRequestSecondaryTransientClientModeManager()) {
+            mLastLowScoreScanTimestampMs = mClock.getElapsedSinceBootMillis();
+            mWifiConnectivityManager.forceConnectivityScan(WIFI_WORK_SOURCE);
+        }
+
         // report score
         mLegacyIntScore = score;
         reportNetworkScoreToConnectivityServiceIfNecessary();
         updateWifiMetrics(millis, s2);
+    }
+
+    private boolean enoughTimePassedSinceLastLowConnectedScoreScan() {
+        return mLastLowScoreScanTimestampMs == -1
+                || mClock.getElapsedSinceBootMillis() - mLastLowScoreScanTimestampMs
+                > (mWifiGlobals.getWifiLowConnectedScoreScanPeriodSeconds() * 1000);
     }
 
     private int getCurrentNetId() {
@@ -851,6 +877,7 @@ public class WifiScoreReport {
             return false;
         }
         mWifiConnectedNetworkScorerHolder = scorerHolder;
+        mWifiGlobals.setUsingExternalScorer(true);
 
         // Register to receive updates from external scorer.
         mExternalScoreUpdateObserverProxy.registerCallback(mScoreUpdateObserverCallback);
@@ -1017,6 +1044,7 @@ public class WifiScoreReport {
         Log.d(TAG, "Using VelocityBasedConnectedScore");
         mVelocityBasedConnectedScore = new VelocityBasedConnectedScore(mScoringParams, mClock);
         mWifiConnectedNetworkScorerHolder = null;
+        mWifiGlobals.setUsingExternalScorer(false);
         mExternalScoreUpdateObserverProxy.unregisterCallback(mScoreUpdateObserverCallback);
         mWifiMetrics.setIsExternalWifiScorerOn(false);
     }
