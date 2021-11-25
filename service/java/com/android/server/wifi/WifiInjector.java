@@ -754,7 +754,8 @@ public class WifiInjector {
                 new WifiScoreReport(mScoringParams, mClock, mWifiMetrics, wifiInfo,
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
-                        ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore),
+                        ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore, mWifiGlobals,
+                        mActiveModeWarden, mWifiConnectivityManager),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
                 this, mSettingsConfigStore, verboseLoggingEnabled);
