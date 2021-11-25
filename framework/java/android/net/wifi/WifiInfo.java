@@ -448,6 +448,11 @@ public class WifiInfo implements TransportInfo, Parcelable {
      */
     private @IsPrimaryValues int mIsPrimary;
 
+    /**
+     * Key of the current network.
+     */
+    private String mCurrentNetworkKey;
+
     /** @hide */
     @UnsupportedAppUsage
     public WifiInfo() {
@@ -461,6 +466,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mSecurityType = -1;
         mIsPrimary = IS_PRIMARY_FALSE;
+        mCurrentNetworkKey = null;
     }
 
     /** @hide */
@@ -503,6 +509,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         score = 0;
         mIsUsable = true;
         mSecurityType = -1;
+        mCurrentNetworkKey = null;
     }
 
     /**
@@ -572,6 +579,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
             mIsPrimary = shouldRedactNetworkSettingsFields(redactions)
                     ? IS_PRIMARY_NO_PERMISSION : source.mIsPrimary;
             mSecurityType = source.mSecurityType;
+            mCurrentNetworkKey = shouldRedactLocationSensitiveFields(redactions)
+                    ? null : source.mCurrentNetworkKey;
         }
     }
 
@@ -1267,7 +1276,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(", Provider friendly name: ")
                 .append(mProviderFriendlyName == null ? none : mProviderFriendlyName)
                 .append(", Requesting package name: ")
-                .append(mRequestingPackageName == null ? none : mRequestingPackageName);
+                .append(mRequestingPackageName == null ? none : mRequestingPackageName)
+                .append(mCurrentNetworkKey == null ? none : mCurrentNetworkKey);
         return sb.toString();
     }
 
@@ -1342,6 +1352,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         }
         dest.writeInt(mSecurityType);
         dest.writeInt(mRestricted ? 1 : 0);
+        dest.writeString(mCurrentNetworkKey);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1399,6 +1410,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 }
                 info.mSecurityType = in.readInt();
                 info.mRestricted = in.readInt() != 0;
+                info.mCurrentNetworkKey = in.readString();
                 return info;
             }
 
@@ -1544,7 +1556,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements)
                 && mIsPrimary ==  thatWifiInfo.mIsPrimary
                 && mSecurityType == thatWifiInfo.mSecurityType
-                && mRestricted == thatWifiInfo.mRestricted;
+                && mRestricted == thatWifiInfo.mRestricted
+                && Objects.equals(mCurrentNetworkKey, thatWifiInfo.mCurrentNetworkKey);
     }
 
     @Override
@@ -1591,7 +1604,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mInformationElements,
                 mIsPrimary,
                 mSecurityType,
-                mRestricted);
+                mRestricted,
+                mCurrentNetworkKey);
     }
 
     /**
@@ -1681,5 +1695,29 @@ public class WifiInfo implements TransportInfo, Parcelable {
             default:
                 return SECURITY_TYPE_UNKNOWN;
         }
+    }
+
+    /**
+     * Set the network key for the current Wi-Fi network.
+     *
+     * Now we are using this identity to be a key when storing Wi-Fi data usage data.
+     * See: {@link WifiConfiguration#getNetworkKeyFromSecurityType(int)}.
+     *
+     * @param currentNetworkKey the network key of the current Wi-Fi network.
+     * @hide
+     */
+    public void setCurrentNetworkKey(@NonNull String currentNetworkKey) {
+        mCurrentNetworkKey = currentNetworkKey;
+    }
+
+    /**
+     * Returns the network key of the current Wi-Fi network.
+     *
+     * @hide
+     */
+    @SystemApi
+    @Nullable
+    public String getCurrentNetworkKey() {
+        return mCurrentNetworkKey;
     }
 }
