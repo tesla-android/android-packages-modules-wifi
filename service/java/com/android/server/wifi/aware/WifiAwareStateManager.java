@@ -2402,6 +2402,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
         boolean notificationRequired =
                 doesAnyClientNeedIdentityChangeNotifications() || notifyIdentityChange;
+        boolean rangingRequired = doesAnyClientNeedRanging();
 
         if (mCurrentAwareConfiguration == null) {
             mWifiAwareNativeManager.tryToGetAware(new WorkSource(uid, callingPackage));
@@ -2410,7 +2411,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         boolean success = mWifiAwareNativeApi.enableAndConfigure(transactionId, merged,
                 notificationRequired, mCurrentAwareConfiguration == null,
                 mPowerManager.isInteractive(), mPowerManager.isDeviceIdleMode(),
-                mCurrentRangingEnabled, mIsInstantCommunicationModeEnabled);
+                rangingRequired, mIsInstantCommunicationModeEnabled);
         if (!success) {
             try {
                 callback.onConnectFail(NanStatusType.INTERNAL_FAILURE);
@@ -2446,6 +2447,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         if (mClients.size() == 0) {
             mCurrentAwareConfiguration = null;
             mDataPathMgr.deleteAllInterfaces();
+            mCurrentRangingEnabled = false;
+            mCurrentIdentityNotification = false;
             deferDisableAware();
             return false;
         }
@@ -2683,6 +2686,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         onAwareDownLocal();
 
         mUsageEnabled = markAsAvailable;
+        mCurrentRangingEnabled = false;
+        mCurrentIdentityNotification = false;
         deferDisableAware();
         sendAwareStateChangedBroadcast(markAsAvailable);
         mAwareMetrics.recordDisableUsage();

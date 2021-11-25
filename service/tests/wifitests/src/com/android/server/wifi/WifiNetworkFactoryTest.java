@@ -33,7 +33,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.anyString;
@@ -1951,8 +1950,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         mWifiNetworkFactory.releaseNetworkFor(mNetworkRequest);
 
         verify(mWifiMetrics).incrementNetworkRequestApiNumConnectSuccessOnSecondaryIface();
-        // Don't toggle auto-join state.
-        verify(mWifiConnectivityManager, never()).setSpecificNetworkRequestInProgress(anyBoolean());
+        // Ensure that we toggle auto-join state even for the secondary CMM.
+        verify(mWifiConnectivityManager).setSpecificNetworkRequestInProgress(false);
         verify(mClientModeManager).enableRoaming(true);
     }
 
