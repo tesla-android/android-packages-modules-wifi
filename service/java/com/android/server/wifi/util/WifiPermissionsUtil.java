@@ -276,6 +276,16 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Returns the global demo mode of the device. Note that there is a
+     * UserManager.isDeviceInDemoMode(Context) which does the same thing - but is not a
+     * public/system API (whereas the Settings.Global.DEVICE_DEMO_MODE is a System API).
+     */
+    public boolean isDeviceInDemoMode(Context context) {
+        return Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.DEVICE_DEMO_MODE, 0) > 0;
+    }
+
+    /**
      * Checks that calling process has android.Manifest.permission.ACCESS_FINE_LOCATION or
      * android.Manifest.permission.ACCESS_FINE_LOCATION (depending on config/targetSDK leve)
      * and a corresponding app op is allowed for this package and uid.
