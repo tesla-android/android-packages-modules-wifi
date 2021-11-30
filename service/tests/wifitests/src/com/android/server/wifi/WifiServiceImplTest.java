@@ -160,6 +160,7 @@ import android.os.IBinder;
 import android.os.IPowerManager;
 import android.os.IThermalService;
 import android.os.Parcel;
+import android.os.ParcelFileDescriptor;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.RemoteException;
@@ -387,6 +388,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock BuildProperties mBuildProperties;
     @Mock LinkProbeManager mLinkProbeManager;
     @Mock IOnWifiDriverCountryCodeChangedListener mIOnWifiDriverCountryCodeChangedListener;
+    @Mock WifiShellCommand mWifiShellCommand;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
     @Captor ArgumentCaptor<Runnable> mOnStoppedListenerCaptor;
@@ -423,6 +425,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
         when(mWifiInjector.getBuildProperties()).thenReturn(mBuildProperties);
         when(mWifiInjector.getLinkProbeManager()).thenReturn(mLinkProbeManager);
+        when(mWifiInjector.makeWifiShellCommand(any())).thenReturn(mWifiShellCommand);
         when(mHandlerThread.getThreadHandler()).thenReturn(new Handler(mLooper.getLooper()));
         when(mHandlerThread.getLooper()).thenReturn(mLooper.getLooper());
         when(mContext.getResources()).thenReturn(mResources);
@@ -688,6 +691,24 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiDiagnostics).captureBugReportData(
                 WifiDiagnostics.REPORT_REASON_USER_ACTION);
         verify(mWifiDiagnostics).dump(any(), any(), any());
+    }
+
+    @Test
+    public void testWifiShellCommandIgnoredBeforeBoot() {
+        // needed to mock this to call "handleBootCompleted"
+        when(mWifiInjector.getPasspointProvisionerHandlerThread())
+                .thenReturn(mock(HandlerThread.class));
+
+        // verify shell command can't be called before boot complete
+        ParcelFileDescriptor mockDescriptor = mock(ParcelFileDescriptor.class);
+        assertEquals(-1, mWifiServiceImpl.handleShellCommand(mockDescriptor,
+                mockDescriptor, mockDescriptor, new String[0]));
+
+        // verify shell command can now be called after boot complete
+        mWifiServiceImpl.handleBootCompleted();
+        mLooper.dispatchAll();
+        assertEquals(0, mWifiServiceImpl.handleShellCommand(mockDescriptor,
+                mockDescriptor, mockDescriptor, new String[0]));
     }
 
     /**
