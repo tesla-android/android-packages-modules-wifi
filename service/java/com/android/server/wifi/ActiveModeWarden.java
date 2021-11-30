@@ -746,6 +746,15 @@ public class ActiveModeWarden {
     }
 
     /**
+     * Checks whether there exists a primary or scan only mode manager.
+     * @return
+     */
+    private boolean hasPrimaryOrScanOnlyModeManager() {
+        return getClientModeManagerInRole(ROLE_CLIENT_PRIMARY) != null
+                || getClientModeManagerInRole(ROLE_CLIENT_SCAN_ONLY) != null;
+    }
+
+    /**
      * Returns primary client mode manager if any, else returns null
      * This mode manager can be the default route on the device & will handle all external API
      * calls.
@@ -1767,7 +1776,7 @@ public class ActiveModeWarden {
 
         private void handleStaToggleChangeInEnabledState(WorkSource requestorWs) {
             if (shouldEnableSta()) {
-                if (hasAnyClientModeManager()) {
+                if (hasPrimaryOrScanOnlyModeManager()) {
                     if (!mSettingsStore.isWifiToggleEnabled()) {
                         // Wifi is turned off, so we should stop all the secondary CMMs which are
                         // currently all for connectivity purpose. It's important to stops the
