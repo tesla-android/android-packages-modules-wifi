@@ -795,8 +795,8 @@ package android.net.wifi.aware {
   }
 
   public class WifiAwareManager {
-    method public void attach(@NonNull android.net.wifi.aware.AttachCallback, @Nullable android.os.Handler);
-    method public void attach(@NonNull android.net.wifi.aware.AttachCallback, @NonNull android.net.wifi.aware.IdentityChangedListener, @Nullable android.os.Handler);
+    method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE}) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @Nullable android.os.Handler);
+    method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.NEARBY_WIFI_DEVICES}, conditional=true) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @NonNull android.net.wifi.aware.IdentityChangedListener, @Nullable android.os.Handler);
     method @Nullable public android.net.wifi.aware.AwareResources getAvailableAwareResources();
     method @Nullable public android.net.wifi.aware.Characteristics getCharacteristics();
     method public boolean isAvailable();
@@ -838,8 +838,8 @@ package android.net.wifi.aware {
     method public void close();
     method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierOpen(int, @NonNull byte[]);
     method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierPassphrase(int, @NonNull byte[], @NonNull String);
-    method public void publish(@NonNull android.net.wifi.aware.PublishConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
-    method public void subscribe(@NonNull android.net.wifi.aware.SubscribeConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
+    method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.NEARBY_WIFI_DEVICES}, conditional=true) public void publish(@NonNull android.net.wifi.aware.PublishConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
+    method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.NEARBY_WIFI_DEVICES}, conditional=true) public void subscribe(@NonNull android.net.wifi.aware.SubscribeConfig, @NonNull android.net.wifi.aware.DiscoverySessionCallback, @Nullable android.os.Handler);
   }
 
 }
