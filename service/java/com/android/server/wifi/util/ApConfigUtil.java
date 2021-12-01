@@ -367,10 +367,18 @@ public class ApConfigUtil {
         int[] regulatoryArray = wifiNative.getChannelsForBand(scannerBand);
         List<Integer> regulatoryList = new ArrayList<Integer>();
         for (int freq : regulatoryArray) {
-            if (inFrequencyMHz) {
-                regulatoryList.add(freq);
-            } else {
-                regulatoryList.add(ScanResult.convertFrequencyMhzToChannelIfSupported(freq));
+            regulatoryList.add(inFrequencyMHz
+                    ? freq : ScanResult.convertFrequencyMhzToChannelIfSupported(freq));
+        }
+
+        // Add DFS channels to the supported channel list if the device supports SoftAp operation
+        // in the DFS channel.
+        if (resources.getBoolean(R.bool.config_wifiSoftapAcsIncludeDfs)
+                && scannerBand == WifiScanner.WIFI_BAND_5_GHZ) {
+            regulatoryArray = wifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY);
+            for (int freq : regulatoryArray) {
+                regulatoryList.add(inFrequencyMHz
+                        ? freq : ScanResult.convertFrequencyMhzToChannelIfSupported(freq));
             }
         }
 

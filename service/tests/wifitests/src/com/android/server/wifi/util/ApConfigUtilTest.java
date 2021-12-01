@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -53,6 +54,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Unit tests for {@link com.android.server.wifi.util.ApConfigUtil}.
@@ -137,6 +139,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
     private static final int[] ALLOWED_5G_FREQS = {5745, 5765}; //ch# 149, 153
     private static final int[] ALLOWED_6G_FREQS = {5945, 5965};
     private static final int[] ALLOWED_60G_FREQS = {58320, 60480}; // ch# 1, 2
+    private static final int[] TEST_5G_DFS_FREQS = {5280, 5520}; // ch#56, 104
 
     @Mock Context mContext;
     @Mock Resources mResources;
@@ -840,6 +843,23 @@ public class ApConfigUtilTest extends WifiBaseTest {
                     }});
             assertFalse(ApConfigUtil.checkSupportAllConfiguration(testConfigBuilder.build(),
                     mockSoftApCapability));
+        }
+    }
+
+    @Test
+    public void testGetAvailableChannelFreqsForBandWithDfsChannelWhenDeviceSupported()
+            throws Exception {
+        when(mResources.getBoolean(R.bool.config_wifiSoftapAcsIncludeDfs))
+                .thenReturn(true);
+        when(mWifiNative.getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY))
+                .thenReturn(TEST_5G_DFS_FREQS);
+        when(mWifiNative.getChannelsForBand(anyInt())).thenReturn(new int[0]);
+        List<Integer> result = ApConfigUtil.getAvailableChannelFreqsForBand(
+                SoftApConfiguration.BAND_5GHZ, mWifiNative, mResources, true);
+        // make sure we try to get dfs channel.
+        verify(mWifiNative).getChannelsForBand(WifiScanner.WIFI_BAND_5_GHZ_DFS_ONLY);
+        for (int freq : result) {
+            assertTrue(Arrays.stream(TEST_5G_DFS_FREQS).anyMatch(n -> n == freq));
         }
     }
 }
