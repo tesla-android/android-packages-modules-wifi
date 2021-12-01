@@ -337,6 +337,12 @@ public class WifiCountryCode {
      * @return Returns true if the country code passed in is acceptable.
      */
     public boolean setTelephonyCountryCodeAndUpdate(String countryCode) {
+        if (TextUtils.isEmpty(countryCode)
+                && !TextUtils.isEmpty(mTelephonyManager.getNetworkCountryIso())) {
+            Log.i(TAG, "Skip Telephony CC update to empty because there is "
+                    + "an available CC from default active SIM");
+            return false;
+        }
         setTelephonyCountryCode(countryCode);
         if (mOverrideCountryCode != null) {
             Log.d(TAG, "Skip Telephony Country code update due to override country code set");
