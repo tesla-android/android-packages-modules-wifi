@@ -21,6 +21,7 @@ import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED
 import static android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA256;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_FILS_SHA384;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_PRIMARY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
@@ -151,6 +152,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URL;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -201,7 +203,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     protected void log(String s) {
         Log.d(getTag(), s);
     }
-    private final Context mContext;
+    private final WifiContext mContext;
     private final WifiMetrics mWifiMetrics;
     private final WifiMonitor mWifiMonitor;
     private final WifiNative mWifiNative;
@@ -248,6 +250,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final String mInterfaceName;
     private final ConcreteClientModeManager mClientModeManager;
 
+    private final WifiNotificationManager mNotificationManager;
+
     private boolean mFailedToResetMacAddress = false;
     private int mLastSignalLevel = -1;
     private int mLastTxKbps = -1;
@@ -265,6 +269,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     @Nullable
     private WifiNative.ConnectionCapabilities mLastConnectionCapabilities;
     private int mPowerSaveDisableRequests = 0; // mask based on @PowerSaveClientType
+    private boolean mIsUserSelected = false;
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -403,6 +408,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private final UntrustedWifiNetworkFactory mUntrustedNetworkFactory;
     private final OemWifiNetworkFactory mOemWifiNetworkFactory;
     private final RestrictedWifiNetworkFactory mRestrictedWifiNetworkFactory;
+    @VisibleForTesting
+    InsecureEapNetworkHandler mInsecureEapNetworkHandler;
+    @VisibleForTesting
+    InsecureEapNetworkHandler.InsecureEapNetworkHandlerCallbacks
+            mInsecureEapNetworkHandlerCallbacksImpl;
 
     @VisibleForTesting
     @Nullable
@@ -548,6 +558,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     static final int CMD_CONNECTABLE_STATE_SETUP                        = BASE + 300;
 
+    @VisibleForTesting
+    static final int CMD_ACCEPT_EAP_SERVER_CERTIFICATE                  = BASE + 301;
+
+    @VisibleForTesting
+    static final int CMD_REJECT_EAP_SERVER_CERTIFICATE                  = BASE + 302;
+
     /* Tracks if suspend optimizations need to be disabled by DHCP,
      * screen or due to high perf mode.
      * When any of them needs to disable it, we keep the suspend optimizations
@@ -636,7 +652,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     /** Note that this constructor will also start() the StateMachine. */
     public ClientModeImpl(
-            @NonNull Context context,
+            @NonNull WifiContext context,
             @NonNull WifiMetrics wifiMetrics,
             @NonNull Clock clock,
             @NonNull WifiScoreCard wifiScoreCard,
@@ -690,7 +706,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull TelephonyManager telephonyManager,
             @NonNull WifiInjector wifiInjector,
             @NonNull WifiSettingsConfigStore settingsConfigStore,
-            boolean verboseLoggingEnabled) {
+            boolean verboseLoggingEnabled,
+            @NonNull WifiNotificationManager wifiNotificationManager) {
         super(TAG, looper);
         mWifiMetrics = wifiMetrics;
         mClock = clock;
@@ -784,6 +801,42 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         enableVerboseLogging(verboseLoggingEnabled);
 
+        mNotificationManager = wifiNotificationManager;
+
+        mInsecureEapNetworkHandlerCallbacksImpl =
+                new InsecureEapNetworkHandler.InsecureEapNetworkHandlerCallbacks() {
+                @Override
+                public void onAccept(String ssid) {
+                    log("Accept Root CA cert for " + ssid);
+                    sendMessage(CMD_ACCEPT_EAP_SERVER_CERTIFICATE, ssid);
+                }
+
+                @Override
+                public void onReject(String ssid) {
+                    log("Reject Root CA cert for " + ssid);
+                    sendMessage(CMD_REJECT_EAP_SERVER_CERTIFICATE,
+                            WifiMetricsProto.ConnectionEvent.AUTH_FAILURE_REJECTED_BY_USER,
+                            0, ssid);
+                }
+
+                @Override
+                public void onError(String ssid) {
+                    log("Insecure EAP network error for " + ssid);
+                    sendMessage(CMD_REJECT_EAP_SERVER_CERTIFICATE,
+                            WifiMetricsProto.ConnectionEvent.AUTH_FAILURE_EAP_FAILURE,
+                            0, ssid);
+                }};
+        mInsecureEapNetworkHandler = new InsecureEapNetworkHandler(
+                mContext,
+                mWifiConfigManager,
+                mWifiNative,
+                mFacade,
+                mNotificationManager,
+                isTrustOnFirstUseSupported(),
+                mInsecureEapNetworkHandlerCallbacksImpl,
+                mInterfaceName,
+                getHandler());
+
         addState(mConnectableState); {
             addState(mConnectingOrConnectedState, mConnectableState); {
                 addState(mL2ConnectingState, mConnectingOrConnectedState);
@@ -827,6 +880,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             WifiMonitor.MBO_OCE_BSS_TM_HANDLING_DONE,
             WifiMonitor.TRANSITION_DISABLE_INDICATION,
             WifiMonitor.NETWORK_NOT_FOUND_EVENT,
+            WifiMonitor.TOFU_ROOT_CA_CERTIFICATE,
     };
 
     private void registerForWifiMonitorEvents()  {
@@ -1167,6 +1221,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private void connectToUserSelectNetwork(int netId, int uid, boolean forceReconnect) {
         logd("connectToUserSelectNetwork netId " + netId + ", uid " + uid
                 + ", forceReconnect = " + forceReconnect);
+        if (mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                || mWifiPermissionsUtil.checkNetworkSetupWizardPermission(uid)) {
+            mIsUserSelected = true;
+        }
         updateSaeAutoUpgradeFlagForUserSelectNetwork(netId);
         if (!forceReconnect && (mLastNetworkId == netId || mTargetNetworkId == netId)) {
             // We're already connecting/connected to the user specified network, don't trigger a
@@ -2100,6 +2158,10 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "CMD_UNWANTED_NETWORK";
             case CMD_UPDATE_LINKPROPERTIES:
                 return "CMD_UPDATE_LINKPROPERTIES";
+            case CMD_ACCEPT_EAP_SERVER_CERTIFICATE:
+                return "CMD_ACCEPT_EAP_SERVER_CERTIFICATE";
+            case CMD_REJECT_EAP_SERVER_CERTIFICATE:
+                return "CMD_REJECT_EAP_SERVER_CERTIFICATE";
             case WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT:
                 return "SUPPLICANT_STATE_CHANGE_EVENT";
             case WifiMonitor.AUTHENTICATION_FAILURE_EVENT:
@@ -2144,6 +2206,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "BLOCK_DISCOVERY";
             case WifiMonitor.NETWORK_NOT_FOUND_EVENT:
                 return "NETWORK_NOT_FOUND_EVENT";
+            case WifiMonitor.TOFU_ROOT_CA_CERTIFICATE:
+                return "TOFU_ROOT_CA_CERTIFICATE";
             default:
                 return "what:" + what;
         }
@@ -2731,6 +2795,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         checkAbnormalDisconnectionAndTakeBugReport();
         mWifiScoreCard.resetConnectionState(mInterfaceName);
         updateLayer2Information();
+        mInsecureEapNetworkHandler.clearConnection();
+        mIsUserSelected = false;
     }
 
     void handlePreDhcpSetup() {
@@ -3699,6 +3765,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             break;
                         }
                     }
+                    mInsecureEapNetworkHandler.prepareConnection(mTargetWifiConfiguration);
+
                     connectToNetwork(config);
                     break;
                 }
@@ -3936,6 +4004,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     // in one of the child states.
                     break;
                 }
+                case CMD_ACCEPT_EAP_SERVER_CERTIFICATE:
+                case CMD_REJECT_EAP_SERVER_CERTIFICATE:
                 case CMD_START_ROAM:
                 case CMD_START_RSSI_MONITORING_OFFLOAD:
                 case CMD_STOP_RSSI_MONITORING_OFFLOAD:
@@ -4899,6 +4969,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     handleStatus = NOT_HANDLED;
                     break;
                 }
+                case WifiMonitor.TOFU_ROOT_CA_CERTIFICATE:
+                    if (null == mTargetWifiConfiguration) break;
+                    if (!mInsecureEapNetworkHandler.setPendingCaCertificate(
+                            mTargetWifiConfiguration.SSID,
+                            (X509Certificate) message.obj)) {
+                        Log.d(TAG, "Cannot set pending Root CA cert.");
+                    }
+                    break;
                 default: {
                     handleStatus = NOT_HANDLED;
                     break;
@@ -5399,16 +5477,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     class L3ProvisioningState extends State {
         @Override
         public void enter() {
-            WifiConfiguration currentConfig = getConnectedWifiConfigurationInternal();
-            if (mIpClientWithPreConnection && mIpClient != null) {
-                mIpClient.notifyPreconnectionComplete(mSentHLPs);
-                mIpClientWithPreConnection = false;
-                mSentHLPs = false;
-            } else {
-                startIpClient(currentConfig, false);
+            if (mInsecureEapNetworkHandler.startUserApprovalIfNecessary(mIsUserSelected)) {
+                return;
             }
-            // Get Link layer stats so as we get fresh tx packet counters
-            getWifiLinkLayerStats();
+
+            startL3Provisioning();
         }
 
         @Override
@@ -5431,6 +5504,18 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     handleStatus = NOT_HANDLED;
                     break;
                 }
+                case CMD_ACCEPT_EAP_SERVER_CERTIFICATE:
+                    startL3Provisioning();
+                    break;
+                case CMD_REJECT_EAP_SERVER_CERTIFICATE: {
+                    int l2FailureReason = message.arg1;
+                    reportConnectionAttemptEnd(
+                            WifiMetrics.ConnectionEvent.FAILURE_NETWORK_DISCONNECTION,
+                            WifiMetricsProto.ConnectionEvent.HLF_NONE,
+                            l2FailureReason);
+                    mWifiNative.disconnect(mInterfaceName);
+                    break;
+                }
                 default: {
                     handleStatus = NOT_HANDLED;
                     break;
@@ -5442,6 +5527,20 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
             return handleStatus;
         }
+
+        private void startL3Provisioning() {
+            WifiConfiguration currentConfig = getConnectedWifiConfigurationInternal();
+            if (mIpClientWithPreConnection && mIpClient != null) {
+                mIpClient.notifyPreconnectionComplete(mSentHLPs);
+                mIpClientWithPreConnection = false;
+                mSentHLPs = false;
+            } else {
+                startIpClient(currentConfig, false);
+            }
+            // Get Link layer stats so as we get fresh tx packet counters
+            getWifiLinkLayerStats();
+        }
+
     }
 
     /**
@@ -6271,6 +6370,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      */
     private boolean isFilsSha384Supported() {
         return (getSupportedFeatures() & WIFI_FEATURE_FILS_SHA384) != 0;
+    }
+
+    /**
+     * @return true if this device supports Trust On First Use
+     */
+    private boolean isTrustOnFirstUseSupported() {
+        return (getSupportedFeatures() & WIFI_FEATURE_TRUST_ON_FIRST_USE) != 0;
     }
 
     /**

@@ -258,6 +258,7 @@ public class WifiEnterpriseConfig implements Parcelable {
     private boolean mIsAppInstalledCaCert = false;
     private String mKeyChainAlias;
     private boolean mIsTrustOnFirstUseEnabled = false;
+    private boolean mUserApproveNoCaCert = false;
 
     private static final String TAG = "WifiEnterpriseConfig";
 
@@ -305,6 +306,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         mIsAppInstalledCaCert = source.mIsAppInstalledCaCert;
         mOcsp = source.mOcsp;
         mIsTrustOnFirstUseEnabled = source.mIsTrustOnFirstUseEnabled;
+        mUserApproveNoCaCert = source.mUserApproveNoCaCert;
     }
 
     /**
@@ -353,6 +355,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         dest.writeBoolean(mIsAppInstalledCaCert);
         dest.writeInt(mOcsp);
         dest.writeBoolean(mIsTrustOnFirstUseEnabled);
+        dest.writeBoolean(mUserApproveNoCaCert);
     }
 
     public static final @android.annotation.NonNull Creator<WifiEnterpriseConfig> CREATOR =
@@ -377,6 +380,7 @@ public class WifiEnterpriseConfig implements Parcelable {
                     enterpriseConfig.mIsAppInstalledCaCert = in.readBoolean();
                     enterpriseConfig.mOcsp = in.readInt();
                     enterpriseConfig.mIsTrustOnFirstUseEnabled = in.readBoolean();
+                    enterpriseConfig.mUserApproveNoCaCert = in.readBoolean();
                     return enterpriseConfig;
                 }
 
@@ -1356,6 +1360,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         }
         sb.append(" ocsp: ").append(mOcsp).append("\n");
         sb.append(" trust_on_first_use: ").append(mIsTrustOnFirstUseEnabled).append("\n");
+        sb.append(" user_approve_no_ca_cert").append(mUserApproveNoCaCert).append("\n");
         return sb.toString();
     }
 
@@ -1659,4 +1664,28 @@ public class WifiEnterpriseConfig implements Parcelable {
     public boolean isTrustOnFirstUseEnabled() {
         return mIsTrustOnFirstUseEnabled;
     }
+
+    /**
+     * For devices with no TOFU support, indicate that the user approved that a
+     * legacy TLS-based EAP configuration from a previous release can be used
+     * without a Root CA certificate.
+     *
+     * @hide
+     */
+    public void setUserApproveNoCaCert(boolean approved) {
+        mUserApproveNoCaCert = approved;
+    }
+
+    /**
+     * For devices with no TOFU support, indicates if the user approved that a
+     * legacy TLS-based EAP configuration from a previous release can be used
+     * without a Root CA certificate.
+     *
+     * @return indicate whether a user approves this no CA cert config.
+     * @hide
+     */
+    public boolean isUserApproveNoCaCert() {
+        return mUserApproveNoCaCert;
+    }
+
 }

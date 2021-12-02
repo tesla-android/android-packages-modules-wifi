@@ -26,6 +26,7 @@ import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_FAILED;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
@@ -481,6 +482,7 @@ public class WifiServiceImpl extends BaseWifiService {
             if (!mWifiConfigManager.loadFromStore()) {
                 Log.e(TAG, "Failed to load from config store");
             }
+            mWifiConfigManager.updateTrustOnFirstUseFlag(isTrustOnFirstUseSupported());
             mWifiConfigManager.incrementNumRebootsSinceLastUse();
             // config store is read, check if verbose logging is enabled.
             enableVerboseLoggingInternal(
@@ -6002,5 +6004,12 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner.post(() ->
                 mPasspointManager.setWifiPasspointEnabled(enabled)
         );
+    }
+
+    /**
+     * @return true if this device supports Trust On First Use
+     */
+    private boolean isTrustOnFirstUseSupported() {
+        return (getSupportedFeatures() & WIFI_FEATURE_TRUST_ON_FIRST_USE) != 0;
     }
 }

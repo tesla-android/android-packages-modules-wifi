@@ -643,8 +643,10 @@ public class WifiEnterpriseConfigTest {
         WifiEnterpriseConfig config = new WifiEnterpriseConfig();
 
         assertFalse(config.isUserApproveNoCaCert());
-        config.setUserApproveNoCaCert();
+        config.setUserApproveNoCaCert(true);
         assertTrue(config.isUserApproveNoCaCert());
+        config.setUserApproveNoCaCert(false);
+        assertFalse(config.isUserApproveNoCaCert());
     }
 
     /**
