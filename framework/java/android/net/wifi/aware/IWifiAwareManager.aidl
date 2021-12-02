@@ -27,6 +27,8 @@ import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.AwareResources;
 
+import android.os.Bundle;
+
 /**
  * Interface that WifiAwareService implements
  *
@@ -45,13 +47,15 @@ interface IWifiAwareManager
     // client API
     void connect(in IBinder binder, in String callingPackage, in String callingFeatureId,
             in IWifiAwareEventCallback callback, in ConfigRequest configRequest,
-            boolean notifyOnIdentityChanged);
+            boolean notifyOnIdentityChanged, in Bundle extras);
     void disconnect(int clientId, in IBinder binder);
 
     void publish(in String callingPackage, in String callingFeatureId, int clientId,
-            in PublishConfig publishConfig, in IWifiAwareDiscoverySessionCallback callback);
+            in PublishConfig publishConfig, in IWifiAwareDiscoverySessionCallback callback,
+            in Bundle extras);
     void subscribe(in String callingPackage, in String callingFeatureId, int clientId,
-            in SubscribeConfig subscribeConfig, in IWifiAwareDiscoverySessionCallback callback);
+            in SubscribeConfig subscribeConfig, in IWifiAwareDiscoverySessionCallback callback,
+            in Bundle extras);
 
     // session API
     void updatePublish(int clientId, int discoverySessionId, in PublishConfig publishConfig);

@@ -1816,7 +1816,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
 
         mgr.attach(mMockLooperHandler, configRequest, mockCallback, null);
         inOrderS.verify(mockAwareService).connect(any(), any(), any(),
-                clientProxyCallback.capture(), eq(configRequest), eq(false));
+                clientProxyCallback.capture(), eq(configRequest), eq(false), any());
         IWifiAwareEventCallback iwaec = clientProxyCallback.getValue();
         iwaec.onConnectSuccess(clientId);
         mMockLooper.dispatchAll();
@@ -1825,12 +1825,12 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             sessionCaptor.getValue().publish(publishConfig, mockSessionCallback,
                     mMockLooperHandler);
             inOrderS.verify(mockAwareService).publish(any(), any(), eq(clientId), eq(publishConfig),
-                    sessionProxyCallback.capture());
+                    sessionProxyCallback.capture(), any());
         } else {
             sessionCaptor.getValue().subscribe(subscribeConfig, mockSessionCallback,
                     mMockLooperHandler);
             inOrderS.verify(mockAwareService).subscribe(any(), any(), eq(clientId),
-                    eq(subscribeConfig), sessionProxyCallback.capture());
+                    eq(subscribeConfig), sessionProxyCallback.capture(), any());
         }
         sessionProxyCallback.getValue().onSessionStarted(sessionId);
         mMockLooper.dispatchAll();
@@ -1896,7 +1896,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
 
         mgr.attach(mMockLooperHandler, configRequest, mockCallback, null);
         verify(mockAwareService).connect(any(), any(), any(),
-                clientProxyCallback.capture(), eq(configRequest), eq(false));
+                clientProxyCallback.capture(), eq(configRequest), eq(false), any());
         clientProxyCallback.getValue().onConnectSuccess(clientId);
         mMockLooper.dispatchAll();
         verify(mockCallback).onAttached(sessionCaptor.capture());
