@@ -2308,6 +2308,45 @@ public class SupplicantP2pIfaceHalAidlImpl implements ISupplicantP2pIfaceHal {
         }
     }
 
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @param isLegacyClient Indicate if client is a legacy client or not.
+     * @return true if success
+     */
+    public boolean removeClient(String peerAddress, boolean isLegacyClient) {
+        synchronized (mLock) {
+            String methodStr = "removeClient";
+
+            if (peerAddress == null) {
+                Log.e(TAG, "Cannot parse null peer mac address.");
+                return false;
+            }
+
+            byte[] peerMacAddress;
+            try {
+                peerMacAddress = NativeUtil.macAddressToByteArray(peerAddress);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Peer mac address parse error.", e);
+                return false;
+            }
+
+
+            if (!checkP2pIfaceAndLogFailure(methodStr)) {
+                return false;
+            }
+            try {
+                mISupplicantP2pIface.removeClient(peerMacAddress, isLegacyClient);
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return false;
+        }
+    }
 
     /**
      * Converts the Wps config method string to the equivalent enum value.

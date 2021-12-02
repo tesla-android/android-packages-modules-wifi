@@ -764,4 +764,15 @@ public class SupplicantP2pIfaceHalTest {
         assertTrue(mDut.setWfdR2DeviceInfo(PARAMS));
         verify(mP2pIfaceHalAidlMock).setWfdR2DeviceInfo(eq(PARAMS));
     }
+
+    /**
+     * Test that we can call removeClient
+     */
+    @Test
+    public void testRemoveClient() {
+        initializeWithAidlImpl(true);
+        when(mP2pIfaceHalAidlMock.removeClient(eq(BSSID), anyBoolean())).thenReturn(true);
+        assertTrue(mDut.removeClient(BSSID, true));
+        verify(mP2pIfaceHalAidlMock).removeClient(eq(BSSID), eq(true));
+    }
 }

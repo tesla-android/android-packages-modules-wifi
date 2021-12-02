@@ -844,4 +844,15 @@ public class WifiP2pNative {
     public boolean setWfdR2DeviceInfo(String hex) {
         return mSupplicantP2pIfaceHal.setWfdR2DeviceInfo(hex);
     }
+
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @return true if success
+     */
+    public boolean removeClient(String peerAddress) {
+        // The client is deemed as a P2P client, not a legacy client, hence the false.
+        return mSupplicantP2pIfaceHal.removeClient(peerAddress, false);
+    }
 }

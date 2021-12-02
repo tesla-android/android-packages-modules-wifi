@@ -26,6 +26,7 @@ import android.annotation.SystemApi;
 import android.annotation.SystemService;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
+import android.net.MacAddress;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
@@ -47,6 +48,8 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.CloseGuard;
 import android.util.Log;
+
+import androidx.annotation.RequiresApi;
 
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
@@ -616,6 +619,13 @@ public class WifiP2pManager {
     /** @hide */
     public static final int RESPONSE_DEVICE_INFO                    = BASE + 98;
 
+    /** @hide */
+    public static final int REMOVE_CLIENT                           = BASE + 99;
+    /** @hide */
+    public static final int REMOVE_CLIENT_FAILED                    = BASE + 100;
+    /** @hide */
+    public static final int REMOVE_CLIENT_SUCCEEDED                 = BASE + 101;
+
     /**
      * Create a new WifiP2pManager instance. Applications use
      * {@link android.content.Context#getSystemService Context.getSystemService()} to retrieve
@@ -979,6 +989,7 @@ public class WifiP2pManager {
                     case REPORT_NFC_HANDOVER_FAILED:
                     case FACTORY_RESET_FAILED:
                     case SET_ONGOING_PEER_CONFIG_FAILED:
+                    case REMOVE_CLIENT_FAILED:
                         if (listener != null) {
                             ((ActionListener) listener).onFailure(message.arg1);
                         }
@@ -1007,6 +1018,7 @@ public class WifiP2pManager {
                     case REPORT_NFC_HANDOVER_SUCCEEDED:
                     case FACTORY_RESET_SUCCEEDED:
                     case SET_ONGOING_PEER_CONFIG_SUCCEEDED:
+                    case REMOVE_CLIENT_SUCCEEDED:
                         if (listener != null) {
                             ((ActionListener) listener).onSuccess();
                         }
@@ -1865,6 +1877,24 @@ public class WifiP2pManager {
             e.rethrowFromSystemServer();
         }
         c.mAsyncChannel.sendMessage(SET_WFD_INFO, 0, c.putListener(listener), wfdInfo);
+    }
+
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param c is the channel created at {@link #initialize}
+     * @param peerAddress MAC address of the client.
+     * @param listener for callbacks on success or failure. Can be null.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void removeClient(@NonNull Channel c, @NonNull MacAddress peerAddress,
+            @Nullable ActionListener listener) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        checkChannel(c);
+        c.mAsyncChannel.sendMessage(REMOVE_CLIENT, 0, c.putListener(listener),
+                peerAddress);
     }
 
 

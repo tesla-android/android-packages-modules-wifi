@@ -2377,6 +2377,42 @@ public class SupplicantP2pIfaceHalAidlImplTest extends WifiBaseTest {
     }
 
     /**
+     * Sunny day scenario for removeClient()
+     */
+    @Test
+    public void testRemoveClientSuccess() throws Exception {
+        executeAndValidateInitializationSequence(false, false);
+        doNothing().when(mISupplicantP2pIfaceMock).removeClient(
+                eq(mPeerMacAddressBytes), anyBoolean());
+
+        assertTrue(mDut.removeClient(mPeerMacAddress, true));
+        verify(mISupplicantP2pIfaceMock).removeClient(eq(mPeerMacAddressBytes), eq(true));
+    }
+
+    /**
+     * Failure scenario for removeClient() due to invalid peer mac address
+     */
+    @Test
+    public void testRemoveClientFailureForInvalidPeerAddress() throws Exception {
+        assertFalse(mDut.removeClient(mInvalidMacAddress1, true));
+        verify(mISupplicantP2pIfaceMock, never())
+                .removeClient(any(byte[].class), eq(true));
+    }
+
+    /**
+     * Failure scenario for removeClient() when ISupplicant throws exception.
+     */
+    @Test
+    public void testRemoveClientFailureInSupplicantIface() throws Exception {
+        executeAndValidateInitializationSequence(false, false);
+        doThrow(new RemoteException()).when(mISupplicantP2pIfaceMock).removeClient(
+                eq(mPeerMacAddressBytes), anyBoolean());
+
+        assertFalse(mDut.removeClient(mPeerMacAddress, true));
+        verify(mISupplicantP2pIfaceMock).removeClient(eq(mPeerMacAddressBytes), eq(true));
+    }
+
+    /**
      * Calls initialize and addP2pInterface to mock the startup sequence.
      * The two arguments will each trigger a different failure in addP2pInterface
      * when set to true.

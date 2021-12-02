@@ -2585,6 +2585,18 @@ public class SupplicantP2pIfaceHalHidlImpl implements ISupplicantP2pIfaceHal {
         }
     }
 
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @param isLegacyClient Indicate if client is a legacy client or not.
+     * @return true if success
+     */
+    public boolean removeClient(String peerAddress, boolean isLegacyClient) {
+        Log.d(TAG, "removeClient() is not supported.");
+        return false;
+    }
+
 
     /**
      * Converts the Wps config method string to the equivalent enum value.

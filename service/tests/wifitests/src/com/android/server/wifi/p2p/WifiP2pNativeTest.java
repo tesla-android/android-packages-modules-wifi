@@ -698,4 +698,14 @@ public class WifiP2pNativeTest extends WifiBaseTest {
                 mWifiP2pNative.getSupportedFeatureSet(TEST_IFACE));
         verify(mWifiVendorHalMock).getSupportedFeatureSet(eq(TEST_IFACE));
     }
+
+    /**
+     * Verifies removing client with specified mac address.
+     */
+    @Test
+    public void testRemoveClient() {
+        when(mSupplicantP2pIfaceHalMock.removeClient(anyString(), anyBoolean())).thenReturn(true);
+        assertTrue(mWifiP2pNative.removeClient(TEST_BSSID));
+        verify(mSupplicantP2pIfaceHalMock).removeClient(eq(TEST_BSSID), anyBoolean());
+    }
 }
