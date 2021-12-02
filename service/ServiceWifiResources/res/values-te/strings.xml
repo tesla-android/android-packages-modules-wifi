@@ -24,7 +24,7 @@
     <string name="wifi_available_content_failed_to_connect" msgid="4330035988269701861">"అన్ని నెట్‌వర్క్‌లు చూడటానికి నొక్కండి"</string>
     <string name="wifi_available_action_connect" msgid="5636634933476946222">"కనెక్ట్ చేయి"</string>
     <string name="wifi_available_action_all_networks" msgid="8491109932336522211">"అన్ని నెట్‌వర్క్‌లు"</string>
-    <string name="notification_channel_network_status" msgid="1631786866932924838">"నెట్‌వర్క్ స్థితి"</string>
+    <string name="notification_channel_network_status" msgid="1631786866932924838">"నెట్‌వర్క్ స్టేటస్‌"</string>
     <string name="notification_channel_network_alerts" msgid="1391603215241200880">"నెట్‌వర్క్ హెచ్చరికలు"</string>
     <string name="notification_channel_network_available" msgid="8454366142428864948">"నెట్‌వర్క్ అందుబాటులో ఉంది"</string>
     <string name="wifi_suggestion_title" msgid="2564179935989099139">"సూచించిన Wi‑Fi నెట్‌వర్క్‌లను అనుమతించాలా?"</string>
