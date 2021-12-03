@@ -7272,4 +7272,103 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals("L3ConnectedState", getCurrentState().getName());
         verifyNoMoreInteractions(mWifiNetworkAgent);
     }
+
+    private void verifyUpdateAutoUpgradeFlagForSaeOnR(
+            boolean isWpa3SaeUpgradeEnabled, boolean isWpa2PersonalOnlyNetworkInRange,
+            boolean isWpa2Wpa3PersonalTransitionNetworkInRange,
+            boolean isWpa3PersonalOnlyNetworkInRange, boolean shouldBeUpdated)
+            throws Exception {
+
+        when(mWifiGlobals.isWpa3SaeUpgradeEnabled()).thenReturn(isWpa3SaeUpgradeEnabled);
+        when(mScanRequestProxy.isWpa2PersonalOnlyNetworkInRange(any()))
+                .thenReturn(isWpa2PersonalOnlyNetworkInRange);
+        when(mScanRequestProxy.isWpa2Wpa3PersonalTransitionNetworkInRange(any()))
+                .thenReturn(isWpa2Wpa3PersonalTransitionNetworkInRange);
+        when(mScanRequestProxy.isWpa3PersonalOnlyNetworkInRange(any()))
+                .thenReturn(isWpa3PersonalOnlyNetworkInRange);
+        initializeAndAddNetworkAndVerifySuccess();
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
+        config.networkId = TEST_NETWORK_ID;
+        when(mWifiConfigManager.getConfiguredNetwork(TEST_NETWORK_ID)).thenReturn(config);
+
+        IActionListener connectActionListener = mock(IActionListener.class);
+        mCmi.connectNetwork(
+                new NetworkUpdateResult(TEST_NETWORK_ID),
+                new ActionListenerWrapper(connectActionListener),
+                Process.SYSTEM_UID);
+        mLooper.dispatchAll();
+        verify(connectActionListener).onSuccess();
+        if (shouldBeUpdated) {
+            verify(mWifiConfigManager).updateIsAddedByAutoUpgradeFlag(
+                    eq(TEST_NETWORK_ID), eq(WifiConfiguration.SECURITY_TYPE_SAE),
+                    eq(false));
+        } else {
+            verify(mWifiConfigManager, never()).updateIsAddedByAutoUpgradeFlag(
+                    anyInt(), anyInt(), anyBoolean());
+        }
+    }
+
+    /**
+     * Tests that manual connection to a network (from settings app) updates
+     * the auto upgrade flag for SAE on R.
+     * - SAE auto-upgrade is disabled.
+     * - No WPA2 PSK network
+     * - No WPA2/WPA3 network
+     * - A WPA3-SAE-only network exists.
+     */
+    @Test
+    public void testManualConnectUpdateAutoUpgradeFlagForSaeOnR() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        verifyUpdateAutoUpgradeFlagForSaeOnR(false, false, false, true, true);
+    }
+
+    /**
+     * Tests that manual connection to a network (from settings app) does not update
+     * the auto upgrade flag for SAE on R if auto-upgrade is enabled.
+     */
+    @Test
+    public void testManualConnectNotUpdateAutoUpgradeFlagForSaeOnRWhenAutoUpgradeEnabled()
+            throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        verifyUpdateAutoUpgradeFlagForSaeOnR(true, false, false, true, false);
+    }
+
+    /**
+     * Tests that manual connection to a network (from settings app) does not update
+     * the auto upgrade flag for SAE on R if there are psk networks.
+     */
+    @Test
+    public void testManualConnectNotUpdateAutoUpgradeFlagForSaeOnRWithPskNetworks()
+            throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        verifyUpdateAutoUpgradeFlagForSaeOnR(false, true, false, true, false);
+    }
+
+    /**
+     * Tests that manual connection to a network (from settings app) does not update
+     * the auto upgrade flag for SAE on R if there are psk/ase networks.
+     */
+    @Test
+    public void testManualConnectNotUpdateAutoUpgradeFlagForSaeOnRWithPskSaeNetworks()
+            throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        verifyUpdateAutoUpgradeFlagForSaeOnR(false, false, true, true, false);
+    }
+
+    /**
+     * Tests that manual connection to a network (from settings app) does not update
+     * the auto upgrade flag for SAE on R if there is no WPA3 SAE only network..
+     */
+    @Test
+    public void testManualConnectNotUpdateAutoUpgradeFlagForSaeOnRWithoutSaeOnlyNetworks()
+            throws Exception {
+        assumeFalse(SdkLevel.isAtLeastS());
+
+        verifyUpdateAutoUpgradeFlagForSaeOnR(false, false, true, true, false);
+    }
 }
