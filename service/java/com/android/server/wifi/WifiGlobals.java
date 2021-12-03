@@ -18,6 +18,7 @@ package com.android.server.wifi;
 
 import android.content.Context;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -169,7 +170,8 @@ public class WifiGlobals {
      * @return boolean true if auto-upgrade is enabled, false otherwise.
      */
     public boolean isOweUpgradeEnabled() {
-        return mIsOweUpgradeEnabled;
+        // OWE auto-upgrade is supported on S or newer releases.
+        return SdkLevel.isAtLeastS() && mIsOweUpgradeEnabled;
     }
 
     /**

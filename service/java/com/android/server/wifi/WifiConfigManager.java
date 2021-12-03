@@ -3774,4 +3774,22 @@ public class WifiConfigManager {
         }
         internalConfig.enableFils(isFilsSha256Supported, isFilsSha384Supported);
     }
+
+    /**
+     * This method updates auto-upgrade flag to the internal network.
+     *
+     * @param networkId networkId corresponding to the network to be updated.
+     * @param securityType the target security type
+     * @param isAddedByAutoUpgrade indicate whether the target security type is added
+     *        by auto-upgrade or not.
+     */
+    public void updateIsAddedByAutoUpgradeFlag(int networkId,
+            int securityType, boolean isAddedByAutoUpgrade) {
+        WifiConfiguration internalConfig = getInternalConfiguredNetwork(networkId);
+        if (internalConfig == null) {
+            return;
+        }
+        internalConfig.setSecurityParamsIsAddedByAutoUpgrade(securityType, isAddedByAutoUpgrade);
+        saveToStore(true);
+    }
 }
