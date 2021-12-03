@@ -8251,6 +8251,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
     private List<WifiConfiguration> generateExpectedConfigs(
             List<WifiConfiguration> testConfigs,
             boolean saeAutoUpgradeEnabled, boolean oweAutoUpgradeEnabled) {
+        if (!SdkLevel.isAtLeastS()) {
+            return testConfigs;
+        }
         WifiConfiguration tmpConfig;
         List<WifiConfiguration> expectedConfigs = new ArrayList<>();
         tmpConfig = new WifiConfiguration(testConfigs.get(0));

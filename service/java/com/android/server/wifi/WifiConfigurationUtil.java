@@ -36,6 +36,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 
 import java.nio.charset.StandardCharsets;
@@ -1054,7 +1055,10 @@ public class WifiConfigurationUtil {
     /**
      * Convert multi-type configurations to a list of configurations with a single security type,
      * where a configuration with multiple security configurations will be converted to multiple
-     * Wi-Fi configurations with a single security type..
+     * Wi-Fi configurations with a single security type.
+     * For R or older releases, Settings/WifiTrackerLib does not handle multiple configurations
+     * with the same SSID and will result in duplicate saved networks. As a result, just return
+     * the merged configs directly.
      *
      * @param configs the list of multi-type configurations.
      * @return a list of Wi-Fi configurations with a single security type,
@@ -1062,6 +1066,9 @@ public class WifiConfigurationUtil {
      */
     public static List<WifiConfiguration> convertMultiTypeConfigsToLegacyConfigs(
             List<WifiConfiguration> configs) {
+        if (!SdkLevel.isAtLeastS()) {
+            return configs;
+        }
         List<WifiConfiguration> legacyConfigs = new ArrayList<>();
         for (WifiConfiguration config : configs) {
             for (SecurityParams params: config.getSecurityParamsList()) {
