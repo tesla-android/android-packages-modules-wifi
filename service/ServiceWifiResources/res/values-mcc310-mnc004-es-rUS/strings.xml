@@ -24,10 +24,8 @@
     <string name="wifi_eap_error_message_code_32765" msgid="280860840894726014">"<xliff:g id="SSID">%1$s</xliff:g>: Hay un problema con tu cuenta de Verizon Wi-Fi Access. Comunícate con nosotros al 800-922-0204. (Error: 32765)"</string>
     <string name="wifi_eap_error_message_code_32766" msgid="8240516953105404383">"<xliff:g id="SSID">%1$s</xliff:g>: Verizon Wi-Fi Access no está disponible en tu ubicación. Vuelve a intentarlo más tarde o en una ubicación diferente. (Error: 32766)"</string>
     <string name="wifi_eap_error_message_code_32767" msgid="2748970858713796197">"<xliff:g id="SSID">%1$s</xliff:g>: Se produjo un error al conectarte a Verizon Wi-Fi Access. Vuelve a intentarlo más tarde o en una ubicación diferente."</string>
-    <!-- no translation found for wifi_eap_error_message_code_32768 (6056457127199894891) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_32769 (3647952558104541109) -->
-    <skip />
+    <string name="wifi_eap_error_message_code_32768" msgid="6940754993270246981"></string>
+    <string name="wifi_eap_error_message_code_32769" msgid="4532250424174893199"></string>
     <string name="wifi_eap_error_message_code_16384" msgid="3188087130800435510">"<xliff:g id="SSID">%1$s</xliff:g>: No se pudo establecer la conexión a Verizon Wi-Fi Access debido al error 16384."</string>
     <string name="wifi_eap_error_message_code_16385" msgid="5914307659373687387">"<xliff:g id="SSID">%1$s</xliff:g>: No se pudo establecer la conexión a Verizon Wi-Fi Access debido al error 16385."</string>
     <string name="wifi_eap_error_message_unknown_error_code" msgid="4276024988348676667">"<xliff:g id="SSID">%1$s</xliff:g>: Se produjo un error al conectarte a Verizon Wi-Fi Access."</string>

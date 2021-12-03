@@ -24,10 +24,8 @@
     <string name="wifi_eap_error_message_code_32765" msgid="280860840894726014">"<xliff:g id="SSID">%1$s</xliff:g>: existe um problema com a sua conta do ponto de acesso Wi-Fi da Verizon. Contacte-nos através do número 800-922-0204. (Erro = 32765)"</string>
     <string name="wifi_eap_error_message_code_32766" msgid="8240516953105404383">"<xliff:g id="SSID">%1$s</xliff:g>: o ponto de acesso Wi-Fi da Verizon não está disponível a partir da sua localização. Tente novamente mais tarde ou experimente a partir de uma localização diferente. (Erro = 32766)"</string>
     <string name="wifi_eap_error_message_code_32767" msgid="2748970858713796197">"<xliff:g id="SSID">%1$s</xliff:g>: ocorreu um problema ao estabelecer ligação ao ponto de acesso Wi-Fi da Verizon. Tente novamente mais tarde ou experimente a partir de uma localização diferente."</string>
-    <!-- no translation found for wifi_eap_error_message_code_32768 (6056457127199894891) -->
-    <skip />
-    <!-- no translation found for wifi_eap_error_message_code_32769 (3647952558104541109) -->
-    <skip />
+    <string name="wifi_eap_error_message_code_32768" msgid="6940754993270246981"></string>
+    <string name="wifi_eap_error_message_code_32769" msgid="4532250424174893199"></string>
     <string name="wifi_eap_error_message_code_16384" msgid="3188087130800435510">"<xliff:g id="SSID">%1$s</xliff:g>: ocorreu um problema ao estabelecer ligação ao ponto de acesso Wi-Fi da Verizon devido ao erro 16384."</string>
     <string name="wifi_eap_error_message_code_16385" msgid="5914307659373687387">"<xliff:g id="SSID">%1$s</xliff:g>: ocorreu um problema ao estabelecer ligação ao ponto de acesso Wi-Fi da Verizon devido ao erro 16385."</string>
     <string name="wifi_eap_error_message_unknown_error_code" msgid="4276024988348676667">"<xliff:g id="SSID">%1$s</xliff:g>: ocorreu um problema ao estabelecer ligação ao ponto de acesso Wi-Fi da Verizon."</string>
