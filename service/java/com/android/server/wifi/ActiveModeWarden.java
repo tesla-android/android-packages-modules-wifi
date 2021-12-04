@@ -503,6 +503,16 @@ public class ActiveModeWarden {
                         R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled);
     }
 
+    /**
+     * @return Returns whether the device can support at least two concurrent client mode managers
+     * and the multi internet use-case is enabled.
+     */
+    public boolean isStaStaConcurrencySupportedForMultiInternet() {
+        return mWifiNative.isStaStaConcurrencySupported()
+                && mContext.getResources().getBoolean(
+                        R.bool.config_wifiMultiStaMultiInternetConcurrencyEnabled);
+    }
+
     /** Begin listening to broadcasts and start the internal state machine. */
     public void start() {
         mContext.registerReceiver(new BroadcastReceiver() {
@@ -1175,6 +1185,9 @@ public class ActiveModeWarden {
             pw.println("   Restricted use-case enabled: "
                     + mContext.getResources().getBoolean(
                             R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled));
+            pw.println("   Multi internet use-case enabled: "
+                    + mContext.getResources().getBoolean(
+                            R.bool.config_wifiMultiStaMultiInternetConcurrencyEnabled));
         }
         pw.println("STA + AP Concurrency Supported: " + isStaApConcurrencySupported());
         mWifiInjector.getHalDeviceManager().dump(fd, pw, args);

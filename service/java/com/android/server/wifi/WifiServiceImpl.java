@@ -5019,6 +5019,10 @@ public class WifiServiceImpl extends BaseWifiService {
                     if (mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections()) {
                         concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
                     }
+                    if (mActiveModeWarden.isStaStaConcurrencySupportedForMultiInternet()) {
+                        concurrencyFeatureSet |= WifiManager
+                                .WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET;
+                    }
                     return concurrencyFeatureSet;
                 }, 0L);
         return supportedFeatureSet;
@@ -6065,5 +6069,48 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     private boolean isTrustOnFirstUseSupported() {
         return (getSupportedFeatures() & WIFI_FEATURE_TRUST_ON_FIRST_USE) != 0;
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#getStaConcurrencyForMultiInternetMode()}.
+     */
+    @Override
+    public @WifiManager.WifiMultiInternetMode int getStaConcurrencyForMultiInternetMode() {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        enforceAccessPermission();
+
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getStaConcurrencyForMultiInternetMode uid=%")
+                    .c(Binder.getCallingUid()).flush();
+        }
+        // Post operation to handler thread
+        // TODO: Call mMultiInternetManager for the mode
+        return WifiManager.WIFI_MULTI_INTERNET_MODE_DISABLED;
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#setStaConcurrencyForMultiInternetMode()}.
+     */
+    @Override
+    public boolean setStaConcurrencyForMultiInternetMode(
+            @WifiManager.WifiMultiInternetMode int mode) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        if (!isSettingsOrSuw(pid, uid)) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setStaConcurrencyForMultiInternetMode uid=% pid=% mode=%")
+                .c(uid).c(pid).c(mode)
+                .flush();
+        }
+        // TODO: Call mMultiInternetManager for the mode
+        return false;
     }
 }

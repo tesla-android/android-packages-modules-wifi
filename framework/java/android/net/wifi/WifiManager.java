@@ -44,6 +44,7 @@ import android.net.LinkProperties;
 import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.NetworkStack;
 import android.net.Uri;
 import android.net.wifi.hotspot2.IProvisioningCallback;
@@ -1403,6 +1404,41 @@ public class WifiManager {
     /** @hide */
     public static final MacAddress ALL_ZEROS_MAC_ADDRESS =
             MacAddress.fromString("00:00:00:00:00:00");
+
+    /** @hide */
+    @IntDef(flag = false, prefix = { "WIFI_MULTI_INTERNET_MODE_" }, value = {
+        WIFI_MULTI_INTERNET_MODE_DISABLED,
+        WIFI_MULTI_INTERNET_MODE_DBS_AP,
+        WIFI_MULTI_INTERNET_MODE_MULTI_AP,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface WifiMultiInternetMode {}
+
+    /**
+     * Wi-Fi simultaneous connection to multiple internet-providing Wi-Fi networks (APs) is
+     * disabled.
+     *
+     * @see #getStaConcurrencyForMultiInternetMode()
+     *
+     */
+    public static final int WIFI_MULTI_INTERNET_MODE_DISABLED = 0;
+    /**
+     * Wi-Fi simultaneous connection to multiple internet-providing Wi-FI networks (APs) is enabled
+     * and restricted to a single network on different bands (e.g. a DBS AP).
+     *
+     * @see #getStaConcurrencyForMultiInternetMode()
+     *
+     */
+    public static final int WIFI_MULTI_INTERNET_MODE_DBS_AP = 1;
+    /**
+     * Wi-Fi simultaneous connection to multiple internet-providing Wi-Fi networks (APs) is enabled.
+     * The device can connect to any networks/APs - it is just restricted to using different bands
+     * for individual connections.
+     *
+     * @see #getStaConcurrencyForMultiInternetMode()
+     *
+     */
+    public static final int WIFI_MULTI_INTERNET_MODE_MULTI_AP = 2;
 
     /* Number of currently active WifiLocks and MulticastLocks */
     @UnsupportedAppUsage
@@ -3003,6 +3039,12 @@ public class WifiManager {
      */
     public static final long WIFI_FEATURE_TRUST_ON_FIRST_USE = 0x10000000000000L;
 
+    /**
+     * Support for 2 STA's multi internet concurrency.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET = 0x20000000000000L;
+
     private long getSupportedFeatures() {
         try {
             return mService.getSupportedFeatures();
@@ -3087,6 +3129,18 @@ public class WifiManager {
      */
     public boolean isMakeBeforeBreakWifiSwitchingSupported() {
         return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_MBB);
+    }
+
+    /**
+     * Query whether or not the device supports concurrent station (STA) connections for multi
+     * internet connections.
+     *
+     * @return true if this device supports multiple STA concurrency for this use-case, false
+     * otherwise.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public boolean isStaConcurrencyForMultiInternetSupported() {
+        return isFeatureSupported(WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET);
     }
 
     /**
@@ -8720,4 +8774,57 @@ public class WifiManager {
         }
     }
 
+    /**
+     * The device may support concurrent connections to multiple internet-providing Wi-Fi
+     * networks (APs) - that is indicated by
+     * {@link WifiManager#isStaConcurrencyForMultiInternetSupported()}.
+     * This method indicates whether or not the feature is currently enabled.
+     * A value of {@link WifiManager#WIFI_MULTI_INTERNET_MODE_DISABLED} indicates that the feature
+     * is disabled, a value of {@link WifiManager#WIFI_MULTI_INTERNET_MODE_DBS_AP} or
+     * {@link WifiManager#WIFI_MULTI_INTERNET_MODE_MULTI_AP} indicates that the feature is enabled.
+     *
+     * The app can register to receive the corresponding Wi-Fi networks using the
+     * {@link ConnectivityManager#registerNetworkCallback(NetworkRequest, NetworkCallback)} API with
+     * a {@link WifiNetworkSpecifier} configured using the
+     * {@link WifiNetworkSpecifier.Builder#setBand(int)} method.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
+    public @WifiMultiInternetMode int getStaConcurrencyForMultiInternetMode() {
+        try {
+            return mService.getStaConcurrencyForMultiInternetMode();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Configure whether or not concurrent multiple connections to internet-providing Wi-Fi
+     * networks (AP) is enabled.
+     * Use {@link WifiManager#WIFI_MULTI_INTERNET_MODE_DISABLED} to disable, and either
+     * {@link WifiManager#WIFI_MULTI_INTERNET_MODE_DBS_AP} or
+     * {@link WifiManager#WIFI_MULTI_INTERNET_MODE_MULTI_AP} to enable in different modes.
+     * The {@link WifiManager#getStaConcurrencyForMultiInternetMode() } can be used to retrieve
+     * the current mode.
+     *
+     * @param mode Multi internet mode.
+     * @return true when the mode is set successfully, false when failed.
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_SETUP_WIZARD
+    })
+    public boolean setStaConcurrencyForMultiInternetMode(@WifiMultiInternetMode int mode) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "setStaConcurrencyForMultiInternetMode: " + mode);
+        }
+        try {
+            return mService.setStaConcurrencyForMultiInternetMode(mode);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

@@ -385,6 +385,7 @@ package android.net.wifi {
     method @NonNull @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public java.util.List<android.net.wifi.WifiNetworkSuggestion> getNetworkSuggestions();
     method @Deprecated public java.util.List<android.net.wifi.hotspot2.PasspointConfiguration> getPasspointConfigurations();
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION}) public java.util.List<android.net.wifi.ScanResult> getScanResults();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public int getStaConcurrencyForMultiInternetMode();
     method public int getWifiState();
     method public boolean is24GHzBandSupported();
     method public boolean is5GHzBandSupported();
@@ -408,6 +409,7 @@ package android.net.wifi {
     method public boolean isStaApConcurrencySupported();
     method public boolean isStaBridgedApConcurrencySupported();
     method public boolean isStaConcurrencyForLocalOnlyConnectionsSupported();
+    method public boolean isStaConcurrencyForMultiInternetSupported();
     method public boolean isTdlsSupported();
     method public boolean isTrustOnFirstUseSupported();
     method public boolean isWapiSupported();
@@ -488,6 +490,9 @@ package android.net.wifi {
     field public static final int WIFI_MODE_FULL_HIGH_PERF = 3; // 0x3
     field public static final int WIFI_MODE_FULL_LOW_LATENCY = 4; // 0x4
     field @Deprecated public static final int WIFI_MODE_SCAN_ONLY = 2; // 0x2
+    field public static final int WIFI_MULTI_INTERNET_MODE_DBS_AP = 1; // 0x1
+    field public static final int WIFI_MULTI_INTERNET_MODE_DISABLED = 0; // 0x0
+    field public static final int WIFI_MULTI_INTERNET_MODE_MULTI_AP = 2; // 0x2
     field public static final String WIFI_STATE_CHANGED_ACTION = "android.net.wifi.WIFI_STATE_CHANGED";
     field public static final int WIFI_STATE_DISABLED = 1; // 0x1
     field public static final int WIFI_STATE_DISABLING = 0; // 0x0

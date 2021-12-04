@@ -659,6 +659,9 @@
     <!-- Enable concurrent restricted connectivity + internet connectivity
          Note: this is conditional on the device supporting dual concurrent STAs. -->
     <bool translatable="false" name="config_wifiMultiStaRestrictedConcurrencyEnabled">false</bool>
+    <!-- Enable concurrent internet connectivity + internet connectivity
+         Note: this is conditional on the device supporting dual concurrent STAs. -->
+    <bool translatable="false" name="config_wifiMultiStaMultiInternetConcurrencyEnabled">false</bool>
     <!-- Enable the default coex channel avoidance algorithm and disable the functionality of
          WifiManager#setCoexUnsafeChannels. -->
     <bool translatable="false" name="config_wifiDefaultCoexAlgorithmEnabled">false</bool>

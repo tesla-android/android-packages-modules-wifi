@@ -37,6 +37,7 @@ import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_FAILED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_AP_STA;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DECORATED_IDENTITY;
@@ -2461,19 +2462,23 @@ public class WifiManagerTest {
         assertFalse(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
         assertFalse(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
         assertFalse(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
+        assertFalse(mWifiManager.isStaConcurrencyForMultiInternetSupported());
 
         when(mWifiService.getSupportedFeatures())
                 .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY));
         assertTrue(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
         assertFalse(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
         assertFalse(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
+        assertFalse(mWifiManager.isStaConcurrencyForMultiInternetSupported());
 
         when(mWifiService.getSupportedFeatures())
                 .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA_MBB
-                        | WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED));
+                        | WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED
+                        | WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET));
         assertFalse(mWifiManager.isStaConcurrencyForLocalOnlyConnectionsSupported());
         assertTrue(mWifiManager.isMakeBeforeBreakWifiSwitchingSupported());
         assertTrue(mWifiManager.isStaConcurrencyForRestrictedConnectionsSupported());
+        assertTrue(mWifiManager.isStaConcurrencyForMultiInternetSupported());
     }
 
     /**
@@ -3651,5 +3656,39 @@ public class WifiManagerTest {
 
         verify(mSoftApCallback).onBlockedClientConnecting(testWifiClient,
                 WifiManager.SAP_CLIENT_BLOCK_REASON_CODE_NO_MORE_STAS);
+    }
+
+    /*
+     * Verify call to {@link WifiManager#isStaConcurrencyForMultiInternetSupported}.
+     */
+    @Test
+    public void testIsStaConcurrencyForMultiInternetSupported() throws Exception {
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET));
+        assertTrue(mWifiManager.isStaConcurrencyForMultiInternetSupported());
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(~WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET));
+        assertFalse(mWifiManager.isStaConcurrencyForMultiInternetSupported());
+    }
+
+    /*
+     * Verify call to {@link WifiManager#getStaConcurrencyForMultiInternetMode()}.
+     */
+    @Test
+    public void testGetStaConcurrencyForMultiInternetMode() throws Exception {
+        final int mode = mWifiManager.getStaConcurrencyForMultiInternetMode();
+        verify(mWifiService).getStaConcurrencyForMultiInternetMode();
+        assertEquals(WifiManager.WIFI_MULTI_INTERNET_MODE_DISABLED, mode);
+    }
+
+    /*
+     * Verify call to {@link WifiManager#setStaConcurrencyForMultiInternetMode()}.
+     */
+    @Test
+    public void testSetStaConcurrencyForMultiInternetMode() throws Exception {
+        mWifiManager.setStaConcurrencyForMultiInternetMode(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DBS_AP);
+        verify(mWifiService).setStaConcurrencyForMultiInternetMode(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DBS_AP);
     }
 }

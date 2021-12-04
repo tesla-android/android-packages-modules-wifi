@@ -845,5 +845,16 @@ public class BaseWifiService extends IWifiManager.Stub {
     public void setWifiPasspointEnabled(boolean enabled) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public @WifiManager.WifiMultiInternetMode int getStaConcurrencyForMultiInternetMode() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean setStaConcurrencyForMultiInternetMode(
+            @WifiManager.WifiMultiInternetMode int mode) {
+        throw new UnsupportedOperationException();
+    }
 }
 
