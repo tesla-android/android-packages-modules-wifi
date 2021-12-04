@@ -1315,11 +1315,12 @@ public class WifiConfigManager {
                 newInternalConfig) && !mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
                 && !mWifiPermissionsUtil.checkNetworkSetupWizardPermission(uid)
                 && !(newInternalConfig.isPasspoint() && uid == newInternalConfig.creatorUid)
-                && !config.fromWifiNetworkSuggestion) {
+                && !config.fromWifiNetworkSuggestion
+                && !mWifiPermissionsUtil.isDeviceInDemoMode(mContext)) {
             Log.e(TAG, "UID " + uid + " does not have permission to modify MAC randomization "
                     + "Settings " + config.getProfileKey() + ". Must have "
-                    + "NETWORK_SETTINGS or NETWORK_SETUP_WIZARD or be the creator adding or "
-                    + "updating a passpoint network.");
+                    + "NETWORK_SETTINGS or NETWORK_SETUP_WIZARD or be in Demo Mode "
+                    + "or be the creator adding or updating a passpoint network.");
             return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
         }
 
