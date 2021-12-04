@@ -156,6 +156,19 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Version of enforceNearbyDevicesPermission that do not throw an exception.
+     */
+    public boolean checkNearbyDevicesPermission(AttributionSource attributionSource,
+            boolean checkForLocation, String message) {
+        try {
+            enforceNearbyDevicesPermission(attributionSource, checkForLocation, message);
+        } catch (SecurityException e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Check and enforce NEARBY_WIFI_DEVICES permission and optionally enforce for either location
      * disavowal or location permission.
      *
