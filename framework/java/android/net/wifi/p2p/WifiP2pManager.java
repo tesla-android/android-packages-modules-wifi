@@ -27,6 +27,7 @@ import android.annotation.SystemService;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceResponse;
@@ -49,6 +50,7 @@ import android.util.Log;
 
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -145,6 +147,24 @@ import java.util.Map;
 @SystemService(Context.WIFI_P2P_SERVICE)
 public class WifiP2pManager {
     private static final String TAG = "WifiP2pManager";
+    /**
+     * Extra for transporting a WifiP2pConfig
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_CONFIG =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_CONFIG";
+    /**
+     * Extra for transporting a WifiP2pServiceInfo
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_SERVICE_INFO =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_SERVICE_INFO";
+    /**
+     * Extra used to indicate that a message is sent from Wifi internally
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_INTERNAL_MESSAGE =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_INTERNAL_MESSAGE";
     /**
      * Broadcast intent action to indicate whether Wi-Fi p2p is enabled or disabled. An
      * extra {@link #EXTRA_WIFI_STATE} provides the state information as int.
@@ -1171,6 +1191,15 @@ public class WifiP2pManager {
                 null);
     }
 
+    private Bundle prepareExtrasBundle(Channel c) {
+        Bundle bundle = new Bundle();
+        if (SdkLevel.isAtLeastS()) {
+            bundle.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                    c.mContext.getAttributionSource());
+        }
+        return bundle;
+    }
+
     private Channel initializeChannel(Context srcContext, Looper srcLooper,
             ChannelListener listener, Messenger messenger, Binder binder) {
         if (messenger == null) return null;
@@ -1206,14 +1235,27 @@ public class WifiP2pManager {
      *
      * <p> Upon receiving a {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent, an application
      * can request for the list of peers using {@link #requestPeers}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void discoverPeers(Channel c, ActionListener listener) {
         checkChannel(c);
-        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -1249,16 +1291,30 @@ public class WifiP2pManager {
      * <p> If the current device is part of an existing p2p group or has created
      * a p2p group with {@link #createGroup}, an invitation to join the group is sent to
      * the peer device.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param config options as described in {@link WifiP2pConfig} class
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void connect(Channel c, WifiP2pConfig config, ActionListener listener) {
         checkChannel(c);
         checkP2pConfig(config);
-        c.mAsyncChannel.sendMessage(CONNECT, 0, c.putListener(listener), config);
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_CONFIG, config);
+        c.mAsyncChannel.sendMessage(CONNECT, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -1292,15 +1348,28 @@ public class WifiP2pManager {
      * {@link ActionListener#onFailure}.
      *
      * <p> Application can request for the group details with {@link #requestGroupInfo}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void createGroup(Channel c, ActionListener listener) {
         checkChannel(c);
+        Bundle extras = prepareExtrasBundle(c);
         c.mAsyncChannel.sendMessage(CREATE_GROUP, WifiP2pGroup.NETWORK_ID_PERSISTENT,
-                c.putListener(listener));
+                c.putListener(listener), extras);
     }
 
     /**
@@ -1322,18 +1391,32 @@ public class WifiP2pManager {
      * {@link ActionListener#onFailure}.
      *
      * <p> Application can request for the group details with {@link #requestGroupInfo}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}.
      * @param config the configuration of a p2p group.
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void createGroup(@NonNull Channel c,
             @Nullable WifiP2pConfig config,
             @Nullable ActionListener listener) {
         checkChannel(c);
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_CONFIG, config);
         c.mAsyncChannel.sendMessage(CREATE_GROUP, 0,
-                c.putListener(listener), config);
+                c.putListener(listener), extras);
     }
 
     /**
@@ -1439,16 +1522,30 @@ public class WifiP2pManager {
      *
      * <p>The service information can be cleared with calls to
      *  {@link #removeLocalService} or {@link #clearLocalServices}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param servInfo is a local service information.
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void addLocalService(Channel c, WifiP2pServiceInfo servInfo, ActionListener listener) {
         checkChannel(c);
         checkServiceInfo(servInfo);
-        c.mAsyncChannel.sendMessage(ADD_LOCAL_SERVICE, 0, c.putListener(listener), servInfo);
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_SERVICE_INFO, servInfo);
+        c.mAsyncChannel.sendMessage(ADD_LOCAL_SERVICE, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -1550,14 +1647,27 @@ public class WifiP2pManager {
      * <p>The application is notified of the response against the service discovery request
      * through listener callbacks registered by {@link #setServiceResponseListener} or
      * {@link #setDnsSdResponseListeners}, or {@link #setUpnpServiceResponseListener}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callbacks on success or failure. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void discoverServices(Channel c, ActionListener listener) {
         checkChannel(c);
-        c.mAsyncChannel.sendMessage(DISCOVER_SERVICES, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(DISCOVER_SERVICES, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -1626,14 +1736,27 @@ public class WifiP2pManager {
 
     /**
      * Request the current list of peers.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callback when peer list is available. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void requestPeers(Channel c, PeerListListener listener) {
         checkChannel(c);
-        c.mAsyncChannel.sendMessage(REQUEST_PEERS, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(REQUEST_PEERS, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -1649,14 +1772,27 @@ public class WifiP2pManager {
 
     /**
      * Request p2p group info.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callback when group info is available. Can be null.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void requestGroupInfo(Channel c, GroupInfoListener listener) {
         checkChannel(c);
-        c.mAsyncChannel.sendMessage(REQUEST_GROUP_INFO, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(REQUEST_GROUP_INFO, 0, c.putListener(listener), extras);
     }
 
     /**
@@ -2008,7 +2144,7 @@ public class WifiP2pManager {
         c.mAsyncChannel.sendMessage(REQUEST_NETWORK_INFO, 0, c.putListener(listener));
     }
 
-     /**
+    /**
      * Request Device Info
      *
      * <p> This method provides the device info
@@ -2026,14 +2162,27 @@ public class WifiP2pManager {
      *
      * <p> This information is also included in the {@link #WIFI_P2P_THIS_DEVICE_CHANGED_ACTION}
      * broadcast event with extra {@link #EXTRA_WIFI_P2P_DEVICE}.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param listener for callback when network info is available.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void requestDeviceInfo(@NonNull Channel c, @NonNull DeviceInfoListener listener) {
         checkChannel(c);
         if (listener == null) throw new IllegalArgumentException("This listener cannot be null.");
-        c.mAsyncChannel.sendMessage(REQUEST_DEVICE_INFO, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(REQUEST_DEVICE_INFO, 0, c.putListener(listener), extras);
     }
 }
