@@ -401,4 +401,21 @@ public class ScanResultTest {
         assertArrayEquals(expected.radioChainInfos, actual.radioChainInfos);
         assertArrayEquals(expected.informationElements, actual.informationElements);
     }
+
+    /**
+     * Test ScanResult.getBand() function.
+     */
+    @Test
+    public void testScanResultGetBand() throws Exception {
+        ScanResult scanResult = createScanResult();
+        assertEquals(ScanResult.WIFI_BAND_24_GHZ, scanResult.getBand());
+    }
+
+    /**
+     * Test ScanResult.toBand() function.
+     */
+    @Test
+    public void testScanResultToBand() throws Exception {
+        assertEquals(ScanResult.WIFI_BAND_24_GHZ, ScanResult.toBand(TEST_FREQUENCY));
+    }
 }
