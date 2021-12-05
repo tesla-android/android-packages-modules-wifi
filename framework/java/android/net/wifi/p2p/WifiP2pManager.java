@@ -1901,21 +1901,34 @@ public class WifiP2pManager {
     /**
      * Request a list of all the persistent p2p groups stored in system.
      *
+     * <p>The caller must have one of {@link android.Manifest.permission.NETWORK_SETTINGS},
+     * {@link android.Manifest.permission.NETWORK_STACK}, and
+     * {@link android.Manifest.permission.READ_WIFI_CREDENTIAL}.
+     *
+     * <p>If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later,
+     * the application must have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
      * @param c is the channel created at {@link #initialize}
      * @param listener for callback when persistent group info list is available. Can be null.
      *
      * @hide
      */
     @SystemApi
-    @RequiresPermission(anyOf = {
+    @RequiresPermission(allOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.NETWORK_STACK,
-            android.Manifest.permission.READ_WIFI_CREDENTIAL
-    })
+            android.Manifest.permission.READ_WIFI_CREDENTIAL,
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional = true)
     public void requestPersistentGroupInfo(@NonNull Channel c,
             @Nullable PersistentGroupInfoListener listener) {
         checkChannel(c);
-        c.mAsyncChannel.sendMessage(REQUEST_PERSISTENT_GROUP_INFO, 0, c.putListener(listener));
+        Bundle extras = prepareExtrasBundle(c);
+        c.mAsyncChannel.sendMessage(REQUEST_PERSISTENT_GROUP_INFO, 0, c.putListener(listener),
+                extras);
     }
 
     /** @hide */
