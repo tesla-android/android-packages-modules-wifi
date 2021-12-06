@@ -73,6 +73,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
+    private boolean mVerboseHalLoggingEnabled = false;
     private final Context mContext;
     private final Handler mEventHandler;
 
@@ -127,9 +128,10 @@ public class HostapdHalAidlImp implements IHostapdHal {
      * @param enable true to enable, false to disable.
      */
     @Override
-    public void enableVerboseLogging(boolean enable) {
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
         synchronized (mLock) {
-            mVerboseLoggingEnabled = enable;
+            mVerboseLoggingEnabled = verboseEnabled;
+            mVerboseHalLoggingEnabled = halVerboseEnabled;
             setDebugParams();
         }
     }
@@ -532,7 +534,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
                 return false;
             }
             try {
-                mIHostapd.setDebugParams(mVerboseLoggingEnabled
+                mIHostapd.setDebugParams(mVerboseHalLoggingEnabled
                         ? DebugLevel.DEBUG : DebugLevel.INFO);
                 return true;
             } catch (RemoteException e) {

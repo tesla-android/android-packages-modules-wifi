@@ -97,6 +97,7 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.BuildProperties;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.WifiInjector;
@@ -166,6 +167,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     // Otherwise it will cause interface down before function timeout.
     static final long P2P_INTERFACE_IDLE_SHUTDOWN_TIMEOUT_MS = 150_000;
 
+    // verbose logging controlled by user
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
+    // verbose logging on by default for userdebug
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
+    // verbose logging on by default for all builds -->
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
+
     private Context mContext;
 
     NetdWrapper mNetdWrapper;
@@ -182,6 +190,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     private FrameworkFacade mFrameworkFacade;
     private WifiSettingsConfigStore mSettingsConfigStore;
     private WifiP2pMetrics mWifiP2pMetrics;
+    private final BuildProperties mBuildProperties;
     // This will only be null if SdkLevel is not at least S
     @Nullable private CoexManager mCoexManager;
     private WifiGlobals mWifiGlobals;
@@ -560,6 +569,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         mWifiP2pMetrics = mWifiInjector.getWifiP2pMetrics();
         mCoexManager = mWifiInjector.getCoexManager();
         mWifiGlobals = mWifiInjector.getWifiGlobals();
+        mBuildProperties = mWifiInjector.getBuildProperties();
 
         mDetailedState = NetworkInfo.DetailedState.IDLE;
 
@@ -577,6 +587,24 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
      */
     public void connectivityServiceReady() {
         mNetdWrapper = mWifiInjector.makeNetdWrapper();
+    }
+
+    private boolean isVerboseLoggingEnabled() {
+        final int alwaysOnLevel = mContext.getResources()
+                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
+        // If the overlay setting enabled for all builds
+        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL) {
+            return true;
+        }
+        //If it is a userdebug build and the overlay setting enabled for userdebug build.
+        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG
+                && mBuildProperties.isUserdebugBuild()) {
+            return true;
+        }
+        if (alwaysOnLevel != VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE) {
+            Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
+        }
+        return mVerboseLoggingEnabled;
     }
 
     private void enforceAccessPermission() {
@@ -699,13 +727,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         synchronized (mLock) {
             final Messenger messenger = new Messenger(mClientHandler);
-            if (mVerboseLoggingEnabled) {
+            if (isVerboseLoggingEnabled()) {
                 Log.d(TAG, "getMessenger: uid=" + getCallingUid() + ", binder=" + binder
                         + ", messenger=" + messenger);
             }
 
             IBinder.DeathRecipient dr = () -> {
-                if (mVerboseLoggingEnabled) Log.d(TAG, "binderDied: binder=" + binder);
+                if (isVerboseLoggingEnabled()) Log.d(TAG, "binderDied: binder=" + binder);
                 close(binder);
             };
 
@@ -877,7 +905,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 new GroupDeleteListener() {
                     @Override
                     public void onDeleteGroup(int netId) {
-                        if (mVerboseLoggingEnabled) logd("called onDeleteGroup() netId=" + netId);
+                        if (isVerboseLoggingEnabled()) {
+                            logd("called onDeleteGroup() netId=" + netId);
+                        }
                         mWifiNative.removeP2pNetwork(netId);
                         mWifiNative.saveConfig();
                         sendP2pPersistentGroupsChangedBroadcast();
@@ -1185,7 +1215,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 mP2pIdleShutdownMessage.cancel();
                 mP2pIdleShutdownMessage.schedule(SystemClock.elapsedRealtime()
                         + P2P_INTERFACE_IDLE_SHUTDOWN_TIMEOUT_MS);
-                if (mVerboseLoggingEnabled) {
+                if (isVerboseLoggingEnabled()) {
                     Log.d(TAG, "IdleShutDown message (re)scheduled in "
                             + (P2P_INTERFACE_IDLE_SHUTDOWN_TIMEOUT_MS / 1000) + "s");
                 }
@@ -1196,7 +1226,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         void cancelIdleShutdown() {
             if (mP2pIdleShutdownMessage != null) {
                 mP2pIdleShutdownMessage.cancel();
-                if (mVerboseLoggingEnabled) {
+                if (isVerboseLoggingEnabled()) {
                     Log.d(TAG, "IdleShutDown message canceled");
                 }
             }
@@ -1223,10 +1253,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         /**
          * Enable verbose logging for all sub modules.
          */
-        private void enableVerboseLogging(boolean verbose) {
-            mVerboseLoggingEnabled = verbose;
-            mWifiNative.enableVerboseLogging(verbose ? 1 : 0);
-            mWifiMonitor.enableVerboseLogging(verbose ? 1 : 0);
+        private void enableVerboseLogging(boolean verboseEnabled) {
+            mVerboseLoggingEnabled = verboseEnabled;
+            mWifiNative.enableVerboseLogging(isVerboseLoggingEnabled(), mVerboseLoggingEnabled);
+            mWifiMonitor.enableVerboseLogging(isVerboseLoggingEnabled());
         }
 
         public void registerForWifiMonitorEvents() {
@@ -1328,11 +1358,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class DefaultState extends State {
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case AsyncChannel.CMD_CHANNEL_HALF_CONNECTED:
                         if (message.arg1 == AsyncChannel.STATUS_SUCCESSFUL) {
-                            if (mVerboseLoggingEnabled) {
+                            if (isVerboseLoggingEnabled()) {
                                 logd("Full connection with ClientModeImpl established");
                             }
                             mWifiChannel = (AsyncChannel) message.obj;
@@ -1445,7 +1475,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         WifiP2pDevice d = (WifiP2pDevice) message.obj;
                         if (d != null && setAndPersistDeviceName(d.deviceName)) {
-                            if (mVerboseLoggingEnabled) logd("set device name " + d.deviceName);
+                            if (isVerboseLoggingEnabled()) logd("set device name " + d.deviceName);
                             replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_SUCCEEDED);
                         } else {
                             replyToMessage(message, WifiP2pManager.SET_DEVICE_NAME_FAILED,
@@ -1764,17 +1794,17 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class P2pDisablingState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 sendMessageDelayed(obtainMessage(DISABLE_P2P_TIMED_OUT,
                         ++sDisableP2pTimeoutIndex, 0), DISABLE_P2P_WAIT_TIME_MS);
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case WifiP2pMonitor.SUP_DISCONNECTION_EVENT:
-                        if (mVerboseLoggingEnabled) logd("p2p socket connection lost");
+                        if (isVerboseLoggingEnabled()) logd("p2p socket connection lost");
                         transitionTo(mP2pDisabledState);
                         break;
                     case ENABLE_P2P:
@@ -1798,7 +1828,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class P2pDisabledState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 mInterfaceName = null; // reset iface name on disable.
                 mActiveClients.clear();
                 clearP2pInternalDataIfNecessary();
@@ -1840,7 +1870,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case ENABLE_P2P:
                         if (setupInterface()) {
@@ -1877,7 +1907,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         // P2P interface will be created if all of the below are true:
                         // a) Wifi is enabled.
                         // b) There is at least 1 client app which invoked initialize().
-                        if (mVerboseLoggingEnabled) {
+                        if (isVerboseLoggingEnabled()) {
                             Log.d(TAG, "Wifi enabled=" + mIsWifiEnabled + ", Number of clients="
                                     + mDeathDataByBinder.size());
                         }
@@ -1895,7 +1925,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class P2pEnabledState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
 
                 if (isPendingFactoryReset()) {
                     factoryReset(Process.SYSTEM_UID);
@@ -1909,7 +1939,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case WifiP2pMonitor.SUP_DISCONNECTION_EVENT:
                         loge("Unexpected loss of p2p socket connection");
@@ -2027,7 +2057,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.BUSY);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " discover services");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " discover services");
                         if (!updateSupplicantServiceRequest()) {
                             replyToMessage(message, WifiP2pManager.DISCOVER_SERVICES_FAILED,
                                     WifiP2pManager.NO_SERVICE_REQUESTS);
@@ -2073,7 +2103,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // remain at this state.
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " add service");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " add service");
                         WifiP2pServiceInfo servInfo = (WifiP2pServiceInfo) message.obj;
                         if (addLocalService(message.replyTo, servInfo)) {
                             replyToMessage(message, WifiP2pManager.ADD_LOCAL_SERVICE_SUCCEEDED);
@@ -2082,18 +2112,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     case WifiP2pManager.REMOVE_LOCAL_SERVICE:
-                        if (mVerboseLoggingEnabled) logd(getName() + " remove service");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " remove service");
                         servInfo = (WifiP2pServiceInfo) message.obj;
                         removeLocalService(message.replyTo, servInfo);
                         replyToMessage(message, WifiP2pManager.REMOVE_LOCAL_SERVICE_SUCCEEDED);
                         break;
                     case WifiP2pManager.CLEAR_LOCAL_SERVICES:
-                        if (mVerboseLoggingEnabled) logd(getName() + " clear service");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " clear service");
                         clearLocalServices(message.replyTo);
                         replyToMessage(message, WifiP2pManager.CLEAR_LOCAL_SERVICES_SUCCEEDED);
                         break;
                     case WifiP2pManager.ADD_SERVICE_REQUEST:
-                        if (mVerboseLoggingEnabled) logd(getName() + " add service request");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " add service request");
                         if (!addServiceRequest(message.replyTo,
                                 (WifiP2pServiceRequest) message.obj)) {
                             replyToMessage(message, WifiP2pManager.ADD_SERVICE_REQUEST_FAILED);
@@ -2102,17 +2132,19 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         replyToMessage(message, WifiP2pManager.ADD_SERVICE_REQUEST_SUCCEEDED);
                         break;
                     case WifiP2pManager.REMOVE_SERVICE_REQUEST:
-                        if (mVerboseLoggingEnabled) logd(getName() + " remove service request");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " remove service request");
                         removeServiceRequest(message.replyTo, (WifiP2pServiceRequest) message.obj);
                         replyToMessage(message, WifiP2pManager.REMOVE_SERVICE_REQUEST_SUCCEEDED);
                         break;
                     case WifiP2pManager.CLEAR_SERVICE_REQUESTS:
-                        if (mVerboseLoggingEnabled) logd(getName() + " clear service request");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " clear service request");
                         clearServiceRequests(message.replyTo);
                         replyToMessage(message, WifiP2pManager.CLEAR_SERVICE_REQUESTS_SUCCEEDED);
                         break;
                     case WifiP2pMonitor.P2P_SERV_DISC_RESP_EVENT:
-                        if (mVerboseLoggingEnabled) logd(getName() + " receive service response");
+                        if (isVerboseLoggingEnabled()) {
+                            logd(getName() + " receive service response");
+                        }
                         if (message.obj == null) {
                             Log.e(TAG, "Illegal argument(s)");
                             break;
@@ -2136,7 +2168,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.ERROR);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " delete persistent group");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " delete persistent group");
                         mGroups.remove(message.arg1);
                         mWifiP2pMetrics.updatePersistentGroup(mGroups);
                         replyToMessage(message, WifiP2pManager.DELETE_PERSISTENT_GROUP_SUCCEEDED);
@@ -2152,7 +2184,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " start listen mode");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " start listen mode");
                         mWifiNative.p2pFlush();
                         if (mWifiNative.p2pExtListen(true, 500, 500)) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_SUCCEEDED);
@@ -2168,7 +2200,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " stop listen mode");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " stop listen mode");
                         if (mWifiNative.p2pExtListen(false, 0, 0)) {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_SUCCEEDED);
                         } else {
@@ -2238,7 +2270,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class InactiveState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 mSavedPeerConfig.invalidate();
                 mDetailedState = NetworkInfo.DetailedState.IDLE;
                 scheduleIdleShutdown();
@@ -2251,7 +2283,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 // Re-schedule the shutdown timer since we got the new operation.
                 // only handle commands from clients.
                 if (message.what > Protocol.BASE_WIFI_P2P_MANAGER
@@ -2268,7 +2300,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // remain at this state.
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " sending connect");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " sending connect");
                         WifiP2pConfig config = (WifiP2pConfig) message.obj;
 
                         boolean isConnectFailed = false;
@@ -2482,7 +2514,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         mGroup = (WifiP2pGroup) message.obj;
-                        if (mVerboseLoggingEnabled) logd(getName() + " group started");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " group started");
                         if (mGroup.isGroupOwner()
                                 && EMPTY_DEVICE_ADDRESS.equals(mGroup.getOwner().deviceAddress)) {
                             // wpa_supplicant doesn't set own device address to go_dev_addr.
@@ -2506,7 +2538,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " start listen mode");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " start listen mode");
                         mWifiNative.p2pFlush();
                         if (mWifiNative.p2pExtListen(true, 500, 500)) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_SUCCEEDED);
@@ -2522,7 +2554,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
                             break;
                         }
-                        if (mVerboseLoggingEnabled) logd(getName() + " stop listen mode");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " stop listen mode");
                         if (mWifiNative.p2pExtListen(false, 0, 0)) {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_SUCCEEDED);
                         } else {
@@ -2595,19 +2627,19 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class GroupCreatingState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 sendMessageDelayed(obtainMessage(GROUP_CREATING_TIMED_OUT,
                         ++sGroupCreatingTimeoutIndex, 0), GROUP_CREATING_WAIT_TIME_MS);
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 boolean ret = HANDLED;
                 switch (message.what) {
                     case GROUP_CREATING_TIMED_OUT:
                         if (sGroupCreatingTimeoutIndex == message.arg1) {
-                            if (mVerboseLoggingEnabled) logd("Group negotiation timed out");
+                            if (isVerboseLoggingEnabled()) logd("Group negotiation timed out");
                             mWifiP2pMetrics.endConnectionEvent(
                                     P2pConnectionEvent.CLF_TIMEOUT);
                             handleGroupCreationFailure();
@@ -2621,7 +2653,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         WifiP2pDevice device = (WifiP2pDevice) message.obj;
                         if (!mSavedPeerConfig.deviceAddress.equals(device.deviceAddress)) {
-                            if (mVerboseLoggingEnabled) {
+                            if (isVerboseLoggingEnabled()) {
                                 logd("mSavedPeerConfig " + mSavedPeerConfig.deviceAddress
                                         + "device " + device.deviceAddress);
                             }
@@ -2630,7 +2662,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         // Do nothing
-                        if (mVerboseLoggingEnabled) logd("Add device to lost list " + device);
+                        if (isVerboseLoggingEnabled()) logd("Add device to lost list " + device);
                         mPeersLostDuringConnection.updateSupplicantDetails(device);
                         break;
                     case WifiP2pManager.DISCOVER_PEERS:
@@ -2666,7 +2698,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class UserAuthorizingNegotiationRequestState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 if (mSavedPeerConfig.wps.setup == WpsInfo.PBC
                             || TextUtils.isEmpty(mSavedPeerConfig.wps.pin)) {
                     notifyInvitationReceived();
@@ -2675,7 +2707,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 boolean ret = HANDLED;
                 switch (message.what) {
                     case PEER_CONNECTION_USER_ACCEPT:
@@ -2687,7 +2719,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         transitionTo(mGroupNegotiationState);
                         break;
                     case PEER_CONNECTION_USER_REJECT:
-                        if (mVerboseLoggingEnabled) {
+                        if (isVerboseLoggingEnabled()) {
                             logd("User rejected negotiation " + mSavedPeerConfig);
                         }
                         transitionTo(mInactiveState);
@@ -2714,13 +2746,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class UserAuthorizingInviteRequestState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 notifyInvitationReceived();
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 boolean ret = HANDLED;
                 switch (message.what) {
                     case PEER_CONNECTION_USER_ACCEPT:
@@ -2735,7 +2767,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         transitionTo(mGroupNegotiationState);
                         break;
                     case PEER_CONNECTION_USER_REJECT:
-                        if (mVerboseLoggingEnabled) {
+                        if (isVerboseLoggingEnabled()) {
                             logd("User rejected invitation " + mSavedPeerConfig);
                         }
                         transitionTo(mInactiveState);
@@ -2755,13 +2787,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class ProvisionDiscoveryState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 mWifiNative.p2pProvisionDiscovery(mSavedPeerConfig);
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 WifiP2pProvDiscEvent provDisc = null;
                 WifiP2pDevice device = null;
                 switch (message.what) {
@@ -2777,7 +2809,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (mSavedPeerConfig.wps.setup == WpsInfo.PBC) {
-                            if (mVerboseLoggingEnabled) logd("Found a match " + mSavedPeerConfig);
+                            if (isVerboseLoggingEnabled()) {
+                                logd("Found a match " + mSavedPeerConfig);
+                            }
                             p2pConnectWithPinDisplay(mSavedPeerConfig, P2P_CONNECT_TRIGGER_OTHER);
                             transitionTo(mGroupNegotiationState);
                         }
@@ -2794,7 +2828,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (mSavedPeerConfig.wps.setup == WpsInfo.KEYPAD) {
-                            if (mVerboseLoggingEnabled) logd("Found a match " + mSavedPeerConfig);
+                            if (isVerboseLoggingEnabled()) {
+                                logd("Found a match " + mSavedPeerConfig);
+                            }
                             // we already have the pin
                             if (!TextUtils.isEmpty(mSavedPeerConfig.wps.pin)) {
                                 p2pConnectWithPinDisplay(mSavedPeerConfig,
@@ -2821,7 +2857,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (mSavedPeerConfig.wps.setup == WpsInfo.DISPLAY) {
-                            if (mVerboseLoggingEnabled) logd("Found a match " + mSavedPeerConfig);
+                            if (isVerboseLoggingEnabled()) {
+                                logd("Found a match " + mSavedPeerConfig);
+                            }
                             mSavedPeerConfig.wps.pin = provDisc.pin;
                             p2pConnectWithPinDisplay(mSavedPeerConfig, P2P_CONNECT_TRIGGER_OTHER);
                             notifyInvitationSent(provDisc.pin, device.deviceAddress);
@@ -2845,18 +2883,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class GroupNegotiationState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     // We ignore these right now, since we get a GROUP_STARTED notification
                     // afterwards
                     case WifiP2pMonitor.P2P_GO_NEGOTIATION_SUCCESS_EVENT:
                     case WifiP2pMonitor.P2P_GROUP_FORMATION_SUCCESS_EVENT:
-                        if (mVerboseLoggingEnabled) logd(getName() + " go success");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " go success");
                         break;
                     case WifiP2pMonitor.P2P_GROUP_STARTED_EVENT:
                         if (message.obj == null) {
@@ -2864,7 +2902,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         mGroup = (WifiP2pGroup) message.obj;
-                        if (mVerboseLoggingEnabled) logd(getName() + " group started");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " group started");
                         if (mGroup.isGroupOwner()
                                 && EMPTY_DEVICE_ADDRESS.equals(mGroup.getOwner().deviceAddress)) {
                             // wpa_supplicant doesn't set own device address to go_dev_addr.
@@ -2944,7 +2982,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         // continue with group removal handling
                     case WifiP2pMonitor.P2P_GROUP_REMOVED_EVENT:
-                        if (mVerboseLoggingEnabled) logd(getName() + " go failure");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " go failure");
                         mWifiP2pMetrics.endConnectionEvent(
                                 P2pConnectionEvent.CLF_UNKNOWN);
                         handleGroupCreationFailure();
@@ -2973,7 +3011,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // So, remove this credential accordingly.
                             int netId = mSavedPeerConfig.netId;
                             if (netId >= 0) {
-                                if (mVerboseLoggingEnabled) {
+                                if (isVerboseLoggingEnabled()) {
                                     logd("Remove unknown client from the list");
                                 }
                                 removeClientFromList(netId, mSavedPeerConfig.deviceAddress, true);
@@ -3019,7 +3057,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             private AlertDialog mFrequencyConflictDialog;
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 notifyFrequencyConflict();
             }
 
@@ -3060,7 +3098,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case WifiP2pMonitor.P2P_GO_NEGOTIATION_SUCCESS_EVENT:
                     case WifiP2pMonitor.P2P_GROUP_FORMATION_SUCCESS_EVENT:
@@ -3094,7 +3132,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     case DISCONNECT_WIFI_RESPONSE:
                         // Got a response from ClientModeImpl, retry p2p
-                        if (mVerboseLoggingEnabled) {
+                        if (isVerboseLoggingEnabled()) {
                             logd(getName() + "Wifi disconnected, retry p2p");
                         }
                         transitionTo(mInactiveState);
@@ -3114,7 +3152,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class GroupCreatedState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 // Once connected, peer config details are invalid
                 mSavedPeerConfig.invalidate();
                 mDetailedState = NetworkInfo.DetailedState.CONNECTED;
@@ -3146,7 +3184,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 WifiP2pDevice device = null;
                 String deviceAddress = null;
                 switch (message.what) {
@@ -3166,7 +3204,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 mGroup.addClient(deviceAddress);
                             }
                             mPeers.updateStatus(deviceAddress, WifiP2pDevice.CONNECTED);
-                            if (mVerboseLoggingEnabled) logd(getName() + " ap sta connected");
+                            if (isVerboseLoggingEnabled()) logd(getName() + " ap sta connected");
                             sendPeersChangedBroadcast();
                             mWifiP2pMetrics.updateGroupEvent(mGroup);
                         } else {
@@ -3184,7 +3222,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         if (deviceAddress != null) {
                             mPeers.updateStatus(deviceAddress, WifiP2pDevice.AVAILABLE);
                             if (mGroup.removeClient(deviceAddress)) {
-                                if (mVerboseLoggingEnabled) logd("Removed client " + deviceAddress);
+                                if (isVerboseLoggingEnabled()) {
+                                    logd("Removed client " + deviceAddress);
+                                }
                                 if (!mAutonomousGroup && mGroup.isClientListEmpty()) {
                                     logd("Client list empty, remove non-persistent p2p group");
                                     mWifiNative.p2pGroupRemove(mGroup.getInterface());
@@ -3196,15 +3236,17 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 }
                                 mWifiP2pMetrics.updateGroupEvent(mGroup);
                             } else {
-                                if (mVerboseLoggingEnabled) {
+                                if (isVerboseLoggingEnabled()) {
                                     logd("Failed to remove client " + deviceAddress);
                                 }
                                 for (WifiP2pDevice c : mGroup.getClientList()) {
-                                    if (mVerboseLoggingEnabled) logd("client " + c.deviceAddress);
+                                    if (isVerboseLoggingEnabled()) {
+                                        logd("client " + c.deviceAddress);
+                                    }
                                 }
                             }
                             sendPeersChangedBroadcast();
-                            if (mVerboseLoggingEnabled) logd(getName() + " ap sta disconnected");
+                            if (isVerboseLoggingEnabled()) logd(getName() + " ap sta disconnected");
                         } else {
                             loge("Disconnect on unknown device: " + device);
                         }
@@ -3226,7 +3268,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
 
-                        if (mVerboseLoggingEnabled) {
+                        if (isVerboseLoggingEnabled()) {
                             logd("mDhcpResultsParcelable: " + mDhcpResultsParcelable);
                         }
                         setWifiP2pInfoOnGroupFormation(mDhcpResultsParcelable.serverAddress);
@@ -3249,7 +3291,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mWifiNative.p2pGroupRemove(mGroup.getInterface());
                         break;
                     case WifiP2pManager.REMOVE_GROUP:
-                        if (mVerboseLoggingEnabled) logd(getName() + " remove group");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " remove group");
                         if (mWifiNative.p2pGroupRemove(mGroup.getInterface())) {
                             transitionTo(mOngoingGroupRemovalState);
                             replyToMessage(message, WifiP2pManager.REMOVE_GROUP_SUCCEEDED);
@@ -3271,7 +3313,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         //
                         // Treating network disconnection as group removal causes race conditions
                         // since supplicant would still maintain the group at that stage.
-                        if (mVerboseLoggingEnabled) logd(getName() + " group removed");
+                        if (isVerboseLoggingEnabled()) logd(getName() + " group removed");
                         handleGroupRemoved();
                         transitionTo(mInactiveState);
                         break;
@@ -3287,7 +3329,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         // Device loss for a connected device indicates
                         // it is not in discovery any more
-                        if (mVerboseLoggingEnabled) logd("Add device to lost list " + device);
+                        if (isVerboseLoggingEnabled()) logd("Add device to lost list " + device);
                         mPeersLostDuringConnection.updateSupplicantDetails(device);
                         return HANDLED;
                     case DISABLE_P2P:
@@ -3363,7 +3405,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             // So, remove this credential accordingly.
                             int netId = mGroup.getNetworkId();
                             if (netId >= 0) {
-                                if (mVerboseLoggingEnabled) {
+                                if (isVerboseLoggingEnabled()) {
                                     logd("Remove unknown client from the list");
                                 }
                                 removeClientFromList(netId, mSavedPeerConfig.deviceAddress, false);
@@ -3394,7 +3436,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         if (mGroup.isGroupOwner()) {
                             transitionTo(mUserAuthorizingJoinState);
                         } else {
-                            if (mVerboseLoggingEnabled) logd("Ignore provision discovery for GC");
+                            if (isVerboseLoggingEnabled()) {
+                                logd("Ignore provision discovery for GC");
+                            }
                         }
                         break;
                     case WifiP2pMonitor.P2P_GROUP_STARTED_EVENT:
@@ -3445,13 +3489,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class UserAuthorizingJoinState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
                 notifyInvitationReceived();
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     case WifiP2pMonitor.P2P_PROV_DISC_PBC_REQ_EVENT:
                     case WifiP2pMonitor.P2P_PROV_DISC_ENTER_PIN_EVENT:
@@ -3470,7 +3514,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         transitionTo(mGroupCreatedState);
                         break;
                     case PEER_CONNECTION_USER_REJECT:
-                        if (mVerboseLoggingEnabled) logd("User rejected incoming request");
+                        if (isVerboseLoggingEnabled()) logd("User rejected incoming request");
                         transitionTo(mGroupCreatedState);
                         break;
                     default:
@@ -3488,12 +3532,12 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         class OngoingGroupRemovalState extends State {
             @Override
             public void enter() {
-                if (mVerboseLoggingEnabled) logd(getName());
+                if (isVerboseLoggingEnabled()) logd(getName());
             }
 
             @Override
             public boolean processMessage(Message message) {
-                if (mVerboseLoggingEnabled) logd(getName() + message.toString());
+                if (isVerboseLoggingEnabled()) logd(getName() + message.toString());
                 switch (message.what) {
                     // Group removal ongoing. Multiple calls
                     // end up removing persisted network. Do nothing.
@@ -3541,7 +3585,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             if (mDiscoveryStarted == started) return;
             mDiscoveryStarted = started;
 
-            if (mVerboseLoggingEnabled) logd("discovery change broadcast " + started);
+            if (isVerboseLoggingEnabled()) logd("discovery change broadcast " + started);
 
             final Intent intent = new Intent(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
@@ -3577,7 +3621,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void sendP2pConnectionChangedBroadcast() {
-            if (mVerboseLoggingEnabled) logd("sending p2p connection changed broadcast");
+            if (isVerboseLoggingEnabled()) logd("sending p2p connection changed broadcast");
             Intent intent = new Intent(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT
                     | Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -3643,7 +3687,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void sendP2pPersistentGroupsChangedBroadcast() {
-            if (mVerboseLoggingEnabled) logd("sending p2p persistent groups changed broadcast");
+            if (isVerboseLoggingEnabled()) logd("sending p2p persistent groups changed broadcast");
             Intent intent = new Intent(WifiP2pManager.ACTION_WIFI_P2P_PERSISTENT_GROUPS_CHANGED);
             intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
@@ -3725,7 +3769,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 if (wps.setup == WpsInfo.KEYPAD) {
                                     mSavedPeerConfig.wps.pin = pin.getText().toString();
                                 }
-                                if (mVerboseLoggingEnabled) {
+                                if (isVerboseLoggingEnabled()) {
                                     logd(getName() + " accept invitation " + mSavedPeerConfig);
                                 }
                                 sendMessage(PEER_CONNECTION_USER_ACCEPT);
@@ -3734,14 +3778,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     .setNegativeButton(r.getString(R.string.decline), new OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                if (mVerboseLoggingEnabled) logd(getName() + " ignore connect");
+                                if (isVerboseLoggingEnabled()) logd(getName() + " ignore connect");
                                 sendMessage(PEER_CONNECTION_USER_REJECT);
                             }
                         })
                     .setOnCancelListener(new DialogInterface.OnCancelListener() {
                             @Override
                             public void onCancel(DialogInterface arg0) {
-                                if (mVerboseLoggingEnabled) logd(getName() + " ignore connect");
+                                if (isVerboseLoggingEnabled()) logd(getName() + " ignore connect");
                                 sendMessage(PEER_CONNECTION_USER_REJECT);
                             }
                         })
@@ -3751,11 +3795,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             // make the enter pin area or the display pin area visible
             switch (wps.setup) {
                 case WpsInfo.KEYPAD:
-                    if (mVerboseLoggingEnabled) logd("Enter pin section visible");
+                    if (isVerboseLoggingEnabled()) logd("Enter pin section visible");
                     textEntryView.findViewById(R.id.enter_pin_section).setVisibility(View.VISIBLE);
                     break;
                 case WpsInfo.DISPLAY:
-                    if (mVerboseLoggingEnabled) logd("Shown pin section visible");
+                    if (isVerboseLoggingEnabled()) logd("Shown pin section visible");
                     addRowToDialog(group, R.string.wifi_p2p_show_pin_message, wps.pin);
                     break;
                 default:
@@ -4045,10 +4089,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             // a group, and the target should be a group owner.
             boolean join = dev.isGroupOwner() || isInvited;
             String ssid = mWifiNative.p2pGetSsid(dev.deviceAddress);
-            if (mVerboseLoggingEnabled) logd("target ssid is " + ssid + " join:" + join);
+            if (isVerboseLoggingEnabled()) logd("target ssid is " + ssid + " join:" + join);
 
             if (join && dev.isGroupLimit()) {
-                if (mVerboseLoggingEnabled) logd("target device reaches group limit.");
+                if (isVerboseLoggingEnabled()) logd("target device reaches group limit.");
 
                 // if the target group has reached the limit,
                 // try group formation.
@@ -4084,7 +4128,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 if (netId < 0) {
                     netId = getNetworkIdFromClientList(dev.deviceAddress);
                 }
-                if (mVerboseLoggingEnabled) {
+                if (isVerboseLoggingEnabled()) {
                     logd("netId related with " + dev.deviceAddress + " = " + netId);
                 }
                 if (netId >= 0) {
@@ -4167,7 +4211,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
             if (modifiedClientList.length() == 0 && isRemovable) {
                 // the client list is empty. so remove it.
-                if (mVerboseLoggingEnabled) logd("Remove unknown network");
+                if (isVerboseLoggingEnabled()) logd("Remove unknown network");
                 mGroups.remove(netId);
                 mWifiP2pMetrics.updatePersistentGroup(mGroups);
                 return true;
@@ -4178,7 +4222,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 return false;
             }
 
-            if (mVerboseLoggingEnabled) logd("Modified client list: " + modifiedClientList);
+            if (isVerboseLoggingEnabled()) logd("Modified client list: " + modifiedClientList);
             if (modifiedClientList.length() == 0) {
                 modifiedClientList.append("\"\"");
             }
@@ -4329,7 +4373,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             mThisDevice.deviceAddress = mWifiNative.p2pGetDeviceAddress();
             updateThisDevice(WifiP2pDevice.AVAILABLE);
-            if (mVerboseLoggingEnabled) logd("DeviceAddress: " + mThisDevice.deviceAddress);
+            if (isVerboseLoggingEnabled()) logd("DeviceAddress: " + mThisDevice.deviceAddress);
             mWifiNative.p2pFlush();
             mWifiNative.p2pServiceFlush();
             mServiceTransactionId = 0;
@@ -4383,7 +4427,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 // {@link WifiP2pManager#WIFI_P2P_CONNECTION_CHANGED_ACTION}
                 // events and takes over the DHCP server management automatically.
             } else {
-                if (mVerboseLoggingEnabled) logd("stop IpClient");
+                if (isVerboseLoggingEnabled()) logd("stop IpClient");
                 stopIpClient();
                 try {
                     mNetdWrapper.removeInterfaceFromLocalNetwork(mGroup.getInterface());
@@ -4685,7 +4729,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     try {
                         c.mMessenger.send(msg);
                     } catch (RemoteException e) {
-                        if (mVerboseLoggingEnabled) logd("detect dead channel");
+                        if (isVerboseLoggingEnabled()) logd("detect dead channel");
                         clearClientInfo(c.mMessenger);
                         return;
                     }
@@ -4715,7 +4759,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 try {
                     c.mMessenger.send(msg);
                 } catch (RemoteException e) {
-                    if (mVerboseLoggingEnabled) logd("detect dead channel");
+                    if (isVerboseLoggingEnabled()) logd("detect dead channel");
                     deadClients.add(c.mMessenger);
                 }
             }
@@ -4736,7 +4780,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             ClientInfo clientInfo = mClientInfoList.get(m);
 
             if (clientInfo == null && createIfNotExist) {
-                if (mVerboseLoggingEnabled) logd("add a new client");
+                if (isVerboseLoggingEnabled()) logd("add a new client");
                 clientInfo = new ClientInfo(m);
                 mClientInfoList.put(m, clientInfo);
             }

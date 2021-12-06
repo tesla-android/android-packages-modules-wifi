@@ -121,9 +121,9 @@ public class WifiVendorHal {
      *
      * @param verbose - with the obvious interpretation
      */
-    public void enableVerboseLogging(boolean verbose) {
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
         synchronized (sLock) {
-            if (verbose) {
+            if (verboseEnabled) {
                 mVerboseLog = mLog;
                 enter("verbose=true").flush();
             } else {

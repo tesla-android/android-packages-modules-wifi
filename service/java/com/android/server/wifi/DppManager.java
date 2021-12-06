@@ -572,8 +572,8 @@ public class DppManager {
      *
      * @param verbose 0 to disable verbose logging, or any other value to enable.
      */
-    public void enableVerboseLogging(int verbose) {
-        mVerboseLoggingEnabled = verbose != 0 ? true : false;
+    public void enableVerboseLogging(boolean verboseEnabled) {
+        mVerboseLoggingEnabled = verboseEnabled;
     }
 
     private void onSuccessConfigReceived(WifiConfiguration newWifiConfiguration) {

@@ -41,6 +41,7 @@ public class HostapdHal {
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
+    private boolean mVerboseHalLoggingEnabled = false;
     private final Context mContext;
     private final Handler mEventHandler;
 
@@ -57,11 +58,12 @@ public class HostapdHal {
      *
      * @param enable true to enable, false to disable.
      */
-    public void enableVerboseLogging(boolean enable) {
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
         synchronized (mLock) {
-            mVerboseLoggingEnabled = enable;
+            mVerboseLoggingEnabled = verboseEnabled;
+            mVerboseHalLoggingEnabled = halVerboseEnabled;
             if (mIHostapd != null) {
-                mIHostapd.enableVerboseLogging(enable);
+                mIHostapd.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
             }
         }
     }
@@ -86,7 +88,7 @@ public class HostapdHal {
                 Log.e(TAG, "Failed to get Hostapd HAL instance");
                 return false;
             }
-            mIHostapd.enableVerboseLogging(mVerboseLoggingEnabled);
+            mIHostapd.enableVerboseLogging(mVerboseLoggingEnabled, mVerboseHalLoggingEnabled);
             if (!mIHostapd.initialize()) {
                 Log.e(TAG, "Fail to init hostapd, Stopping hostapd startup");
                 mIHostapd = null;
