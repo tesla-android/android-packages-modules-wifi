@@ -581,9 +581,7 @@ public class DppManagerTest extends WifiBaseTest {
 
         dppEventCallback.onSuccessConfigReceived(selectedNetwork);
         mLooper.dispatchAll();
-        verify(mDppCallback).onSuccessConfigReceived(
-                eq(WifiConfigurationUtil.addSecurityTypeToNetworkId(
-                        TEST_NETWORK_ID, WifiConfiguration.SECURITY_TYPE_SAE)));
+        verify(mDppCallback).onSuccessConfigReceived(eq(TEST_NETWORK_ID));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppMetrics).updateDppEnrolleeInitiatorRequests();
@@ -1139,7 +1137,7 @@ public class DppManagerTest extends WifiBaseTest {
         selectedNetwork.SSID = TEST_SSID;
         selectedNetwork.networkId = TEST_NETWORK_ID;
         selectedNetwork.preSharedKey = TEST_PASSWORD;
-        selectedNetwork.setSecurityParams(WifiConfiguration.SECURITY_TYPE_SAE);
+        selectedNetwork.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.SAE);
 
         // Generate a progress event
         dppEventCallback.onProgress(AUTHENTICATION_SUCCESS);
@@ -1153,9 +1151,7 @@ public class DppManagerTest extends WifiBaseTest {
 
         dppEventCallback.onSuccessConfigReceived(selectedNetwork);
         mLooper.dispatchAll();
-        verify(mDppCallback).onSuccessConfigReceived(
-                eq(WifiConfigurationUtil.addSecurityTypeToNetworkId(
-                        TEST_NETWORK_ID, WifiConfiguration.SECURITY_TYPE_SAE)));
+        verify(mDppCallback).onSuccessConfigReceived(eq(TEST_NETWORK_ID));
         verify(mDppCallback, never()).onSuccess(anyInt());
         verify(mDppCallback, never()).onFailure(anyInt(), anyString(), anyString(), any());
         verify(mDppMetrics).updateDppEnrolleeResponderRequests();
