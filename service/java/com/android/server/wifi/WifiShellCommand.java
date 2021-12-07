@@ -22,6 +22,7 @@ import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_TRUSTED;
 import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
+import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.REQUEST_REGISTERED;
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
@@ -37,6 +38,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.wifi.IActionListener;
+import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
@@ -167,6 +169,54 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
     private final ScanRequestProxy mScanRequestProxy;
 
+    private class SoftApCallbackProxy extends ISoftApCallback.Stub {
+        private final PrintWriter mPrintWriter;
+        private final CountDownLatch mCountDownLatch;
+
+        SoftApCallbackProxy(PrintWriter printWriter, CountDownLatch countDownLatch) {
+            mPrintWriter = printWriter;
+            mCountDownLatch = countDownLatch;
+        }
+
+        @Override
+        public void onStateChanged(int state, int failureReason) {
+            mPrintWriter.println("onStateChanged with state: " + state
+                    + " failure reason: " + failureReason);
+            mSapState = state;
+            if (state == WifiManager.WIFI_AP_STATE_ENABLED) {
+                mPrintWriter.println(" SAP is enabled successfully");
+                // Skip countDown() and wait for onInfoChanged() which has
+                // the confirmed softAp channel information
+            } else if (state == WifiManager.WIFI_AP_STATE_DISABLED) {
+                mPrintWriter.println(" SAP is disabled");
+            } else if (state == WifiManager.WIFI_AP_STATE_FAILED) {
+                mPrintWriter.println(" SAP failed to start");
+                mCountDownLatch.countDown();
+            }
+        }
+
+        @Override
+        public void onConnectedClientsOrInfoChanged(Map<String, SoftApInfo> infos,
+                Map<String, List<WifiClient>> clients, boolean isBridged,
+                boolean isRegistration) {
+            mPrintWriter.println("onConnectedClientsOrInfoChanged, infos: " + infos
+                    + ", clients: " + clients + ", isBridged: " + isBridged);
+            if (mSapState == WifiManager.WIFI_AP_STATE_ENABLED && infos.size() != 0) {
+                mCountDownLatch.countDown();
+            }
+        }
+
+        @Override
+        public void onCapabilityChanged(SoftApCapability capability) {
+            mPrintWriter.println("onCapabilityChanged " + capability);
+        }
+
+        @Override
+        public void onBlockedClientConnecting(WifiClient client, int reason) {
+        }
+    }
+
+
     /**
      * Used for shell command testing of scorer.
      */
@@ -243,7 +293,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                                 + "(or such command doesn't exist)");
             }
         }
-
         final PrintWriter pw = getOutPrintWriter();
         try {
             switch (cmd) {
@@ -440,53 +489,64 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         return 0;
                     }
                 }
+                case "start-lohs": {
+                    CountDownLatch countDownLatch = new CountDownLatch(2);
+                    SoftApConfiguration config = buildSoftApConfiguration(pw);
+                    ILocalOnlyHotspotCallback.Stub lohsCallback =
+                            new ILocalOnlyHotspotCallback.Stub() {
+                        @Override
+                        public void onHotspotStarted(SoftApConfiguration config) {
+                            pw.println("Lohs onStarted, config = " + config);
+                            countDownLatch.countDown();
+                        }
+
+                        @Override
+                        public void onHotspotStopped() {
+                            pw.println("Lohs onStopped");
+                            countDownLatch.countDown();
+                        }
+
+                        @Override
+                        public void onHotspotFailed(int reason) {
+                            pw.println("Lohs onFailed: " + reason);
+                            countDownLatch.countDown();
+                        }
+                    };
+                    SoftApCallbackProxy softApCallback =
+                            new SoftApCallbackProxy(pw, countDownLatch);
+                    Bundle extras = new Bundle();
+                    if (SdkLevel.isAtLeastS()) {
+                        extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                                mContext.getAttributionSource());
+                    }
+                    mWifiService.registerLocalOnlyHotspotSoftApCallback(softApCallback, extras);
+                    if (REQUEST_REGISTERED != mWifiService.startLocalOnlyHotspot(
+                              lohsCallback, SHELL_PACKAGE_NAME, null /* featureId */,
+                              config, extras)) {
+                        pw.println("Lohs failed to start. Please check config parameters");
+                    }
+                    // Wait for lohs to start and complete callback
+                    countDownLatch.await(10000, TimeUnit.MILLISECONDS);
+                    mWifiService.unregisterLocalOnlyHotspotSoftApCallback(softApCallback, extras);
+                    return 0;
+                }
                 case "start-softap": {
                     CountDownLatch countDownLatch = new CountDownLatch(1);
-                    ISoftApCallback.Stub softApCallback = new ISoftApCallback.Stub() {
-                        @Override
-                        public void onStateChanged(int state, int failureReason) {
-                            pw.println("onStateChanged with state: " + state
-                                    + " failure reason: " + failureReason);
-                            mSapState = state;
-                            if (state == WifiManager.WIFI_AP_STATE_ENABLED) {
-                                pw.println(" SAP is enabled successfully");
-                                // Skip countDown() and wait for onInfoChanged() which has
-                                // the confirmed softAp channel information
-                            } else if (state == WifiManager.WIFI_AP_STATE_DISABLED) {
-                                pw.println(" SAP is disabled");
-                            } else if (state == WifiManager.WIFI_AP_STATE_FAILED) {
-                                pw.println(" SAP failed to start");
-                                countDownLatch.countDown();
-                            }
-                        }
-
-                        @Override
-                        public void onConnectedClientsOrInfoChanged(Map<String, SoftApInfo> infos,
-                                Map<String, List<WifiClient>> clients, boolean isBridged,
-                                boolean isRegistration) {
-                            if (mSapState == WifiManager.WIFI_AP_STATE_ENABLED) {
-                                countDownLatch.countDown();
-                            }
-                        }
-
-                        @Override
-                        public void onCapabilityChanged(SoftApCapability capability) {
-                            pw.println("onCapabilityChanged " + capability);
-                        }
-
-                        @Override
-                        public void onBlockedClientConnecting(WifiClient client, int reason) {
-                        }
-
-                    };
-                    mWifiService.registerSoftApCallback(softApCallback);
                     SoftApConfiguration config = buildSoftApConfiguration(pw);
+                    SoftApCallbackProxy softApCallback =
+                            new SoftApCallbackProxy(pw, countDownLatch);
+                    mWifiService.registerSoftApCallback(softApCallback);
                     if (!mWifiService.startTetheredHotspot(config, SHELL_PACKAGE_NAME)) {
                         pw.println("Soft AP failed to start. Please check config parameters");
                     }
                     // Wait for softap to start and complete callback
-                    countDownLatch.await(3000, TimeUnit.MILLISECONDS);
+                    countDownLatch.await(10000, TimeUnit.MILLISECONDS);
                     mWifiService.unregisterSoftApCallback(softApCallback);
+                    return 0;
+                }
+                case "stop-lohs": {
+                    mWifiService.stopLocalOnlyHotspot();
+                    pw.println("Lohs stopped successfully");
                     return 0;
                 }
                 case "stop-softap": {
@@ -1798,6 +1858,23 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -h - Enable scanning for hidden networks.");
         pw.println("  set-passpoint-enabled enabled|disabled");
         pw.println("    Sets whether Passpoint should be enabled or disabled");
+        pw.println("  start-lohs <ssid> (open|wpa2|wpa3|wpa3_transition) <passphrase> "
+                + "[-b 2|5|6|any]");
+        pw.println("    Start local only softap (hotspot) with provided params");
+        pw.println("    <ssid> - SSID of the network");
+        pw.println("    open|wpa2|wpa3|wpa3_transition - Security type of the network.");
+        pw.println("        - Use 'open' for networks with no passphrase");
+        pw.println("        - Use 'wpa2', 'wpa3', 'wpa3_transition' for networks with passphrase");
+        pw.println("    -b 2|5|6|any|bridged - select the preferred band.");
+        pw.println("        - Use '2' to select 2.4GHz band as the preferred band");
+        pw.println("        - Use '5' to select 5GHz band as the preferred band");
+        pw.println("        - Use '6' to select 6GHz band as the preferred band");
+        pw.println("        - Use 'any' to indicate no band preference");
+        pw.println("        - Use 'bridged' to indicate bridged AP which enables APs on both "
+                + "2.4G + 5G");
+        pw.println("    Note: If the band option is not provided, 2.4GHz is the preferred band.");
+        pw.println("  stop-lohs");
+        pw.println("    Stop local only softap (hotspot)");
     }
 
     @Override
