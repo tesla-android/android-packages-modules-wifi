@@ -521,8 +521,8 @@ public class WifiCarrierInfoManager {
     /**
      * Enable/disable verbose logging.
      */
-    public void enableVerboseLogging(int verbose) {
-        mVerboseLogEnabled = verbose > 0;
+    public void enableVerboseLogging(boolean verboseEnabled) {
+        mVerboseLogEnabled = verboseEnabled;
     }
 
     void onUnlockedUserSwitching(int currentUserId) {

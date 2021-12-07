@@ -52,8 +52,8 @@ public class SupplicantP2pIfaceCallbackV1_4Impl
     /**
      * Enable verbose logging for all sub modules.
      */
-    public static void enableVerboseLogging(int verbose) {
-        sVerboseLoggingEnabled = verbose > 0;
+    public static void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
+        sVerboseLoggingEnabled = verboseEnabled;
     }
 
     protected static void logd(String s) {

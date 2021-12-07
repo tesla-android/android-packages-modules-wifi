@@ -42,9 +42,10 @@ interface IHostapdHal {
     /**
      * Enable/Disable verbose logging.
      *
-     * @param enable true to enable, false to disable.
+     * @param verboseEnabled true to enable, false to disable.
+     * @param halVerboseEnabled true to enable hal verbose logging, false to disable.
      */
-    void enableVerboseLogging(boolean enable);
+    void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled);
 
     /**
      * Add and start a new access point.

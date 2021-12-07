@@ -305,7 +305,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 mUserApproveCarrierListenerArgumentCaptor.capture());
         verify(mWifiConfigManager).addOnNetworkUpdateListener(mNetworkListenerCaptor.capture());
 
-        mWifiNetworkSuggestionsManager.enableVerboseLogging(1);
+        mWifiNetworkSuggestionsManager.enableVerboseLogging(true);
     }
 
     @After

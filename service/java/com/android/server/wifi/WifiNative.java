@@ -127,13 +127,13 @@ public class WifiNative {
     /**
      * Enable verbose logging for all sub modules.
      */
-    public void enableVerboseLogging(boolean verbose) {
-        mVerboseLoggingEnabled = verbose;
-        setSupplicantLogLevel(mVerboseLoggingEnabled);
-        mWifiCondManager.enableVerboseLogging(mVerboseLoggingEnabled);
-        mSupplicantStaIfaceHal.enableVerboseLogging(mVerboseLoggingEnabled);
-        mHostapdHal.enableVerboseLogging(mVerboseLoggingEnabled);
-        mWifiVendorHal.enableVerboseLogging(mVerboseLoggingEnabled);
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
+        Log.d(TAG, "enableVerboseLogging " + verboseEnabled + " hal " + halVerboseEnabled);
+        mVerboseLoggingEnabled = verboseEnabled;
+        mWifiCondManager.enableVerboseLogging(verboseEnabled);
+        mSupplicantStaIfaceHal.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        mHostapdHal.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        mWifiVendorHal.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
     }
 
     /**
@@ -2085,15 +2085,6 @@ public class WifiNative {
          * Invoked when the supplicant dies.
          */
         void onDeath();
-    }
-
-    /**
-     * Set supplicant log level
-     *
-     * @param turnOnVerbose Whether to turn on verbose logging or not.
-     */
-    public void setSupplicantLogLevel(boolean turnOnVerbose) {
-        mSupplicantStaIfaceHal.setLogLevel(turnOnVerbose);
     }
 
     /**

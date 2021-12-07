@@ -116,8 +116,8 @@ public class WifiMulticastLockManager {
         }
     }
 
-    protected void enableVerboseLogging(int verbose) {
-        mVerboseLoggingEnabled = verbose > 0;
+    protected void enableVerboseLogging(boolean verboseEnabled) {
+        mVerboseLoggingEnabled = verboseEnabled;
     }
 
     /** Start filtering if  no multicasters exist. */

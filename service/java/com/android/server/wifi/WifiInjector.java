@@ -306,7 +306,7 @@ public class WifiInjector {
                 mWifiMonitor, mPropertyService, mWifiMetrics,
                 wifiHandler, new Random(), mBuildProperties, this);
         mWifiP2pMonitor = new WifiP2pMonitor();
-        mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor);
+        mSupplicantP2pIfaceHal = new SupplicantP2pIfaceHal(mWifiP2pMonitor, mWifiGlobals);
         mWifiP2pNative = new WifiP2pNative(mWifiCondManager, mWifiNative,
                 mWifiVendorHal, mSupplicantP2pIfaceHal, mHalDeviceManager, mPropertyService);
         SubscriptionManager subscriptionManager =
@@ -535,41 +535,39 @@ public class WifiInjector {
      * Enable verbose logging in Injector objects. Called from the WifiServiceImpl (based on
      * binder call).
      */
-    public void enableVerboseLogging(int verbose) {
-        mWifiLastResortWatchdog.enableVerboseLogging(verbose);
-        mWifiBackupRestore.enableVerboseLogging(verbose);
-        mHalDeviceManager.enableVerboseLogging(verbose);
-        mScanRequestProxy.enableVerboseLogging(verbose);
-        mWakeupController.enableVerboseLogging(verbose);
-        mWifiNetworkSuggestionsManager.enableVerboseLogging(verbose);
-        LogcatLog.enableVerboseLogging(verbose);
-        mDppManager.enableVerboseLogging(verbose);
-        mWifiCarrierInfoManager.enableVerboseLogging(verbose);
-
-        boolean verboseBool = verbose > 0;
-        Log.i(TAG, "enableVerboseLogging(" + verbose + "): " + verboseBool);
-        mCountryCode.enableVerboseLogging(verboseBool);
-        mWifiDiagnostics.enableVerboseLogging(verboseBool);
-        mWifiMonitor.enableVerboseLogging(verboseBool);
-        mWifiNative.enableVerboseLogging(verboseBool);
-        mWifiConfigManager.enableVerboseLogging(verboseBool);
-        mPasspointManager.enableVerboseLogging(verboseBool);
-        mWifiNetworkFactory.enableVerboseLogging(verboseBool);
-        mLinkProbeManager.enableVerboseLogging(verboseBool);
-        mMboOceController.enableVerboseLogging(verboseBool);
-        mWifiScoreCard.enableVerboseLogging(verboseBool);
-        mWifiHealthMonitor.enableVerboseLogging(verboseBool);
-        mThroughputPredictor.enableVerboseLogging(verboseBool);
-        mWifiDataStall.enableVerboseLogging(verboseBool);
-        mWifiConnectivityManager.enableVerboseLogging(verboseBool);
-        mWifiNetworkSelector.enableVerboseLogging(verboseBool);
-        mMakeBeforeBreakManager.setVerboseLoggingEnabled(verboseBool);
-        mBroadcastQueue.setVerboseLoggingEnabled(verboseBool);
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
+        Log.i(TAG, "enableVerboseLogging " + verboseEnabled + " hal " + halVerboseEnabled);
+        mWifiLastResortWatchdog.enableVerboseLogging(verboseEnabled);
+        mWifiBackupRestore.enableVerboseLogging(verboseEnabled);
+        mHalDeviceManager.enableVerboseLogging(verboseEnabled);
+        mScanRequestProxy.enableVerboseLogging(verboseEnabled);
+        mWakeupController.enableVerboseLogging(verboseEnabled);
+        mWifiNetworkSuggestionsManager.enableVerboseLogging(verboseEnabled);
+        LogcatLog.enableVerboseLogging(verboseEnabled);
+        mDppManager.enableVerboseLogging(verboseEnabled);
+        mWifiCarrierInfoManager.enableVerboseLogging(verboseEnabled);
+        mCountryCode.enableVerboseLogging(verboseEnabled);
+        mWifiDiagnostics.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        mWifiMonitor.enableVerboseLogging(verboseEnabled);
+        mWifiNative.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        mWifiConfigManager.enableVerboseLogging(verboseEnabled);
+        mPasspointManager.enableVerboseLogging(verboseEnabled);
+        mWifiNetworkFactory.enableVerboseLogging(verboseEnabled);
+        mLinkProbeManager.enableVerboseLogging(verboseEnabled);
+        mMboOceController.enableVerboseLogging(verboseEnabled);
+        mWifiScoreCard.enableVerboseLogging(verboseEnabled);
+        mWifiHealthMonitor.enableVerboseLogging(verboseEnabled);
+        mThroughputPredictor.enableVerboseLogging(verboseEnabled);
+        mWifiDataStall.enableVerboseLogging(verboseEnabled);
+        mWifiConnectivityManager.enableVerboseLogging(verboseEnabled);
+        mWifiNetworkSelector.enableVerboseLogging(verboseEnabled);
+        mMakeBeforeBreakManager.setVerboseLoggingEnabled(verboseEnabled);
+        mBroadcastQueue.setVerboseLoggingEnabled(verboseEnabled);
         if (SdkLevel.isAtLeastS()) {
-            mCoexManager.enableVerboseLogging(verboseBool);
+            mCoexManager.enableVerboseLogging(verboseEnabled);
         }
-        mWifiPermissionsWrapper.enableVerboseLogging(verboseBool);
-        mWifiPermissionsUtil.enableVerboseLogging(verboseBool);
+        mWifiPermissionsWrapper.enableVerboseLogging(verboseEnabled);
+        mWifiPermissionsUtil.enableVerboseLogging(verboseEnabled);
     }
 
     public UserManager getUserManager() {

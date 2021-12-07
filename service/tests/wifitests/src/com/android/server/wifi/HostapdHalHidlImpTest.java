@@ -981,11 +981,11 @@ public class HostapdHalHidlImpTest extends WifiBaseTest {
         when(mIHostapdMockV12.setDebugParams(anyInt()))
                 .thenReturn(mStatusSuccess12);
 
-        mHostapdHal.enableVerboseLogging(true);
+        mHostapdHal.enableVerboseLogging(false, true);
         verify(mIHostapdMockV12)
                 .setDebugParams(eq(DebugLevel.DEBUG));
 
-        mHostapdHal.enableVerboseLogging(false);
+        mHostapdHal.enableVerboseLogging(false, false);
         verify(mIHostapdMockV12)
                 .setDebugParams(eq(DebugLevel.INFO));
     }

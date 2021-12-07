@@ -53,6 +53,7 @@ import android.text.TextUtils;
 import androidx.test.filters.SmallTest;
 
 import com.android.server.wifi.WifiBaseTest;
+import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.util.NativeUtil;
 
 import org.junit.Assert.*;
@@ -87,6 +88,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
     private boolean mISupplicantV12Enabled;
     private @Mock ISupplicantP2pNetwork mISupplicantP2pNetworkMock;
     private @Mock WifiP2pMonitor mWifiMonitor;
+    private @Mock WifiGlobals mWifiGlobals;
 
     SupplicantStatus mStatusSuccess;
     SupplicantStatus mStatusFailure;
@@ -156,7 +158,7 @@ public class SupplicantP2pIfaceHalTest extends WifiBaseTest {
 
     private class SupplicantP2pIfaceHalSpy extends SupplicantP2pIfaceHal {
         SupplicantP2pIfaceHalSpy() {
-            super(mWifiMonitor);
+            super(mWifiMonitor, mWifiGlobals);
         }
 
         @Override
