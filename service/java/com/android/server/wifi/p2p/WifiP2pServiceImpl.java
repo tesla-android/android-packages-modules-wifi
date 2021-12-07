@@ -2177,8 +2177,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mWifiNative.setMiracastMode(message.arg1);
                         break;
                     case WifiP2pManager.START_LISTEN:
-                        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
-                                message.sendingUid)) {
+                        if (!mWifiPermissionsUtil.checkCanAccessWifiDirect(
+                                getCallingPkgName(message.sendingUid, message.replyTo),
+                                getCallingFeatureId(message.sendingUid, message.replyTo),
+                                message.sendingUid, true)) {
                             loge("Permission violation - no NETWORK_SETTING permission,"
                                     + " uid = " + message.sendingUid);
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
@@ -2193,13 +2195,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     case WifiP2pManager.STOP_LISTEN:
-                        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
-                                message.sendingUid)) {
-                            loge("Permission violation - no NETWORK_SETTING permission,"
-                                    + " uid = " + message.sendingUid);
-                            replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
-                            break;
-                        }
                         if (isVerboseLoggingEnabled()) logd(getName() + " stop listen mode");
                         if (mWifiNative.p2pExtListen(false, 0, 0)) {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_SUCCEEDED);
@@ -2531,10 +2526,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     case WifiP2pManager.START_LISTEN:
-                        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
-                                message.sendingUid)) {
-                            loge("Permission violation - no NETWORK_SETTING permission,"
-                                    + " uid = " + message.sendingUid);
+                        if (!mWifiPermissionsUtil.checkCanAccessWifiDirect(
+                                getCallingPkgName(message.sendingUid, message.replyTo),
+                                getCallingFeatureId(message.sendingUid, message.replyTo),
+                                message.sendingUid, true)) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
                             break;
                         }
@@ -2547,13 +2542,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     case WifiP2pManager.STOP_LISTEN:
-                        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
-                                message.sendingUid)) {
-                            loge("Permission violation - no NETWORK_SETTING permission,"
-                                    + " uid = " + message.sendingUid);
-                            replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
-                            break;
-                        }
                         if (isVerboseLoggingEnabled()) logd(getName() + " stop listen mode");
                         if (mWifiNative.p2pExtListen(false, 0, 0)) {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_SUCCEEDED);
