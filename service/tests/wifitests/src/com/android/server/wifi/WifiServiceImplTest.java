@@ -8742,6 +8742,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void unregisterLohsSoftApCallbackRemovesCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
         registerLohsSoftApCallbackAndVerify(mClientSoftApCallback, mExtras);
 
         mWifiServiceImpl.unregisterLocalOnlyHotspotSoftApCallback(mClientSoftApCallback, mExtras);
@@ -8761,6 +8762,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void unregisterLohsSoftApCallbackDoesNotRemoveCallbackIfCallbackNotMatching()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
         registerLohsSoftApCallbackAndVerify(mClientSoftApCallback, mExtras);
 
         mWifiServiceImpl.unregisterLocalOnlyHotspotSoftApCallback(mAnotherSoftApCallback, mExtras);
@@ -8779,6 +8781,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void correctLohsCallbackIsCalledAfterAddingTwoCallbacksAndRemovingOne()
             throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
         WifiClient testWifiClient = new WifiClient(MacAddress.fromString("22:33:44:55:66:77"),
                 WIFI_IFACE_NAME2);
         registerLohsSoftApCallbackAndVerify(mClientSoftApCallback, mExtras);
@@ -8823,6 +8826,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void registersForBinderDeathOnRegisterLohsSoftApCallback() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
         registerLohsSoftApCallbackAndVerify(mClientSoftApCallback, mExtras);
         verify(mAppBinder).linkToDeath(any(IBinder.DeathRecipient.class), anyInt());
     }
@@ -8832,6 +8836,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void unregistersLohsSoftApCallbackOnBinderDied() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
         ArgumentCaptor<IBinder.DeathRecipient> drCaptor =
                 ArgumentCaptor.forClass(IBinder.DeathRecipient.class);
         registerLohsSoftApCallbackAndVerify(mClientSoftApCallback, mExtras);
