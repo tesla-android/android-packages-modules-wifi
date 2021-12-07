@@ -62,6 +62,7 @@ public class WifiInfoTest {
     private static final int TEST_NETWORK_ID = 5;
     private static final int TEST_NETWORK_ID2 = 6;
     private static final int TEST_SUB_ID = 1;
+    private static final String TEST_NETWORK_KEY = "TestNetworkKey";
 
     private WifiInfo makeWifiInfoForNoRedactions(
             List<ScanResult.InformationElement> informationElements) {
@@ -182,6 +183,7 @@ public class WifiInfoTest {
         info.setInformationElements(generateIes());
         info.setIsPrimary(true);
         info.setMacAddress(TEST_BSSID);
+        info.setCurrentNetworkKey(TEST_NETWORK_KEY);
         return info;
     }
 
@@ -212,6 +214,7 @@ public class WifiInfoTest {
             assertEquals(TEST_SUB_ID, info.getSubscriptionId());
             assertTrue(info.isPrimary());
         }
+        assertEquals(null, info.getCurrentNetworkKey());
     }
 
     /**
@@ -324,6 +327,7 @@ public class WifiInfoTest {
         info.setProviderFriendlyName(TEST_PROVIDER_NAME);
         info.setInformationElements(generateIes());
         info.setMacAddress(TEST_BSSID);
+        info.setCurrentNetworkKey(TEST_NETWORK_KEY);
         return info;
     }
 
@@ -336,6 +340,7 @@ public class WifiInfoTest {
         assertNull(info.getPasspointProviderFriendlyName());
         assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, info.getMacAddress());
         assertNull(info.getInformationElements());
+        assertNull(info.getCurrentNetworkKey());
     }
 
     @Test
@@ -475,6 +480,7 @@ public class WifiInfoTest {
             assertEquals(SubscriptionManager.INVALID_SUBSCRIPTION_ID, wifiInfo.getSubscriptionId());
             assertFalse(wifiInfo.isPrimary());
         }
+        assertEquals(null, wifiInfo.getCurrentNetworkKey());
     }
 
     /**
