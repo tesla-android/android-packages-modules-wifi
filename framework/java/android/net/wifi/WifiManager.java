@@ -4302,8 +4302,9 @@ public class WifiManager {
      * Starts a local-only hotspot with a specific configuration applied. See
      * {@link #startLocalOnlyHotspot(LocalOnlyHotspotCallback, Handler)}.
      *
-     * Applications need either {@link android.Manifest.permission#NETWORK_SETUP_WIZARD} or
-     * {@link android.Manifest.permission#NETWORK_SETTINGS} to call this method.
+     * Applications need either {@link android.Manifest.permission#NETWORK_SETUP_WIZARD},
+     * {@link android.Manifest.permission#NETWORK_SETTINGS} or
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} to call this method.
      *
      * Since custom configuration settings may be incompatible with each other, the hotspot started
      * through this method cannot coexist with another hotspot created through
@@ -4319,7 +4320,8 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+            android.Manifest.permission.NETWORK_SETUP_WIZARD,
+            NEARBY_WIFI_DEVICES})
     public void startLocalOnlyHotspot(@NonNull SoftApConfiguration config,
             @Nullable Executor executor,
             @Nullable LocalOnlyHotspotCallback callback) {

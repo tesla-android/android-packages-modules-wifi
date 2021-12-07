@@ -2004,21 +2004,8 @@ public class WifiServiceImpl extends BaseWifiService {
 
         @GuardedBy("mLocalOnlyHotspotRequests")
         private void startForFirstRequestLocked(LocalOnlyHotspotRequestInfo request) {
-            int band = WifiApConfigStore.generateDefaultBand(mContext);
-
-            // For auto only
-            if (hasAutomotiveFeature(mContext)) {
-                if (mContext.getResources().getBoolean(R.bool.config_wifiLocalOnlyHotspot6ghz)
-                        && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext)) {
-                    band = SoftApConfiguration.BAND_6GHZ;
-                } else if (mContext.getResources().getBoolean(
-                        R.bool.config_wifi_local_only_hotspot_5ghz)
-                        && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_5GHZ, mContext)) {
-                    band = SoftApConfiguration.BAND_5GHZ;
-                }
-            }
             SoftApConfiguration softApConfig = mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                    mContext, band, request.getCustomConfig());
+                    mContext, request.getCustomConfig());
 
             mActiveConfig = new SoftApModeConfiguration(
                     WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
@@ -2355,8 +2342,14 @@ public class WifiServiceImpl extends BaseWifiService {
             // toggle wifi off for LOHS.
             requestorWs = mFrameworkFacade.getSettingsWorkSource(mContext);
         } else {
-            if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
-                throw new SecurityException(TAG + ": Permission denied");
+            if (isPlatformOrTargetSdkLessThanT(packageName, uid)) {
+                if (!isSettingsOrSuw(Binder.getCallingPid(), Binder.getCallingUid())) {
+                    throw new SecurityException(TAG + ": Permission denied");
+                }
+            } else {
+                mWifiPermissionsUtil.enforceNearbyDevicesPermission(
+                        extras.getParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE),
+                        false, TAG + " startLocalOnlyHotspot");
             }
             // Already privileged, no need to fake.
             requestorWs = new WorkSource(uid, packageName);
@@ -4902,10 +4895,6 @@ public class WifiServiceImpl extends BaseWifiService {
                     return concurrencyFeatureSet;
                 }, 0L);
         return supportedFeatureSet;
-    }
-
-    private static boolean hasAutomotiveFeature(Context context) {
-        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
     }
 
     /**

@@ -3204,81 +3204,13 @@ public class WifiServiceImplTest extends WifiBaseTest {
     public void testStartLocalOnlyHotspotAt2Ghz() {
         SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(null))).thenReturn(lohsConfig);
+                eq(mContext), eq(null))).thenReturn(lohsConfig);
         mLooper.startAutoDispatch();
         registerLOHSRequestFull();
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(null));
+                eq(mContext), eq(null));
         verifyLohsBand(SoftApConfiguration.BAND_2GHZ);
-    }
-
-    /**
-     * Verify that startLocalOnlyHotspot will start access point at 6 GHz if properly configured
-     * and if feasible, even if the 5GHz is enabled.
-     */
-    @Test
-    public void testStartLocalOnlyHotspotAt6Ghz() {
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifi_local_only_hotspot_5ghz)))
-                .thenReturn(true);
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifiLocalOnlyHotspot6ghz)))
-                .thenReturn(true);
-        setup5GhzSupported();
-        setup6GhzSupported();
-
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifiSoftap6ghzSupported)))
-                .thenReturn(true);
-        when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)).thenReturn(true);
-        SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
-        SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
-                .setBand(SoftApConfiguration.BAND_6GHZ).build();
-        when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_6GHZ), eq(null)))
-                .thenReturn(customizedConfig);
-        mLooper.startAutoDispatch();
-        registerLOHSRequestFull();
-        stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
-        verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_6GHZ), eq(null));
-        verifyLohsBand(SoftApConfiguration.BAND_6GHZ);
-    }
-
-    /**
-     * Verify that startLocalOnlyHotspot will start access point at 5 GHz if both 5GHz and 6GHz
-     * are enabled, but SoftAp is not supported for 6GHz.
-     */
-    @Test
-    public void testStartLocalOnlyHotspotAt5Ghz() {
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifi_local_only_hotspot_5ghz)))
-                .thenReturn(true);
-
-        setup5GhzSupported();
-        setup6GhzSupported();
-
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifiSoftap6ghzSupported)))
-                .thenReturn(false);
-        when(mResources.getBoolean(
-                eq(R.bool.config_wifiLocalOnlyHotspot6ghz)))
-                .thenReturn(true);
-
-        when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE)).thenReturn(true);
-        SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
-        SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
-                .setBand(SoftApConfiguration.BAND_5GHZ).build();
-        when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_5GHZ), eq(null)))
-                .thenReturn(customizedConfig);
-        mLooper.startAutoDispatch();
-        registerLOHSRequestFull();
-        stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
-        verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_5GHZ), eq(null));
-        verifyLohsBand(SoftApConfiguration.BAND_5GHZ);
     }
 
     private void verifyLohsBand(int expectedBand) {
@@ -3389,7 +3321,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .setPassphrase("passphrase", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
                 .build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(config))).thenReturn(config);
+                eq(mContext), eq(config))).thenReturn(config);
         FakeLohsCallback callback = new FakeLohsCallback();
         mLooper.startAutoDispatch();
         setupForCustomLohs();
@@ -3398,7 +3330,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                         config, mExtras)).isEqualTo(REQUEST_REGISTERED);
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(config));
+                eq(mContext), eq(config));
         // Use app's worksouce.
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
@@ -3415,7 +3347,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .setSsid("customSsid")
                 .build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(config))).thenReturn(config);
+                eq(mContext), eq(config))).thenReturn(config);
         FakeLohsCallback callback = new FakeLohsCallback();
         mLooper.startAutoDispatch();
         setupForCustomLohs();
@@ -3424,7 +3356,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                         config, mExtras)).isEqualTo(REQUEST_REGISTERED);
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(config));
+                eq(mContext), eq(config));
         // Use app's worksouce.
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
@@ -3442,7 +3374,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .setPassphrase("passphrase", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
                 .build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(customizedConfig)))
+                eq(mContext), eq(customizedConfig)))
                 .thenReturn(lohsConfig);
         mLooper.startAutoDispatch();
         FakeLohsCallback callback = new FakeLohsCallback();
@@ -3453,7 +3385,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                         customizedConfig, mExtras)).isEqualTo(REQUEST_REGISTERED);
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(customizedConfig));
+                eq(mContext), eq(customizedConfig));
         // Use app's worksouce.
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
@@ -3469,7 +3401,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .setBssid(MacAddress.fromString("aa:bb:cc:dd:ee:ff"))
                 .build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(customizedConfig)))
+                eq(mContext), eq(customizedConfig)))
                 .thenReturn(customizedConfig);
         FakeLohsCallback callback = new FakeLohsCallback();
 
@@ -3481,7 +3413,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         // Use app's worksouce.
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(customizedConfig));
+                eq(mContext), eq(customizedConfig));
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
@@ -4012,12 +3944,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
             throws Exception {
         SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(null))).thenReturn(lohsConfig);
+                eq(mContext), eq(null))).thenReturn(lohsConfig);
         mLooper.startAutoDispatch();
         registerLOHSRequestFull();
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         verify(mWifiApConfigStore).generateLocalOnlyHotspotConfig(
-                eq(mContext), eq(SoftApConfiguration.BAND_2GHZ), eq(null));
+                eq(mContext), eq(null));
         mWifiServiceImpl.registerLOHSForTest(TEST_PID, mRequestInfo);
 
         mWifiServiceImpl.updateInterfaceIpState(WIFI_IFACE_NAME, IFACE_IP_MODE_LOCAL_ONLY);
@@ -8776,7 +8708,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
                 .setBand(SoftApConfiguration.BAND_6GHZ).build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                any(), anyInt(), any())).thenReturn(customizedConfig);
+                any(), any())).thenReturn(customizedConfig);
         // Expect the result is registered but it should get failure because non-supported
         // configuration
         int result = mWifiServiceImpl.startLocalOnlyHotspot(mLohsCallback, TEST_PACKAGE_NAME,
