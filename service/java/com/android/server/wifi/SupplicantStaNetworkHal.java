@@ -151,9 +151,9 @@ public class SupplicantStaNetworkHal {
      *
      * @param enable true to enable, false to disable.
      */
-    void enableVerboseLogging(boolean enable) {
+    void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
         synchronized (mLock) {
-            mVerboseLoggingEnabled = enable;
+            mVerboseLoggingEnabled = verboseEnabled;
         }
     }
 

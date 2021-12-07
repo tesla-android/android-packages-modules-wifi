@@ -180,11 +180,11 @@ public class DppManagerTest extends WifiBaseTest {
     }
 
     private DppManager createDppManager() {
-        DppManager dppManger = new DppManager(new Handler(mLooper.getLooper()), mWifiNative,
+        DppManager dppManager = new DppManager(new Handler(mLooper.getLooper()), mWifiNative,
                 mWifiConfigManager, mContext, mDppMetrics, mScanRequestProxy, mWifiPermissionsUtil);
-        dppManger.mDppTimeoutMessage = mWakeupMessage;
-        dppManger.enableVerboseLogging(1);
-        return dppManger;
+        dppManager.mDppTimeoutMessage = mWakeupMessage;
+        dppManager.enableVerboseLogging(true);
+        return dppManager;
     }
 
     /**

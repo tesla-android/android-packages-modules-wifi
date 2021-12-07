@@ -44,6 +44,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.util.ArrayUtils;
 import com.android.server.wifi.util.NativeUtil;
 
@@ -65,6 +66,7 @@ import java.util.stream.Collectors;
 public class SupplicantP2pIfaceHal {
     private static final String TAG = "SupplicantP2pIfaceHal";
     private static boolean sVerboseLoggingEnabled = true;
+    private static boolean sHalVerboseLoggingEnabled = true;
     private static final int RESULT_NOT_VALID = -1;
     private static final int DEFAULT_OPERATING_CLASS = 81;
     /**
@@ -74,8 +76,9 @@ public class SupplicantP2pIfaceHal {
     private static final Pattern WPS_DEVICE_TYPE_PATTERN =
             Pattern.compile("^(\\d{1,2})-([0-9a-fA-F]{8})-(\\d{1,2})$");
 
-    private Object mLock = new Object();
+    private final Object mLock = new Object();
 
+    private final WifiGlobals mWifiGlobals;
     // Supplicant HAL HIDL interface objects
     private IServiceManager mIServiceManager = null;
     private ISupplicant mISupplicant = null;
@@ -117,8 +120,9 @@ public class SupplicantP2pIfaceHal {
     private final WifiP2pMonitor mMonitor;
     private ISupplicantP2pIfaceCallback mCallback = null;
 
-    public SupplicantP2pIfaceHal(WifiP2pMonitor monitor) {
+    public SupplicantP2pIfaceHal(WifiP2pMonitor monitor, WifiGlobals wifiGlobals) {
         mMonitor = monitor;
+        mWifiGlobals = wifiGlobals;
     }
 
     private boolean linkToServiceManagerDeath() {
@@ -140,10 +144,50 @@ public class SupplicantP2pIfaceHal {
     /**
      * Enable verbose logging for all sub modules.
      */
-    public static void enableVerboseLogging(int verbose) {
-        sVerboseLoggingEnabled = verbose > 0;
-        SupplicantP2pIfaceCallback.enableVerboseLogging(verbose);
-        SupplicantP2pIfaceCallbackV1_4.enableVerboseLogging(verbose);
+    public static void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
+        sVerboseLoggingEnabled = verboseEnabled;
+        sHalVerboseLoggingEnabled = halVerboseEnabled;
+        SupplicantP2pIfaceCallback.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+        SupplicantP2pIfaceCallbackV1_4.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
+    }
+
+    /**
+     * Set the debug log level for wpa_supplicant
+     *
+     * @param turnOnVerbose Whether to turn on verbose logging or not.
+     * @return true if request is sent successfully, false otherwise.
+     */
+    public boolean setLogLevel(boolean turnOnVerbose) {
+        synchronized (mLock) {
+            int logLevel = turnOnVerbose
+                    ? ISupplicant.DebugLevel.DEBUG
+                    : ISupplicant.DebugLevel.INFO;
+            return setDebugParams(logLevel, false,
+                    turnOnVerbose && mWifiGlobals.getShowKeyVerboseLoggingModeEnabled());
+        }
+    }
+
+    /** See ISupplicant.hal for documentation */
+    private boolean setDebugParams(int level, boolean showTimestamp, boolean showKeys) {
+        synchronized (mLock) {
+            if (mISupplicant == null) {
+                Log.e(TAG, "Got null ISupplicant service. Stopping supplicant HIDL startup");
+                return false;
+            }
+            try {
+                SupplicantStatus status =
+                        mISupplicant.setDebugParams(level, showTimestamp, showKeys);
+                if (status == null || status.code != SupplicantStatusCode.SUCCESS) {
+                    Log.e(TAG, "Failed to set debug params " + status);
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "Exception while setting debug params for ISupplicant service: " + e);
+                supplicantServiceDiedHandler();
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -224,6 +268,7 @@ public class SupplicantP2pIfaceHal {
                 return false;
             }
         }
+        setLogLevel(sHalVerboseLoggingEnabled);
         return true;
     }
 

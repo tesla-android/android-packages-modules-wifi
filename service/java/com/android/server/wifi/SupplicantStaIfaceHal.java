@@ -108,6 +108,7 @@ public class SupplicantStaIfaceHal {
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
+    private boolean mVerboseHalLoggingEnabled = false;
 
     // Supplicant HAL interface objects
     private IServiceManager mIServiceManager = null;
@@ -210,9 +211,11 @@ public class SupplicantStaIfaceHal {
      *
      * @param enable true to enable, false to disable.
      */
-    void enableVerboseLogging(boolean enable) {
+    void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
         synchronized (mLock) {
-            mVerboseLoggingEnabled = enable;
+            mVerboseLoggingEnabled = verboseEnabled;
+            mVerboseHalLoggingEnabled = halVerboseEnabled;
+            setLogLevel(mVerboseHalLoggingEnabled);
         }
     }
 
@@ -1399,7 +1402,7 @@ public class SupplicantStaIfaceHal {
                     new SupplicantStaNetworkHal(iSupplicantStaNetwork, ifaceName, mContext,
                             mWifiMonitor, mWifiGlobals, getAdvancedCapabilities(ifaceName));
             if (network != null) {
-                network.enableVerboseLogging(mVerboseLoggingEnabled);
+                network.enableVerboseLogging(mVerboseLoggingEnabled, mVerboseHalLoggingEnabled);
             }
             return network;
         }

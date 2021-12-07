@@ -2309,7 +2309,7 @@ public class SupplicantStaNetworkHalTest extends WifiBaseTest {
                         mWifiGlobals, mAdvanceKeyMgmtFeatures);
                 break;
         }
-        mSupplicantNetwork.enableVerboseLogging(true);
+        mSupplicantNetwork.enableVerboseLogging(true, false);
     }
 
     // Private class to to store/inspect values set via the HIDL mock.

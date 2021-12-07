@@ -645,11 +645,11 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(true);
         doNothing().when(mIHostapdMock).setDebugParams(anyInt());
 
-        mHostapdHal.enableVerboseLogging(true);
+        mHostapdHal.enableVerboseLogging(false, true);
         verify(mIHostapdMock, atLeastOnce())
                 .setDebugParams(eq(DebugLevel.DEBUG));
 
-        mHostapdHal.enableVerboseLogging(false);
+        mHostapdHal.enableVerboseLogging(false, false);
         verify(mIHostapdMock, atLeastOnce())
                 .setDebugParams(eq(DebugLevel.INFO));
     }

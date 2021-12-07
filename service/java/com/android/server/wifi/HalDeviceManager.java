@@ -124,12 +124,9 @@ public class HalDeviceManager {
         mServiceManagerDeathRecipient = new ServiceManagerDeathRecipient();
     }
 
-    /* package */ void enableVerboseLogging(int verbose) {
-        if (verbose > 0) {
-            mDbg = true;
-        } else {
-            mDbg = false;
-        }
+    /* package */ void enableVerboseLogging(boolean verboseEnabled) {
+        mDbg = verboseEnabled;
+
         if (VDBG) {
             mDbg = true; // just override
         }

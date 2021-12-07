@@ -857,12 +857,8 @@ public class WifiLockManager {
         }
     }
 
-    protected void enableVerboseLogging(int verbose) {
-        if (verbose > 0) {
-            mVerboseLoggingEnabled = true;
-        } else {
-            mVerboseLoggingEnabled = false;
-        }
+    protected void enableVerboseLogging(boolean verboseEnabled) {
+        mVerboseLoggingEnabled = verboseEnabled;
     }
 
     private class WifiLock implements IBinder.DeathRecipient {

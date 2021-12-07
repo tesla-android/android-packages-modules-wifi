@@ -104,9 +104,9 @@ public class WifiP2pNative {
     /**
      * Enable verbose logging for all sub modules.
      */
-    public void enableVerboseLogging(int verbose) {
-        mVerboseLoggingEnabled = verbose > 0;
-        SupplicantP2pIfaceHal.enableVerboseLogging(verbose);
+    public void enableVerboseLogging(boolean verboseEnabled, boolean halVerboseEnabled) {
+        mVerboseLoggingEnabled = verboseEnabled;
+        SupplicantP2pIfaceHal.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
     }
 
     private static final int CONNECT_TO_SUPPLICANT_SAMPLING_INTERVAL_MS = 100;
