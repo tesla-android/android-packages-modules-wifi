@@ -7485,6 +7485,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.startRestrictingAutoJoinToSubscriptionId(1);
         mLooper.dispatchAll();
         verify(mWifiConfigManager).startRestrictingAutoJoinToSubscriptionId(1);
+        verify(mWifiConnectivityManager).clearCachedCandidates();
         verify(mClientModeManager).disconnect();
     }
 
