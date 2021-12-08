@@ -247,6 +247,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @VisibleForTesting
     public final CountryCodeTracker mCountryCodeTracker;
+    private final MultiInternetManager mMultiInternetManager;
 
     /**
      * Callback for use with LocalOnlyHotspot to unregister requesting applications upon death.
@@ -471,6 +472,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mDefaultClientModeManager = mWifiInjector.getDefaultClientModeManager();
         mCountryCodeTracker = new CountryCodeTracker();
         mWifiTetheringDisallowed = false;
+        mMultiInternetManager = mWifiInjector.getMultiInternetManager();
     }
 
     /**
@@ -716,6 +718,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().register();
             mWifiInjector.getRestrictedWifiNetworkFactory().register();
             mWifiInjector.getOemWifiNetworkFactory().register();
+            mWifiInjector.getMultiInternetWifiNetworkFactory().register();
             mWifiInjector.getWifiP2pConnection().handleBootCompleted();
             // Start to listen country code change to avoid query supported channels causes boot
             // time increased.
@@ -4476,6 +4479,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().dump(fd, pw, args);
             mWifiInjector.getOemWifiNetworkFactory().dump(fd, pw, args);
             mWifiInjector.getRestrictedWifiNetworkFactory().dump(fd, pw, args);
+            mWifiInjector.getMultiInternetWifiNetworkFactory().dump(fd, pw, args);
             pw.println("Wlan Wake Reasons:" + mWifiNative.getWlanWakeReasonCount());
             pw.println();
             mWifiConfigManager.dump(fd, pw, args);
@@ -6086,8 +6090,9 @@ public class WifiServiceImpl extends BaseWifiService {
                     .c(Binder.getCallingUid()).flush();
         }
         // Post operation to handler thread
-        // TODO: Call mMultiInternetManager for the mode
-        return WifiManager.WIFI_MULTI_INTERNET_MODE_DISABLED;
+        return mWifiThreadRunner.call(
+                () -> mMultiInternetManager.getStaConcurrencyForMultiInternetMode(),
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DISABLED);
     }
 
     /**
@@ -6110,7 +6115,8 @@ public class WifiServiceImpl extends BaseWifiService {
                 .c(uid).c(pid).c(mode)
                 .flush();
         }
-        // TODO: Call mMultiInternetManager for the mode
-        return false;
+        // Post operation to handler thread
+        return mWifiThreadRunner.call(() ->
+                mMultiInternetManager.setStaConcurrencyForMultiInternetMode(mode), false);
     }
 }

@@ -180,6 +180,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Mock ConnectHelper mConnectHelper;
     @Mock PowerManager mPowerManager;
     @Mock ClientModeImplMonitor mCmiMonitor;
+    @Mock FrameworkFacade mFrameworkFacade;
+    @Mock MultiInternetManager mMultiInternetManager;
     private @Mock ClientModeManager mPrimaryClientModeManager;
     private @Mock WifiGlobals mWifiGlobals;
     private MockitoSession mStaticMockSession = null;
@@ -283,7 +285,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 mNetworkCapabilities, mActivityManager, mAlarmManager, mAppOpsManager,
                 mClock, mWifiInjector, mWifiConnectivityManager,
                 mWifiConfigManager, mWifiConfigStore, mWifiPermissionsUtil, mWifiMetrics,
-                mActiveModeWarden, mConnectHelper, mCmiMonitor);
+                mActiveModeWarden, mConnectHelper, mCmiMonitor, mFrameworkFacade,
+                mMultiInternetManager);
 
         verify(mContext, atLeastOnce()).registerReceiver(
                 mBroadcastReceiverCaptor.capture(), any(), any(), any());

@@ -135,6 +135,8 @@ public class WifiNetworkFactory extends NetworkFactory {
     private final ConnectionTimeoutAlarmListener mConnectionTimeoutAlarmListener;
     private final ConnectHelper mConnectHelper;
     private final ClientModeImplMonitor mClientModeImplMonitor;
+    private final FrameworkFacade mFacade;
+    private final MultiInternetManager mMultiInternetManager;
     private RemoteCallbackList<INetworkRequestMatchCallback> mRegisteredCallbacks;
     // Store all user approved access points for apps.
     @VisibleForTesting
@@ -521,7 +523,9 @@ public class WifiNetworkFactory extends NetworkFactory {
             WifiMetrics wifiMetrics,
             ActiveModeWarden activeModeWarden,
             ConnectHelper connectHelper,
-            ClientModeImplMonitor clientModeImplMonitor) {
+            ClientModeImplMonitor clientModeImplMonitor,
+            FrameworkFacade facade,
+            MultiInternetManager multiInternetManager) {
         super(looper, context, TAG, nc);
         mContext = context;
         mActivityManager = activityManager;
@@ -547,6 +551,8 @@ public class WifiNetworkFactory extends NetworkFactory {
         mPeriodicScanTimerListener = new PeriodicScanAlarmListener();
         mConnectionTimeoutAlarmListener = new ConnectionTimeoutAlarmListener();
         mUserApprovedAccessPointMap = new HashMap<>();
+        mFacade = facade;
+        mMultiInternetManager = multiInternetManager;
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
@@ -650,9 +656,14 @@ public class WifiNetworkFactory extends NetworkFactory {
             return true;
         }
         // Request from fg app can override any existing requests.
-        if (isRequestFromForegroundApp(newRequest.getRequestorPackageName())) return true;
+        if (mFacade.isRequestFromForegroundApp(mContext, newRequest.getRequestorPackageName())) {
+            return true;
+        }
         // Request from fg service can override only if the existing request is not from a fg app.
-        if (!isRequestFromForegroundApp(existingRequest.getRequestorPackageName())) return true;
+        if (!mFacade.isRequestFromForegroundApp(mContext,
+                existingRequest.getRequestorPackageName())) {
+            return true;
+        }
         Log.e(TAG, "Already processing request from a foreground app "
                 + existingRequest.getRequestorPackageName() + ". Rejecting request from "
                 + newRequest.getRequestorPackageName());
@@ -725,7 +736,7 @@ public class WifiNetworkFactory extends NetworkFactory {
             // Only allow specific wifi network request from foreground app/service.
             if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(
                     networkRequest.getRequestorUid())
-                    && !isRequestFromForegroundAppOrService(
+                    && !mFacade.isRequestFromForegroundAppOrService(mContext,
                     networkRequest.getRequestorPackageName())) {
                 Log.e(TAG, "Request not from foreground app or service."
                         + " Rejecting request from " + networkRequest.getRequestorPackageName());
@@ -752,7 +763,8 @@ public class WifiNetworkFactory extends NetworkFactory {
             }
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "Accepted network request with specifier from fg "
-                        + (isRequestFromForegroundApp(networkRequest.getRequestorPackageName())
+                        + (mFacade.isRequestFromForegroundApp(mContext,
+                                networkRequest.getRequestorPackageName())
                         ? "app" : "service"));
             }
         }
@@ -1305,32 +1317,6 @@ public class WifiNetworkFactory extends NetworkFactory {
         // ensure there is no active request in progress.
         if (mActiveSpecificNetworkRequest == null) {
             removeClientModeManagerIfNecessary();
-        }
-    }
-
-    /**
-     * Check if the request comes from foreground app/service.
-     */
-    private boolean isRequestFromForegroundAppOrService(@NonNull String requestorPackageName) {
-        try {
-            return mActivityManager.getPackageImportance(requestorPackageName)
-                    <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE;
-        } catch (SecurityException e) {
-            Log.e(TAG, "Failed to check the app state", e);
-            return false;
-        }
-    }
-
-    /**
-     * Check if the request comes from foreground app.
-     */
-    private boolean isRequestFromForegroundApp(@NonNull String requestorPackageName) {
-        try {
-            return mActivityManager.getPackageImportance(requestorPackageName)
-                    <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
-        } catch (SecurityException e) {
-            Log.e(TAG, "Failed to check the app state", e);
-            return false;
         }
     }
 

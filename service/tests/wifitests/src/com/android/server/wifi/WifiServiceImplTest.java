@@ -375,6 +375,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock UntrustedWifiNetworkFactory mUntrustedWifiNetworkFactory;
     @Mock OemWifiNetworkFactory mOemWifiNetworkFactory;
     @Mock RestrictedWifiNetworkFactory mRestrictedWifiNetworkFactory;
+    @Mock MultiInternetManager mMultiInternetManager;
+    @Mock MultiInternetWifiNetworkFactory mMultiInternetWifiNetworkFactory;
     @Mock WifiDiagnostics mWifiDiagnostics;
     @Mock WifiP2pConnection mWifiP2pConnection;
     @Mock SimRequiredNotifier mSimRequiredNotifier;
@@ -420,6 +422,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getOemWifiNetworkFactory()).thenReturn(mOemWifiNetworkFactory);
         when(mWifiInjector.getRestrictedWifiNetworkFactory())
                 .thenReturn(mRestrictedWifiNetworkFactory);
+        when(mWifiInjector.getMultiInternetWifiNetworkFactory())
+                .thenReturn(mMultiInternetWifiNetworkFactory);
+        when(mWifiInjector.getMultiInternetManager()).thenReturn(mMultiInternetManager);
         when(mWifiInjector.getWifiDiagnostics()).thenReturn(mWifiDiagnostics);
         when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
         when(mWifiInjector.getWifiHandlerThread()).thenReturn(mHandlerThread);
@@ -7144,6 +7149,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mUntrustedWifiNetworkFactory).register();
         verify(mOemWifiNetworkFactory).register();
         verify(mRestrictedWifiNetworkFactory).register();
+        verify(mMultiInternetWifiNetworkFactory).register();
         verify(mPasspointManager).initializeProvisioner(any());
         verify(mWifiP2pConnection).handleBootCompleted();
         verify(mWifiCountryCode).registerListener(any(WifiCountryCode.ChangeListener.class));
@@ -7787,11 +7793,14 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         when(mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections())
                 .thenReturn(true);
+        when(mActiveModeWarden.isStaStaConcurrencySupportedForMultiInternet())
+                .thenReturn(true);
         mLooper.startAutoDispatch();
         assertEquals(supportedFeaturesFromClientModeManager
                         | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_LOCAL_ONLY
                         | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MBB
-                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED,
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED
+                        | WifiManager.WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET,
                 mWifiServiceImpl.getSupportedFeatures());
         mLooper.stopAutoDispatchAndIgnoreExceptions();
     }
@@ -9072,5 +9081,55 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .when(mWifiPermissionsUtil).enforceNearbyDevicesPermission(
                         any(), anyBoolean(), any());
         mWifiServiceImpl.unregisterLocalOnlyHotspotSoftApCallback(mClientSoftApCallback, mExtras);
+    }
+
+    /**
+     * Verify getStaConcurrencyForMultiInternetMode
+     */
+    @Test
+    public void testGetStaConcurrencyForMultiInternetMode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mMultiInternetManager.getStaConcurrencyForMultiInternetMode()).thenReturn(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DBS_AP);
+        mLooper.startAutoDispatch();
+        final int mode = mWifiServiceImpl.getStaConcurrencyForMultiInternetMode();
+        verify(mMultiInternetManager).getStaConcurrencyForMultiInternetMode();
+        assertEquals(WifiManager.WIFI_MULTI_INTERNET_MODE_DBS_AP, mode);
+    }
+
+    /**
+     * Verify that a call to setStaConcurrencyForMultiInternetMode throws a SecurityException
+     * if the caller target Android T or later and does not have network settings permission.
+     */
+    @Test(expected = SecurityException.class)
+    public void testSetStaConcurrencyForMultiInternetModeThrowsExceptionWithoutPermissionOnT() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                                                eq("WifiService"));
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.setStaConcurrencyForMultiInternetMode(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DBS_AP);
+    }
+
+    /**
+     * Verify setStaConcurrencyForMultiInternetMode
+     */
+    @Test
+    public void testSetStaConcurrencyForMultiInternetMode() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mMultiInternetManager.setStaConcurrencyForMultiInternetMode(anyInt()))
+                .thenReturn(true);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETUP_WIZARD),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+        mLooper.startAutoDispatch();
+        assertTrue(mWifiServiceImpl.setStaConcurrencyForMultiInternetMode(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_MULTI_AP));
+        verify(mMultiInternetManager).setStaConcurrencyForMultiInternetMode(
+                WifiManager.WIFI_MULTI_INTERNET_MODE_MULTI_AP);
     }
 }
