@@ -1413,6 +1413,8 @@ public class WifiManager {
     private static final SparseArray<ISoftApCallback> sSoftApCallbackMap = new SparseArray();
     private static final SparseArray<IOnWifiDriverCountryCodeChangedListener>
             sActiveCountryCodeChangedCallbackMap = new SparseArray();
+    private static final SparseArray<ISoftApCallback>
+            sLocalOnlyHotspotSoftApCallbackMap = new SparseArray();
 
     /**
      * Create a new WifiManager instance.
@@ -4300,8 +4302,9 @@ public class WifiManager {
      * Starts a local-only hotspot with a specific configuration applied. See
      * {@link #startLocalOnlyHotspot(LocalOnlyHotspotCallback, Handler)}.
      *
-     * Applications need either {@link android.Manifest.permission#NETWORK_SETUP_WIZARD} or
-     * {@link android.Manifest.permission#NETWORK_SETTINGS} to call this method.
+     * Applications need either {@link android.Manifest.permission#NETWORK_SETUP_WIZARD},
+     * {@link android.Manifest.permission#NETWORK_SETTINGS} or
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} to call this method.
      *
      * Since custom configuration settings may be incompatible with each other, the hotspot started
      * through this method cannot coexist with another hotspot created through
@@ -4317,7 +4320,8 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.NETWORK_SETUP_WIZARD})
+            android.Manifest.permission.NETWORK_SETUP_WIZARD,
+            NEARBY_WIFI_DEVICES})
     public void startLocalOnlyHotspot(@NonNull SoftApConfiguration config,
             @Nullable Executor executor,
             @Nullable LocalOnlyHotspotCallback callback) {
@@ -4407,6 +4411,103 @@ public class WifiManager {
             } catch (RemoteException e) {
                 throw e.rethrowFromSystemServer();
             }
+        }
+    }
+
+    /**
+     * Registers a callback for local only hotspot. See {@link SoftApCallback}. Caller will receive
+     * the following callbacks on registration:
+     * <ul>
+     * <li> {@link SoftApCallback#onStateChanged(int, int)}</li>
+     * <li> {@link SoftApCallback#onConnectedClientsChanged(List<WifiClient>)}</li>
+     * <li> {@link SoftApCallback#onInfoChanged(List<SoftApInfo>)}</li>
+     * <li> {@link SoftApCallback#onCapabilityChanged(SoftApCapability)}</li>
+     * </ul>
+     *
+     * Use {@link SoftApCallback#onConnectedClientsChanged(SoftApInfo, List<WifiClient>)} to know
+     * if there are any clients connected to a specific bridged instance of this AP
+     * (if bridged AP is enabled).
+     *
+     * Note: Caller will receive the callback
+     * {@link SoftApCallback#onConnectedClientsChanged(SoftApInfo, List<WifiClient>)}
+     * on registration when there are clients connected to AP.
+     *
+     * These will be dispatched on registration to provide the caller with the current state
+     * (and are not an indication of any current change). Note that receiving an immediate
+     * WIFI_AP_STATE_FAILED value for soft AP state indicates that the latest attempt to start
+     * soft AP has failed. Caller can unregister a previously registered callback using
+     * {@link #unregisterLocalOnlyHotspotSoftApCallback}
+     * <p>
+     *
+     * @param executor The Executor on whose thread to execute the callbacks of the {@code callback}
+     *                 object.
+     * @param callback Callback for local only hotspot events
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(NEARBY_WIFI_DEVICES)
+    public void registerLocalOnlyHotspotSoftApCallback(@NonNull @CallbackExecutor Executor executor,
+            @NonNull SoftApCallback callback) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        if (executor == null) throw new IllegalArgumentException("executor cannot be null");
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "registerLocalOnlyHotspotSoftApCallback: callback=" + callback + ", executor="
+                + executor);
+        try {
+            synchronized (sLocalOnlyHotspotSoftApCallbackMap) {
+                ISoftApCallback.Stub binderCallback = new SoftApCallbackProxy(executor, callback,
+                        IFACE_IP_MODE_LOCAL_ONLY);
+                sLocalOnlyHotspotSoftApCallbackMap.put(System.identityHashCode(callback),
+                        binderCallback);
+                Bundle extras = new Bundle();
+                extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+                mService.registerLocalOnlyHotspotSoftApCallback(binderCallback, extras);
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Allow callers to unregister a previously registered callback. After calling this method,
+     * applications will no longer receive local only hotspot events.
+     *
+     * <p>
+     *
+     * @param callback Callback to unregister for soft AP events
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(NEARBY_WIFI_DEVICES)
+    public void unregisterLocalOnlyHotspotSoftApCallback(@NonNull SoftApCallback callback) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "unregisterLocalOnlyHotspotSoftApCallback: callback=" + callback);
+
+        try {
+            synchronized (sLocalOnlyHotspotSoftApCallbackMap) {
+                int callbackIdentifier = System.identityHashCode(callback);
+                if (!sLocalOnlyHotspotSoftApCallbackMap.contains(callbackIdentifier)) {
+                    Log.w(TAG, "Unknown external callback " + callbackIdentifier);
+                    return;
+                }
+                Bundle extras = new Bundle();
+                extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+                mService.unregisterLocalOnlyHotspotSoftApCallback(
+                        sLocalOnlyHotspotSoftApCallbackMap.get(callbackIdentifier), extras);
+                sLocalOnlyHotspotSoftApCallbackMap.remove(callbackIdentifier);
+            }
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
         }
     }
 
@@ -4875,6 +4976,8 @@ public class WifiManager {
     private class SoftApCallbackProxy extends ISoftApCallback.Stub {
         private final Executor mExecutor;
         private final SoftApCallback mCallback;
+        // Either {@link #IFACE_IP_MODE_TETHERED} or {@link #IFACE_IP_MODE_LOCAL_ONLY}.
+        private final int mIpMode;
         private Map<String, List<WifiClient>> mCurrentClients = new HashMap<>();
         private Map<String, SoftApInfo> mCurrentInfos = new HashMap<>();
 
@@ -4886,16 +4989,17 @@ public class WifiManager {
             return connectedClientList;
         }
 
-        SoftApCallbackProxy(Executor executor, SoftApCallback callback) {
+        SoftApCallbackProxy(Executor executor, SoftApCallback callback, int mode) {
             mExecutor = executor;
             mCallback = callback;
+            mIpMode = mode;
         }
 
         @Override
         public void onStateChanged(int state, int failureReason) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onStateChanged: state=" + state
-                        + ", failureReason=" + failureReason);
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode + ", onStateChanged: state="
+                        + state + ", failureReason=" + failureReason);
             }
 
             Binder.clearCallingIdentity();
@@ -4908,7 +5012,8 @@ public class WifiManager {
         public void onConnectedClientsOrInfoChanged(Map<String, SoftApInfo> infos,
                 Map<String, List<WifiClient>> clients, boolean isBridged, boolean isRegistration) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onConnectedClientsOrInfoChanged: clients: "
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", onConnectedClientsOrInfoChanged: clients: "
                         + clients + ", infos: " + infos + ", isBridged is " + isBridged
                         + ", isRegistration is " + isRegistration);
             }
@@ -4939,8 +5044,8 @@ public class WifiManager {
                     isInfoChanged = true;
                     if (mCurrentClients.getOrDefault(changedInstance,
                               Collections.emptyList()).size() > 0) {
-                        Log.d(TAG, "SoftApCallbackProxy: info changed on client connected"
-                                + " instance(Shut Down case)");
+                        Log.d(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                                + ", info changed on client connected instance(Shut Down case)");
                         //Here should notify client changed on old info
                         changedInfoClients.put(info, Collections.emptyList());
                     }
@@ -4961,14 +5066,15 @@ public class WifiManager {
             mCurrentInfos = infos;
             if (!isInfoChanged && changedInfoClients.isEmpty()
                     && !isRegistration && !areClientsChangedWithoutInfosChanged) {
-                Log.v(TAG, "SoftApCallbackProxy: No changed & Not Registration,"
-                        + " don't need to notify the client");
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", No changed & Not Registration don't need to notify the client");
                 return;
             }
             Binder.clearCallingIdentity();
             // Notify the clients changed first for old info shutdown case
             for (SoftApInfo changedInfo : changedInfoClients.keySet()) {
-                Log.v(TAG, "SoftApCallbackProxy: send onConnectedClientsChanged, changedInfo is "
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", send onConnectedClientsChanged, changedInfo is "
                         + changedInfo + " and clients are " + changedInfoClients.get(changedInfo));
                 mExecutor.execute(() -> {
                     mCallback.onConnectedClientsChanged(
@@ -4980,13 +5086,14 @@ public class WifiManager {
                 if (!isBridged) {
                     SoftApInfo newInfo = changedInfoList.isEmpty()
                             ? new SoftApInfo() : changedInfoList.get(0);
-                    Log.v(TAG, "SoftApCallbackProxy: send InfoChanged, newInfo: " + newInfo);
+                    Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                            + ", send InfoChanged, newInfo: " + newInfo);
                     mExecutor.execute(() -> {
                         mCallback.onInfoChanged(newInfo);
                     });
                 }
-                Log.v(TAG, "SoftApCallbackProxy: send InfoChanged, changedInfoList: "
-                        + changedInfoList);
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", send InfoChanged, changedInfoList: " + changedInfoList);
                 mExecutor.execute(() -> {
                     mCallback.onInfoChanged(changedInfoList);
                 });
@@ -4994,7 +5101,8 @@ public class WifiManager {
 
             if (isRegistration || !changedInfoClients.isEmpty()
                     || areClientsChangedWithoutInfosChanged) {
-                Log.v(TAG, "SoftApCallbackProxy: send onConnectedClientsChanged(clients): "
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", send onConnectedClientsChanged(clients): "
                         + getConnectedClientList(clients));
                 mExecutor.execute(() -> {
                     mCallback.onConnectedClientsChanged(getConnectedClientList(clients));
@@ -5005,8 +5113,8 @@ public class WifiManager {
         @Override
         public void onCapabilityChanged(SoftApCapability capability) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onCapabilityChanged: SoftApCapability="
-                        + capability);
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ",  onCapabilityChanged: SoftApCapability = " + capability);
             }
 
             Binder.clearCallingIdentity();
@@ -5018,7 +5126,8 @@ public class WifiManager {
         @Override
         public void onBlockedClientConnecting(@NonNull WifiClient client, int blockedReason) {
             if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "SoftApCallbackProxy: onBlockedClientConnecting: client=" + client
+                Log.v(TAG, "SoftApCallbackProxy on mode " + mIpMode
+                        + ", onBlockedClientConnecting: client =" + client
                         + " with reason = " + blockedReason);
             }
 
@@ -5078,7 +5187,8 @@ public class WifiManager {
 
         try {
             synchronized (sSoftApCallbackMap) {
-                ISoftApCallback.Stub binderCallback = new SoftApCallbackProxy(executor, callback);
+                ISoftApCallback.Stub binderCallback = new SoftApCallbackProxy(executor, callback,
+                        IFACE_IP_MODE_TETHERED);
                 sSoftApCallbackMap.put(System.identityHashCode(callback), binderCallback);
                 mService.registerSoftApCallback(binderCallback);
             }
