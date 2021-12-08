@@ -1156,7 +1156,7 @@ public class ActiveModeWardenTest extends WifiBaseTest {
                 new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_TETHERED, null,
                 mSoftApCapability);
         SoftApConfiguration lohsConfigWC = mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                mContext, SoftApConfiguration.BAND_2GHZ, null);
+                mContext, null);
         SoftApModeConfiguration lohsConfig =
                 new SoftApModeConfiguration(WifiManager.IFACE_IP_MODE_LOCAL_ONLY, lohsConfigWC,
                 mSoftApCapability);

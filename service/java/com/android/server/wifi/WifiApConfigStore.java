@@ -19,6 +19,7 @@ package com.android.server.wifi;
 import android.annotation.NonNull;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.BandType;
@@ -390,27 +391,30 @@ public class WifiApConfigStore {
                 + getRandomIntForDefaultSsid();
     }
 
+    private static boolean hasAutomotiveFeature(Context context) {
+        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
+    }
+
     /**
      * Generate a temporary WPA2 based configuration for use by the local only hotspot.
      * This config is not persisted and will not be stored by the WifiApConfigStore.
      */
-    public SoftApConfiguration generateLocalOnlyHotspotConfig(Context context, int apBand,
+    public SoftApConfiguration generateLocalOnlyHotspotConfig(Context context,
             @Nullable SoftApConfiguration customConfig) {
         SoftApConfiguration.Builder configBuilder;
         if (customConfig != null) {
             configBuilder = new SoftApConfiguration.Builder(customConfig);
+            // Make sure that we use available band on old build.
+            if (!SdkLevel.isAtLeastT()
+                    && !isBandsSupported(customConfig.getBands(), context)) {
+                configBuilder.setBand(generateDefaultBand(context));
+            }
         } else {
             configBuilder = new SoftApConfiguration.Builder();
+            // Make sure the default band configuration is supported.
+            configBuilder.setBand(generateDefaultBand(context));
             // Default to disable the auto shutdown
             configBuilder.setAutoShutdownEnabled(false);
-        }
-
-        configBuilder.setBand(apBand);
-
-        if (customConfig == null || customConfig.getSsid() == null) {
-            configBuilder.setSsid(generateLohsSsid(context));
-        }
-        if (customConfig == null) {
             if (ApConfigUtil.isWpa3SaeSupported(context)) {
                 configBuilder.setPassphrase(generatePassword(),
                         SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION);
@@ -418,16 +422,33 @@ public class WifiApConfigStore {
                 configBuilder.setPassphrase(generatePassword(),
                         SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
             }
+            // Update default MAC randomization setting to NONE when feature doesn't support it or
+            // It was disabled in tethered mode.
+            if (!ApConfigUtil.isApMacRandomizationSupported(context)
+                    || (mPersistentWifiApConfig != null
+                    && mPersistentWifiApConfig.getMacRandomizationSettingInternal()
+                           == SoftApConfiguration.RANDOMIZATION_NONE)) {
+                if (SdkLevel.isAtLeastS()) {
+                    configBuilder.setMacRandomizationSetting(
+                            SoftApConfiguration.RANDOMIZATION_NONE);
+                }
+            }
         }
 
-        // Update default MAC randomization setting to NONE when feature doesn't support it or
-        // It was disabled in tethered mode.
-        if (!ApConfigUtil.isApMacRandomizationSupported(context) || (mPersistentWifiApConfig != null
-                && mPersistentWifiApConfig.getMacRandomizationSettingInternal()
-                == SoftApConfiguration.RANDOMIZATION_NONE)) {
-            if (SdkLevel.isAtLeastS()) {
-                configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        // Automotive mode can force the LOHS to specific bands
+        if (hasAutomotiveFeature(context)) {
+            if (context.getResources().getBoolean(R.bool.config_wifiLocalOnlyHotspot6ghz)
+                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext)) {
+                configBuilder.setBand(SoftApConfiguration.BAND_6GHZ);
+            } else if (context.getResources().getBoolean(
+                        R.bool.config_wifi_local_only_hotspot_5ghz)
+                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_5GHZ, mContext)) {
+                configBuilder.setBand(SoftApConfiguration.BAND_5GHZ);
             }
+        }
+
+        if (customConfig == null || customConfig.getSsid() == null) {
+            configBuilder.setSsid(generateLohsSsid(context));
         }
 
         return configBuilder.build();
@@ -548,14 +569,8 @@ public class WifiApConfigStore {
             return false;
         }
 
-        if (SdkLevel.isAtLeastS()) {
-            if (!isBandsSupported(apConfig.getBands(), context)) {
-                return false;
-            }
-        } else {
-            if (!ApConfigUtil.isBandSupported(apConfig.getBand(), context)) {
-                return false;
-            }
+        if (!isBandsSupported(apConfig.getBands(), context)) {
+            return false;
         }
 
         return true;
