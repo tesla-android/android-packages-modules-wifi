@@ -281,6 +281,7 @@ package android.net.wifi {
     method public int getMacRandomizationSetting();
     method public int getMaxNumberOfClients();
     method public long getShutdownTimeoutMillis();
+    method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getVendorElements();
     method public boolean isAutoShutdownEnabled();
     method public boolean isBridgedModeOpportunisticShutdownEnabled();
     method public boolean isClientControlByUserEnabled();
@@ -318,6 +319,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setPassphrase(@Nullable String, int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setShutdownTimeoutMillis(@IntRange(from=0) long);
     method @Deprecated @NonNull public android.net.wifi.SoftApConfiguration.Builder setSsid(@Nullable String);
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setVendorElements(@NonNull java.util.List<android.net.wifi.ScanResult.InformationElement>);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setWifiSsid(@Nullable android.net.wifi.WifiSsid);
   }
 

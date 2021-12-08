@@ -16,6 +16,8 @@
 
 package android.net.wifi;
 
+import static android.net.wifi.ScanResult.InformationElement.EID_VSA;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertNull;
@@ -41,6 +43,22 @@ import java.util.Random;
 public class SoftApConfigurationTest {
     private static final String TEST_CHAR_SET_AS_STRING = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static final String TEST_BSSID = "aa:22:33:aa:bb:cc";
+    private static final List<ScanResult.InformationElement> TEST_TWO_VENDOR_ELEMENTS =
+            new ArrayList<>(Arrays.asList(
+                    new ScanResult.InformationElement(EID_VSA, 0, new byte[]{ 1, 2, 3, 4 }),
+                    new ScanResult.InformationElement(
+                            EID_VSA,
+                            0,
+                            new byte[]{ (byte) 170, (byte) 187, (byte) 204, (byte) 221 })
+                    ));
+    private static final List<ScanResult.InformationElement> TEST_TWO_VENDOR_ELEMENTS_INVALID =
+            new ArrayList<>(Arrays.asList(
+                    new ScanResult.InformationElement(EID_VSA, 0, new byte[]{ 1, 2, 3, 4 }),
+                    new ScanResult.InformationElement(
+                            (byte) 222,
+                            0,
+                            new byte[]{ (byte) 170, (byte) 187, (byte) 204, (byte) 221 })
+                    ));
 
     private SoftApConfiguration parcelUnparcel(SoftApConfiguration configIn) {
         Parcel parcel = Parcel.obtain();
@@ -102,7 +120,9 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastT()) {
             assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
                     .isEqualTo(0);
+            assertThat(original.getVendorElements().size()).isEqualTo(0);
         }
+
         SoftApConfiguration unparceled = parcelUnparcel(original);
         assertThat(unparceled).isNotSameInstanceAs(original);
         assertThat(unparceled).isEqualTo(original);
@@ -196,6 +216,7 @@ public class SoftApConfigurationTest {
 
         if (SdkLevel.isAtLeastT()) {
             originalBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(300_000);
+            originalBuilder.setVendorElements(TEST_TWO_VENDOR_ELEMENTS);
         }
 
         SoftApConfiguration original = originalBuilder.build();
@@ -224,7 +245,10 @@ public class SoftApConfigurationTest {
         if (SdkLevel.isAtLeastT()) {
             assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
                     .isEqualTo(300_000);
+            assertThat(original.getVendorElements())
+                    .isEqualTo(TEST_TWO_VENDOR_ELEMENTS);
         }
+
         SoftApConfiguration unparceled = parcelUnparcel(original);
         assertThat(unparceled).isNotSameInstanceAs(original);
         assertThat(unparceled).isEqualTo(original);
@@ -590,6 +614,24 @@ public class SoftApConfigurationTest {
         SoftApConfiguration config = new SoftApConfiguration.Builder()
                 .setSsid("ssid")
                 .setChannels(invalid_channels)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidVendorElementsID() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setVendorElements(TEST_TWO_VENDOR_ELEMENTS_INVALID)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidVendorElementsDuplicate() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        List<ScanResult.InformationElement> dupElements = new ArrayList<>(TEST_TWO_VENDOR_ELEMENTS);
+        dupElements.addAll(TEST_TWO_VENDOR_ELEMENTS);
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setVendorElements(dupElements)
                 .build();
     }
 }
