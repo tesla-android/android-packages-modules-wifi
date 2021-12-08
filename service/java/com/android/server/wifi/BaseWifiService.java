@@ -46,6 +46,7 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.WorkSource;
@@ -404,6 +405,16 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void stopLocalOnlyHotspot() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void registerLocalOnlyHotspotSoftApCallback(ISoftApCallback callback, Bundle extras) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void unregisterLocalOnlyHotspotSoftApCallback(ISoftApCallback callback, Bundle extras) {
         throw new UnsupportedOperationException();
     }
 

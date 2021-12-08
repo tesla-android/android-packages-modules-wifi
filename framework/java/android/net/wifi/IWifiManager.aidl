@@ -182,6 +182,10 @@ interface IWifiManager
 
     void stopLocalOnlyHotspot();
 
+    void registerLocalOnlyHotspotSoftApCallback(in ISoftApCallback callback, in Bundle extras);
+
+    void unregisterLocalOnlyHotspotSoftApCallback(in ISoftApCallback callback, in Bundle extras);
+
     void startWatchLocalOnlyHotspot(in ILocalOnlyHotspotCallback callback);
 
     void stopWatchLocalOnlyHotspot();
