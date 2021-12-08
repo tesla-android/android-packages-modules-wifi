@@ -317,6 +317,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         @Override
         public void select(WifiConfiguration wifiConfiguration) {
             mHandler.post(() -> {
+                Log.i(TAG, "select configuration " + wifiConfiguration);
                 if (mActiveSpecificNetworkRequest != mNetworkRequest) {
                     Log.e(TAG, "Stale callback select received");
                     return;
@@ -671,6 +672,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     }
 
     boolean isRequestWithWifiNetworkSpecifierValid(NetworkRequest networkRequest) {
+        WifiNetworkSpecifier wns = (WifiNetworkSpecifier) networkRequest.getNetworkSpecifier();
         // Request cannot have internet capability since such a request can never be fulfilled.
         // (NetworkAgent for connection with WifiNetworkSpecifier will not have internet capability)
         if (networkRequest.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
@@ -695,7 +697,7 @@ public class WifiNetworkFactory extends NetworkFactory {
                     + networkRequest.getRequestorPackageName() + ". Rejecting", e);
             return false;
         }
-        WifiNetworkSpecifier wns = (WifiNetworkSpecifier) networkRequest.getNetworkSpecifier();
+
         if (wns.getBand() != ScanResult.UNSPECIFIED) {
             Log.e(TAG, "Requesting specific frequency bands is not yet supported. Rejecting");
             return false;
@@ -723,8 +725,14 @@ public class WifiNetworkFactory extends NetworkFactory {
                 Log.e(TAG, "Unsupported network specifier: " + ns + ". Rejecting");
                 return false;
             }
+            // MultiInternet Request to be handled by MultiInternetWifiNetworkFactory.
+            if (mMultiInternetManager.isStaConcurrencyForMultiInternetEnabled()
+                    && MultiInternetWifiNetworkFactory.isWifiMultiInternetRequest(networkRequest)) {
+                return false;
+            }
             // Invalid request with wifi network specifier.
             if (!isRequestWithWifiNetworkSpecifierValid(networkRequest)) {
+                Log.e(TAG, "Invalid network specifier: " + ns + ". Rejecting");
                 releaseRequestAsUnfulfillableByAnyFactory(networkRequest);
                 return false;
             }
@@ -794,8 +802,14 @@ public class WifiNetworkFactory extends NetworkFactory {
                 Log.e(TAG, "Unsupported network specifier: " + ns + ". Ignoring");
                 return;
             }
+            // MultiInternet Request to be handled by MultiInternetWifiNetworkFactory.
+            if (mMultiInternetManager.isStaConcurrencyForMultiInternetEnabled()
+                    && MultiInternetWifiNetworkFactory.isWifiMultiInternetRequest(networkRequest)) {
+                return;
+            }
             // Invalid request with wifi network specifier.
             if (!isRequestWithWifiNetworkSpecifierValid(networkRequest)) {
+                Log.e(TAG, "Invalid network specifier: " + ns + ". Rejecting");
                 releaseRequestAsUnfulfillableByAnyFactory(networkRequest);
                 return;
             }
@@ -819,7 +833,7 @@ public class WifiNetworkFactory extends NetworkFactory {
             mActiveSpecificNetworkRequest = networkRequest;
             WifiNetworkSpecifier wns = (WifiNetworkSpecifier) ns;
             mActiveSpecificNetworkRequestSpecifier = new WifiNetworkSpecifier(
-                    wns.ssidPatternMatcher, wns.bssidPatternMatcher, ScanResult.UNSPECIFIED,
+                    wns.ssidPatternMatcher, wns.bssidPatternMatcher, wns.getBand(),
                     wns.wifiConfiguration);
             mSkipUserDialogue = false;
             mWifiMetrics.incrementNetworkRequestApiNumRequest();
@@ -1185,6 +1199,7 @@ public class WifiNetworkFactory extends NetworkFactory {
 
     // Common helper method for start/end of active request processing.
     private void cleanupActiveRequest() {
+        if (mVerboseLoggingEnabled) Log.v(TAG, "cleanupActiveRequest");
         // Send the abort to the UI for the current active request.
         if (mRegisteredCallbacks != null) {
             int itemCount = mRegisteredCallbacks.beginBroadcast();
@@ -1721,6 +1736,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         if (mActiveSpecificNetworkRequestSpecifier == null) return false;
         boolean requestForSingleAccessPoint = isActiveRequestForSingleAccessPoint();
         if (!requestForSingleAccessPoint && !isActiveRequestForSingleNetwork()) {
+            Log.i(TAG, "ActiveRequest not for single access point or network.");
             return false;
         }
 

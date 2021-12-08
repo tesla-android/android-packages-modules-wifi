@@ -452,7 +452,9 @@ public class ActiveModeWarden {
         }
         if (clientRole == ROLE_CLIENT_SECONDARY_LONG_LIVED) {
             return mContext.getResources().getBoolean(
-                    R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled);
+                    R.bool.config_wifiMultiStaRestrictedConcurrencyEnabled)
+                    || mContext.getResources().getBoolean(
+                    R.bool.config_wifiMultiStaMultiInternetConcurrencyEnabled);
         }
         Log.e(TAG, "Unrecognized role=" + clientRole);
         return false;

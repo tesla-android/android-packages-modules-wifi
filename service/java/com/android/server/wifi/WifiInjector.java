@@ -462,8 +462,8 @@ public class WifiInjector {
                 mWifiConnectivityHelper, mWifiLastResortWatchdog, mOpenNetworkNotifier,
                 mWifiMetrics, wifiHandler,
                 mClock, mConnectivityLocalLog, mWifiScoreCard, mWifiBlocklistMonitor,
-                mWifiChannelUtilizationScan, mPasspointManager, mDeviceConfigFacade,
-                mActiveModeWarden, mWifiGlobals);
+                mWifiChannelUtilizationScan, mPasspointManager, mMultiInternetManager,
+                mDeviceConfigFacade, mActiveModeWarden, mFrameworkFacade, mWifiGlobals);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 mCmiMonitor, mWifiNative, mSettingsConfigStore);

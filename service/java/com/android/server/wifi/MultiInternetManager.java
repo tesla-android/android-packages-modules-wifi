@@ -63,14 +63,14 @@ public class MultiInternetManager {
     /** No multi internet connection needed. */
     public static final int MULTI_INTERNET_STATE_NONE = 0;
     /** Multi internet connection is connecting. */
-    public static final int MULTI_INTERNET_STATE_CONNECTION_PENDING = 1;
+    public static final int MULTI_INTERNET_STATE_CONNECTION_REQUESTED = 1;
     /** No multi internet connection is connected. */
     public static final int MULTI_INTERNET_STATE_CONNECTED = 2;
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"MULTI_INTERNET_STATE_"}, value = {
             MULTI_INTERNET_STATE_NONE,
-            MULTI_INTERNET_STATE_CONNECTION_PENDING,
+            MULTI_INTERNET_STATE_CONNECTION_REQUESTED,
             MULTI_INTERNET_STATE_CONNECTED})
     public @interface MultiInternetState {}
 
@@ -385,7 +385,7 @@ public class MultiInternetManager {
             updateNetworkConnectionStates();
             final int band = findUnconnectedRequestBand();
             if (band != ScanResult.UNSPECIFIED) {
-                handleConnectionStateChange(MULTI_INTERNET_STATE_CONNECTION_PENDING,
+                handleConnectionStateChange(MULTI_INTERNET_STATE_CONNECTION_REQUESTED,
                         getRequestorWorkSource(band));
             }
         }
@@ -521,7 +521,7 @@ public class MultiInternetManager {
             }
         } else {
             final int band = findUnconnectedRequestBand();
-            handleConnectionStateChange(MULTI_INTERNET_STATE_CONNECTION_PENDING,
+            handleConnectionStateChange(MULTI_INTERNET_STATE_CONNECTION_REQUESTED,
                     getRequestorWorkSource(band));
         }
     }

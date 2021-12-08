@@ -268,7 +268,7 @@ public class MultiInternetManagerTest extends WifiBaseTest {
         assertTrue(mMultiInternetManager.getNetworkConnectionState()
                 .contains(ScanResult.WIFI_BAND_5_GHZ));
         verify(mConnectionStatusListener).onStatusChange(
-                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_PENDING, TEST_WORKSOURCE);
+                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_REQUESTED, TEST_WORKSOURCE);
         verify(mConnectionStatusListener).onStartScan(TEST_WORKSOURCE);
     }
 
@@ -291,7 +291,7 @@ public class MultiInternetManagerTest extends WifiBaseTest {
         assertTrue(mMultiInternetManager.getNetworkConnectionState()
                 .contains(ScanResult.WIFI_BAND_24_GHZ));
         verify(mConnectionStatusListener).onStatusChange(
-                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_PENDING, TEST_WORKSOURCE);
+                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_REQUESTED, TEST_WORKSOURCE);
         verify(mConnectionStatusListener).onStartScan(TEST_WORKSOURCE);
         // Set for 5G
         mMultiInternetManager.setMultiInternetConnectionWorksource(ScanResult.WIFI_BAND_5_GHZ,
@@ -299,7 +299,7 @@ public class MultiInternetManagerTest extends WifiBaseTest {
         assertTrue(mMultiInternetManager.getNetworkConnectionState()
                 .contains(ScanResult.WIFI_BAND_5_GHZ));
         verify(mConnectionStatusListener).onStatusChange(
-                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_PENDING, TEST_WORKSOURCE);
+                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_REQUESTED, TEST_WORKSOURCE);
         verify(mConnectionStatusListener, times(2)).onStartScan(TEST_WORKSOURCE);
         // Clear the WorkSource
         mMultiInternetManager.setMultiInternetConnectionWorksource(ScanResult.WIFI_BAND_24_GHZ,
@@ -383,8 +383,8 @@ public class MultiInternetManagerTest extends WifiBaseTest {
             mTestHandler.timeAdvance();
         }
         verify(mConnectionStatusListener, times(1)).onStatusChange(
-                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_PENDING, TEST_WORKSOURCE2);
-        verify(mConnectionStatusListener, times(6)).onStartScan(TEST_WORKSOURCE2);
+                MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_REQUESTED, TEST_WORKSOURCE2);
+        verify(mConnectionStatusListener, times(1)).onStartScan(TEST_WORKSOURCE2);
     }
 
     @Test

@@ -4169,7 +4169,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
                         currentWifiConfiguration, currentBssid);
         // There is an active specific request.
-        if (specificRequestUidAndPackageName.first != Process.INVALID_UID) {
+        // TODO: Check if the specific Request is for dual band Wifi or local only.
+        if (specificRequestUidAndPackageName.first != Process.INVALID_UID
+                && !mWifiConnectivityManager.hasMultiInternetConnection()) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             // Fill up the uid/packageName for this connection.
@@ -6235,7 +6237,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return mNetworkFactory.hasConnectionRequests()
                 || mUntrustedNetworkFactory.hasConnectionRequests()
                 || mOemWifiNetworkFactory.hasConnectionRequests()
-                || mRestrictedWifiNetworkFactory.hasConnectionRequests();
+                || mRestrictedWifiNetworkFactory.hasConnectionRequests()
+                || mMultiInternetManager.hasPendingConnectionRequests();
     }
 
     /**

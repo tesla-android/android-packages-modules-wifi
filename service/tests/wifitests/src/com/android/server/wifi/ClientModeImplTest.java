@@ -575,6 +575,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.hasConnectionRequests()).thenReturn(true);
         when(mUntrustedWifiNetworkFactory.hasConnectionRequests()).thenReturn(true);
         when(mOemWifiNetworkFactory.hasConnectionRequests()).thenReturn(true);
+        when(mMultiInternetManager.hasPendingConnectionRequests()).thenReturn(true);
 
         mFrameworkFacade = getFrameworkFacade();
         mContext = getContext();
@@ -982,6 +983,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mUntrustedWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mOemWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
+        when(mMultiInternetManager.hasPendingConnectionRequests()).thenReturn(false);
 
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
         config.networkId = FRAMEWORK_NETWORK_ID;
@@ -1754,6 +1756,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mUntrustedWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mOemWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
+        when(mMultiInternetManager.hasPendingConnectionRequests()).thenReturn(false);
 
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
         config.networkId = FRAMEWORK_NETWORK_ID + 1;
@@ -1780,6 +1783,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mUntrustedWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
         when(mOemWifiNetworkFactory.hasConnectionRequests()).thenReturn(false);
+        when(mMultiInternetManager.hasPendingConnectionRequests()).thenReturn(false);
 
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
 

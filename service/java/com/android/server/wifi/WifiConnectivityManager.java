@@ -46,6 +46,7 @@ import android.os.Handler;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.WorkSource;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.Log;
@@ -163,8 +164,10 @@ public class WifiConnectivityManager {
     private final PowerManager mPowerManager;
     private final DeviceConfigFacade mDeviceConfigFacade;
     private final ActiveModeWarden mActiveModeWarden;
+    private final FrameworkFacade mFrameworkFacade;
 
     private WifiScanner mScanner;
+    private final MultiInternetManager mMultiInternetManager;
     private boolean mDbg = false;
     private boolean mVerboseLoggingEnabled = false;
     private boolean mWifiEnabled = false;
@@ -178,8 +181,11 @@ public class WifiConnectivityManager {
     private boolean mRestrictedConnectionAllowed = false;
     private boolean mOemPaidConnectionAllowed = false;
     private boolean mOemPrivateConnectionAllowed = false;
+    @MultiInternetManager.MultiInternetState
+    private int mMultiInternetConnectionState = MultiInternetManager.MULTI_INTERNET_STATE_NONE;
     private WorkSource mOemPaidConnectionRequestorWs = null;
     private WorkSource mOemPrivateConnectionRequestorWs = null;
+    private WorkSource mMultiInternetConnectionRequestorWs = null;
     private boolean mTrustedConnectionAllowed = false;
     private boolean mSpecificNetworkRequestInProgress = false;
     private int mScanRestartCount = 0;
@@ -339,6 +345,139 @@ public class WifiConnectivityManager {
     }
 
     /**
+     * Helper method to consolidate handling of scan results when multi internet is enabled.
+     */
+    private boolean handleConnectToMultiInternetConnectionInternal(
+            List<WifiCandidates.Candidate> candidates,
+            @NonNull String listenerName,
+            @NonNull HandleScanResultsListener handleScanResultsListener) {
+        final ConcreteClientModeManager primaryCcm = mActiveModeWarden
+                .getPrimaryClientModeManagerNullable();
+        if (primaryCcm == null || !primaryCcm.isConnected()) {
+            // The second internet can only be connected after the primary network connected.
+            // Firmware can choose the best BSSID when connecting the primary CMM, so we must
+            // wait until the primary network was connected so the secondary can choose a BSSID on
+            // a different band with the primary.
+            return false;
+        }
+        final WifiInfo primaryInfo = primaryCcm.syncRequestConnectionInfo();
+        final int primaryBand = ScanResult.toBand(primaryInfo.getFrequency());
+
+        List<WifiCandidates.Candidate> secondaryCmmCandidates;
+        if (mMultiInternetManager.isStaConcurrencyForMultiInternetMultiApAllowed()) {
+            // Any candidate has different band with primary will be considered.
+            // As a BSSID can not exist in both bands it will not choose the same BSSID as primary.
+            secondaryCmmCandidates = candidates.stream().filter(
+                    c -> ScanResult.toBand(c.getFrequency()) != primaryBand)
+                .collect(Collectors.toList());
+        } else {
+            // Only allow the candidates have the same SSID as the primary.
+            secondaryCmmCandidates = candidates.stream().filter(c -> {
+                return ScanResult.toBand(c.getFrequency()) != primaryBand
+                        && TextUtils.equals(c.getKey().matchInfo.networkSsid, primaryInfo.getSSID())
+                        && c.getKey().networkId == primaryInfo.getNetworkId()
+                        && c.getKey().securityType == primaryInfo.getCurrentSecurityType();
+            }).collect(Collectors.toList());
+        }
+        // Perform network selection among secondary candidates. Create a new copy. Do not allow
+        // user choice override.
+        final WifiConfiguration secondaryCmmCandidate =
+                mNetworkSelector.selectNetwork(secondaryCmmCandidates,
+                false /* overrideEnabled */);
+
+        // No secondary cmm for internet selected, fallback to legacy flow.
+        if (secondaryCmmCandidate == null
+                || secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate() == null) {
+            // TODO: Consider to check secondaryCmmCandidate.secondaryInternet as well, so user
+            // can specify the secondaryInternet from WifiConfiguration.
+            localLog(listenerName + ": No secondary cmm candidate");
+            return false;
+        }
+        localLog(listenerName + ":secondaryCmmCandidate "
+                + secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate().SSID + " / "
+                + secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate().BSSID);
+
+        // At this point secondaryCmmCandidate must be multi internet.
+        final WorkSource secondaryRequestorWs = mMultiInternetConnectionRequestorWs;
+        if (secondaryRequestorWs == null) {
+            localLog(listenerName + ": Requestor worksource is null in long live STA use-case,"
+                    + "  falling back to single client mode manager flow.");
+            return false;
+        }
+
+        final String targetBssid2 = secondaryCmmCandidate.getNetworkSelectionStatus()
+                .getCandidate().BSSID;
+        localLog(listenerName + " targetBssid2 " + targetBssid2 + " primary cmm connected to bssid "
+                + primaryCcm.getConnectedBssid());
+        // For secondary STA of multi internet connection, when ROLE_CLIENT_SECONDARY_LONG_LIVED
+        // is used, specify the target BSSID explicitly to avoid firmware choosing same BSSID
+        // as primary STA.
+        // TODO: Use new STA+STA user case DUAL_STA_NON_TRANSIENT_SECONDARY and remove the BSSID
+        // if roaming is supported on secondary.
+        String bssidToConnect = null;
+        if (!mConnectivityHelper.isFirmwareRoamingSupported()) {
+            bssidToConnect = targetBssid2;
+        }
+        // Request for a new client mode manager to spin up concurrent connection
+        mActiveModeWarden.requestSecondaryLongLivedClientModeManager(
+                (cm) -> {
+                    if (cm == null) {
+                        localLog(listenerName + ": Secondary client mode manager request returned "
+                                + "null, aborting (wifi off?)");
+                        handleScanResultsWithNoCandidate(handleScanResultsListener);
+                        return;
+                    }
+                    // We did not end up getting the secondary client mode manager for some reason
+                    // or get a wrong secondary role, fallback to legacy flow to connect primary.
+                    if (cm.getRole() != ROLE_CLIENT_SECONDARY_LONG_LIVED) {
+                        localLog(listenerName + ": Secondary client mode manager request returned"
+                                + cm.getRole().toString()
+                                + " ,falling back to single client mode manager flow.");
+                        return;
+                    }
+                    if (!(cm instanceof ConcreteClientModeManager)) {
+                        localLog(listenerName + ": Secondary client mode manager request returned"
+                                + " not for concrete client mode manager, falling back to single"
+                                + " client mode manager flow.");
+                        return;
+                    }
+                    // Set the concrete client mode manager to secondary internet usage.
+                    ConcreteClientModeManager ccm = (ConcreteClientModeManager) cm;
+                    ccm.setSecondaryInternet(true);
+                    // Check if secondary candidate is the same SSID and network Id with primary.
+                    final boolean isDbsAp = TextUtils.equals(primaryInfo.getSSID(),
+                            secondaryCmmCandidate.SSID) && (primaryInfo.getNetworkId()
+                            == secondaryCmmCandidate.networkId);
+                    ccm.setSecondaryInternetDbsAp(isDbsAp);
+                    localLog(listenerName + ": WNS candidate(secondary)-"
+                            + secondaryCmmCandidate.SSID + " / "
+                            + secondaryCmmCandidate.getNetworkSelectionStatus()
+                            .getCandidate().BSSID + " isDbsAp " + isDbsAp);
+                    // Disable roaming if necessary.
+                    if (mContext.getResources()
+                            .getBoolean(R.bool.config_wifiUseHalApiToDisableFwRoaming)) {
+                        // Note: This is an old HAL API, but since it wasn't being exercised before,
+                        // we are being extra cautious and only using it on devices running >= S.
+                        if (!ccm.enableRoaming(false)) {
+                            Log.w(TAG, "Failed to disable roaming");
+                        }
+                    }
+                    // Secondary candidate cannot be null (otherwise we would have switched to
+                    // legacy flow above). Use the explicit bssid for network connection.
+                    WifiConfiguration targetNetwork = new WifiConfiguration(secondaryCmmCandidate);
+                    targetNetwork.dbsSecondaryInternet = isDbsAp;
+                    targetNetwork.ephemeral = true;
+                    targetNetwork.BSSID = targetBssid2;
+                    connectToNetworkUsingCmmWithoutMbb(cm, targetNetwork);
+
+                    handleScanResultsWithCandidate(handleScanResultsListener);
+                }, secondaryRequestorWs,
+                secondaryCmmCandidate.SSID,
+                bssidToConnect);
+        return true;
+    }
+
+    /**
      * Handles 'onResult' callbacks for the Periodic, Single & Pno ScanListener.
      * Executes selection of potential network candidates, initiation of connection attempt to that
      * network.
@@ -386,8 +525,19 @@ public class WifiConnectivityManager {
                 // Add a placeholder CMM state to ensure network selection is performed for a
                 // potential second STA creation.
                 cmmStates.add(new WifiNetworkSelector.ClientModeManagerState());
+                hasExistingSecondaryCmm = true;
             }
         }
+        // If secondary cmm has not been created and need to connect secondary internet
+        if (!hasExistingSecondaryCmm && isMultiInternetConnectionRequested()) {
+            if (mMultiInternetConnectionRequestorWs == null) {
+                Log.e(TAG, "mMultiInternetConnectionRequestorWs is null!");
+            } else if (mActiveModeWarden.canRequestMoreClientModeManagersInRole(
+                        mMultiInternetConnectionRequestorWs, ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
+                cmmStates.add(new WifiNetworkSelector.ClientModeManagerState());
+            }
+        }
+
         // Check if any blocklisted BSSIDs can be freed.
         mWifiBlocklistMonitor.tryEnablingBlockedBssids(scanDetails);
         Set<String> bssidBlocklist = mWifiBlocklistMonitor.updateAndGetBssidBlocklistForSsids(
@@ -401,7 +551,7 @@ public class WifiConnectivityManager {
         List<WifiCandidates.Candidate> candidates = mNetworkSelector.getCandidatesFromScan(
                 scanDetails, bssidBlocklist, cmmStates, mUntrustedConnectionAllowed,
                 mOemPaidConnectionAllowed, mOemPrivateConnectionAllowed,
-                mRestrictedConnectionAllowed);
+                mRestrictedConnectionAllowed, isMultiInternetConnectionRequested());
         mLatestCandidates = candidates;
         mLatestCandidatesTimestampMs = mClock.getElapsedSinceBootMillis();
 
@@ -442,6 +592,17 @@ public class WifiConnectivityManager {
             }
             // intentional fallthrough: No oem paid/private suggestions, fallback to legacy flow.
         }
+
+        // We have a dual internet network request and device supports STA + STA, check if there
+        // are secondary network candidate.
+        if (hasMultiInternetConnection() && mMultiInternetManager.hasPendingConnectionRequests()) {
+            if (handleConnectToMultiInternetConnectionInternal(candidates,
+                    listenerName, handleScanResultsListener)) {
+                return;
+            }
+            // intentional fallthrough: No multi internet connections, fallback to legacy flow.
+        }
+
         handleCandidatesFromScanResultsForPrimaryCmmUsingMbbIfAvailable(
                 listenerName, candidates, handleScanResultsListener);
     }
@@ -455,7 +616,7 @@ public class WifiConnectivityManager {
             @NonNull List<WifiCandidates.Candidate> primaryCmmCandidates,
             @NonNull List<WifiCandidates.Candidate> secondaryCmmCandidates,
             @NonNull HandleScanResultsListener handleScanResultsListener) {
-        // Perform network selection among secondary candidates.
+        // Perform network selection among secondary candidates. Create a new copy.
         WifiConfiguration secondaryCmmCandidate =
                 mNetworkSelector.selectNetwork(secondaryCmmCandidates);
         // No oem paid/private selected, fallback to legacy flow (should never happen!).
@@ -472,6 +633,7 @@ public class WifiConnectivityManager {
         }
         String secondaryCmmCandidateBssid =
                 secondaryCmmCandidate.getNetworkSelectionStatus().getCandidate().BSSID;
+
 
         // At this point secondaryCmmCandidate must be either oemPaid, oemPrivate, or both.
         // OEM_PAID takes precedence over OEM_PRIVATE, so attribute to OEM_PAID requesting app.
@@ -524,7 +686,7 @@ public class WifiConnectivityManager {
                     }
 
                     localLog(listenerName + ":  WNS candidate(secondary)-"
-                            + secondaryCmmCandidate.SSID);
+                            + secondaryCmmCandidate.SSID + " / " + secondaryCmmCandidateBssid);
                     // Secndary candidate cannot be null (otherwise we would have switched to legacy
                     // flow above)
                     connectToNetworkUsingCmmWithoutMbb(cm, secondaryCmmCandidate);
@@ -1001,6 +1163,30 @@ public class WifiConnectivityManager {
     }
 
     /**
+     * Triggered when {@link MultiInternetWifiNetworkFactory} has a pending network request.
+     */
+    private class InternalMultiInternetConnectionStatusListener
+            implements MultiInternetManager.ConnectionStatusListener {
+        @Override
+        public void onStatusChange(@MultiInternetManager.MultiInternetState int state,
+                WorkSource requestorWs) {
+            localLog("setMultiInternetConnectionState: state=" + state + ", requestorWs="
+                    + requestorWs);
+
+            if (mMultiInternetConnectionState != state) {
+                mMultiInternetConnectionState = state;
+                mMultiInternetConnectionRequestorWs = requestorWs;
+                checkAllStatesAndEnableAutoJoin();
+            }
+        }
+
+        @Override
+        public void onStartScan(WorkSource requestorWs) {
+            forceConnectivityScan(requestorWs);
+        }
+    }
+
+    /**
      * WifiConnectivityManager constructor
      */
     WifiConnectivityManager(
@@ -1020,8 +1206,10 @@ public class WifiConnectivityManager {
             WifiBlocklistMonitor wifiBlocklistMonitor,
             WifiChannelUtilization wifiChannelUtilization,
             PasspointManager passpointManager,
+            MultiInternetManager multiInternetManager,
             DeviceConfigFacade deviceConfigFacade,
             ActiveModeWarden activeModeWarden,
+            FrameworkFacade frameworkFacade,
             WifiGlobals wifiGlobals) {
         mContext = context;
         mScoringParams = scoringParams;
@@ -1039,8 +1227,10 @@ public class WifiConnectivityManager {
         mWifiBlocklistMonitor = wifiBlocklistMonitor;
         mWifiChannelUtilization = wifiChannelUtilization;
         mPasspointManager = passpointManager;
+        mMultiInternetManager = multiInternetManager;
         mDeviceConfigFacade = deviceConfigFacade;
         mActiveModeWarden = activeModeWarden;
+        mFrameworkFacade = frameworkFacade;
         mWifiGlobals = wifiGlobals;
 
         mAlarmManager = context.getSystemService(AlarmManager.class);
@@ -1073,6 +1263,8 @@ public class WifiConnectivityManager {
         mWifiNetworkSuggestionsManager.addOnSuggestionUpdateListener(
                 new OnSuggestionUpdateListener());
         mActiveModeWarden.registerModeChangeCallback(new ModeChangeCallback());
+        mMultiInternetManager.setConnectionStatusListener(
+                new InternalMultiInternetConnectionStatusListener());
     }
 
     @NonNull
@@ -1634,7 +1826,10 @@ public class WifiConnectivityManager {
         // 2) link is good, internet status is acceptable
         //    and it is a short time since last network selection
         // 3) There is active stream such that scan will be likely disruptive
+        // 4) There is no multi internet connection request pending
         if (mWifiState == WIFI_STATE_CONNECTED
+                // If multi internet is connecting, then we do need the scan.
+                && !isMultiInternetConnectionRequested()
                 && (mNetworkSelector.isNetworkSufficient(wifiInfo)
                 || isGoodLinkAndAcceptableInternetAndShortTimeSinceLastNetworkSelection
                 || mNetworkSelector.hasActiveStream(wifiInfo))) {
@@ -2477,7 +2672,7 @@ public class WifiConnectivityManager {
         setAutoJoinEnabled(mAutoJoinEnabledExternal
                 && (mUntrustedConnectionAllowed || mOemPaidConnectionAllowed
                 || mOemPrivateConnectionAllowed || mTrustedConnectionAllowed
-                || mRestrictedConnectionAllowed)
+                || mRestrictedConnectionAllowed || hasMultiInternetConnection())
                 && !mSpecificNetworkRequestInProgress);
         startConnectivityScan(SCAN_IMMEDIATELY);
     }
@@ -2692,6 +2887,25 @@ public class WifiConnectivityManager {
         }
     }
 
+    /**
+     * Check if multi internet connection exists.
+     *
+     * @return true if multi internet connection exists.
+     */
+    public boolean hasMultiInternetConnection() {
+        return mMultiInternetConnectionState != MultiInternetManager.MULTI_INTERNET_STATE_NONE;
+    }
+
+    /**
+     * Check if multi internet connection is requested.
+     *
+     * @return true if multi internet connection is requested.
+     */
+    public boolean isMultiInternetConnectionRequested() {
+        return mMultiInternetConnectionState
+                == MultiInternetManager.MULTI_INTERNET_STATE_CONNECTION_REQUESTED;
+    }
+
     @VisibleForTesting
     int getLowRssiNetworkRetryDelay() {
         return mPnoScanListener.getLowRssiNetworkRetryDelay();
@@ -2710,6 +2924,7 @@ public class WifiConnectivityManager {
         pw.println("WifiConnectivityManager - Log Begin ----");
         mLocalLog.dump(fd, pw, args);
         pw.println("WifiConnectivityManager - Log End ----");
+        pw.println(TAG + ": mMultiInternetConnectionState " + mMultiInternetConnectionState);
         mOpenNetworkNotifier.dump(fd, pw, args);
         mWifiBlocklistMonitor.dump(fd, pw, args);
     }
