@@ -2220,7 +2220,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         // Verify the scan intervals are same as expected interval schedule.
         for (int i = 0; i < intervals.size(); i++) {
             long expected = (long) (getByIndexOrLast(intervalSchedule, i) * 1000);
-            assertEquals("Interval " + i, expected, intervals.get(i).longValue());
+            // TestHandler#sendMessageAtTime is not perfectly mocked and uses
+            // SystemClock.uptimeMillis() to generate |intervals|. This sometimes results in error
+            // margins of ~1ms and cause flaky test failures.
+            assertTrue("Interval " + i + " not in 1ms error margin",
+                    Math.abs(expected - intervals.get(i).longValue()) < 2);
         }
     }
 
