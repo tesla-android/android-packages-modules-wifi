@@ -50,7 +50,6 @@ import android.util.ArrayMap;
 import android.util.LocalLog;
 import android.util.Log;
 
-import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.HandlerExecutor;
 import com.android.modules.utils.build.SdkLevel;
@@ -203,19 +202,23 @@ public class WifiConnectivityManager {
     // Device configs
     private boolean mWaitForFullBandScanResults = false;
 
-    // Scanning Schedules
+    // Scanning Schedules for screen-on periodic scan
     // Default schedule used in case of invalid configuration
     private static final int[] DEFAULT_SCANNING_SCHEDULE_SEC = {20, 40, 80, 160};
     private int[] mConnectedSingleScanScheduleSec;
     private int[] mDisconnectedSingleScanScheduleSec;
     private int[] mConnectedSingleSavedNetworkSingleScanScheduleSec;
+    // Scanning types for screen-on periodic scan. Should have one to one mapping with the scan
+    // schedules.
+    private static final int[] DEFAULT_SCANNING_TYPE = {WifiScanner.SCAN_TYPE_HIGH_ACCURACY};
+    private int[] mConnectedSingleScanType;
+    private int[] mDisconnectedSingleScanType;
+    private int[] mConnectedSingleSavedNetworkSingleScanType;
+
     private List<WifiCandidates.Candidate> mLatestCandidates = null;
     private long mLatestCandidatesTimestampMs = 0;
-
-    private final Object mLock = new Object();
-
-    @GuardedBy("mLock")
     private int[] mCurrentSingleScanScheduleSec;
+    private int[] mCurrentSingleScanType;
 
     private int mCurrentSingleScanScheduleIndex;
     // Cached WifiCandidates used in high mobility state to avoid connecting to APs that are
@@ -258,7 +261,7 @@ public class WifiConnectivityManager {
 
         @Override
         public void onAlarm() {
-            startSingleScan(mIsFullBandScan, WIFI_WORK_SOURCE);
+            startSingleScan(mIsFullBandScan, WIFI_WORK_SOURCE, WifiScanner.SCAN_TYPE_HIGH_ACCURACY);
         }
     }
 
@@ -1078,40 +1081,6 @@ public class WifiConnectivityManager {
         return mActiveModeWarden.getPrimaryClientModeManager();
     }
 
-    /** Initialize single scanning schedules, and validate them */
-    private int[] initializeScanningSchedule(int state) {
-        int[] scheduleSec;
-
-        if (state == WIFI_STATE_CONNECTED) {
-            scheduleSec = mContext.getResources().getIntArray(
-                    R.array.config_wifiConnectedScanIntervalScheduleSec);
-        } else if (state == WIFI_STATE_DISCONNECTED) {
-            scheduleSec = mContext.getResources().getIntArray(
-                    R.array.config_wifiDisconnectedScanIntervalScheduleSec);
-        } else {
-            scheduleSec = null;
-        }
-
-        boolean invalidConfig = false;
-        if (scheduleSec == null || scheduleSec.length == 0) {
-            invalidConfig = true;
-        } else {
-            for (int val : scheduleSec) {
-                if (val <= 0) {
-                    invalidConfig = true;
-                    break;
-                }
-            }
-        }
-        if (!invalidConfig) {
-            return scheduleSec;
-        }
-
-        Log.e(TAG, "Configuration for wifi scanning schedule is mis-configured,"
-                + "using default schedule");
-        return DEFAULT_SCANNING_SCHEDULE_SEC;
-    }
-
     /**
      * This checks the connection attempt rate and recommends whether the connection attempt
      * should be skipped or not. This attempts to rate limit the rate of connections to
@@ -1590,7 +1559,7 @@ public class WifiConnectivityManager {
             localLog("start a single scan from watchdogHandler");
 
             scheduleWatchdogTimer();
-            startSingleScan(true, WIFI_WORK_SOURCE);
+            startSingleScan(true, WIFI_WORK_SOURCE, WifiScanner.SCAN_TYPE_HIGH_ACCURACY);
         }
     }
 
@@ -1682,7 +1651,8 @@ public class WifiConnectivityManager {
 
             if (mWifiState == WIFI_STATE_DISCONNECTED
                     && mInitialScanState == INITIAL_SCAN_STATE_START) {
-                startSingleScan(false, WIFI_WORK_SOURCE);
+                startSingleScan(false, WIFI_WORK_SOURCE,
+                        getScheduledSingleScanType(mCurrentSingleScanScheduleIndex));
 
                 // Note, initial partial scan may fail due to lack of channel history
                 // Hence, we verify state before changing to AWIATING_RESPONSE
@@ -1691,7 +1661,8 @@ public class WifiConnectivityManager {
                     mWifiMetrics.incrementInitialPartialScanCount();
                 }
             } else {
-                startSingleScan(isFullBandScan, WIFI_WORK_SOURCE);
+                startSingleScan(isFullBandScan, WIFI_WORK_SOURCE,
+                        getScheduledSingleScanType(mCurrentSingleScanScheduleIndex));
             }
             schedulePeriodicScanTimer(
                     getScheduledSingleScanIntervalMs(mCurrentSingleScanScheduleIndex));
@@ -1705,22 +1676,32 @@ public class WifiConnectivityManager {
         }
     }
 
+    // Returns the scan type based on current scan schedule and index.
+    private int getScheduledSingleScanType(int index) {
+        if (mCurrentSingleScanType == null) {
+            Log.e(TAG, "Invalid attempt to get schedule scan type. Type array is null ");
+            return DEFAULT_SCANNING_TYPE[0];
+        }
+        if (index >= mCurrentSingleScanType.length) {
+            index = mCurrentSingleScanType.length - 1;
+        }
+        return mCurrentSingleScanType[index];
+    }
+
     // Retrieve a value from single scanning schedule in ms
     private int getScheduledSingleScanIntervalMs(int index) {
-        synchronized (mLock) {
-            if (mCurrentSingleScanScheduleSec == null) {
-                Log.e(TAG, "Invalid attempt to get schedule interval, Schedule array is null ");
+        if (mCurrentSingleScanScheduleSec == null) {
+            Log.e(TAG, "Invalid attempt to get schedule interval, Schedule array is null ");
 
-                // Use a default value
-                return DEFAULT_SCANNING_SCHEDULE_SEC[0] * 1000;
-            }
-
-            if (index >= mCurrentSingleScanScheduleSec.length) {
-                index = mCurrentSingleScanScheduleSec.length - 1;
-            }
-            return getScanIntervalWithPowerSaveMultiplier(
-                    mCurrentSingleScanScheduleSec[index] * 1000);
+            // Use a default value
+            return DEFAULT_SCANNING_SCHEDULE_SEC[0] * 1000;
         }
+
+        if (index >= mCurrentSingleScanScheduleSec.length) {
+            index = mCurrentSingleScanScheduleSec.length - 1;
+        }
+        return getScanIntervalWithPowerSaveMultiplier(
+                mCurrentSingleScanScheduleSec[index] * 1000);
     }
 
     private int getScanIntervalWithPowerSaveMultiplier(int interval) {
@@ -1733,16 +1714,17 @@ public class WifiConnectivityManager {
 
     // Set the single scanning schedule
     private void setSingleScanningSchedule(int[] scheduleSec) {
-        synchronized (mLock) {
-            mCurrentSingleScanScheduleSec = scheduleSec;
-        }
+        mCurrentSingleScanScheduleSec = scheduleSec;
+    }
+
+    // Set the single scanning schedule
+    private void setSingleScanningType(int[] scanType) {
+        mCurrentSingleScanType = scanType;
     }
 
     // Get the single scanning schedule
     private int[] getSingleScanningSchedule() {
-        synchronized (mLock) {
-            return mCurrentSingleScanScheduleSec;
-        }
+        return mCurrentSingleScanScheduleSec;
     }
 
     // Update the single scanning schedule if needed, and return true if update occurs
@@ -1759,12 +1741,14 @@ public class WifiConnectivityManager {
 
         if (mCurrentSingleScanScheduleSec == mConnectedSingleScanScheduleSec
                 && shouldUseSingleSavedNetworkSchedule) {
-            mCurrentSingleScanScheduleSec = mConnectedSingleSavedNetworkSingleScanScheduleSec;
+            setSingleScanningSchedule(mConnectedSingleSavedNetworkSingleScanScheduleSec);
+            setSingleScanningType(mConnectedSingleSavedNetworkSingleScanType);
             return true;
         }
         if (mCurrentSingleScanScheduleSec == mConnectedSingleSavedNetworkSingleScanScheduleSec
                 && !shouldUseSingleSavedNetworkSchedule) {
-            mCurrentSingleScanScheduleSec = mConnectedSingleScanScheduleSec;
+            setSingleScanningSchedule(mConnectedSingleScanScheduleSec);
+            setSingleScanningType(mConnectedSingleScanType);
             return true;
         }
         return false;
@@ -1788,7 +1772,8 @@ public class WifiConnectivityManager {
     }
 
     // Start a single scan
-    private void startForcedSingleScan(boolean isFullBandScan, WorkSource workSource) {
+    private void startForcedSingleScan(boolean isFullBandScan, WorkSource workSource,
+            int scanType) {
         mPnoScanListener.resetLowRssiNetworkRetryDelay();
 
         ScanSettings settings = new ScanSettings();
@@ -1801,7 +1786,7 @@ public class WifiConnectivityManager {
                 mInitialPartialScanChannelCount = settings.channels.length;
             }
         }
-        settings.type = WifiScanner.SCAN_TYPE_HIGH_ACCURACY; // always do high accuracy scans.
+        settings.type = scanType;
         settings.band = getScanBand(isFullBandScan);
         // Only enable RNR for full scans since we already have a known channel list for
         // partial scan. We do not want to enable RNR for partial scan since it could end up
@@ -1829,11 +1814,11 @@ public class WifiConnectivityManager {
         mWifiMetrics.incrementConnectivityOneshotScanCount();
     }
 
-    private void startSingleScan(boolean isFullBandScan, WorkSource workSource) {
+    private void startSingleScan(boolean isFullBandScan, WorkSource workSource, int scanType) {
         if (!mWifiEnabled || !mAutoJoinEnabled) {
             return;
         }
-        startForcedSingleScan(isFullBandScan, workSource);
+        startForcedSingleScan(isFullBandScan, workSource, scanType);
     }
 
     // Start a periodic scan when screen is on
@@ -2047,9 +2032,7 @@ public class WifiConnectivityManager {
         localLog("schedulePeriodicScanTimer intervalMs " + intervalMs);
         mPeriodicScanTimerSet = true;
         mEventHandler.postDelayed(() -> {
-            synchronized (mLock) {
-                mPeriodicScanTimerSet = false;
-            }
+            mPeriodicScanTimerSet = false;
             // Schedule the next timer and start a single scan if screen is on.
             if (mScreenOn) {
                 startPeriodicSingleScan();
@@ -2228,19 +2211,116 @@ public class WifiConnectivityManager {
         return (config != null && config.networkId == currentNetworkId);
     }
 
-    private int[] initSingleSavedNetworkSchedule() {
-        int[] schedule = mContext.getResources().getIntArray(
-                    R.array.config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec);
-        if (schedule == null || schedule.length == 0) {
+    /**
+     * Helper method to load a overlay resource for periodic scan schedule.
+     * @param id of the overlay
+     * @param defaultValue default value to return if config is invalid.
+     * @param resName resource name for logging
+     */
+    private int[] loadScanScheduleArrayFromOverlay(int id, int[] defaultValue, String resName) {
+        int[] result = loadIntArrayFromOverlay(id);
+        if (result == null) {
+            // resource is empty
+            Log.w(TAG, resName + " is not configured! Using default scan schedule");
+            return defaultValue;
+        }
+        if (!isValidScheduleArray(result)) {
+            // invalid schedule
+            Log.e(TAG, resName + " is misconfigured! Using default scan schedule");
+            return defaultValue;
+        }
+        return result;
+    }
+
+    /**
+     * Helper method to load a overlay resource for periodic scan schedule.
+     * @param id of the overlay
+     * @param defaultValue default value to return if config is invalid.
+     * @param resName resource name for logging
+     */
+    private int[] loadScanTypeArrayFromOverlay(int id, int[] defaultValue, String resName) {
+        int[] result = loadIntArrayFromOverlay(id);
+        if (result == null) {
+            // resource is empty
+            Log.w(TAG, resName + " is not configured! Using default scan types");
+            return defaultValue;
+        }
+        if (!isValidScanTypeArray(result)) {
+            // invalid schedule
+            Log.e(TAG, resName + " is misconfigured! Using default scan types");
+            return defaultValue;
+        }
+        return result;
+    }
+
+    /**
+     * Helper method to load a int[] from an overlay resource.
+     * @param id of the overlay
+     */
+    private int[] loadIntArrayFromOverlay(int id) {
+        int[] result = mContext.getResources().getIntArray(id);
+        if (result == null || result.length == 0) {
             return null;
         }
+        return result;
+    }
 
+    private boolean isValidScheduleArray(@NonNull int[] schedule) {
         for (int val : schedule) {
-            if (val <= 0) {
-                return null;
+            if (val < 1) {
+                return false;
             }
         }
-        return schedule;
+        return true;
+    }
+
+    private boolean isValidScanTypeArray(@NonNull int[] scanTypes) {
+        for (int val : scanTypes) {
+            if (val < 0 || val > WifiScanner.SCAN_TYPE_MAX) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void loadScanSchedulesAndScanTypesIfNeeded() {
+        // initialize scan schedule and scan type for connected scan.
+        if (mConnectedSingleScanScheduleSec == null) {
+            mConnectedSingleScanScheduleSec = loadScanScheduleArrayFromOverlay(
+                    R.array.config_wifiConnectedScanIntervalScheduleSec,
+                    DEFAULT_SCANNING_SCHEDULE_SEC, "mConnectedSingleScanScheduleSec");
+        }
+        if (mConnectedSingleScanType == null) {
+            mConnectedSingleScanType = loadScanTypeArrayFromOverlay(
+                    R.array.config_wifiConnectedScanType,
+                    DEFAULT_SCANNING_TYPE, "mConnectedSingleScanType");
+        }
+
+        // initialize scan schedule and scan type for disconnected scan.
+        if (mDisconnectedSingleScanScheduleSec == null) {
+            mDisconnectedSingleScanScheduleSec = loadScanScheduleArrayFromOverlay(
+                    R.array.config_wifiDisconnectedScanIntervalScheduleSec,
+                    DEFAULT_SCANNING_SCHEDULE_SEC, "mDisconnectedSingleScanScheduleSec");
+        }
+        if (mDisconnectedSingleScanType == null) {
+            mDisconnectedSingleScanType = loadScanTypeArrayFromOverlay(
+                    R.array.config_wifiDisconnectedScanType,
+                    DEFAULT_SCANNING_TYPE, "mDisconnectedSingleScanType");
+        }
+
+        // initialize scan schedule and scan type for connected scan when no other networks are
+        // available.
+        if (mConnectedSingleSavedNetworkSingleScanScheduleSec == null) {
+            mConnectedSingleSavedNetworkSingleScanScheduleSec = loadScanScheduleArrayFromOverlay(
+                    R.array.config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec,
+                    mConnectedSingleScanScheduleSec,
+                    "mConnectedSingleSavedNetworkSingleScanScheduleSec");
+        }
+        if (mConnectedSingleSavedNetworkSingleScanType == null) {
+            mConnectedSingleSavedNetworkSingleScanType = loadScanTypeArrayFromOverlay(
+                    R.array.config_wifiSingleSavedNetworkConnectedScanType,
+                    mConnectedSingleScanType, "mConnectedSingleSavedNetworkSingleScanType");
+        }
     }
 
     /**
@@ -2256,21 +2336,7 @@ public class WifiConnectivityManager {
             return;
         }
         localLog("handleConnectionStateChanged: state=" + stateToString(state));
-
-        if (mConnectedSingleScanScheduleSec == null) {
-            mConnectedSingleScanScheduleSec = initializeScanningSchedule(WIFI_STATE_CONNECTED);
-        }
-        if (mDisconnectedSingleScanScheduleSec == null) {
-            mDisconnectedSingleScanScheduleSec =
-                    initializeScanningSchedule(WIFI_STATE_DISCONNECTED);
-        }
-        if (mConnectedSingleSavedNetworkSingleScanScheduleSec == null) {
-            mConnectedSingleSavedNetworkSingleScanScheduleSec =
-                    initSingleSavedNetworkSchedule();
-            if (mConnectedSingleSavedNetworkSingleScanScheduleSec == null) {
-                mConnectedSingleSavedNetworkSingleScanScheduleSec = mConnectedSingleScanScheduleSec;
-            }
-        }
+        loadScanSchedulesAndScanTypesIfNeeded();
 
         mWifiState = state;
 
@@ -2280,19 +2346,23 @@ public class WifiConnectivityManager {
             scheduleWatchdogTimer();
             // Switch to the disconnected scanning schedule
             setSingleScanningSchedule(mDisconnectedSingleScanScheduleSec);
+            setSingleScanningType(mDisconnectedSingleScanType);
             startConnectivityScan(SCAN_IMMEDIATELY);
         } else if (mWifiState == WIFI_STATE_CONNECTED) {
             if (useSingleSavedNetworkSchedule()) {
                 // Switch to Single-Saved-Network connected schedule
                 setSingleScanningSchedule(mConnectedSingleSavedNetworkSingleScanScheduleSec);
+                setSingleScanningType(mConnectedSingleSavedNetworkSingleScanType);
             } else {
                 // Switch to connected single scanning schedule
                 setSingleScanningSchedule(mConnectedSingleScanScheduleSec);
+                setSingleScanningType(mConnectedSingleScanType);
             }
             startConnectivityScan(SCAN_ON_SCHEDULE);
         } else {
             // Intermediate state, no applicable single scanning schedule
             setSingleScanningSchedule(null);
+            setSingleScanningType(null);
             startConnectivityScan(SCAN_ON_SCHEDULE);
         }
     }
@@ -2490,7 +2560,7 @@ public class WifiConnectivityManager {
 
         clearConnectionAttemptTimeStamps();
         mWaitForFullBandScanResults = true;
-        startForcedSingleScan(true, workSource);
+        startForcedSingleScan(true, workSource, WifiScanner.SCAN_TYPE_HIGH_ACCURACY);
     }
 
     /**

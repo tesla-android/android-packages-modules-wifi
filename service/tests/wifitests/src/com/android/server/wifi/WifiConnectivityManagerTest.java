@@ -206,6 +206,10 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         resources.setIntArray(
                 R.array.config_wifiDisconnectedScanIntervalScheduleSec,
                 VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
+        resources.setIntArray(R.array.config_wifiConnectedScanType,
+                VALID_CONNECTED_SINGLE_SCAN_TYPE);
+        resources.setIntArray(R.array.config_wifiDisconnectedScanType,
+                VALID_DISCONNECTED_SINGLE_SCAN_TYPE);
         resources.setIntArray(
                 R.array.config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec,
                 SCHEDULE_EMPTY_SEC);
@@ -295,14 +299,21 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     private static final int TEST_FREQUENCY = 2420;
     private static final long CURRENT_SYSTEM_TIME_MS = 1000;
     private static final int MAX_BSSID_BLOCKLIST_SIZE = 16;
+
+    // Scan schedule and corresponding scan types
     private static final int[] VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC = {10, 30, 50};
     private static final int[] VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC = {15, 35, 55};
     private static final int[] VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC = {25, 40, 60};
+    private static final int[] VALID_CONNECTED_SINGLE_SCAN_TYPE = {1, 0, 0};
+    private static final int[] VALID_CONNECTED_SINGLE_SAVED_NETWORK_TYPE = {2, 0, 1};
+    private static final int[] VALID_DISCONNECTED_SINGLE_SCAN_TYPE = {2, 1, 1};
+
     private static final int[] SCHEDULE_EMPTY_SEC = {};
     private static final int[] INVALID_SCHEDULE_NEGATIVE_VALUES_SEC = {10, -10, 20};
     private static final int[] INVALID_SCHEDULE_ZERO_VALUES_SEC = {10, 0, 20};
     private static final int MAX_SCAN_INTERVAL_IN_SCHEDULE_SEC = 60;
     private static final int[] DEFAULT_SINGLE_SCAN_SCHEDULE_SEC = {20, 40, 80, 160};
+    private static final int[] DEFAULT_SINGLE_SCAN_TYPE = {2, 2, 2, 2};
     private static final int MAX_SCAN_INTERVAL_IN_DEFAULT_SCHEDULE_SEC = 160;
     private static final int TEST_FREQUENCY_1 = 2412;
     private static final int TEST_FREQUENCY_2 = 5180;
@@ -2062,7 +2073,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                     setScreenState(true);
                 }, currentTimeStamp);
         verifyScanTimesAndIntervals(1 /* scanTimes */, intervals,
-                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
+                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC,
+                VALID_DISCONNECTED_SINGLE_SCAN_TYPE);
 
         // Verify the initial scan state is awaiting for response
         assertEquals(WifiConnectivityManager.INITIAL_SCAN_STATE_AWAITING_RESPONSE,
@@ -2078,6 +2090,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     public void checkPeriodicScanIntervalWhenDisconnectedWithEmptySchedule() throws Exception {
         mResources.setIntArray(R.array.config_wifiDisconnectedScanIntervalScheduleSec,
                 SCHEDULE_EMPTY_SEC);
+        mResources.setIntArray(R.array.config_wifiDisconnectedScanType, SCHEDULE_EMPTY_SEC);
 
         checkWorkingWithDefaultSchedule();
     }
@@ -2091,6 +2104,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mResources.setIntArray(
                 R.array.config_wifiDisconnectedScanIntervalScheduleSec,
                 INVALID_SCHEDULE_ZERO_VALUES_SEC);
+        mResources.setIntArray(R.array.config_wifiDisconnectedScanType,
+                INVALID_SCHEDULE_NEGATIVE_VALUES_SEC);
 
         checkWorkingWithDefaultSchedule();
     }
@@ -2104,6 +2119,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mResources.setIntArray(
                 R.array.config_wifiDisconnectedScanIntervalScheduleSec,
                 INVALID_SCHEDULE_NEGATIVE_VALUES_SEC);
+        mResources.setIntArray(R.array.config_wifiDisconnectedScanType,
+                INVALID_SCHEDULE_NEGATIVE_VALUES_SEC);
 
         checkWorkingWithDefaultSchedule();
     }
@@ -2116,6 +2133,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mResources.setIntArray(
                 R.array.config_wifiDisconnectedScanIntervalScheduleSec,
                 INVALID_SCHEDULE_ZERO_VALUES_SEC);
+        mResources.setIntArray(R.array.config_wifiDisconnectedScanType, SCHEDULE_EMPTY_SEC);
+
         when(mDeviceConfigFacade.isWifiBatterySaverEnabled()).thenReturn(true);
         when(mPowerManagerService.isPowerSaveMode()).thenReturn(true);
         checkWorkingWithDefaultScheduleWithMultiplier(POWER_SAVE_SCAN_INTERVAL_MULTIPLIER);
@@ -2135,11 +2154,27 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     }
 
     private void verifyScanTimesAndIntervals(int scanTimes, List<Long> intervals,
-            int[] intervalSchedule) {
+            int[] intervalSchedule, int[] scheduleScanType) {
         // Verify the scans actually happened for expected times, one scan for state change and
         // each for scan timer triggered.
         verify(mWifiScanner, times(scanTimes)).startScan(anyObject(), anyObject(), anyObject(),
                 anyObject());
+
+        // Verify scans are happening using the expected scan type.
+        Map<Integer, Integer> scanTypeToTimesMap = new HashMap<>();
+        for (int i = 0; i < scanTimes; i++) {
+            int expected = getByIndexOrLast(scheduleScanType, i);
+            scanTypeToTimesMap.put(expected, 1 + scanTypeToTimesMap.getOrDefault(expected, 0));
+        }
+        for (Map.Entry<Integer, Integer> entry : scanTypeToTimesMap.entrySet()) {
+            verify(mWifiScanner, times(entry.getValue())).startScan(
+                    argThat(new ArgumentMatcher<ScanSettings>() {
+                        @Override
+                        public boolean matches(ScanSettings scanSettings) {
+                            return scanSettings.type == entry.getKey();
+                        }
+                    }), any(), any(), any());
+        }
 
         // Verify the scan intervals are same as expected interval schedule.
         for (int i = 0; i < intervals.size(); i++) {
@@ -2209,7 +2244,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
         verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
                 Arrays.stream(DEFAULT_SINGLE_SCAN_SCHEDULE_SEC).map(i -> (int) (i * multiplier))
-                .toArray());
+                .toArray(), DEFAULT_SINGLE_SCAN_TYPE);
     }
 
     /**
@@ -2240,7 +2275,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 }, currentTimeStamp);
 
         verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
-                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
+                VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC, VALID_DISCONNECTED_SINGLE_SCAN_TYPE);
     }
 
     /**
@@ -2267,7 +2302,42 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                     setWifiStateConnected();
                 }, currentTimeStamp);
         verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
-                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC);
+                VALID_CONNECTED_SINGLE_SCAN_SCHEDULE_SEC, VALID_CONNECTED_SINGLE_SCAN_TYPE);
+    }
+
+    /**
+     *  Verify that scan interval for screen on and wifi is connected to the only network known to
+     *  the device.
+     */
+    @Test
+    public void checkPeriodicScanIntervalWhenConnectedAndOnlySingleNetwork() {
+        long currentTimeStamp = CURRENT_SYSTEM_TIME_MS;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+        mResources.setIntArray(
+                R.array.config_wifiSingleSavedNetworkConnectedScanIntervalScheduleSec,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC);
+        mResources.setIntArray(
+                R.array.config_wifiSingleSavedNetworkConnectedScanType,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_TYPE);
+        WifiConfiguration wifiConfiguration = new WifiConfiguration();
+        wifiConfiguration.networkId = TEST_CONNECTED_NETWORK_ID;
+        List<WifiConfiguration> wifiConfigurationList = new ArrayList<WifiConfiguration>();
+        wifiConfigurationList.add(wifiConfiguration);
+        when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(wifiConfigurationList);
+
+        // Set screen to ON
+        setScreenState(true);
+        // Wait for max scanning interval so that any impact triggered
+        // by screen state change can settle
+        currentTimeStamp += MAX_SCAN_INTERVAL_IN_SCHEDULE_SEC * 1000;
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(SCAN_TRIGGER_TIMES,
+                () -> {
+                    // Set WiFi to connected state to trigger periodic scan
+                    setWifiStateConnected();
+                }, currentTimeStamp);
+        verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_SCHEDULE_SEC,
+                VALID_CONNECTED_SINGLE_SAVED_NETWORK_TYPE);
     }
 
     /**
