@@ -1366,9 +1366,7 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceNetworkStackPermission();
 
         // If user restriction is set, cannot start softap
-        if (SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
-                UserManager.DISALLOW_WIFI_TETHERING,
-                UserHandle.getUserHandleForUid(Binder.getCallingUid()))) {
+        if (mWifiTetheringDisallowed) {
             mLog.err("startTetheredHotspot with user restriction: not permitted").flush();
             return false;
         }
