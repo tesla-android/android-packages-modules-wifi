@@ -3303,13 +3303,14 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
 
         for (int i = 0; i < mClients.size(); ++i) {
-            mAwareMetrics.recordAttachSessionDuration(mClients.valueAt(i).getCreationTime());
-            SparseArray<WifiAwareDiscoverySessionState> sessions = mClients.valueAt(
-                    i).getSessions();
+            WifiAwareClientState client = mClients.valueAt(i);
+            mAwareMetrics.recordAttachSessionDuration(client.getCreationTime());
+            SparseArray<WifiAwareDiscoverySessionState> sessions = client.getSessions();
             for (int j = 0; j < sessions.size(); ++j) {
                 mAwareMetrics.recordDiscoverySessionDuration(sessions.valueAt(j).getCreationTime(),
                         sessions.valueAt(j).isPublishSession());
             }
+            client.destroy();
         }
         mAwareMetrics.recordDisableAware();
 

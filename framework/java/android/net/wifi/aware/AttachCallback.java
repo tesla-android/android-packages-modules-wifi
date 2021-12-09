@@ -42,4 +42,11 @@ public class AttachCallback {
     public void onAttachFailed() {
         /* empty */
     }
+
+    /**
+     * Called when Aware attach session is terminated
+     */
+    public void onShutDown() {
+        /* empty */
+    }
 }
