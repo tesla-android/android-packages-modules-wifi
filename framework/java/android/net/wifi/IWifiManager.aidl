@@ -69,6 +69,8 @@ interface IWifiManager
 
     ParceledListSlice getPrivilegedConfiguredNetworks(String packageName, String featureId, in Bundle extras);
 
+    WifiConfiguration getPrivilegedConnectedNetwork(String packageName, String featureId, in Bundle extras);
+
     Map getAllMatchingFqdnsForScanResults(in List<ScanResult> scanResult);
 
     Map getMatchingOsuProviders(in List<ScanResult> scanResult);

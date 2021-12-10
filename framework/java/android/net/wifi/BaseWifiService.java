@@ -107,6 +107,12 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public WifiConfiguration getPrivilegedConnectedNetwork(
+            String packageName, String featureId, Bundle extras) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Map<String, Map<Integer, List<ScanResult>>> getAllMatchingFqdnsForScanResults(
             List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();

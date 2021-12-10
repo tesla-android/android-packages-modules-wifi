@@ -56,6 +56,7 @@ import android.content.pm.ResolveInfo;
 import android.net.DhcpInfo;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
+import android.net.MacAddress;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkStack;
@@ -2928,6 +2929,50 @@ public class WifiServiceImpl extends BaseWifiService {
                 Collections.emptyList());
         return new ParceledListSlice<>(
                 WifiConfigurationUtil.convertMultiTypeConfigsToLegacyConfigs(configs));
+    }
+
+    /**
+     * See {@link WifiManager#getPrivilegedConnectedNetwork()}
+     */
+    public WifiConfiguration getPrivilegedConnectedNetwork(String packageName, String featureId,
+            Bundle extras) {
+        enforceReadCredentialPermission();
+        enforceAccessPermission();
+        int callingUid = Binder.getCallingUid();
+        if (isPlatformOrTargetSdkLessThanT(packageName, callingUid)) {
+            mWifiPermissionsUtil.enforceCanAccessScanResults(packageName, featureId, callingUid,
+                    null);
+        } else {
+            mWifiPermissionsUtil.enforceNearbyDevicesPermission(
+                    extras.getParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE),
+                    true, TAG + " getPrivilegedConnectedNetwork");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getPrivilegedConnectedNetwork uid=%").c(callingUid).flush();
+        }
+
+        WifiInfo wifiInfo = mWifiThreadRunner.call(
+                () -> mActiveModeWarden.getPrimaryClientModeManager().syncRequestConnectionInfo(),
+                new WifiInfo());
+        int networkId = wifiInfo.getNetworkId();
+        if (networkId < 0) {
+            if (isVerboseLoggingEnabled()) {
+                mLog.info("getPrivilegedConnectedNetwork primary wifi not connected")
+                        .flush();
+            }
+            return null;
+        }
+        WifiConfiguration config = mWifiThreadRunner.call(
+                () -> mWifiConfigManager.getConfiguredNetworkWithPassword(networkId), null);
+        if (config == null) {
+            if (isVerboseLoggingEnabled()) {
+                mLog.info("getPrivilegedConnectedNetwork failed to get config").flush();
+            }
+            return null;
+        }
+        // mask out the randomized MAC address
+        config.setRandomizedMacAddress(MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS));
+        return config;
     }
 
     /**
