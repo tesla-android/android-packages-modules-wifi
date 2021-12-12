@@ -1443,11 +1443,22 @@ public class WifiP2pManager {
      * {@link #stopPeerDiscovery(Channel, ActionListener)} are called.
      * While in LISTENING state, this device will dwell at its social channel and respond
      * to probe requests from other Wi-Fi Direct peers.
+     * <p>
+     * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
+     * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      *
+     * If targeting an earlier release than {@link android.os.Build.VERSION_CODES#TIRAMISU}, the
+     * application must have {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}
      * @param listener for callbacks on success or failure.
      */
-    @RequiresPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
     public void startListening(@NonNull Channel c, @Nullable ActionListener listener) {
         checkChannel(c);
         c.mAsyncChannel.sendMessage(START_LISTEN, 0, c.putListener(listener));
