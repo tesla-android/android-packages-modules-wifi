@@ -23,7 +23,6 @@ import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.util.HexEncoding;
 import android.os.RemoteException;
-import android.os.WorkSource;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -106,6 +105,11 @@ public class WifiAwareClientState {
         }
         mSessions.clear();
         mConfigRequest = null;
+        try {
+            mCallback.onAttachTerminate();
+        } catch (RemoteException e1) {
+            Log.e(TAG, "Error on onSessionTerminate()");
+        }
     }
 
     public ConfigRequest getConfigRequest() {
