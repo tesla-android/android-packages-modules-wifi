@@ -269,6 +269,11 @@ public class WifiAwareManagerTest {
         inOrder.verify(mockAwareService).subscribe(any(), any(), eq(clientId), eq(subscribeConfig),
                 any(), any());
 
+        // (5) Terminate attach session
+        clientProxyCallback.getValue().onAttachTerminate();
+        mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onShutDown();
+
         verifyNoMoreInteractions(mockCallback, mockSessionCallback, mockAwareService);
     }
 
