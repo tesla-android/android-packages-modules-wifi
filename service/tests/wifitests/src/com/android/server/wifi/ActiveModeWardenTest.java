@@ -748,6 +748,43 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that when there are only secondary CMMs available, the user toggling wifi on will
+     * create a new primary CMM.
+     */
+    @Test
+    public void testToggleWifiWithOnlySecondaryCmmsCreatesPrimaryOrScanOnlyCmm() throws Exception {
+        enterClientModeActiveState();
+        verify(mWifiInjector, times(1)).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_PRIMARY), anyBoolean());
+
+        // toggling wifi on again should be no-op when primary is already available
+        when(mSettingsStore.isWifiToggleEnabled()).thenReturn(true);
+        mActiveModeWarden.wifiToggled(TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+
+        verify(mWifiInjector, times(1)).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_PRIMARY), anyBoolean());
+
+        // Make the primary CMM change to local only secondary role.
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_LOCAL_ONLY);
+        mClientListener.onRoleChanged(mClientModeManager);
+        mLooper.dispatchAll();
+
+        // Verify that there only exists the ROLE_CLIENT_LOCAL_ONLY CMM.
+        List<ClientModeManager> currentCMMs = mActiveModeWarden.getClientModeManagers();
+        assertEquals(1, currentCMMs.size());
+        assertTrue(currentCMMs.get(0).getRole() == ROLE_CLIENT_LOCAL_ONLY);
+
+        // verify wifi toggling on should recreate the primary CMM
+        when(mSettingsStore.isWifiToggleEnabled()).thenReturn(true);
+        mActiveModeWarden.wifiToggled(TEST_WORKSOURCE);
+        mLooper.dispatchAll();
+
+        verify(mWifiInjector, times(2)).makeClientModeManager(
+                any(), eq(TEST_WORKSOURCE), eq(ROLE_CLIENT_PRIMARY), anyBoolean());
+    }
+
+    /**
      * Reentering EnabledState should be a NOP.
      */
     @Test
