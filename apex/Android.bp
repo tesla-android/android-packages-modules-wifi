@@ -34,6 +34,7 @@ apex_defaults {
     apps: [
         "OsuLogin",
         "ServiceWifiResources",
+        "WifiDialog",
     ],
     min_sdk_version: "30",
     updatable: true,
