@@ -639,6 +639,7 @@ public class WifiAwareManager {
         private static final int CALLBACK_CONNECT_SUCCESS = 0;
         private static final int CALLBACK_CONNECT_FAIL = 1;
         private static final int CALLBACK_IDENTITY_CHANGED = 2;
+        private static final int CALLBACK_ATTACH_TERMINATE = 3;
 
         private final Handler mHandler;
         private final WeakReference<WifiAwareManager> mAwareManager;
@@ -689,6 +690,9 @@ public class WifiAwareManager {
                                 identityChangedListener.onIdentityChanged((byte[]) msg.obj);
                             }
                             break;
+                        case CALLBACK_ATTACH_TERMINATE:
+                            mAwareManager.clear();
+                            attachCallback.onShutDown();
                     }
                 }
             };
@@ -718,6 +722,14 @@ public class WifiAwareManager {
 
             Message msg = mHandler.obtainMessage(CALLBACK_IDENTITY_CHANGED);
             msg.obj = mac;
+            mHandler.sendMessage(msg);
+        }
+
+        @Override
+        public void onAttachTerminate() {
+            if (VDBG) Log.v(TAG, "onShutDown");
+
+            Message msg = mHandler.obtainMessage(CALLBACK_ATTACH_TERMINATE);
             mHandler.sendMessage(msg);
         }
     }

@@ -489,6 +489,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (3) disable usage & verify callbacks
         mDut.disableUsage(false);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onAttachTerminate();
         collector.checkThat("usage disabled", mDut.isUsageEnabled(), equalTo(false));
         validateCorrectAwareStatusChangeBroadcast(inOrder);
         inOrder.verify(mMockNative).disable(transactionId.capture());
@@ -651,9 +652,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         inOrder.verify(mockCallback2).onIdentityChanged(someMac);
 
-        // (6) Aware down (no feedback)
+        // (6) Aware down - session should be terminated.
         mDut.onAwareDownNotification(reason);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback1).onAttachTerminate();
+        inOrder.verify(mockCallback2).onAttachTerminate();
 
         validateInternalClientInfoCleanedUp(clientId1);
         validateInternalClientInfoCleanedUp(clientId2);
@@ -1059,6 +1062,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(anyInt());
         inOrder.verify(mockSessionCallback).onSessionTerminated(anyInt());
         inOrder.verify(mMockNative).stopPublish(transactionId.capture(), eq(publishId));
+        inOrder.verify(mockCallback).onAttachTerminate();
         inOrder.verify(mMockNative).disable(anyShort());
         inOrderM.verify(mAwareMetricsMock).recordDiscoverySession(eq(uid), any());
         inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, true);
@@ -1378,6 +1382,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(anyInt());
         inOrder.verify(mockSessionCallback).onSessionTerminated(anyInt());
         inOrder.verify(mMockNative).stopSubscribe((short) 0, subscribeId);
+        inOrder.verify(mockCallback).onAttachTerminate();
         inOrder.verify(mMockNative).disable(anyShort());
 
         validateInternalClientInfoCleanedUp(clientId);
@@ -2779,6 +2784,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (4) disconnect config3: downgrade to config1
         mDut.disconnect(clientId3);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback3).onAttachTerminate();
         validateInternalClientInfoCleanedUp(clientId3);
         inOrder.verify(mMockNativeManager).replaceRequestorWs(new WorkSource(uid, callingPackage));
         inOrder.verify(mMockNative).enableAndConfigure(transactionId.capture(),
@@ -2793,6 +2799,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (5) disconnect config1: disable
         mDut.disconnect(clientId1);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback1).onAttachTerminate();
         validateInternalClientInfoCleanedUp(clientId1);
         inOrder.verify(mMockNative).disable(anyShort());
 
@@ -2934,8 +2941,8 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(anyInt());
         inOrder.verify(mockSessionCallback).onSessionTerminated(anyInt());
         inOrder.verify(mMockNative).stopPublish((short) 0, publishId);
+        inOrder.verify(mockCallback).onAttachTerminate();
         inOrder.verify(mMockNative).disable(anyShort());
-
         validateInternalClientInfoCleanedUp(clientId);
 
         // (5) trying to publish on the same client: NOP
@@ -3356,6 +3363,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         simulatePowerStateChangeDoze(true);
         mMockLooper.dispatchAll();
         collector.checkThat("usage disabled", mDut.isUsageEnabled(), equalTo(false));
+        inOrder.verify(mockCallback).onAttachTerminate();
         validateCorrectAwareStatusChangeBroadcast(inOrder);
         inOrder.verify(mMockNative).disable(transactionId.capture());
         mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
@@ -3422,6 +3430,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (3) location mode change: disable
         simulateLocationModeChange(false);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onAttachTerminate();
         validateCorrectAwareStatusChangeBroadcast(inOrder);
         inOrder.verify(mMockNative).disable(transactionId.capture());
         mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
@@ -3485,6 +3494,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (3) wifi state change: disable
         simulateWifiStateChange(false);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onAttachTerminate();
         validateCorrectAwareStatusChangeBroadcast(inOrder);
         inOrder.verify(mMockNative).disable(transactionId.capture());
         mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
@@ -3545,6 +3555,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (2) Aware down notification from native
         mDut.onAwareDownNotification(NanStatusType.UNSUPPORTED_CONCURRENCY_NAN_DISABLED);
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onAttachTerminate();
         collector.checkThat("usage enabled", mDut.isUsageEnabled(), equalTo(true));
         validateCorrectAwareStatusChangeBroadcast(inOrder);
 
@@ -3766,6 +3777,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrderM.verify(mAwareMetricsMock).recordAttachSession(eq(uid), eq(false),
                 any());
         // (3.2) verify the disconnect execution
+        inOrder.verify(mockCallback).onAttachTerminate();
         inOrder.verify(mMockAwareDataPathStatemanager).deleteAllInterfaces();
         inOrder.verify(mMockNative).disable(transactionId.capture());
         mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
@@ -3836,6 +3848,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         // (4) Verify the command executed in the correct order
         // (4.1) verify the disable usage execution
         mMockLooper.dispatchAll();
+        inOrder.verify(mockCallback).onAttachTerminate();
         validateCorrectAwareStatusChangeBroadcast(inOrder);
         inOrder.verify(mMockNative).disable(transactionId.capture());
         inOrderM.verify(mAwareMetricsMock).recordAttachSessionDuration(anyLong());
@@ -3922,6 +3935,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onSessionTerminated(NanStatusType.SUCCESS);
         inOrder.verify(mMockNative).stopPublish(anyShort(), eq(publishId));
+        inOrder.verify(mockCallback).onAttachTerminate();
         inOrder.verify(mMockNative).disable(transactionId.capture());
         mDut.onDisableResponse(transactionId.getValue(), NanStatusType.SUCCESS);
         mMockLooper.dispatchAll();
