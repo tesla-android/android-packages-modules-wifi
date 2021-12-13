@@ -27,6 +27,8 @@ import android.content.res.Resources;
 import android.net.wifi.util.Environment;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,11 +43,15 @@ public class WifiContext extends ContextWrapper {
     /** Intent action that is used to identify ServiceWifiResources.apk */
     private static final String ACTION_RESOURCES_APK =
             "com.android.server.wifi.intent.action.SERVICE_WIFI_RESOURCES_APK";
+    /** Intent action that is used to identify WifiDialog.apk */
+    private static final String ACTION_WIFI_DIALOG_APK =
+            "com.android.server.wifi.intent.action.WIFI_DIALOG_APK";
 
     /** Since service-wifi runs within system_server, its package name is "android". */
     private static final String SERVICE_WIFI_PACKAGE_NAME = "android";
 
     private String mWifiOverlayApkPkgName;
+    private String mWifiDialogApkPkgName;
 
     // Cached resources from the resources APK.
     private AssetManager mWifiAssetsFromApk;
@@ -57,40 +63,63 @@ public class WifiContext extends ContextWrapper {
     }
 
     /** Get the package name of ServiceWifiResources.apk */
-    public String getWifiOverlayApkPkgName() {
+    public @Nullable String getWifiOverlayApkPkgName() {
         if (mWifiOverlayApkPkgName != null) {
             return mWifiOverlayApkPkgName;
         }
+        mWifiOverlayApkPkgName = getApkPkgNameForAction(ACTION_RESOURCES_APK);
+        if (mWifiOverlayApkPkgName == null) {
+            // Resource APK not loaded yet, print a stack trace to see where this is called from
+            Log.e(TAG, "Attempted to fetch resources before Wifi Resources APK is loaded!",
+                    new IllegalStateException());
+            return null;
+        }
+        Log.i(TAG, "Found Wifi Resources APK at: " + mWifiOverlayApkPkgName);
+        return mWifiOverlayApkPkgName;
+    }
 
+    /** Get the package name of WifiDialog.apk */
+    public @Nullable String getWifiDialogApkPkgName() {
+        if (mWifiDialogApkPkgName != null) {
+            return mWifiDialogApkPkgName;
+        }
+        mWifiDialogApkPkgName = getApkPkgNameForAction(ACTION_WIFI_DIALOG_APK);
+        if (mWifiDialogApkPkgName == null) {
+            // WifiDialog APK not loaded yet, print a stack trace to see where this is called from
+            Log.e(TAG, "Attempted to fetch WifiDialog apk before it is loaded!",
+                    new IllegalStateException());
+            return null;
+        }
+        Log.i(TAG, "Found Wifi Dialog APK at: " + mWifiDialogApkPkgName);
+        return mWifiDialogApkPkgName;
+    }
+
+    /** Gets the package name of the apk responding to the given intent action */
+    private String getApkPkgNameForAction(@NonNull String action) {
         List<ResolveInfo> resolveInfos = getPackageManager().queryIntentActivities(
-                new Intent(ACTION_RESOURCES_APK),
+                new Intent(action),
                 PackageManager.MATCH_SYSTEM_ONLY);
-        Log.i(TAG, "Got resolveInfos: " + resolveInfos);
+        Log.i(TAG, "Got resolveInfos for " + action + ": " + resolveInfos);
 
         // remove apps that don't live in the Wifi apex
         resolveInfos.removeIf(info ->
                 !Environment.isAppInWifiApex(info.activityInfo.applicationInfo));
 
         if (resolveInfos.isEmpty()) {
-            // Resource APK not loaded yet, print a stack trace to see where this is called from
-            Log.e(TAG, "Attempted to fetch resources before Wifi Resources APK is loaded!",
-                    new IllegalStateException());
             return null;
         }
 
         if (resolveInfos.size() > 1) {
             // multiple apps found, log a warning, but continue
-            Log.w(TAG, "Found > 1 APK that can resolve Wifi Resources APK intent: "
+            Log.w(TAG, "Found > 1 APK that can resolve " + action + ": "
                     + resolveInfos.stream()
-                            .map(info -> info.activityInfo.applicationInfo.packageName)
-                            .collect(Collectors.joining(", ")));
+                    .map(info -> info.activityInfo.applicationInfo.packageName)
+                    .collect(Collectors.joining(", ")));
         }
 
         // Assume the first ResolveInfo is the one we're looking for
         ResolveInfo info = resolveInfos.get(0);
-        mWifiOverlayApkPkgName = info.activityInfo.applicationInfo.packageName;
-        Log.i(TAG, "Found Wifi Resources APK at: " + mWifiOverlayApkPkgName);
-        return mWifiOverlayApkPkgName;
+        return info.activityInfo.applicationInfo.packageName;
     }
 
     private Context getResourcesApkContext() {

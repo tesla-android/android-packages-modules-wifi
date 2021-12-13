@@ -240,6 +240,7 @@ public class WifiInjector {
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     private final WifiNotificationManager mWifiNotificationManager;
     private final LastCallerInfoManager mLastCallerInfoManager;
+    @NonNull private final WifiDialogManager mWifiDialogManager;
 
     public WifiInjector(WifiContext context) {
         if (context == null) {
@@ -527,6 +528,7 @@ public class WifiInjector {
         mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade,
                 mWifiNotificationManager);
         mLastCallerInfoManager = new LastCallerInfoManager();
+        mWifiDialogManager = new WifiDialogManager(mContext);
     }
 
     /**
@@ -581,6 +583,7 @@ public class WifiInjector {
         }
         mWifiPermissionsWrapper.enableVerboseLogging(verboseEnabled);
         mWifiPermissionsUtil.enableVerboseLogging(verboseEnabled);
+        mWifiDialogManager.enableVerboseLogging(verboseEnabled);
     }
 
     public UserManager getUserManager() {
@@ -1088,6 +1091,11 @@ public class WifiInjector {
 
     public LastCallerInfoManager getLastCallerInfoManager() {
         return mLastCallerInfoManager;
+    }
+
+    @NonNull
+    public WifiDialogManager getWifiDialogManager() {
+        return mWifiDialogManager;
     }
 
     public BuildProperties getBuildProperties() {

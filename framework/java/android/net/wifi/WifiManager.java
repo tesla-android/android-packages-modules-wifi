@@ -8834,4 +8834,54 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Unknown DialogType.
+     * @hide
+     */
+    public static final int DIALOG_TYPE_UNKNOWN = 0;
+
+    /**
+     * DialogType for a P2P Invitation Received dialog.
+     * @hide
+     */
+    public static final int DIALOG_TYPE_P2P_INVITATION_RECEIVED = 1;
+
+    /** @hide */
+    @IntDef(prefix = { "DIALOG_TYPE_" }, value = {
+            DIALOG_TYPE_UNKNOWN,
+            DIALOG_TYPE_P2P_INVITATION_RECEIVED,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DialogType {}
+
+    /**
+     * Extra int indicating the type of dialog to display.
+     * @hide
+     */
+    public static final String EXTRA_DIALOG_TYPE = "android.net.wifi.extra.DIALOG_TYPE";
+
+    /**
+     * Extra int indicating the ID of a dialog. The value must be non-negative.
+     * @hide
+     */
+    public static final String EXTRA_DIALOG_ID = "android.net.wifi.extra.DIALOG_ID";
+
+    /**
+     * Extra String indicating a P2P device name for a P2P Invitation Sent/Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_DEVICE_NAME = "android.net.wifi.extra.P2P_DEVICE_NAME";
+
+    /**
+     * Extra boolean indicating that a PIN is requested for a P2P Invitation Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_PIN_REQUESTED = "android.net.wifi.extra.P2P_PIN_REQUESTED";
+
+    /**
+     * Extra String indicating the PIN to be displayed for a P2P Invitation Sent/Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_DISPLAY_PIN = "android.net.wifi.extra.P2P_DISPLAY_PIN";
 }

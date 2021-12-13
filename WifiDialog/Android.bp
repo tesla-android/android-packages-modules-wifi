@@ -21,6 +21,9 @@ android_app {
     defaults: ["wifi-module-sdk-version-defaults"],
     certificate: ":com.android.wifi.dialog.certificate",
 
+    libs: [
+        "framework-wifi.impl",
+    ],
     static_libs: [
         "androidx.appcompat_appcompat",
     ],

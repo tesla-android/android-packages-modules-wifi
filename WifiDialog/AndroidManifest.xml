@@ -18,9 +18,29 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.android.wifi.dialog">
+    <queries>
+        <intent>
+            <action android:name="com.android.server.wifi.intent.action.SERVICE_WIFI_RESOURCES_APK" />
+        </intent>
+    </queries>
+
     <application
         android:enabled="true"
         android:configChanges="keyboardHidden|orientation|screenSize"
         android:supportsRtl="true">
+
+        <!-- This is only used to identify this app by resolving the action.
+             The activity is never actually triggered. -->
+        <activity android:name="android.app.Activity" android:exported="true" android:enabled="true">
+            <intent-filter>
+                <action android:name="com.android.server.wifi.intent.action.WIFI_DIALOG_APK" />
+            </intent-filter>
+        </activity>>
+
+        <activity android:name=".WifiDialogActivity"
+                  android:configChanges="keyboardHidden|orientation|screenSize"
+                  android:hardwareAccelerated="true"
+                  android:launchMode="singleInstance"
+                  android:theme="@*android:style/Theme.DeviceDefault.Dialog.Alert.DayNight" />
     </application>
 </manifest>
