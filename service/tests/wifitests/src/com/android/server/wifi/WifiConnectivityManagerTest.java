@@ -31,6 +31,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -307,6 +308,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     private static final int[] VALID_CONNECTED_SINGLE_SCAN_TYPE = {1, 0, 0};
     private static final int[] VALID_CONNECTED_SINGLE_SAVED_NETWORK_TYPE = {2, 0, 1};
     private static final int[] VALID_DISCONNECTED_SINGLE_SCAN_TYPE = {2, 1, 1};
+    private static final int[] VALID_EXTERNAL_SINGLE_SCAN_SCHEDULE_SEC = {40, 80};
+    private static final int[] VALID_EXTERNAL_SINGLE_SCAN_TYPE = {1, 0};
 
     private static final int[] SCHEDULE_EMPTY_SEC = {};
     private static final int[] INVALID_SCHEDULE_NEGATIVE_VALUES_SEC = {10, -10, 20};
@@ -2323,6 +2326,33 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 VALID_DISCONNECTED_SINGLE_SCAN_SCHEDULE_SEC, VALID_DISCONNECTED_SINGLE_SCAN_TYPE);
     }
 
+    @Test
+    public void checkSetExternalPeriodicScanInterval() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        long currentTimeStamp = CURRENT_SYSTEM_TIME_MS;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+
+        mWifiConnectivityManager.setExternalScreenOnScanSchedule(
+                VALID_EXTERNAL_SINGLE_SCAN_SCHEDULE_SEC, VALID_EXTERNAL_SINGLE_SCAN_TYPE);
+        // Set screen to ON
+        setScreenState(true);
+
+        // Wait for max periodic scan interval so that any impact triggered
+        // by screen state change can settle
+        currentTimeStamp += MAX_SCAN_INTERVAL_IN_SCHEDULE_SEC * 1000;
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+
+        List<Long> intervals = triggerPeriodicScansAndGetIntervals(SCAN_TRIGGER_TIMES,
+                () -> {
+                    mWifiConnectivityManager.handleConnectionStateChanged(
+                            mPrimaryClientModeManager,
+                            WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+                }, currentTimeStamp);
+
+        verifyScanTimesAndIntervals(SCAN_TRIGGER_TIMES + 1, intervals,
+                VALID_EXTERNAL_SINGLE_SCAN_SCHEDULE_SEC, VALID_EXTERNAL_SINGLE_SCAN_TYPE);
+    }
+
     /**
      *  Verify that scan interval for screen on and wifi connected scenario
      *  is in the exponential backoff fashion.
@@ -2334,6 +2364,15 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     public void checkPeriodicScanIntervalWhenConnected() {
         long currentTimeStamp = CURRENT_SYSTEM_TIME_MS;
         when(mClock.getElapsedSinceBootMillis()).thenReturn(currentTimeStamp);
+
+        if (SdkLevel.isAtLeastT()) {
+            // verify that setting the external scan schedule and then setting to null again should
+            // result in no-op, and not affect the scan schedule at all.
+            mWifiConnectivityManager.setExternalScreenOnScanSchedule(
+                    VALID_EXTERNAL_SINGLE_SCAN_SCHEDULE_SEC, VALID_EXTERNAL_SINGLE_SCAN_TYPE);
+            mWifiConnectivityManager.setExternalScreenOnScanSchedule(
+                    null, null);
+        }
 
         // Set screen to ON
         setScreenState(true);

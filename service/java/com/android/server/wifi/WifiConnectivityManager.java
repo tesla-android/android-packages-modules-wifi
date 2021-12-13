@@ -202,6 +202,10 @@ public class WifiConnectivityManager {
     // Device configs
     private boolean mWaitForFullBandScanResults = false;
 
+    // scan schedule and scan type override set via WifiManager#setScreenOnScanSchedule
+    private int[] mExternalSingleScanScheduleSec;
+    private int[] mExternalSingleScanType;
+
     // Scanning Schedules for screen-on periodic scan
     // Default schedule used in case of invalid configuration
     private static final int[] DEFAULT_SCANNING_SCHEDULE_SEC = {20, 40, 80, 160};
@@ -1678,30 +1682,33 @@ public class WifiConnectivityManager {
 
     // Returns the scan type based on current scan schedule and index.
     private int getScheduledSingleScanType(int index) {
-        if (mCurrentSingleScanType == null) {
+        int[] scanType = mExternalSingleScanType == null ? mCurrentSingleScanType
+                : mExternalSingleScanType;
+        if (scanType == null) {
             Log.e(TAG, "Invalid attempt to get schedule scan type. Type array is null ");
             return DEFAULT_SCANNING_TYPE[0];
         }
-        if (index >= mCurrentSingleScanType.length) {
-            index = mCurrentSingleScanType.length - 1;
+        if (index >= scanType.length) {
+            index = scanType.length - 1;
         }
-        return mCurrentSingleScanType[index];
+        return scanType[index];
     }
 
     // Retrieve a value from single scanning schedule in ms
     private int getScheduledSingleScanIntervalMs(int index) {
-        if (mCurrentSingleScanScheduleSec == null) {
+        int[] schedule = mExternalSingleScanScheduleSec == null ? mCurrentSingleScanScheduleSec
+                : mExternalSingleScanScheduleSec;
+        if (schedule == null) {
             Log.e(TAG, "Invalid attempt to get schedule interval, Schedule array is null ");
 
             // Use a default value
             return DEFAULT_SCANNING_SCHEDULE_SEC[0] * 1000;
         }
 
-        if (index >= mCurrentSingleScanScheduleSec.length) {
-            index = mCurrentSingleScanScheduleSec.length - 1;
+        if (index >= schedule.length) {
+            index = schedule.length - 1;
         }
-        return getScanIntervalWithPowerSaveMultiplier(
-                mCurrentSingleScanScheduleSec[index] * 1000);
+        return getScanIntervalWithPowerSaveMultiplier(schedule[index] * 1000);
     }
 
     private int getScanIntervalWithPowerSaveMultiplier(int interval) {
@@ -1853,6 +1860,14 @@ public class WifiConnectivityManager {
             default:
                 return -1;
         }
+    }
+
+    /**
+     * Sets the external scan schedule and scan type.
+     */
+    public void setExternalScreenOnScanSchedule(int[] scanSchedule, int[] scanType) {
+        mExternalSingleScanScheduleSec = scanSchedule;
+        mExternalSingleScanType = scanType;
     }
 
     /**

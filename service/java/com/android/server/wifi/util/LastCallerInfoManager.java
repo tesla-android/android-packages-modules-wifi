@@ -41,6 +41,7 @@ public class LastCallerInfoManager {
     public static final int SOFT_AP = 3;
     public static final int TETHERED_HOTSPOT = 4;
     public static final int AUTOJOIN_GLOBAL = 5;
+    public static final int SET_SCAN_SCHEDULE = 6;
 
     private final SparseArray<LastCallerInfo> mLastCallerInfoMap = new SparseArray<>();
 
@@ -70,6 +71,8 @@ public class LastCallerInfoManager {
                 return "TetheredHotspot";
             case AUTOJOIN_GLOBAL:
                 return "AutojoinGlobal";
+            case SET_SCAN_SCHEDULE:
+                return "SetScanScanSchedule";
             default:
                 return "Unknown";
         }
