@@ -607,6 +607,13 @@ public class ScanRequestProxy {
                 && !ScanResultUtil.isScanResultForPskNetwork(r));
     }
 
+    /** Indicate whether there are WPA2/WPA3 transition mode networks. */
+    public boolean isWpa2Wpa3PersonalTransitionNetworkInRange(String ssid) {
+        return mLastScanResultsMap.values().stream().anyMatch(r ->
+                ssid.equals(ScanResultUtil.createQuotedSSID(r.SSID))
+                && ScanResultUtil.isScanResultForPskSaeTransitionNetwork(r));
+    }
+
     /** Indicate whether there are OPEN only networks. */
     public boolean isOpenOnlyNetworkInRange(String ssid) {
         return mLastScanResultsMap.values().stream().anyMatch(r ->
