@@ -1956,6 +1956,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testStartListenFailureWhenNativeCallFailure() throws Exception {
+        setTargetSdkGreaterThanT();
         when(mWifiNative.p2pExtListen(eq(true), anyInt(), anyInt())).thenReturn(false);
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
@@ -1964,6 +1965,15 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verify(mWifiNative, times(2)).p2pFlush();
         verify(mWifiNative).p2pExtListen(eq(true), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_FAILED));
+        if (SdkLevel.isAtLeastT()) {
+            verify(mWifiPermissionsUtil, atLeastOnce()).checkNearbyDevicesPermission(
+                    any(), eq(true), any());
+            verify(mWifiPermissionsUtil, never()).checkCanAccessWifiDirect(
+                    any(), any(), anyInt(), anyBoolean());
+        } else {
+            verify(mWifiPermissionsUtil).checkCanAccessWifiDirect(eq("testPkg1"),
+                    eq("testFeature"), anyInt(), eq(true));
+        }
     }
 
     /**
@@ -1971,6 +1981,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testStartListenSuccess() throws Exception {
+        setTargetSdkGreaterThanT();
         when(mWifiNative.p2pExtListen(eq(true), anyInt(), anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
@@ -1979,6 +1990,15 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verify(mWifiNative, times(2)).p2pFlush();
         verify(mWifiNative).p2pExtListen(eq(true), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_SUCCEEDED));
+        if (SdkLevel.isAtLeastT()) {
+            verify(mWifiPermissionsUtil, atLeastOnce()).checkNearbyDevicesPermission(
+                    any(), eq(true), any());
+            verify(mWifiPermissionsUtil, never()).checkCanAccessWifiDirect(
+                    any(), any(), anyInt(), anyBoolean());
+        } else {
+            verify(mWifiPermissionsUtil).checkCanAccessWifiDirect(eq("testPkg1"),
+                    eq("testFeature"), anyInt(), eq(true));
+        }
     }
 
     /**
