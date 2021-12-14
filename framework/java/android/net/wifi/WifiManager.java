@@ -1526,6 +1526,8 @@ public class WifiManager {
      * following permissions: {@link android.Manifest.permission#ACCESS_FINE_LOCATION},
      * {@link android.Manifest.permission#CHANGE_WIFI_STATE} and
      * {@link android.Manifest.permission#READ_WIFI_CREDENTIAL}.
+     * <p> See {@link #getPrivilegedConnectedNetwork()} to get the WifiConfiguration for only the
+     * connected network that's providing internet by default.
      *
      * @hide
      **/
@@ -1546,6 +1548,47 @@ public class WifiManager {
                 return Collections.emptyList();
             }
             return parceledList.getList();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Gets the {@link WifiConfiguration} with credentials of the connected wifi network
+     * that's providing internet by default.
+     * <p>
+     * On {@link android.os.Build.VERSION_CODES#TIRAMISU} or later SDKs, the caller need to have
+     * the following permissions: {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation",
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE} and
+     * {@link android.Manifest.permission#READ_WIFI_CREDENTIAL}. If the app does not have
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     * <p>
+     * On {@link Build.VERSION_CODES#S} or prior SDKs, the caller need to have the
+     * following permissions: {@link android.Manifest.permission#ACCESS_FINE_LOCATION},
+     * {@link android.Manifest.permission#CHANGE_WIFI_STATE} and
+     * {@link android.Manifest.permission#READ_WIFI_CREDENTIAL}.
+     *
+     * @return The WifiConfiguration representation of the connected wifi network providing
+     * internet, or null if wifi is not connected.
+     *
+     * @throws {@link SecurityException} if caller does not have the required permissions
+     * @hide
+     **/
+    @SystemApi
+    @RequiresPermission(allOf = {NEARBY_WIFI_DEVICES, ACCESS_WIFI_STATE, READ_WIFI_CREDENTIAL},
+            conditional = true)
+    @Nullable
+    public WifiConfiguration getPrivilegedConnectedNetwork() {
+        try {
+            Bundle extras = new Bundle();
+            if (SdkLevel.isAtLeastS()) {
+                extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        mContext.getAttributionSource());
+            }
+            return mService.getPrivilegedConnectedNetwork(mContext.getOpPackageName(),
+                    mContext.getAttributionTag(), extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
