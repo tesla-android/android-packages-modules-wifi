@@ -2259,12 +2259,24 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mWifiNative.setMiracastMode(message.arg1);
                         break;
                     case WifiP2pManager.START_LISTEN:
-                        if (!mWifiPermissionsUtil.checkCanAccessWifiDirect(
-                                getCallingPkgName(message.sendingUid, message.replyTo),
-                                getCallingFeatureId(message.sendingUid, message.replyTo),
-                                message.sendingUid, true)) {
-                            loge("Permission violation - no NETWORK_SETTING permission,"
-                                    + " uid = " + message.sendingUid);
+                        String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
+                        if (packageName == null) {
+                            replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
+                            break;
+                        }
+                        int uid = message.sendingUid;
+                        Bundle extras = (Bundle) message.obj;
+                        boolean hasPermission = false;
+                        if (isPlatformOrTargetSdkLessThanT(packageName, uid)) {
+                            hasPermission = mWifiPermissionsUtil.checkCanAccessWifiDirect(
+                                    packageName,
+                                    getCallingFeatureId(message.sendingUid, message.replyTo),
+                                    uid, true);
+                        } else {
+                            hasPermission = checkNearbyDevicesPermission(uid, packageName,
+                                    extras, "START_LISTEN");
+                        }
+                        if (!hasPermission) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
                             break;
                         }
@@ -2641,10 +2653,24 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     case WifiP2pManager.START_LISTEN:
-                        if (!mWifiPermissionsUtil.checkCanAccessWifiDirect(
-                                getCallingPkgName(message.sendingUid, message.replyTo),
-                                getCallingFeatureId(message.sendingUid, message.replyTo),
-                                message.sendingUid, true)) {
+                        String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
+                        if (packageName == null) {
+                            replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
+                            break;
+                        }
+                        int uid = message.sendingUid;
+                        Bundle extras = (Bundle) message.obj;
+                        boolean hasPermission = false;
+                        if (isPlatformOrTargetSdkLessThanT(packageName, uid)) {
+                            hasPermission = mWifiPermissionsUtil.checkCanAccessWifiDirect(
+                                    packageName,
+                                    getCallingFeatureId(message.sendingUid, message.replyTo),
+                                    uid, true);
+                        } else {
+                            hasPermission = checkNearbyDevicesPermission(uid, packageName,
+                                    extras, "START_LISTEN");
+                        }
+                        if (!hasPermission) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_FAILED);
                             break;
                         }
