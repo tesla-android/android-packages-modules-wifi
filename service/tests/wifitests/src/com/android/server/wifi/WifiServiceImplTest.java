@@ -8524,6 +8524,78 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 expectedConfigs, privilegedConfigs.getList());
     }
 
+    private void trySetTargetSdkToT() {
+        if (SdkLevel.isAtLeastT()) {
+            when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(),
+                    eq(Build.VERSION_CODES.TIRAMISU), anyInt())).thenReturn(false);
+        }
+    }
+
+    @Test (expected = SecurityException.class)
+    public void testGetPrivilegedConnectedNetworkNoPermission() {
+        trySetTargetSdkToT();
+        if (SdkLevel.isAtLeastT()) {
+            doThrow(new SecurityException())
+                    .when(mWifiPermissionsUtil).enforceNearbyDevicesPermission(
+                            any(), anyBoolean(), any());
+        } else {
+            doThrow(new SecurityException()).when(mWifiPermissionsUtil)
+                    .enforceCanAccessScanResults(any(), any(), anyInt(), any());
+        }
+
+        mWifiServiceImpl.getPrivilegedConnectedNetwork(TEST_PACKAGE_NAME, TEST_FEATURE_ID, mExtras);
+        mLooper.dispatchAll();
+    }
+
+    @Test
+    public void testGetPrivilegedConnectedNetworkNotConnected() {
+        trySetTargetSdkToT();
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(new WifiInfo());
+
+        mLooper.startAutoDispatch();
+        assertNull(mWifiServiceImpl.getPrivilegedConnectedNetwork(
+                TEST_PACKAGE_NAME, TEST_FEATURE_ID, mExtras));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        if (SdkLevel.isAtLeastT()) {
+            verify(mWifiPermissionsUtil).enforceNearbyDevicesPermission(any(), eq(true), any());
+        } else {
+            verify(mWifiPermissionsUtil).enforceCanAccessScanResults(any(), any(), anyInt(), any());
+        }
+    }
+
+    @Test
+    public void testGetPrivilegedConnectedNetworkSuccess() {
+        // mock testConfig as the currently connected network
+        trySetTargetSdkToT();
+        WifiConfiguration testConfig = WifiConfigurationTestUtil.createPskSaeNetwork();
+        testConfig.networkId = TEST_NETWORK_ID;
+        testConfig.setRandomizedMacAddress(TEST_FACTORY_MAC_ADDR);
+        WifiInfo wifiInfo = new WifiInfo();
+        wifiInfo.setNetworkId(testConfig.networkId);
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+        when(mWifiConfigManager.getConfiguredNetworkWithPassword(testConfig.networkId)).thenReturn(
+                testConfig);
+
+        mLooper.startAutoDispatch();
+        WifiConfiguration result = mWifiServiceImpl.getPrivilegedConnectedNetwork(
+                TEST_PACKAGE_NAME, TEST_FEATURE_ID, mExtras);
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        if (SdkLevel.isAtLeastT()) {
+            verify(mWifiPermissionsUtil).enforceNearbyDevicesPermission(any(), eq(true), any());
+        } else {
+            verify(mWifiPermissionsUtil).enforceCanAccessScanResults(any(), any(), anyInt(), any());
+        }
+        verify(mWifiConfigManager).getConfiguredNetworkWithPassword(testConfig.networkId);
+        // verify the credentials match
+        assertEquals(testConfig.networkId, result.networkId);
+        assertEquals(testConfig.SSID, result.SSID);
+        assertEquals(testConfig.preSharedKey, result.preSharedKey);
+        // verify the randomized MAC address is filtered out
+        assertEquals(WifiInfo.DEFAULT_MAC_ADDRESS, result.getRandomizedMacAddress().toString());
+    }
+
     /**
      * Verify that a call to isWifiPasspointEnabled throws a SecurityException if the
      * caller does not have the ACCESS_WIFI_STATE permission.
