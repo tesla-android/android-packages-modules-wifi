@@ -22,6 +22,7 @@ import android.hardware.wifi.supplicant.P2pProvDiscStatusCode;
 import android.hardware.wifi.supplicant.P2pStatusCode;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
 import android.hardware.wifi.supplicant.WpsDevPasswordId;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -31,8 +32,11 @@ import android.net.wifi.p2p.WifiP2pWfdInfo;
 import android.net.wifi.p2p.nsd.WifiP2pServiceResponse;
 import android.util.Log;
 
+import com.android.internal.util.HexDump;
 import com.android.server.wifi.util.NativeUtil;
 
+import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -580,6 +584,96 @@ public class SupplicantP2pIfaceCallbackAidlImpl extends ISupplicantP2pIfaceCallb
         logd("Frequency changed event on " + groupIfName + ". New frequency: " + frequency);
 
         mMonitor.broadcastP2pFrequencyChanged(mInterface, frequency);
+    }
+
+    /*
+     * Used to indicate that a P2P device has been found.
+     *
+     * @param srcAddress MAC address of the device found. This must either
+     *        be the P2P device address or the P2P interface address.
+     * @param p2pDeviceAddress P2P device address.
+     * @param primaryDeviceType Type of device. Refer to section B.1 of Wifi P2P
+     *        Technical specification v1.2.
+     * @param deviceName Name of the device.
+     * @param configMethods Mask of WPS configuration methods supported by the
+     *        device.
+     * @param deviceCapabilities Refer to section 4.1.4 of Wifi P2P Technical
+     *        specification v1.2.
+     * @param groupCapabilities Refer to section 4.1.4 of Wifi P2P Technical
+     *        specification v1.2.
+     * @param wfdDeviceInfo WFD device info as described in section 5.1.2 of WFD
+     *        technical specification v1.0.0.
+     * @param wfdR2DeviceInfo WFD R2 device info as described in section 5.1.12 of WFD
+     *        technical specification v2.1.
+     * @param vendorElemBytes bytes of vendor-specific information elements.
+     */
+    @Override
+    public void onDeviceFoundWithVendorElements(byte[] srcAddress, byte[] p2pDeviceAddress,
+            byte[] primaryDeviceType, String deviceName, int configMethods,
+            byte deviceCapabilities, int groupCapabilities, byte[] wfdDeviceInfo,
+            byte[] wfdR2DeviceInfo, byte[] vendorElemBytes) {
+        WifiP2pDevice device = new WifiP2pDevice();
+        device.deviceName = deviceName;
+        if (deviceName == null) {
+            Log.e(TAG, "Missing device name.");
+            return;
+        }
+
+        try {
+            device.deviceAddress = NativeUtil.macAddressFromByteArray(p2pDeviceAddress);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not decode device address.", e);
+            return;
+        }
+
+        try {
+            device.primaryDeviceType = NativeUtil.wpsDevTypeStringFromByteArray(primaryDeviceType);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not encode device primary type.", e);
+            return;
+        }
+
+        device.deviceCapability = deviceCapabilities;
+        device.groupCapability = groupCapabilities;
+        device.wpsConfigMethodsSupported = configMethods;
+        device.status = WifiP2pDevice.AVAILABLE;
+
+        if (wfdDeviceInfo != null && wfdDeviceInfo.length >= 6) {
+            device.wfdInfo = new WifiP2pWfdInfo(
+                    ((wfdDeviceInfo[0] & 0xFF) << 8) + (wfdDeviceInfo[1] & 0xFF),
+                    ((wfdDeviceInfo[2] & 0xFF) << 8) + (wfdDeviceInfo[3] & 0xFF),
+                    ((wfdDeviceInfo[4] & 0xFF) << 8) + (wfdDeviceInfo[5] & 0xFF));
+        }
+        if (wfdR2DeviceInfo != null && wfdR2DeviceInfo.length >= 2) {
+            device.wfdInfo.setR2DeviceInfo(
+                    ((wfdR2DeviceInfo[0] & 0xFF) << 8) + (wfdR2DeviceInfo[1] & 0xFF));
+        }
+
+        if (null != vendorElemBytes && vendorElemBytes.length > 0) {
+            logd("Vendor Element Bytes: " + HexDump.dumpHexString(vendorElemBytes));
+            List<ScanResult.InformationElement> vendorElements = new ArrayList<>();
+            try {
+                ByteArrayInputStream is = new ByteArrayInputStream(vendorElemBytes);
+                int b;
+                while ((b = is.read()) != -1) {
+                    int id = b;
+                    int len = is.read();
+                    if (len == -1) break;
+                    byte[] bytes = new byte[len];
+                    int read = is.read(bytes, 0, len);
+                    if (-1 == read || len != read) break;
+                    if (id != ScanResult.InformationElement.EID_VSA) continue;
+                    vendorElements.add(new ScanResult.InformationElement(id, 0, bytes));
+                }
+            } catch (Exception ex) {
+                logd("Cannot parse vendor element bytes: " + ex);
+                vendorElements = null;
+            }
+            device.setVendorElements(vendorElements);
+        }
+
+        logd("Device discovered on " + mInterface + ": " + device);
+        mMonitor.broadcastP2pDeviceFound(mInterface, device);
     }
 
     private static WifiP2pServiceImpl.P2pStatus halStatusToP2pStatus(int status) {

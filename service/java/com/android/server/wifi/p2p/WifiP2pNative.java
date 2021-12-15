@@ -20,6 +20,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.hardware.wifi.V1_0.IWifiP2pIface;
 import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
@@ -36,6 +37,7 @@ import com.android.server.wifi.PropertyService;
 import com.android.server.wifi.WifiNative;
 import com.android.server.wifi.WifiVendorHal;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -868,5 +870,23 @@ public class WifiP2pNative {
     public boolean removeClient(String peerAddress) {
         // The client is deemed as a P2P client, not a legacy client, hence the false.
         return mSupplicantP2pIfaceHal.removeClient(peerAddress, false);
+    }
+
+    /**
+     * Set vendor-specific information elements to the native service.
+     *
+     * @param vendorElements the vendor opaque data.
+     * @return true, if opeartion was successful.
+     */
+    public boolean setVendorElements(Set<ScanResult.InformationElement> vendorElements) {
+        return mSupplicantP2pIfaceHal.setVendorElements(vendorElements);
+    }
+
+    /**
+     * Remove vendor-specific information elements from the native service.
+     */
+    public boolean removeVendorElements() {
+        return mSupplicantP2pIfaceHal.setVendorElements(
+                new HashSet<ScanResult.InformationElement>());
     }
 }

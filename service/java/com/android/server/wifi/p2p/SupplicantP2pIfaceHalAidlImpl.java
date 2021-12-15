@@ -26,6 +26,7 @@ import android.hardware.wifi.supplicant.ISupplicantP2pNetwork;
 import android.hardware.wifi.supplicant.IfaceInfo;
 import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.MiracastMode;
+import android.hardware.wifi.supplicant.P2pFrameTypeMask;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
 import android.hardware.wifi.supplicant.WpsProvisionMethod;
 import android.net.wifi.CoexUnsafeChannel;
@@ -50,10 +51,13 @@ import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.ArrayUtils;
 import com.android.server.wifi.util.NativeUtil;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -2352,6 +2356,58 @@ public class SupplicantP2pIfaceHalAidlImpl implements ISupplicantP2pIfaceHal {
                 handleServiceSpecificException(e, methodStr);
             }
             return false;
+        }
+    }
+
+    /**
+     * Set vendor-specific information elements to wpa_supplicant.
+     *
+     * @param vendorElements The list of vendor-specific information elements.
+     *
+     * @return boolean The value indicating whether operation was successful.
+     */
+    public boolean setVendorElements(Set<ScanResult.InformationElement> vendorElements) {
+        synchronized (mLock) {
+            String methodStr = "setVendorElements";
+            if (!checkP2pIfaceAndLogFailure(methodStr)) {
+                return false;
+            }
+            if (vendorElements == null) {
+                return false;
+            }
+            byte[] vendorElemBytes = convertInformationElementSetToBytes(
+                    vendorElements);
+            if (null == vendorElemBytes) {
+                Log.w(TAG, "Cannot convert vendor elements to bytes.");
+                return false;
+            }
+            try {
+                mISupplicantP2pIface.setVendorElements(
+                        P2pFrameTypeMask.P2P_FRAME_PROBE_RESP_P2P, vendorElemBytes);
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return false;
+        }
+    }
+
+    private byte[] convertInformationElementSetToBytes(
+            Set<ScanResult.InformationElement> ies) {
+        try {
+            ByteArrayOutputStream os = new ByteArrayOutputStream();
+            for (ScanResult.InformationElement ie: ies) {
+                os.write((byte) ie.id);
+                os.write((byte) (ie.bytes.length));
+                os.write(ie.bytes);
+            }
+            return os.toByteArray();
+        } catch (IOException ex) {
+            return null;
+        } catch (Exception ex) {
+            return null;
         }
     }
 
