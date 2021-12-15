@@ -267,7 +267,7 @@ interface IWifiManager
     int addNetworkSuggestions(in List<WifiNetworkSuggestion> networkSuggestions, in String packageName,
         in String featureId);
 
-    int removeNetworkSuggestions(in List<WifiNetworkSuggestion> networkSuggestions, in String packageName);
+    int removeNetworkSuggestions(in List<WifiNetworkSuggestion> networkSuggestions, in String packageName, int action);
 
     List<WifiNetworkSuggestion> getNetworkSuggestions(in String packageName);
 

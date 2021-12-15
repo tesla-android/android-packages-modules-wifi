@@ -5011,18 +5011,23 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     @Override
     public int removeNetworkSuggestions(
-            List<WifiNetworkSuggestion> networkSuggestions, String callingPackageName) {
+            List<WifiNetworkSuggestion> networkSuggestions, String callingPackageName,
+            @WifiManager.ActionAfterRemovingSuggestion int action) {
         if (enforceChangePermission(callingPackageName) != MODE_ALLOWED) {
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED;
         }
         if (isVerboseLoggingEnabled()) {
             mLog.info("removeNetworkSuggestions uid=%").c(Binder.getCallingUid()).flush();
         }
+        if (action != WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT
+                && action != WifiManager.ACTION_REMOVE_SUGGESTION_LINGER) {
+            return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID;
+        }
         int callingUid = Binder.getCallingUid();
 
         int success = mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager.remove(
-                networkSuggestions, callingUid, callingPackageName),
-                WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL);
+                networkSuggestions, callingUid, callingPackageName,
+                action), WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL);
         if (success != WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS) {
             Log.e(TAG, "Failed to remove network suggestions");
         }

@@ -410,7 +410,8 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerScanResultsCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.ScanResultsCallback);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerSubsystemRestartTrackingCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SubsystemRestartTrackingCallback);
     method @Deprecated public boolean removeNetwork(int);
-    method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
+    method @Deprecated @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
+    method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>, int);
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public boolean removeNonCallerConfiguredNetworks();
     method @Deprecated public void removePasspointConfiguration(String);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void removeSuggestionConnectionStatusListener(@NonNull android.net.wifi.WifiManager.SuggestionConnectionStatusListener);
@@ -426,6 +427,8 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void unregisterSubsystemRestartTrackingCallback(@NonNull android.net.wifi.WifiManager.SubsystemRestartTrackingCallback);
     method @Deprecated public int updateNetwork(android.net.wifi.WifiConfiguration);
     field public static final String ACTION_PICK_WIFI_NETWORK = "android.net.wifi.PICK_WIFI_NETWORK";
+    field public static final int ACTION_REMOVE_SUGGESTION_DISCONNECT = 2; // 0x2
+    field public static final int ACTION_REMOVE_SUGGESTION_LINGER = 1; // 0x1
     field public static final String ACTION_REQUEST_SCAN_ALWAYS_AVAILABLE = "android.net.wifi.action.REQUEST_SCAN_ALWAYS_AVAILABLE";
     field public static final String ACTION_WIFI_NETWORK_SUGGESTION_POST_CONNECTION = "android.net.wifi.action.WIFI_NETWORK_SUGGESTION_POST_CONNECTION";
     field public static final String ACTION_WIFI_SCAN_AVAILABILITY_CHANGED = "android.net.wifi.action.WIFI_SCAN_AVAILABILITY_CHANGED";

@@ -315,6 +315,28 @@ public class WifiManager {
     public @interface SuggestionUserApprovalStatus {}
 
     /**
+     * If one of the removed suggestions is currently connected, that network will be disconnected
+     * after a short delay as opposed to immediately (which will be done by
+     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT}). The {@link ConnectivityManager} may call the
+     * {@link NetworkCallback#onLosing(Network, int)} on such networks.
+     */
+    public static final int ACTION_REMOVE_SUGGESTION_LINGER = 1;
+
+    /**
+     * If one of the removed suggestions is currently connected, trigger an immediate disconnect
+     * after suggestions removal
+     */
+    public static final int ACTION_REMOVE_SUGGESTION_DISCONNECT = 2;
+
+    /** @hide */
+    @IntDef(prefix = {"ACTION_REMOVE_SUGGESTION_"},
+            value = {ACTION_REMOVE_SUGGESTION_LINGER,
+                    ACTION_REMOVE_SUGGESTION_DISCONNECT
+            })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ActionAfterRemovingSuggestion {}
+
+    /**
      * Only available on Android S or later.
      * @hide
      **/
@@ -2320,23 +2342,52 @@ public class WifiManager {
     /**
      * Remove some or all of the network suggestions that were previously provided by the app.
      * If one of the suggestions being removed was used to establish connection to the current
-     * network, then the device will immediately disconnect from that network.
+     * network, then the device will immediately disconnect from that network. This method is same
+     * as {@link #removeNetworkSuggestions(List, int)} with
+     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT}
      *
      * See {@link WifiNetworkSuggestion} for a detailed explanation of the parameters.
      * See {@link WifiNetworkSuggestion#equals(Object)} for the equivalence evaluation used.
      *
      * @param networkSuggestions List of network suggestions to be removed. Pass an empty list
      *                           to remove all the previous suggestions provided by the app.
-     * @return Status code for the operation. One of the STATUS_NETWORK_SUGGESTIONS_ values.
-     * Any matching suggestions are removed from the device and will not be considered for any
+     * @return Status code for the operation. One of the {@code STATUS_NETWORK_SUGGESTIONS_*}
+     * values. Any matching suggestions are removed from the device and will not be considered for
+     * any further connection attempts.
+     *
+     * @deprecated Use {@link #removeNetworkSuggestions(List, int)}. An {@code action} of
+     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT} is equivalent to the current behavior.
+     */
+    @Deprecated
+    @RequiresPermission(CHANGE_WIFI_STATE)
+    public @NetworkSuggestionsStatusCode int removeNetworkSuggestions(
+            @NonNull List<WifiNetworkSuggestion> networkSuggestions) {
+        return removeNetworkSuggestions(networkSuggestions, ACTION_REMOVE_SUGGESTION_DISCONNECT);
+    }
+
+    /**
+     * Remove some or all of the network suggestions that were previously provided by the app.
+     * If one of the suggestions being removed was used to establish connection to the current
+     * network, then the specified action will be executed.
+     *
+     * See {@link WifiNetworkSuggestion} for a detailed explanation of the parameters.
+     * See {@link WifiNetworkSuggestion#equals(Object)} for the equivalence evaluation used.
+     *
+     * @param networkSuggestions List of network suggestions to be removed. Pass an empty list
+     *                           to remove all the previous suggestions provided by the app.
+     * @param action Desired action to execute after removing the suggestion. One of
+     *               {@code ACTION_REMOVE_SUGGESTION_*}
+     * @return Status code for the operation. One of the {@code STATUS_NETWORK_SUGGESTIONS_*}
+     * values. Any matching suggestions are removed from the device and will not be considered for
      * further connection attempts.
      */
     @RequiresPermission(CHANGE_WIFI_STATE)
     public @NetworkSuggestionsStatusCode int removeNetworkSuggestions(
-            @NonNull List<WifiNetworkSuggestion> networkSuggestions) {
+            @NonNull List<WifiNetworkSuggestion> networkSuggestions,
+            @ActionAfterRemovingSuggestion int action) {
         try {
-            return mService.removeNetworkSuggestions(
-                    networkSuggestions, mContext.getOpPackageName());
+            return mService.removeNetworkSuggestions(networkSuggestions,
+                    mContext.getOpPackageName(), action);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

@@ -22,6 +22,8 @@ import static android.net.NetworkCapabilities.NET_CAPABILITY_OEM_PRIVATE;
 import static android.net.NetworkCapabilities.NET_CAPABILITY_TRUSTED;
 import static android.net.NetworkCapabilities.TRANSPORT_WIFI;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_LINGER;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.REQUEST_REGISTERED;
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
@@ -808,6 +810,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 }
                 case "remove-suggestion": {
                     String ssid = getNextArgRequired();
+                    String action = getNextArg();
+                    int actionCode = ACTION_REMOVE_SUGGESTION_DISCONNECT;
+                    if (action != null && action.equals("lingering")) {
+                        actionCode = ACTION_REMOVE_SUGGESTION_LINGER;
+                    }
                     List<WifiNetworkSuggestion> suggestions =
                             mWifiService.getNetworkSuggestions(SHELL_PACKAGE_NAME);
                     WifiNetworkSuggestion suggestion = suggestions.stream()
@@ -819,7 +826,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         return -1;
                     }
                     mWifiService.removeNetworkSuggestions(
-                            Arrays.asList(suggestion), SHELL_PACKAGE_NAME);
+                            Arrays.asList(suggestion), SHELL_PACKAGE_NAME, actionCode);
                     // untrusted/oem-paid networks need a corresponding NetworkRequest.
                     if (suggestion.isUntrusted()
                             || (SdkLevel.isAtLeastS()
@@ -837,7 +844,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 }
                 case "remove-all-suggestions":
                     mWifiService.removeNetworkSuggestions(
-                            Collections.emptyList(), SHELL_PACKAGE_NAME);
+                            Collections.emptyList(), SHELL_PACKAGE_NAME,
+                            WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT);
                     return 0;
                 case "list-suggestions": {
                     List<WifiNetworkSuggestion> suggestions =
@@ -1664,8 +1672,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -c <carrierId> - set carrier Id");
         pw.println("    -i <subscriptionId> - set subscription Id, if -a is used, "
                 + "this must be set");
-        pw.println("  remove-suggestion <ssid>");
+        pw.println("  remove-suggestion <ssid> [-l]");
         pw.println("    Remove a network suggestion with provided SSID of the network");
+        pw.println("    -l - Remove suggestion with lingering, if not set will disconnect "
+                + "immediately ");
         pw.println("  remove-all-suggestions");
         pw.println("    Removes all suggestions added via shell");
         pw.println("  list-suggestions");
