@@ -99,6 +99,10 @@ public class SoftApConfigurationTest {
                     .isEqualTo(true);
         }
 
+        if (SdkLevel.isAtLeastT()) {
+            assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
+                    .isEqualTo(0);
+        }
         SoftApConfiguration unparceled = parcelUnparcel(original);
         assertThat(unparceled).isNotSameInstanceAs(original);
         assertThat(unparceled).isEqualTo(original);
@@ -190,6 +194,10 @@ public class SoftApConfigurationTest {
             originalBuilder.setUserConfiguration(false);
         }
 
+        if (SdkLevel.isAtLeastT()) {
+            originalBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(300_000);
+        }
+
         SoftApConfiguration original = originalBuilder.build();
         assertThat(original.getPassphrase()).isEqualTo("secretsecret");
         assertThat(original.getSecurityType()).isEqualTo(
@@ -213,7 +221,10 @@ public class SoftApConfigurationTest {
             assertThat(original.isUserConfiguration())
                     .isEqualTo(false);
         }
-
+        if (SdkLevel.isAtLeastT()) {
+            assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
+                    .isEqualTo(300_000);
+        }
         SoftApConfiguration unparceled = parcelUnparcel(original);
         assertThat(unparceled).isNotSameInstanceAs(original);
         assertThat(unparceled).isEqualTo(original);

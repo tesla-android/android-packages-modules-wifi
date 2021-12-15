@@ -1626,6 +1626,8 @@ public class XmlUtil {
         public static final String XML_TAG_BAND_CHANNEL_MAP = "BandChannelMap";
         public static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
         public static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
+        public static final String XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS =
+                "BridgedModeOpportunisticShutdownTimeoutMillis";
 
 
         /**
@@ -1789,6 +1791,11 @@ public class XmlUtil {
                 XmlUtil.writeNextValue(out, XML_TAG_USER_CONFIGURATION,
                         softApConfig.isUserConfiguration());
             }
+            if (SdkLevel.isAtLeastT()) {
+                XmlUtil.writeNextValue(out,
+                        XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS,
+                        softApConfig.getBridgedModeOpportunisticShutdownTimeoutMillisInternal());
+            }
         } // End of writeSoftApConfigurationToXml
 
         /**
@@ -1907,6 +1914,13 @@ public class XmlUtil {
                             case XML_TAG_USER_CONFIGURATION:
                                 if (SdkLevel.isAtLeastS()) {
                                     softApConfigBuilder.setUserConfiguration((boolean) value);
+                                }
+                                break;
+                            case XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS:
+                                if (SdkLevel.isAtLeastT()) {
+                                    softApConfigBuilder
+                                            .setBridgedModeOpportunisticShutdownTimeoutMillis(
+                                                    (long) value);
                                 }
                                 break;
                             default:

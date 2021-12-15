@@ -418,6 +418,12 @@ public class SoftApManager implements ActiveModeManager {
         return timeout > 0 ? timeout : mDefaultShutdownTimeoutMillis;
     }
 
+    private long getShutdownIdleInstanceInBridgedModeTimeoutMillis() {
+        long timeout = mCurrentSoftApConfiguration
+                .getBridgedModeOpportunisticShutdownTimeoutMillisInternal();
+        return timeout > 0 ? timeout : mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis;
+    }
+
     @Override
     @Nullable public SoftApRole getRole() {
         return mRole;
@@ -1079,7 +1085,7 @@ public class SoftApManager implements ActiveModeManager {
                         : mConnectedClientWithApInfoMap.get(instance).size();
                 final long timeoutValue = isTetheringInterface
                         ? getShutdownTimeoutMillis()
-                        : mDefaultShutdownIdleInstanceInBridgedModeTimeoutMillis;
+                        : getShutdownIdleInstanceInBridgedModeTimeoutMillis();
                 Log.d(getTag(), "rescheduleTimeoutMessageIfNeeded " + instance + ", timeoutEnabled="
                         + timeoutEnabled + ", clientNumber=" + clientNumber);
                 if (!timeoutEnabled || clientNumber != 0) {

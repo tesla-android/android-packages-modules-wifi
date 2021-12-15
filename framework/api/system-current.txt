@@ -275,6 +275,7 @@ package android.net.wifi {
     method @NonNull public java.util.List<android.net.MacAddress> getAllowedClientList();
     method @Deprecated public int getBand();
     method @NonNull public java.util.List<android.net.MacAddress> getBlockedClientList();
+    method public long getBridgedModeOpportunisticShutdownTimeoutMillis();
     method @Deprecated public int getChannel();
     method @NonNull public android.util.SparseIntArray getChannels();
     method public int getMacRandomizationSetting();
@@ -305,6 +306,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBands(@NonNull int[]);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBlockedClientList(@NonNull java.util.List<android.net.MacAddress>);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBridgedModeOpportunisticShutdownEnabled(boolean);
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBridgedModeOpportunisticShutdownTimeoutMillis(long);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBssid(@Nullable android.net.MacAddress);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setChannel(int, int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setChannels(@NonNull android.util.SparseIntArray);
