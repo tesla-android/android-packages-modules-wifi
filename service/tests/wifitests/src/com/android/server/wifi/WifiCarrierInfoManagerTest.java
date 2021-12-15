@@ -51,6 +51,7 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.pps.Credential;
 import android.os.Handler;
+import android.os.ParcelUuid;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.os.test.TestLooper;
@@ -118,6 +119,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     private static final String TEST_PACKAGE = "com.test12345";
     private static final String ANONYMOUS_IDENTITY = "anonymous@wlan.mnc456.mcc123.3gppnetwork.org";
     private static final String CARRIER_NAME = "Google";
+    private static final ParcelUuid GROUP_UUID = ParcelUuid
+            .fromString("0000110B-0000-1000-8000-00805F9B34FB");
 
     @Mock CarrierConfigManager mCarrierConfigManager;
     @Mock WifiContext mContext;
@@ -251,6 +254,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(TelephonyManager.SIM_STATE_LOADED);
         when(mSubscriptionManager.getActiveSubscriptionIdList())
                 .thenReturn(new int[]{DATA_SUBID, NON_DATA_SUBID});
+        when(mSubscriptionManager.getSubscriptionsInGroup(GROUP_UUID)).thenReturn(mSubInfoList);
 
         // setup resource strings for IMSI protection notification.
         when(mResources.getString(eq(R.string.wifi_suggestion_imsi_privacy_title), anyString()))
@@ -2193,5 +2197,11 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         captor.getValue().onDataEnabledChanged(false, DATA_ENABLED_REASON_CARRIER);
         verify(mOnCarrierOffloadDisabledListener, times(2))
                 .onCarrierOffloadDisabled(DATA_SUBID, true);
+    }
+
+    @Test
+    public void testGetActiveSubsctionIdInGroup() {
+        assertEquals(DATA_SUBID, mWifiCarrierInfoManager
+                .getActiveSubscriptionIdInGroup(GROUP_UUID));
     }
 }

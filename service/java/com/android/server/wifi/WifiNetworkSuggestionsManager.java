@@ -1126,6 +1126,19 @@ public class WifiNetworkSuggestionsManager {
                     return false;
                 }
             }
+            if (!SdkLevel.isAtLeastT()) {
+                if (wns.wifiConfiguration.getSubscriptionGroup() != null) {
+                    Log.e(TAG, "Setting subscription group is only allowed from Android T.");
+                    return false;
+                }
+            }
+            if (wns.wifiConfiguration.getSubscriptionGroup() != null
+                    && wns.wifiConfiguration.subscriptionId
+                    != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                Log.e(TAG, "Setting both subscription group and subscription id are not "
+                        + "allowed.");
+                return false;
+            }
         }
         return true;
     }
@@ -1143,7 +1156,8 @@ public class WifiNetworkSuggestionsManager {
             // Carrier merged network must be metered.
             return false;
         }
-        if (wns.wifiConfiguration.subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+        if (wns.wifiConfiguration.subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                && wns.wifiConfiguration.getSubscriptionGroup() == null) {
             // Carrier merged network must have a valid subscription Id.
             return false;
         }
@@ -1163,7 +1177,7 @@ public class WifiNetworkSuggestionsManager {
             WifiConfiguration wifiConfiguration = suggestion.wifiConfiguration;
             PasspointConfiguration passpointConfiguration = suggestion.passpointConfiguration;
             if (wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
-                    wifiConfiguration.subscriptionId, packageName)) {
+                    wifiConfiguration, packageName)) {
                 // Carrier must be explicitly configured as merged carrier offload enabled
                 return false;
             }
@@ -1171,27 +1185,19 @@ public class WifiNetworkSuggestionsManager {
                     ==  TelephonyManager.UNKNOWN_CARRIER_ID) {
                 // If an app doesn't have carrier privileges or carrier provisioning permission,
                 // suggests SIM-based network, sets CarrierId and sets SubscriptionId are illegal.
+                if (wifiConfiguration.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
+                    return false;
+                }
+                if (wifiConfiguration.subscriptionId
+                        != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    return false;
+                }
                 if (passpointConfiguration == null) {
-                    if (wifiConfiguration.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
-                        return false;
-                    }
-                    if (wifiConfiguration.subscriptionId
-                            != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                        return false;
-                    }
                     if (wifiConfiguration.enterpriseConfig != null
                             && wifiConfiguration.enterpriseConfig.isAuthenticationSimBased()) {
                         return false;
                     }
                 } else {
-                    if (passpointConfiguration.getCarrierId()
-                            != TelephonyManager.UNKNOWN_CARRIER_ID) {
-                        return false;
-                    }
-                    if (passpointConfiguration.getSubscriptionId()
-                            != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                        return false;
-                    }
                     if (passpointConfiguration.getCredential() != null
                             && passpointConfiguration.getCredential().getSimCredential() != null) {
                         return false;
@@ -1200,8 +1206,13 @@ public class WifiNetworkSuggestionsManager {
             } else {
                 int carrierId = isCrossCarrierProvisioner ? wifiConfiguration.carrierId
                         : provisionerCarrierId;
-                int subId = passpointConfiguration == null ? wifiConfiguration.subscriptionId
-                        : passpointConfiguration.getSubscriptionId();
+                int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+                if (wifiConfiguration.getSubscriptionGroup() != null) {
+                    subId = mWifiCarrierInfoManager.getActiveSubscriptionIdInGroup(
+                            wifiConfiguration.getSubscriptionGroup());
+                } else {
+                    subId = wifiConfiguration.subscriptionId;
+                }
                 if (!mWifiCarrierInfoManager
                         .isSubIdMatchingCarrierId(subId, carrierId)) {
                     Log.e(TAG, "Subscription ID doesn't match the carrier. CarrierId:"
@@ -1679,7 +1690,7 @@ public class WifiNetworkSuggestionsManager {
                 continue;
             }
             if (ewns.wns.wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
-                    ewns.wns.wifiConfiguration.subscriptionId, ewns.perAppInfo.packageName)) {
+                    ewns.wns.wifiConfiguration, ewns.perAppInfo.packageName)) {
                 continue;
             }
             if (isSimBasedSuggestion(ewns)) {
@@ -1729,7 +1740,7 @@ public class WifiNetworkSuggestionsManager {
                 continue;
             }
             if (ewns.wns.wifiConfiguration.carrierMerged && !areCarrierMergedSuggestionsAllowed(
-                    ewns.wns.wifiConfiguration.subscriptionId, ewns.perAppInfo.packageName)) {
+                    ewns.wns.wifiConfiguration, ewns.perAppInfo.packageName)) {
                 continue;
             }
             if (isSimBasedSuggestion(ewns)) {
@@ -1840,7 +1851,7 @@ public class WifiNetworkSuggestionsManager {
                     continue;
                 }
                 if (config.carrierMerged && !areCarrierMergedSuggestionsAllowed(
-                        config.subscriptionId, ewns.perAppInfo.packageName)) {
+                        config, ewns.perAppInfo.packageName)) {
                     continue;
                 }
                 WifiConfiguration wCmWifiConfig = wifiConfigMap.get(config.getProfileKey());
@@ -2594,9 +2605,15 @@ public class WifiNetworkSuggestionsManager {
         listenersTracker.finishBroadcast();
     }
 
-    private boolean areCarrierMergedSuggestionsAllowed(int subId, String packageName) {
+    private boolean areCarrierMergedSuggestionsAllowed(WifiConfiguration config,
+            String packageName) {
         if (isAppWorkingAsCrossCarrierProvider(packageName)) {
             return true;
+        }
+        int subId = config.subscriptionId;
+        if (config.getSubscriptionGroup() != null) {
+            subId = mWifiCarrierInfoManager.getActiveSubscriptionIdInGroup(
+                    config.getSubscriptionGroup());
         }
 
         return mWifiCarrierInfoManager.areMergedCarrierWifiNetworksAllowed(subId);

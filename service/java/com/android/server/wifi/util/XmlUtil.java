@@ -34,6 +34,7 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiMigration;
+import android.os.ParcelUuid;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
@@ -375,6 +376,7 @@ public class XmlUtil {
         public static final String XML_TAG_IS_ADDED_BY_AUTO_UPGRADE = "IsAddedByAutoUpgrade";
         private static final String XML_TAG_IS_MOST_RECENTLY_CONNECTED = "IsMostRecentlyConnected";
         private static final String XML_TAG_IS_RESTRICTED = "IsRestricted";
+        private static final String XML_TAG_SUBSCRIPTION_GROUP = "SubscriptionGroup";
 
         /**
          * Write WepKeys to the XML stream.
@@ -577,6 +579,10 @@ public class XmlUtil {
             XmlUtil.writeNextValue(out, XML_TAG_IS_MOST_RECENTLY_CONNECTED,
                     configuration.isMostRecentlyConnected);
             XmlUtil.writeNextValue(out, XML_TAG_SUBSCRIPTION_ID, configuration.subscriptionId);
+            if (configuration.getSubscriptionGroup() != null) {
+                XmlUtil.writeNextValue(out, XML_TAG_SUBSCRIPTION_GROUP,
+                        configuration.getSubscriptionGroup().toString());
+            }
         }
 
         /**
@@ -848,6 +854,10 @@ public class XmlUtil {
                             break;
                         case XML_TAG_IS_RESTRICTED:
                             configuration.restricted = (boolean) value;
+                            break;
+                        case XML_TAG_SUBSCRIPTION_GROUP:
+                            configuration.setSubscriptionGroup(
+                                    ParcelUuid.fromString((String) value));
                             break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);

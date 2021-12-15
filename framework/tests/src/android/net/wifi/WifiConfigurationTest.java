@@ -48,6 +48,7 @@ import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiConfiguration.PairwiseCipher;
 import android.net.wifi.WifiConfiguration.Protocol;
 import android.os.Parcel;
+import android.os.ParcelUuid;
 import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
@@ -113,6 +114,7 @@ public class WifiConfigurationTest {
         config.subscriptionId = 1;
         config.carrierId = 1189;
         config.restricted = true;
+        config.setSubscriptionGroup(ParcelUuid.fromString("0000110B-0000-1000-8000-00805F9B34FB"));
         Parcel parcelW = Parcel.obtain();
         config.writeToParcel(parcelW, 0);
         byte[] bytes = parcelW.marshall();
@@ -135,6 +137,7 @@ public class WifiConfigurationTest {
         assertTrue(reconfig.carrierMerged);
         assertEquals(config.carrierId, reconfig.carrierId);
         assertEquals(config.subscriptionId, reconfig.subscriptionId);
+        assertEquals(config.getSubscriptionGroup(), reconfig.getSubscriptionGroup());
         assertTrue(reconfig.restricted);
 
         Parcel parcelWW = Parcel.obtain();
