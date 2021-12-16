@@ -42,6 +42,7 @@ import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
 import android.net.MacAddress;
+import android.net.ProxyInfo;
 import android.net.wifi.WifiConfiguration.GroupCipher;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
@@ -587,6 +588,14 @@ public class WifiConfigurationTest {
             maxReason = Math.max(maxReason, reason);
         }
         assertEquals(maxReason, NetworkSelectionStatus.getMaxNetworkSelectionDisableReason());
+    }
+
+    @Test
+    public void testSetHttpProxyShouldNotCrashOnBadInput() {
+        ProxyInfo badHttpProxy = new ProxyInfo((ProxyInfo) null);
+
+        WifiConfiguration wifiConfiguration = new WifiConfiguration();
+        wifiConfiguration.setHttpProxy(badHttpProxy);
     }
 
     /**
