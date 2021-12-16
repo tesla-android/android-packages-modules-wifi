@@ -748,7 +748,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
     private NetworkParams prepareNetworkParams(boolean isMetered,
             SoftApConfiguration config) {
         NetworkParams nwParams = new NetworkParams();
-        ArrayList<Byte> ssid = NativeUtil.stringToByteArrayList(config.getSsid());
+        ArrayList<Byte> ssid = NativeUtil.byteArrayToArrayList(config.getWifiSsid().getBytes());
         nwParams.ssid = new byte[ssid.size()];
         for (int i = 0; i < ssid.size(); i++) {
             nwParams.ssid[i] = ssid.get(i);

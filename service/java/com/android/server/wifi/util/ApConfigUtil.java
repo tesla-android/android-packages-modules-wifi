@@ -600,6 +600,9 @@ public class ApConfigUtil {
             @NonNull WifiConfiguration wifiConfig) {
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder();
         try {
+            // WifiConfiguration#SSID uses a formatted string with double quotes for UTF-8 and no
+            // quotes for hexadecimal. But to support legacy behavior, we need to continue
+            // setting the entire string with quotes as the UTF-8 SSID.
             configBuilder.setSsid(wifiConfig.SSID);
             if (wifiConfig.getAuthType() == WifiConfiguration.KeyMgmt.WPA2_PSK) {
                 configBuilder.setPassphrase(wifiConfig.preSharedKey,
@@ -845,7 +848,7 @@ public class ApConfigUtil {
      */
     public static boolean checkConfigurationChangeNeedToRestart(
             SoftApConfiguration currentConfig, SoftApConfiguration newConfig) {
-        return !Objects.equals(currentConfig.getSsid(), newConfig.getSsid())
+        return !Objects.equals(currentConfig.getWifiSsid(), newConfig.getWifiSsid())
                 || !Objects.equals(currentConfig.getBssid(), newConfig.getBssid())
                 || currentConfig.getSecurityType() != newConfig.getSecurityType()
                 || !Objects.equals(currentConfig.getPassphrase(), newConfig.getPassphrase())

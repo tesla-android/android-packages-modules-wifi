@@ -74,11 +74,13 @@ public class SoftApConfigurationTest {
     @Test
     public void testBasicSettings() {
         MacAddress testBssid = MacAddress.fromString(TEST_BSSID);
+        String utf8Ssid = "ssid";
         SoftApConfiguration original = new SoftApConfiguration.Builder()
-                .setSsid("ssid")
+                .setSsid(utf8Ssid)
                 .setBssid(testBssid)
                 .build();
-        assertThat(original.getSsid()).isEqualTo("ssid");
+        assertThat(original.getSsid()).isEqualTo(utf8Ssid);
+        assertThat(original.getWifiSsid()).isEqualTo(WifiSsid.fromUtf8Text(utf8Ssid));
         assertThat(original.getBssid()).isEqualTo(testBssid);
         assertThat(original.getPassphrase()).isNull();
         assertThat(original.getSecurityType()).isEqualTo(SoftApConfiguration.SECURITY_TYPE_OPEN);
@@ -110,6 +112,8 @@ public class SoftApConfigurationTest {
 
     @Test
     public void testSetWifiSsid() {
+        assumeTrue(SdkLevel.isAtLeastT());
+
         // UTF-8
         WifiSsid wifiSsidUtf8 = WifiSsid.fromUtf8Text("ssid");
         SoftApConfiguration utf8Config = new SoftApConfiguration.Builder()

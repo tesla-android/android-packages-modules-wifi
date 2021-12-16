@@ -33,6 +33,7 @@ import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiMigration;
+import android.net.wifi.WifiSsid;
 import android.util.SparseIntArray;
 import android.util.Xml;
 
@@ -63,6 +64,7 @@ import java.util.ArrayList;
 @SmallTest
 public class SoftApStoreDataTest extends WifiBaseTest {
     private static final String TEST_SSID = "SSID";
+    private static final WifiSsid TEST_WIFI_SSID = WifiSsid.fromUtf8Text(TEST_SSID);
     private static final String TEST_BSSID = "aa:22:33:aa:bb:cc";
     private static final String TEST_PASSPHRASE = "TestPassphrase";
     private static final String TEST_WPA2_PASSPHRASE = "Wpa2Test";
@@ -99,7 +101,17 @@ public class SoftApStoreDataTest extends WifiBaseTest {
     private static final boolean TEST_USER_CONFIGURATION = false;
 
     private static final String TEST_CONFIG_STRING_FROM_WIFICONFIGURATION =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
+                    + "<int name=\"Band\" value=\"" + TEST_OLD_BAND + "\" />\n"
+                    + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
+                    + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
+                    + "<int name=\"SecurityType\" value=\"" + TEST_SECURITY + "\" />\n"
+                    + "<string name=\"Wpa2Passphrase\">" + TEST_WPA2_PASSPHRASE + "</string>\n";
+
+    private static final String TEST_CONFIG_STRING_WITH_OLD_SSID_DESIGN =
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<int name=\"Band\" value=\"" + TEST_OLD_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
@@ -107,7 +119,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<string name=\"Wpa2Passphrase\">" + TEST_WPA2_PASSPHRASE + "</string>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_NEW_BAND_DESIGN_IN_R =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<int name=\"ApBand\" value=\"" + TEST_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
@@ -115,7 +128,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<string name=\"Passphrase\">" + TEST_PASSPHRASE + "</string>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<string name=\"Bssid\">" + TEST_BSSID + "</string>\n"
                     + "<int name=\"ApBand\" value=\"" + TEST_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
@@ -138,7 +152,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "</AllowedClientList>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R_EXCEPT_AUTO_SHUTDOWN =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<int name=\"ApBand\" value=\"" + TEST_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
@@ -158,7 +173,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "</AllowedClientList>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_INT_TYPE_SHUTDOWNTIMOUTMILLIS =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<int name=\"ApBand\" value=\"" + TEST_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
@@ -180,7 +196,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "</AllowedClientList>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R_EXCEPT_BSSID =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<int name=\"ApBand\" value=\"" + TEST_BAND + "\" />\n"
                     + "<int name=\"Channel\" value=\"" + TEST_CHANNEL + "\" />\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
@@ -202,7 +219,8 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "</AllowedClientList>\n";
 
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION =
-            "<string name=\"SSID\">" + TEST_SSID + "</string>\n"
+            "<string name=\"WifiSsid\">"
+                    + TEST_WIFI_SSID.toString().replace("\"", "&quot;") + "</string>\n"
                     + "<string name=\"Bssid\">" + TEST_BSSID + "</string>\n"
                     + "<boolean name=\"HiddenSSID\" value=\"" + TEST_HIDDEN + "\" />\n"
                     + "<int name=\"SecurityType\" value=\"" + TEST_SECURITY + "\" />\n"
@@ -364,6 +382,48 @@ public class SoftApStoreDataTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that the store data is serialized correctly, matches the predefined test XML data
+     * for a non-UTF-8 SSID.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void serializeSoftApNonUtf8() throws Exception {
+
+        SoftApConfiguration.Builder softApConfigBuilder = new SoftApConfiguration.Builder();
+        softApConfigBuilder.setSsid(TEST_SSID);
+        softApConfigBuilder.setBssid(MacAddress.fromString(TEST_BSSID));
+        softApConfigBuilder.setPassphrase(TEST_PASSPHRASE,
+                SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
+        if (SdkLevel.isAtLeastS()) {
+            softApConfigBuilder.setChannels(TEST_CHANNELS);
+        } else {
+            softApConfigBuilder.setBand(TEST_BAND);
+        }
+        softApConfigBuilder.setClientControlByUserEnabled(TEST_CLIENT_CONTROL_BY_USER);
+        softApConfigBuilder.setMaxNumberOfClients(TEST_MAX_NUMBER_OF_CLIENTS);
+        softApConfigBuilder.setAutoShutdownEnabled(true);
+        softApConfigBuilder.setShutdownTimeoutMillis(TEST_SHUTDOWN_TIMEOUT_MILLIS);
+        softApConfigBuilder.setAllowedClientList(TEST_ALLOWEDLIST);
+        softApConfigBuilder.setBlockedClientList(TEST_BLOCKEDLIST);
+        if (SdkLevel.isAtLeastS()) {
+            softApConfigBuilder.setMacRandomizationSetting(TEST_MAC_RANDOMIZATIONSETTING);
+            softApConfigBuilder.setBridgedModeOpportunisticShutdownEnabled(
+                    TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
+            softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
+            softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
+        }
+        when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
+        byte[] actualData = serializeData();
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION, new String(actualData));
+        } else {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R, new String(actualData));
+        }
+    }
+
+
+    /**
      * Verify that the store data is deserialized correctly using the predefined test XML data.
      *
      * @throws Exception
@@ -381,7 +441,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getBssid().toString(), TEST_BSSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
@@ -424,7 +484,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
@@ -438,7 +498,29 @@ public class SoftApStoreDataTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that the old format is deserialized correctly.
+     * Verify that the old format for SSID is deserialized correctly.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void deserializeOldSsidSoftAp() throws Exception {
+        // Start with the old serialized data
+        deserializeData(TEST_CONFIG_STRING_WITH_OLD_SSID_DESIGN.getBytes());
+
+        ArgumentCaptor<SoftApConfiguration> softapConfigCaptor =
+                ArgumentCaptor.forClass(SoftApConfiguration.class);
+        verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
+        SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
+        assertNotNull(softApConfig);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
+        assertEquals(softApConfig.getPassphrase(), TEST_WPA2_PASSPHRASE);
+        assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
+        assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
+        assertEquals(softApConfig.getBand(), TEST_BAND);
+    }
+
+    /**
+     * Verify that the old format for band is deserialized correctly.
      *
      * @throws Exception
      */
@@ -452,7 +534,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getPassphrase(), TEST_WPA2_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
@@ -474,7 +556,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
@@ -507,7 +589,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         SoftApConfiguration softApConfigDeserialized = softapConfigCaptor.getValue();
         assertNotNull(softApConfigDeserialized);
 
-        assertEquals(softApConfig.getSsid(), softApConfigDeserialized.getSsid());
+        assertEquals(softApConfig.getWifiSsid(), softApConfigDeserialized.getWifiSsid());
         assertEquals(softApConfig.getPassphrase(),
                 softApConfigDeserialized.getPassphrase());
         assertEquals(softApConfig.getSecurityType(),
@@ -544,7 +626,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         SoftApConfiguration softApConfigDeserialized = softapConfigCaptor.getValue();
         assertNotNull(softApConfigDeserialized);
 
-        assertEquals(softApConfig.getSsid(), softApConfigDeserialized.getSsid());
+        assertEquals(softApConfig.getWifiSsid(), softApConfigDeserialized.getWifiSsid());
         assertEquals(softApConfig.getPassphrase(),
                 softApConfigDeserialized.getPassphrase());
         assertEquals(softApConfig.getSecurityType(),
@@ -581,7 +663,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         SoftApConfiguration softApConfigDeserialized = softapConfigCaptor.getValue();
         assertNotNull(softApConfigDeserialized);
 
-        assertEquals(softApConfig.getSsid(), softApConfigDeserialized.getSsid());
+        assertEquals(softApConfig.getWifiSsid(), softApConfigDeserialized.getWifiSsid());
         assertEquals(softApConfig.getPassphrase(),
                 softApConfigDeserialized.getPassphrase());
         assertEquals(softApConfig.getSecurityType(),
@@ -610,7 +692,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertTrue(softApConfig.isAutoShutdownEnabled());
 
         // Toggle off when migrating.
@@ -620,7 +702,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource, times(2)).fromDeserialized(softapConfigCaptor.capture());
         softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertFalse(softApConfig.isAutoShutdownEnabled());
     }
 
@@ -639,7 +721,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertEquals(softApConfig.isHiddenSsid(), TEST_HIDDEN);
@@ -667,7 +749,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getBssid().toString(), TEST_BSSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
@@ -701,7 +783,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         verify(mDataSource).fromDeserialized(softapConfigCaptor.capture());
         SoftApConfiguration softApConfig = softapConfigCaptor.getValue();
         assertNotNull(softApConfig);
-        assertEquals(softApConfig.getSsid(), TEST_SSID);
+        assertEquals(softApConfig.getWifiSsid(), TEST_WIFI_SSID);
         assertEquals(softApConfig.getBssid().toString(), TEST_BSSID);
         assertEquals(softApConfig.getPassphrase(), TEST_PASSPHRASE);
         assertEquals(softApConfig.getSecurityType(), SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);

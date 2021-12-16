@@ -60,10 +60,6 @@ public class WifiApConfigStore {
     private static final int RAND_SSID_INT_MAX = 9999;
 
     @VisibleForTesting
-    static final int SSID_MIN_LEN = 1;
-    @VisibleForTesting
-    static final int SSID_MAX_LEN = 32;
-    @VisibleForTesting
     static final int PSK_MIN_LEN = 8;
     @VisibleForTesting
     static final int PSK_MAX_LEN = 63;
@@ -466,7 +462,9 @@ public class WifiApConfigStore {
                 return configBuilder.build();
             }
 
-            MacAddress macAddress = mMacAddressUtil.calculatePersistentMac(config.getSsid(),
+            WifiSsid ssid = config.getWifiSsid();
+            MacAddress macAddress = mMacAddressUtil.calculatePersistentMac(
+                    ssid != null ? ssid.toString() : null,
                     mMacAddressUtil.obtainMacRandHashFunctionForSap(Process.WIFI_UID));
             if (macAddress == null) {
                 Log.e(TAG, "Failed to calculate MAC from SSID. "
@@ -500,8 +498,8 @@ public class WifiApConfigStore {
     /**
      * Validate a SoftApConfiguration is properly configured for use by SoftApManager.
      *
-     * This method checks the length of the SSID and for consistency between security settings (if
-     * it requires a password, was one provided?).
+     * This method checks for consistency between security settings (if it requires a password, was
+     * one provided?).
      *
      * @param apConfig {@link SoftApConfiguration} to use for softap mode
      * @param isPrivileged indicate the caller can pass some fields check or not

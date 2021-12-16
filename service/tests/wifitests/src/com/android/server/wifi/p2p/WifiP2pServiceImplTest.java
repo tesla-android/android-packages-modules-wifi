@@ -152,6 +152,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private BroadcastReceiver mLocationModeReceiver;
     private BroadcastReceiver mWifiStateChangedReceiver;
     private BroadcastReceiver mTetherStateReceiver;
+    private BroadcastReceiver mUserRestrictionReceiver;
     private Handler mClientHandler;
     private Messenger mP2pStateMachineMessenger;
     private Messenger mClientMessenger;
@@ -168,6 +169,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private ArgumentCaptor<Message> mMessageCaptor = ArgumentCaptor.forClass(Message.class);
     private MockitoSession mStaticMockSession = null;
 
+    @Mock Bundle mBundle;
     @Mock Context mContext;
     @Mock FrameworkFacade mFrameworkFacade;
     @Mock HandlerThread mHandlerThread;
@@ -894,6 +896,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         }
         when(mWifiNative.setupInterface(any(), any(), any())).thenReturn(IFACE_NAME_P2P);
         when(mWifiNative.p2pGetDeviceAddress()).thenReturn(thisDeviceMac);
+        when(mUserManager.getUserRestrictions()).thenReturn(mBundle);
+        if (SdkLevel.isAtLeastT()) {
+            when(mBundle.getBoolean(UserManager.DISALLOW_WIFI_DIRECT)).thenReturn(false);
+        }
         doAnswer(new AnswerWithArguments() {
             public boolean answer(WifiP2pGroupList groups) {
                 groups.clear();
@@ -925,8 +931,15 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             // * WifiManager.WIFI_STATE_CHANGED_ACTION
             // * LocationManager.MODE_CHANGED_ACTION
             // * TetheringManager.ACTION_TETHER_STATE_CHANGED
-            verify(mContext, times(3)).registerReceiver(mBcastRxCaptor.capture(),
-                    any(IntentFilter.class));
+            // * UserManager.ACTION_USER_RESTRICTIONS_CHANGED
+            if (SdkLevel.isAtLeastT()) {
+                verify(mContext, times(4)).registerReceiver(mBcastRxCaptor.capture(),
+                        any(IntentFilter.class));
+                mUserRestrictionReceiver = mBcastRxCaptor.getAllValues().get(3);
+            } else {
+                verify(mContext, times(3)).registerReceiver(mBcastRxCaptor.capture(),
+                        any(IntentFilter.class));
+            }
             mWifiStateChangedReceiver = mBcastRxCaptor.getAllValues().get(0);
             mLocationModeReceiver = mBcastRxCaptor.getAllValues().get(1);
             mTetherStateReceiver = mBcastRxCaptor.getAllValues().get(2);
@@ -1047,6 +1060,30 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
         verify(mWifiNative, times(2)).setupInterface(any(), any(), any());
         verify(mNetdWrapper, times(2)).setInterfaceUp(anyString());
+    }
+
+    /**
+     * Verify that p2p will teardown /won't init when DISALLOW_WIFI_DIRECT user restriction is set
+     */
+    @Test
+    public void checkIsP2pInitForUserRestrictionChanges() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        forceP2pEnabled(mClient1);
+
+        // p2p interface disabled when user restriction is set
+        when(mBundle.getBoolean(UserManager.DISALLOW_WIFI_DIRECT)).thenReturn(true);
+        Intent intent = new Intent(UserManager.ACTION_USER_RESTRICTIONS_CHANGED);
+        mUserRestrictionReceiver.onReceive(mContext, intent);
+        mLooper.dispatchAll();
+        verify(mWifiNative).teardownInterface();
+        verify(mWifiMonitor).stopMonitoring(anyString());
+        // Force to back disable state for next test
+        mockEnterDisabledState();
+
+        // p2p interface won't initialize when user restriction is set
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
+        verify(mWifiNative, times(1)).setupInterface(any(), any(), any());
+        verify(mNetdWrapper, times(1)).setInterfaceUp(anyString());
     }
 
     /**
@@ -3886,7 +3923,6 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // Move to enabled state
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_PENDING_FACTORY_RESET))).thenReturn(true);
         forceP2pEnabled(mClient1);
-        verify(mWifiInjector, times(2)).getUserManager();
         verify(mPackageManager, times(2)).getNameForUid(anyInt());
         verify(mWifiPermissionsUtil, times(2)).checkNetworkSettingsPermission(anyInt());
         verify(mUserManager, times(2)).hasUserRestrictionForUser(

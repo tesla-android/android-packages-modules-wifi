@@ -3607,22 +3607,22 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
 
         // Scan results have increasing RSSI.
         scanResults[0].SSID = ssid1;
-        scanResults[0].wifiSsid = WifiSsid.fromUtf8Text(ssid1);
+        scanResults[0].setWifiSsid(WifiSsid.fromUtf8Text(ssid1));
         scanResults[0].BSSID = TEST_BSSID_1;
         scanResults[0].capabilities = caps;
         scanResults[0].level = -45;
         scanResults[1].SSID = ssid2;
-        scanResults[1].wifiSsid = WifiSsid.fromUtf8Text(ssid2);
+        scanResults[1].setWifiSsid(WifiSsid.fromUtf8Text(ssid2));
         scanResults[1].BSSID = TEST_BSSID_2;
         scanResults[1].capabilities = caps;
         scanResults[1].level = -35;
         scanResults[2].SSID = ssid3;
-        scanResults[2].wifiSsid = WifiSsid.fromUtf8Text(ssid3);
+        scanResults[2].setWifiSsid(WifiSsid.fromUtf8Text(ssid3));
         scanResults[2].BSSID = TEST_BSSID_3;
         scanResults[2].capabilities = caps;
         scanResults[2].level = -25;
         scanResults[3].SSID = ssid4;
-        scanResults[3].wifiSsid = WifiSsid.fromUtf8Text(ssid4);
+        scanResults[3].setWifiSsid(WifiSsid.fromUtf8Text(ssid4));
         scanResults[3].BSSID = TEST_BSSID_4;
         scanResults[3].capabilities = caps;
         scanResults[3].level = -15;
@@ -3752,6 +3752,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
         for (int i = 0; i < ssids.length; i++) {
             for (int j = i * nums; j < (i + 1) * nums; j++) {
                 scanResults[j].SSID = ssids[i];
+                scanResults[j].setWifiSsid(WifiSsid.fromUtf8Text(ssids[i]));
                 scanResults[j].BSSID = baseBssid + Integer.toHexString(16 + j);
                 scanResults[j].capabilities = caps;
                 scanResults[j].level = -45;
