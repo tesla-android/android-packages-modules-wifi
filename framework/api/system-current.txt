@@ -220,6 +220,7 @@ package android.net.wifi {
   }
 
   public final class ScanResult implements android.os.Parcelable {
+    method public void setWifiSsid(@NonNull android.net.wifi.WifiSsid);
     field public static final int CIPHER_BIP_CMAC_256 = 9; // 0x9
     field public static final int CIPHER_BIP_GMAC_128 = 7; // 0x7
     field public static final int CIPHER_BIP_GMAC_256 = 8; // 0x8

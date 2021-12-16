@@ -17,6 +17,8 @@
 package android.net.wifi;
 
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_LINGER;
 import static android.net.wifi.WifiManager.ActionListener;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
@@ -199,7 +201,10 @@ public class WifiManagerTest {
      */
     private boolean compareWifiAndSoftApConfiguration(
             SoftApConfiguration softApConfig, WifiConfiguration wifiConfig) {
-        if (!Objects.equals(wifiConfig.SSID, softApConfig.getSsid())) {
+        // SoftApConfiguration#toWifiConfiguration() creates a config with an unquoted UTF-8 SSID
+        // instead of the double quoted behavior in the javadoc for WifiConfiguration#SSID. Thus,
+        // we need to compare the wifi config SSID directly with the unquoted UTF-8 text.
+        if (!Objects.equals(wifiConfig.SSID, softApConfig.getWifiSsid().getUtf8Text())) {
             return false;
         }
         if (!Objects.equals(wifiConfig.BSSID, softApConfig.getBssid())) {
@@ -2219,8 +2224,8 @@ public class WifiManagerTest {
         List<WifiNetworkSuggestion> testList = new ArrayList<>();
         when(mWifiService.addNetworkSuggestions(any(List.class), anyString(),
                 nullable(String.class))).thenReturn(STATUS_NETWORK_SUGGESTIONS_SUCCESS);
-        when(mWifiService.removeNetworkSuggestions(any(List.class), anyString())).thenReturn(
-                STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mWifiService.removeNetworkSuggestions(any(List.class), anyString(), anyInt()))
+                .thenReturn(STATUS_NETWORK_SUGGESTIONS_SUCCESS);
         when(mWifiService.getNetworkSuggestions(anyString()))
                 .thenReturn(testList);
 
@@ -2234,7 +2239,18 @@ public class WifiManagerTest {
 
         assertEquals(STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiManager.removeNetworkSuggestions(new ArrayList<>()));
-        verify(mWifiService).removeNetworkSuggestions(anyList(), eq(TEST_PACKAGE_NAME));
+        verify(mWifiService).removeNetworkSuggestions(anyList(), eq(TEST_PACKAGE_NAME),
+                eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
+    }
+
+    @Test
+    public void testRemoveNetworkSuggestionWithAction() throws Exception {
+        when(mWifiService.removeNetworkSuggestions(anyList(), anyString(), anyInt()))
+                .thenReturn(STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        assertEquals(STATUS_NETWORK_SUGGESTIONS_SUCCESS, mWifiManager
+                .removeNetworkSuggestions(new ArrayList<>(), ACTION_REMOVE_SUGGESTION_LINGER));
+        verify(mWifiService).removeNetworkSuggestions(any(List.class),
+                eq(TEST_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_LINGER));
     }
 
     /**

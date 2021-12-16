@@ -181,7 +181,8 @@ public class WifiScanner {
      * This constant is used for {@link ScanSettings#setRnrSetting(int)}.
      * <p>
      * Scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced Neighbor Report (RNR) if the 6Ghz
-     * band is explicitly requested to be scanned. The 6Ghz band is explicitly requested if the
+     * band is explicitly requested to be scanned and the current country code supports scanning
+     * of at least one 6Ghz channel. The 6Ghz band is explicitly requested if the
      * ScanSetting.band parameter is set to one of:
      * <li> {@link #WIFI_BAND_6_GHZ} </li>
      * <li> {@link #WIFI_BAND_24_5_6_GHZ} </li>
@@ -194,7 +195,8 @@ public class WifiScanner {
     /**
      * This constant is used for {@link ScanSettings#setRnrSetting(int)}.
      * <p>
-     * Request to scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced Neighbor Report (RNR).
+     * Request to scan 6Ghz APs co-located with 2.4/5Ghz APs using Reduced Neighbor Report (RNR)
+     * when the current country code supports scanning of at least one 6Ghz channel.
      **/
     public static final int WIFI_RNR_ENABLED = 1;
     /**

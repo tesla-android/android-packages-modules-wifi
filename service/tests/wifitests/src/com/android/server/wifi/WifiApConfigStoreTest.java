@@ -41,7 +41,6 @@ import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.Builder;
 import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiSsid;
 import android.os.Build;
 import android.os.Handler;
 import android.os.test.TestLooper;
@@ -187,7 +186,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     }
 
     private void verifyApConfig(SoftApConfiguration config1, SoftApConfiguration config2) {
-        assertEquals(config1.getSsid(), config2.getSsid());
+        assertEquals(config1.getWifiSsid(), config2.getWifiSsid());
         assertEquals(config1.getPassphrase(), config2.getPassphrase());
         assertEquals(config1.getSecurityType(), config2.getSecurityType());
         assertEquals(config1.getBand(), config2.getBand());
@@ -203,7 +202,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
 
     private void verifyDefaultApConfig(SoftApConfiguration config, String expectedSsid,
             boolean isSaeSupport, boolean isMacRandomizationSupport, boolean isBridgedApSupport) {
-        String[] splitSsid = config.getSsid().split("_");
+        String[] splitSsid = config.getWifiSsid().getUtf8Text().toString().split("_");
         assertEquals(2, splitSsid.length);
         assertEquals(expectedSsid, splitSsid[0]);
         assertEquals(SoftApConfiguration.BAND_2GHZ, config.getBand());
@@ -246,7 +245,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
 
     private void verifyDefaultLocalOnlyApConfig(SoftApConfiguration config, String expectedSsid,
             int expectedApBand, boolean isSaeSupport, boolean isMacRandomizationSupport) {
-        String[] splitSsid = config.getSsid().split("_");
+        String[] splitSsid = config.getWifiSsid().getUtf8Text().toString().split("_");
         assertEquals(2, splitSsid.length);
         assertEquals(expectedSsid, splitSsid[0]);
         assertEquals(expectedApBand, config.getBand());
@@ -678,13 +677,13 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void testSsidVerificationInValidateApWifiConfigurationCheck() {
         Builder configBuilder = new SoftApConfiguration.Builder();
-        configBuilder.setWifiSsid(null);
+        configBuilder.setSsid(null);
         // Invalid due to null SSID.
         assertFalse(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
 
         // SSID is set, so the config is now valid.
-        configBuilder.setWifiSsid(WifiSsid.fromUtf8Text("ssid"));
+        configBuilder.setSsid("ssid");
         assertTrue(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
     }

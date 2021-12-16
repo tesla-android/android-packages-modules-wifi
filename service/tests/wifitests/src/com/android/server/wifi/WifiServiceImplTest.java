@@ -23,6 +23,7 @@ import static android.Manifest.permission.WIFI_UPDATE_COEX_UNSAFE_CHANNELS;
 import static android.net.wifi.WifiAvailableChannel.FILTER_REGULATORY;
 import static android.net.wifi.WifiAvailableChannel.OP_MODE_STA;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
+import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_DIRECT;
@@ -1842,8 +1843,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testStartTetheredHotspotWithUserRestriction() {
         assumeTrue(SdkLevel.isAtLeastT());
-        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_WIFI_TETHERING),
-                any())).thenReturn(true);
+        when(mBundle.getBoolean(UserManager.DISALLOW_WIFI_TETHERING)).thenReturn(true);
+        mWifiServiceImpl.checkAndStartWifi();
+        mLooper.dispatchAll();
         SoftApConfiguration config = createValidSoftApConfiguration();
         mLooper.startAutoDispatch();
         boolean result = mWifiServiceImpl.startTetheredHotspot(config, TEST_PACKAGE_NAME);
@@ -3332,7 +3334,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isEqualTo("customSsid");
+        assertThat(callback.mSoftApConfig.getWifiSsid().getUtf8Text()).isEqualTo("customSsid");
         assertThat(callback.mSoftApConfig.getSecurityType())
                 .isEqualTo(SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
         assertThat(callback.mSoftApConfig.getPassphrase()).isEqualTo("passphrase");
@@ -3358,7 +3360,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isEqualTo("customSsid");
+        assertThat(callback.mSoftApConfig.getWifiSsid().getUtf8Text()).isEqualTo("customSsid");
         assertThat(callback.mSoftApConfig.getSecurityType())
                 .isEqualTo(SoftApConfiguration.SECURITY_TYPE_OPEN);
         assertThat(callback.mSoftApConfig.getPassphrase()).isNull();
@@ -3387,7 +3389,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(any(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertThat(callback.mIsStarted).isTrue();
-        assertThat(callback.mSoftApConfig.getSsid()).isNotEmpty();
+        assertThat(callback.mSoftApConfig.getWifiSsid()).isNotNull();
     }
 
     @Test
@@ -4493,7 +4495,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
             anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
         InOrder inorder = inOrder(mWifiApConfigStore);
-        SoftApConfiguration testConfig = new SoftApConfiguration.Builder().setSsid("test").build();
+        SoftApConfiguration testConfig = new SoftApConfiguration.Builder()
+                .setSsid("test").build();
         byte[] testData = testConfig.toString().getBytes();
         when(mSoftApBackupRestore.retrieveSoftApConfigurationFromBackupData(testData))
                 .thenReturn(testConfig);
@@ -6235,22 +6238,25 @@ public class WifiServiceImplTest extends WifiBaseTest {
      */
     @Test
     public void testRemoveNetworkSuggestions() {
-        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString()))
+        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString(), anyInt()))
                 .thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID);
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
-        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString()))
+        when(mWifiNetworkSuggestionsManager.remove(any(), anyInt(), anyString(),
+                anyInt()))
                 .thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mWifiNetworkSuggestionsManager, times(2)).remove(any(), anyInt(),
-                eq(TEST_PACKAGE_NAME));
+                eq(TEST_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
     }
 
     /**
@@ -6263,11 +6269,26 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         mLooper.startAutoDispatch();
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_INTERNAL,
-                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME));
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                ACTION_REMOVE_SUGGESTION_DISCONNECT));
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mWifiNetworkSuggestionsManager, never()).remove(any(), anyInt(),
-                eq(TEST_PACKAGE_NAME));
+                eq(TEST_PACKAGE_NAME), eq(ACTION_REMOVE_SUGGESTION_DISCONNECT));
+    }
+
+    /**
+     * Ensure that we don't invoke {@link WifiNetworkSuggestionsManager} to remove network
+     * suggestions when the action is invalid.
+     */
+    @Test
+    public void testRemoveNetworkSuggestionsFailureWithInvalidAction() {
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
+                mWifiServiceImpl.removeNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME, 0));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        verify(mWifiNetworkSuggestionsManager, never()).remove(any(), anyInt(),
+                eq(TEST_PACKAGE_NAME), anyInt());
     }
 
     @Test(expected = SecurityException.class)
@@ -8767,7 +8788,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mLohsCallback).onHotspotFailed(ERROR_GENERIC);
     }
-
     /**
      * Registers a soft AP callback, then verifies that the current soft AP state and num clients
      * are sent to caller immediately after callback is registered.

@@ -589,9 +589,12 @@ public class PasspointManager {
         }
         provider.uninstallCertsAndKeys();
         String packageName = provider.getPackageName();
-        // Remove any configs corresponding to the profile in WifiConfigManager.
-        mWifiConfigManager.removePasspointConfiguredNetwork(
-                provider.getWifiConfig().getProfileKey());
+        if (!provider.isFromSuggestion()) {
+            // Remove non-suggestion configs corresponding to the profile in WifiConfigManager.
+            // Suggestion passpoint will be handled by WifiNetworkSuggestionsManager
+            mWifiConfigManager.removePasspointConfiguredNetwork(
+                    provider.getWifiConfig().getProfileKey());
+        }
         String uniqueId = provider.getConfig().getUniqueId();
         mProviders.remove(uniqueId);
         mWifiConfigManager.removeConnectChoiceFromAllNetworks(uniqueId);

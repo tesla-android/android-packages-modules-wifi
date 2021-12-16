@@ -898,7 +898,8 @@ public class HostapdHalHidlImp implements IHostapdHal {
             prepareNetworkParamsV1_2(SoftApConfiguration config) {
         android.hardware.wifi.hostapd.V1_2.IHostapd.NetworkParams nwParamsV1_2 =
                 new android.hardware.wifi.hostapd.V1_2.IHostapd.NetworkParams();
-        nwParamsV1_2.V1_0.ssid.addAll(NativeUtil.stringToByteArrayList(config.getSsid()));
+        nwParamsV1_2.V1_0.ssid.addAll(
+                NativeUtil.byteArrayToArrayList(config.getWifiSsid().getBytes()));
         nwParamsV1_2.V1_0.isHidden = config.isHiddenSsid();
         int encryptionType = getEncryptionType(config);
         nwParamsV1_2.encryptionType = encryptionType;

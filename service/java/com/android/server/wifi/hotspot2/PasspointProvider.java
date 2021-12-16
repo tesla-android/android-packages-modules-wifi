@@ -526,10 +526,17 @@ public class PasspointProvider {
             carrierId = mBestGuessCarrierId;
         }
         wifiConfig.carrierId = carrierId;
-        wifiConfig.subscriptionId =
-                mConfig.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID
-                        ? mWifiCarrierInfoManager.getMatchingSubId(carrierId)
-                        : mConfig.getSubscriptionId();
+        if (mConfig.getSubscriptionGroup() != null) {
+            wifiConfig.setSubscriptionGroup(mConfig.getSubscriptionGroup());
+            wifiConfig.subscriptionId = mWifiCarrierInfoManager
+                    .getActiveSubscriptionIdInGroup(wifiConfig.getSubscriptionGroup());
+        } else {
+            wifiConfig.subscriptionId =
+                    mConfig.getSubscriptionId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                            ? mWifiCarrierInfoManager.getMatchingSubId(carrierId)
+                            : mConfig.getSubscriptionId();
+        }
+
         wifiConfig.carrierMerged = mConfig.isCarrierMerged();
         wifiConfig.oemPaid = mConfig.isOemPaid();
         wifiConfig.oemPrivate = mConfig.isOemPrivate();

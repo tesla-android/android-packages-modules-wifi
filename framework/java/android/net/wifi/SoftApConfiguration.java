@@ -972,7 +972,8 @@ public final class SoftApConfiguration implements Parcelable {
          * @param ssid SSID of valid Unicode characters, or null to have the SSID automatically
          *             chosen by the framework.
          * @return Builder for chaining.
-         * @throws IllegalArgumentException when the SSID is empty or not valid Unicode.
+         * @throws IllegalArgumentException when the SSID is empty, not unicode, or if the byte
+         *                                  representation is longer than 32 bytes.
          *
          * @deprecated Use {@link #setWifiSsid(WifiSsid)} instead.
          */
@@ -1001,7 +1002,11 @@ public final class SoftApConfiguration implements Parcelable {
          * @return Builder for chaining.
          */
         @NonNull
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
         public Builder setWifiSsid(@Nullable WifiSsid wifiSsid) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
             mWifiSsid = wifiSsid;
             return this;
         }

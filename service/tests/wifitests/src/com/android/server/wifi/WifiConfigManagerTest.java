@@ -1915,8 +1915,8 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         ScanDetail eapSuiteBNetworkScanDetail = createScanDetailForNetwork(eapSuiteBNetwork);
 
         // Now mix and match parameters from different scan details.
-        openNetworkScanDetail.getScanResult().SSID =
-                wepNetworkScanDetail.getScanResult().SSID;
+        openNetworkScanDetail.getScanResult().setWifiSsid(
+                wepNetworkScanDetail.getScanResult().getWifiSsid());
         wepNetworkScanDetail.getScanResult().capabilities =
                 pskNetworkScanDetail.getScanResult().capabilities;
         pskNetworkScanDetail.getScanResult().capabilities =

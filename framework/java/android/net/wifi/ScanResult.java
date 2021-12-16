@@ -48,14 +48,40 @@ import java.util.Objects;
 public final class ScanResult implements Parcelable {
     /**
      * The network name.
+     *
+     * @deprecated Use {@link #getWifiSsid()} instead.
      */
+    @Deprecated
     public String SSID;
 
     /**
      * Ascii encoded SSID. This will replace SSID when we deprecate it. @hide
+     *
+     * @deprecated Use {@link #getWifiSsid()} instead.
      */
-    @UnsupportedAppUsage
+    @Deprecated
+    @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.S,
+            publicAlternatives = "{@link #getWifiSsid()}")
     public WifiSsid wifiSsid;
+
+    /**
+     * Set the SSID of the access point.
+     * @hide
+     */
+    @SystemApi
+    public void setWifiSsid(@NonNull WifiSsid ssid) {
+        wifiSsid = ssid;
+        CharSequence utf8Text = wifiSsid.getUtf8Text();
+        SSID = utf8Text != null ? utf8Text.toString() : WifiManager.UNKNOWN_SSID;
+    }
+
+    /**
+     * The SSID of the access point.
+     */
+    @Nullable
+    public WifiSsid getWifiSsid() {
+        return wifiSsid;
+    }
 
     /**
      * The address of the access point.
