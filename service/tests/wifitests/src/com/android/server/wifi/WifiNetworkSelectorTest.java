@@ -121,6 +121,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         mThroughputScorer = new ThroughputScorer(mScoringParams);
         when(mWifiInjector.getActiveModeWarden()).thenReturn(mActiveModeWarden);
         when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
+        when(mWifiGlobals.getWifiLowConnectedScoreThresholdToTriggerScanForMbb()).thenReturn(
+                ConnectedScore.WIFI_TRANSITION_SCORE);
         when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
         if (WifiNetworkSelector.PRESET_CANDIDATE_SCORER_NAME.equals(
                 mThroughputScorer.getIdentifier())) {
@@ -335,6 +337,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         when(mWifiInfo.getNetworkId()).thenReturn(WifiConfiguration.INVALID_NETWORK_ID);
         when(mWifiInfo.getBSSID()).thenReturn(null);
         when(mWifiInfo.isUsable()).thenReturn(true);
+        when(mWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_INITIAL_SCORE);
         when(mSecondaryWifiInfo.isUsable()).thenReturn(true);
     }
 
@@ -367,6 +370,29 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         // verify the current network is no longer sufficient after setting "isUsable" to false.
         when(mWifiInfo.isUsable()).thenReturn(false);
         assertFalse(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
+    }
+
+    @Test
+    public void testNetworkInsufficientWhenLowAospScore() {
+        // mock current network to be connected
+        WifiConfiguration testConfig = WifiConfigurationTestUtil.createOpenNetwork();
+        when(mWifiInfo.getSupplicantState()).thenReturn(SupplicantState.COMPLETED);
+        when(mWifiConfigManager.getConfiguredNetwork(anyInt()))
+                .thenReturn(testConfig);
+        when(mWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_TRANSITION_SCORE);
+
+        // verify the current network is sufficient
+        assertTrue(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
+
+        // verify the current network is no longer sufficient after the score drops below
+        // WIFI_TRANSITION_SCORE.
+        when(mWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_TRANSITION_SCORE - 1);
+        assertFalse(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
+
+        // verify that when the external scorer is used, aosp score no longer affect network
+        // selection.
+        when(mWifiGlobals.isUsingExternalScorer()).thenReturn(true);
+        assertTrue(mWifiNetworkSelector.isNetworkSufficient(mWifiInfo));
     }
 
     /**
@@ -671,7 +697,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         // Do network selection.
         List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
                 scanDetails, blocklist,
-                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, true, false, mWifiInfo)),
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
                 false, true, true, false);
         WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
         verify(mWifiMetrics).incrementNetworkSelectionFilteredBssidCount(0);
@@ -2049,6 +2075,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         when(mWifiInfo.is5GHz()).thenReturn(true);
         when(mWifiInfo.getFrequency()).thenReturn(5000);
         when(mWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi5G + 2);
+        when(mWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_MAX_SCORE);
         when(mWifiInfo.getSuccessfulRxPacketsPerSecond())
                 .thenReturn(mMinPacketRateActiveTraffic + 1.0);
 
@@ -2060,6 +2087,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         when(mSecondaryWifiInfo.is5GHz()).thenReturn(true);
         when(mSecondaryWifiInfo.getFrequency()).thenReturn(5000);
         when(mSecondaryWifiInfo.getRssi()).thenReturn(mThresholdQualifiedRssi5G + 2);
+        when(mSecondaryWifiInfo.getScore()).thenReturn(ConnectedScore.WIFI_MAX_SCORE);
         when(mSecondaryWifiInfo.getSuccessfulRxPacketsPerSecond())
                 .thenReturn(mMinPacketRateActiveTraffic + 1.0);
 

@@ -284,6 +284,14 @@ public class WifiNetworkSelector {
             return false;
         }
 
+        // External scorer is not being used, and the current network's score is below the
+        // sufficient score threshold configured for the AOSP scorer.
+        if (!mWifiGlobals.isUsingExternalScorer()
+                && wifiInfo.getScore()
+                < mWifiGlobals.getWifiLowConnectedScoreThresholdToTriggerScanForMbb()) {
+            return false;
+        }
+
         // OEM paid/private networks are only available to system apps, so this is never sufficient.
         if (network.oemPaid || network.oemPrivate) {
             localLog("Current network is oem paid/private");
