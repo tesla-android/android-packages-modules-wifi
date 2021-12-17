@@ -731,6 +731,14 @@ public class ActiveModeWarden {
     }
 
     /**
+     * Checks if a CMM can be started for MBB.
+     */
+    public boolean canRequestSecondaryTransientClientModeManager() {
+        return canRequestMoreClientModeManagersInRole(INTERNAL_REQUESTOR_WS,
+                ROLE_CLIENT_SECONDARY_TRANSIENT);
+    }
+
+    /**
      * Remove the provided client manager.
      */
     public void removeClientModeManager(ClientModeManager clientModeManager) {
