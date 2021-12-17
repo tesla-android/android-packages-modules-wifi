@@ -22,6 +22,7 @@ import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGI
 
 import android.annotation.Nullable;
 import android.app.AlertDialog;
+import android.app.BroadcastOptions;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -996,7 +997,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                          * - service discovery
                          * - group joining scan in native service
                          */
-                        if (!mWifiPermissionsUtil.isLocationModeEnabled()) {
+                        if (!mWifiPermissionsUtil.isLocationModeEnabled()
+                                && !SdkLevel.isAtLeastT()) {
                             sendMessage(WifiP2pManager.STOP_DISCOVERY);
                         }
                     }
@@ -3803,6 +3805,20 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
             context.sendBroadcastWithMultiplePermissions(
                     intent, permissions);
+            if (SdkLevel.isAtLeastT()) {
+                // on Android T or later, also send broadcasts to apps that have NEARBY_WIFI_DEVICES
+                String[] requiredPermissions = new String[] {
+                        android.Manifest.permission.NEARBY_WIFI_DEVICES,
+                        android.Manifest.permission.ACCESS_WIFI_STATE
+                };
+                String[] excludedPermissions = new String[] {
+                        android.Manifest.permission.ACCESS_FINE_LOCATION
+                };
+                BroadcastOptions broadcastOptions = mWifiInjector.makeBroadcastOptions();
+                broadcastOptions.setRequireAllOfPermissions(requiredPermissions);
+                broadcastOptions.setRequireNoneOfPermissions(excludedPermissions);
+                context.sendBroadcast(intent, null, broadcastOptions.toBundle());
+            }
         }
 
         private void sendThisDeviceChangedBroadcast() {

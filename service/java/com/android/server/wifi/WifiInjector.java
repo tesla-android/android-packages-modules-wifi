@@ -21,6 +21,7 @@ import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.app.AppOpsManager;
+import android.app.BroadcastOptions;
 import android.content.Context;
 import android.net.IpMemoryStore;
 import android.net.LinkProperties;
@@ -1048,6 +1049,13 @@ public class WifiInjector {
     public AdaptiveConnectivityEnabledSettingObserver
             getAdaptiveConnectivityEnabledSettingObserver() {
         return mAdaptiveConnectivityEnabledSettingObserver;
+    }
+
+    /**
+     * Creates a BroadcastOptions.
+     */
+    public BroadcastOptions makeBroadcastOptions() {
+        return BroadcastOptions.makeBasic();
     }
 
     public MakeBeforeBreakManager getMakeBeforeBreakManager() {
