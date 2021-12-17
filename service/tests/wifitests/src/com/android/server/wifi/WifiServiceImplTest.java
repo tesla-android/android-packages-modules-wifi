@@ -8658,6 +8658,49 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mPasspointManager).setWifiPasspointEnabled(false);
     }
 
+    @Test(expected = SecurityException.class)
+    public void testSetScreenOnScanSchedule_NoPermission() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(false);
+        mWifiServiceImpl.setScreenOnScanSchedule(null, null);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetScreenOnScanSchedule_BadInput1() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(true);
+        // test that both arrays need to be null or non-null. Never one null one non-null.
+        mWifiServiceImpl.setScreenOnScanSchedule(null, new int[] {1});
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetScreenOnScanSchedule_BadInput2() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(true);
+        // test that the input should not be empty arrays.
+        mWifiServiceImpl.setScreenOnScanSchedule(new int[0], new int[0]);
+    }
+
+    @Test
+    public void testSetScreenOnScanSchedule_Success() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(true);
+        int[] expectedSchedule = new int[] {20, 40, 80};
+        int[] expectedType = new int[] {2, 2, 1};
+        mWifiServiceImpl.setScreenOnScanSchedule(expectedSchedule, expectedType);
+        mLooper.dispatchAll();
+        verify(mWifiConnectivityManager).setExternalScreenOnScanSchedule(
+                expectedSchedule, expectedType);
+        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SET_SCAN_SCHEDULE), anyInt(),
+                anyInt(), anyInt(), any(), eq(true));
+
+        mWifiServiceImpl.setScreenOnScanSchedule(null, null);
+        mLooper.dispatchAll();
+        verify(mWifiConnectivityManager).setExternalScreenOnScanSchedule(null, null);
+        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SET_SCAN_SCHEDULE), anyInt(),
+                anyInt(), anyInt(), any(), eq(false));
+    }
+
     /**
      * Verify that a call to registerDriverCountryCodeChangedListener throws a SecurityException
      * if the caller doesnot have ACCESS_COARSE_LOCATION permission.
