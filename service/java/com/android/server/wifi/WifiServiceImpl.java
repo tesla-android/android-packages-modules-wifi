@@ -2971,6 +2971,48 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * See {@link WifiManager#setScreenOnScanSchedule(int[], int[])}
+     */
+    @Override
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void setScreenOnScanSchedule(int[] scanSchedule, int[] scanType) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        if ((scanSchedule == null && scanType != null)
+                || (scanSchedule != null && scanType == null)) {
+            throw new IllegalArgumentException("scanSchedule and scanType should be either both"
+                    + " non-null or both null");
+        }
+        if (scanSchedule != null && scanSchedule.length < 1) {
+            throw new IllegalArgumentException("scanSchedule should have length > 0, or be null");
+        }
+        if (scanType != null) {
+            if (scanType.length < 1) {
+                throw new IllegalArgumentException("scanType should have length > 0, or be null");
+            }
+            for (int type : scanType) {
+                if (type < 0 || type > WifiScanner.SCAN_TYPE_MAX) {
+                    throw new IllegalArgumentException("scanType=" + type
+                            + " is not a valid value");
+                }
+            }
+        }
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(uid)
+                && !mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)) {
+            throw new SecurityException("Uid=" + uid + ", is not allowed to set scan schedule");
+        }
+        mLog.info("scanSchedule=% scanType=% uid=%").c(Arrays.toString(scanSchedule))
+                .c(Arrays.toString(scanType)).c(uid).flush();
+        mWifiThreadRunner.post(() -> mWifiConnectivityManager.setExternalScreenOnScanSchedule(
+                scanSchedule, scanType));
+        mLastCallerInfoManager.put(LastCallerInfoManager.SET_SCAN_SCHEDULE, Process.myTid(),
+                uid, Binder.getCallingPid(), "<unknown>",
+                scanSchedule != null);
+    }
+
+    /**
      * Return a map of all matching configurations keys with corresponding scanResults (or an empty
      * map if none).
      *

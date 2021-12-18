@@ -19,6 +19,7 @@ package android.net.wifi;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.ACCESS_WIFI_STATE;
 import static android.Manifest.permission.CHANGE_WIFI_STATE;
+import static android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN;
 import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
 import static android.Manifest.permission.READ_WIFI_CREDENTIAL;
 
@@ -1658,6 +1659,45 @@ public class WifiManager {
         }
 
         return configs;
+    }
+
+
+    /**
+     * Allows a privileged app to customize the screen-on scan behavior. When a non-null schedule
+     * is set via this API, it will always get used instead of the scan schedules defined in the
+     * overlay. When a null schedule is set via this API, the wifi subsystem will go back to using
+     * the scan schedules defined in the overlay.
+     * <p>
+     * Example usage:
+     * The following call specifies that first scheduled scan should be in 20 seconds using
+     * {@link WifiScanner#SCAN_TYPE_HIGH_ACCURACY}, and all
+     * scheduled scans later should happen every 40 seconds using
+     * {@link WifiScanner#SCAN_TYPE_LOW_POWER}.
+     * setScreenOnScanSchedule(new int[] {20, 40},
+     * new int[] {WifiScanner.SCAN_TYPE_HIGH_ACCURACY, WifiScanner.SCAN_TYPE_LOW_POWER})
+     * @param scanSchedule defines the screen-on scan schedule in seconds, or null to unset the
+     *                     customized scan schedule.
+     * @param scanType defines the screen-on scan type. Each value must be one of
+     *                 {@link WifiAnnotations#ScanType}. Set to null to unset the customized scan
+     *                 type.
+     *
+     * @throws IllegalStateException if input is invalid
+     * @throws UnsupportedOperationException if the API is not supported on this SDK version.
+     * @throws SecurityException if the caller does not have permission.
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            MANAGE_WIFI_AUTO_JOIN
+    })
+    @SystemApi
+    public void setScreenOnScanSchedule(@Nullable int[] scanSchedule, @Nullable int[] scanType) {
+        try {
+            mService.setScreenOnScanSchedule(scanSchedule, scanType);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**

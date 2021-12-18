@@ -16,6 +16,8 @@
 
 package com.android.server.wifi;
 
+import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -76,6 +78,7 @@ import java.io.PrintWriter;
 public class WifiScoreReportTest extends WifiBaseTest {
     class FakeClock extends Clock {
         long mWallClockMillis = 1500000000000L;
+        long mElapsedSinceBootMillis = 0L;
         int mStepMillis = 1001;
 
         @Override
@@ -83,8 +86,14 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWallClockMillis += mStepMillis;
             return mWallClockMillis;
         }
+
+        @Override
+        public long getElapsedSinceBootMillis() {
+            return mElapsedSinceBootMillis;
+        }
     }
 
+    private static final int TEST_LOW_CONNECTED_SCORE_SCAN_PERIOD_SECONDS = 60;
     private static final int TEST_NETWORK_ID = 860370;
     private static final int TEST_SESSION_ID = 8603703; // last digit is a check digit
     private static final String TEST_IFACE_NAME = "wlan0";
@@ -113,6 +122,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
     @Mock ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     @Mock WifiSettingsStore mWifiSettingsStore;
     @Mock WifiGlobals mWifiGlobals;
+    @Mock ActiveModeWarden mActiveModeWarden;
+    @Mock WifiConnectivityManager mWifiConnectivityManager;
     @Captor ArgumentCaptor<WifiManager.ScoreUpdateObserver> mExternalScoreUpdateObserverCbCaptor;
     private TestLooper mLooper;
 
@@ -192,6 +203,11 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mWifiInfo.setFrequency(2412);
         mWifiInfo.setBSSID(TEST_BSSID);
         mLooper = new TestLooper();
+        when(mActiveModeWarden.canRequestSecondaryTransientClientModeManager()).thenReturn(true);
+        when(mWifiGlobals.getWifiLowConnectedScoreThresholdToTriggerScanForMbb()).thenReturn(
+                ConnectedScore.WIFI_TRANSITION_SCORE);
+        when(mWifiGlobals.getWifiLowConnectedScoreScanPeriodSeconds()).thenReturn(
+                TEST_LOW_CONNECTED_SCORE_SCAN_PERIOD_SECONDS);
         when(mContext.getResources()).thenReturn(mResources);
         when(mNetwork.getNetId()).thenReturn(0);
         when(mNetworkAgent.getNetwork()).thenReturn(mNetwork);
@@ -208,7 +224,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
                 mDeviceConfigFacade, mContext,
                 mAdaptiveConnectivityEnabledSettingObserver, TEST_IFACE_NAME,
-                mExternalScoreUpdateObserverProxy, mWifiSettingsStore);
+                mExternalScoreUpdateObserverProxy, mWifiSettingsStore,
+                mWifiGlobals, mActiveModeWarden, mWifiConnectivityManager);
         mWifiScoreReport.onRoleChanged(ActiveModeManager.ROLE_CLIENT_PRIMARY);
         mWifiScoreReport.setNetworkAgent(mNetworkAgent);
         when(mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs()).thenReturn(
@@ -479,6 +496,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         }
         int score = mWifiInfo.getScore();
         assertTrue(score > ConnectedScore.WIFI_TRANSITION_SCORE);
+        verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
     }
 
     /**
@@ -515,6 +533,73 @@ public class WifiScoreReportTest extends WifiBaseTest {
         } else {
             verify(mNetworkAgent).sendNetworkScore(score);
         }
+    }
+
+    @Test
+    public void testAospScoreBreachTriggersScan() throws Exception {
+        // initially called once
+        verifySentAnyNetworkScore();
+
+        // First has good RSSI but low traffic
+        mWifiInfo.setRssi(-33);
+        mWifiInfo.setLinkSpeed(6); // Mbps
+        mWifiInfo.setFrequency(5220);
+        mWifiScoreReport.enableVerboseLogging(true);
+        mWifiInfo.setSuccessfulTxPacketsPerSecond(0.1);
+        mWifiInfo.setSuccessfulRxPacketsPerSecond(0.1);
+        for (int i = 0; i < 10; i++) {
+            mWifiScoreReport.calculateAndReportScore();
+        }
+        assertTrue("wifi score should be high",
+                mWifiInfo.getScore() >= ConnectedScore.WIFI_TRANSITION_SCORE);
+        verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
+
+        // Then simulate low RSSI and traffic, and verify score becomes low and a scan is triggered.
+        mWifiInfo.setRssi(-100);
+        for (int i = 0; i < 10; i++) {
+            mWifiScoreReport.calculateAndReportScore();
+        }
+        assertTrue("wifi score should be low",
+                mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        verify(mWifiConnectivityManager).forceConnectivityScan(WIFI_WORK_SOURCE);
+
+        // move time forward slightly, not passing enough time to do another scan.
+        mClock.mElapsedSinceBootMillis = (long) TEST_LOW_CONNECTED_SCORE_SCAN_PERIOD_SECONDS * 1000;
+
+        // trigger low score again and verify no additional scan yet.
+        mWifiScoreReport.calculateAndReportScore();
+        verify(mWifiConnectivityManager).forceConnectivityScan(WIFI_WORK_SOURCE);
+
+        // move time past the threshold to trigger scan again and verify the scan happens
+        mClock.mElapsedSinceBootMillis =
+                (long) TEST_LOW_CONNECTED_SCORE_SCAN_PERIOD_SECONDS * 1000 + 1;
+        mWifiScoreReport.calculateAndReportScore();
+        verify(mWifiConnectivityManager, times(2)).forceConnectivityScan(WIFI_WORK_SOURCE);
+    }
+
+    /**
+     * When the AOSP score is low but external scorer is registered, scan will not be triggered.
+     */
+    @Test
+    public void testAospScoreBreachNoScanWhenExternalScorerEnabled() throws Exception {
+        // register external scorer
+        mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
+        verify(mWifiGlobals).setUsingExternalScorer(true);
+        mWifiInfo.setFrequency(5220);
+        for (int rssi = -60; rssi >= -83; rssi -= 1) {
+            mWifiInfo.setRssi(rssi);
+            mWifiScoreReport.calculateAndReportScore();
+        }
+        int score = mWifiInfo.getScore();
+        assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
+
+        // when the external score is cleared, scan should be triggered.
+        mWifiScoreReport.clearWifiConnectedNetworkScorer();
+        mWifiScoreReport.calculateAndReportScore();
+        assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        verify(mWifiConnectivityManager).forceConnectivityScan(any());
+        verify(mWifiGlobals).setUsingExternalScorer(false);
     }
 
     /**

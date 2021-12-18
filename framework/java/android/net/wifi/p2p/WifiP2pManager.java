@@ -214,8 +214,9 @@ public class WifiP2pManager {
      * the details of the group and may contain a {@code null}.
      *
      * All of these permissions are required to receive this broadcast:
-     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and
-     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE} and either
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} or
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES}
      *
      * @see #EXTRA_WIFI_P2P_INFO
      * @see #EXTRA_NETWORK_INFO
@@ -250,8 +251,9 @@ public class WifiP2pManager {
      * can be sent as a result of peers being found, lost or updated.
      *
      * All of these permissions are required to receive this broadcast:
-     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and
-     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE} and either
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} or
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES}
      *
      * <p> An extra {@link #EXTRA_P2P_DEVICE_LIST} provides the full list of
      * current peers. The full list of peers can also be obtained any time with
@@ -329,8 +331,9 @@ public class WifiP2pManager {
      * device.
      *
      * All of these permissions are required to receive this broadcast:
-     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and
-     * {@link android.Manifest.permission#ACCESS_WIFI_STATE}
+     * {@link android.Manifest.permission#ACCESS_WIFI_STATE} and either
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} or
+     * {@link android.Manifest.permission#NEARBY_WIFI_DEVICES}
      *
      * @see #EXTRA_WIFI_P2P_DEVICE
      */
