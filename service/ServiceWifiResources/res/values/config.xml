@@ -195,6 +195,14 @@
     <!-- Integer duration after connection that a user-selected network is considered sufficient (milliseconds) -->
     <integer translatable="false" name="config_wifiSufficientDurationAfterUserSelectionMilliseconds">60000</integer>
 
+    <!-- Trigger connectivity scan for MBB when the connected score is below the configured value.
+         This scan is only done when the external scorer is not being used. -->
+    <integer translatable="false" name="config_wifiLowConnectedScoreThresholdToTriggerScanForMbb">55</integer>
+
+    <!-- Defines the minimum period between scans triggered due to low score.
+    This is used together with config_wifiConnectedScoreThresholdToTriggerScanForMbb.-->
+    <integer translatable="false" name="config_wifiLowConnectedScoreScanPeriodSeconds">60</integer>
+
     <!-- Boolean indicating whether the wifi module should always scan the 6Ghz Preferred Scanning
          Channels when performing full connectivity scans.
          If set to true, the wifi module will scan 6Ghz PSC channels in addition to the 2.4Ghz,

@@ -113,6 +113,11 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public void setScreenOnScanSchedule(int[] scanSchedule, int[] scanType) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Map<String, Map<Integer, List<ScanResult>>> getAllMatchingFqdnsForScanResults(
             List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();
