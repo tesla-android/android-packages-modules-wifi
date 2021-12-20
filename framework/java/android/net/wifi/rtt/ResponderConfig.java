@@ -17,6 +17,7 @@
 package android.net.wifi.rtt;
 
 import static android.net.wifi.ScanResult.InformationElement.EID_EXTENSION_PRESENT;
+import static android.net.wifi.ScanResult.InformationElement.EID_EXT_EHT_CAPABILITIES;
 import static android.net.wifi.ScanResult.InformationElement.EID_EXT_HE_CAPABILITIES;
 import static android.net.wifi.ScanResult.InformationElement.EID_HT_CAPABILITIES;
 import static android.net.wifi.ScanResult.InformationElement.EID_VHT_CAPABILITIES;
@@ -92,7 +93,7 @@ public final class ResponderConfig implements Parcelable {
     /** @hide */
     @IntDef({
             CHANNEL_WIDTH_20MHZ, CHANNEL_WIDTH_40MHZ, CHANNEL_WIDTH_80MHZ, CHANNEL_WIDTH_160MHZ,
-            CHANNEL_WIDTH_80MHZ_PLUS_MHZ})
+            CHANNEL_WIDTH_80MHZ_PLUS_MHZ, CHANNEL_WIDTH_320MHZ})
     @Retention(RetentionPolicy.SOURCE)
     public @interface ChannelWidth {
     }
@@ -133,9 +134,16 @@ public final class ResponderConfig implements Parcelable {
     @SystemApi
     public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4;
 
+    /**
+     * Channel bandwidth is 320 MHZ
+     * @hide
+     */
+    @SystemApi
+    public static final int CHANNEL_WIDTH_320MHZ = 5;
+
 
     /** @hide */
-    @IntDef({PREAMBLE_LEGACY, PREAMBLE_HT, PREAMBLE_VHT, PREAMBLE_HE})
+    @IntDef({PREAMBLE_LEGACY, PREAMBLE_HT, PREAMBLE_VHT, PREAMBLE_HE, PREAMBLE_EHT})
     @Retention(RetentionPolicy.SOURCE)
     public @interface PreambleType {
     }
@@ -167,6 +175,13 @@ public final class ResponderConfig implements Parcelable {
      */
     @SystemApi
     public static final int PREAMBLE_HE = 3;
+
+    /**
+     * Preamble type: EHT.
+     * @hide
+     */
+    @SystemApi
+    public static final int PREAMBLE_EHT = 4;
 
     /**
      * The MAC address of the Responder. Will be null if a Wi-Fi Aware peer identifier (the
@@ -213,9 +228,9 @@ public final class ResponderConfig implements Parcelable {
     public final int frequency;
 
     /**
-     * Not used if the {@link #channelWidth} is 20 MHz. If the Responder uses 40, 80 or 160 MHz,
-     * this is the center frequency (in MHz), if the Responder uses 80 + 80 MHz, this is the
-     * center frequency of the first segment (in MHz).
+     * Not used if the {@link #channelWidth} is 20 MHz. If the Responder uses 40, 80, 160 or
+     * 320 MHz, this is the center frequency (in MHz), if the Responder uses 80 + 80 MHz,
+     * this is the center frequency of the first segment (in MHz).
      * @hide
      */
     @SystemApi
@@ -247,7 +262,7 @@ public final class ResponderConfig implements Parcelable {
      * @param channelWidth    Responder channel bandwidth, specified using {@link ChannelWidth}.
      * @param frequency       The primary 20 MHz frequency (in MHz) of the channel of the Responder.
      * @param centerFreq0     Not used if the {@code channelWidth} is 20 MHz. If the Responder uses
-     *                        40, 80 or 160 MHz, this is the center frequency (in MHz), if the
+     *                        40, 80, 160 or 320 MHz, this is the center frequency (in MHz), if the
      *                        Responder uses 80 + 80 MHz, this is the center frequency of the first
      *                        segment (in MHz).
      * @param centerFreq1     Only used if the {@code channelWidth} is 80 + 80 MHz. If the
@@ -288,7 +303,7 @@ public final class ResponderConfig implements Parcelable {
      * @param channelWidth    Responder channel bandwidth, specified using {@link ChannelWidth}.
      * @param frequency       The primary 20 MHz frequency (in MHz) of the channel of the Responder.
      * @param centerFreq0     Not used if the {@code channelWidth} is 20 MHz. If the Responder uses
-     *                        40, 80 or 160 MHz, this is the center frequency (in MHz), if the
+     *                        40, 80, 160, or 320 MHz, this is the center frequency (in MHz), if the
      *                        Responder uses 80 + 80 MHz, this is the center frequency of the first
      *                        segment (in MHz).
      * @param centerFreq1     Only used if the {@code channelWidth} is 80 + 80 MHz. If the
@@ -328,7 +343,7 @@ public final class ResponderConfig implements Parcelable {
      * @param channelWidth    Responder channel bandwidth, specified using {@link ChannelWidth}.
      * @param frequency       The primary 20 MHz frequency (in MHz) of the channel of the Responder.
      * @param centerFreq0     Not used if the {@code channelWidth} is 20 MHz. If the Responder uses
-     *                        40, 80 or 160 MHz, this is the center frequency (in MHz), if the
+     *                        40, 80, 160 or 320 MHz, this is the center frequency (in MHz), if the
      *                        Responder uses 80 + 80 MHz, this is the center frequency of the first
      *                        segment (in MHz).
      * @param centerFreq1     Only used if the {@code channelWidth} is 80 + 80 MHz. If the
@@ -375,6 +390,7 @@ public final class ResponderConfig implements Parcelable {
             boolean htCapabilitiesPresent = false;
             boolean vhtCapabilitiesPresent = false;
             boolean heCapabilitiesPresent = false;
+            boolean ehtCapabilitiesPresent = false;
 
             for (ScanResult.InformationElement ie : scanResult.informationElements) {
                 if (ie.id == EID_HT_CAPABILITIES) {
@@ -383,10 +399,14 @@ public final class ResponderConfig implements Parcelable {
                     vhtCapabilitiesPresent = true;
                 } else if (ie.id == EID_EXTENSION_PRESENT && ie.idExt == EID_EXT_HE_CAPABILITIES) {
                     heCapabilitiesPresent = true;
+                } else if (ie.id == EID_EXTENSION_PRESENT && ie.idExt == EID_EXT_EHT_CAPABILITIES) {
+                    ehtCapabilitiesPresent = true;
                 }
             }
 
-            if (heCapabilitiesPresent && ScanResult.is6GHz(frequency)) {
+            if (ehtCapabilitiesPresent && ScanResult.is6GHz(frequency)) {
+                preamble = PREAMBLE_EHT;
+            } else if (heCapabilitiesPresent && ScanResult.is6GHz(frequency)) {
                 preamble = PREAMBLE_HE;
             } else if (vhtCapabilitiesPresent) {
                 preamble = PREAMBLE_VHT;
@@ -397,7 +417,10 @@ public final class ResponderConfig implements Parcelable {
             }
         } else {
             Log.e(TAG, "Scan Results do not contain IEs - using backup method to select preamble");
-            if (channelWidth == CHANNEL_WIDTH_80MHZ || channelWidth == CHANNEL_WIDTH_160MHZ) {
+            if (channelWidth == CHANNEL_WIDTH_320MHZ) {
+                preamble = PREAMBLE_EHT;
+            } else if (channelWidth == CHANNEL_WIDTH_80MHZ
+                    || channelWidth == CHANNEL_WIDTH_160MHZ) {
                 preamble = PREAMBLE_VHT;
             } else {
                 preamble = PREAMBLE_HT;
@@ -479,8 +502,8 @@ public final class ResponderConfig implements Parcelable {
     /**
      * AP Channel bandwidth; one of {@link ScanResult#CHANNEL_WIDTH_20MHZ},
      * {@link ScanResult#CHANNEL_WIDTH_40MHZ},
-     * {@link ScanResult#CHANNEL_WIDTH_80MHZ}, {@link ScanResult#CHANNEL_WIDTH_160MHZ}
-     * or {@link ScanResult #CHANNEL_WIDTH_80MHZ_PLUS_MHZ}.
+     * {@link ScanResult#CHANNEL_WIDTH_80MHZ}, {@link ScanResult#CHANNEL_WIDTH_160MHZ},
+     * {@link ScanResult #CHANNEL_WIDTH_80MHZ_PLUS_MHZ} or {@link ScanResult#CHANNEL_WIDTH_320MHZ}.
      *
      * @return the bandwidth repsentation of the Wi-Fi channel
      */
@@ -496,7 +519,7 @@ public final class ResponderConfig implements Parcelable {
     }
 
     /**
-v    * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
+     * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
      * If the AP use 40, 80 or 160 MHz, this is the center frequency (in MHz).
      * if the AP uses 80 + 80 MHz, this is the center frequency of the first segment (in MHz).
      *
@@ -767,6 +790,8 @@ v    * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
                 return CHANNEL_WIDTH_160MHZ;
             case ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ:
                 return CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
+            case ScanResult.CHANNEL_WIDTH_320MHZ:
+                return CHANNEL_WIDTH_320MHZ;
             default:
                 throw new IllegalArgumentException(
                         "translateFromScanResultChannelWidth: bad " + scanResultChannelWidth);
@@ -793,6 +818,8 @@ v    * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
                 return ScanResult.CHANNEL_WIDTH_160MHZ;
             case CHANNEL_WIDTH_80MHZ_PLUS_MHZ:
                 return ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
+            case CHANNEL_WIDTH_320MHZ:
+                return ScanResult.CHANNEL_WIDTH_320MHZ;
             default:
                 throw new IllegalArgumentException(
                         "translateFromLocalChannelWidth: bad " + localChannelWidth);
@@ -818,6 +845,8 @@ v    * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
                 return PREAMBLE_VHT;
             case ScanResult.PREAMBLE_HE:
                 return PREAMBLE_HE;
+            case ScanResult.PREAMBLE_EHT:
+                return PREAMBLE_EHT;
             default:
                 throw new IllegalArgumentException(
                         "translateFromScanResultPreamble: bad " + scanResultPreamble);
@@ -842,6 +871,8 @@ v    * If the Access Point (AP) bandwidth is 20 MHz, 0 MHz is returned.
                 return ScanResult.PREAMBLE_VHT;
             case PREAMBLE_HE:
                 return ScanResult.PREAMBLE_HE;
+            case PREAMBLE_EHT:
+                return ScanResult.PREAMBLE_EHT;
             default:
                 throw new IllegalArgumentException(
                         "translateFromLocalPreamble: bad " + localPreamble);

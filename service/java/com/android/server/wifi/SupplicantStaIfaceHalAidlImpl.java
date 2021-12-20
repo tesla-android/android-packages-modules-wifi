@@ -34,7 +34,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SUITE_B;
 
 import android.annotation.NonNull;
 import android.content.Context;
-import android.hardware.wifi.V1_0.WifiChannelWidthInMhz;
+import android.hardware.wifi.V1_6.WifiChannelWidthInMhz;
 import android.hardware.wifi.supplicant.BtCoexistenceMode;
 import android.hardware.wifi.supplicant.ConnectionCapabilities;
 import android.hardware.wifi.supplicant.DebugLevel;
@@ -2554,6 +2554,8 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
 
     private @WifiAnnotations.WifiStandard int getWifiStandard(int technology) {
         switch(technology) {
+            case WifiTechnology.EHT:
+                return ScanResult.WIFI_STANDARD_11BE;
             case WifiTechnology.HE:
                 return ScanResult.WIFI_STANDARD_11AX;
             case WifiTechnology.VHT:
@@ -2579,6 +2581,8 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
                 return ScanResult.CHANNEL_WIDTH_160MHZ;
             case WifiChannelWidthInMhz.WIDTH_80P80:
                 return ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
+            case WifiChannelWidthInMhz.WIDTH_320:
+                return ScanResult.CHANNEL_WIDTH_320MHZ;
             default:
                 return ScanResult.CHANNEL_WIDTH_20MHZ;
         }

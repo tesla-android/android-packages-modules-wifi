@@ -1367,8 +1367,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private void updateInterfaceCapabilities() {
         DeviceWiphyCapabilities cap = getDeviceWiphyCapabilities();
         if (cap != null) {
-            // Some devices don't have support of 11ax indicated by the chip,
+            // Some devices don't have support of 11ax/be indicated by the chip,
             // so an override config value is used
+            if (mContext.getResources().getBoolean(R.bool.config_wifi11beSupportOverride)) {
+                cap.setWifiStandardSupport(ScanResult.WIFI_STANDARD_11BE, true);
+            }
             if (mContext.getResources().getBoolean(R.bool.config_wifi11axSupportOverride)) {
                 cap.setWifiStandardSupport(ScanResult.WIFI_STANDARD_11AX, true);
             }

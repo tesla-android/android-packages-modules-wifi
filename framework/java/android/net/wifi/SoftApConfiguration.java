@@ -306,6 +306,11 @@ public final class SoftApConfiguration implements Parcelable {
     private boolean mIeee80211axEnabled;
 
     /**
+     * Whether 802.11be AP is enabled or not.
+     */
+    private boolean mIeee80211beEnabled;
+
+    /**
      * Whether the current configuration is configured by user or not.
      */
     private boolean mIsUserConfiguration;
@@ -314,7 +319,6 @@ public final class SoftApConfiguration implements Parcelable {
      * Delay in milliseconds before shutting down an instance in bridged AP.
      */
     private final long mBridgedModeOpportunisticShutdownTimeoutMillis;
-
 
     /**
      * THe definition of security type OPEN.
@@ -353,7 +357,7 @@ public final class SoftApConfiguration implements Parcelable {
             long shutdownTimeoutMillis, boolean clientControlByUser,
             @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
             int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
-            boolean ieee80211axEnabled, boolean isUserConfiguration,
+            boolean ieee80211axEnabled, boolean ieee80211beEnabled, boolean isUserConfiguration,
             long bridgedModeOpportunisticShutdownTimeoutMillis,
             @NonNull List<ScanResult.InformationElement> vendorElements) {
         mWifiSsid = ssid;
@@ -376,6 +380,7 @@ public final class SoftApConfiguration implements Parcelable {
         mMacRandomizationSetting = macRandomizationSetting;
         mBridgedModeOpportunisticShutdownEnabled = bridgedModeOpportunisticShutdownEnabled;
         mIeee80211axEnabled = ieee80211axEnabled;
+        mIeee80211beEnabled = ieee80211beEnabled;
         mIsUserConfiguration = isUserConfiguration;
         mBridgedModeOpportunisticShutdownTimeoutMillis =
                 bridgedModeOpportunisticShutdownTimeoutMillis;
@@ -407,6 +412,7 @@ public final class SoftApConfiguration implements Parcelable {
                 && mBridgedModeOpportunisticShutdownEnabled
                         == other.mBridgedModeOpportunisticShutdownEnabled
                 && mIeee80211axEnabled == other.mIeee80211axEnabled
+                && mIeee80211beEnabled == other.mIeee80211beEnabled
                 && mIsUserConfiguration == other.mIsUserConfiguration
                 && mBridgedModeOpportunisticShutdownTimeoutMillis
                         == other.mBridgedModeOpportunisticShutdownTimeoutMillis
@@ -419,7 +425,7 @@ public final class SoftApConfiguration implements Parcelable {
                 mChannels.toString(), mSecurityType, mMaxNumberOfClients, mAutoShutdownEnabled,
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
                 mAllowedClientList, mMacRandomizationSetting,
-                mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
+                mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled, mIeee80211beEnabled,
                 mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
                 mVendorElements);
     }
@@ -446,6 +452,7 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n BridgedModeOpportunisticShutdownTimeoutMillis = ")
                 .append(mBridgedModeOpportunisticShutdownTimeoutMillis);
         sbuf.append(" \n Ieee80211axEnabled = ").append(mIeee80211axEnabled);
+        sbuf.append(" \n Ieee80211beEnabled = ").append(mIeee80211beEnabled);
         sbuf.append(" \n isUserConfiguration = ").append(mIsUserConfiguration);
         sbuf.append(" \n vendorElements = ").append(mVendorElements);
         return sbuf.toString();
@@ -468,6 +475,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeInt(mMacRandomizationSetting);
         dest.writeBoolean(mBridgedModeOpportunisticShutdownEnabled);
         dest.writeBoolean(mIeee80211axEnabled);
+        dest.writeBoolean(mIeee80211beEnabled);
         dest.writeBoolean(mIsUserConfiguration);
         dest.writeLong(mBridgedModeOpportunisticShutdownTimeoutMillis);
         dest.writeTypedList(mVendorElements);
@@ -525,7 +533,7 @@ public final class SoftApConfiguration implements Parcelable {
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
                     in.createTypedArrayList(MacAddress.CREATOR),
                     in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
-                    in.readBoolean(), in.readBoolean(), in.readLong(),
+                    in.readBoolean(), in.readBoolean(), in.readBoolean(), in.readLong(),
                     in.createTypedArrayList(ScanResult.InformationElement.CREATOR));
         }
 
@@ -846,6 +854,30 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * @see #isIeee80211beEnabled()
+     * @hide
+     */
+    public boolean isIeee80211beEnabledInternal() {
+        return mIeee80211beEnabled;
+    }
+
+    /**
+     * Returns whether or not the Soft AP is configured to enable 802.11be.
+     * This is an indication that if the device support 802.11be AP then to enable or disable
+     * that feature. If the device does not support 802.11be AP then this flag is ignored.
+     * See also {@link Builder#setIeee80211beEnabled(boolean}}
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @SystemApi
+    public boolean isIeee80211beEnabled() {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        return isIeee80211beEnabledInternal();
+    }
+
+    /**
      * Returns whether or not the {@link SoftApConfiguration} was configured by the user
      * (as opposed to the default system configuration).
      * <p>
@@ -981,6 +1013,7 @@ public final class SoftApConfiguration implements Parcelable {
         private int mMacRandomizationSetting;
         private boolean mBridgedModeOpportunisticShutdownEnabled;
         private boolean mIeee80211axEnabled;
+        private boolean mIeee80211beEnabled;
         private boolean mIsUserConfiguration;
         private long mBridgedModeOpportunisticShutdownTimeoutMillis;
         private List<ScanResult.InformationElement> mVendorElements;
@@ -1009,6 +1042,7 @@ public final class SoftApConfiguration implements Parcelable {
             }
             mBridgedModeOpportunisticShutdownEnabled = true;
             mIeee80211axEnabled = true;
+            mIeee80211beEnabled = true;
             mIsUserConfiguration = true;
             mBridgedModeOpportunisticShutdownTimeoutMillis = 0;
             mVendorElements = new ArrayList<>();
@@ -1036,6 +1070,7 @@ public final class SoftApConfiguration implements Parcelable {
             mBridgedModeOpportunisticShutdownEnabled =
                     other.mBridgedModeOpportunisticShutdownEnabled;
             mIeee80211axEnabled = other.mIeee80211axEnabled;
+            mIeee80211beEnabled = other.mIeee80211beEnabled;
             mIsUserConfiguration = other.mIsUserConfiguration;
             mBridgedModeOpportunisticShutdownTimeoutMillis =
                     other.mBridgedModeOpportunisticShutdownTimeoutMillis;
@@ -1059,8 +1094,8 @@ public final class SoftApConfiguration implements Parcelable {
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
                     mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
                     mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
-                    mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
-                    mVendorElements);
+                    mIeee80211beEnabled, mIsUserConfiguration,
+                    mBridgedModeOpportunisticShutdownTimeoutMillis, mVendorElements);
         }
 
         /**
@@ -1695,6 +1730,34 @@ public final class SoftApConfiguration implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             mIeee80211axEnabled = enable;
+            return this;
+        }
+
+        /**
+         * Specifies whether or not to enable 802.11be on the Soft AP.
+         *
+         * <p>
+         * Note: Only relevant when the device supports 802.11be on the Soft AP.
+         * If enabled on devices that do not support 802.11be then ignored.
+         * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
+         * {@link SoftApCapability#areFeaturesSupported(long)}
+         * with {@link SoftApCapability.SOFTAP_FEATURE_IEEE80211_BE} to determine
+         * whether or not 802.11be is supported on the Soft AP.
+         * <p>
+         * <li>If not set, defaults to true - which will be ignored on devices
+         * which do not support 802.11be</li>
+         *
+         * @param enable true to enable, false to disable.
+         * @return Builder for chaining.
+         *
+         */
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+        @NonNull
+        public Builder setIeee80211beEnabled(boolean enable) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
+            mIeee80211beEnabled = enable;
             return this;
         }
 
