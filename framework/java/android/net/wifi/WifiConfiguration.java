@@ -3499,8 +3499,12 @@ public class WifiConfiguration implements Parcelable {
         } else {
             proxySettingCopy = IpConfiguration.ProxySettings.STATIC;
             // Construct a new HTTP Proxy
+            String[] exclusionList = httpProxy.getExclusionList();
+            if (exclusionList == null) {
+                exclusionList = new String[0];
+            }
             httpProxyCopy = ProxyInfo.buildDirectProxy(httpProxy.getHost(), httpProxy.getPort(),
-                    Arrays.asList(httpProxy.getExclusionList()));
+                    Arrays.asList(exclusionList));
         }
         if (!httpProxyCopy.isValid()) {
             throw new IllegalArgumentException("Invalid ProxyInfo: " + httpProxyCopy.toString());
