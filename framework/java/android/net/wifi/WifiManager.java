@@ -8806,6 +8806,21 @@ public class WifiManager {
     }
 
     /**
+     * Check if the currently connected network meets all the admin set restrictions.
+     * If not, the current network will be disconnected.
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @SystemApi
+    public void validateCurrentWifiMeetsAdminRequirements() {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "validateCurrentWifiMeetsAdminRequirements");
+        }
+        //TODO: check current network meets all the admin restrictions
+    }
+
+    /**
      * Configure whether or not concurrent multiple connections to internet-providing Wi-Fi
      * networks (AP) is enabled.
      * Use {@link WifiManager#WIFI_MULTI_INTERNET_MODE_DISABLED} to disable, and either

@@ -615,6 +615,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS) public void unregisterTrafficStateCallback(@NonNull android.net.wifi.WifiManager.TrafficStateCallback);
     method @RequiresPermission(anyOf={android.Manifest.permission.NETWORK_STACK, android.net.NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK}) public void updateInterfaceIpState(@Nullable String, int);
     method @RequiresPermission(android.Manifest.permission.WIFI_UPDATE_USABILITY_STATS_SCORE) public void updateWifiUsabilityScore(int, int, int);
+    method public void validateCurrentWifiMeetsAdminRequirements();
     field public static final String ACTION_LINK_CONFIGURATION_CHANGED = "android.net.wifi.LINK_CONFIGURATION_CHANGED";
     field @RequiresPermission(android.Manifest.permission.NETWORK_CARRIER_PROVISIONING) public static final String ACTION_NETWORK_SETTINGS_RESET = "android.net.wifi.action.NETWORK_SETTINGS_RESET";
     field public static final String ACTION_PASSPOINT_LAUNCH_OSU_VIEW = "android.net.wifi.action.PASSPOINT_LAUNCH_OSU_VIEW";
