@@ -53,7 +53,7 @@ import com.android.internal.util.StateMachine;
 import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative.InterfaceCallback;
-import com.android.server.wifi.WifiNative.SoftApListener;
+import com.android.server.wifi.WifiNative.SoftApHalCallback;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.coex.CoexManager.CoexListener;
 import com.android.server.wifi.util.ApConfigUtil;
@@ -197,10 +197,15 @@ public class SoftApManager implements ActiveModeManager {
     /**
      * Listener for soft AP events.
      */
-    private final SoftApListener mSoftApListener = new SoftApListener() {
+    private final SoftApHalCallback mSoftApHalCallback = new SoftApHalCallback() {
         @Override
         public void onFailure() {
             mStateMachine.sendMessage(SoftApStateMachine.CMD_FAILURE);
+        }
+
+        @Override
+        public void onInstanceFailure(String instanceName) {
+            mStateMachine.sendMessage(SoftApStateMachine.CMD_FAILURE, instanceName);
         }
 
         @Override
@@ -677,7 +682,7 @@ public class SoftApManager implements ActiveModeManager {
         if (!mWifiNative.startSoftAp(mApInterfaceName,
                   localConfigBuilder.build(),
                   mOriginalModeConfiguration.getTargetMode() ==  WifiManager.IFACE_IP_MODE_TETHERED,
-                  mSoftApListener)) {
+                  mSoftApHalCallback)) {
             Log.e(getTag(), "Soft AP start failed");
             return ERROR_GENERIC;
         }
@@ -1267,18 +1272,9 @@ public class SoftApManager implements ActiveModeManager {
                             + " changed when client connected, it should NOT happen!!");
                 }
 
-                // Update the info when getting two infos in bridged mode.
-                // TODO: b/173999527. It may only one instance come up when starting bridged AP.
-                // Consider the handling with co-ex mechanism in bridged mode.
-                boolean waitForAnotherSoftApInfoInBridgedMode =
-                        isBridgedMode() && mCurrentSoftApInfoMap.size() == 0;
-
                 mCurrentSoftApInfoMap.put(changedInstance, new SoftApInfo(apInfo));
-
-                if (!waitForAnotherSoftApInfoInBridgedMode) {
-                    mSoftApCallback.onConnectedClientsOrInfoChanged(mCurrentSoftApInfoMap,
-                            mConnectedClientWithApInfoMap, isBridgedMode());
-                }
+                mSoftApCallback.onConnectedClientsOrInfoChanged(mCurrentSoftApInfoMap,
+                        mConnectedClientWithApInfoMap, isBridgedMode());
 
                 boolean isNeedToScheduleTimeoutMessage = false;
                 if (!mSoftApTimeoutMessageMap.containsKey(mApInterfaceName)) {
@@ -1523,6 +1519,12 @@ public class SoftApManager implements ActiveModeManager {
                         quitNow();
                         break;
                     case CMD_FAILURE:
+                        String instance = (String) message.obj;
+                        if (instance != null && mCurrentSoftApInfoMap.size() == 2) {
+                            Log.i(TAG, "onInstanceFailure on " + instance);
+                            removeIfaceInstanceFromBridgedApIface(instance);
+                            break;
+                        }
                         Log.w(getTag(), "hostapd failure, stop and report failure");
                         /* fall through */
                     case CMD_INTERFACE_DOWN:

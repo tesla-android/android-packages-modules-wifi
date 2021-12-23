@@ -41,7 +41,7 @@ import android.util.Log;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative.HostapdDeathEventHandler;
-import com.android.server.wifi.WifiNative.SoftApListener;
+import com.android.server.wifi.WifiNative.SoftApHalCallback;
 import com.android.server.wifi.util.ApConfigUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.wifi.resources.R;
@@ -80,7 +80,7 @@ public class HostapdHalHidlImp implements IHostapdHal {
     private IServiceManager mIServiceManager;
     private IHostapd mIHostapd;
     private HashMap<String, Runnable> mSoftApFailureListeners = new HashMap<>();
-    private SoftApListener mSoftApEventListener;
+    private SoftApHalCallback mSoftApEventListener;
     private HostapdDeathEventHandler mDeathEventHandler;
     private ServiceManagerDeathRecipient mServiceManagerDeathRecipient;
     private HostapdDeathRecipient mHostapdDeathRecipient;
@@ -398,7 +398,7 @@ public class HostapdHalHidlImp implements IHostapdHal {
      */
     @Override
     public boolean registerApCallback(@NonNull String ifaceName,
-            @NonNull SoftApListener listener) {
+            @NonNull SoftApHalCallback listener) {
         synchronized (mLock) {
             if (listener == null) {
                 Log.e(TAG, "registerApCallback called with a null callback");
