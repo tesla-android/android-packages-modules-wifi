@@ -544,7 +544,7 @@ public class WifiApConfigStore {
             return false;
         }
 
-        if (authType == SoftApConfiguration.SECURITY_TYPE_OPEN) {
+        if (ApConfigUtil.isNonPasswordAP(authType)) {
             // open networks should not have a password
             if (hasPreSharedKey) {
                 Log.d(TAG, "open softap network should not have a password");
@@ -581,6 +581,20 @@ public class WifiApConfigStore {
 
         if (!isBandsSupported(apConfig.getBands(), context)) {
             return false;
+        }
+
+        if (SdkLevel.isAtLeastT()
+                && authType == SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION) {
+            if (!ApConfigUtil.isBridgedModeSupported(context)) {
+                Log.d(TAG, "softap owe transition needs bridge mode support");
+                return false;
+            } else if (apConfig.getBands().length > 1) {
+                Log.d(TAG, "softap owe transition must use single band");
+                return false;
+            } else if ((apConfig.getBand() & SoftApConfiguration.BAND_6GHZ) != 0) {
+                Log.d(TAG, "softap owe transition in 6GHz band is not allowed");
+                return false;
+            }
         }
 
         return true;
