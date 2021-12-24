@@ -392,6 +392,26 @@ public class WifiP2pManager {
     public static final String CALLING_BINDER =
             "android.net.wifi.p2p.CALLING_BINDER";
 
+    /**
+     * Run P2P scan on all channels.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_FULL = 0;
+
+    /**
+     * Run P2P scan only on social channels.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_SOCIAL = -1;
+
+    /** @hide */
+    @IntDef(prefix = {"WIFI_P2P_SCAN_"}, value = {
+            WIFI_P2P_SCAN_FULL,
+            WIFI_P2P_SCAN_SOCIAL})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface WifiP2pScanType {
+    }
+
     IWifiP2pManager mService;
 
     private static final int BASE = Protocol.BASE_WIFI_P2P_MANAGER;
@@ -1249,7 +1269,7 @@ public class WifiP2pManager {
      * determine when the framework notifies of a change as peers are discovered.
      *
      * <p> Upon receiving a {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent, an application
-     * can request for the list of peers using {@link #requestPeers}.
+     * can request the list of peers using {@link #requestPeers}.
      * <p>
      * If targeting {@link android.os.Build.VERSION_CODES#TIRAMISU} or later, the application must
      * have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
@@ -1270,7 +1290,96 @@ public class WifiP2pManager {
     public void discoverPeers(Channel c, ActionListener listener) {
         checkChannel(c);
         Bundle extras = prepareExtrasBundle(c);
-        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, 0, c.putListener(listener), extras);
+        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
+        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_FULL,
+                c.putListener(listener), extras);
+    }
+
+    /**
+     * Scan only the social channels.
+     *
+     * A discovery process involves scanning for available Wi-Fi peers
+     * for the purpose of establishing a connection.
+     *
+     * <p> The function call immediately returns after sending a discovery request
+     * to the framework. The application is notified of a success or failure to initiate
+     * discovery through listener callbacks {@link ActionListener#onSuccess} or
+     * {@link ActionListener#onFailure}.
+     *
+     * <p> The discovery remains active until a connection is initiated or
+     * a p2p group is formed. Register for {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent to
+     * determine when the framework notifies of a change as peers are discovered.
+     *
+     * <p> Upon receiving a {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent, an application
+     * can request the list of peers using {@link #requestPeers}.
+     * <p>
+     * The application must have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * @param c is the channel created at {@link #initialize}
+     * @param listener for callbacks on success or failure.
+     */
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
+    public void discoverPeersOnSocialChannels(@NonNull Channel c,
+            @Nullable ActionListener listener) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        checkChannel(c);
+        Bundle extras = prepareExtrasBundle(c);
+        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
+        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_SOCIAL,
+                c.putListener(listener), extras);
+    }
+
+    /**
+     * Scan only a single channel specified by frequency.
+     *
+     * A discovery process involves scanning for available Wi-Fi peers
+     * for the purpose of establishing a connection.
+     *
+     * <p> The function call immediately returns after sending a discovery request
+     * to the framework. The application is notified of a success or failure to initiate
+     * discovery through listener callbacks {@link ActionListener#onSuccess} or
+     * {@link ActionListener#onFailure}.
+     *
+     * <p> The discovery remains active until a connection is initiated or
+     * a p2p group is formed. Register for {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent to
+     * determine when the framework notifies of a change as peers are discovered.
+     *
+     * <p> Upon receiving a {@link #WIFI_P2P_PEERS_CHANGED_ACTION} intent, an application
+     * can request the list of peers using {@link #requestPeers}.
+     * <p>
+     * The application must have {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} with
+     * android:usesPermissionFlags="neverForLocation". If the application does not declare
+     * android:usesPermissionFlags="neverForLocation", then it must also have
+     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION}.
+     *
+     * @param c is the channel created at {@link #initialize}
+     * @param frequencyMhz is the frequency of the channel to use for peer discovery.
+     * @param listener for callbacks on success or failure.
+     */
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+            }, conditional = true)
+    public void discoverPeersOnSpecificFrequency(
+            @NonNull Channel c, int frequencyMhz, @Nullable ActionListener listener) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        checkChannel(c);
+        if (frequencyMhz <= 0) {
+            throw new IllegalArgumentException("This frequency must be a positive value.");
+        }
+        Bundle extras = prepareExtrasBundle(c);
+        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
+        c.mAsyncChannel.sendMessage(DISCOVER_PEERS, frequencyMhz, c.putListener(listener), extras);
     }
 
     /**
@@ -2155,7 +2264,7 @@ public class WifiP2pManager {
      * broadcast event with extra {@link #EXTRA_WIFI_STATE}.
      *
      * @param c is the channel created at {@link #initialize}.
-     * @param listener for callback when p2p state is available..
+     * @param listener for callback when p2p state is available.
      */
     public void requestP2pState(@NonNull Channel c,
             @NonNull P2pStateListener listener) {
@@ -2176,7 +2285,7 @@ public class WifiP2pManager {
      * broadcast event with extra {@link #EXTRA_DISCOVERY_STATE}.
      *
      * @param c is the channel created at {@link #initialize}.
-     * @param listener for callback when discovery state is available..
+     * @param listener for callback when discovery state is available.
      */
     public void requestDiscoveryState(@NonNull Channel c,
             @NonNull DiscoveryStateListener listener) {
@@ -2198,7 +2307,7 @@ public class WifiP2pManager {
      * broadcast event with extra {@link #EXTRA_NETWORK_INFO}.
      *
      * @param c is the channel created at {@link #initialize}.
-     * @param listener for callback when network info is available..
+     * @param listener for callback when network info is available.
      */
     public void requestNetworkInfo(@NonNull Channel c,
             @NonNull NetworkInfoListener listener) {

@@ -429,15 +429,8 @@ public class SupplicantP2pIfaceHalAidlImpl implements ISupplicantP2pIfaceHal {
         }
     }
 
-    /**
-     * Initiate a P2P service discovery with a (optional) timeout.
-     *
-     * @param timeout Max time to be spent is performing discovery.
-     *        Set to 0 to indefinitely continue discovery until an explicit
-     *        |stopFind| is sent.
-     * @return boolean value indicating whether operation was successful.
-     */
-    public boolean find(int timeout) {
+    /** See {@link ISupplicantStaNetwork#find(int, int)} for documentation. */
+    public boolean find(int freq, int timeout) {
         synchronized (mLock) {
             String methodStr = "find";
             if (!checkP2pIfaceAndLogFailure(methodStr)) {
@@ -447,8 +440,22 @@ public class SupplicantP2pIfaceHalAidlImpl implements ISupplicantP2pIfaceHal {
                 Log.e(TAG, "Invalid timeout value: " + timeout);
                 return false;
             }
+            if (freq < 0 && freq != WifiP2pManager.WIFI_P2P_SCAN_SOCIAL) {
+                Log.e(TAG, "Invalid freq value: " + freq);
+                return false;
+            }
             try {
-                mISupplicantP2pIface.find(timeout);
+                switch (freq) {
+                    case WifiP2pManager.WIFI_P2P_SCAN_FULL:
+                        mISupplicantP2pIface.find(timeout);
+                        break;
+                    case WifiP2pManager.WIFI_P2P_SCAN_SOCIAL:
+                        mISupplicantP2pIface.findOnSocialChannels(timeout);
+                        break;
+                    default:
+                        mISupplicantP2pIface.findOnSpecificFrequency(freq, timeout);
+                        break;
+                }
                 return true;
             } catch (RemoteException e) {
                 handleRemoteException(e, methodStr);

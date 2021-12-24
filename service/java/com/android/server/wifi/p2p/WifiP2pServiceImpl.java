@@ -2119,6 +2119,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.ERROR);
                             break;
                         }
+                        int freq = SdkLevel.isAtLeastT()
+                                ? message.arg1 : WifiP2pManager.WIFI_P2P_SCAN_FULL;
                         int uid = message.sendingUid;
                         Bundle extras = (Bundle) message.obj;
                         boolean hasPermission = false;
@@ -2146,7 +2148,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         // do not send service discovery request while normal find operation.
                         clearSupplicantServiceRequest();
                         Log.e(TAG, "-------discover_peers before p2pFind");
-                        if (mWifiNative.p2pFind(DISCOVER_TIMEOUT_S)) {
+                        if (mWifiNative.p2pFind(freq, DISCOVER_TIMEOUT_S)) {
                             mWifiP2pMetrics.incrementPeerScans();
                             replyToMessage(message, WifiP2pManager.DISCOVER_PEERS_SUCCEEDED);
                             sendP2pDiscoveryChangedBroadcast(true);

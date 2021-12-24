@@ -33,6 +33,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pGroupList;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 
 import com.android.server.wifi.WifiGlobals;
@@ -232,9 +233,10 @@ public class SupplicantP2pIfaceHalTest {
     public void testFind() {
         initializeWithAidlImpl(true);
         int timeout = 5;
-        when(mP2pIfaceHalAidlMock.find(anyInt())).thenReturn(true);
-        assertTrue(mDut.find(timeout));
-        verify(mP2pIfaceHalAidlMock).find(eq(timeout));
+        int freq = WifiP2pManager.WIFI_P2P_SCAN_FULL;
+        when(mP2pIfaceHalAidlMock.find(anyInt(), anyInt())).thenReturn(true);
+        assertTrue(mDut.find(freq, timeout));
+        verify(mP2pIfaceHalAidlMock).find(eq(freq), eq(timeout));
     }
 
     /**
