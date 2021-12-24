@@ -82,6 +82,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
     private static final boolean TEST_AUTO_SHUTDOWN_ENABLED = true;
     private static final int TEST_MAX_NUMBER_OF_CLIENTS = 10;
     private static final long TEST_SHUTDOWN_TIMEOUT_MILLIS = 600_000;
+    private static final long TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS = 300_000;
     private static final ArrayList<MacAddress> TEST_BLOCKEDLIST = new ArrayList<>();
     private static final String TEST_BLOCKED_CLIENT = "11:22:33:44:55:66";
     private static final ArrayList<MacAddress> TEST_ALLOWEDLIST = new ArrayList<>();
@@ -256,10 +257,14 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<boolean name=\"80211axEnabled\" value=\""
                     + TEST_80211AX_ENABLED + "\" />\n";
 
-    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION =
+    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S =
             TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION
                     + "<boolean name=\"UserConfiguration\" value=\""
                     + TEST_USER_CONFIGURATION + "\" />\n";
+    private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION =
+            TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S
+                    + "<long name=\"BridgedModeOpportunisticShutdownTimeoutMillis\" value=\""
+                    + TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS + "\" />\n";;
 
     @Mock private Context mContext;
     @Mock SoftApStoreData.DataSource mDataSource;
@@ -372,10 +377,16 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
             softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
         }
+        if (SdkLevel.isAtLeastT()) {
+            softApConfigBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(
+                    TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS);
+        }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
-        if (SdkLevel.isAtLeastS()) {
+        if (SdkLevel.isAtLeastT()) {
             assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION, new String(actualData));
+        } else if (SdkLevel.isAtLeastS()) {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S, new String(actualData));
         } else {
             assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R, new String(actualData));
         }
@@ -413,10 +424,16 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             softApConfigBuilder.setIeee80211axEnabled(TEST_80211AX_ENABLED);
             softApConfigBuilder.setUserConfiguration(TEST_USER_CONFIGURATION);
         }
+        if (SdkLevel.isAtLeastT()) {
+            softApConfigBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(
+                    TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS);
+        }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
-        if (SdkLevel.isAtLeastS()) {
+        if (SdkLevel.isAtLeastT()) {
             assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION, new String(actualData));
+        } else if (SdkLevel.isAtLeastS()) {
+            assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S, new String(actualData));
         } else {
             assertEquals(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R, new String(actualData));
         }
@@ -430,8 +447,10 @@ public class SoftApStoreDataTest extends WifiBaseTest {
      */
     @Test
     public void deserializeSoftAp() throws Exception {
-        if (SdkLevel.isAtLeastS()) {
+        if (SdkLevel.isAtLeastT()) {
             deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION.getBytes());
+        } else if (SdkLevel.isAtLeastS()) {
+            deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S.getBytes());
         } else {
             deserializeData(TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_R.getBytes());
         }
