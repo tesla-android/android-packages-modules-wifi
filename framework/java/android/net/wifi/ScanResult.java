@@ -356,6 +356,23 @@ public final class ScanResult implements Parcelable {
     public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4;
 
     /**
+     * Preamble type: Legacy.
+     */
+    public static final int PREAMBLE_LEGACY = 0;
+    /**
+     * Preamble type: HT.
+     */
+    public static final int PREAMBLE_HT = 1;
+    /**
+     * Preamble type: VHT.
+     */
+    public static final int PREAMBLE_VHT = 2;
+    /**
+     * Preamble type: HE.
+     */
+    public static final int PREAMBLE_HE = 3;
+
+    /**
      * Wi-Fi unknown standard
      */
     public static final int WIFI_STANDARD_UNKNOWN = 0;
