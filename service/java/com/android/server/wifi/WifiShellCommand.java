@@ -161,7 +161,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiCountryCode mWifiCountryCode;
     private final WifiLastResortWatchdog mWifiLastResortWatchdog;
     private final WifiServiceImpl mWifiService;
-    private final Context mContext;
+    private final WifiContext mContext;
     private final ConnectivityManager mConnectivityManager;
     private final WifiCarrierInfoManager mWifiCarrierInfoManager;
     private final WifiNetworkFactory mWifiNetworkFactory;
@@ -258,7 +258,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         }
     }
 
-    WifiShellCommand(WifiInjector wifiInjector, WifiServiceImpl wifiService, Context context,
+    WifiShellCommand(WifiInjector wifiInjector, WifiServiceImpl wifiService, WifiContext context,
             WifiGlobals wifiGlobals, WifiThreadRunner wifiThreadRunner) {
         mWifiGlobals = wifiGlobals;
         mWifiThreadRunner = wifiThreadRunner;
@@ -557,6 +557,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     } else {
                         pw.println("Soft AP failed to stop");
                     }
+                    return 0;
+                }
+                case "reload-resources": {
+                    mContext.resetResourceCache();
                     return 0;
                 }
                 case "force-country-code": {
@@ -1738,6 +1742,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("  pmksa-flush <networkId>");
         pw.println("        - Flush the local PMKSA cache associated with the network id."
                 + " Use list-networks to retrieve <networkId> for the network");
+        pw.println("  reload-resources");
+        pw.println(
+                "    Reset the WiFi resources cache which will cause them to be reloaded next "
+                        + "time they are accessed. Necessary if overlays are manually modified.");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {
