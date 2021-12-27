@@ -272,6 +272,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         // Default init STA enabled
         when(mResources.getBoolean(R.bool.config_wifiStaWithBridgedSoftApConcurrencySupported))
                 .thenReturn(true);
+        when(mWifiNative.isStaApConcurrencySupported()).thenReturn(true);
         when(mActiveModeWarden.getClientModeManagers())
                 .thenReturn(mTestClientModeManagers);
         mTestClientModeManagers.add(mPrimaryConcreteClientModeManager);
@@ -3169,4 +3170,29 @@ public class SoftApManagerTest extends WifiBaseTest {
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
         startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, configBuilder.build());
     }
+
+    private SoftApConfiguration generateBridgedModeSoftApConfig(SoftApConfiguration config)
+            throws Exception {
+        int[] dual_bands = {SoftApConfiguration.BAND_2GHZ ,
+                SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
+        Builder configBuilder = new SoftApConfiguration.Builder(
+                config != null ? config : mDefaultApConfig);
+        configBuilder.setBands(dual_bands);
+        return configBuilder.build();
+    }
+
+    @Test
+    public void testBridgedApEnabledWhenStaExistButStaApConcurrencyNotSupported()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        when(mWifiNative.isStaApConcurrencySupported()).thenReturn(false);
+        SoftApConfiguration bridgedConfig = new SoftApConfiguration.Builder(
+                generateBridgedModeSoftApConfig(null)).build();
+
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, bridgedConfig,
+                mTestSoftApCapability);
+        startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, bridgedConfig);
+    }
 }
+
