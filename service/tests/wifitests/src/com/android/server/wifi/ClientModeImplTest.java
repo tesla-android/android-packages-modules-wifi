@@ -4714,8 +4714,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         // called once during setup()
         verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, true);
 
-        assertTrue(mCmi.setPowerSave(true));
-        verify(mWifiNative, times(2)).setPowerSave(WIFI_IFACE_NAME, true);
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, true));
+        assertTrue(mCmi.enablePowerSave());
+        verify(mWifiNative, times(3)).setPowerSave(WIFI_IFACE_NAME, true);
     }
 
     /**
@@ -4724,7 +4725,7 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifySetPowerSaveFalseSuccess() throws Exception {
-        assertTrue(mCmi.setPowerSave(false));
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, false));
         verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
     }
 

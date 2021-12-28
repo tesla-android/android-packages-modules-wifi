@@ -2759,7 +2759,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // power settings when we control suspend mode optimizations.
         // TODO: Remove this comment when the driver is fixed.
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, false);
-        setPowerSave(false);
+        setPowerSave(POWER_SAVE_CLIENT_DHCP, false);
 
         // Update link layer stats
         getWifiLinkLayerStats();
@@ -2800,7 +2800,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     void handlePostDhcpSetup() {
         /* Restore power save and suspend optimizations */
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, true);
-        setPowerSave(true);
+        setPowerSave(POWER_SAVE_CLIENT_DHCP, true);
 
         mWifiP2pConnection.sendMessage(
                 WifiP2pServiceImpl.BLOCK_DISCOVERY, WifiP2pServiceImpl.DISABLED);
@@ -2817,7 +2817,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      *           false to disable power save.
      * @return true for success, false for failure
      */
-    public boolean setPowerSave(boolean ps) {
+    public boolean setPowerSave(@PowerSaveClientType int client, boolean ps) {
         if (mInterfaceName != null) {
             if (mVerboseLoggingEnabled) {
                 Log.d(getTag(), "Setting power save for: " + mInterfaceName + " to: " + ps);
@@ -2828,6 +2828,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Enable power save.
+     *
+     * @return true for success, false for failure.
+     */
+    public boolean enablePowerSave() {
+        return setPowerSave(/* doesn't mean anything in this version */ 0, true);
     }
 
     /**
@@ -3314,7 +3323,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 && mContext.getResources().getBoolean(
                         R.bool.config_wifiSuspendOptimizationsEnabled));
 
-        setPowerSave(true);
+        enablePowerSave();
 
         // Disable wpa_supplicant from auto reconnecting.
         mWifiNative.enableStaAutoReconnect(mInterfaceName, false);
