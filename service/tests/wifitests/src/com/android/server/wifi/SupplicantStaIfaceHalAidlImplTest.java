@@ -84,7 +84,6 @@ import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
 import android.hardware.wifi.supplicant.WpsConfigError;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
 import android.hardware.wifi.supplicant.WpsErrorIndication;
-import android.net.MacAddress;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
@@ -101,7 +100,6 @@ import android.text.TextUtils;
 import androidx.test.filters.SmallTest;
 
 import com.android.server.wifi.MboOceController.BtmFrameData;
-import com.android.server.wifi.SupplicantStaIfaceHalAidlImpl.PmkCacheStoreData;
 import com.android.server.wifi.hotspot2.AnqpEvent;
 import com.android.server.wifi.hotspot2.IconEvent;
 import com.android.server.wifi.hotspot2.WnmData;
@@ -118,6 +116,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -155,6 +154,7 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     private @Mock Clock mClock;
     private @Mock WifiMetrics mWifiMetrics;
     private @Mock WifiGlobals mWifiGlobals;
+    private @Mock PmkCacheManager mPmkCacheManager;
 
     IfaceInfo[] mIfaceInfoList;
     ISupplicantStaIfaceCallback mISupplicantStaIfaceCallback;
@@ -1640,36 +1640,25 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testSetPmkSuccess() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 SecurityParams.createSecurityParamsBySecurityType(
                         WifiConfiguration.SECURITY_TYPE_EAP));
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
-
-        setupMocksForPmkCache();
+        ArrayList<Byte> pmkCacheData = NativeUtil.byteArrayToArrayList("deadbeef".getBytes());
+        setupMocksForPmkCache(pmkCacheData);
         setupMocksForConnectSequence(false);
 
         executeAndValidateInitializationSequence();
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
 
+        verify(mPmkCacheManager).get(eq(testFrameworkNetworkId));
         verify(mSupplicantStaNetworkMock).setPmkCache(eq(
-                NativeUtil.byteArrayFromArrayList(pmkCacheData.data)));
+                NativeUtil.byteArrayFromArrayList(pmkCacheData)));
         verify(mISupplicantStaIfaceCallback)
                 .onPmkCacheAdded(eq(PMK_CACHE_EXPIRATION_IN_SEC), eq(
-                        NativeUtil.byteArrayFromArrayList(pmkCacheData.data)));
-        // There is only one cache entry, the next expiration alarm should be the same as
-        // its expiration time.
-        verify(mHandler).postDelayed(
-                /* private listener */ any(),
-                eq(SupplicantStaIfaceHalAidlImpl.PMK_CACHE_EXPIRATION_ALARM_TAG),
-                eq((PMK_CACHE_EXPIRATION_IN_SEC - testStartSeconds) * 1000));
+                        NativeUtil.byteArrayFromArrayList(pmkCacheData)));
     }
 
     /**
@@ -1679,34 +1668,24 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testSetPmkWhenSaeIsSelected() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
         WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
         config.networkId = testFrameworkNetworkId;
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 SecurityParams.createSecurityParamsBySecurityType(
                         WifiConfiguration.SECURITY_TYPE_SAE));
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        byte[] cacheDataArr = NativeUtil.byteArrayFromArrayList(pmkCacheData.data);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
-        setupMocksForPmkCache();
+        ArrayList<Byte> pmkCacheData = NativeUtil.byteArrayToArrayList("deadbeef".getBytes());
+        byte[] cacheDataArr = NativeUtil.byteArrayFromArrayList(pmkCacheData);
+        setupMocksForPmkCache(pmkCacheData);
         setupMocksForConnectSequence(false);
 
         executeAndValidateInitializationSequence();
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
 
+        verify(mPmkCacheManager).get(eq(testFrameworkNetworkId));
         verify(mSupplicantStaNetworkMock).setPmkCache(eq(cacheDataArr));
         verify(mISupplicantStaIfaceCallback)
                 .onPmkCacheAdded(eq(PMK_CACHE_EXPIRATION_IN_SEC), eq(cacheDataArr));
-        // there is only one cache entry, the next expiration alarm should be the same as
-        // its expiration time.
-        verify(mHandler).postDelayed(
-                /* private listener */ any(),
-                eq(SupplicantStaIfaceHalAidlImpl.PMK_CACHE_EXPIRATION_ALARM_TAG),
-                eq((PMK_CACHE_EXPIRATION_IN_SEC - testStartSeconds) * 1000));
     }
 
     /**
@@ -1716,18 +1695,12 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testAddPmkEntryNotCalledIfPskIsSelected() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
 
         WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
         config.networkId = testFrameworkNetworkId;
         config.getNetworkSelectionStatus().setCandidateSecurityParams(
                 SecurityParams.createSecurityParamsBySecurityType(
                         WifiConfiguration.SECURITY_TYPE_PSK));
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
         setupMocksForPmkCache();
         setupMocksForConnectSequence(false);
@@ -1747,16 +1720,10 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testAddPmkEntryNotCalledIfNoSecurityParamsIsSelected() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
 
         WifiConfiguration config = WifiConfigurationTestUtil.createPskSaeNetwork();
         config.networkId = testFrameworkNetworkId;
         config.getNetworkSelectionStatus().setCandidateSecurityParams(null);
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
         setupMocksForPmkCache();
         setupMocksForConnectSequence(false);
@@ -1776,13 +1743,11 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testAddPmkEntryNotCalledIfNoPmkCache() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
-        setupMocksForPmkCache();
+        setupMocksForPmkCache(null);
         setupMocksForConnectSequence(false);
         executeAndValidateInitializationSequence();
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
@@ -1790,10 +1755,6 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
         verify(mSupplicantStaNetworkMock, never()).setPmkCache(any(byte[].class));
         verify(mISupplicantStaIfaceCallback, never()).onPmkCacheAdded(
                 anyLong(), any(byte[].class));
-        verify(mHandler, never()).postDelayed(
-                /* private listener */ any(),
-                eq(SupplicantStaIfaceHalAidlImpl.PMK_CACHE_EXPIRATION_ALARM_TAG),
-                anyLong());
     }
 
     /**
@@ -1802,28 +1763,19 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testAddPmkEntryIsOmittedWithPskNetwork() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_PSK);
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
         setupMocksForPmkCache();
         setupMocksForConnectSequence(false);
         executeAndValidateInitializationSequence();
         assertTrue(mDut.connectToNetwork(WLAN0_IFACE_NAME, config));
 
+        verify(mPmkCacheManager, never()).add(any(), anyInt(), anyLong(), any());
         verify(mSupplicantStaNetworkMock, never()).setPmkCache(any(byte[].class));
         verify(mISupplicantStaIfaceCallback, never()).onPmkCacheAdded(
                 anyLong(), any(byte[].class));
-        verify(mHandler, never()).postDelayed(
-                /* private listener */ any(),
-                eq(SupplicantStaIfaceHalHidlImpl.PMK_CACHE_EXPIRATION_ALARM_TAG),
-                anyLong());
     }
 
     /**
@@ -1832,15 +1784,9 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     @Test
     public void testRemovePmkEntryOnReceivingAssocReject() throws Exception {
         int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
         WifiConfiguration config = new WifiConfiguration();
         config.networkId = testFrameworkNetworkId;
         config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
 
         setupMocksForPmkCache();
         setupMocksForConnectSequence(false);
@@ -1856,41 +1802,7 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
         AssociationRejectionData rejectionData = createAssocRejectData(SUPPLICANT_SSID, BSSID,
                 statusCode, false);
         mISupplicantStaIfaceCallback.onAssociationRejected(rejectionData);
-
-        assertNull(mDut.mPmkCacheEntries.get(testFrameworkNetworkId));
-    }
-
-    /**
-     * Tests the PMK cache is removed and not set if MAC address is changed.
-     */
-    @Test
-    public void testRemovePmkEntryOnMacAddressChanged() throws Exception {
-        int testFrameworkNetworkId = 9;
-        long testStartSeconds = PMK_CACHE_EXPIRATION_IN_SEC / 2;
-        WifiConfiguration config = new WifiConfiguration();
-        config.networkId = testFrameworkNetworkId;
-        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
-        // Assume we have a PMK cache with a different MAC address.
-        final byte[] previousConnectedMacAddressBytes =
-                {0x00, 0x01, 0x02, 0x03, 0x04, 0x09};
-        PmkCacheStoreData pmkCacheData =
-                new PmkCacheStoreData(PMK_CACHE_EXPIRATION_IN_SEC, new ArrayList<Byte>(),
-                        MacAddress.fromBytes(previousConnectedMacAddressBytes));
-        mDut.mPmkCacheEntries.put(testFrameworkNetworkId, pmkCacheData);
-        when(mClock.getElapsedSinceBootMillis()).thenReturn(testStartSeconds * 1000L);
-
-        setupMocksForPmkCache();
-        setupMocksForConnectSequence(false);
-
-        // When MAC is not changed, PMK cache should NOT be removed.
-        mDut.removeNetworkCachedDataIfNeeded(testFrameworkNetworkId,
-                MacAddress.fromBytes(previousConnectedMacAddressBytes));
-        assertEquals(pmkCacheData, mDut.mPmkCacheEntries.get(testFrameworkNetworkId));
-
-        // When MAC is changed, PMK cache should be removed.
-        mDut.removeNetworkCachedDataIfNeeded(testFrameworkNetworkId,
-                MacAddress.fromBytes(CONNECTED_MAC_ADDRESS_BYTES));
-        assertNull(mDut.mPmkCacheEntries.get(testFrameworkNetworkId));
+        verify(mPmkCacheManager).remove(eq(testFrameworkNetworkId));
     }
 
     /**
@@ -2471,6 +2383,22 @@ public class SupplicantStaIfaceHalAidlImplTest extends WifiBaseTest {
     }
 
     private void setupMocksForPmkCache() throws Exception {
+        ArrayList<Byte> pmkCacheData = NativeUtil.byteArrayToArrayList("deadbeef".getBytes());
+        setupMocksForPmkCache(pmkCacheData);
+    }
+
+    private void setupMocksForPmkCache(ArrayList<Byte> pmkCacheData) throws Exception {
+        mDut.mPmkCacheManager = mPmkCacheManager;
+        doAnswer(new MockAnswerUtil.AnswerWithArguments() {
+            public List<ArrayList<Byte>> answer(int networkId) {
+                if (pmkCacheData == null) return null;
+
+                List<ArrayList<Byte>> pmkDataList = new ArrayList<>();
+                pmkDataList.add(pmkCacheData);
+                return pmkDataList;
+            }
+        }).when(mPmkCacheManager)
+                .get(anyInt());
         doAnswer(new MockAnswerUtil.AnswerWithArguments() {
             public boolean answer(WifiConfiguration config, Map<String, String> networkExtra)
                     throws Exception {
