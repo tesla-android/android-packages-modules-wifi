@@ -3284,8 +3284,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .build();
 
         setupForCustomLohs();
-        mWifiServiceImpl.registerLOHSForTest(mPid, new LocalOnlyHotspotRequestInfo(
-                new WorkSource(), sharedCallback, WifiServiceImplTest::nopDeathCallback, null));
+        mWifiServiceImpl.registerLOHSForTest(mPid,
+                new LocalOnlyHotspotRequestInfo(mLooper.getLooper(), new WorkSource(),
+                        sharedCallback, WifiServiceImplTest::nopDeathCallback, null));
         assertThat(mWifiServiceImpl.startLocalOnlyHotspot(exclusiveCallback, TEST_PACKAGE_NAME,
                 TEST_FEATURE_ID, exclusiveConfig, mExtras)).isEqualTo(ERROR_GENERIC);
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
@@ -3303,9 +3304,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .build();
 
         setupForCustomLohs();
-        mWifiServiceImpl.registerLOHSForTest(mPid, new LocalOnlyHotspotRequestInfo(
-                new WorkSource(), exclusiveCallback, WifiServiceImplTest::nopDeathCallback,
-                exclusiveConfig));
+        mWifiServiceImpl.registerLOHSForTest(mPid,
+                new LocalOnlyHotspotRequestInfo(mLooper.getLooper(), new WorkSource(),
+                        exclusiveCallback, WifiServiceImplTest::nopDeathCallback, exclusiveConfig));
         stopAutoDispatchWithDispatchAllBeforeStopAndIgnoreExceptions(mLooper);
         assertThat(mWifiServiceImpl.startLocalOnlyHotspot(sharedCallback, TEST_PACKAGE_NAME,
                 TEST_FEATURE_ID, null, mExtras)).isEqualTo(ERROR_GENERIC);
