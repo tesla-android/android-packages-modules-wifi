@@ -165,6 +165,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Mock WifiConfigManager mWifiConfigManager;
     @Mock WifiConfigStore mWifiConfigStore;
     @Mock WifiPermissionsUtil mWifiPermissionsUtil;
+    @Mock FrameworkFacade mFrameworkFacade;
     @Mock WifiScanner mWifiScanner;
     @Mock PackageManager mPackageManager;
     @Mock IBinder mAppBinder;
@@ -177,7 +178,6 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     @Mock ConnectHelper mConnectHelper;
     @Mock PowerManager mPowerManager;
     @Mock ClientModeImplMonitor mCmiMonitor;
-    @Mock FrameworkFacade mFrameworkFacade;
     @Mock MultiInternetManager mMultiInternetManager;
     private @Mock ClientModeManager mPrimaryClientModeManager;
     private @Mock WifiGlobals mWifiGlobals;
@@ -272,6 +272,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
             }
         }).when(mActiveModeWarden).requestLocalOnlyClientModeManager(any(), any(), any(), any());
         when(mClientModeManager.getRole()).thenReturn(ActiveModeManager.ROLE_CLIENT_PRIMARY);
+        when(mFrameworkFacade.getSettingsWorkSource(any())).thenReturn(
+                new WorkSource(Process.SYSTEM_UID, "system-service"));
 
         when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(
                 WifiManager.WIFI_FEATURE_WPA3_SAE | WifiManager.WIFI_FEATURE_OWE);
@@ -2313,6 +2315,8 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
     public void testHandleNewNetworkRequestWithSpecifierWhenAwaitingCmRetrieval() throws Exception {
         doNothing().when(mActiveModeWarden).requestLocalOnlyClientModeManager(
                 any(), any(), any(), any());
+        WorkSource ws = new WorkSource(TEST_UID_1, TEST_PACKAGE_NAME_1);
+        ws.add(new WorkSource(Process.SYSTEM_UID, "system-service"));
 
         when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
 
@@ -2332,7 +2336,7 @@ public class WifiNetworkFactoryTest extends WifiBaseTest {
                 ArgumentCaptor.forClass(
                         ActiveModeWarden.ExternalClientModeManagerRequestListener.class);
         verify(mActiveModeWarden).requestLocalOnlyClientModeManager(
-                cmListenerCaptor.capture(), eq(new WorkSource(TEST_UID_1, TEST_PACKAGE_NAME_1)),
+                cmListenerCaptor.capture(), eq(ws),
                 eq("\"" + TEST_SSID_1 + "\""), eq(TEST_BSSID_1));
         assertNotNull(cmListenerCaptor.getValue());
 

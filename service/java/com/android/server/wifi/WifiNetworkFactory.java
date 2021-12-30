@@ -322,7 +322,7 @@ public class WifiNetworkFactory extends NetworkFactory {
                     Log.e(TAG, "Stale callback select received");
                     return;
                 }
-                handleConnectToNetworkUserSelection(wifiConfiguration);
+                handleConnectToNetworkUserSelection(wifiConfiguration, true);
             });
         }
 
@@ -1027,7 +1027,8 @@ public class WifiNetworkFactory extends NetworkFactory {
         scheduleConnectionTimeout();
     }
 
-    private void handleConnectToNetworkUserSelectionInternal(WifiConfiguration network) {
+    private void handleConnectToNetworkUserSelectionInternal(WifiConfiguration network,
+            boolean didUserSeeUi) {
         // Copy over the credentials from the app's request and then copy the ssid from user
         // selection.
         WifiConfiguration networkToConnect =
@@ -1056,15 +1057,21 @@ public class WifiNetworkFactory extends NetworkFactory {
         mUserSelectedNetwork = networkToConnect;
 
         // Request a new CMM for the connection processing.
-        if (mVerboseLoggingEnabled) Log.v(TAG, "Requesting new ClientModeManager instance");
-        mActiveModeWarden.requestLocalOnlyClientModeManager(
-                new ClientModeManagerRequestListener(),
-                new WorkSource(mActiveSpecificNetworkRequest.getRequestorUid(),
-                        mActiveSpecificNetworkRequest.getRequestorPackageName()),
-                networkToConnect.SSID, networkToConnect.BSSID);
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG,
+                    "Requesting new ClientModeManager instance - didUserSeeUi = " + didUserSeeUi);
+        }
+        WorkSource ws = new WorkSource(mActiveSpecificNetworkRequest.getRequestorUid(),
+                mActiveSpecificNetworkRequest.getRequestorPackageName());
+        if (didUserSeeUi) {
+            ws.add(mFacade.getSettingsWorkSource(mContext));
+        }
+        mActiveModeWarden.requestLocalOnlyClientModeManager(new ClientModeManagerRequestListener(),
+                ws, networkToConnect.SSID, networkToConnect.BSSID);
     }
 
-    private void handleConnectToNetworkUserSelection(WifiConfiguration network) {
+    private void handleConnectToNetworkUserSelection(WifiConfiguration network,
+            boolean didUserSeeUi) {
         Log.d(TAG, "User initiated connect to network: " + network.SSID);
 
         // Cancel the ongoing scans after user selection.
@@ -1072,7 +1079,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         mIsPeriodicScanEnabled = false;
 
         // Trigger connection attempts.
-        handleConnectToNetworkUserSelectionInternal(network);
+        handleConnectToNetworkUserSelectionInternal(network, didUserSeeUi);
 
         // Add the network to the approved access point map for the app.
         addNetworkToUserApprovedAccessPointMap(mUserSelectedNetwork);
@@ -1763,7 +1770,7 @@ public class WifiNetworkFactory extends NetworkFactory {
             WifiConfiguration config = mActiveSpecificNetworkRequestSpecifier.wifiConfiguration;
             config.SSID = "\"" + ssid + "\"";
             config.BSSID = bssid.toString();
-            handleConnectToNetworkUserSelectionInternal(config);
+            handleConnectToNetworkUserSelectionInternal(config, false);
             mWifiMetrics.incrementNetworkRequestApiNumUserApprovalBypass();
             return true;
         }
@@ -1809,7 +1816,7 @@ public class WifiNetworkFactory extends NetworkFactory {
                     ScanResultMatchInfo.fromWifiConfiguration(config));
             Log.v(TAG, "Bypassing user dialog for connection to SSID="
                     + config.SSID + ", BSSID=" + config.BSSID);
-            handleConnectToNetworkUserSelection(config);
+            handleConnectToNetworkUserSelection(config, false);
         }
     }
 

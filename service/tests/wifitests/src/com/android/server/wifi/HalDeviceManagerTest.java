@@ -1645,7 +1645,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 TEST_WORKSOURCE_2, // requestorWs
                 // destroyedInterfacesDestroyedListeners...
                 new InterfaceDestroyedListenerWithIfaceName(
-                        getName(staIface), staDestroyedListener)
+                        getName(staIface2), staDestroyedListener2)
         );
         collector.checkThat("AP interface wasn't created", apIface, IsNull.notNullValue());
 
@@ -2057,12 +2057,12 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                 nanDestroyedListener, // destroyedListener
                 TEST_WORKSOURCE_2, // requestorWs
                 new InterfaceDestroyedListenerWithIfaceName(
-                        getName(staIface), staDestroyedListener)
+                        getName(staIface2), staDestroyedListener2)
         );
         collector.checkThat("NAN interface wasn't created", nanIface, IsNull.notNullValue());
 
-        verify(chipMock.chip).removeStaIface("wlan0");
-        verify(staDestroyedListener).onDestroyed(getName(staIface));
+        verify(chipMock.chip).removeStaIface("wlan1");
+        verify(staDestroyedListener2).onDestroyed(getName(staIface2));
 
         // request STA2 (foreground app): should fail
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(false);
