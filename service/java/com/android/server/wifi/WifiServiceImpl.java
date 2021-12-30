@@ -1016,7 +1016,8 @@ public class WifiServiceImpl extends BaseWifiService {
     private boolean isTargetSdkLessThanQOrPrivileged(String packageName, int pid, int uid) {
         return mWifiPermissionsUtil.isTargetSdkLessThan(packageName, Build.VERSION_CODES.Q, uid)
                 || isPrivileged(pid, uid)
-                || isDeviceOrProfileOwner(uid, packageName)
+                || ((SdkLevel.isAtLeastT()) ? mWifiPermissionsUtil.isAdmin(uid, packageName)
+                        : isDeviceOrProfileOwner(uid, packageName))
                 || mWifiPermissionsUtil.isSystem(packageName, uid)
                 // TODO(b/140540984): Remove this bypass.
                 || mWifiPermissionsUtil.checkSystemAlertWindowPermission(uid, packageName);

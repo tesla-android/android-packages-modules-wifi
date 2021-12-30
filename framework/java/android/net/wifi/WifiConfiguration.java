@@ -1676,30 +1676,23 @@ public class WifiConfiguration implements Parcelable {
 
     /**
      * Use factory MAC when connecting to this network
-     * @hide
      */
-    @SystemApi
     public static final int RANDOMIZATION_NONE = 0;
+
     /**
      * Generate a randomized MAC once and reuse it for all connections to this network
-     * @hide
      */
-    @SystemApi
     public static final int RANDOMIZATION_PERSISTENT = 1;
 
     /**
      * Use a randomly generated MAC address for connections to this network.
      * This option does not persist the randomized MAC address.
-     * @hide
      */
-    @SystemApi
     public static final int RANDOMIZATION_NON_PERSISTENT = 2;
 
     /**
      * Let the wifi framework automatically decide the MAC randomization strategy.
-     * @hide
      */
-    @SystemApi
     public static final int RANDOMIZATION_AUTO = 3;
 
     /**
@@ -1712,6 +1705,20 @@ public class WifiConfiguration implements Parcelable {
     @SystemApi
     @MacRandomizationSetting
     public int macRandomizationSetting = RANDOMIZATION_AUTO;
+
+    /**
+     * Set the MAC randomization setting for this network.
+     */
+    public void setMacRandomizationSetting(@MacRandomizationSetting int macRandomizationSetting) {
+        this.macRandomizationSetting = macRandomizationSetting;
+    }
+
+    /**
+     * Get the MAC randomization setting for this network.
+     */
+    public @MacRandomizationSetting int getMacRandomizationSetting() {
+        return this.macRandomizationSetting;
+    }
 
     /**
      * Randomized MAC address to use with this particular network

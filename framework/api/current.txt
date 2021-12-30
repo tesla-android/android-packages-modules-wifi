@@ -112,13 +112,19 @@ package android.net.wifi {
     method public int describeContents();
     method @Deprecated public android.net.ProxyInfo getHttpProxy();
     method @Deprecated @NonNull public String getKey();
+    method @Deprecated public int getMacRandomizationSetting();
     method @Deprecated @NonNull public android.net.MacAddress getRandomizedMacAddress();
     method @Deprecated public boolean isPasspoint();
     method @Deprecated public void setHttpProxy(android.net.ProxyInfo);
+    method @Deprecated public void setMacRandomizationSetting(int);
     method @Deprecated public void setSecurityParams(int);
     method public void writeToParcel(android.os.Parcel, int);
     field @Deprecated public String BSSID;
     field @Deprecated public String FQDN;
+    field @Deprecated public static final int RANDOMIZATION_AUTO = 3; // 0x3
+    field @Deprecated public static final int RANDOMIZATION_NONE = 0; // 0x0
+    field @Deprecated public static final int RANDOMIZATION_NON_PERSISTENT = 2; // 0x2
+    field @Deprecated public static final int RANDOMIZATION_PERSISTENT = 1; // 0x1
     field @Deprecated public static final int SECURITY_TYPE_EAP = 3; // 0x3
     field @Deprecated public static final int SECURITY_TYPE_EAP_SUITE_B = 5; // 0x5
     field @Deprecated public static final int SECURITY_TYPE_EAP_WPA3_ENTERPRISE = 9; // 0x9

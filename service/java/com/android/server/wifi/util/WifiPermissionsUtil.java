@@ -44,6 +44,8 @@ import android.util.EventLog;
 import android.util.Log;
 import android.util.Pair;
 
+import androidx.annotation.RequiresApi;
+
 import com.android.internal.annotations.GuardedBy;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FrameworkFacade;
@@ -908,7 +910,7 @@ public class WifiPermissionsUtil {
     }
 
     /**
-     * Returns true if the |callingUid|/\callingPackage| is the profile owner.
+     * Returns true if the |callingUid|/|callingPackage| is the profile owner.
      */
     public boolean isProfileOwner(int uid, @Nullable String packageName) {
         // Cannot determine if the app is DO/PO if packageName is null. So, will return false to be
@@ -993,5 +995,20 @@ public class WifiPermissionsUtil {
      */
     public void enableVerboseLogging(boolean enabled) {
         mVerboseLoggingEnabled = enabled;
+    }
+
+    /**
+     * Returns true if the |callingUid|/|callingPackage| is an admin.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public boolean isAdmin(int uid, @Nullable String packageName) {
+        // Cannot determine if the app is an admin if packageName is null.
+        // So, will return false to be safe.
+        if (packageName == null) {
+            Log.e(TAG, "isAdmin: packageName is null, returning false");
+            return false;
+        }
+        //TODO: b/213261796 Add support for special OEM approved manager app
+        return isDeviceOwner(uid, packageName) || isProfileOwner(uid, packageName);
     }
 }

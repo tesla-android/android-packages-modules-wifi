@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
@@ -75,6 +76,7 @@ import android.util.Pair;
 import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiScoreCard.PerNetwork;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.UserActionEvent;
 import com.android.server.wifi.util.LruConnectionTracker;
@@ -324,6 +326,10 @@ public class WifiConfigManagerTest extends WifiBaseTest {
     private void mockIsDeviceOwner(boolean result) {
         when(mWifiPermissionsUtil.isDeviceOwner(anyInt(), any())).thenReturn(result);
         when(mWifiPermissionsUtil.isDeviceOwner(anyInt())).thenReturn(result);
+    }
+
+    private void mockIsAdmin(boolean result) {
+        when(mWifiPermissionsUtil.isAdmin(anyInt(), any())).thenReturn(result);
     }
 
     /**
@@ -754,7 +760,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
     /**
      * Verifies that the device owner could modify other other fields in the Wificonfiguration
-     * but not the macRandomizationSetting field.
+     * but not the macRandomizationSetting field for networks they do not own.
      */
     @Test
     public void testCannotUpdateMacRandomizationSettingWithoutPermission() {
@@ -780,6 +786,42 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
         networkUpdateResult = updateNetworkToWifiConfigManager(openNetwork);
         assertEquals(WifiConfiguration.INVALID_NETWORK_ID, networkUpdateResult.getNetworkId());
+    }
+
+    /**
+     * Verifies that the admin could set and modify the macRandomizationSetting field
+     * for networks they own.
+     */
+    @Test
+    public void testCanUpdateMacRandomizationSettingForAdminNetwork() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        ArgumentCaptor<WifiConfiguration> wifiConfigCaptor =
+                ArgumentCaptor.forClass(WifiConfiguration.class);
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkNetworkSetupWizardPermission(anyInt())).thenReturn(false);
+        mockIsDeviceOwner(true);
+        mockIsAdmin(true);
+        WifiConfiguration openNetwork = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_NONE;
+
+        verifyAddNetworkToWifiConfigManager(openNetwork);
+        verify(mWcmListener).onNetworkAdded(wifiConfigCaptor.capture());
+        assertEquals(openNetwork.networkId, wifiConfigCaptor.getValue().networkId);
+        assertEquals(wifiConfigCaptor.getValue().macRandomizationSetting,
+                WifiConfiguration.RANDOMIZATION_NONE);
+        reset(mWcmListener);
+
+        // Change macRandomizationSetting for the network and verify success
+        openNetwork.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
+        NetworkUpdateResult networkUpdateResult =
+                mWifiConfigManager.addOrUpdateNetwork(openNetwork, TEST_CREATOR_UID);
+        assertNotEquals(WifiConfiguration.INVALID_NETWORK_ID, networkUpdateResult.getNetworkId());
+        verify(mWcmListener).onNetworkUpdated(
+                wifiConfigCaptor.capture(), wifiConfigCaptor.capture());
+        WifiConfiguration newConfig = wifiConfigCaptor.getAllValues().get(1);
+        assertEquals(WifiConfiguration.RANDOMIZATION_AUTO, newConfig.macRandomizationSetting);
+        assertEquals(openNetwork.networkId, newConfig.networkId);
+        reset(mWcmListener);
     }
 
     /**
