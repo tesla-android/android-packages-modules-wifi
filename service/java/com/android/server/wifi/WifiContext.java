@@ -156,4 +156,8 @@ public class WifiContext extends ContextWrapper {
         mWifiResourcesFromApk = null;
         mWifiThemeFromApk = null;
     }
+
+    WifiStringResourceWrapper getStringResourceWrapper(int subId) {
+        return new WifiStringResourceWrapper(this, subId);
+    }
 }
