@@ -23,6 +23,7 @@ import android.graphics.drawable.Icon;
 import android.net.wifi.WifiConfiguration;
 import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -67,7 +68,9 @@ public class EapFailureNotifier {
      */
     public boolean onEapFailure(int errorCode, WifiConfiguration config, boolean showNotification) {
         WifiStringResourceWrapper sr = mContext.getStringResourceWrapper(
-                mWifiCarrierInfoManager.getBestMatchSubscriptionId(config));
+                mWifiCarrierInfoManager.getBestMatchSubscriptionId(config),
+                config.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID
+                        ? mWifiCarrierInfoManager.getDefaultDataSimCarrierId() : config.carrierId);
         String errorMessage = sr.getString(ERROR_MESSAGE_OVERLAY_PREFIX + errorCode, config.SSID);
         if (errorMessage == null) {
             // Use the generic error message if the code does not match any known code.

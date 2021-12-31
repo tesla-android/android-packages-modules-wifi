@@ -84,7 +84,7 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         MockitoAnnotations.initMocks(this);
         when(mWifiCarrierInfoManager.getBestMatchSubscriptionId(mWifiConfiguration)).thenReturn(0);
         when(mContext.getResources()).thenReturn(mResources);
-        when(mContext.getStringResourceWrapper(anyInt())).thenReturn(mResourceWrapper);
+        when(mContext.getStringResourceWrapper(anyInt(), anyInt())).thenReturn(mResourceWrapper);
         when(mResourceWrapper.getString(eq(ERROR_MESSAGE_OVERLAY_PREFIX + UNKNOWN_ERROR_CODE),
                 anyString())).thenReturn(null);
         when(mResourceWrapper.getString(eq(ERROR_MESSAGE_OVERLAY_PREFIX + KNOWN_ERROR_CODE),

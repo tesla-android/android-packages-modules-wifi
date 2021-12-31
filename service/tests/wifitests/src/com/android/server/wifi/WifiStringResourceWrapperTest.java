@@ -17,6 +17,7 @@
 package com.android.server.wifi;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+import static com.android.server.wifi.WifiStringResourceWrapper.CARRIER_ID_RESOURCE_NAME_SUFFIX;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -51,9 +52,31 @@ public class WifiStringResourceWrapperTest extends WifiBaseTest {
     WifiStringResourceWrapper mDut;
 
     private static final int SUB_ID = 123;
-    private static final int ID_1 = 32764;
-    private static final String NAME_1 = "Name";
-    private static final String STRING_1 = "Some message";
+    private static final int CARRIER_ID = 4567;
+
+    private static final int RES_ID_NOT_FOUND = 0;
+
+    private static final String RES_NAME_1 = "some_eap_error";
+    private static final int RES_ID_1 = 32764;
+    private static final String RES_STRING_VAL_1 = "Some message";
+
+    private static final int RES_ID_2 = 32765;
+    private static final String[] RES_STRING_ARRAY_VAL_2 = { // carrier ID not included
+            ":::1234:::Some message AA",
+            ":::45678:::Some message BB"
+    };
+    private static final String[] RES_STRING_ARRAY_VAL_3 = { // carrier ID is here!
+            ":::1234:::Some message CC",
+            ":::4567:::Some message DD"
+    };
+    private static final String[] RES_STRING_ARRAY_VAL_4 = { // carrier ID is here - empty message
+            ":::1234:::Some message EE",
+            ":::4567:::"
+    };
+    private static final String[] RES_STRING_ARRAY_VAL_5 = { // carrier ID is here - bad format
+            ":::1234:::Some message FF",
+            ":::4567::"
+    };
 
     /**
      * Sets up for unit test
@@ -69,10 +92,12 @@ public class WifiStringResourceWrapperTest extends WifiBaseTest {
         lenient().when(SubscriptionManager.getResourcesForSubId(any(), eq(SUB_ID)))
                 .thenReturn(mResources);
 
-        when(mResources.getIdentifier(eq(NAME_1), eq("string"), any())).thenReturn(ID_1);
-        when(mResources.getString(eq(ID_1), any())).thenReturn(STRING_1);
+        when(mResources.getIdentifier(eq(RES_NAME_1), eq("string"), any())).thenReturn(RES_ID_1);
+        when(mResources.getString(eq(RES_ID_1), any())).thenReturn(RES_STRING_VAL_1);
+        when(mResources.getIdentifier(eq(RES_NAME_1 + CARRIER_ID_RESOURCE_NAME_SUFFIX),
+                eq("array"), any())).thenReturn(RES_ID_NOT_FOUND);
 
-        mDut = new WifiStringResourceWrapper(mContext, SUB_ID);
+        mDut = new WifiStringResourceWrapper(mContext, SUB_ID, CARRIER_ID);
     }
 
     @After
@@ -85,7 +110,39 @@ public class WifiStringResourceWrapperTest extends WifiBaseTest {
 
     @Test
     public void testBasicOperations() {
-        assertEquals(STRING_1, mDut.getString(NAME_1));
+        assertEquals("Some message", mDut.getString(RES_NAME_1));
         assertNull(mDut.getString("something else"));
+    }
+
+    @Test
+    public void testCarrierIdWithBaseNoOverride() {
+        when(mResources.getIdentifier(eq(RES_NAME_1 + CARRIER_ID_RESOURCE_NAME_SUFFIX),
+                eq("array"), any())).thenReturn(RES_ID_2);
+        when(mResources.getStringArray(eq(RES_ID_2))).thenReturn(RES_STRING_ARRAY_VAL_2);
+        assertEquals("Some message", mDut.getString(RES_NAME_1));
+    }
+
+    @Test
+    public void testCarrierIdAvailable() {
+        when(mResources.getIdentifier(eq(RES_NAME_1 + CARRIER_ID_RESOURCE_NAME_SUFFIX),
+                eq("array"), any())).thenReturn(RES_ID_2);
+        when(mResources.getStringArray(eq(RES_ID_2))).thenReturn(RES_STRING_ARRAY_VAL_3);
+        assertEquals("Some message DD", mDut.getString(RES_NAME_1));
+    }
+
+    @Test
+    public void testCarrierIdAvailableEmptyMessage() {
+        when(mResources.getIdentifier(eq(RES_NAME_1 + CARRIER_ID_RESOURCE_NAME_SUFFIX),
+                eq("array"), any())).thenReturn(RES_ID_2);
+        when(mResources.getStringArray(eq(RES_ID_2))).thenReturn(RES_STRING_ARRAY_VAL_4);
+        assertEquals("", mDut.getString(RES_NAME_1));
+    }
+
+    @Test
+    public void testCarrierIdBadlyFormatted() {
+        when(mResources.getIdentifier(eq(RES_NAME_1 + CARRIER_ID_RESOURCE_NAME_SUFFIX),
+                eq("array"), any())).thenReturn(RES_ID_2);
+        when(mResources.getStringArray(eq(RES_ID_2))).thenReturn(RES_STRING_ARRAY_VAL_5);
+        assertEquals("Some message", mDut.getString(RES_NAME_1));
     }
 }
