@@ -175,7 +175,8 @@ public class WifiApConfigStore {
     public SoftApConfiguration upgradeSoftApConfiguration(@NonNull SoftApConfiguration config) {
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder(config);
         if (SdkLevel.isAtLeastS() && ApConfigUtil.isBridgedModeSupported(mContext)
-                && config.getBands().length == 1) {
+                && config.getBands().length == 1 && mContext.getResources().getBoolean(
+                        R.bool.config_wifiSoftapAutoUpgradeToBridgedConfigWhenSupported)) {
             int[] dual_bands = new int[] {
                     SoftApConfiguration.BAND_2GHZ,
                     SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ};
