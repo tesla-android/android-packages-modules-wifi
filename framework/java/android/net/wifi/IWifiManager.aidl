@@ -46,6 +46,7 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
+import android.net.wifi.WifiSsid;
 
 import android.os.Bundle;
 import android.os.Messenger;
@@ -74,6 +75,10 @@ interface IWifiManager
     WifiConfiguration getPrivilegedConnectedNetwork(String packageName, String featureId, in Bundle extras);
 
     Map getAllMatchingFqdnsForScanResults(in List<ScanResult> scanResult);
+
+    void setSsidsDoNotBlocklist(String packageName, in List<WifiSsid> ssids);
+
+    List getSsidsDoNotBlocklist(String packageName);
 
     Map getMatchingOsuProviders(in List<ScanResult> scanResult);
 

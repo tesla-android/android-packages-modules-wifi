@@ -33,6 +33,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DisableReasonInfo;
+import android.net.wifi.WifiSsid;
 import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
@@ -46,6 +47,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -58,9 +60,9 @@ import java.util.concurrent.TimeUnit;
 public class WifiBlocklistMonitorTest {
     private static final int TEST_NUM_MAX_FIRMWARE_SUPPORT_BSSIDS = 3;
     private static final int TEST_NUM_MAX_FIRMWARE_SUPPORT_SSIDS = 3;
-    private static final String TEST_SSID_1 = "TestSSID1";
-    private static final String TEST_SSID_2 = "TestSSID2";
-    private static final String TEST_SSID_3 = "TestSSID3";
+    private static final String TEST_SSID_1 = "\"TestSSID1\"";
+    private static final String TEST_SSID_2 = "\"TestSSID2\"";
+    private static final String TEST_SSID_3 = "\"TestSSID3\"";
     private static final String TEST_BSSID_1 = "0a:08:5c:67:89:00";
     private static final String TEST_BSSID_2 = "0a:08:5c:67:89:01";
     private static final String TEST_BSSID_3 = "0a:08:5c:67:89:02";
@@ -423,6 +425,60 @@ public class WifiBlocklistMonitorTest {
         // Verify that 1 more failure will add the BSSID to blocklist.
         handleBssidConnectionFailureMultipleTimes(TEST_BSSID_1, TEST_L2_FAILURE, 1);
         assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_1));
+    }
+
+    @Test
+    public void testSsidsDoNotBlocklist_NotAddedToBssidBlocklist() {
+        // first verify that normally a BSSID gets blocked when failing too many times
+        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_1, TEST_SSID_1, TEST_L2_FAILURE,
+                NUM_FAILURES_TO_BLOCKLIST);
+        assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_1));
+
+        // add TEST_SSID_2 to "do not blocklist", and verify that BSSIDs under this SSID will not
+        // get blocked.
+        List<WifiSsid> expectedSsids = new ArrayList<>();
+        expectedSsids.add(WifiSsid.fromString(TEST_SSID_2));
+        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(expectedSsids);
+        assertEquals(expectedSsids,
+                mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_2, TEST_SSID_2, TEST_L2_FAILURE,
+                NUM_FAILURES_TO_BLOCKLIST);
+        assertFalse(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_2));
+
+        // Verify that setting the "do not blocklist" to empty list will make the BSSID
+        // blockable again.
+        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(Collections.EMPTY_LIST);
+        assertEquals(Collections.EMPTY_LIST,
+                mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_2, TEST_SSID_2, TEST_L2_FAILURE,
+                NUM_FAILURES_TO_BLOCKLIST);
+        assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_2));
+    }
+
+    @Test
+    public void testSsidsDoNotBlocklist_ConfigNotDisabled() {
+        // Create 2 test networks
+        WifiConfiguration openNetwork1 = WifiConfigurationTestUtil.createOpenNetwork();
+        WifiConfiguration openNetwork2 = WifiConfigurationTestUtil.createOpenNetwork();
+
+        // Add SSID of openNetwork2 to the "do not blocklist"
+        List<WifiSsid> expectedSsids = new ArrayList<>();
+        expectedSsids.add(WifiSsid.fromString(openNetwork2.SSID));
+        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(expectedSsids);
+        assertEquals(expectedSsids, mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+
+        // verify that openNetwork1 gets disabled due to wrong password
+        assertTrue(mWifiBlocklistMonitor.updateNetworkSelectionStatus(openNetwork1,
+                NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD));
+
+        // verify that openNetwork2 will not get disabled due to wrong password
+        assertFalse(mWifiBlocklistMonitor.updateNetworkSelectionStatus(openNetwork2,
+                NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD));
+
+        // Except if the reason is DISABLED_BY_WIFI_MANAGER, then openNetwork2 should still get
+        // disabled
+        assertTrue(mWifiBlocklistMonitor.updateNetworkSelectionStatus(openNetwork2,
+                NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER));
     }
 
     /**
