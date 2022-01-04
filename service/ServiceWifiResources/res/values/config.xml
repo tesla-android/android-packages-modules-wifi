@@ -733,7 +733,7 @@
          HAL as a blocking call. In such a case the country code will be applied
          immediately after the country code is sent to the driver (if the method returns a
          success). -->
-    <bool translatable="false" name="config_wifiDriverSupportedNl80211RegChangedEvent">true</bool>
+    <bool translatable="false" name="config_wifiDriverSupportedNl80211RegChangedEvent">false</bool>
 
     <!-- Indicate whether the verbose logging is always on -->
     <!-- 0: verbose logging controlled by user
