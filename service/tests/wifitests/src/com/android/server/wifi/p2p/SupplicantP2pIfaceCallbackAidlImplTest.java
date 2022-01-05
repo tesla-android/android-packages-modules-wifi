@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
-import android.hardware.wifi.supplicant.V1_0.ISupplicantP2pIfaceCallback;
-import android.hardware.wifi.supplicant.V1_0.ISupplicantP2pIfaceCallback.P2pStatusCode;
-import android.hardware.wifi.supplicant.V1_0.WpsConfigMethods;
+import android.hardware.wifi.supplicant.P2pProvDiscStatusCode;
+import android.hardware.wifi.supplicant.P2pStatusCode;
+import android.hardware.wifi.supplicant.WpsConfigMethods;
+import android.hardware.wifi.supplicant.WpsDevPasswordId;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -47,25 +48,20 @@ import com.android.server.wifi.util.NativeUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
 /**
- * Unit tests for SupplicantP2pIfaceCallback
+ * Unit tests for SupplicantP2pIfaceCallbackAidlImpl
  */
 @SmallTest
-public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
-    private static final String TAG = "SupplicantP2pIfaceCallbackTest";
-
+public class SupplicantP2pIfaceCallbackAidlImplTest extends WifiBaseTest {
     private String mIface = "test_p2p0";
     private String mGroupIface = "test_p2p-p2p0-3";
     private WifiP2pMonitor mMonitor;
-    private SupplicantP2pIfaceCallbackImpl mDut;
-    @Mock private SupplicantP2pIfaceHal mP2pIfaceHal;
+    private SupplicantP2pIfaceCallbackAidlImpl mDut;
 
     private byte[] mDeviceAddressInvalid1 = { 0x00 };
     private byte[] mDeviceAddressInvalid2 = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
@@ -78,10 +74,9 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     private static final int TEST_NETWORK_ID = 9;
     private static final int TEST_GROUP_FREQUENCY = 5400;
 
-    private class SupplicantP2pIfaceCallbackImplSpy extends SupplicantP2pIfaceCallbackImpl {
-        SupplicantP2pIfaceCallbackImplSpy(
-                SupplicantP2pIfaceHal ifaceHal, String iface, WifiP2pMonitor monitor) {
-            super(ifaceHal, iface, monitor);
+    private class SupplicantP2pIfaceCallbackImplSpy extends SupplicantP2pIfaceCallbackAidlImpl {
+        SupplicantP2pIfaceCallbackImplSpy(String iface, WifiP2pMonitor monitor) {
+            super(iface, monitor);
         }
     }
 
@@ -89,7 +84,7 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         mMonitor = mock(WifiP2pMonitor.class);
-        mDut = new SupplicantP2pIfaceCallbackImplSpy(mP2pIfaceHal, mIface, mMonitor);
+        mDut = new SupplicantP2pIfaceCallbackImplSpy(mIface, mMonitor);
     }
 
     /**
@@ -189,7 +184,6 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     @Test
     public void testOnDeviceFound_invalidArguments() throws Exception {
         byte[] fakePrimaryDeviceTypeBytes = { 0x0, 0x01, 0x02, -1, 0x04, 0x05, 0x06, 0x07 };
-        String fakePrimaryDeviceTypeString = "1-02FF0405-1543";
         String fakeDeviceName = "test device name";
         short fakeConfigMethods = 0x1234;
         byte fakeCapabilities = 123;
@@ -204,7 +198,6 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
         verify(mMonitor, never()).broadcastP2pDeviceFound(
                 anyString(), any(WifiP2pDevice.class));
 
-
         mDut.onDeviceFound(
                 mDeviceAddress1Bytes, mDeviceAddress2Bytes,
                 null,
@@ -214,7 +207,6 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
         verify(mMonitor, never()).broadcastP2pDeviceFound(
                 anyString(), any(WifiP2pDevice.class));
 
-
         mDut.onDeviceFound(
                 mDeviceAddress1Bytes, mDeviceAddress2Bytes,
                 fakePrimaryDeviceTypeBytes,
@@ -224,7 +216,6 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
         verify(mMonitor, never()).broadcastP2pDeviceFound(
                 anyString(), any(WifiP2pDevice.class));
 
-
         mDut.onDeviceFound(
                 mDeviceAddress1Bytes, mDeviceAddressInvalid1,
                 fakePrimaryDeviceTypeBytes,
@@ -233,7 +224,6 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
                 mDeviceInfoBytes);
         verify(mMonitor, never()).broadcastP2pDeviceFound(
                 anyString(), any(WifiP2pDevice.class));
-
 
         mDut.onDeviceFound(
                 mDeviceAddress1Bytes, mDeviceAddressInvalid2,
@@ -301,21 +291,18 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
         }).when(mMonitor).broadcastP2pGoNegotiationRequest(
                 anyString(), any(WifiP2pConfig.class));
 
-        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes,
-                (short) ISupplicantP2pIfaceCallback.WpsDevPasswordId.USER_SPECIFIED);
+        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes, WpsDevPasswordId.USER_SPECIFIED);
         assertTrue(setups.contains(WpsInfo.DISPLAY));
 
-        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes,
-                (short) ISupplicantP2pIfaceCallback.WpsDevPasswordId.PUSHBUTTON);
+        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes, WpsDevPasswordId.PUSHBUTTON);
         assertTrue(setups.contains(WpsInfo.PBC));
 
-        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes,
-                (short) ISupplicantP2pIfaceCallback.WpsDevPasswordId.REGISTRAR_SPECIFIED);
+        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes, WpsDevPasswordId.REGISTRAR_SPECIFIED);
         assertTrue(setups.contains(WpsInfo.KEYPAD));
 
         // Invalid should default to PBC
         setups.clear();
-        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes, (short) 0xffff);
+        mDut.onGoNegotiationRequest(mDeviceAddress1Bytes, 0xffff);
         assertTrue(setups.contains(WpsInfo.PBC));
     }
 
@@ -324,15 +311,15 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
      */
     @Test
     public void testOnGoNegotiationRequest_invalidArguments() throws Exception {
-        mDut.onGoNegotiationRequest(null, (short) 0);
+        mDut.onGoNegotiationRequest(null, 0);
         verify(mMonitor, never()).broadcastP2pDeviceLost(
                 anyString(), any(WifiP2pDevice.class));
 
-        mDut.onGoNegotiationRequest(mDeviceAddressInvalid1, (short) 0);
+        mDut.onGoNegotiationRequest(mDeviceAddressInvalid1, 0);
         verify(mMonitor, never()).broadcastP2pDeviceLost(
                 anyString(), any(WifiP2pDevice.class));
 
-        mDut.onGoNegotiationRequest(mDeviceAddressInvalid2, (short) 0);
+        mDut.onGoNegotiationRequest(mDeviceAddressInvalid2, 0);
         verify(mMonitor, never()).broadcastP2pDeviceLost(
                 anyString(), any(WifiP2pDevice.class));
     }
@@ -344,12 +331,7 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     public void testOnGroupStarted_success() throws Exception {
         String fakeName = "group name";
         String fakePassphrase = "secret";
-        ArrayList<Byte> fakeSsidBytesList = new ArrayList<Byte>() {{
-                add((byte) 0x30);
-                add((byte) 0x31);
-                add((byte) 0x32);
-                add((byte) 0x33);
-            }};
+        byte[] fakeSsidBytesList = new byte[] {0x30, 0x31, 0x32, 0x33};
         String fakeSsidString = "0123";
         HashSet<String> passwords = new HashSet<String>();
 
@@ -387,13 +369,7 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     public void testOnGroupStarted_invalidArguments() throws Exception {
         String fakeName = "group name";
         String fakePassphrase = "secret";
-        ArrayList<Byte> fakeSsidBytesList = new ArrayList<Byte>() {{
-                add((byte) 0x30);
-                add((byte) 0x31);
-                add((byte) 0x32);
-                add((byte) 0x33);
-            }};
-        String fakeSsidString = "0123";
+        byte[] fakeSsidBytesList = new byte[] {0x30, 0x31, 0x32, 0x33};
 
         mDut.onGroupStarted(
                 null, true, fakeSsidBytesList, 1, null, fakePassphrase,
@@ -421,7 +397,7 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
     public void testOnProvisionDiscoveryCompleted() throws Exception {
         byte[] p2pDeviceAddr = DEVICE_ADDRESS;
         boolean isRequest = false;
-        byte status = ISupplicantP2pIfaceCallback.P2pProvDiscStatusCode.SUCCESS;
+        byte status = P2pProvDiscStatusCode.SUCCESS;
         short configMethods = WpsConfigMethods.DISPLAY;
         String generatedPin = "12345678";
 
@@ -525,15 +501,16 @@ public class SupplicantP2pIfaceCallbackImplTest extends WifiBaseTest {
      */
     @Test
     public void testOnServiceDiscoveryResponseCompleted_success() throws Exception {
-        ArrayList<Byte> tlvs = NativeUtil.byteArrayToArrayList(hexStr2Bin(SERV_DISC_RESP_TLVS));
+        byte[] tlvs = hexStr2Bin(SERV_DISC_RESP_TLVS);
         ArgumentCaptor<List<WifiP2pServiceResponse>> respListCaptor =
                 ArgumentCaptor.forClass(List.class);
         mDut.onServiceDiscoveryResponse(
                 mDeviceAddress1Bytes,
-                (short) 10 /* unused updateIndicator value */,
+                (char) 10 /* unused updateIndicator value */,
                 tlvs);
         verify(mMonitor).broadcastP2pServiceDiscoveryResponse(anyString(),
                 respListCaptor.capture());
+        assertNotNull(respListCaptor.getValue());
         assertNotNull(respListCaptor.getValue());
     }
 

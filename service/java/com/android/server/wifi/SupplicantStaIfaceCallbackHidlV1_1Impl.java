@@ -17,20 +17,19 @@ package com.android.server.wifi;
 
 import android.annotation.NonNull;
 import android.hardware.wifi.supplicant.V1_0.ISupplicantStaIfaceCallback;
-import android.net.wifi.WifiManager;
 
 import java.util.ArrayList;
 
-abstract class SupplicantStaIfaceCallbackV1_1Impl extends
+abstract class SupplicantStaIfaceCallbackHidlV1_1Impl extends
         android.hardware.wifi.supplicant.V1_1.ISupplicantStaIfaceCallback.Stub {
-    private static final String TAG = SupplicantStaIfaceCallbackV1_1Impl.class.getSimpleName();
-    private final SupplicantStaIfaceHal mStaIfaceHal;
+    private static final String TAG = SupplicantStaIfaceCallbackHidlV1_1Impl.class.getSimpleName();
+    private final SupplicantStaIfaceHalHidlImpl mStaIfaceHal;
     private final String mIfaceName;
     private final Object mLock;
     private final WifiMonitor mWifiMonitor;
-    private final SupplicantStaIfaceHal.SupplicantStaIfaceHalCallback mCallbackV10;
+    private final SupplicantStaIfaceHalHidlImpl.SupplicantStaIfaceHalCallback mCallbackV10;
 
-    SupplicantStaIfaceCallbackV1_1Impl(@NonNull SupplicantStaIfaceHal staIfaceHal,
+    SupplicantStaIfaceCallbackHidlV1_1Impl(@NonNull SupplicantStaIfaceHalHidlImpl staIfaceHal,
             @NonNull String ifaceName,
             @NonNull Object lock,
             @NonNull WifiMonitor wifiMonitor) {

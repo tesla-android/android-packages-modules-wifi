@@ -705,14 +705,14 @@ public class WifiBackupRestore {
                             mParsedIdStrLine.substring(mParsedIdStrLine.indexOf('=') + 1);
                     if (idString != null) {
                         Map<String, String> extras =
-                                SupplicantStaNetworkHal.parseNetworkExtra(
+                                SupplicantStaNetworkHalHidlImpl.parseNetworkExtra(
                                         NativeUtil.removeEnclosingQuotes(idString));
                         if (extras == null) {
                             Log.e(TAG, "Error parsing network extras, ignoring network.");
                             return null;
                         }
                         String configKey = extras.get(
-                                SupplicantStaNetworkHal.ID_STRING_KEY_CONFIG_KEY);
+                                SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CONFIG_KEY);
                         // No ConfigKey was passed but we need it for validating the parsed
                         // network so we stop the restore.
                         if (configKey == null) {
@@ -729,7 +729,7 @@ public class WifiBackupRestore {
                         // these networks were created by system apps.
                         int creatorUid =
                                 Integer.parseInt(extras.get(
-                                        SupplicantStaNetworkHal.ID_STRING_KEY_CREATOR_UID));
+                                        SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CREATOR_UID));
                         if (creatorUid >= Process.FIRST_APPLICATION_UID) {
                             Log.d(TAG, "Ignoring network from non-system app: "
                                     + configuration.getKey());

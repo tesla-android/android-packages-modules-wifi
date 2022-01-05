@@ -1231,10 +1231,11 @@ public class WifiBackupRestoreTest extends WifiBaseTest {
             out.write("        " + "wep_tx_keyidx=" + configuration.wepTxKeyIndex + "\n");
         }
         Map<String, String> extras = new HashMap<>();
-        extras.put(SupplicantStaNetworkHal.ID_STRING_KEY_CONFIG_KEY, configuration.getKey());
-        extras.put(SupplicantStaNetworkHal.ID_STRING_KEY_CREATOR_UID,
+        extras.put(SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CONFIG_KEY,
+                configuration.getKey());
+        extras.put(SupplicantStaNetworkHalHidlImpl.ID_STRING_KEY_CREATOR_UID,
                 Integer.toString(configuration.creatorUid));
-        String idString = "\"" + SupplicantStaNetworkHal.createNetworkExtra(extras) + "\"";
+        String idString = "\"" + SupplicantStaNetworkHalHidlImpl.createNetworkExtra(extras) + "\"";
         if (idString != null) {
             out.write("        " + "id_str=" + idString + "\n");
         }
