@@ -580,6 +580,10 @@ public class ScanRequestProxy {
     public void setScanThrottleEnabled(boolean enable) {
         mThrottleEnabled = enable;
         mSettingsConfigStore.put(WIFI_SCAN_THROTTLE_ENABLED, enable);
+
+        // reset internal counters when enabling/disabling throttling
+        mLastScanTimestampsForFgApps.clear();
+        mLastScanTimestampForBgApps = 0;
         Log.i(TAG, "Scan throttle enabled " + mThrottleEnabled);
     }
 
