@@ -554,11 +554,12 @@ public class WifiMonitor {
      * @param reason Disconnect reason code.
      * @param ssid SSID of the access point.
      * @param bssid BSSID of the access point.
+     * @param networkId of the WifiConfiguration being disconnected.
      */
     public void broadcastNetworkDisconnectionEvent(String iface, boolean locallyGenerated,
-            int reason, String ssid, String bssid) {
+            int reason, String ssid, String bssid, int networkId) {
         sendMessage(iface, NETWORK_DISCONNECTION_EVENT,
-                new DisconnectEventInfo(ssid, bssid, reason, locallyGenerated));
+                new DisconnectEventInfo(ssid, bssid, reason, locallyGenerated, networkId));
     }
 
     /**
