@@ -99,9 +99,11 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.NetworkProvider;
 import android.net.NetworkSpecifier;
+import android.net.ProvisioningConfigurationParcelable;
 import android.net.RouteInfo;
 import android.net.StaticIpConfiguration;
 import android.net.Uri;
+import android.net.apf.ApfCapabilities;
 import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
 import android.net.vcn.VcnManager;
@@ -411,6 +413,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     static final int      sFreq1 = 5240;
     static final String   WIFI_IFACE_NAME = "mockWlan";
     static final String sFilsSsid = "FILS-AP";
+    static final ApfCapabilities APF_CAP = new ApfCapabilities(1, 2, 3);
 
     ClientModeImpl mCmi;
     HandlerThread mWifiCoreThread;
@@ -496,6 +499,7 @@ public class ClientModeImplTest extends WifiBaseTest {
             mOffloadDisabledListenerArgumentCaptor = ArgumentCaptor.forClass(
                     WifiCarrierInfoManager.OnCarrierOffloadDisabledListener.class);
     @Captor ArgumentCaptor<BroadcastReceiver> mScreenStateBroadcastReceiverCaptor;
+    @Captor ArgumentCaptor<ProvisioningConfigurationParcelable> mProvisioningConfigurationCaptor;
 
     private void setUpWifiNative() throws Exception {
         when(mWifiNative.getStaFactoryMacAddress(WIFI_IFACE_NAME)).thenReturn(
@@ -520,6 +524,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                     }
                 });
         when(mWifiNative.connectToNetwork(any(), any())).thenReturn(true);
+        when(mWifiNative.getApfCapabilities(anyString())).thenReturn(APF_CAP);
     }
 
     /** Reset verify() counters on WifiNative, and restore when() mocks on mWifiNative */
@@ -6630,6 +6635,9 @@ public class ClientModeImplTest extends WifiBaseTest {
     public void testPacketFilter() throws Exception {
         connect();
 
+        verify(mIpClient).startProvisioning(mProvisioningConfigurationCaptor.capture());
+        assertEquals(APF_CAP, mProvisioningConfigurationCaptor.getValue().apfCapabilities);
+
         byte[] filter = new byte[20];
         new Random().nextBytes(filter);
         mIpClientCallback.installPacketFilter(filter);
@@ -6642,6 +6650,26 @@ public class ClientModeImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mIpClient).readPacketFilterComplete(filter);
         verify(mWifiNative).readPacketFilter(WIFI_IFACE_NAME);
+    }
+
+    @Test
+    public void testPacketFilterOnSecondarySupported() throws Exception {
+        mResources.setBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta, true);
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        connect();
+
+        verify(mIpClient).startProvisioning(mProvisioningConfigurationCaptor.capture());
+        assertEquals(APF_CAP, mProvisioningConfigurationCaptor.getValue().apfCapabilities);
+    }
+
+    @Test
+    public void testPacketFilterOnSecondaryNotSupported() throws Exception {
+        mResources.setBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta, false);
+        when(mClientModeManager.getRole()).thenReturn(ROLE_CLIENT_SECONDARY_TRANSIENT);
+        connect();
+
+        verify(mIpClient).startProvisioning(mProvisioningConfigurationCaptor.capture());
+        assertNull(mProvisioningConfigurationCaptor.getValue().apfCapabilities);
     }
 
     @Test

@@ -6413,10 +6413,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     new ProvisioningConfiguration.Builder()
                     .withPreDhcpAction()
                     .withPreconnection()
-                    .withApfCapabilities(
-                    mWifiNative.getApfCapabilities(mInterfaceName))
                     .withDisplayName(config.SSID)
                     .withLayer2Information(layer2Info);
+            if (mContext.getResources().getBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta)
+                    || isPrimary()) {
+                // unclear if the native layer will return the correct non-capabilities if APF is
+                // not supported on secondary interfaces.
+                prov.withApfCapabilities(mWifiNative.getApfCapabilities(mInterfaceName));
+            }
             if (isUsingMacRandomization) {
                 // Use EUI64 address generation for link-local IPv6 addresses.
                 prov.withRandomMacAddress();
@@ -6472,7 +6476,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             if (!isUsingStaticIp) {
                 prov = new ProvisioningConfiguration.Builder()
                     .withPreDhcpAction()
-                    .withApfCapabilities(mWifiNative.getApfCapabilities(mInterfaceName))
                     .withNetwork(getCurrentNetwork())
                     .withDisplayName(config.SSID)
                     .withScanResultInfo(scanResultInfo)
@@ -6481,10 +6484,15 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 StaticIpConfiguration staticIpConfig = config.getStaticIpConfiguration();
                 prov = new ProvisioningConfiguration.Builder()
                         .withStaticConfiguration(staticIpConfig)
-                        .withApfCapabilities(mWifiNative.getApfCapabilities(mInterfaceName))
                         .withNetwork(getCurrentNetwork())
                         .withDisplayName(config.SSID)
                         .withLayer2Information(layer2Info);
+            }
+            if (mContext.getResources().getBoolean(R.bool.config_wifiEnableApfOnNonPrimarySta)
+                    || isPrimary()) {
+                // unclear if the native layer will return the correct non-capabilities if APF is
+                // not supported on secondary interfaces.
+                prov.withApfCapabilities(mWifiNative.getApfCapabilities(mInterfaceName));
             }
             if (isUsingMacRandomization) {
                 // Use EUI64 address generation for link-local IPv6 addresses.
