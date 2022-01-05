@@ -163,6 +163,9 @@
     <!-- boolean indicating whether or not to reset max client setting configuration during cloud configuration restore -->
     <bool translatable="false" name ="config_wifiSoftapResetMaxClientSettingConfig">true</bool>
 
+    <!-- boolean indicating whether or not to auto-upgrade band setting configuration to dual bands during cloud configuration restore when device supported -->
+    <bool translatable="false" name ="config_wifiSoftapAutoUpgradeToBridgedConfigWhenSupported">true</bool>
+
     <!-- List of allowed channels in 2GHz band for softap. If the device doesn't want to restrict
          channels this should be empty. Values is a comma separated channel string and/or channel
          range string like '1-6,11'. -->
