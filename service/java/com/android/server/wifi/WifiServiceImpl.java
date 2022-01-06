@@ -2381,7 +2381,8 @@ public class WifiServiceImpl extends BaseWifiService {
 
         // now create the new LOHS request info object
         LocalOnlyHotspotRequestInfo request = new LocalOnlyHotspotRequestInfo(
-                requestorWs, callback, new LocalOnlyRequestorCallback(), customConfig);
+                mWifiHandlerThread.getLooper(), requestorWs, callback,
+                new LocalOnlyRequestorCallback(), customConfig);
 
         return mLohsSoftApTracker.start(pid, request);
     }

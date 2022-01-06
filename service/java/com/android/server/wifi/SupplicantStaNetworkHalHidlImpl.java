@@ -61,7 +61,7 @@ import javax.annotation.concurrent.ThreadSafe;
  * access level) acquires mLock.
  */
 @ThreadSafe
-public class SupplicantStaNetworkHal {
+public class SupplicantStaNetworkHalHidlImpl {
     private static final String TAG = "SupplicantStaNetworkHal";
     @VisibleForTesting
     public static final String ID_STRING_KEY_FQDN = "fqdn";
@@ -135,7 +135,7 @@ public class SupplicantStaNetworkHal {
     private String mWapiCertSuite;
     private long mAdvanceKeyMgmtFeatures;
 
-    SupplicantStaNetworkHal(ISupplicantStaNetwork iSupplicantStaNetwork, String ifaceName,
+    SupplicantStaNetworkHalHidlImpl(ISupplicantStaNetwork iSupplicantStaNetwork, String ifaceName,
             Context context, WifiMonitor monitor, WifiGlobals wifiGlobals,
             long advanceKeyMgmtFeature) {
         mISupplicantStaNetwork = iSupplicantStaNetwork;
@@ -825,7 +825,6 @@ public class SupplicantStaNetworkHal {
 
     /**
      * Maps WifiConfiguration Key Management BitSet to Supplicant HIDL bitmask int
-     * TODO(b/32571829): Update mapping when fast transition keys are added
      *
      * @return bitmask int describing the allowed Key Management schemes, readable by the Supplicant
      * HIDL hal
@@ -2337,13 +2336,13 @@ public class SupplicantStaNetworkHal {
                 Mutable<Boolean> statusOk = new Mutable<>(false);
                 iSupplicantStaNetworkV13.getProto_1_3(
                         (SupplicantStatus status, int protoMaskValue) -> {
-                    statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
-                    if (statusOk.value) {
-                        this.mProtoMask = protoMaskValue;
-                    } else {
-                        checkStatusAndLogFailure(status, methodStr);
-                    }
-                });
+                            statusOk.value = status.code == SupplicantStatusCode.SUCCESS;
+                            if (statusOk.value) {
+                                this.mProtoMask = protoMaskValue;
+                            } else {
+                                checkStatusAndLogFailure(status, methodStr);
+                            }
+                    });
                 return statusOk.value;
             } catch (RemoteException e) {
                 handleRemoteException(e, methodStr);
@@ -3216,6 +3215,8 @@ public class SupplicantStaNetworkHal {
                     }
                     ISupplicantStaNetwork.NetworkResponseEapSimGsmAuthParams param =
                             new ISupplicantStaNetwork.NetworkResponseEapSimGsmAuthParams();
+                    param.kc = new byte[8];
+                    param.sres = new byte[4];
                     byte[] kc = NativeUtil.hexStringToByteArray(match.group(1));
                     if (kc == null || kc.length != param.kc.length) {
                         Log.e(TAG, "Invalid kc value: " + match.group(1));
@@ -3401,7 +3402,7 @@ public class SupplicantStaNetworkHal {
      * service, null otherwise.
      */
     protected android.hardware.wifi.supplicant.V1_1.ISupplicantStaNetwork
-    getSupplicantStaNetworkForV1_1Mockable() {
+            getSupplicantStaNetworkForV1_1Mockable() {
         if (mISupplicantStaNetwork == null) return null;
         return android.hardware.wifi.supplicant.V1_1.ISupplicantStaNetwork.castFrom(
                 mISupplicantStaNetwork);
@@ -3905,17 +3906,17 @@ public class SupplicantStaNetworkHal {
     }
 
     protected class SupplicantStaNetworkHalCallbackV1_4
-            extends SupplicantStaNetworkCallbackV1_4Impl {
+            extends SupplicantStaNetworkCallbackHidlV1_4Impl {
         SupplicantStaNetworkHalCallbackV1_4(int frameworkNetworkId, String ssid) {
-            super(SupplicantStaNetworkHal.this,
+            super(SupplicantStaNetworkHalHidlImpl.this,
                     frameworkNetworkId, ssid,
                     mIfaceName, mLock, mWifiMonitor);
         }
     }
 
-    protected class SupplicantStaNetworkHalCallback extends SupplicantStaNetworkCallbackImpl {
+    protected class SupplicantStaNetworkHalCallback extends SupplicantStaNetworkCallbackHidlImpl {
         SupplicantStaNetworkHalCallback(int frameworkNetworkId, String ssid) {
-            super(SupplicantStaNetworkHal.this,
+            super(SupplicantStaNetworkHalHidlImpl.this,
                     frameworkNetworkId, ssid,
                     mIfaceName, mLock, mWifiMonitor);
         }

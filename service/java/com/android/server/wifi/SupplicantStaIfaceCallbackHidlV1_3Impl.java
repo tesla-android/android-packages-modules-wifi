@@ -18,21 +18,24 @@ package com.android.server.wifi;
 
 import android.annotation.NonNull;
 import android.hardware.wifi.supplicant.V1_0.ISupplicantStaIfaceCallback;
+import android.hardware.wifi.supplicant.V1_3.DppFailureCode;
+import android.hardware.wifi.supplicant.V1_3.DppProgressCode;
+import android.hardware.wifi.supplicant.V1_3.DppSuccessCode;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.util.Log;
 
 import java.util.ArrayList;
 
-abstract class SupplicantStaIfaceCallbackV1_3Impl extends
+abstract class SupplicantStaIfaceCallbackHidlV1_3Impl extends
         android.hardware.wifi.supplicant.V1_3.ISupplicantStaIfaceCallback.Stub {
-    private static final String TAG = SupplicantStaIfaceCallbackV1_3Impl.class.getSimpleName();
-    private final SupplicantStaIfaceHal mStaIfaceHal;
+    private static final String TAG = SupplicantStaIfaceCallbackHidlV1_3Impl.class.getSimpleName();
+    private final SupplicantStaIfaceHalHidlImpl mStaIfaceHal;
     private final String mIfaceName;
     private final WifiMonitor mWifiMonitor;
-    private final SupplicantStaIfaceHal.SupplicantStaIfaceHalCallbackV1_2 mCallbackV12;
+    private final SupplicantStaIfaceHalHidlImpl.SupplicantStaIfaceHalCallbackV1_2 mCallbackV12;
 
-    SupplicantStaIfaceCallbackV1_3Impl(@NonNull SupplicantStaIfaceHal staIfaceHal,
+    SupplicantStaIfaceCallbackHidlV1_3Impl(@NonNull SupplicantStaIfaceHalHidlImpl staIfaceHal,
             @NonNull String ifaceName,
             @NonNull WifiMonitor wifiMonitor) {
         mStaIfaceHal = staIfaceHal;
@@ -160,12 +163,17 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
 
     @Override
     public void onDppProgress(int code) {
-        mCallbackV12.onDppProgress(code);
+        mCallbackV12.onDppProgressInternal(halToFrameworkDppProgressCode(code));
     }
 
     @Override
     public void onDppFailure(int code) {
-        mCallbackV12.onDppFailure(code);
+        // Convert HIDL to framework DppFailureCode, then continue with callback
+        onDppFailureInternal(halToFrameworkDppFailureCode(code));
+    }
+
+    protected void onDppFailureInternal(int frameworkCode) {
+        mCallbackV12.onDppFailureInternal(frameworkCode);
     }
 
     @Override
@@ -189,7 +197,7 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
     @Override
     public void onDppProgress_1_3(int code) {
         if (mStaIfaceHal.getDppCallback() != null) {
-            mStaIfaceHal.getDppCallback().onProgress(code);
+            mStaIfaceHal.getDppCallback().onProgress(halToFrameworkDppProgressCode(code));
         } else {
             Log.e(TAG, "onDppProgress callback is null");
         }
@@ -197,6 +205,12 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
 
     @Override
     public void onDppFailure_1_3(int code, String ssid, String channelList,
+            ArrayList<Short> bandList) {
+        // Convert HIDL to framework DppFailureCode, then continue with callback
+        onDppFailureInternal_1_3(halToFrameworkDppFailureCode(code), ssid, channelList, bandList);
+    }
+
+    protected void onDppFailureInternal_1_3(int frameworkCode, String ssid, String channelList,
             ArrayList<Short> bandList) {
         if (mStaIfaceHal.getDppCallback() != null) {
             int[] bandListArray = null;
@@ -209,7 +223,8 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
                     bandListArray[i] = bandList.get(i).intValue();
                 }
             }
-            mStaIfaceHal.getDppCallback().onFailure(code, ssid, channelList, bandListArray);
+            mStaIfaceHal.getDppCallback().onFailure(
+                    frameworkCode, ssid, channelList, bandListArray);
         } else {
             Log.e(TAG, "onDppFailure callback is null");
         }
@@ -218,9 +233,9 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
     @Override
     public void onDppSuccess(int code) {
         if (mStaIfaceHal.getDppCallback() != null) {
-            mStaIfaceHal.getDppCallback().onSuccess(code);
+            mStaIfaceHal.getDppCallback().onSuccess(halToFrameworkDppEventType(code));
         } else {
-            Log.e(TAG, "onDppFailure callback is null");
+            Log.e(TAG, "onDppSuccess callback is null");
         }
     }
 
@@ -337,6 +352,64 @@ abstract class SupplicantStaIfaceCallbackV1_3Impl extends
                 return MboOceConstants.MBO_CELLULAR_DATA_CONNECTION_PREFERRED;
             default:
                 return MboOceConstants.MBO_CELLULAR_DATA_CONNECTION_RESERVED;
+        }
+    }
+
+    private int halToFrameworkDppEventType(int dppSuccessCode) {
+        switch(dppSuccessCode) {
+            case DppSuccessCode.CONFIGURATION_SENT:
+                return SupplicantStaIfaceHal.DppEventType.CONFIGURATION_SENT;
+            case DppSuccessCode.CONFIGURATION_APPLIED:
+                return SupplicantStaIfaceHal.DppEventType.CONFIGURATION_APPLIED;
+            default:
+                Log.e(TAG, "Invalid DppEventType received");
+                return -1;
+        }
+    }
+
+    private int halToFrameworkDppFailureCode(int failureCode) {
+        switch(failureCode) {
+            case DppFailureCode.INVALID_URI:
+                return SupplicantStaIfaceHal.DppFailureCode.INVALID_URI;
+            case DppFailureCode.AUTHENTICATION:
+                return SupplicantStaIfaceHal.DppFailureCode.AUTHENTICATION;
+            case DppFailureCode.NOT_COMPATIBLE:
+                return SupplicantStaIfaceHal.DppFailureCode.NOT_COMPATIBLE;
+            case DppFailureCode.CONFIGURATION:
+                return SupplicantStaIfaceHal.DppFailureCode.CONFIGURATION;
+            case DppFailureCode.BUSY:
+                return SupplicantStaIfaceHal.DppFailureCode.BUSY;
+            case DppFailureCode.TIMEOUT:
+                return SupplicantStaIfaceHal.DppFailureCode.TIMEOUT;
+            case DppFailureCode.FAILURE:
+                return SupplicantStaIfaceHal.DppFailureCode.FAILURE;
+            case DppFailureCode.NOT_SUPPORTED:
+                return SupplicantStaIfaceHal.DppFailureCode.NOT_SUPPORTED;
+            case DppFailureCode.CONFIGURATION_REJECTED:
+                return SupplicantStaIfaceHal.DppFailureCode.CONFIGURATION_REJECTED;
+            case DppFailureCode.CANNOT_FIND_NETWORK:
+                return SupplicantStaIfaceHal.DppFailureCode.CANNOT_FIND_NETWORK;
+            case DppFailureCode.ENROLLEE_AUTHENTICATION:
+                return SupplicantStaIfaceHal.DppFailureCode.ENROLLEE_AUTHENTICATION;
+            default:
+                Log.e(TAG, "Invalid DppFailureCode received");
+                return -1;
+        }
+    }
+
+    private int halToFrameworkDppProgressCode(int progressCode) {
+        switch(progressCode) {
+            case DppProgressCode.AUTHENTICATION_SUCCESS:
+                return SupplicantStaIfaceHal.DppProgressCode.AUTHENTICATION_SUCCESS;
+            case DppProgressCode.RESPONSE_PENDING:
+                return SupplicantStaIfaceHal.DppProgressCode.RESPONSE_PENDING;
+            case DppProgressCode.CONFIGURATION_SENT_WAITING_RESPONSE:
+                return SupplicantStaIfaceHal.DppProgressCode.CONFIGURATION_SENT_WAITING_RESPONSE;
+            case DppProgressCode.CONFIGURATION_ACCEPTED:
+                return SupplicantStaIfaceHal.DppProgressCode.CONFIGURATION_ACCEPTED;
+            default:
+                Log.e(TAG, "Invalid DppProgressCode received");
+                return -1;
         }
     }
 

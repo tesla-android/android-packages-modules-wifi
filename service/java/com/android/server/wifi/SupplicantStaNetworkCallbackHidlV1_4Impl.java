@@ -17,10 +17,9 @@ package com.android.server.wifi;
 
 import android.annotation.NonNull;
 import android.hardware.wifi.supplicant.V1_4.ISupplicantStaNetworkCallback;
-import android.hardware.wifi.supplicant.V1_4.ISupplicantStaNetworkCallback.TransitionDisableIndication;
 
-class SupplicantStaNetworkCallbackV1_4Impl extends ISupplicantStaNetworkCallback.Stub {
-    private final SupplicantStaNetworkHal mNetworkHal;
+class SupplicantStaNetworkCallbackHidlV1_4Impl extends ISupplicantStaNetworkCallback.Stub {
+    private final SupplicantStaNetworkHalHidlImpl mNetworkHal;
 
     /**
      * Current configured network's framework network id.
@@ -37,10 +36,10 @@ class SupplicantStaNetworkCallbackV1_4Impl extends ISupplicantStaNetworkCallback
 
     private final Object mLock;
 
-    private SupplicantStaNetworkHal.SupplicantStaNetworkHalCallback mCallbackV10;
+    private SupplicantStaNetworkHalHidlImpl.SupplicantStaNetworkHalCallback mCallbackV10;
 
-    SupplicantStaNetworkCallbackV1_4Impl(
-            @NonNull SupplicantStaNetworkHal networkHal,
+    SupplicantStaNetworkCallbackHidlV1_4Impl(
+            @NonNull SupplicantStaNetworkHalHidlImpl networkHal,
             int frameworkNetworkId, @NonNull String ssid,
             @NonNull String ifaceName, @NonNull Object lock, @NonNull WifiMonitor wifiMonitor) {
         mNetworkHal = networkHal;

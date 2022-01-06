@@ -901,7 +901,7 @@ public class WifiLockManager {
         }
 
         public void binderDied() {
-            releaseLock(mBinder);
+            mHandler.post(() -> releaseLock(mBinder));
         }
 
         public void unlinkDeathRecipient() {

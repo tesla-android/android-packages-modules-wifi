@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
 package com.android.server.wifi.p2p;
 
 import android.annotation.NonNull;
-import android.hardware.wifi.supplicant.V1_0.ISupplicantP2pIfaceCallback;
-import android.hardware.wifi.supplicant.V1_0.WpsConfigMethods;
+import android.hardware.wifi.supplicant.ISupplicantP2pIfaceCallback;
+import android.hardware.wifi.supplicant.P2pProvDiscStatusCode;
+import android.hardware.wifi.supplicant.P2pStatusCode;
+import android.hardware.wifi.supplicant.WpsConfigMethods;
+import android.hardware.wifi.supplicant.WpsDevPasswordId;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -28,28 +31,23 @@ import android.net.wifi.p2p.WifiP2pWfdInfo;
 import android.net.wifi.p2p.nsd.WifiP2pServiceResponse;
 import android.util.Log;
 
-import com.android.server.wifi.p2p.WifiP2pServiceImpl.P2pStatus;
 import com.android.server.wifi.util.NativeUtil;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Class used for processing all P2P callbacks.
+ * Class used for processing all P2P callbacks for the AIDL implementation.
  */
-public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.Stub {
-    private static final String TAG = "SupplicantP2pIfaceCallbackImpl";
+public class SupplicantP2pIfaceCallbackAidlImpl extends ISupplicantP2pIfaceCallback.Stub {
+    private static final String TAG = "SupplicantP2pIfaceCallbackAidlImpl";
     private static boolean sVerboseLoggingEnabled = true;
 
-    private final SupplicantP2pIfaceHal mP2pIfaceHal;
     private final String mInterface;
     private final WifiP2pMonitor mMonitor;
 
-    public SupplicantP2pIfaceCallbackImpl(
-            @NonNull SupplicantP2pIfaceHal p2pIfaceHal,
+    public SupplicantP2pIfaceCallbackAidlImpl(
             @NonNull String iface, @NonNull WifiP2pMonitor monitor) {
-        mP2pIfaceHal = p2pIfaceHal;
         mInterface = iface;
         mMonitor = monitor;
     }
@@ -61,27 +59,11 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         sVerboseLoggingEnabled = verboseEnabled;
     }
 
-    protected static void logd(String s) {
-        if (sVerboseLoggingEnabled) Log.d(TAG, s);
+    protected static void logd(String msg) {
+        if (sVerboseLoggingEnabled) {
+            Log.d(TAG, msg);
+        }
     }
-
-    /**
-     * Used to indicate that a new network has been added.
-     *
-     * @param networkId Network ID allocated to the corresponding network.
-     */
-    public void onNetworkAdded(int networkId) {
-    }
-
-
-    /**
-     * Used to indicate that a network has been removed.
-     *
-     * @param networkId Network ID allocated to the corresponding network.
-     */
-    public void onNetworkRemoved(int networkId) {
-    }
-
 
     /**
      * Used to indicate that a P2P device has been found.
@@ -101,16 +83,16 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      * @param wfdDeviceInfo WFD device info as described in section 5.1.2 of WFD
      *        technical specification v1.0.0.
      */
+    @Override
     public void onDeviceFound(byte[] srcAddress, byte[] p2pDeviceAddress, byte[] primaryDeviceType,
-            String deviceName, short configMethods, byte deviceCapabilities, int groupCapabilities,
+            String deviceName, int configMethods, byte deviceCapabilities, int groupCapabilities,
             byte[] wfdDeviceInfo) {
-        WifiP2pDevice device = new WifiP2pDevice();
-        device.deviceName = deviceName;
         if (deviceName == null) {
             Log.e(TAG, "Missing device name.");
             return;
         }
-
+        WifiP2pDevice device = new WifiP2pDevice();
+        device.deviceName = deviceName;
         try {
             device.deviceAddress = NativeUtil.macAddressFromByteArray(p2pDeviceAddress);
         } catch (Exception e) {
@@ -132,6 +114,8 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
 
         if (wfdDeviceInfo != null && wfdDeviceInfo.length >= 6) {
             device.wfdInfo = new WifiP2pWfdInfo(
+                    // Use & 0xFF to cast signed byte to unsigned int, otherwise
+                    // sign extension will affect the bitwise operations
                     ((wfdDeviceInfo[0] & 0xFF) << 8) + (wfdDeviceInfo[1] & 0xFF),
                     ((wfdDeviceInfo[2] & 0xFF) << 8) + (wfdDeviceInfo[3] & 0xFF),
                     ((wfdDeviceInfo[4] & 0xFF) << 8) + (wfdDeviceInfo[5] & 0xFF));
@@ -146,6 +130,7 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      *
      * @param p2pDeviceAddress P2P device address.
      */
+    @Override
     public void onDeviceLost(byte[] p2pDeviceAddress) {
         WifiP2pDevice device = new WifiP2pDevice();
 
@@ -162,15 +147,14 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pDeviceLost(mInterface, device);
     }
 
-
     /**
      * Used to indicate the termination of P2P find operation.
      */
+    @Override
     public void onFindStopped() {
         logd("Search stopped on " + mInterface);
         mMonitor.broadcastP2pFindStopped(mInterface);
     }
-
 
     /**
      * Used to indicate the reception of a P2P Group Owner negotiation request.
@@ -179,7 +163,8 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      *        negotiation request.
      * @param passwordId Type of password.
      */
-    public void onGoNegotiationRequest(byte[] srcAddress, short passwordId) {
+    @Override
+    public void onGoNegotiationRequest(byte[] srcAddress, int passwordId) {
         WifiP2pConfig config = new WifiP2pConfig();
 
         try {
@@ -195,15 +180,12 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
             case WpsDevPasswordId.USER_SPECIFIED:
                 config.wps.setup = WpsInfo.DISPLAY;
                 break;
-
             case WpsDevPasswordId.PUSHBUTTON:
                 config.wps.setup = WpsInfo.PBC;
                 break;
-
             case WpsDevPasswordId.REGISTRAR_SPECIFIED:
                 config.wps.setup = WpsInfo.KEYPAD;
                 break;
-
             default:
                 config.wps.setup = WpsInfo.PBC;
                 break;
@@ -213,50 +195,48 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pGoNegotiationRequest(mInterface, config);
     }
 
-
     /**
      * Used to indicate the completion of a P2P Group Owner negotiation request.
      *
      * @param status Status of the GO negotiation.
      */
+    @Override
     public void onGoNegotiationCompleted(int status) {
         logd("Group Owner negotiation completed with status: " + status);
-        P2pStatus result = halStatusToP2pStatus(status);
+        WifiP2pServiceImpl.P2pStatus result = halStatusToP2pStatus(status);
 
-        if (result == P2pStatus.SUCCESS) {
+        if (result == WifiP2pServiceImpl.P2pStatus.SUCCESS) {
             mMonitor.broadcastP2pGoNegotiationSuccess(mInterface);
         } else {
             mMonitor.broadcastP2pGoNegotiationFailure(mInterface, result);
         }
     }
 
-
     /**
      * Used to indicate a successful formation of a P2P group.
      */
+    @Override
     public void onGroupFormationSuccess() {
         logd("Group formation successful on " + mInterface);
         mMonitor.broadcastP2pGroupFormationSuccess(mInterface);
     }
-
 
     /**
      * Used to indicate a failure to form a P2P group.
      *
      * @param failureReason Failure reason string for debug purposes.
      */
+    @Override
     public void onGroupFormationFailure(String failureReason) {
-        // TODO(ender): failureReason should probably be an int (P2pStatusCode).
         logd("Group formation failed on " + mInterface + ": " + failureReason);
         mMonitor.broadcastP2pGroupFormationFailure(mInterface, failureReason);
     }
-
 
     /**
      * Used to indicate the start of a P2P group.
      *
      * @param groupIfName Interface name of the group. (For ex: p2p-p2p0-1)
-     * @param isGo Whether this device is owner of the group.
+     * @param isGroupOwner Whether this device is owner of the group.
      * @param ssid SSID of the group.
      * @param frequency Frequency on which this group is created.
      * @param psk PSK used to secure the group.
@@ -264,7 +244,8 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      * @param goDeviceAddress MAC Address of the owner of this group.
      * @param isPersistent Whether this group is persisted or not.
      */
-    public void onGroupStarted(String groupIfName, boolean isGo, ArrayList<Byte> ssid,
+    @Override
+    public void onGroupStarted(String groupIfName, boolean isGroupOwner, byte[] ssid,
             int frequency, byte[] psk, String passphrase, byte[] goDeviceAddress,
             boolean isPersistent) {
         if (groupIfName == null) {
@@ -278,7 +259,8 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         group.setInterface(groupIfName);
 
         try {
-            String quotedSsid = NativeUtil.encodeSsid(ssid);
+            String quotedSsid = NativeUtil.encodeSsid(
+                    NativeUtil.byteArrayToArrayList(ssid));
             group.setNetworkName(NativeUtil.removeEnclosingQuotes(quotedSsid));
         } catch (Exception e) {
             Log.e(TAG, "Could not encode SSID.", e);
@@ -286,7 +268,7 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         }
 
         group.setFrequency(frequency);
-        group.setIsGroupOwner(isGo);
+        group.setIsGroupOwner(isGroupOwner);
         group.setPassphrase(passphrase);
 
         if (isPersistent) {
@@ -308,14 +290,14 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pGroupStarted(mInterface, group);
     }
 
-
     /**
      * Used to indicate the removal of a P2P group.
      *
      * @param groupIfName Interface name of the group. (For ex: p2p-p2p0-1)
-     * @param isGo Whether this device is owner of the group.
+     * @param isGroupOwner Whether this device is owner of the group.
      */
-    public void onGroupRemoved(String groupIfName, boolean isGo) {
+    @Override
+    public void onGroupRemoved(String groupIfName, boolean isGroupOwner) {
         if (groupIfName == null) {
             Log.e(TAG, "Missing group name.");
             return;
@@ -324,10 +306,9 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         logd("Group " + groupIfName + " removed from " + mInterface);
         WifiP2pGroup group = new WifiP2pGroup();
         group.setInterface(groupIfName);
-        group.setIsGroupOwner(isGo);
+        group.setIsGroupOwner(isGroupOwner);
         mMonitor.broadcastP2pGroupRemoved(mInterface, group);
     }
-
 
     /**
      * Used to indicate the reception of a P2P invitation.
@@ -338,6 +319,7 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      * @param persistentNetworkId Persistent network Id of the group.
      * @param operatingFrequency Frequency on which the invitation was received.
      */
+    @Override
     public void onInvitationReceived(byte[] srcAddress, byte[] goDeviceAddress,
             byte[] bssid, int persistentNetworkId, int operatingFrequency) {
         WifiP2pGroup group = new WifiP2pGroup();
@@ -369,18 +351,17 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pInvitationReceived(mInterface, group);
     }
 
-
     /**
      * Used to indicate the result of the P2P invitation request.
      *
      * @param bssid Bssid of the group.
      * @param status Status of the invitation.
      */
+    @Override
     public void onInvitationResult(byte[] bssid, int status) {
         logd("Invitation completed with status: " + status);
         mMonitor.broadcastP2pInvitationResult(mInterface, halStatusToP2pStatus(status));
     }
-
 
     /**
      * Used to indicate the completion of a P2P provision discovery request.
@@ -392,9 +373,10 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      *                      Only one configMethod bit should be set per call.
      * @param generatedPin 8 digit pin generated.
      */
+    @Override
     public void onProvisionDiscoveryCompleted(byte[] p2pDeviceAddress, boolean isRequest,
-            byte status, short configMethods, String generatedPin) {
-        if (status != ISupplicantP2pIfaceCallback.P2pProvDiscStatusCode.SUCCESS) {
+            byte status, int configMethods, String generatedPin) {
+        if (status != P2pProvDiscStatusCode.SUCCESS) {
             Log.e(TAG, "Provision discovery failed: " + status);
             mMonitor.broadcastP2pProvisionDiscoveryFailure(mInterface);
             return;
@@ -440,7 +422,6 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         }
     }
 
-
     /**
      * Used to indicate the reception of a P2P service discovery response.
      *
@@ -449,16 +430,16 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      *        Wifi P2P Technical specification v1.2.
      * @param tlvs Refer to section 3.1.3.1 of Wifi P2P Technical specification v1.2.
      */
-    public void onServiceDiscoveryResponse(byte[] srcAddress, short updateIndicator,
-            ArrayList<Byte> tlvs) {
+    @Override
+    public void onServiceDiscoveryResponse(byte[] srcAddress, char updateIndicator,
+            byte[] tlvs) {
         List<WifiP2pServiceResponse> response = null;
 
         logd("Service discovery response received on " + mInterface);
         try {
             String srcAddressStr = NativeUtil.macAddressFromByteArray(srcAddress);
             // updateIndicator is not used
-            response = WifiP2pServiceResponse.newInstance(srcAddressStr,
-                    NativeUtil.byteArrayFromArrayList(tlvs));
+            response = WifiP2pServiceResponse.newInstance(srcAddressStr, tlvs);
         } catch (Exception e) {
             Log.e(TAG, "Could not process service discovery response.", e);
             return;
@@ -491,6 +472,7 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
      * @param srcAddress MAC address of the device that was authorized.
      * @param p2pDeviceAddress P2P device address.
      */
+    @Override
     public void onStaAuthorized(byte[] srcAddress, byte[] p2pDeviceAddress) {
         logd("STA authorized on " + mInterface);
         WifiP2pDevice device = createStaEventDevice(srcAddress, p2pDeviceAddress);
@@ -500,13 +482,13 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pApStaConnected(mInterface, device);
     }
 
-
     /**
      * Used to indicate when a STA device is disconnected from this device.
      *
      * @param srcAddress MAC address of the device that was deauthorized.
      * @param p2pDeviceAddress P2P device address.
      */
+    @Override
     public void onStaDeauthorized(byte[] srcAddress, byte[] p2pDeviceAddress) {
         logd("STA deauthorized on " + mInterface);
         WifiP2pDevice device = createStaEventDevice(srcAddress, p2pDeviceAddress);
@@ -516,61 +498,126 @@ public class SupplicantP2pIfaceCallbackImpl extends ISupplicantP2pIfaceCallback.
         mMonitor.broadcastP2pApStaDisconnected(mInterface, device);
     }
 
+    /**
+     * Used to indicate that a P2P WFD R2 device has been found.
+     *
+     * @param srcAddress MAC address of the device found. This must either
+     *        be the P2P device address or the P2P interface address.
+     * @param p2pDeviceAddress P2P device address.
+     * @param primaryDeviceType Type of device. Refer to section B.1 of Wifi P2P
+     *        Technical specification v1.2.
+     * @param deviceName Name of the device.
+     * @param configMethods Mask of WPS configuration methods supported by the
+     *        device.
+     * @param deviceCapabilities Refer to section 4.1.4 of Wifi P2P Technical
+     *        specification v1.2.
+     * @param groupCapabilities Refer to section 4.1.4 of Wifi P2P Technical
+     *        specification v1.2.
+     * @param wfdDeviceInfo WFD device info as described in section 5.1.2 of WFD
+     *        technical specification v1.0.0.
+     * @param wfdR2DeviceInfo WFD R2 device info as described in section 5.1.12 of WFD
+     *        technical specification v2.1.
+     */
+    @Override
+    public void onR2DeviceFound(byte[] srcAddress, byte[] p2pDeviceAddress,
+            byte[] primaryDeviceType, String deviceName, int configMethods,
+            byte deviceCapabilities, int groupCapabilities, byte[] wfdDeviceInfo,
+            byte[] wfdR2DeviceInfo) {
+        WifiP2pDevice device = new WifiP2pDevice();
+        device.deviceName = deviceName;
+        if (deviceName == null) {
+            Log.e(TAG, "Missing device name.");
+            return;
+        }
 
-    private static P2pStatus halStatusToP2pStatus(int status) {
-        P2pStatus result = P2pStatus.UNKNOWN;
+        try {
+            device.deviceAddress = NativeUtil.macAddressFromByteArray(p2pDeviceAddress);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not decode device address.", e);
+            return;
+        }
+
+        try {
+            device.primaryDeviceType = NativeUtil.wpsDevTypeStringFromByteArray(primaryDeviceType);
+        } catch (Exception e) {
+            Log.e(TAG, "Could not encode device primary type.", e);
+            return;
+        }
+
+        device.deviceCapability = deviceCapabilities;
+        device.groupCapability = groupCapabilities;
+        device.wpsConfigMethodsSupported = configMethods;
+        device.status = WifiP2pDevice.AVAILABLE;
+
+        if (wfdDeviceInfo != null && wfdDeviceInfo.length >= 6) {
+            device.wfdInfo = new WifiP2pWfdInfo(
+                    ((wfdDeviceInfo[0] & 0xFF) << 8) + (wfdDeviceInfo[1] & 0xFF),
+                    ((wfdDeviceInfo[2] & 0xFF) << 8) + (wfdDeviceInfo[3] & 0xFF),
+                    ((wfdDeviceInfo[4] & 0xFF) << 8) + (wfdDeviceInfo[5] & 0xFF));
+        }
+        if (wfdR2DeviceInfo != null && wfdR2DeviceInfo.length >= 2) {
+            device.wfdInfo.setR2DeviceInfo(
+                    ((wfdR2DeviceInfo[0] & 0xFF) << 8) + (wfdR2DeviceInfo[1] & 0xFF));
+        }
+
+        logd("R2 Device discovered on " + mInterface + ": "
+                + device + " R2 Info:" + Arrays.toString(wfdR2DeviceInfo));
+        mMonitor.broadcastP2pDeviceFound(mInterface, device);
+    }
+
+    private static WifiP2pServiceImpl.P2pStatus halStatusToP2pStatus(int status) {
+        WifiP2pServiceImpl.P2pStatus result = WifiP2pServiceImpl.P2pStatus.UNKNOWN;
 
         switch (status) {
             case P2pStatusCode.SUCCESS:
             case P2pStatusCode.SUCCESS_DEFERRED:
-                result = P2pStatus.SUCCESS;
+                result = WifiP2pServiceImpl.P2pStatus.SUCCESS;
                 break;
 
             case P2pStatusCode.FAIL_INFO_CURRENTLY_UNAVAILABLE:
-                result = P2pStatus.INFORMATION_IS_CURRENTLY_UNAVAILABLE;
+                result = WifiP2pServiceImpl.P2pStatus.INFORMATION_IS_CURRENTLY_UNAVAILABLE;
                 break;
 
             case P2pStatusCode.FAIL_INCOMPATIBLE_PARAMS:
-                result = P2pStatus.INCOMPATIBLE_PARAMETERS;
+                result = WifiP2pServiceImpl.P2pStatus.INCOMPATIBLE_PARAMETERS;
                 break;
 
             case P2pStatusCode.FAIL_LIMIT_REACHED:
-                result = P2pStatus.LIMIT_REACHED;
+                result = WifiP2pServiceImpl.P2pStatus.LIMIT_REACHED;
                 break;
 
             case P2pStatusCode.FAIL_INVALID_PARAMS:
-                result = P2pStatus.INVALID_PARAMETER;
+                result = WifiP2pServiceImpl.P2pStatus.INVALID_PARAMETER;
                 break;
 
             case P2pStatusCode.FAIL_UNABLE_TO_ACCOMMODATE:
-                result = P2pStatus.UNABLE_TO_ACCOMMODATE_REQUEST;
+                result = WifiP2pServiceImpl.P2pStatus.UNABLE_TO_ACCOMMODATE_REQUEST;
                 break;
 
             case P2pStatusCode.FAIL_PREV_PROTOCOL_ERROR:
-                result = P2pStatus.PREVIOUS_PROTOCOL_ERROR;
+                result = WifiP2pServiceImpl.P2pStatus.PREVIOUS_PROTOCOL_ERROR;
                 break;
 
             case P2pStatusCode.FAIL_NO_COMMON_CHANNELS:
-                result = P2pStatus.NO_COMMON_CHANNEL;
+                result = WifiP2pServiceImpl.P2pStatus.NO_COMMON_CHANNEL;
                 break;
 
             case P2pStatusCode.FAIL_UNKNOWN_GROUP:
-                result = P2pStatus.UNKNOWN_P2P_GROUP;
+                result = WifiP2pServiceImpl.P2pStatus.UNKNOWN_P2P_GROUP;
                 break;
 
             case P2pStatusCode.FAIL_BOTH_GO_INTENT_15:
-                result = P2pStatus.BOTH_GO_INTENT_15;
+                result = WifiP2pServiceImpl.P2pStatus.BOTH_GO_INTENT_15;
                 break;
 
             case P2pStatusCode.FAIL_INCOMPATIBLE_PROV_METHOD:
-                result = P2pStatus.INCOMPATIBLE_PROVISIONING_METHOD;
+                result = WifiP2pServiceImpl.P2pStatus.INCOMPATIBLE_PROVISIONING_METHOD;
                 break;
 
             case P2pStatusCode.FAIL_REJECTED_BY_USER:
-                result = P2pStatus.REJECTED_BY_USER;
+                result = WifiP2pServiceImpl.P2pStatus.REJECTED_BY_USER;
                 break;
         }
         return result;
     }
 }
-

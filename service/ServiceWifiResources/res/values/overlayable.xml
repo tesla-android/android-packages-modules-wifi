@@ -66,6 +66,7 @@
           <item type="bool" name="config_wifiSoftapResetUserControlConfig" />
           <item type="bool" name="config_wifiSoftapResetAutoShutdownTimerConfig" />
           <item type="bool" name="config_wifiSoftapResetMaxClientSettingConfig" />
+          <item type="bool" name="config_wifiSoftapAutoUpgradeToBridgedConfigWhenSupported" />
           <item type="string"  name="config_wifiSoftap2gChannelList" />
           <item type="string"  name="config_wifiSoftap5gChannelList" />
           <item type="string"  name="config_wifiSoftap6gChannelList" />
