@@ -185,7 +185,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
 
-    private final Context mContext;
+    private final WifiContext mContext;
     private final FrameworkFacade mFacade;
     private final Clock mClock;
 
@@ -316,7 +316,7 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
 
-    public WifiServiceImpl(Context context, WifiInjector wifiInjector) {
+    public WifiServiceImpl(WifiContext context, WifiInjector wifiInjector) {
         mContext = context;
         mWifiInjector = wifiInjector;
         mClock = wifiInjector.getClock();

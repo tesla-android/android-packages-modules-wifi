@@ -42,7 +42,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SupplicantState;
@@ -86,7 +85,7 @@ public class WifiShellCommandTest extends WifiBaseTest {
     @Mock WifiCountryCode mWifiCountryCode;
     @Mock WifiLastResortWatchdog mWifiLastResortWatchdog;
     @Mock WifiServiceImpl mWifiService;
-    @Mock Context mContext;
+    @Mock WifiContext mContext;
     @Mock ConnectivityManager mConnectivityManager;
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
     @Mock WifiNetworkFactory mWifiNetworkFactory;
