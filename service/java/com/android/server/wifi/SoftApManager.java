@@ -860,7 +860,9 @@ public class SoftApManager implements ActiveModeManager {
                             int newSingleApBand = 0;
                             final List<ClientModeManager> cmms =
                                     mActiveModeWarden.getClientModeManagers();
-                            if (cmms.size() != 0) {
+                            // Checking STA status only when device supports STA + AP concurrency
+                            // since STA would be dropped when device doesn't support it.
+                            if (cmms.size() != 0 && mWifiNative.isStaApConcurrencySupported()) {
                                 if (ApConfigUtil.isStaWithBridgedModeSupported(mContext)) {
                                     for (ClientModeManager cmm
                                             : mActiveModeWarden.getClientModeManagers()) {
