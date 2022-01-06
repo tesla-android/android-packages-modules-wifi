@@ -2701,6 +2701,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyString(), nullable(String.class), anyInt(), nullable(String.class));
         when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
                 .thenReturn(true);
+        if (SdkLevel.isAtLeastT()) {
+            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                    .thenReturn(true);
+        }
 
         mLooper.startAutoDispatch();
         ParceledListSlice<WifiConfiguration> configs =
@@ -5973,6 +5977,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .thenReturn(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
                 new NetworkUpdateResult(0));
+        if (SdkLevel.isAtLeastT()) {
+            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                    .thenReturn(true);
+        }
 
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
         mLooper.startAutoDispatch();
@@ -5992,6 +6000,33 @@ public class WifiServiceImplTest extends WifiBaseTest {
         doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
                 .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
         when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
+                new NetworkUpdateResult(0));
+        if (SdkLevel.isAtLeastT()) {
+            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                    .thenReturn(true);
+        }
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        mLooper.startAutoDispatch();
+        assertEquals(0, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verifyCheckChangePermission(TEST_PACKAGE_NAME);
+        verify(mWifiConfigManager).addOrUpdateNetwork(any(),  anyInt(), any());
+        verify(mWifiMetrics).incrementNumAddOrUpdateNetworkCalls();
+    }
+
+    /**
+     * Verify that add or update networks is allowed for an admin app.
+     */
+    @Test
+    public void testAddOrUpdateNetworkIsAllowedForAdminApp() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
+        when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
                 .thenReturn(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
                 new NetworkUpdateResult(0));
