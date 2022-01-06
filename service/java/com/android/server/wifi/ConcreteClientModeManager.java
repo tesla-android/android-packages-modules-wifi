@@ -1299,8 +1299,13 @@ public class ConcreteClientModeManager implements ClientModeManager {
     }
 
     @Override
-    public boolean setPowerSave(boolean ps) {
-        return getClientMode().setPowerSave(ps);
+    public boolean setPowerSave(@PowerSaveClientType int client, boolean ps) {
+        return getClientMode().setPowerSave(client, ps);
+    }
+
+    @Override
+    public boolean enablePowerSave() {
+        return getClientMode().enablePowerSave();
     }
 
     @Override

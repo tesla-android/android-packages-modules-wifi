@@ -4719,8 +4719,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         // called once during setup()
         verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, true);
 
-        assertTrue(mCmi.setPowerSave(true));
-        verify(mWifiNative, times(2)).setPowerSave(WIFI_IFACE_NAME, true);
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, true));
+        assertTrue(mCmi.enablePowerSave());
+        verify(mWifiNative, times(3)).setPowerSave(WIFI_IFACE_NAME, true);
     }
 
     /**
@@ -4729,8 +4730,54 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void verifySetPowerSaveFalseSuccess() throws Exception {
-        assertTrue(mCmi.setPowerSave(false));
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, false));
         verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+    }
+
+    /**
+     * Verify that using setPowerSave with multiple clients (DHCP/WifiLock) operates correctly:
+     * - Disable power save if ANY client disables it
+     * - Enable power save only if ALL clients no longer disable it
+     */
+    @Test
+    public void verifySetPowerSaveMultipleSources() {
+        InOrder inOrderWifiNative = inOrder(mWifiNative);
+
+        // #1 Disable-> #2 Disable-> #2 Enable-> #1 Enable
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, true));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, true));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, true);
+
+        // #1 Disable-> #2 Disable-> #1 Enable-> #2 Enable
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, true));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, true));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, true);
+
+        // #1 Disable-> #2 Disable-> global enable
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_WIFI_LOCK, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.setPowerSave(ClientMode.POWER_SAVE_CLIENT_DHCP, false));
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, false);
+
+        assertTrue(mCmi.enablePowerSave());
+        inOrderWifiNative.verify(mWifiNative).setPowerSave(WIFI_IFACE_NAME, true);
     }
 
     /**
