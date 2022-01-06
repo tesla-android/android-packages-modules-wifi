@@ -1134,4 +1134,39 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         assertEquals(expectedConfig.getBand(), SoftApConfiguration.BAND_2GHZ);
         assertEquals(expectedConfig.getChannel(), 0);
     }
+
+    private void verifyUpgradeConfiguration(WifiApConfigStore store, boolean isBridgedSupported,
+            boolean isUpgradeEnabledInOverlayConfig) throws Exception {
+        mResources.setBoolean(R.bool.config_wifiBridgedSoftApSupported, isBridgedSupported);
+        mResources.setBoolean(R.bool.config_wifiSoftapAutoUpgradeToBridgedConfigWhenSupported,
+                isUpgradeEnabledInOverlayConfig);
+        SoftApConfiguration singleConfig2G = setupApConfig(
+                "ConfiguredAP",                   /* SSID */
+                "randomKey",                      /* preshared key */
+                SECURITY_TYPE_WPA2_PSK,           /* security type */
+                SoftApConfiguration.BAND_2GHZ,    /* AP band */
+                0,                                /* AP channel */
+                true                              /* Hidden SSID */);
+        SoftApConfiguration bridgedConfig2GAnd5G = new SoftApConfiguration.Builder(singleConfig2G)
+                .setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
+                        SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ})
+                .build();
+
+        final SoftApConfiguration upgradedConfig = store.upgradeSoftApConfiguration(singleConfig2G);
+        if (isBridgedSupported && isUpgradeEnabledInOverlayConfig) {
+            assertEquals(bridgedConfig2GAnd5G, upgradedConfig);
+        } else {
+            assertEquals(singleConfig2G, upgradedConfig);
+        }
+    }
+
+    @Test
+    public void testUpgradeSoftApConfiguration() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        WifiApConfigStore store = createWifiApConfigStore();
+        verifyUpgradeConfiguration(store, true, true);
+        verifyUpgradeConfiguration(store, false, true);
+        verifyUpgradeConfiguration(store, true, false);
+        verifyUpgradeConfiguration(store, false, false);
+    }
 }

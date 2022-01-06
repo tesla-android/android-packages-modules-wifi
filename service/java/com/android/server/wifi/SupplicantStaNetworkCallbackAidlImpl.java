@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.server.wifi;
 
 import android.annotation.NonNull;
-import android.hardware.wifi.supplicant.V1_0.ISupplicantStaNetworkCallback;
+import android.hardware.wifi.supplicant.GsmRand;
+import android.hardware.wifi.supplicant.ISupplicantStaNetworkCallback;
+import android.hardware.wifi.supplicant.NetworkRequestEapSimGsmAuthParams;
+import android.hardware.wifi.supplicant.NetworkRequestEapSimUmtsAuthParams;
+import android.hardware.wifi.supplicant.TransitionDisableIndication;
 
 import com.android.server.wifi.util.NativeUtil;
 
-class SupplicantStaNetworkCallbackImpl extends ISupplicantStaNetworkCallback.Stub {
-    private final SupplicantStaNetworkHal mNetworkHal;
-
+class SupplicantStaNetworkCallbackAidlImpl extends ISupplicantStaNetworkCallback.Stub {
+    private final SupplicantStaNetworkHalAidlImpl mNetworkHal;
     /**
      * Current configured network's framework network id.
      */
@@ -31,36 +35,30 @@ class SupplicantStaNetworkCallbackImpl extends ISupplicantStaNetworkCallback.Stu
      * Current configured network's ssid.
      */
     private final String mSsid;
-
     private final String mIfaceName;
-
+    private final WifiMonitor mWifiMonitor;
     private final Object mLock;
 
-    private final WifiMonitor mWifiMonitor;
-
-    SupplicantStaNetworkCallbackImpl(
-            @NonNull SupplicantStaNetworkHal networkHal,
-            int frameworkNetworkId, String ssid,
+    SupplicantStaNetworkCallbackAidlImpl(
+            @NonNull SupplicantStaNetworkHalAidlImpl networkHal,
+            int frameworkNetworkId, @NonNull String ssid,
             @NonNull String ifaceName, @NonNull Object lock, @NonNull WifiMonitor wifiMonitor) {
         mNetworkHal = networkHal;
-
         mFrameworkNetworkId = frameworkNetworkId;
         mSsid = ssid;
-
         mIfaceName = ifaceName;
         mLock = lock;
         mWifiMonitor = wifiMonitor;
     }
 
     @Override
-    public void onNetworkEapSimGsmAuthRequest(
-            ISupplicantStaNetworkCallback.NetworkRequestEapSimGsmAuthParams params) {
+    public void onNetworkEapSimGsmAuthRequest(NetworkRequestEapSimGsmAuthParams params) {
         synchronized (mLock) {
             mNetworkHal.logCallback("onNetworkEapSimGsmAuthRequest");
-            String[] data = new String[params.rands.size()];
+            String[] data = new String[params.rands.length];
             int i = 0;
-            for (byte[] rand : params.rands) {
-                data[i++] = NativeUtil.hexStringFromByteArray(rand);
+            for (GsmRand rand : params.rands) {
+                data[i++] = NativeUtil.hexStringFromByteArray(rand.data);
             }
             mWifiMonitor.broadcastNetworkGsmAuthRequestEvent(
                     mIfaceName, mFrameworkNetworkId, mSsid, data);
@@ -68,8 +66,7 @@ class SupplicantStaNetworkCallbackImpl extends ISupplicantStaNetworkCallback.Stu
     }
 
     @Override
-    public void onNetworkEapSimUmtsAuthRequest(
-            ISupplicantStaNetworkCallback.NetworkRequestEapSimUmtsAuthParams params) {
+    public void onNetworkEapSimUmtsAuthRequest(NetworkRequestEapSimUmtsAuthParams params) {
         synchronized (mLock) {
             mNetworkHal.logCallback("onNetworkEapSimUmtsAuthRequest");
             String randHex = NativeUtil.hexStringFromByteArray(params.rand);
@@ -86,6 +83,32 @@ class SupplicantStaNetworkCallbackImpl extends ISupplicantStaNetworkCallback.Stu
             mNetworkHal.logCallback("onNetworkEapIdentityRequest");
             mWifiMonitor.broadcastNetworkIdentityRequestEvent(
                     mIfaceName, mFrameworkNetworkId, mSsid);
+        }
+    }
+
+    @Override
+    public void onTransitionDisable(int indicationBits) {
+        synchronized (mLock) {
+            mNetworkHal.logCallback("onTransitionDisable");
+            int frameworkBits = 0;
+            if ((indicationBits & TransitionDisableIndication.USE_WPA3_PERSONAL) != 0) {
+                frameworkBits |= WifiMonitor.TDI_USE_WPA3_PERSONAL;
+            }
+            if ((indicationBits & TransitionDisableIndication.USE_SAE_PK) != 0) {
+                frameworkBits |= WifiMonitor.TDI_USE_SAE_PK;
+            }
+            if ((indicationBits & TransitionDisableIndication.USE_WPA3_ENTERPRISE) != 0) {
+                frameworkBits |= WifiMonitor.TDI_USE_WPA3_ENTERPRISE;
+            }
+            if ((indicationBits & TransitionDisableIndication.USE_ENHANCED_OPEN) != 0) {
+                frameworkBits |= WifiMonitor.TDI_USE_ENHANCED_OPEN;
+            }
+            if (frameworkBits == 0) {
+                return;
+            }
+
+            mWifiMonitor.broadcastTransitionDisableEvent(
+                    mIfaceName, mFrameworkNetworkId, frameworkBits);
         }
     }
 }

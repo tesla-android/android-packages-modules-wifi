@@ -28,18 +28,18 @@ import java.util.ArrayList;
 /**
  * Class used for processing all P2P callbacks.
  */
-public class SupplicantP2pIfaceCallbackV1_4Impl
+public class SupplicantP2pIfaceCallbackHidlV1_4Impl
         extends android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIfaceCallback.Stub {
     private static final String TAG = "SupplicantP2pIfaceCallbackV1_4Impl";
     private static boolean sVerboseLoggingEnabled = true;
 
-    private final SupplicantP2pIfaceHal mP2pIfaceHal;
+    private final SupplicantP2pIfaceHalHidlImpl mP2pIfaceHal;
     private final String mInterface;
     private final WifiP2pMonitor mMonitor;
-    private final SupplicantP2pIfaceHal.SupplicantP2pIfaceCallback mCallbackV10;
+    private final SupplicantP2pIfaceHalHidlImpl.SupplicantP2pIfaceCallback mCallbackV10;
 
-    public SupplicantP2pIfaceCallbackV1_4Impl(
-            @NonNull SupplicantP2pIfaceHal p2pIfaceHal,
+    public SupplicantP2pIfaceCallbackHidlV1_4Impl(
+            @NonNull SupplicantP2pIfaceHalHidlImpl p2pIfaceHal,
             @NonNull String iface, @NonNull WifiP2pMonitor monitor) {
         mP2pIfaceHal = p2pIfaceHal;
         mInterface = iface;
