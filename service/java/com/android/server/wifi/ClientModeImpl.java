@@ -264,6 +264,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private byte[] mCachedPacketFilter;
     @Nullable
     private WifiNative.ConnectionCapabilities mLastConnectionCapabilities;
+    private int mPowerSaveDisableRequests = 0; // mask based on @PowerSaveClientType
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -1698,6 +1699,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         pw.println("mSuspendOptimizationsEnabled " + mContext.getResources().getBoolean(
                 R.bool.config_wifiSuspendOptimizationsEnabled));
         pw.println("mSuspendOptNeedsDisabled " + mSuspendOptNeedsDisabled);
+        pw.println("mPowerSaveDisableRequests " + mPowerSaveDisableRequests);
         dumpIpClient(fd, pw, args);
         pw.println("WifiScoreReport:");
         mWifiScoreReport.dump(fd, pw, args);
@@ -2759,7 +2761,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         // power settings when we control suspend mode optimizations.
         // TODO: Remove this comment when the driver is fixed.
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, false);
-        setPowerSave(false);
+        setPowerSave(POWER_SAVE_CLIENT_DHCP, false);
 
         // Update link layer stats
         getWifiLinkLayerStats();
@@ -2800,7 +2802,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     void handlePostDhcpSetup() {
         /* Restore power save and suspend optimizations */
         setSuspendOptimizationsNative(SUSPEND_DUE_TO_DHCP, true);
-        setPowerSave(true);
+        setPowerSave(POWER_SAVE_CLIENT_DHCP, true);
 
         mWifiP2pConnection.sendMessage(
                 WifiP2pServiceImpl.BLOCK_DISCOVERY, WifiP2pServiceImpl.DISABLED);
@@ -2817,17 +2819,39 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
      *           false to disable power save.
      * @return true for success, false for failure
      */
-    public boolean setPowerSave(boolean ps) {
+    public boolean setPowerSave(@PowerSaveClientType int client, boolean ps) {
         if (mInterfaceName != null) {
             if (mVerboseLoggingEnabled) {
-                Log.d(getTag(), "Setting power save for: " + mInterfaceName + " to: " + ps);
+                Log.d(getTag(), "Request to set power save for: " + mInterfaceName + " to: " + ps
+                        + " requested by: " + client + ", mPowerSaveDisableRequests = "
+                        + mPowerSaveDisableRequests);
             }
-            mWifiNative.setPowerSave(mInterfaceName, ps);
+            if (ps) {
+                mPowerSaveDisableRequests &= ~client;
+            } else {
+                mPowerSaveDisableRequests |= client;
+            }
+            boolean actualPs = mPowerSaveDisableRequests == 0;
+            if (mVerboseLoggingEnabled) {
+                Log.d(getTag(), "Setting power save to: " + actualPs
+                        + ", mPowerSaveDisableRequests = " + mPowerSaveDisableRequests);
+            }
+
+            mWifiNative.setPowerSave(mInterfaceName, actualPs);
         } else {
             Log.e(getTag(), "Failed to setPowerSave, interfaceName is null");
             return false;
         }
         return true;
+    }
+
+    /**
+     * Enable power save.
+     *
+     * @return true for success, false for failure.
+     */
+    public boolean enablePowerSave() {
+        return setPowerSave(~0, true);
     }
 
     /**
@@ -3314,7 +3338,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 && mContext.getResources().getBoolean(
                         R.bool.config_wifiSuspendOptimizationsEnabled));
 
-        setPowerSave(true);
+        enablePowerSave();
 
         // Disable wpa_supplicant from auto reconnecting.
         mWifiNative.enableStaAutoReconnect(mInterfaceName, false);
@@ -4523,8 +4547,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectingWifiConfigurationInternal(), eventInfo.reasonCode);
                     String targetSsid = getConnectingSsidInternal();
                     // If network is removed while connecting, targetSsid can be null.
-                    boolean newConnectionInProgress =
-                            targetSsid != null && !eventInfo.ssid.equals(targetSsid);
+                    boolean newConnectionInProgress = eventInfo.networkId != mTargetNetworkId;
                     if (!newConnectionInProgress) {
                         int level2FailureReason = eventInfo.locallyGenerated
                                 ? WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN :
