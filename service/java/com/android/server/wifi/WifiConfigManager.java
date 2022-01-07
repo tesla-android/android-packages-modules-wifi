@@ -49,6 +49,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 import com.android.server.wifi.hotspot2.PasspointManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.UserActionEvent;
@@ -1317,11 +1318,14 @@ public class WifiConfigManager {
                 && !mWifiPermissionsUtil.checkNetworkSetupWizardPermission(uid)
                 && !(newInternalConfig.isPasspoint() && uid == newInternalConfig.creatorUid)
                 && !config.fromWifiNetworkSuggestion
-                && !mWifiPermissionsUtil.isDeviceInDemoMode(mContext)) {
+                && !mWifiPermissionsUtil.isDeviceInDemoMode(mContext)
+                && !(SdkLevel.isAtLeastT() && mWifiPermissionsUtil.isAdmin(uid, packageName)
+                && uid == config.creatorUid)) {
             Log.e(TAG, "UID " + uid + " does not have permission to modify MAC randomization "
                     + "Settings " + config.getProfileKey() + ". Must have "
                     + "NETWORK_SETTINGS or NETWORK_SETUP_WIZARD or be in Demo Mode "
-                    + "or be the creator adding or updating a passpoint network.");
+                    + "or be the creator adding or updating a passpoint network"
+                    + "or be an admin updating their own network.");
             return new NetworkUpdateResult(WifiConfiguration.INVALID_NETWORK_ID);
         }
 

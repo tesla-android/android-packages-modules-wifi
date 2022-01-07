@@ -279,7 +279,9 @@ class SupplicantStaIfaceCallbackAidlImpl extends ISupplicantStaIfaceCallback.Stu
             }
             WifiConfiguration curConfiguration =
                     mStaIfaceHal.getCurrentNetworkLocalConfig(mIfaceName);
+            int networkId = WifiConfiguration.INVALID_NETWORK_ID;
             if (curConfiguration != null) {
+                networkId = curConfiguration.networkId;
                 if (mStateBeforeDisconnect == StaIfaceCallbackState.FOURWAY_HANDSHAKE
                         && WifiConfigurationUtil.isConfigForPskNetwork(curConfiguration)
                         && (!locallyGenerated || reasonCode
@@ -294,7 +296,7 @@ class SupplicantStaIfaceCallbackAidlImpl extends ISupplicantStaIfaceCallback.Stu
             }
             mWifiMonitor.broadcastNetworkDisconnectionEvent(
                     mIfaceName, locallyGenerated, halToFrameworkReasonCode(reasonCode),
-                    mCurrentSsid, NativeUtil.macAddressFromByteArray(bssid));
+                    mCurrentSsid, NativeUtil.macAddressFromByteArray(bssid), networkId);
         }
     }
 

@@ -985,7 +985,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // Verify a runnable is posted because current thread is different than the intended thread
         // for running "onDestroyed"
-        verify(staIfaceOnDestroyedHandler).post(lambdaCaptor.capture());
+        verify(staIfaceOnDestroyedHandler).postAtFrontOfQueue(lambdaCaptor.capture());
 
         // Verify onDestroyed is only run after the posted runnable is dispatched
         verify(staIdl, never()).onDestroyed("wlan0");
@@ -1012,7 +1012,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         simulateStartAndStopWifi(staIdl, staIfaceOnDestroyedHandler);
 
         // Verify a runnable is never posted
-        verify(staIfaceOnDestroyedHandler, never()).post(any());
+        verify(staIfaceOnDestroyedHandler, never()).postAtFrontOfQueue(any());
         // Verify onDestroyed is triggered directly
         verify(staIdl).onDestroyed("wlan0");
     }
