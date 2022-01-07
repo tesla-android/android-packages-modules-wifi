@@ -469,9 +469,8 @@ public class WifiMonitorTest extends WifiBaseTest {
         int reason  = 5;
         String ssid = SSID;
         String bssid = BSSID;
-        int networkId = 1234;
         mWifiMonitor.broadcastNetworkDisconnectionEvent(
-                WLAN_IFACE_NAME, local, reason, ssid, bssid, networkId);
+                WLAN_IFACE_NAME, local, reason, ssid, bssid);
         mLooper.dispatchAll();
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
@@ -484,7 +483,6 @@ public class WifiMonitorTest extends WifiBaseTest {
         assertEquals(reason, disconnectEventInfo.reasonCode);
         assertEquals(ssid, disconnectEventInfo.ssid);
         assertEquals(bssid, disconnectEventInfo.bssid);
-        assertEquals(networkId, disconnectEventInfo.networkId);
     }
 
     /**
