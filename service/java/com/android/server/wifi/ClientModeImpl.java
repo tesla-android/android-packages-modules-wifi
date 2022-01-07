@@ -3003,7 +3003,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mWifiScoreCard.noteConnectionFailure(mWifiInfo, mLastScanRssi, ssid,
                         blocklistReason);
                 checkAbnormalConnectionFailureAndTakeBugReport(ssid);
-                mWifiBlocklistMonitor.handleBssidConnectionFailure(bssid, ssid,
+                mWifiBlocklistMonitor.handleBssidConnectionFailure(bssid, configuration,
                         blocklistReason, mLastScanRssi);
                 WifiScoreCard.NetworkConnectionStats recentStats = mWifiScoreCard.lookupNetwork(
                         ssid).getRecentStats();
@@ -3048,9 +3048,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         mWifiMetrics.endConnectionEvent(mInterfaceName, level2FailureCode,
                 connectivityFailureCode, level2FailureReason, mWifiInfo.getFrequency());
-        mWifiConnectivityManager.handleConnectionAttemptEnded(
-                mClientModeManager, level2FailureCode, bssid, ssid);
         if (configuration != null) {
+            mWifiConnectivityManager.handleConnectionAttemptEnded(
+                    mClientModeManager, level2FailureCode, bssid, configuration);
             mNetworkFactory.handleConnectionAttemptEnded(level2FailureCode, configuration, bssid);
             mWifiNetworkSuggestionsManager.handleConnectionAttemptEnded(
                     level2FailureCode, configuration, getConnectedBssidInternal());
@@ -5823,7 +5823,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                             config.networkId,
                                             DISABLED_NO_INTERNET_TEMPORARY);
                                     mWifiBlocklistMonitor.handleBssidConnectionFailure(
-                                            mLastBssid, config.SSID,
+                                            mLastBssid, config,
                                             WifiBlocklistMonitor.REASON_NETWORK_VALIDATION_FAILURE,
                                             mWifiInfo.getRssi());
                                 }
@@ -5901,7 +5901,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         mWifiScoreCard.noteNonlocalDisconnect(mInterfaceName, eventInfo.reasonCode);
                         int rssi = mWifiInfo.getRssi();
                         mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfo.getBSSID(),
-                                mWifiInfo.getSSID(),
+                                getConnectedWifiConfiguration(),
                                 WifiBlocklistMonitor.REASON_ABNORMAL_DISCONNECT, rssi);
                     }
                     WifiConfiguration config = getConnectedWifiConfigurationInternal();
@@ -6353,7 +6353,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 duration = MboOceConstants.DEFAULT_BLOCKLIST_DURATION_MS;
             }
             // Blocklist the current BSS
-            mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, ssid, duration,
+            WifiConfiguration config = getConnectedWifiConfiguration();
+            if (config == null) {
+                config = getConnectingWifiConfiguration();
+            }
+            mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, config, duration,
                     WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_MBO_OCE, 0);
         }
 
