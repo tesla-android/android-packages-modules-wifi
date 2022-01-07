@@ -4523,7 +4523,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectingWifiConfigurationInternal(), eventInfo.reasonCode);
                     String targetSsid = getConnectingSsidInternal();
                     // If network is removed while connecting, targetSsid can be null.
-                    boolean newConnectionInProgress = eventInfo.networkId != mTargetNetworkId;
+                    boolean newConnectionInProgress =
+                            targetSsid != null && !eventInfo.ssid.equals(targetSsid);
                     if (!newConnectionInProgress) {
                         int level2FailureReason = eventInfo.locallyGenerated
                                 ? WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN :
