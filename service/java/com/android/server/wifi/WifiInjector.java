@@ -360,7 +360,7 @@ public class WifiInjector {
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
                 mWifiLastResortWatchdog, mClock, new LocalLog(
                 mContext.getSystemService(ActivityManager.class).isLowRamDevice() ? 128 : 256),
-                mWifiScoreCard, mScoringParams, mWifiMetrics);
+                mWifiScoreCard, mScoringParams, mWifiMetrics, mWifiPermissionsUtil);
         mWifiMetrics.setWifiBlocklistMonitor(mWifiBlocklistMonitor);
         // Config Manager
         mWifiConfigManager = new WifiConfigManager(mContext, mClock,
