@@ -733,11 +733,13 @@ public class SupplicantP2pIfaceHalHidlImpl implements ISupplicantP2pIfaceHal {
             android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIfaceCallback receiver) {
         synchronized (mLock) {
             if (!checkSupplicantP2pIfaceAndLogFailure("registerCallbackV1_4")) return false;
-            if (null == getP2pIfaceMockableV1_4()) return false;
+            android.hardware.wifi.supplicant.V1_4.ISupplicantP2pIface ifaceV14 =
+                    getP2pIfaceMockableV1_4();
+            if (null == ifaceV14) return false;
             SupplicantResultV1_4<Void> result =
                     new SupplicantResultV1_4("registerCallbackV1_4()");
             try {
-                result.setResult(getP2pIfaceMockableV1_4().registerCallback_1_4(receiver));
+                result.setResult(ifaceV14.registerCallback_1_4(receiver));
             } catch (RemoteException e) {
                 Log.e(TAG, "ISupplicantP2pIface exception: " + e);
                 supplicantServiceDiedHandler();

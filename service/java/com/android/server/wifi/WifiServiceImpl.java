@@ -4562,17 +4562,21 @@ public class WifiServiceImpl extends BaseWifiService {
     private boolean isVerboseLoggingEnabled() {
         final int alwaysOnLevel = mContext.getResources()
                 .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
-        // If the overlay setting enabled for all builds
-        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL) {
-            return true;
-        }
-        //If it is a userdebug build and the overlay setting enabled for userdebug build.
-        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG
-                && mBuildProperties.isUserdebugBuild()) {
-            return true;
-        }
-        if (alwaysOnLevel != VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE) {
-            Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
+        switch (alwaysOnLevel) {
+            // If the overlay setting enabled for all builds
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL:
+                return true;
+            //If the overlay setting enabled for userdebug builds only
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG:
+                // If it is a userdebug build
+                if (mBuildProperties.isUserdebugBuild()) return true;
+                break;
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE:
+                // nothing
+                break;
+            default:
+                Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
+                break;
         }
         return WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
     }
