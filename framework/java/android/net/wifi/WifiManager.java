@@ -236,6 +236,12 @@ public class WifiManager {
      */
     public static final int STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID = 7;
 
+    /**
+     * Reason code if {@link android.os.UserManager#DISALLOW_ADD_WIFI_CONFIG} user restriction
+     * is set and calling app is restricted by device admin.
+     */
+    public static final int STATUS_NETWORK_SUGGESTIONS_ERROR_RESTRICTED_BY_ADMIN = 8;
+
     /** @hide */
     @IntDef(prefix = { "STATUS_NETWORK_SUGGESTIONS_" }, value = {
             STATUS_NETWORK_SUGGESTIONS_SUCCESS,
@@ -246,6 +252,7 @@ public class WifiManager {
             STATUS_NETWORK_SUGGESTIONS_ERROR_REMOVE_INVALID,
             STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED,
             STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_INVALID,
+            STATUS_NETWORK_SUGGESTIONS_ERROR_RESTRICTED_BY_ADMIN,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface NetworkSuggestionsStatusCode {}

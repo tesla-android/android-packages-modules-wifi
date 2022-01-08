@@ -910,6 +910,15 @@ public class WifiPermissionsUtil {
     }
 
     /**
+     * Returns {@code true} if the calling {@code uid} is the OEM privileged admin.
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private boolean isOemPrivilegedAdmin(int uid) {
+        //TODO: b/213261796 Add support for special OEM approved manager app
+        return false;
+    }
+
+    /**
      * Returns true if the |callingUid|/|callingPackage| is the profile owner.
      */
     public boolean isProfileOwner(int uid, @Nullable String packageName) {
@@ -1000,7 +1009,6 @@ public class WifiPermissionsUtil {
     /**
      * Returns true if the |callingUid|/|callingPackage| is an admin.
      */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     public boolean isAdmin(int uid, @Nullable String packageName) {
         // Cannot determine if the app is an admin if packageName is null.
         // So, will return false to be safe.
@@ -1008,7 +1016,9 @@ public class WifiPermissionsUtil {
             Log.e(TAG, "isAdmin: packageName is null, returning false");
             return false;
         }
-        //TODO: b/213261796 Add support for special OEM approved manager app
-        return isDeviceOwner(uid, packageName) || isProfileOwner(uid, packageName);
+        boolean isOemPrivilegedAdmin = (SdkLevel.isAtLeastT()) ? isOemPrivilegedAdmin(uid) : false;
+
+        return isDeviceOwner(uid, packageName) || isProfileOwner(uid, packageName)
+                || isOemPrivilegedAdmin;
     }
 }
