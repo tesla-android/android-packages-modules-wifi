@@ -4547,8 +4547,13 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             getConnectingWifiConfigurationInternal(), eventInfo.reasonCode);
                     String targetSsid = getConnectingSsidInternal();
                     // If network is removed while connecting, targetSsid can be null.
+                    // The presence of a mLastNetworkId that's different from the mTargetNetworkId
+                    // indicates that this network disconnection is triggered for the previously
+                    // connected network as opposed to the current ongoing connection.
                     boolean newConnectionInProgress =
-                            targetSsid != null && !eventInfo.ssid.equals(targetSsid);
+                            targetSsid != null
+                                    && mLastNetworkId != WifiConfiguration.INVALID_NETWORK_ID
+                                    && mLastNetworkId != mTargetNetworkId;
                     if (!newConnectionInProgress) {
                         int level2FailureReason = eventInfo.locallyGenerated
                                 ? WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN :
