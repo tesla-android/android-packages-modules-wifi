@@ -2621,7 +2621,7 @@ public class WifiMetricsTest extends WifiBaseTest {
         new AssocRejectEventInfo(sSSID, sBSSID, ASSOC_STATUS, ASSOC_TIMEOUT),
         null,
         null,
-        new DisconnectEventInfo(sSSID, sBSSID, DEAUTH_REASON, LOCAL_GEN, TEST_NETWORK_ID),
+        new DisconnectEventInfo(sSSID, sBSSID, DEAUTH_REASON, LOCAL_GEN),
         mStateDisconnected,
         null,
         null,
