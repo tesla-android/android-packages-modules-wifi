@@ -50,6 +50,7 @@ import android.net.wifi.WifiConfiguration.SecurityType;
 import android.net.wifi.WifiNetworkSpecifier;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.util.ScanResultUtil;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PatternMatcher;
@@ -116,7 +117,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     @VisibleForTesting
     public static final int NUM_OF_ACCESS_POINT_LIMIT_PER_APP = 50;
 
-    private final Context mContext;
+    private final WifiContext mContext;
     private final ActivityManager mActivityManager;
     private final AlarmManager mAlarmManager;
     private final AppOpsManager mAppOpsManager;
@@ -128,6 +129,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     private final WifiConfigStore mWifiConfigStore;
     private final WifiPermissionsUtil mWifiPermissionsUtil;
     private final WifiMetrics mWifiMetrics;
+    private final WifiNative mWifiNative;
     private final ActiveModeWarden mActiveModeWarden;
     private final WifiScanner.ScanSettings mScanSettings;
     private final NetworkFactoryScanListener mScanListener;
@@ -513,7 +515,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         }
     }
 
-    public WifiNetworkFactory(Looper looper, Context context, NetworkCapabilities nc,
+    public WifiNetworkFactory(Looper looper, WifiContext context, NetworkCapabilities nc,
             ActivityManager activityManager, AlarmManager alarmManager,
             AppOpsManager appOpsManager,
             Clock clock, WifiInjector wifiInjector,
@@ -522,6 +524,7 @@ public class WifiNetworkFactory extends NetworkFactory {
             WifiConfigStore configStore,
             WifiPermissionsUtil wifiPermissionsUtil,
             WifiMetrics wifiMetrics,
+            WifiNative wifiNative,
             ActiveModeWarden activeModeWarden,
             ConnectHelper connectHelper,
             ClientModeImplMonitor clientModeImplMonitor,
@@ -540,6 +543,7 @@ public class WifiNetworkFactory extends NetworkFactory {
         mWifiConfigStore = configStore;
         mWifiPermissionsUtil = wifiPermissionsUtil;
         mWifiMetrics = wifiMetrics;
+        mWifiNative = wifiNative;
         mActiveModeWarden = activeModeWarden;
         mConnectHelper = connectHelper;
         mClientModeImplMonitor = clientModeImplMonitor;
@@ -838,7 +842,23 @@ public class WifiNetworkFactory extends NetworkFactory {
             mSkipUserDialogue = false;
             mWifiMetrics.incrementNetworkRequestApiNumRequest();
 
-            if (!triggerConnectIfUserApprovedMatchFound()) {
+            // special case for STA+STA: since we are not allowed to replace the primary STA we
+            // should check if we are able to get an interface for a secondary STA. If not - we
+            // want to escalate and display the dialog to the user EVEN if we have a normal bypass
+            // (normal == user approved before, if the app has full UI bypass we won't override it)
+            boolean revokeNormalBypass = false;
+            if (mContext.getResources().getBoolean(
+                    R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled)
+                    && !mWifiPermissionsUtil.isTargetSdkLessThan(
+                    mActiveSpecificNetworkRequest.getRequestorPackageName(), Build.VERSION_CODES.S,
+                    mActiveSpecificNetworkRequest.getRequestorUid())) {
+                revokeNormalBypass = !mWifiNative.isItPossibleToCreateStaIface(
+                        new WorkSource(mActiveSpecificNetworkRequest.getRequestorUid(),
+                                mActiveSpecificNetworkRequest.getRequestorPackageName()));
+            }
+
+
+            if (!triggerConnectIfUserApprovedMatchFound(revokeNormalBypass)) {
                 // Didn't find an approved match, send the matching results to UI and trigger
                 // periodic scans for finding a network in the request.
                 // Fetch the latest cached scan results to speed up network matching.
@@ -1665,7 +1685,7 @@ public class WifiNetworkFactory extends NetworkFactory {
     }
 
     private boolean isAccessPointApprovedForActiveRequest(@NonNull String ssid,
-            @NonNull MacAddress bssid, @SecurityType int networkType) {
+            @NonNull MacAddress bssid, @SecurityType int networkType, boolean revokeNormalBypass) {
         String requestorPackageName = mActiveSpecificNetworkRequest.getRequestorPackageName();
         UserHandle requestorUserHandle =
                 UserHandle.getUserHandleForUid(mActiveSpecificNetworkRequest.getRequestorUid());
@@ -1675,7 +1695,7 @@ public class WifiNetworkFactory extends NetworkFactory {
             return true;
         }
         // Check if access point is approved in internal approval list next.
-        if (isAccessPointApprovedInInternalApprovalList(
+        if (!revokeNormalBypass && isAccessPointApprovedInInternalApprovalList(
                 ssid, bssid, networkType, requestorPackageName)) {
             return true;
         }
@@ -1739,7 +1759,7 @@ public class WifiNetworkFactory extends NetworkFactory {
      *
      * @return true if a pre-approved network was found for connection, false otherwise.
      */
-    private boolean triggerConnectIfUserApprovedMatchFound() {
+    private boolean triggerConnectIfUserApprovedMatchFound(boolean revokeNormalBypass) {
         if (mActiveSpecificNetworkRequestSpecifier == null) return false;
         boolean requestForSingleAccessPoint = isActiveRequestForSingleAccessPoint();
         if (!requestForSingleAccessPoint && !isActiveRequestForSingleNetwork()) {
@@ -1755,7 +1775,8 @@ public class WifiNetworkFactory extends NetworkFactory {
                                 .getFirstAvailableSecurityParams();
         if (null == params) return false;
         int networkType = params.getSecurityType();
-        if (!isAccessPointApprovedForActiveRequest(ssid, bssid, networkType)
+
+        if (!isAccessPointApprovedForActiveRequest(ssid, bssid, networkType, revokeNormalBypass)
                 || mWifiConfigManager.isNetworkTemporarilyDisabledByUser(
                 ScanResultUtil.createQuotedSsid(ssid))) {
             if (mVerboseLoggingEnabled) {
