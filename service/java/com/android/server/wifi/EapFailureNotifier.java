@@ -18,15 +18,12 @@ package com.android.server.wifi;
 
 import android.app.Notification;
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.drawable.Icon;
 import android.net.wifi.WifiConfiguration;
 import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
-import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -70,18 +67,15 @@ public class EapFailureNotifier {
      * @return true if the receiving error code is found in wifi resource
      */
     public boolean onEapFailure(int errorCode, WifiConfiguration config, boolean showNotification) {
-        Resources res = getResourcesForSubId(mContext,
-                mWifiCarrierInfoManager.getBestMatchSubscriptionId(config));
-        if (res == null) return false;
-        int resourceId = res.getIdentifier(ERROR_MESSAGE_OVERLAY_PREFIX + errorCode,
-                "string", mContext.getWifiOverlayApkPkgName());
-
-        if (resourceId == 0) {
+        WifiStringResourceWrapper sr = mContext.getStringResourceWrapper(
+                mWifiCarrierInfoManager.getBestMatchSubscriptionId(config),
+                config.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID
+                        ? mWifiCarrierInfoManager.getDefaultDataSimCarrierId() : config.carrierId);
+        String errorMessage = sr.getString(ERROR_MESSAGE_OVERLAY_PREFIX + errorCode, config.SSID);
+        if (errorMessage == null) {
             // Use the generic error message if the code does not match any known code.
-            resourceId = res.getIdentifier(ERROR_MESSAGE_OVERLAY_UNKNOWN_ERROR_CODE,
-                    "string", mContext.getWifiOverlayApkPkgName());
+            errorMessage = sr.getString(ERROR_MESSAGE_OVERLAY_UNKNOWN_ERROR_CODE, config.SSID);
         }
-        String errorMessage = res.getString(resourceId, config.SSID);
         if (TextUtils.isEmpty(errorMessage)) return false;
         StatusBarNotification[] activeNotifications = mNotificationManager.getActiveNotifications();
         for (StatusBarNotification activeNotification : activeNotifications) {
@@ -125,22 +119,6 @@ public class EapFailureNotifier {
         mNotificationManager.notify(NOTIFICATION_ID,
                 builder.build());
         mCurrentShownSsid = ssid;
-    }
-
-    /**
-     *  Returns the resources from the given context for the MCC/MNC
-     *  associated with the subscription.
-     */
-    private Resources getResourcesForSubId(WifiContext context, int subId) {
-        Context resourceContext = null;
-        try {
-            resourceContext = context.createPackageContext(
-                    context.getWifiOverlayApkPkgName(), 0);
-        } catch (PackageManager.NameNotFoundException ex) {
-            return null;
-        }
-
-        return SubscriptionManager.getResourcesForSubId(resourceContext, subId);
     }
 
     /**
