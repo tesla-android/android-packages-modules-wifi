@@ -17,10 +17,10 @@
 package com.android.server.wifi.p2p;
 
 import android.content.Context;
+import android.net.wifi.WifiContext;
 import android.util.Log;
 
 import com.android.server.SystemService;
-import com.android.server.wifi.WifiContext;
 import com.android.server.wifi.WifiInjector;
 
 /**

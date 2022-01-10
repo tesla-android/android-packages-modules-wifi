@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.server.wifi;
+package android.net.wifi;
 
 import android.annotation.NonNull;
 import android.content.Context;
@@ -24,9 +24,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
+import android.net.wifi.util.Environment;
 import android.util.Log;
-
-import com.android.server.wifi.util.Environment;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +33,8 @@ import java.util.stream.Collectors;
 /**
  * Wrapper for context to override getResources method. Resources for wifi mainline jar needs to be
  * fetched from the resources APK.
+ *
+ * @hide
  */
 public class WifiContext extends ContextWrapper {
     private static final String TAG = "WifiContext";
@@ -64,6 +65,7 @@ public class WifiContext extends ContextWrapper {
         List<ResolveInfo> resolveInfos = getPackageManager().queryIntentActivities(
                 new Intent(ACTION_RESOURCES_APK),
                 PackageManager.MATCH_SYSTEM_ONLY);
+        Log.i(TAG, "Got resolveInfos: " + resolveInfos);
 
         // remove apps that don't live in the Wifi apex
         resolveInfos.removeIf(info ->
@@ -157,7 +159,10 @@ public class WifiContext extends ContextWrapper {
         mWifiThemeFromApk = null;
     }
 
-    WifiStringResourceWrapper getStringResourceWrapper(int subId, int carrierId) {
+    /**
+     * Returns an instance of WifiStringResourceWrapper with the given subId and carrierId.
+     */
+    public WifiStringResourceWrapper getStringResourceWrapper(int subId, int carrierId) {
         return new WifiStringResourceWrapper(this, subId, carrierId);
     }
 }
