@@ -3116,7 +3116,6 @@ public class WifiConfigManager {
             }
 
             configuration.networkId = mNextNetworkId++;
-            WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(configuration);
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "Adding network from shared store "
                         + configuration.getProfileKey());
@@ -3153,7 +3152,6 @@ public class WifiConfigManager {
             }
 
             configuration.networkId = mNextNetworkId++;
-            WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(configuration);
             if (mVerboseLoggingEnabled) {
                 Log.v(TAG, "Adding network from user store "
                         + configuration.getProfileKey());
