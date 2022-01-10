@@ -854,5 +854,10 @@ public class BaseWifiService extends IWifiManager.Stub {
     public void validateCurrentWifiMeetsAdminRequirements() {
         throw new UnsupportedOperationException();
     }
-}
 
+    @Override
+    public void replyToP2pInvitationReceivedDialog(
+            int dialogId, boolean accepted, @Nullable String optionalPin) {
+        throw new UnsupportedOperationException();
+    }
+}

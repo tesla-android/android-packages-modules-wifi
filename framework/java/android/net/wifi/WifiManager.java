@@ -9121,4 +9121,26 @@ public class WifiManager {
      * @hide
      */
     public static final String EXTRA_P2P_DISPLAY_PIN = "android.net.wifi.extra.P2P_DISPLAY_PIN";
+
+    /**
+     * Method for WifiDialog to notify the framework of a reply to a P2P Invitation Received dialog.
+     * @param dialogId id of the replying dialog.
+     * @param accepted Whether the invitation was accepted.
+     * @param optionalPin PIN of the reply, or {@code null} if none was supplied.
+     * @hide
+     */
+    public void replyToP2pInvitationReceivedDialog(
+            int dialogId, boolean accepted, @Nullable String optionalPin) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "notifyP2pInvitationResponse: "
+                    + "dialogId=" + dialogId
+                    + ", accepted=" + accepted
+                    + ", pin=" + optionalPin);
+        }
+        try {
+            mService.replyToP2pInvitationReceivedDialog(dialogId, accepted, optionalPin);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

@@ -374,4 +374,6 @@ interface IWifiManager
     boolean setStaConcurrencyForMultiInternetMode(int mode);
 
     void validateCurrentWifiMeetsAdminRequirements();
+
+    void replyToP2pInvitationReceivedDialog(int dialogId, boolean accepted, String optionalPin);
 }
