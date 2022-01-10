@@ -1083,24 +1083,41 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
                 SoftApConfiguration.BAND_5GHZ,    /* AP band */
                 0,                                /* AP channel */
                 true                              /* Hidden SSID */);
+        // Test 5G only band config will be appended 2.4G band into config
+        SoftApConfiguration.Builder testConfigBuilder =
+                new SoftApConfiguration.Builder(config5Gonly);
+        SoftApConfiguration.Builder expectedConfigBuilder =
+                new SoftApConfiguration.Builder(testConfigBuilder.build())
+                .setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
+        store.setApConfiguration(testConfigBuilder.build());
+        verifyApConfig(expectedConfigBuilder.build(), store.getApConfiguration());
 
-        SoftApConfiguration expectedConfig = new SoftApConfiguration.Builder(config5Gonly)
-                .setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ)
-                .build();
-        store.setApConfiguration(config5Gonly);
-        verifyApConfig(expectedConfig, store.getApConfiguration());
+        // Test 6G only band config will be appended 2.4G & 5G band into config.
+        testConfigBuilder.setBand(SoftApConfiguration.BAND_6GHZ);
 
+        expectedConfigBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
+                | SoftApConfiguration.BAND_6GHZ);
+        store.setApConfiguration(testConfigBuilder.build());
+        verifyApConfig(expectedConfigBuilder.build(), store.getApConfiguration());
+
+        // Dual bands test case
         if (SdkLevel.isAtLeastS()) {
-            SoftApConfiguration bridgedConfig2GAnd5G = new SoftApConfiguration.Builder(config5Gonly)
-                    .setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
-                            SoftApConfiguration.BAND_5GHZ})
-                    .build();
+            testConfigBuilder.setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
+                    SoftApConfiguration.BAND_5GHZ}).build();
 
-            SoftApConfiguration expectedBridgedConfig = new SoftApConfiguration
-                    .Builder(bridgedConfig2GAnd5G)
-                    .setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
-                            SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ})
-                    .build();
+            expectedConfigBuilder.setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
+                    SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ});
+            store.setApConfiguration(testConfigBuilder.build());
+            verifyApConfig(expectedConfigBuilder.build(), store.getApConfiguration());
+
+            testConfigBuilder.setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
+                    SoftApConfiguration.BAND_6GHZ}).build();
+
+            expectedConfigBuilder.setBands(new int[] {SoftApConfiguration.BAND_2GHZ,
+                    SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
+                            | SoftApConfiguration.BAND_6GHZ});
+            store.setApConfiguration(testConfigBuilder.build());
+            verifyApConfig(expectedConfigBuilder.build(), store.getApConfiguration());
         }
     }
 
