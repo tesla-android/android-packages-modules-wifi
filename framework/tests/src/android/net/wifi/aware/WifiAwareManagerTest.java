@@ -16,6 +16,7 @@
 
 package android.net.wifi.aware;
 
+import static android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ;
 import static android.net.wifi.aware.WifiAwareManager.WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE;
 import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
 
@@ -1638,6 +1639,8 @@ public class WifiAwareManagerTest {
 
     @Test
     public void testWifiAwareNetworkCapabilitiesParcel() throws UnknownHostException {
+        final WifiAwareChannelInfo channelInfo = new WifiAwareChannelInfo(5750,
+                CHANNEL_WIDTH_80MHZ, 2);
         final Inet6Address inet6 = MacAddress.fromString(
                 "11:22:33:44:55:66").getLinkLocalIpv6FromEui48Mac();
         // note: placeholder scope = 5
@@ -1646,7 +1649,8 @@ public class WifiAwareManagerTest {
         final int transportProtocol = 6;
 
         assertEquals(inet6Scoped.toString(), "/fe80::1322:33ff:fe44:5566%5");
-        WifiAwareNetworkInfo cap = new WifiAwareNetworkInfo(inet6Scoped, port, transportProtocol);
+        WifiAwareNetworkInfo cap = new WifiAwareNetworkInfo(inet6Scoped, port, transportProtocol,
+                List.of(channelInfo));
 
         Parcel parcelW = Parcel.obtain();
         cap.writeToParcel(parcelW, 0);
@@ -1662,6 +1666,7 @@ public class WifiAwareManagerTest {
         assertEquals(cap.getPeerIpv6Addr().toString(), "/fe80::1322:33ff:fe44:5566%5");
         assertEquals(cap, rereadCap);
         assertEquals(cap.hashCode(), rereadCap.hashCode());
+        assertEquals(cap.getChannelInfos(), rereadCap.getChannelInfos());
     }
 
     // ParcelablePeerHandle tests

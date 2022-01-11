@@ -811,6 +811,15 @@ package android.net.wifi.aware {
     method public void updateSubscribe(@NonNull android.net.wifi.aware.SubscribeConfig);
   }
 
+  public final class WifiAwareChannelInfo implements android.os.Parcelable {
+    method public int describeContents();
+    method @IntRange(from=0) public int getChannelBandwidth();
+    method @IntRange(from=0) public int getChannelFreqInMhz();
+    method @IntRange(from=0) public int getNumSpatialStreams();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareChannelInfo> CREATOR;
+  }
+
   public class WifiAwareManager {
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE}) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @Nullable android.os.Handler);
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.NEARBY_WIFI_DEVICES}, conditional=true) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @NonNull android.net.wifi.aware.IdentityChangedListener, @Nullable android.os.Handler);
@@ -828,6 +837,7 @@ package android.net.wifi.aware {
 
   public final class WifiAwareNetworkInfo implements android.os.Parcelable android.net.TransportInfo {
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.aware.WifiAwareChannelInfo> getChannelInfos();
     method @Nullable public java.net.Inet6Address getPeerIpv6Addr();
     method public int getPort();
     method public int getTransportProtocol();
