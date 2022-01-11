@@ -133,6 +133,7 @@ public class WifiNative {
         mSupplicantStaIfaceHal.enableVerboseLogging(mVerboseLoggingEnabled);
         mHostapdHal.enableVerboseLogging(mVerboseLoggingEnabled);
         mWifiVendorHal.enableVerboseLogging(mVerboseLoggingEnabled);
+        mIfaceMgr.enableVerboseLogging(mVerboseLoggingEnabled);
     }
 
     /**
@@ -300,9 +301,17 @@ public class WifiNative {
         private int mNextId;
         /** Map of the id to the iface structure */
         private HashMap<Integer, Iface> mIfaces = new HashMap<>();
+        private boolean mVerboseLoggingEnabled = false;
+
+        public void enableVerboseLogging(boolean enable) {
+            mVerboseLoggingEnabled = enable;
+        }
 
         /** Allocate a new iface for the given type */
-        private Iface allocateIface(@Iface.IfaceType  int type) {
+        private Iface allocateIface(@Iface.IfaceType int type) {
+            if (mVerboseLoggingEnabled) {
+                Log.d(TAG, "IfaceManager#allocateIface: type=" + type + ", pre-map=" + mIfaces);
+            }
             Iface iface = new Iface(mNextId, type);
             mIfaces.put(mNextId, iface);
             mNextId++;
@@ -311,6 +320,9 @@ public class WifiNative {
 
         /** Remove the iface using the provided id */
         private Iface removeIface(int id) {
+            if (mVerboseLoggingEnabled) {
+                Log.d(TAG, "IfaceManager#removeIface: id=" + id + ", pre-map=" + mIfaces);
+            }
             return mIfaces.remove(id);
         }
 
@@ -387,6 +399,10 @@ public class WifiNative {
 
         /** Removes the existing iface that does not match the provided id. */
         public Iface removeExistingIface(int newIfaceId) {
+            if (mVerboseLoggingEnabled) {
+                Log.d(TAG, "IfaceManager#removeExistingIface: newIfaceId=" + newIfaceId
+                        + ", pre-map=" + mIfaces);
+            }
             Iface removedIface = null;
             // The number of ifaces in the database could be 1 existing & 1 new at the max.
             if (mIfaces.size() > 2) {
@@ -401,6 +417,11 @@ public class WifiNative {
                 }
             }
             return removedIface;
+        }
+
+        @Override
+        public String toString() {
+            return mIfaces.toString();
         }
     }
 
@@ -829,6 +850,11 @@ public class WifiNative {
             // This is invoked from the main system_server thread. Post to our handler.
             mHandler.post(() -> {
                 synchronized (mLock) {
+                    if (mVerboseLoggingEnabled) {
+                        Log.d(TAG, "interfaceLinkStateChanged: ifaceName=" + ifaceName
+                                + ", mInterfaceId = " + mInterfaceId
+                                + ", mIfaceMgr=" + mIfaceMgr.toString());
+                    }
                     final Iface ifaceWithId = mIfaceMgr.getIface(mInterfaceId);
                     if (ifaceWithId == null) {
                         if (mVerboseLoggingEnabled) {
@@ -1073,7 +1099,9 @@ public class WifiNative {
      * @param listener StatusListener listener object.
      */
     public void registerStatusListener(@NonNull StatusListener listener) {
-        mStatusListeners.add(listener);
+        synchronized (mLock) {
+            mStatusListeners.add(listener);
+        }
     }
 
     /**
