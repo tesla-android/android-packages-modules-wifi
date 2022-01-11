@@ -1019,8 +1019,17 @@ public class WifiAwareDataPathStateManager {
                     return;
                 }
 
+                int channel = selectChannelForRequest(nnri);
+                int channelRequestType = NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED;
+                if (mContext.getResources().getBoolean(R.bool.config_wifiSupportChannelOnDataPath)
+                        && nnri.networkSpecifier.getChannelInMhz() != 0) {
+                    channel = nnri.networkSpecifier.getChannelInMhz();
+                    channelRequestType = nnri.networkSpecifier.isChannelRequired()
+                            ? NanDataPathChannelCfg.FORCE_CHANNEL_SETUP
+                            : NanDataPathChannelCfg.REQUEST_CHANNEL_SETUP;
+                }
                 mMgr.initiateDataPathSetup(networkSpecifier, nnri.specifiedPeerInstanceId,
-                        NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED, selectChannelForRequest(nnri),
+                        channelRequestType, channel,
                         nnri.specifiedPeerDiscoveryMac, nnri.interfaceName,
                         nnri.networkSpecifier.pmk, nnri.networkSpecifier.passphrase,
                         nnri.networkSpecifier.isOutOfBand(), null);

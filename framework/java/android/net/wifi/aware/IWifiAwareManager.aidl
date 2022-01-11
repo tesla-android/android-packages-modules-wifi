@@ -43,6 +43,7 @@ interface IWifiAwareManager
     boolean isDeviceAttached();
     void enableInstantCommunicationMode(in String callingPackage, boolean enable);
     boolean isInstantCommunicationModeEnabled();
+    boolean isSetChannelOnDataPathSupported();
 
     // client API
     void connect(in IBinder binder, in String callingPackage, in String callingFeatureId,

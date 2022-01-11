@@ -680,6 +680,11 @@
      -->
     <bool translatable="false" name="config_wifiAllowMultipleNetworksOnSameAwareNdi">false</bool>
 
+    <!-- A boolean indicate if device supports ser channel on the Aware data-path setup. If the
+    value is false, channel setting on the data-path request will be ignored.
+    -->
+    <bool translatable="false" name="config_wifiSupportChannelOnDataPath">false</bool>
+
     <!-- Integer threshold for minimum packets required to notify clients of data activity -->
     <integer translatable="false" name="config_wifiTrafficPollerTxPacketThreshold">0</integer>
     <integer translatable="false" name="config_wifiTrafficPollerRxPacketThreshold">0</integer>
