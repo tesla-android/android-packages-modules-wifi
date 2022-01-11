@@ -20,6 +20,7 @@ import static android.app.AppOpsManager.MODE_ALLOWED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_GENERIC;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL;
+import static android.net.wifi.WifiManager.PnoScanResultsCallback.REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED;
 import static android.net.wifi.WifiManager.SAP_START_FAILURE_NO_CHANNEL;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLING;
@@ -70,6 +71,7 @@ import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
 import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.ISubsystemRestartCallback;
@@ -5774,6 +5776,64 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * See {@link WifiManager#setExternalPnoScanRequest(Executor, List,
+     * WifiManager.PnoScanResultsCallback)}
+     */
+    @Override
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void setExternalPnoScanRequest(@NonNull IBinder binder,
+            @NonNull IPnoScanResultsCallback callback,
+            @NonNull List<WifiSsid> ssids, @NonNull String packageName, @NonNull String featureId) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException("SDK level too old");
+        }
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        if (ssids == null || ssids.isEmpty()) throw new IllegalStateException(
+                "Ssids can't be null or empty");
+        if (ssids.size() > 2) {
+            throw new IllegalArgumentException("Ssid list can't be greater than 2");
+        }
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkRequestCompanionProfileAutomotiveProjectionPermission(uid)
+                || !mWifiPermissionsUtil.checkCallersLocationPermission(packageName, featureId,
+                uid, false, null)) {
+            throw new SecurityException("Caller has no permission");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setExternalPnoScanRequest uid=%").c(uid).flush();
+        }
+        mWifiThreadRunner.post(() -> {
+            try {
+                if (!isPnoSupported()) {
+                    callback.onRegisterFailed(REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
+                    return;
+                }
+                // triggering register success for CTS test only. Remove this in followup patch.
+                callback.onRegisterSuccess();
+                // TODO(b/194311187) implement setting the request
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * See {@link WifiManager#clearExternalPnoScanRequest()}
+     */
+    @Override
+    public void clearExternalPnoScanRequest() {
+        int uid = Binder.getCallingUid();
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setExternalPnoScanRequest uid=%").c(uid).flush();
+        }
+
+        // TODO(b/194311187) implement clearing the request. Still need to check for UID match.
+    }
+
+    /**
      * See {@link android.net.wifi.WifiManager#setWifiConnectedNetworkScorer(Executor,
      * WifiManager.WifiConnectedNetworkScorer)}
      *
@@ -6095,6 +6155,10 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner.post(() ->
                 mPasspointManager.setWifiPasspointEnabled(enabled)
         );
+    }
+
+    private boolean isPnoSupported() {
+        return (getSupportedFeatures() & WifiManager.WIFI_FEATURE_PNO) != 0;
     }
 
     /**

@@ -125,6 +125,7 @@ import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
 import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.ISubsystemRestartCallback;
@@ -8911,6 +8912,54 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConnectivityManager).setExternalScreenOnScanSchedule(null, null);
         verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SET_SCAN_SCHEDULE), anyInt(),
                 anyInt(), anyInt(), any(), eq(false));
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testSetExternalPnoScanRequest_NoPermission() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
+        List<WifiSsid> ssids = new ArrayList<>();
+        ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
+                TEST_FEATURE_ID);
+    }
+
+    @Test
+    public void testSetExternalPnoScanRequest_Success() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(WifiManager.WIFI_FEATURE_PNO);
+        when(mWifiPermissionsUtil.checkRequestCompanionProfileAutomotiveProjectionPermission(
+                anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersLocationPermission(
+                any(), any(), anyInt(), anyBoolean(), any())).thenReturn(true);
+        IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
+        List<WifiSsid> ssids = new ArrayList<>();
+        ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
+                TEST_FEATURE_ID);
+        mLooper.dispatchAll();
+        verify(callback).onRegisterSuccess();
+    }
+
+    @Test
+    public void testSetExternalPnoScanRequest_PnoNotSupported() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mClientModeManager.getSupportedFeatures()).thenReturn(0L);
+        when(mWifiPermissionsUtil.checkRequestCompanionProfileAutomotiveProjectionPermission(
+                anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.checkCallersLocationPermission(
+                any(), any(), anyInt(), anyBoolean(), any())).thenReturn(true);
+        IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
+        List<WifiSsid> ssids = new ArrayList<>();
+        ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
+                TEST_FEATURE_ID);
+        mLooper.dispatchAll();
+        verify(callback).onRegisterFailed(WifiManager.PnoScanResultsCallback
+                .REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
     }
 
     /**
