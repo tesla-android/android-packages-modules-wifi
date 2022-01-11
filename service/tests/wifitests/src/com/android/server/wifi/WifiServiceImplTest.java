@@ -8940,7 +8940,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
                 TEST_FEATURE_ID);
         mLooper.dispatchAll();
-        verify(callback).onRegisterSuccess();
+        verify(mWifiConnectivityManager).setExternalPnoScanRequest(anyInt(), any(), eq(callback),
+                eq(ssids));
     }
 
     @Test
@@ -8960,6 +8961,15 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(callback).onRegisterFailed(WifiManager.PnoScanResultsCallback
                 .REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
+    }
+
+    @Test
+    public void testClearExternalPnoScanRequest() {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        mWifiServiceImpl.clearExternalPnoScanRequest();
+        mLooper.dispatchAll();
+        verify(mWifiConnectivityManager).clearExternalPnoScanRequest(anyInt());
     }
 
     /**

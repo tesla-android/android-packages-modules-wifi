@@ -221,6 +221,7 @@ public class WifiInjector {
     private final SettingsMigrationDataHolder mSettingsMigrationDataHolder;
     private final LruConnectionTracker mLruConnectionTracker;
     private final WifiConnectivityManager mWifiConnectivityManager;
+    private final ExternalPnoScanRequestManager mExternalPnoScanRequestManager;
     private final ConnectHelper mConnectHelper;
     private final ConnectionFailureNotifier mConnectionFailureNotifier;
     private final WifiNetworkFactory mWifiNetworkFactory;
@@ -457,6 +458,7 @@ public class WifiInjector {
                 mMakeBeforeBreakManager, mWifiNotificationManager);
         mMultiInternetManager = new MultiInternetManager(mActiveModeWarden, mFrameworkFacade,
                 mContext, mCmiMonitor, mSettingsStore, wifiHandler, mClock);
+        mExternalPnoScanRequestManager = new ExternalPnoScanRequestManager(wifiHandler);
         mWifiConnectivityManager = new WifiConnectivityManager(
                 mContext, mScoringParams, mWifiConfigManager,
                 mWifiNetworkSuggestionsManager, mWifiNetworkSelector,
@@ -464,7 +466,8 @@ public class WifiInjector {
                 mWifiMetrics, wifiHandler,
                 mClock, mConnectivityLocalLog, mWifiScoreCard, mWifiBlocklistMonitor,
                 mWifiChannelUtilizationScan, mPasspointManager, mMultiInternetManager,
-                mDeviceConfigFacade, mActiveModeWarden, mFrameworkFacade, mWifiGlobals);
+                mDeviceConfigFacade, mActiveModeWarden, mFrameworkFacade, mWifiGlobals,
+                mExternalPnoScanRequestManager);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 mCmiMonitor, mWifiNative, mSettingsConfigStore);
