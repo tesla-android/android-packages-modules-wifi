@@ -325,7 +325,7 @@ public class WifiApConfigStore {
         if (SdkLevel.isAtLeastS()) {
             convertedConfigBuilder.setChannels(newChannels);
         } else if (bands.length > 0) {
-            convertedConfigBuilder.setChannel(newChannels.keyAt(0), newChannels.valueAt(0));
+            convertedConfigBuilder.setChannel(newChannels.valueAt(0), newChannels.keyAt(0));
         }
         return convertedConfigBuilder.build();
     }
