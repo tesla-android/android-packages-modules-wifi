@@ -817,15 +817,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
         assertTrue(ApConfigUtil.checkSupportAllConfiguration(testConfigBuilder.build(),
                 mockSoftApCapability));
         if (SdkLevel.isAtLeastS()) {
-            // Test 6G or 60G not support
-            testConfigBuilder.setChannels(
-                    new SparseIntArray(){{
-                        put(SoftApConfiguration.BAND_5GHZ, 149);
-                        put(SoftApConfiguration.BAND_6GHZ, 2);
-                    }});
-            assertFalse(ApConfigUtil.checkSupportAllConfiguration(testConfigBuilder.build(),
-                    mockSoftApCapability));
-
+            // Test 60G not support
             testConfigBuilder.setChannels(
                     new SparseIntArray(){{
                         put(SoftApConfiguration.BAND_5GHZ, 149);

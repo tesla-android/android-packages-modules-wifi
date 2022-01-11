@@ -189,6 +189,20 @@ public class ApConfigUtil {
     }
 
     /**
+     * Add 5Ghz to target band when 5Ghz SoftAp supported.
+     *
+     * @param targetBand The band is needed to add 5GHz band.
+     * @return The band includes 5Ghz when 5G SoftAp supported.
+     */
+    public static @BandType int append5GToBandIf5GSupported(@BandType int targetBand,
+            Context context) {
+        if (isBandSupported(SoftApConfiguration.BAND_5GHZ, context)) {
+            return targetBand | SoftApConfiguration.BAND_5GHZ;
+        }
+        return targetBand;
+    }
+
+    /**
      * Checks if band is a valid combination of {link  SoftApConfiguration#BandType} values
      */
     public static boolean isBandValid(@BandType int band) {
@@ -888,11 +902,9 @@ public class ApConfigUtil {
         // The bands length should always 1 in R. Adding SdkLevel.isAtLeastS for lint check only.
         if (config.getBands().length > 1 && SdkLevel.isAtLeastS()) {
             int[] bands = config.getBands();
-            if ((bands[0] & SoftApConfiguration.BAND_6GHZ) != 0
-                    || (bands[0] & SoftApConfiguration.BAND_60GHZ) != 0
-                    || (bands[1] & SoftApConfiguration.BAND_6GHZ) != 0
+            if ((bands[0] & SoftApConfiguration.BAND_60GHZ) != 0
                     || (bands[1] & SoftApConfiguration.BAND_60GHZ) != 0) {
-                Log.d(TAG, "Error, dual APs doesn't support on 6GHz and 60GHz");
+                Log.d(TAG, "Error, dual APs doesn't support on 60GHz");
                 return false;
             }
             if (!capability.areFeaturesSupported(SoftApCapability.SOFTAP_FEATURE_ACS_OFFLOAD)

@@ -69,6 +69,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.util.NativeUtil;
 
 import java.nio.ByteBuffer;
@@ -375,6 +376,10 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
      * Indicates whether the AIDL service is declared
      */
     public static boolean serviceDeclared() {
+        // Service Manager API ServiceManager#isDeclared supported after T.
+        if (!SdkLevel.isAtLeastT()) {
+            return false;
+        }
         return ServiceManager.isDeclared(HAL_INSTANCE_NAME);
     }
 
