@@ -1578,11 +1578,27 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 maybeEraseOwnDeviceAddress(mGroup, message.sendingUid));
                         break;
                     }
-                    case WifiP2pManager.REQUEST_PERSISTENT_GROUP_INFO:
+                    case WifiP2pManager.REQUEST_PERSISTENT_GROUP_INFO: {
                         if (!checkNetworkSettingsOrNetworkStackOrReadWifiCredentialPermission(
                                 message.sendingUid)) {
                             loge("Permission violation - none of NETWORK_SETTING, NETWORK_STACK,"
                                     + " or READ_WIFI_CREDENTIAL permission, uid = "
+                                    + message.sendingUid);
+                            replyToMessage(message, WifiP2pManager.RESPONSE_PERSISTENT_GROUP_INFO,
+                                    new WifiP2pGroupList());
+                            break;
+                        }
+                        String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
+                        if (packageName == null) {
+                            replyToMessage(message, WifiP2pManager.RESPONSE_PERSISTENT_GROUP_INFO,
+                                    new WifiP2pGroupList());
+                            break;
+                        }
+                        Bundle extras = (Bundle) message.obj;
+                        if (!isPlatformOrTargetSdkLessThanT(packageName, message.sendingUid)
+                                && !checkNearbyDevicesPermission(message.sendingUid, packageName,
+                                        extras, "REQUEST_PERSISTENT_GROUP_INFO")) {
+                            loge("Permission violation - no NEARBY_WIFI_DEVICES permission, uid = "
                                     + message.sendingUid);
                             replyToMessage(message, WifiP2pManager.RESPONSE_PERSISTENT_GROUP_INFO,
                                     new WifiP2pGroupList());
@@ -1593,6 +1609,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                         maybeEraseOwnDeviceAddress(mGroups, message.sendingUid),
                                         null));
                         break;
+                    }
                     case WifiP2pManager.REQUEST_P2P_STATE:
                         replyToMessage(message, WifiP2pManager.RESPONSE_P2P_STATE,
                                 isWifiP2pAvailable()
