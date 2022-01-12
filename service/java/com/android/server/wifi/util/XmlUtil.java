@@ -28,6 +28,7 @@ import android.net.ProxyInfo;
 import android.net.RouteInfo;
 import android.net.StaticIpConfiguration;
 import android.net.Uri;
+import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiConfiguration;
@@ -1628,6 +1629,8 @@ public class XmlUtil {
         public static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
         public static final String XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS =
                 "BridgedModeOpportunisticShutdownTimeoutMillis";
+        public static final String XML_TAG_VENDOR_ELEMENT = "VendorElement";
+        public static final String XML_TAG_VENDOR_ELEMENTS = "VendorElements";
 
 
         /**
@@ -1675,6 +1678,48 @@ public class XmlUtil {
             }
         }
 
+        /**
+         * Write the SoftApConfiguration vendor elements list information elements to the XML
+         *
+         * @param out XmlSerializer instance pointing to the XML stream
+         * @param elements Vendor elements list
+         */
+        public static void writeVendorElementsSetToXml(
+                XmlSerializer out, List<ScanResult.InformationElement> elements)
+                throws XmlPullParserException, IOException {
+            for (ScanResult.InformationElement e : elements) {
+                XmlUtil.writeNextValue(out, XML_TAG_VENDOR_ELEMENT,
+                        InformationElementUtil.toHexString(e));
+            }
+        }
+
+        /**
+         * Parses the vendor elements from the provided XML stream to HashSet object.
+         *
+         * @param in XmlPullParser instance pointing to the XML stream
+         * @param outerTagDepth depth of the outer tag in the XML document
+         * @return HashSet object if parsing is successful, empty set otherwise
+         */
+        public static List<ScanResult.InformationElement> parseVendorElementsFromXml(
+                XmlPullParser in, int outerTagDepth)
+                throws XmlPullParserException, IOException, IllegalArgumentException {
+            List<ScanResult.InformationElement> elements = new ArrayList<>();
+            while (!XmlUtil.isNextSectionEnd(in, outerTagDepth)) {
+                String[] valueName = new String[1];
+                Object value = XmlUtil.readCurrentValue(in, valueName);
+                if (valueName[0] == null) {
+                    throw new XmlPullParserException("Missing value name");
+                }
+                if (XML_TAG_VENDOR_ELEMENT.equals(valueName[0])) {
+                    ScanResult.InformationElement[] data =
+                            InformationElementUtil.parseInformationElements((String) value);
+                    elements.addAll(Arrays.asList(data));
+                } else {
+                    Log.e(TAG, "Unknown value name found: " + valueName[0]);
+                }
+            }
+            return elements;
+        }
 
         /**
          * Parses the band and channel from the provided XML stream to a SparseIntArray object.
@@ -1795,6 +1840,10 @@ public class XmlUtil {
                 XmlUtil.writeNextValue(out,
                         XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS,
                         softApConfig.getBridgedModeOpportunisticShutdownTimeoutMillisInternal());
+                XmlUtil.writeNextSectionStart(out, XML_TAG_VENDOR_ELEMENTS);
+                XmlUtil.SoftApConfigurationXmlUtil.writeVendorElementsSetToXml(out,
+                        softApConfig.getVendorElementsInternal());
+                XmlUtil.writeNextSectionEnd(out, XML_TAG_VENDOR_ELEMENTS);
             }
         } // End of writeSoftApConfigurationToXml
 
@@ -1956,6 +2005,13 @@ public class XmlUtil {
                                     SparseIntArray channels = XmlUtil.SoftApConfigurationXmlUtil
                                             .parseChannelsFromXml(in, outerTagDepth + 1);
                                     softApConfigBuilder.setChannels(channels);
+                                }
+                                break;
+                            case XML_TAG_VENDOR_ELEMENTS:
+                                if (SdkLevel.isAtLeastT()) {
+                                    softApConfigBuilder.setVendorElements(
+                                            SoftApConfigurationXmlUtil.parseVendorElementsFromXml(
+                                                    in, outerTagDepth + 1));
                                 }
                                 break;
                             default:
