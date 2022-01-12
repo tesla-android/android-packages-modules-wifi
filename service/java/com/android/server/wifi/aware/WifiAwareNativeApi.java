@@ -16,10 +16,14 @@
 
 package com.android.server.wifi.aware;
 
+import static android.net.wifi.aware.Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_PK_128;
+import static android.net.wifi.aware.Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_PK_256;
+import static android.net.wifi.aware.Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128;
+import static android.net.wifi.aware.Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256;
+
 import android.hardware.wifi.V1_0.IWifiNanIface;
 import android.hardware.wifi.V1_0.NanBandIndex;
 import android.hardware.wifi.V1_0.NanBandSpecificConfig;
-import android.hardware.wifi.V1_0.NanCipherSuiteType;
 import android.hardware.wifi.V1_0.NanConfigRequest;
 import android.hardware.wifi.V1_0.NanDataPathSecurityType;
 import android.hardware.wifi.V1_0.NanEnableRequest;
@@ -33,12 +37,13 @@ import android.hardware.wifi.V1_0.NanTransmitFollowupRequest;
 import android.hardware.wifi.V1_0.NanTxType;
 import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
+import android.hardware.wifi.V1_6.NanCipherSuiteType;
 import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
+import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
 import android.net.wifi.util.HexEncoding;
 import android.os.RemoteException;
-import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
 
@@ -123,6 +128,15 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
      */
     public android.hardware.wifi.V1_5.IWifiNanIface mockableCastTo_1_5(IWifiNanIface iface) {
         return android.hardware.wifi.V1_5.IWifiNanIface.castFrom(iface);
+    }
+
+    /**
+     * (HIDL) Cast the input to a 1.6 NAN interface (possibly resulting in a null).
+     *
+     * Separate function so can be mocked in unit tests.
+     */
+    public android.hardware.wifi.V1_6.IWifiNanIface mockableCastTo_1_6(IWifiNanIface iface) {
+        return android.hardware.wifi.V1_6.IWifiNanIface.castFrom(iface);
     }
 
     /*
@@ -1015,7 +1029,6 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
     /**
      * Initiates setting up a data-path between device and peer. Security is provided by either
      * PMK or Passphrase (not both) - if both are null then an open (unencrypted) link is set up.
-     *
      * @param transactionId      Transaction ID for the transaction - used in the async callback to
      *                           match with the original request.
      * @param peerId             ID of the peer ID to associate the data path with. A value of 0
@@ -1026,22 +1039,21 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
      * @param channel            The channel on which to set up the data-path.
      * @param peer               The MAC address of the peer to create a connection with.
      * @param interfaceName      The interface on which to create the data connection.
-     * @param pmk Pairwise master key (PMK - see IEEE 802.11i) for the data-path.
-     * @param passphrase  Passphrase for the data-path.
      * @param isOutOfBand Is the data-path out-of-band (i.e. without a corresponding Aware discovery
      *                    session).
      * @param appInfo Arbitrary binary blob transmitted to the peer.
      * @param capabilities The capabilities of the firmware.
+     * @param securityConfig Security config to encrypt the data-path
      */
     public boolean initiateDataPath(short transactionId, int peerId, int channelRequestType,
-            int channel, byte[] peer, String interfaceName, byte[] pmk, String passphrase,
-            boolean isOutOfBand, byte[] appInfo, Capabilities capabilities) {
+            int channel, byte[] peer, String interfaceName,
+            boolean isOutOfBand, byte[] appInfo, Capabilities capabilities,
+            WifiAwareDataPathSecurityConfig securityConfig) {
         if (mDbg) {
             Log.v(TAG, "initiateDataPath: transactionId=" + transactionId + ", peerId=" + peerId
                     + ", channelRequestType=" + channelRequestType + ", channel=" + channel
                     + ", peer=" + String.valueOf(HexEncoding.encode(peer)) + ", interfaceName="
-                    + interfaceName + ", pmk=" + ((pmk == null) ? "<null>" : "<*>")
-                    + ", passphrase=" + (TextUtils.isEmpty(passphrase) ? "<empty>" : "<*>")
+                    + interfaceName + ", securityConfig=" + securityConfig
                     + ", isOutOfBand=" + isOutOfBand + ", appInfo.length="
                     + ((appInfo == null) ? 0 : appInfo.length) + ", capabilities=" + capabilities);
         }
@@ -1058,71 +1070,126 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
             return false;
         }
 
-        NanInitiateDataPathRequest req = new NanInitiateDataPathRequest();
-        req.peerId = peerId;
-        copyArray(peer, req.peerDiscMacAddr);
-        req.channelRequestType = channelRequestType;
-        req.channel = channel;
-        req.ifaceName = interfaceName;
-        req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
-        if (pmk != null && pmk.length != 0) {
-            req.securityConfig.cipherType = getStrongestCipherSuiteType(
-                    capabilities.supportedCipherSuites);
-            req.securityConfig.securityType = NanDataPathSecurityType.PMK;
-            copyArray(pmk, req.securityConfig.pmk);
-        }
-        if (passphrase != null && passphrase.length() != 0) {
-            req.securityConfig.cipherType = getStrongestCipherSuiteType(
-                    capabilities.supportedCipherSuites);
-            req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
-            convertNativeByteArrayToArrayList(passphrase.getBytes(), req.securityConfig.passphrase);
-        }
+        android.hardware.wifi.V1_6.IWifiNanIface iface16 = mockableCastTo_1_6(iface);
 
-        if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
-            convertNativeByteArrayToArrayList(
-                    SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
-                    req.serviceNameOutOfBand);
-        }
-        convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+        if (iface16 == null) {
+            NanInitiateDataPathRequest req = new NanInitiateDataPathRequest();
+            req.peerId = peerId;
+            copyArray(peer, req.peerDiscMacAddr);
+            req.channelRequestType = channelRequestType;
+            req.channel = channel;
+            req.ifaceName = interfaceName;
+            req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            if (securityConfig != null) {
+                req.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
 
-        try {
-            WifiStatus status = iface.initiateDataPathRequest(transactionId, req);
-            if (status.code == WifiStatusCode.SUCCESS) {
-                return true;
-            } else {
-                Log.e(TAG, "initiateDataPath: error: " + statusString(status));
+                    req.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.securityConfig.passphrase);
+                }
+            }
+
+            if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
+                convertNativeByteArrayToArrayList(
+                        SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
+                        req.serviceNameOutOfBand);
+            }
+            convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+
+            try {
+                WifiStatus status = iface.initiateDataPathRequest(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "initiateDataPath: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "initiateDataPath: exception: " + e);
                 return false;
             }
-        } catch (RemoteException e) {
-            Log.e(TAG, "initiateDataPath: exception: " + e);
-            return false;
+        } else {
+            android.hardware.wifi.V1_6.NanInitiateDataPathRequest req =
+                    new android.hardware.wifi.V1_6.NanInitiateDataPathRequest();
+            req.peerId = peerId;
+            copyArray(peer, req.peerDiscMacAddr);
+            req.channelRequestType = channelRequestType;
+            req.channel = channel;
+            req.ifaceName = interfaceName;
+            req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            if (securityConfig != null) {
+                req.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
+                    req.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.securityConfig.passphrase);
+                }
+                if (securityConfig.getPmkId() != null && securityConfig.getPmkId().length != 0) {
+                    copyArray(securityConfig.getPmkId(), req.securityConfig.scid);
+                }
+            }
+
+            if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
+                convertNativeByteArrayToArrayList(
+                        SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
+                        req.serviceNameOutOfBand);
+            }
+            convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+
+            try {
+                WifiStatus status = iface16.initiateDataPathRequest_1_6(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "initiateDataPath_1_6: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "initiateDataPath_1_6: exception: " + e);
+                return false;
+            }
         }
     }
+
+
 
     /**
      * Responds to a data request from a peer. Security is provided by either PMK or Passphrase (not
      * both) - if both are null then an open (unencrypted) link is set up.
-     *
      * @param transactionId Transaction ID for the transaction - used in the async callback to
      *                      match with the original request.
      * @param accept Accept (true) or reject (false) the original call.
      * @param ndpId The NDP (Aware data path) ID. Obtained from the request callback.
      * @param interfaceName The interface on which the data path will be setup. Obtained from the
-     *                      request callback.
-     * @param pmk Pairwise master key (PMK - see IEEE 802.11i) for the data-path.
-     * @param passphrase  Passphrase for the data-path.
+*                      request callback.
      * @param appInfo Arbitrary binary blob transmitted to the peer.
      * @param isOutOfBand Is the data-path out-of-band (i.e. without a corresponding Aware discovery
-     *                    session).
+*                    session).
      * @param capabilities The capabilities of the firmware.
+     * @param securityConfig Security config to encrypt the data-path
      */
     public boolean respondToDataPathRequest(short transactionId, boolean accept, int ndpId,
-            String interfaceName, byte[] pmk, String passphrase, byte[] appInfo,
-            boolean isOutOfBand, Capabilities capabilities) {
+            String interfaceName, byte[] appInfo,
+            boolean isOutOfBand, Capabilities capabilities,
+            WifiAwareDataPathSecurityConfig securityConfig) {
         if (mDbg) {
             Log.v(TAG, "respondToDataPathRequest: transactionId=" + transactionId + ", accept="
                     + accept + ", int ndpId=" + ndpId + ", interfaceName=" + interfaceName
-                    + ", appInfo.length=" + ((appInfo == null) ? 0 : appInfo.length));
+                    + ", appInfo.length=" + ((appInfo == null) ? 0 : appInfo.length)
+                    + ", securityConfig" + securityConfig);
         }
         recordTransactionId(transactionId);
 
@@ -1133,46 +1200,99 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         }
 
         if (capabilities == null) {
-            Log.e(TAG, "initiateDataPath: null capabilities");
+            Log.e(TAG, "respondToDataPathRequest: null capabilities");
             return false;
         }
 
-        NanRespondToDataPathIndicationRequest req = new NanRespondToDataPathIndicationRequest();
-        req.acceptRequest = accept;
-        req.ndpInstanceId = ndpId;
-        req.ifaceName = interfaceName;
-        req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
-        if (pmk != null && pmk.length != 0) {
-            req.securityConfig.cipherType = getStrongestCipherSuiteType(
-                    capabilities.supportedCipherSuites);
-            req.securityConfig.securityType = NanDataPathSecurityType.PMK;
-            copyArray(pmk, req.securityConfig.pmk);
-        }
-        if (passphrase != null && passphrase.length() != 0) {
-            req.securityConfig.cipherType = getStrongestCipherSuiteType(
-                    capabilities.supportedCipherSuites);
-            req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
-            convertNativeByteArrayToArrayList(passphrase.getBytes(), req.securityConfig.passphrase);
-        }
+        android.hardware.wifi.V1_6.IWifiNanIface iface16 = mockableCastTo_1_6(iface);
 
-        if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
-            convertNativeByteArrayToArrayList(
-                    SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
-                    req.serviceNameOutOfBand);
-        }
-        convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+        if (iface16 == null) {
+            NanRespondToDataPathIndicationRequest req = new NanRespondToDataPathIndicationRequest();
+            req.acceptRequest = accept;
+            req.ndpInstanceId = ndpId;
+            req.ifaceName = interfaceName;
+            req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            if (securityConfig != null) {
+                req.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
 
-        try {
-            WifiStatus status = iface.respondToDataPathIndicationRequest(transactionId, req);
-            if (status.code == WifiStatusCode.SUCCESS) {
-                return true;
-            } else {
-                Log.e(TAG, "respondToDataPathRequest: error: " + statusString(status));
+                    req.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.securityConfig.passphrase);
+                }
+            }
+
+            if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
+                convertNativeByteArrayToArrayList(
+                        SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
+                        req.serviceNameOutOfBand);
+            }
+            convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+
+            try {
+                WifiStatus status = iface.respondToDataPathIndicationRequest(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "respondToDataPathRequest: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "respondToDataPathRequest: exception: " + e);
                 return false;
             }
-        } catch (RemoteException e) {
-            Log.e(TAG, "respondToDataPathRequest: exception: " + e);
-            return false;
+        } else {
+            android.hardware.wifi.V1_6.NanRespondToDataPathIndicationRequest req =
+                    new android.hardware.wifi.V1_6.NanRespondToDataPathIndicationRequest();
+            req.acceptRequest = accept;
+            req.ndpInstanceId = ndpId;
+            req.ifaceName = interfaceName;
+            req.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            if (securityConfig != null) {
+                req.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
+
+                    req.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.securityConfig.securityType = NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.securityConfig.passphrase);
+                }
+                if (securityConfig.getPmkId() != null && securityConfig.getPmkId().length != 0) {
+                    copyArray(securityConfig.getPmkId(), req.securityConfig.scid);
+                }
+            }
+
+            if (req.securityConfig.securityType != NanDataPathSecurityType.OPEN && isOutOfBand) {
+                convertNativeByteArrayToArrayList(
+                        SERVICE_NAME_FOR_OOB_DATA_PATH.getBytes(StandardCharsets.UTF_8),
+                        req.serviceNameOutOfBand);
+            }
+            convertNativeByteArrayToArrayList(appInfo, req.appInfo);
+
+            try {
+                WifiStatus status = iface16
+                        .respondToDataPathIndicationRequest_1_6(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "respondToDataPathRequest_1_6: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "respondToDataPathRequest_1_6: exception: " + e);
+                return false;
+            }
         }
     }
 
@@ -1275,16 +1395,18 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
     }
 
     /**
-     * Returns the strongest supported cipher suite.
-     *
-     * Baseline is very simple: 256 > 128 > 0.
+     * Returns the HAL cipher suite.
      */
-    private int getStrongestCipherSuiteType(int supportedCipherSuites) {
-        if ((supportedCipherSuites & NanCipherSuiteType.SHARED_KEY_256_MASK) != 0) {
-            return NanCipherSuiteType.SHARED_KEY_256_MASK;
-        }
-        if ((supportedCipherSuites & NanCipherSuiteType.SHARED_KEY_128_MASK) != 0) {
-            return NanCipherSuiteType.SHARED_KEY_128_MASK;
+    private int getHalCipherSuiteType(int frameworkCipherSuites) {
+        switch (frameworkCipherSuites) {
+            case WIFI_AWARE_CIPHER_SUITE_NCS_SK_128:
+                return NanCipherSuiteType.SHARED_KEY_128_MASK;
+            case WIFI_AWARE_CIPHER_SUITE_NCS_SK_256:
+                return NanCipherSuiteType.SHARED_KEY_256_MASK;
+            case WIFI_AWARE_CIPHER_SUITE_NCS_PK_128:
+                return NanCipherSuiteType.PUBLIC_KEY_128_MASK;
+            case WIFI_AWARE_CIPHER_SUITE_NCS_PK_256:
+                return NanCipherSuiteType.PUBLIC_KEY_256_MASK;
         }
         return NanCipherSuiteType.NONE;
     }

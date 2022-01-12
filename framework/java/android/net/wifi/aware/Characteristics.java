@@ -49,7 +49,7 @@ public final class Characteristics implements Parcelable {
     /** @hide */
     public static final String KEY_MAX_NDP_NUMBER = "key_max_ndp_number";
     /** @hide */
-    public static final String KEY_MAX_Publish_NUMBER = "key_max_publish_number";
+    public static final String KEY_MAX_PUBLISH_NUMBER = "key_max_publish_number";
     /** @hide */
     public static final String KEY_MAX_SUBSCRIBE_NUMBER = "key_max_subscribe_number";
     /** @hide */
@@ -119,7 +119,7 @@ public final class Characteristics implements Parcelable {
      */
     @IntRange(from = 1)
     public int getNumberOfSupportedPublishSessions() {
-        return mCharacteristics.getInt(KEY_MAX_Publish_NUMBER);
+        return mCharacteristics.getInt(KEY_MAX_PUBLISH_NUMBER);
     }
 
     /**
@@ -164,19 +164,31 @@ public final class Characteristics implements Parcelable {
     @IntDef(flag = true, prefix = { "WIFI_AWARE_CIPHER_SUITE_" }, value = {
             WIFI_AWARE_CIPHER_SUITE_NCS_SK_128,
             WIFI_AWARE_CIPHER_SUITE_NCS_SK_256,
+            WIFI_AWARE_CIPHER_SUITE_NCS_PK_128,
+            WIFI_AWARE_CIPHER_SUITE_NCS_PK_256,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiAwareCipherSuites {}
 
     /**
-     * Wi-Fi Aware supported ciphier suite representing NCS SK 128: 128 bit shared-key.
+     * Wi-Fi Aware supported cipher suite representing NCS SK 128: 128 bit shared-key.
      */
     public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 = 1 << 0;
 
     /**
-     * Wi-Fi Aware supported ciphier suite representing NCS SK 256: 256 bit shared-key.
+     * Wi-Fi Aware supported cipher suite representing NCS SK 256: 256 bit shared-key.
      */
     public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 = 1 << 1;
+
+    /**
+     * Wi-Fi Aware supported cipher suite representing NCS PK 128: 128 bit public-key.
+     */
+    public static final int WIFI_AWARE_CIPHER_SUITE_NCS_PK_128 = 1 << 2;
+
+    /**
+     * Wi-Fi Aware supported cipher suite representing NCS PK 256: 256 bit public-key.
+     */
+    public static final int WIFI_AWARE_CIPHER_SUITE_NCS_PK_256 = 1 << 3;
 
     /**
      * Returns the set of cipher suites supported by the device for use in Wi-Fi Aware data-paths.

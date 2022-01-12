@@ -16,10 +16,12 @@
 
 package android.net.wifi.aware;
 
+import static android.net.wifi.aware.Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128;
 import static android.net.wifi.aware.WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_INITIATOR;
 
 import android.annotation.IntRange;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkRequest;
@@ -27,7 +29,6 @@ import android.net.NetworkSpecifier;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.text.TextUtils;
 
 import androidx.annotation.RequiresApi;
 
@@ -163,6 +164,8 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
      */
     private final boolean mForcedChannel;
 
+    private final WifiAwareDataPathSecurityConfig mSecurityConfig;
+
     /**
      * Get the specified channel in MHZ for this Wi-Fi Aware network specifier.
      * @see Builder#setChannelInMhz(int, boolean)
@@ -182,22 +185,31 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         return mForcedChannel;
     }
 
+    /**
+     * Get the security config specified in this Network Specifier to encrypt Wi-Fi Aware data-path
+     * @return {@link WifiAwareDataPathSecurityConfig} used to encrypt the data-path
+     */
+    public @Nullable WifiAwareDataPathSecurityConfig getWifiAwareDataPathSecurityConfig() {
+        return mSecurityConfig;
+    }
+
     /** @hide */
     public WifiAwareNetworkSpecifier(int type, int role, int clientId, int sessionId, int peerId,
-            byte[] peerMac, byte[] pmk, String passphrase, int port, int transportProtocol,
-            int channel, boolean forcedChannel) {
+            byte[] peerMac, int port, int transportProtocol,
+            int channel, boolean forcedChannel, WifiAwareDataPathSecurityConfig securityConfig) {
         this.type = type;
         this.role = role;
         this.clientId = clientId;
         this.sessionId = sessionId;
         this.peerId = peerId;
         this.peerMac = peerMac;
-        this.pmk = pmk;
-        this.passphrase = passphrase;
         this.port = port;
         this.transportProtocol = transportProtocol;
         this.mChannelInMhz = channel;
         this.mForcedChannel = forcedChannel;
+        this.mSecurityConfig = securityConfig;
+        this.passphrase = securityConfig == null ? null : securityConfig.getPskPassphrase();
+        this.pmk = securityConfig == null ? null : securityConfig.getPmk();
     }
 
     /**
@@ -212,12 +224,19 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         this.sessionId = sessionId;
         this.peerId = peerId;
         this.peerMac = peerMac;
-        this.pmk = pmk;
-        this.passphrase = passphrase;
         this.port = port;
         this.transportProtocol = transportProtocol;
         this.mChannelInMhz = 0;
         this.mForcedChannel = false;
+        this.pmk = pmk;
+        this.passphrase = passphrase;
+        if (pmk != null || passphrase != null) {
+            this.mSecurityConfig = new WifiAwareDataPathSecurityConfig(
+                    WIFI_AWARE_CIPHER_SUITE_NCS_SK_128, pmk, null, passphrase
+            );
+        } else {
+            mSecurityConfig = null;
+        }
     }
 
     public static final @android.annotation.NonNull Creator<WifiAwareNetworkSpecifier> CREATOR =
@@ -231,12 +250,12 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                             in.readInt(), // sessionId
                             in.readInt(), // peerId
                             in.createByteArray(), // peerMac
-                            in.createByteArray(), // pmk
-                            in.readString(), // passphrase
                             in.readInt(), // port
                             in.readInt(), // transportProtocol
                             in.readInt(), // channel
-                            in.readBoolean()); // forceChannel
+                            in.readBoolean(), // forceChannel
+                            in.readParcelable(WifiAwareDataPathSecurityConfig
+                                    .class.getClassLoader())); // securityConfig
                 }
 
                 @Override
@@ -268,12 +287,11 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         dest.writeInt(sessionId);
         dest.writeInt(peerId);
         dest.writeByteArray(peerMac);
-        dest.writeByteArray(pmk);
-        dest.writeString(passphrase);
         dest.writeInt(port);
         dest.writeInt(transportProtocol);
         dest.writeInt(mChannelInMhz);
         dest.writeBoolean(mForcedChannel);
+        dest.writeParcelable(mSecurityConfig, flags);
     }
 
     /** @hide */
@@ -290,8 +308,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
     @Override
     public int hashCode() {
         return Objects.hash(type, role, clientId, sessionId, peerId, Arrays.hashCode(peerMac),
-                Arrays.hashCode(pmk), passphrase, port, transportProtocol, mChannelInMhz,
-                mForcedChannel);
+                port, transportProtocol, mChannelInMhz, mForcedChannel, mSecurityConfig);
     }
 
     /** @hide */
@@ -313,12 +330,11 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                 && sessionId == lhs.sessionId
                 && peerId == lhs.peerId
                 && Arrays.equals(peerMac, lhs.peerMac)
-                && Arrays.equals(pmk, lhs.pmk)
-                && Objects.equals(passphrase, lhs.passphrase)
                 && port == lhs.port
                 && transportProtocol == lhs.transportProtocol
                 && mChannelInMhz == lhs.mChannelInMhz
-                && mForcedChannel == lhs.mForcedChannel;
+                && mForcedChannel == lhs.mForcedChannel
+                && Objects.equals(mSecurityConfig, lhs.mSecurityConfig);
     }
 
     /** @hide */
@@ -333,9 +349,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                 // masking potential PII (although low impact information)
                 .append(", peerMac=").append((peerMac == null) ? "<null>" : "<non-null>")
                 // masking PII
-                .append(", pmk=").append((pmk == null) ? "<null>" : "<non-null>")
-                // masking PII
-                .append(", passphrase=").append((passphrase == null) ? "<null>" : "<non-null>")
+                .append(", securityConfig=").append(mSecurityConfig)
                 .append(", port=").append(port)
                 .append(", transportProtocol=").append(transportProtocol)
                 .append(", channel=").append(mChannelInMhz)
@@ -357,6 +371,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         private int mTransportProtocol = -1; // invalid value
         private int mChannel = 0;
         private boolean mIsRequired = false;
+        private WifiAwareDataPathSecurityConfig mSecurityConfig;
 
         /**
          * Create a builder for {@link WifiAwareNetworkSpecifier} used in requests to set up a
@@ -414,6 +429,11 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         /**
          * Configure the PSK Passphrase for the Wi-Fi Aware connection being requested. This method
          * is optional - if not called, then an Open (unencrypted) connection will be created.
+         * Note: Use
+         * {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
+         * interoperability issues when devices support different cipher suites by explicitly
+         * specifying a cipher suite as opposed to relying on a default cipher suite.
+         * {@link WifiAwareDataPathSecurityConfig.Builder#Builder(int)}
          *
          * @param pskPassphrase The (optional) passphrase to be used to encrypt the link. Use the
          *                      {@link #setPmk(byte[])} to specify a PMK.
@@ -431,6 +451,10 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         /**
          * Configure the PMK for the Wi-Fi Aware connection being requested. This method
          * is optional - if not called, then an Open (unencrypted) connection will be created.
+         * Note: Use
+         * {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
+         * interoperability issues when devices support different cipher suites by explicitly
+         * specifying a cipher suite as opposed to relying on a default cipher suite.
          *
          * @param pmk A PMK (pairwise master key, see IEEE 802.11i) specifying the key to use for
          *            encrypting the data-path. Use the {@link #setPskPassphrase(String)} to
@@ -454,7 +478,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * <ul>
          *     <li>The server device must be the Publisher device!
          *     <li>The port information can only be specified on secure links, specified using
-         *     {@link #setPskPassphrase(String)} or {@link #setPmk(byte[])}.
+         *     {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
          * </ul>
          *
          * @param port A positive integer indicating the port to be used for communication.
@@ -477,7 +501,8 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * <ul>
          *     <li>The server device must be the Publisher device!
          *     <li>The transport protocol information can only be specified on secure links,
-         *     specified using {@link #setPskPassphrase(String)} or {@link #setPmk(byte[])}.
+         *     specified using
+         *     {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}.
          * </ul>
          * The transport protocol number is assigned by the Internet Assigned Numbers Authority
          * (IANA) https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml.
@@ -516,6 +541,26 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
         }
 
         /**
+         * Configure security config for the Wi-Fi Aware connection being requested. This method
+         * is optional - if not called, then an Open (unencrypted) connection will be created.
+         * Note: this method is the superset of the {@link #setPmk(byte[])} and
+         * {@link #setPskPassphrase(String)}.
+         *
+         * @param securityConfig The (optional) security config to be used to encrypt the link.
+         * @return the current {@link Builder} builder, enabling chaining of builder
+         *         methods.
+         */
+        public @NonNull Builder setWifiAwareDataPathSecurityConfig(
+                @NonNull WifiAwareDataPathSecurityConfig securityConfig) {
+            if (!securityConfig.isValid()) {
+                throw new IllegalArgumentException("The WifiAwareDataPathSecurityConfig "
+                        + "is invalid");
+            }
+            mSecurityConfig = securityConfig;
+            return this;
+        }
+
+        /**
          * Create a {@link android.net.NetworkRequest.Builder#setNetworkSpecifier(NetworkSpecifier)}
          * for a WiFi Aware connection (link) to the specified peer. The
          * {@link android.net.NetworkRequest.Builder#addTransportType(int)} should be set to
@@ -534,9 +579,18 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
             if (mDiscoverySession == null) {
                 throw new IllegalStateException("Null discovery session!?");
             }
-            if (mPskPassphrase != null & mPmk != null) {
+            if (mPskPassphrase != null && mPmk != null) {
                 throw new IllegalStateException(
                         "Can only specify a Passphrase or a PMK - not both!");
+            }
+            if (mPskPassphrase != null || mPmk != null) {
+                if (mSecurityConfig != null) {
+                    throw new IllegalStateException(
+                            "Can only specify a SecurityConfig or a PMK(Passphrase) - not both!");
+                }
+                mSecurityConfig = new WifiAwareDataPathSecurityConfig(
+                        WIFI_AWARE_CIPHER_SUITE_NCS_SK_128, mPmk, null,
+                        mPskPassphrase);
             }
 
             int role = mDiscoverySession instanceof SubscribeDiscoverySession
@@ -549,7 +603,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
                             "Port and transport protocol information can only "
                                     + "be specified on the Publisher device (which is the server");
                 }
-                if (TextUtils.isEmpty(mPskPassphrase) && mPmk == null) {
+                if (mSecurityConfig == null) {
                     throw new IllegalStateException("Port and transport protocol information can "
                             + "only be specified on a secure link");
                 }
@@ -560,7 +614,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
 
             return new WifiAwareNetworkSpecifier(type, role, mDiscoverySession.mClientId,
                     mDiscoverySession.mSessionId, mPeerHandle != null ? mPeerHandle.peerId : 0,
-                    null, mPmk, mPskPassphrase, mPort, mTransportProtocol, mChannel, mIsRequired);
+                    null, mPort, mTransportProtocol, mChannel, mIsRequired, mSecurityConfig);
         }
     }
 }

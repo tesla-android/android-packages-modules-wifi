@@ -1068,14 +1068,16 @@ public class WifiAwareManagerTest {
         collector.checkThat("client_id", clientId, equalTo(ns.clientId));
         collector.checkThat("session_id", sessionId, equalTo(ns.sessionId));
         collector.checkThat("peer_id", peerHandle.peerId, equalTo(ns.peerId));
-        collector.checkThat("pmk", pmk , equalTo(ns.pmk));
+        collector.checkThat("pmk", pmk , equalTo(ns
+                .getWifiAwareDataPathSecurityConfig().getPmk()));
 
         collector.checkThat("role", WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER,
                 equalTo(nsb.role));
         collector.checkThat("client_id", clientId, equalTo(nsb.clientId));
         collector.checkThat("session_id", sessionId, equalTo(nsb.sessionId));
         collector.checkThat("peer_id", peerHandle.peerId, equalTo(nsb.peerId));
-        collector.checkThat("pmk", pmk , equalTo(nsb.pmk));
+        collector.checkThat("pmk", pmk , equalTo(nsb
+                .getWifiAwareDataPathSecurityConfig().getPmk()));
         collector.checkThat("port", port, equalTo(nsb.port));
         collector.checkThat("transportProtocol", transportProtocol, equalTo(nsb.transportProtocol));
 
@@ -1094,14 +1096,16 @@ public class WifiAwareManagerTest {
         collector.checkThat("client_id", clientId, equalTo(ns.clientId));
         collector.checkThat("session_id", sessionId, equalTo(ns.sessionId));
         collector.checkThat("peer_id", peerHandle.peerId, equalTo(ns.peerId));
-        collector.checkThat("passphrase", passphrase, equalTo(ns.passphrase));
+        collector.checkThat("passphrase", passphrase, equalTo(ns
+                .getWifiAwareDataPathSecurityConfig().getPskPassphrase()));
 
         collector.checkThat("role", WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER,
                 equalTo(nsb.role));
         collector.checkThat("client_id", clientId, equalTo(nsb.clientId));
         collector.checkThat("session_id", sessionId, equalTo(nsb.sessionId));
         collector.checkThat("peer_id", peerHandle.peerId, equalTo(nsb.peerId));
-        collector.checkThat("passphrase", passphrase, equalTo(nsb.passphrase));
+        collector.checkThat("passphrase", passphrase, equalTo(nsb
+                .getWifiAwareDataPathSecurityConfig().getPskPassphrase()));
         collector.checkThat("port", port, equalTo(nsb.port));
         collector.checkThat("transportProtocol", transportProtocol, equalTo(nsb.transportProtocol));
         collector.checkThat("channel", 5750, equalTo(nsb.getChannelInMhz()));
@@ -1157,7 +1161,8 @@ public class WifiAwareManagerTest {
         collector.checkThat("role", role, equalTo(ns.role));
         collector.checkThat("client_id", clientId, equalTo(ns.clientId));
         collector.checkThat("peer_mac", someMac, equalTo(ns.peerMac));
-        collector.checkThat("pmk", pmk, equalTo(ns.pmk));
+        collector.checkThat("pmk", pmk, equalTo(
+                ns.getWifiAwareDataPathSecurityConfig().getPmk()));
 
         // (4) request an encrypted (Passphrase) direct network specifier
         ns = (WifiAwareNetworkSpecifier) session.createNetworkSpecifierPassphrase(role, someMac,
@@ -1167,7 +1172,8 @@ public class WifiAwareManagerTest {
         collector.checkThat("role", role, equalTo(ns.role));
         collector.checkThat("client_id", clientId, equalTo(ns.clientId));
         collector.checkThat("peer_mac", someMac, equalTo(ns.peerMac));
-        collector.checkThat("passphrase", passphrase, equalTo(ns.passphrase));
+        collector.checkThat("passphrase", passphrase, equalTo(
+                ns.getWifiAwareDataPathSecurityConfig().getPskPassphrase()));
 
         verifyNoMoreInteractions(mockCallback, mockSessionCallback, mockAwareService,
                 mockPublishSession, mockRttListener);
@@ -1628,7 +1634,7 @@ public class WifiAwareManagerTest {
         WifiAwareNetworkSpecifier ns = new WifiAwareNetworkSpecifier(NETWORK_SPECIFIER_TYPE_IB,
                 WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER, 5, 568, 334,
                 HexEncoding.decode("000102030405".toCharArray(), false),
-                "01234567890123456789012345678901".getBytes(), "blah blah", 666, 4, 0, false);
+                "01234567890123456789012345678901".getBytes(), null, 666, 4);
 
         Parcel parcelW = Parcel.obtain();
         ns.writeToParcel(parcelW, 0);

@@ -26,10 +26,12 @@ import android.hardware.wifi.V1_0.NanStatusType;
 import android.hardware.wifi.V1_0.WifiNanStatus;
 import android.hardware.wifi.V1_2.NanDataPathScheduleUpdateInd;
 import android.hardware.wifi.V1_6.IWifiNanIfaceEventCallback;
+import android.hardware.wifi.V1_6.NanCipherSuiteType;
 import android.hardware.wifi.V1_6.WifiChannelWidthInMhz;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiAnnotations;
+import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.WifiAwareChannelInfo;
 import android.net.wifi.util.HexEncoding;
 import android.os.RemoteException;
@@ -214,7 +216,56 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
             Log.e(TAG, "notifyCapabilitiesResponse_1_5: error code=" + status.status + " ("
                     + status.description + ")");
         }
+    }
 
+    @Override
+    public void notifyCapabilitiesResponse_1_6(short id, WifiNanStatus status,
+            android.hardware.wifi.V1_6.NanCapabilities capabilities) throws RemoteException {
+        if (mDbg) {
+            Log.v(TAG, "notifyCapabilitiesResponse_1_6: id=" + id + ", status="
+                    + statusString(status) + ", capabilities=" + capabilities);
+        }
+
+        if (!mIsHal16OrLater) {
+            Log.wtf(TAG, "notifyCapabilitiesResponse_1_6 should not be called by a <1.6 HAL!");
+            return;
+        }
+
+        if (status.status == NanStatusType.SUCCESS) {
+            Capabilities frameworkCapabilities = toFrameworkCapability1_6(capabilities);
+
+            mWifiAwareStateManager.onCapabilitiesUpdateResponse(id, frameworkCapabilities);
+        } else {
+            Log.e(TAG, "notifyCapabilitiesResponse_1_6: error code=" + status.status + " ("
+                    + status.description + ")");
+        }
+    }
+
+    private Capabilities toFrameworkCapability1_6(
+            android.hardware.wifi.V1_6.NanCapabilities capabilities) {
+        Capabilities frameworkCapabilities = new Capabilities();
+        frameworkCapabilities.maxConcurrentAwareClusters = capabilities.maxConcurrentClusters;
+        frameworkCapabilities.maxPublishes = capabilities.maxPublishes;
+        frameworkCapabilities.maxSubscribes = capabilities.maxSubscribes;
+        frameworkCapabilities.maxServiceNameLen = capabilities.maxServiceNameLen;
+        frameworkCapabilities.maxMatchFilterLen = capabilities.maxMatchFilterLen;
+        frameworkCapabilities.maxTotalMatchFilterLen = capabilities.maxTotalMatchFilterLen;
+        frameworkCapabilities.maxServiceSpecificInfoLen =
+                capabilities.maxServiceSpecificInfoLen;
+        frameworkCapabilities.maxExtendedServiceSpecificInfoLen =
+                capabilities.maxExtendedServiceSpecificInfoLen;
+        frameworkCapabilities.maxNdiInterfaces = capabilities.maxNdiInterfaces;
+        frameworkCapabilities.maxNdpSessions = capabilities.maxNdpSessions;
+        frameworkCapabilities.maxAppInfoLen = capabilities.maxAppInfoLen;
+        frameworkCapabilities.maxQueuedTransmitMessages =
+                capabilities.maxQueuedTransmitFollowupMsgs;
+        frameworkCapabilities.maxSubscribeInterfaceAddresses =
+                capabilities.maxSubscribeInterfaceAddresses;
+        frameworkCapabilities.supportedCipherSuites = toPublicCipherSuites(
+                capabilities.supportedCipherSuites);
+        frameworkCapabilities.isInstantCommunicationModeSupported =
+                capabilities.instantCommunicationModeSupportFlag;
+        return frameworkCapabilities;
     }
 
     private Capabilities toFrameworkCapability10(
@@ -237,9 +288,29 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
                 capabilities.maxQueuedTransmitFollowupMsgs;
         frameworkCapabilities.maxSubscribeInterfaceAddresses =
                 capabilities.maxSubscribeInterfaceAddresses;
-        frameworkCapabilities.supportedCipherSuites = capabilities.supportedCipherSuites;
+        frameworkCapabilities.supportedCipherSuites = toPublicCipherSuites(
+                capabilities.supportedCipherSuites);
         frameworkCapabilities.isInstantCommunicationModeSupported = false;
         return frameworkCapabilities;
+    }
+
+    private int toPublicCipherSuites(int nativeCipherSuites) {
+        int publicCipherSuites = 0;
+
+        if ((nativeCipherSuites & NanCipherSuiteType.SHARED_KEY_128_MASK) != 0) {
+            publicCipherSuites |= Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128;
+        }
+        if ((nativeCipherSuites & NanCipherSuiteType.SHARED_KEY_256_MASK) != 0) {
+            publicCipherSuites |= Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256;
+        }
+        if ((nativeCipherSuites & NanCipherSuiteType.PUBLIC_KEY_128_MASK) != 0) {
+            publicCipherSuites |= Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_PK_128;
+        }
+        if ((nativeCipherSuites & NanCipherSuiteType.PUBLIC_KEY_256_MASK) != 0) {
+            publicCipherSuites |= Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_PK_256;
+        }
+
+        return publicCipherSuites;
     }
 
     @Override
@@ -484,6 +555,30 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
                 event.addr, convertArrayListToNativeByteArray(event.serviceSpecificInfo),
                 convertArrayListToNativeByteArray(event.matchFilter), event.rangingIndicationType,
                 event.rangingMeasurementInCm * 10);
+    }
+
+    @Override
+    public void eventMatch_1_6(android.hardware.wifi.V1_6.NanMatchInd event) {
+        if (mDbg) {
+            Log.v(TAG, "eventMatch_1_6: discoverySessionId=" + event.discoverySessionId
+                    + ", peerId=" + event.peerId
+                    + ", addr=" + String.valueOf(HexEncoding.encode(event.addr))
+                    + ", serviceSpecificInfo=" + Arrays.toString(
+                    convertArrayListToNativeByteArray(event.serviceSpecificInfo)) + ", ssi.size()="
+                    + (event.serviceSpecificInfo == null ? 0 : event.serviceSpecificInfo.size())
+                    + ", matchFilter=" + Arrays.toString(
+                    convertArrayListToNativeByteArray(event.matchFilter)) + ", mf.size()=" + (
+                    event.matchFilter == null ? 0 : event.matchFilter.size())
+                    + ", rangingIndicationType=" + event.rangingIndicationType
+                    + ", rangingMeasurementInCm=" + event.rangingMeasurementInMm + ", "
+                    + "scid=" + Arrays.toString(convertArrayListToNativeByteArray(event.scid)));
+        }
+        incrementCbCount(CB_EV_MATCH);
+
+        mWifiAwareStateManager.onMatchNotification(event.discoverySessionId, event.peerId,
+                event.addr, convertArrayListToNativeByteArray(event.serviceSpecificInfo),
+                convertArrayListToNativeByteArray(event.matchFilter), event.rangingIndicationType,
+                event.rangingMeasurementInMm);
     }
 
     @Override
