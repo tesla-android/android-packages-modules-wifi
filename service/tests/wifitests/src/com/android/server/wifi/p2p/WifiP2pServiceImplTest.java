@@ -4166,6 +4166,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         // Ensure our own MAC address is not anonymized in the result
         when(mWifiPermissionsUtil.checkLocalMacAddressPermission(anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
 
         sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_PERSISTENT_GROUP_INFO);
 
@@ -4184,13 +4185,43 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Test
     public void testRequestPersistentGroupInfoNoPermissionFailure() throws Exception {
         // Ensure our own MAC address is not anonymized in the result
-        when(mWifiPermissionsUtil.checkLocalMacAddressPermission(anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
 
         // no permissions held
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkNetworkStackPermission(anyInt())).thenReturn(false);
         when(mWifiPermissionsUtil.checkReadWifiCredentialPermission(anyInt())).thenReturn(false);
+
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_PERSISTENT_GROUP_INFO);
+
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        WifiP2pGroupList groups = (WifiP2pGroupList) message.obj;
+        assertEquals(WifiP2pManager.RESPONSE_PERSISTENT_GROUP_INFO, message.what);
+        // WifiP2pGroupList does not implement equals operator,
+        // use toString to compare two lists.
+        // Expect empty WifiP2pGroupList()
+        assertEquals(new WifiP2pGroupList().toString(), groups.toString());
+    }
+
+    /**
+     * Verify that respond with RESPONSE_PERSISTENT_GROUP_INFO
+     * when caller sends REQUEST_PERSISTENT_GROUP_INFO without LOCATION_FINE permission.
+     */
+    @Test
+    public void testRequestPersistentGroupInfoNoLocationFinePermission() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        // Ensure our own MAC address is not anonymized in the result
+        when(mWifiPermissionsUtil.checkLocalMacAddressPermission(anyInt())).thenReturn(true);
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                .thenReturn(false);
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(any(),
+                eq(Build.VERSION_CODES.TIRAMISU), anyInt())).thenReturn(false);
+        when(mWifiPermissionsUtil.checkCallersLocationPermission(
+                anyString(), anyString(), anyInt(), anyBoolean(), any())).thenReturn(false);
+        forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
 
         sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_PERSISTENT_GROUP_INFO);
 
