@@ -1087,11 +1087,18 @@ public class WifiScanner {
      * Afterwards (assuming onSuccess was called), all subsequent single scan results will be
      * delivered to the listener. It is possible that onFullResult will not be called for all
      * results of the first scan if the listener was registered during the scan.
+     * <p>
+     * On {@link android.os.Build.VERSION_CODES#TIRAMISU} or above this API can be called by
+     * an app with either {@link android.Manifest.permission#LOCATION_HARDWARE} or
+     * {@link android.Manifest.permission#NETWORK_STACK}. On platform versions prior to
+     * {@link android.os.Build.VERSION_CODES#TIRAMISU}, the caller must have
+     * {@link android.Manifest.permission#NETWORK_STACK}.
      *
      * @param executor the Executor on which to run the callback.
      * @param listener specifies the object to report events to. This object is also treated as a
      *                 key for this request, and must also be specified to cancel the request.
      *                 Multiple requests should also not share this object.
+     * @throws SecurityException if the caller does not have permission.
      */
     @RequiresPermission(anyOf = {
             Manifest.permission.LOCATION_HARDWARE,
