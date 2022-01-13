@@ -22,6 +22,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
 import android.net.MacAddress;
+import android.net.wifi.util.HexEncoding;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -39,6 +40,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -183,6 +185,11 @@ public final class SoftApConfiguration implements Parcelable {
      * BSSID for the AP, or null to use a framework-determined BSSID.
      */
     private final @Nullable MacAddress mBssid;
+
+    /**
+     * Vendor elements for the AP, structured as dd+len+elements
+     */
+    private final @NonNull List<ScanResult.InformationElement> mVendorElements;
 
     /**
      * Pre-shared key for WPA2-PSK or WPA3-SAE-Transition or WPA3-SAE encryption which depends on
@@ -332,7 +339,8 @@ public final class SoftApConfiguration implements Parcelable {
             @NonNull List<MacAddress> blockedList, @NonNull List<MacAddress> allowedList,
             int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
             boolean ieee80211axEnabled, boolean isUserConfiguration,
-            long bridgedModeOpportunisticShutdownTimeoutMillis) {
+            long bridgedModeOpportunisticShutdownTimeoutMillis,
+            @NonNull List<ScanResult.InformationElement> vendorElements) {
         mWifiSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -356,6 +364,7 @@ public final class SoftApConfiguration implements Parcelable {
         mIsUserConfiguration = isUserConfiguration;
         mBridgedModeOpportunisticShutdownTimeoutMillis =
                 bridgedModeOpportunisticShutdownTimeoutMillis;
+        mVendorElements = new ArrayList<>(vendorElements);
     }
 
     @Override
@@ -385,7 +394,8 @@ public final class SoftApConfiguration implements Parcelable {
                 && mIeee80211axEnabled == other.mIeee80211axEnabled
                 && mIsUserConfiguration == other.mIsUserConfiguration
                 && mBridgedModeOpportunisticShutdownTimeoutMillis
-                        == other.mBridgedModeOpportunisticShutdownTimeoutMillis;
+                        == other.mBridgedModeOpportunisticShutdownTimeoutMillis
+                && Objects.equals(mVendorElements, other.mVendorElements);
     }
 
     @Override
@@ -395,7 +405,8 @@ public final class SoftApConfiguration implements Parcelable {
                 mShutdownTimeoutMillis, mClientControlByUser, mBlockedClientList,
                 mAllowedClientList, mMacRandomizationSetting,
                 mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
-                mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis);
+                mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
+                mVendorElements);
     }
 
     @Override
@@ -421,6 +432,7 @@ public final class SoftApConfiguration implements Parcelable {
                 .append(mBridgedModeOpportunisticShutdownTimeoutMillis);
         sbuf.append(" \n Ieee80211axEnabled = ").append(mIeee80211axEnabled);
         sbuf.append(" \n isUserConfiguration = ").append(mIsUserConfiguration);
+        sbuf.append(" \n vendorElements = ").append(mVendorElements);
         return sbuf.toString();
     }
 
@@ -443,6 +455,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeBoolean(mIeee80211axEnabled);
         dest.writeBoolean(mIsUserConfiguration);
         dest.writeLong(mBridgedModeOpportunisticShutdownTimeoutMillis);
+        dest.writeTypedList(mVendorElements);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -497,7 +510,8 @@ public final class SoftApConfiguration implements Parcelable {
                     in.readInt(), in.readBoolean(), in.readLong(), in.readBoolean(),
                     in.createTypedArrayList(MacAddress.CREATOR),
                     in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
-                    in.readBoolean(), in.readBoolean(), in.readLong());
+                    in.readBoolean(), in.readBoolean(), in.readLong(),
+                    in.createTypedArrayList(ScanResult.InformationElement.CREATOR));
         }
 
         @Override
@@ -530,6 +544,28 @@ public final class SoftApConfiguration implements Parcelable {
     @Nullable
     public WifiSsid getWifiSsid() {
         return mWifiSsid;
+    }
+
+    /**
+     * Return VendorElements for the AP.
+     * @hide
+     */
+    @NonNull
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @SystemApi
+    public List<ScanResult.InformationElement> getVendorElements() {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        return getVendorElementsInternal();
+    }
+
+    /**
+     * @see #getVendorElements()
+     * @hide
+     */
+    public List<ScanResult.InformationElement> getVendorElementsInternal() {
+        return new ArrayList<>(mVendorElements);
     }
 
     /**
@@ -932,6 +968,7 @@ public final class SoftApConfiguration implements Parcelable {
         private boolean mIeee80211axEnabled;
         private boolean mIsUserConfiguration;
         private long mBridgedModeOpportunisticShutdownTimeoutMillis;
+        private List<ScanResult.InformationElement> mVendorElements;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -955,6 +992,7 @@ public final class SoftApConfiguration implements Parcelable {
             mIeee80211axEnabled = true;
             mIsUserConfiguration = true;
             mBridgedModeOpportunisticShutdownTimeoutMillis = 0;
+            mVendorElements = new ArrayList<>();
         }
 
         /**
@@ -982,6 +1020,7 @@ public final class SoftApConfiguration implements Parcelable {
             mIsUserConfiguration = other.mIsUserConfiguration;
             mBridgedModeOpportunisticShutdownTimeoutMillis =
                     other.mBridgedModeOpportunisticShutdownTimeoutMillis;
+            mVendorElements = new ArrayList<>(other.mVendorElements);
         }
 
         /**
@@ -1001,7 +1040,8 @@ public final class SoftApConfiguration implements Parcelable {
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
                     mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
                     mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
-                    mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis);
+                    mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
+                    mVendorElements);
         }
 
         /**
@@ -1050,6 +1090,39 @@ public final class SoftApConfiguration implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             mWifiSsid = wifiSsid;
+            return this;
+        }
+
+        /**
+         * Specify vendor-specific information elements for the (Soft) AP to transmit in its beacons
+         * and probe responses. Method also validates the structure and throws
+         * IllegalArgumentException in cases when ID of IE is not 0xDD (221) or incoming list
+         * contain duplicate elements.
+         *
+         * @param vendorElements VendorElements
+         * @return Builder for chaining.
+         */
+        @NonNull
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+        public Builder setVendorElements(
+                @NonNull List<ScanResult.InformationElement> vendorElements) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
+            for (ScanResult.InformationElement e : vendorElements) {
+                if (e.id != ScanResult.InformationElement.EID_VSA) {
+                    throw new IllegalArgumentException("received InformationElement which is not "
+                            + "related to VendorElements. VendorElement block should start with "
+                            + HexEncoding.encodeToString(
+                                    new byte[]{ (byte) ScanResult.InformationElement.EID_VSA }));
+                }
+            }
+            final HashSet<ScanResult.InformationElement> set = new HashSet<>(vendorElements);
+            if (set.size() < vendorElements.size()) {
+                throw new IllegalArgumentException("vendor elements array contain duplicates. "
+                        + "Please avoid passing duplicated and keep structure clean.");
+            }
+            mVendorElements = new ArrayList<>(vendorElements);
             return this;
         }
 
