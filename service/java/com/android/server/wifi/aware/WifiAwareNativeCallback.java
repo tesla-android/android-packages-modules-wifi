@@ -23,10 +23,10 @@ import android.hardware.wifi.V1_0.NanDataPathRequestInd;
 import android.hardware.wifi.V1_0.NanFollowupReceivedInd;
 import android.hardware.wifi.V1_0.NanMatchInd;
 import android.hardware.wifi.V1_0.NanStatusType;
-import android.hardware.wifi.V1_0.WifiChannelWidthInMhz;
 import android.hardware.wifi.V1_0.WifiNanStatus;
 import android.hardware.wifi.V1_2.NanDataPathScheduleUpdateInd;
-import android.hardware.wifi.V1_5.IWifiNanIfaceEventCallback;
+import android.hardware.wifi.V1_6.IWifiNanIfaceEventCallback;
+import android.hardware.wifi.V1_6.WifiChannelWidthInMhz;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiAnnotations;
@@ -59,6 +59,7 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
 
     /* package */ boolean mIsHal12OrLater = false;
     /* package */ boolean mIsHal15OrLater = false;
+    /* package */ boolean mIsHal16OrLater = false;
 
     private final WifiAwareStateManager mWifiAwareStateManager;
 
@@ -584,6 +585,32 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
     }
 
     @Override
+    public void eventDataPathConfirm_1_6(android.hardware.wifi.V1_6.NanDataPathConfirmInd event) {
+        if (mDbg) {
+            Log.v(TAG, "eventDataPathConfirm_1_6: ndpInstanceId=" + event.V1_0.ndpInstanceId
+                    + ", peerNdiMacAddr=" + String.valueOf(
+                    HexEncoding.encode(event.V1_0.peerNdiMacAddr)) + ", dataPathSetupSuccess="
+                    + event.V1_0.dataPathSetupSuccess + ", reason=" + event.V1_0.status.status
+                    + ", appInfo.size()=" + event.V1_0.appInfo.size()
+                    + ", channelInfo" + event.channelInfo);
+        }
+        if (!mIsHal16OrLater) {
+            Log.wtf(TAG, "eventDataPathConfirm_1_6 should not be called by a <1.6 HAL!");
+            return;
+        }
+
+        List<WifiAwareChannelInfo> wifiAwareChannelInfos =
+                convertHalChannelInfo_1_6(event.channelInfo);
+        incrementCbCount(CB_EV_DATA_PATH_CONFIRM);
+        mChannelInfoPerNdp.put(event.V1_0.ndpInstanceId, wifiAwareChannelInfos);
+
+        mWifiAwareStateManager.onDataPathConfirmNotification(event.V1_0.ndpInstanceId,
+                event.V1_0.peerNdiMacAddr, event.V1_0.dataPathSetupSuccess,
+                event.V1_0.status.status, convertArrayListToNativeByteArray(event.V1_0.appInfo),
+                wifiAwareChannelInfos);
+    }
+
+    @Override
     public void eventDataPathScheduleUpdate(NanDataPathScheduleUpdateInd event) {
         if (mDbg) {
             Log.v(TAG, "eventDataPathScheduleUpdate: peerMac="
@@ -597,6 +624,30 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
 
         List<WifiAwareChannelInfo> wifiAwareChannelInfos =
                 convertHalChannelInfo_1_2(event.channelInfo);
+        incrementCbCount(CB_EV_DATA_PATH_SCHED_UPDATE);
+        for (int ndpInstanceId : event.ndpInstanceIds) {
+            mChannelInfoPerNdp.put(ndpInstanceId, wifiAwareChannelInfos);
+        }
+
+        mWifiAwareStateManager.onDataPathScheduleUpdateNotification(event.peerDiscoveryAddress,
+                event.ndpInstanceIds, wifiAwareChannelInfos);
+    }
+
+    @Override
+    public void eventDataPathScheduleUpdate_1_6(
+            android.hardware.wifi.V1_6.NanDataPathScheduleUpdateInd event) {
+        if (mDbg) {
+            Log.v(TAG, "eventDataPathScheduleUpdate_1_6: peerMac="
+                    + MacAddress.fromBytes(event.peerDiscoveryAddress).toString()
+                    + ", ndpIds=" + event.ndpInstanceIds + ", channelInfo=" + event.channelInfo);
+        }
+        if (!mIsHal16OrLater) {
+            Log.wtf(TAG, "eventDataPathScheduleUpdate_1_6 should not be called by a <1.6 HAL!");
+            return;
+        }
+
+        List<WifiAwareChannelInfo> wifiAwareChannelInfos =
+                convertHalChannelInfo_1_6(event.channelInfo);
         incrementCbCount(CB_EV_DATA_PATH_SCHED_UPDATE);
         for (int ndpInstanceId : event.ndpInstanceIds) {
             mChannelInfoPerNdp.put(ndpInstanceId, wifiAwareChannelInfos);
@@ -715,6 +766,22 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
             return null;
         }
         for (android.hardware.wifi.V1_2.NanDataPathChannelInfo channelInfo : channelInfos) {
+            wifiAwareChannelInfos.add(new WifiAwareChannelInfo(channelInfo.channelFreq,
+                    getChannelBandwidthFromHal(channelInfo.channelBandwidth),
+                    channelInfo.numSpatialStreams));
+        }
+        return wifiAwareChannelInfos;
+    }
+    /**
+     * Convert HAL V1_6 NanDataPathChannelInfo to WifiAwareChannelInfo
+     */
+    private List<WifiAwareChannelInfo> convertHalChannelInfo_1_6(
+            List<android.hardware.wifi.V1_6.NanDataPathChannelInfo> channelInfos) {
+        List<WifiAwareChannelInfo> wifiAwareChannelInfos = new ArrayList<>();
+        if (channelInfos == null) {
+            return null;
+        }
+        for (android.hardware.wifi.V1_6.NanDataPathChannelInfo channelInfo : channelInfos) {
             wifiAwareChannelInfos.add(new WifiAwareChannelInfo(channelInfo.channelFreq,
                     getChannelBandwidthFromHal(channelInfo.channelBandwidth),
                     channelInfo.numSpatialStreams));
