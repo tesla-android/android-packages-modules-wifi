@@ -762,6 +762,22 @@ public class HostapdHalAidlImp implements IHostapdHal {
         for (int i = 0; i < ssid.size(); i++) {
             nwParams.ssid[i] = ssid.get(i);
         }
+
+        final List<ScanResult.InformationElement> elements = config.getVendorElementsInternal();
+        int totalLen = 0;
+        for (ScanResult.InformationElement e : elements) {
+            totalLen += 2 + e.bytes.length; // 1 byte ID + 1 byte payload len + payload
+        }
+        nwParams.vendorElements = new byte[totalLen];
+        int i = 0;
+        for (ScanResult.InformationElement e : elements) {
+            nwParams.vendorElements[i++] = (byte) e.id;
+            nwParams.vendorElements[i++] = (byte) e.bytes.length;
+            for (int j = 0; j < e.bytes.length; j++) {
+                nwParams.vendorElements[i++] = e.bytes[j];
+            }
+        }
+
         nwParams.isMetered = isMetered;
         nwParams.isHidden = config.isHiddenSsid();
         nwParams.encryptionType = getEncryptionType(config);

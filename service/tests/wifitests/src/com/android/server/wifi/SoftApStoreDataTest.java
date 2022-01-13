@@ -41,6 +41,7 @@ import androidx.test.filters.SmallTest;
 
 import com.android.internal.util.FastXmlSerializer;
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.util.InformationElementUtil;
 import com.android.server.wifi.util.SettingsMigrationDataHolder;
 import com.android.server.wifi.util.WifiConfigStoreEncryptionUtil;
 
@@ -57,6 +58,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Unit tests for {@link com.android.server.wifi.SoftApStoreData}.
@@ -100,6 +102,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
 
     private static final boolean TEST_80211AX_ENABLED = false;
     private static final boolean TEST_USER_CONFIGURATION = false;
+    private static final String TEST_TWO_VENDOR_ELEMENTS_HEX = "DD04AABBCCDDDD0401020304";
 
     private static final String TEST_CONFIG_STRING_FROM_WIFICONFIGURATION =
             "<string name=\"WifiSsid\">"
@@ -261,10 +264,15 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S_EXCEPT_USER_CONFIGURATION
                     + "<boolean name=\"UserConfiguration\" value=\""
                     + TEST_USER_CONFIGURATION + "\" />\n";
+
     private static final String TEST_CONFIG_STRING_WITH_ALL_CONFIG_LAST_VERSION =
             TEST_CONFIG_STRING_WITH_ALL_CONFIG_IN_S
                     + "<long name=\"BridgedModeOpportunisticShutdownTimeoutMillis\" value=\""
-                    + TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS + "\" />\n";;
+                    + TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS + "\" />\n"
+                    + "<VendorElements>\n"
+                    + "<string name=\"VendorElement\">DD04AABBCCDD</string>\n"
+                    + "<string name=\"VendorElement\">DD0401020304</string>\n"
+                    + "</VendorElements>\n";
 
     @Mock private Context mContext;
     @Mock SoftApStoreData.DataSource mDataSource;
@@ -380,6 +388,9 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastT()) {
             softApConfigBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(
                     TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS);
+            softApConfigBuilder.setVendorElements(Arrays.asList(
+                    InformationElementUtil.parseInformationElements(
+                            TEST_TWO_VENDOR_ELEMENTS_HEX)));
         }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
@@ -427,6 +438,9 @@ public class SoftApStoreDataTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastT()) {
             softApConfigBuilder.setBridgedModeOpportunisticShutdownTimeoutMillis(
                     TEST_BRIDTED_MODE_SHUTDOWN_TIMEOUT_MILLIS);
+            softApConfigBuilder.setVendorElements(Arrays.asList(
+                    InformationElementUtil.parseInformationElements(
+                            TEST_TWO_VENDOR_ELEMENTS_HEX)));
         }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();

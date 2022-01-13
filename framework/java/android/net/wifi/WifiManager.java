@@ -1555,7 +1555,8 @@ public class WifiManager {
      * @hide
      **/
     @SystemApi
-    @RequiresPermission(allOf = {NEARBY_WIFI_DEVICES, ACCESS_WIFI_STATE, READ_WIFI_CREDENTIAL},
+    @RequiresPermission(allOf = {ACCESS_FINE_LOCATION, NEARBY_WIFI_DEVICES, ACCESS_WIFI_STATE,
+            READ_WIFI_CREDENTIAL},
             conditional = true)
     public List<WifiConfiguration> getPrivilegedConfiguredNetworks() {
         try {
@@ -4425,7 +4426,8 @@ public class WifiManager {
      * @param handler Handler to be used for callbacks.  If the caller passes a null Handler, the
      * main thread will be used.
      */
-    @RequiresPermission(allOf = {CHANGE_WIFI_STATE, NEARBY_WIFI_DEVICES}, conditional = true)
+    @RequiresPermission(allOf = {CHANGE_WIFI_STATE, ACCESS_FINE_LOCATION, NEARBY_WIFI_DEVICES},
+            conditional = true)
     public void startLocalOnlyHotspot(LocalOnlyHotspotCallback callback,
             @Nullable Handler handler) {
         Executor executor = handler == null ? null : new HandlerExecutor(handler);

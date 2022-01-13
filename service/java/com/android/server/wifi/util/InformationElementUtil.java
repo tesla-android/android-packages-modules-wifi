@@ -23,6 +23,7 @@ import android.net.wifi.WifiAnnotations.Protocol;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.nl80211.NativeScanResult;
 import android.net.wifi.nl80211.WifiNl80211Manager;
+import android.net.wifi.util.HexEncoding;
 import android.util.Log;
 
 import com.android.server.wifi.ByteBufferReader;
@@ -41,6 +42,27 @@ import java.util.Locale;
 public class InformationElementUtil {
     private static final String TAG = "InformationElementUtil";
     private static final boolean DBG = false;
+
+    /** Converts InformationElement to hex string */
+    public static String toHexString(InformationElement e) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(HexEncoding.encode(new byte[]{(byte) e.id}));
+        if (e.id == InformationElement.EID_EXTENSION_PRESENT) {
+            sb.append(HexEncoding.encode(new byte[]{(byte) e.idExt}));
+        }
+        sb.append(HexEncoding.encode(new byte[]{(byte) e.bytes.length}));
+        sb.append(HexEncoding.encode(e.bytes));
+        return sb.toString();
+    }
+
+    /** Parses information elements from hex string */
+    public static InformationElement[] parseInformationElements(String data) {
+        if (data == null) {
+            return new InformationElement[0];
+        }
+        return parseInformationElements(HexEncoding.decode(data));
+    }
+
     public static InformationElement[] parseInformationElements(byte[] bytes) {
         if (bytes == null) {
             return new InformationElement[0];
