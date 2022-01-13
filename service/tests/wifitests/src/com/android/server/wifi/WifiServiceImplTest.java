@@ -350,6 +350,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock CoexManager mCoexManager;
     @Mock IOnWifiUsabilityStatsListener mOnWifiUsabilityStatsListener;
     @Mock WifiConfigManager mWifiConfigManager;
+    @Mock WifiBlocklistMonitor mWifiBlocklistMonitor;
     @Mock WifiScoreCard mWifiScoreCard;
     @Mock WifiHealthMonitor mWifiHealthMonitor;
     @Mock PasspointManager mPasspointManager;
@@ -469,6 +470,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mContext.getSystemService(TelephonyManager.class)).thenReturn(mTelephonyManager);
         when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
         when(mWifiInjector.getWifiConfigManager()).thenReturn(mWifiConfigManager);
+        when(mWifiInjector.getWifiBlocklistMonitor()).thenReturn(mWifiBlocklistMonitor);
         when(mWifiInjector.getPasspointManager()).thenReturn(mPasspointManager);
         when(mActiveModeWarden.getPrimaryClientModeManager()).thenReturn(mClientModeManager);
         when(mClientModeManager.getInterfaceName()).thenReturn(WIFI_IFACE_NAME);
@@ -6960,6 +6962,44 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(false);
         mWifiServiceImpl.allowAutojoinGlobal(true);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testSetSsidsDoNotBlocklist_NoPermission() throws Exception {
+        // by default no permissions are given so the call should fail.
+        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME,
+                Collections.EMPTY_LIST);
+    }
+
+    @Test
+    public void testSetSsidsDoNotBlocklist_WithPermission() throws Exception {
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+
+        // verify setting an empty list
+        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME,
+                Collections.EMPTY_LIST);
+        mLooper.dispatchAll();
+        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(Collections.EMPTY_LIST);
+
+        // verify setting a list of valid SSIDs
+        List<WifiSsid> expectedSsids = new ArrayList<>();
+        expectedSsids.add(WifiSsid.fromString(TEST_SSID_WITH_QUOTES));
+        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME, expectedSsids);
+        mLooper.dispatchAll();
+        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(expectedSsids);
+    }
+
+    @Test
+    public void testSetSsidsDoNotBlocklist_WithPermissionAndroidT()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt())).thenReturn(true);
+
+        List<WifiSsid> expectedSsids = new ArrayList<>();
+        expectedSsids.add(WifiSsid.fromString(TEST_SSID_WITH_QUOTES));
+        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME, expectedSsids);
+        mLooper.dispatchAll();
+        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(expectedSsids);
     }
 
     @Test

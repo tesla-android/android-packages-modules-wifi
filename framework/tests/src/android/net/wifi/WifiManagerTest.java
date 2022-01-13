@@ -111,6 +111,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.connectivity.WifiActivityEnergyInfo;
 import android.os.test.TestLooper;
+import android.util.ArraySet;
 import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
@@ -711,6 +712,20 @@ public class WifiManagerTest {
         assertTrue(observer.mOnStoppedCalled);
         assertEquals(softApConfig, observer.mConfig);
         assertEquals(sub, observer.mSub);
+    }
+
+    @Test
+    public void testSetSsidsDoNotBlocklist() throws Exception {
+        // test non-empty set
+        List<WifiSsid> expectedSsids = new ArrayList<>();
+        expectedSsids.add(WifiSsid.fromString("\"TEST_SSID\""));
+        mWifiManager.setSsidsDoNotBlocklist(new ArraySet<>(expectedSsids));
+        verify(mWifiService).setSsidsDoNotBlocklist(any(), eq(expectedSsids));
+
+        // test empty set
+        mWifiManager.setSsidsDoNotBlocklist(Collections.EMPTY_SET);
+        verify(mWifiService).setSsidsDoNotBlocklist(any(),
+                eq(Collections.EMPTY_LIST));
     }
 
     /**

@@ -64,6 +64,7 @@ import android.os.connectivity.WifiActivityEnergyInfo;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.ArraySet;
 import android.util.CloseGuard;
 import android.util.Log;
 import android.util.Pair;
@@ -1728,6 +1729,54 @@ public class WifiManager {
             return mService.getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(scanResults);
         } catch (RemoteException e) {
             throw e.rethrowAsRuntimeException();
+        }
+    }
+
+    /**
+     * Specify a set of SSIDs that will not get disabled internally by the Wi-Fi subsystem when
+     * connection issues occur. To clear the list, call this API with an empty Set.
+     * <p>
+     * {@link #getSsidsDoNotBlocklist()} can be used to check the SSIDs that have been set.
+     * @param ssids - list of WifiSsid that will not get disabled internally
+     * @throws SecurityException if the calling app is not a Device Owner (DO), Profile Owner (PO),
+     *                           or a privileged app that has one of the permissions required by
+     *                           this API.
+     * @throws IllegalArgumentException if the input is null.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
+    public void setSsidsDoNotBlocklist(@NonNull Set<WifiSsid> ssids) {
+        if (ssids == null) {
+            throw new IllegalArgumentException(TAG + ": ssids can not be null");
+        }
+        try {
+            mService.setSsidsDoNotBlocklist(mContext.getOpPackageName(), new ArrayList<>(ssids));
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Get the Set of SSIDs that will not get disabled internally by the Wi-Fi subsystem when
+     * connection issues occur.
+     * @throws SecurityException if the calling app is not a Device Owner (DO), Profile Owner (PO),
+     *                           or a privileged app that has one of the permissions required by
+     *                           this API.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
+    public @NonNull Set<WifiSsid> getSsidsDoNotBlocklist() {
+        try {
+            return new ArraySet<WifiSsid>(
+                    mService.getSsidsDoNotBlocklist(mContext.getOpPackageName()));
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
         }
     }
 

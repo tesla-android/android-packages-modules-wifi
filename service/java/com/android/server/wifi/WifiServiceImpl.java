@@ -97,6 +97,7 @@ import android.net.wifi.WifiManager.SuggestionConnectionStatusListener;
 import android.net.wifi.WifiManager.WifiApState;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
+import android.net.wifi.WifiSsid;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -169,6 +170,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -218,6 +220,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final CoexManager mCoexManager;
     private final WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     private final WifiConfigManager mWifiConfigManager;
+    private final WifiBlocklistMonitor mWifiBlocklistMonitor;
     private final PasspointManager mPasspointManager;
     private final WifiLog mLog;
     private final WifiConnectivityManager mWifiConnectivityManager;
@@ -447,6 +450,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner = mWifiInjector.getWifiThreadRunner();
         mWifiHandlerThread = mWifiInjector.getWifiHandlerThread();
         mWifiConfigManager = mWifiInjector.getWifiConfigManager();
+        mWifiBlocklistMonitor = mWifiInjector.getWifiBlocklistMonitor();
         mPasspointManager = mWifiInjector.getPasspointManager();
         mWifiScoreCard = mWifiInjector.getWifiScoreCard();
         mWifiHealthMonitor = wifiInjector.getWifiHealthMonitor();
@@ -3039,6 +3043,52 @@ public class WifiServiceImpl extends BaseWifiService {
         return mWifiThreadRunner.call(
             () -> mPasspointManager.getAllMatchingPasspointProfilesForScanResults(scanResults),
                 Collections.emptyMap());
+    }
+
+    /**
+     * See {@link WifiManager#setSsidsDoNotBlocklist(Set)}
+     */
+    @Override
+    public void setSsidsDoNotBlocklist(@NonNull String packageName, @NonNull List<WifiSsid> ssids) {
+        int uid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
+        boolean hasPermission = mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                || isDeviceOrProfileOwner(uid, packageName);
+        if (!hasPermission && SdkLevel.isAtLeastT()) {
+            // MANAGE_WIFI_AUTO_JOIN is a new permission added in T.
+            hasPermission = mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(uid);
+        }
+        if (!hasPermission) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setSsidsDoNotBlocklist uid=%").c(uid).flush();
+        }
+        mWifiThreadRunner.post(() ->
+                mWifiBlocklistMonitor.setSsidsDoNotBlocklist(ssids));
+    }
+
+    /**
+     * See {@link WifiManager#getSsidsDoNotBlocklist()}
+     */
+    @Override
+    public @NonNull List<WifiSsid> getSsidsDoNotBlocklist(String packageName) {
+        int uid = Binder.getCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, packageName);
+        boolean hasPermission = mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                || isDeviceOrProfileOwner(uid, packageName);
+        if (!hasPermission && SdkLevel.isAtLeastT()) {
+            // MANAGE_WIFI_AUTO_JOIN is a new permission added in T.
+            hasPermission = mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(uid);
+        }
+        if (!hasPermission) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getSsidsDoNotBlocklist uid=%").c(uid).flush();
+        }
+        return mWifiThreadRunner.call(
+                () -> mWifiBlocklistMonitor.getSsidsDoNotBlocklist(), Collections.EMPTY_LIST);
     }
 
     /**
