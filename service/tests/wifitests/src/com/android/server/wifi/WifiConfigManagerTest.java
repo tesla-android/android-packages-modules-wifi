@@ -7191,4 +7191,60 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         NetworkUpdateResult updateResult = addNetworkToWifiConfigManager(config);
         assertTrue(result.getNetworkId() == updateResult.getNetworkId());
     }
+
+    private WifiConfiguration prepareTofuEapConfig(int eapMethod, int phase2Method) {
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = "\"TofuSsid\"";
+        config.setSecurityParams(WifiConfiguration.SECURITY_TYPE_EAP);
+        config.enterpriseConfig.setEapMethod(eapMethod);
+        config.enterpriseConfig.setPhase2Method(phase2Method);
+        config.enterpriseConfig.enableTrustOnFirstUse(true);
+        return config;
+    }
+
+    private void verifyAddTofuEnterpriseConfig(boolean isTofuSupported) {
+        long featureSet = isTofuSupported ? WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE : 0L;
+        when(mPrimaryClientModeManager.getSupportedFeatures()).thenReturn(featureSet);
+
+        WifiConfiguration config = prepareTofuEapConfig(
+                WifiEnterpriseConfig.Eap.PEAP, WifiEnterpriseConfig.Phase2.NONE);
+        NetworkUpdateResult result = addNetworkToWifiConfigManager(config);
+        if (isTofuSupported) {
+            assertTrue(result.getNetworkId() != WifiConfiguration.INVALID_NETWORK_ID);
+        } else {
+            assertEquals(WifiConfiguration.INVALID_NETWORK_ID,
+                    WifiConfiguration.INVALID_NETWORK_ID);
+        }
+
+        // The config uses EAP-SIM type which does not use Server Cert.
+        config = prepareTofuEapConfig(
+                WifiEnterpriseConfig.Eap.SIM, WifiEnterpriseConfig.Phase2.NONE);
+        config.enterpriseConfig.enableTrustOnFirstUse(true);
+        result = addNetworkToWifiConfigManager(config);
+        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, result.getNetworkId());
+
+        // The config alraedy has Root CA cert.
+        config = prepareTofuEapConfig(
+                WifiEnterpriseConfig.Eap.PEAP, WifiEnterpriseConfig.Phase2.NONE);
+        config.enterpriseConfig.setCaPath("/path/to/ca");
+        config.enterpriseConfig.enableTrustOnFirstUse(true);
+        result = addNetworkToWifiConfigManager(config);
+        assertEquals(WifiConfiguration.INVALID_NETWORK_ID, result.getNetworkId());
+    }
+
+    /**
+     * Verifies the addition of a network with Trust On First Use support.
+     */
+    @Test
+    public void testAddTofuEnterpriseConfigWithTofuSupport() {
+        verifyAddTofuEnterpriseConfig(true);
+    }
+
+    /**
+     * Verifies the addition of a network without Trust On First Use support.
+     */
+    @Test
+    public void testAddTofuEnterpriseConfigWithoutTofuSupport() {
+        verifyAddTofuEnterpriseConfig(false);
+    }
 }

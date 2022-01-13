@@ -288,10 +288,10 @@ public class ClientModeImplTest extends WifiBaseTest {
         return facade;
     }
 
-    private Context getContext() throws Exception {
+    private WifiContext getContext() throws Exception {
         when(mPackageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)).thenReturn(true);
 
-        Context context = mock(Context.class);
+        WifiContext context = mock(WifiContext.class);
         when(context.getPackageManager()).thenReturn(mPackageManager);
 
         MockContentResolver mockContentResolver = new MockContentResolver();
@@ -396,6 +396,17 @@ public class ClientModeImplTest extends WifiBaseTest {
         mIpClientCallback.onProvisioningSuccess(new LinkProperties());
     }
 
+    private void injectDhcpSuccess() {
+        DhcpResultsParcelable dhcpResults = new DhcpResultsParcelable();
+        dhcpResults.baseConfiguration = new StaticIpConfiguration();
+        dhcpResults.baseConfiguration.gateway = InetAddresses.parseNumericAddress("1.2.3.4");
+        dhcpResults.baseConfiguration.ipAddress =
+                new LinkAddress(InetAddresses.parseNumericAddress("192.168.1.100"), 0);
+        dhcpResults.baseConfiguration.dnsServers.add(InetAddresses.parseNumericAddress("8.8.8.8"));
+        dhcpResults.leaseDuration = 3600;
+        injectDhcpSuccess(dhcpResults);
+    }
+
     private void injectDhcpFailure() {
         mIpClientCallback.onNewDhcpResults((DhcpResultsParcelable) null);
         mIpClientCallback.onProvisioningFailure(new LinkProperties());
@@ -422,7 +433,7 @@ public class ClientModeImplTest extends WifiBaseTest {
     TestAlarmManager mAlarmManager;
     MockWifiMonitor mWifiMonitor;
     TestLooper mLooper;
-    Context mContext;
+    WifiContext mContext;
     MockResources mResources;
     FrameworkFacade mFrameworkFacade;
     IpClientCallbacks mIpClientCallback;
@@ -492,6 +503,8 @@ public class ClientModeImplTest extends WifiBaseTest {
     @Mock WifiSettingsConfigStore mSettingsConfigStore;
     @Mock Uri mMockUri;
     @Mock WifiCarrierInfoManager mWifiCarrierInfoManager;
+    @Mock WifiNotificationManager mWifiNotificationManager;
+    @Mock InsecureEapNetworkHandler mInsecureEapNetworkHandler;
 
     @Captor ArgumentCaptor<WifiConfigManager.OnNetworkUpdateListener> mConfigUpdateListenerCaptor;
     @Captor ArgumentCaptor<WifiNetworkAgent.Callback> mWifiNetworkAgentCallbackCaptor;
@@ -708,7 +721,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 mWifiScoreReport, mWifiP2pConnection, mWifiGlobals,
                 WIFI_IFACE_NAME, mClientModeManager, mCmiMonitor, mBroadcastQueue,
                 mWifiNetworkSelector, mTelephonyManager, mWifiInjector, mSettingsConfigStore,
-                false);
+                false, mWifiNotificationManager);
 
         mWifiCoreThread = getCmiHandlerThread(mCmi);
 
@@ -815,12 +828,19 @@ public class ClientModeImplTest extends WifiBaseTest {
         return config;
     }
 
-    private void initializeMocksForAddedNetwork(boolean isHidden) throws Exception {
-        WifiConfiguration config = createTestNetwork(isHidden);
-
+    private void initializeMocksForAddedNetwork(WifiConfiguration config) throws Exception {
         when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(Arrays.asList(config));
         when(mWifiConfigManager.getConfiguredNetwork(0)).thenReturn(config);
         when(mWifiConfigManager.getConfiguredNetworkWithoutMasking(0)).thenReturn(config);
+    }
+
+    private void initializeMocksForAddedNetwork(boolean isHidden) throws Exception {
+        initializeMocksForAddedNetwork(createTestNetwork(isHidden));
+    }
+
+    private void initializeAndAddNetworkAndVerifySuccess(WifiConfiguration config)
+            throws Exception {
+        initializeMocksForAddedNetwork(config);
     }
 
     private void initializeAndAddNetworkAndVerifySuccess() throws Exception {
@@ -1767,7 +1787,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiConfigManager, never())
                 .getConfiguredNetworkWithoutMasking(eq(config.networkId));
         verify(mWifiNative, never()).connectToNetwork(eq(WIFI_IFACE_NAME), eq(config));
-        verify(mWifiPermissionsUtil, times(2)).checkNetworkSettingsPermission(anyInt());
+        // These are called from connectToUserSelectNetwork() and L2ConnectedState::enter()
+        verify(mWifiPermissionsUtil, times(4)).checkNetworkSettingsPermission(anyInt());
     }
 
     /**
@@ -7445,5 +7466,262 @@ public class ClientModeImplTest extends WifiBaseTest {
         assumeFalse(SdkLevel.isAtLeastS());
 
         verifyUpdateAutoUpgradeFlagForSaeOnR(false, false, true, true, false);
+    }
+
+    private WifiConfiguration setupLegacyEapNetworkTest(boolean isUserSelected) throws Exception {
+        return setupTrustOnFirstUse(false, false, isUserSelected);
+    }
+
+    private WifiConfiguration setupTrustOnFirstUse(
+            boolean isAtLeastT, boolean isTrustOnFirstUseSupported, boolean isUserSelected)
+            throws Exception {
+        if (isTrustOnFirstUseSupported) {
+            when(mWifiNative.getSupportedFeatureSet(WIFI_IFACE_NAME)).thenReturn(
+                    WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE);
+        }
+        mCmi.mInsecureEapNetworkHandler = mInsecureEapNetworkHandler;
+        when(mInsecureEapNetworkHandler.startUserApprovalIfNecessary(anyBoolean()))
+                .thenReturn(true);
+
+        WifiConfiguration eapTlsConfig = spy(WifiConfigurationTestUtil.createEapNetwork(
+                WifiEnterpriseConfig.Eap.TLS, WifiEnterpriseConfig.Phase2.NONE));
+        eapTlsConfig.networkId = FRAMEWORK_NETWORK_ID;
+        eapTlsConfig.SSID = TEST_SSID;
+        if (isAtLeastT) {
+            eapTlsConfig.enterpriseConfig.enableTrustOnFirstUse(true);
+        }
+        eapTlsConfig.enterpriseConfig.setCaPath("");
+        eapTlsConfig.enterpriseConfig.setDomainSuffixMatch("");
+
+        initializeAndAddNetworkAndVerifySuccess(eapTlsConfig);
+
+        if (isUserSelected) {
+            startConnectSuccess();
+        } else {
+            mCmi.startConnectToNetwork(
+                    eapTlsConfig.networkId,
+                    Process.SYSTEM_UID,
+                    ClientModeImpl.SUPPLICANT_BSSID_ANY);
+            mLooper.dispatchAll();
+        }
+        verify(mInsecureEapNetworkHandler).prepareConnection(eq(eapTlsConfig));
+
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
+                        SupplicantState.ASSOCIATED));
+        mLooper.dispatchAll();
+
+        if (isTrustOnFirstUseSupported) {
+            mCmi.sendMessage(WifiMonitor.TOFU_ROOT_CA_CERTIFICATE,
+                    FRAMEWORK_NETWORK_ID, 0, FakeKeys.CA_CERT0);
+            mLooper.dispatchAll();
+            verify(mInsecureEapNetworkHandler).setPendingCaCertificate(
+                    eq(eapTlsConfig.SSID), eq(FakeKeys.CA_CERT0));
+        }
+
+        mCmi.sendMessage(WifiMonitor.NETWORK_CONNECTION_EVENT,
+                new NetworkConnectionEventInfo(0, TEST_WIFI_SSID, TEST_BSSID_STR, false));
+        mLooper.dispatchAll();
+
+        mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
+                new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
+                        SupplicantState.COMPLETED));
+        mLooper.dispatchAll();
+
+        verify(mInsecureEapNetworkHandler).startUserApprovalIfNecessary(eq(isUserSelected));
+        assertEquals("L3ProvisioningState", getCurrentState().getName());
+
+        return eapTlsConfig;
+    }
+
+    /**
+     * Verify Trust On First Use support.
+     * - This network is selected by a user.
+     * - Accept the connection.
+     */
+    @Test
+    public void verifyTrustOnFirstUseAcceptWhenConnectByUser() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onAccept(testConfig.SSID);
+        mLooper.dispatchAll();
+        injectDhcpSuccess();
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+    }
+
+    /**
+     * Verify Trust On First Use support.
+     * - This network is selected by a user.
+     * - Reject the connection.
+     */
+    @Test
+    public void verifyTrustOnFirstUseRejectWhenConnectByUser() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onReject(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify Trust On First Use support.
+     * - This network is selected by a user.
+     * - Errors occur in InsecureEapNetworkHandler.
+     */
+    @Test
+    public void verifyTrustOnFirstUseErrorWhenConnectByUser() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onError(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+   /**
+     * Verify Trust On First Use support.
+     * - this network is automatically connected.
+     * - Tap the notification.
+     * - Accept the connection.
+     */
+    @Test
+    public void verifyTrustOnFirstUseAcceptWhenAutoConnect() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onAccept(testConfig.SSID);
+        mLooper.dispatchAll();
+        injectDhcpSuccess();
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+    }
+
+    /**
+     * Verify Trust On First Use support.
+     * - this network is automatically connected.
+     * - Tap the notification
+     * - Reject the connection.
+     */
+    @Test
+    public void verifyTrustOnFirstUseRejectWhenAutoConnect() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onReject(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify Trust On First Use support.
+     * - This network is automatically connected.
+     * - Errors occur in InsecureEapNetworkHandler.
+     */
+    @Test
+    public void verifyTrustOnFirstUseErrorWhenAutoConnect() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupTrustOnFirstUse(true, true, false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onError(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is selected by a user.
+     * - Accept the connection.
+     */
+    @Test
+    public void verifyLegacyEapNetworkAcceptWhenConnectByUser() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onAccept(testConfig.SSID);
+        mLooper.dispatchAll();
+        injectDhcpSuccess();
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is selected by a user.
+     * - Reject the connection.
+     */
+    @Test
+    public void verifyLegacyEapNetworkRejectWhenConnectByUser() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onReject(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is automatically connected.
+     * - Errors occur in InsecureEapNetworkHandler.
+     */
+    @Test
+    public void verifyLegacyEapNetworkErrorWhenConnectByUser() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(true);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onError(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is automatically connected.
+     * - Tap "connect anyway" on the notification.
+     */
+    @Test
+    public void verifyLegacyEapNetworkAcceptOnNotificationWhenAutoConnect() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onAccept(testConfig.SSID);
+        injectDhcpSuccess();
+        mLooper.dispatchAll();
+        assertEquals("L3ConnectedState", getCurrentState().getName());
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is automatically connected.
+     * - Tap "Don't connect" on the notification
+     */
+    @Test
+    public void verifyLegacyEapNetworkRejectOnNotificationWhenAutoConnect() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onReject(testConfig.SSID);
+        mLooper.dispatchAll();
+
+        verify(mFrameworkFacade, never()).makeAlertDialogBuilder(any());
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
+    }
+
+    /**
+     * Verify legacy EAP network handling.
+     * - This network is automatically connected.
+     * - Errors occur in InsecureEapNetworkHandler.
+     */
+    @Test
+    public void verifyLegacyEapNetworkErrorWhenAutoConnect() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        WifiConfiguration testConfig = setupLegacyEapNetworkTest(false);
+
+        mCmi.mInsecureEapNetworkHandlerCallbacksImpl.onError(testConfig.SSID);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(eq(WIFI_IFACE_NAME));
     }
 }

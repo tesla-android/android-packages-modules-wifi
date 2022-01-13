@@ -209,6 +209,7 @@
           <item type="integer" name="config_wifiClientModeImplNumLogRecs" />
           <item type="bool" name="config_wifiDriverSupportedNl80211RegChangedEvent" />
           <item type="integer" name="config_wifiVerboseLoggingAlwaysOnLevel" />
+          <item type="string" name="config_wifiCertInstallationHelpLink" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->
