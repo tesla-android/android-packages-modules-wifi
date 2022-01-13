@@ -565,6 +565,23 @@ public class SupplicantP2pIfaceCallbackAidlImpl extends ISupplicantP2pIfaceCallb
         mMonitor.broadcastP2pDeviceFound(mInterface, device);
     }
 
+    /**
+     * Used to indicate the frequency changed notification.
+     *
+     * @param groupIfName Interface name of the group.
+     * @param frequency New operating frequency.
+     */
+    public void onGroupFrequencyChanged(String groupIfName, int frequency) {
+        if (groupIfName == null) {
+            Log.e(TAG, "Missing group interface name.");
+            return;
+        }
+
+        logd("Frequency changed event on " + groupIfName + ". New frequency: " + frequency);
+
+        mMonitor.broadcastP2pFrequencyChanged(mInterface, frequency);
+    }
+
     private static WifiP2pServiceImpl.P2pStatus halStatusToP2pStatus(int status) {
         WifiP2pServiceImpl.P2pStatus result = WifiP2pServiceImpl.P2pStatus.UNKNOWN;
 
