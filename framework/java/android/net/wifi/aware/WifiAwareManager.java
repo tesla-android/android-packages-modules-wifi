@@ -377,9 +377,9 @@ public class WifiAwareManager {
      * Apps without {@link android.Manifest.permission#NEARBY_WIFI_DEVICES} or
      * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} can use the
      * {@link #attach(AttachCallback, Handler)} version.
-     * Note that aside from permission requirements this listener will wake up the host at regular
-     * intervals causing higher power consumption, do not use it unless the information is
-     * necessary (e.g. for OOB discovery).
+     * Note that aside from permission requirements the {@link IdentityChangedListener} will wake up
+     * the host at regular intervals causing higher power consumption, do not use it unless the
+     * information is necessary (e.g. for out-of-band discovery).
      *
      * @param attachCallback A callback for attach events, extended from
      * {@link AttachCallback}.
