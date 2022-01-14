@@ -1022,8 +1022,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private boolean isTargetSdkLessThanQOrPrivileged(String packageName, int pid, int uid) {
         return mWifiPermissionsUtil.isTargetSdkLessThan(packageName, Build.VERSION_CODES.Q, uid)
                 || isPrivileged(pid, uid)
-                || ((SdkLevel.isAtLeastT()) ? mWifiPermissionsUtil.isAdmin(uid, packageName)
-                        : isDeviceOrProfileOwner(uid, packageName))
+                || mWifiPermissionsUtil.isAdmin(uid, packageName)
                 || mWifiPermissionsUtil.isSystem(packageName, uid)
                 // TODO(b/140540984): Remove this bypass.
                 || mWifiPermissionsUtil.checkSystemAlertWindowPermission(uid, packageName);
@@ -3210,7 +3209,7 @@ public class WifiServiceImpl extends BaseWifiService {
         int uid = Binder.getCallingUid();
         mWifiPermissionsUtil.checkPackage(uid, packageName);
         boolean hasPermission = isPrivileged(pid, uid)
-                || isDeviceOrProfileOwner(uid, packageName)
+                || mWifiPermissionsUtil.isAdmin(uid, packageName)
                 || mWifiPermissionsUtil.isSystem(packageName, uid);
         if (!hasPermission) {
             throw new SecurityException("Caller is not a device owner, profile owner, system app,"
@@ -3230,13 +3229,23 @@ public class WifiServiceImpl extends BaseWifiService {
             return -1;
         }
         int callingUid = Binder.getCallingUid();
-        if (!isTargetSdkLessThanQOrPrivileged(
-                packageName, Binder.getCallingPid(), callingUid)) {
-            mLog.info("addOrUpdateNetwork not allowed for uid=%")
-                    .c(Binder.getCallingUid()).flush();
+        int callingPid = Binder.getCallingPid();
+        if (!isTargetSdkLessThanQOrPrivileged(packageName, callingPid, callingUid)) {
+            mLog.info("addOrUpdateNetwork not allowed for uid=%").c(callingUid).flush();
             return -1;
         }
-        mLog.info("addOrUpdateNetwork uid=%").c(Binder.getCallingUid()).flush();
+        if (SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
+                UserManager.DISALLOW_ADD_WIFI_CONFIG, UserHandle.getUserHandleForUid(callingUid))
+                && mWifiPermissionsUtil.isTargetSdkLessThan(
+                        packageName, Build.VERSION_CODES.Q, callingUid)
+                && !(isPrivileged(callingPid, callingUid)
+                        || mWifiPermissionsUtil.isAdmin(callingUid, packageName)
+                        || mWifiPermissionsUtil.isSystem(packageName, callingUid))) {
+            mLog.info("addOrUpdateNetwork not allowed for normal apps targeting SDK less "
+                    + "than Q when the DISALLOW_ADD_WIFI_CONFIG user restriction is set ").flush();
+            return -1;
+        }
+        mLog.info("addOrUpdateNetwork uid=%").c(callingUid).flush();
         return addOrUpdateNetworkInternal(config, packageName, callingUid).networkId;
     }
 
@@ -5087,10 +5096,29 @@ public class WifiServiceImpl extends BaseWifiService {
         if (enforceChangePermission(callingPackageName) != MODE_ALLOWED) {
             return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_APP_DISALLOWED;
         }
-        if (isVerboseLoggingEnabled()) {
-            mLog.info("addNetworkSuggestions uid=%").c(Binder.getCallingUid()).flush();
-        }
         int callingUid = Binder.getCallingUid();
+        int callingPid = Binder.getCallingPid();
+
+        if (SdkLevel.isAtLeastT()) {
+            boolean isUserRestrictionSet = mUserManager.hasUserRestrictionForUser(
+                    UserManager.DISALLOW_ADD_WIFI_CONFIG,
+                    UserHandle.getUserHandleForUid(callingUid));
+            boolean isCarrierApp = mWifiInjector.makeTelephonyManager()
+                    .checkCarrierPrivilegesForPackageAnyPhone(callingPackageName)
+                    == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
+            boolean hasPermission = !isUserRestrictionSet
+                    || isCarrierApp
+                    || isPrivileged(callingPid, callingUid)
+                    || mWifiPermissionsUtil.isSystem(callingPackageName, callingUid)
+                    || mWifiPermissionsUtil.isAdmin(callingUid, callingPackageName);
+            if (!hasPermission) {
+                return WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_RESTRICTED_BY_ADMIN;
+            }
+        }
+
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("addNetworkSuggestions uid=%").c(callingUid).flush();
+        }
 
         int success = mWifiThreadRunner.call(() -> mWifiNetworkSuggestionsManager.add(
                 networkSuggestions, callingUid, callingPackageName, callingFeatureId),
