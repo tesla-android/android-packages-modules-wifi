@@ -827,11 +827,12 @@ package android.net.wifi.aware {
   public class WifiAwareManager {
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE}) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @Nullable android.os.Handler);
     method @RequiresPermission(allOf={android.Manifest.permission.ACCESS_WIFI_STATE, android.Manifest.permission.CHANGE_WIFI_STATE, android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.NEARBY_WIFI_DEVICES}, conditional=true) public void attach(@NonNull android.net.wifi.aware.AttachCallback, @NonNull android.net.wifi.aware.IdentityChangedListener, @Nullable android.os.Handler);
-    method @Nullable public android.net.wifi.aware.AwareResources getAvailableAwareResources();
-    method @Nullable public android.net.wifi.aware.Characteristics getCharacteristics();
-    method public boolean isAvailable();
-    method public boolean isDeviceAttached();
-    method public boolean isInstantCommunicationModeEnabled();
+    method @Nullable @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public android.net.wifi.aware.AwareResources getAvailableAwareResources();
+    method @Nullable @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public android.net.wifi.aware.Characteristics getCharacteristics();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isAvailable();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isDeviceAttached();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isInstantCommunicationModeEnabled();
+    method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public boolean isSetChannelOnDataPathSupported();
     field public static final String ACTION_WIFI_AWARE_STATE_CHANGED = "android.net.wifi.aware.action.WIFI_AWARE_STATE_CHANGED";
     field public static final int WIFI_AWARE_DATA_PATH_ROLE_INITIATOR = 0; // 0x0
     field public static final int WIFI_AWARE_DATA_PATH_ROLE_RESPONDER = 1; // 0x1
@@ -851,6 +852,8 @@ package android.net.wifi.aware {
 
   public final class WifiAwareNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     method public int describeContents();
+    method @IntRange(from=0) public int getChannelInMhz();
+    method public boolean isChannelRequired();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareNetworkSpecifier> CREATOR;
   }
@@ -859,6 +862,7 @@ package android.net.wifi.aware {
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.DiscoverySession, @NonNull android.net.wifi.aware.PeerHandle);
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier build();
+    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelInMhz(@IntRange(from=0) int, boolean);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPmk(@NonNull byte[]);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPort(@IntRange(from=0, to=65535) int);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPskPassphrase(@NonNull String);

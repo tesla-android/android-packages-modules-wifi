@@ -63,6 +63,7 @@ import com.android.server.wifi.Clock;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.server.wifi.util.WifiPermissionsWrapper;
+import com.android.wifi.resources.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -693,6 +694,15 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
      */
     public boolean isInstantCommunicationModeEnabled() {
         return mIsInstantCommunicationModeEnabled;
+    }
+
+    /**
+     * Get if set channel on data-path request is supported.
+     * @return true if supported, false otherwise.
+     */
+    public boolean isSetChannelOnDataPathSupported() {
+        return mContext.getResources()
+                .getBoolean(R.bool.config_wifiSupportChannelOnDataPath);
     }
 
     /**

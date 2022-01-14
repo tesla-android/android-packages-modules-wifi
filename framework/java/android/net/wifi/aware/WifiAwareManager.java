@@ -203,6 +203,7 @@ public class WifiAwareManager {
      * @return A boolean indicating whether the app can use the Aware API at this time (true) or
      * not (false).
      */
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public boolean isAvailable() {
         try {
             return mService.isUsageEnabled();
@@ -219,9 +220,25 @@ public class WifiAwareManager {
      * @return A boolean indicating whether the device is attached to a cluster at this time (true)
      *         or not (false).
      */
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public boolean isDeviceAttached() {
         try {
             return mService.isDeviceAttached();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Return the device support for setting a channel requirement in a data-path request. If true
+     * the channel set by {@link WifiAwareNetworkSpecifier.Builder#setChannelInMhz(int, boolean)}
+     * will be honored, otherwise it will be ignored.
+     * @return True is the device support set channel on data-path request, false otherwise.
+     */
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public boolean isSetChannelOnDataPathSupported() {
+        try {
+            return mService.isSetChannelOnDataPathSupported();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -236,6 +253,7 @@ public class WifiAwareManager {
      */
     @SystemApi
     @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresPermission(CHANGE_WIFI_STATE)
     public void enableInstantCommunicationMode(boolean enable) {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -254,6 +272,7 @@ public class WifiAwareManager {
      * @return true if it is enabled, false otherwise.
      */
     @RequiresApi(Build.VERSION_CODES.S)
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public boolean isInstantCommunicationModeEnabled() {
         if (!SdkLevel.isAtLeastS()) {
             throw new UnsupportedOperationException();
@@ -276,6 +295,7 @@ public class WifiAwareManager {
      *
      * @return An object specifying configuration limitations of Aware.
      */
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public @Nullable Characteristics getCharacteristics() {
         try {
             return mService.getCharacteristics();
@@ -295,6 +315,7 @@ public class WifiAwareManager {
      *
      * @return An object specifying the currently available resource of the Wi-Fi Aware service.
      */
+    @RequiresPermission(ACCESS_WIFI_STATE)
     public @Nullable AwareResources getAvailableAwareResources() {
         try {
             return mService.getAvailableAwareResources();
@@ -592,7 +613,7 @@ public class WifiAwareManager {
                 pmk,
                 passphrase,
                 0, // no port info for deprecated IB APIs
-                -1); // no transport info for deprecated IB APIs
+                -1, 0, false); // no transport info for deprecated IB APIs
     }
 
     /** @hide */
@@ -632,7 +653,7 @@ public class WifiAwareManager {
                 pmk,
                 passphrase,
                 0, // no port info for OOB APIs
-                -1); // no transport protocol info for OOB APIs
+                -1, 0, false); // no transport protocol info for OOB APIs
     }
 
     private static class WifiAwareEventCallbackProxy extends IWifiAwareEventCallback.Stub {

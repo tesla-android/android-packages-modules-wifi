@@ -1046,7 +1046,7 @@ package android.net.wifi.aware {
   }
 
   public class WifiAwareManager {
-    method public void enableInstantCommunicationMode(boolean);
+    method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public void enableInstantCommunicationMode(boolean);
   }
 
   public class WifiAwareSession implements java.lang.AutoCloseable {

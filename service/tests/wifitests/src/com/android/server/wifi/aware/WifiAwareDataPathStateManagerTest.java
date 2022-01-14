@@ -1347,7 +1347,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(Process.myUid());
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME);
@@ -1408,7 +1408,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(0 + 1); // corruption hack
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME);
@@ -1471,7 +1471,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(Process.myUid()); // corruption hack
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME + "h"); // corruption hack
@@ -2069,7 +2069,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 pmk,
                 passphrase,
                 port,
-                transportProtocol);
+                transportProtocol, 0, false);
     }
 
     /**
@@ -2089,7 +2089,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 pmk,
                 passphrase,
                 port,
-                transportProtocol);
+                transportProtocol, 0, false);
     }
 
     private static class DataPathEndPointInfo {

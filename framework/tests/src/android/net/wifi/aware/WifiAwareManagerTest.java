@@ -161,6 +161,12 @@ public class WifiAwareManagerTest {
         verify(mockAwareService).isDeviceAttached();
     }
 
+    @Test
+    public void testIsSetChannelOnDataPathSupported() throws Exception {
+        mDut.isSetChannelOnDataPathSupported();
+        verify(mockAwareService).isSetChannelOnDataPathSupported();
+    }
+
     /**
      * Validate pass-through of isInstantCommunicationModeEnabled() and
      * enableInstantCommunicationMode() API
@@ -1080,7 +1086,7 @@ public class WifiAwareManagerTest {
                         peerHandle, passphrase);
         nsb = new WifiAwareNetworkSpecifier.Builder(publishSession.getValue(),
                 peerHandle).setPskPassphrase(passphrase).setPort(port).setTransportProtocol(
-                transportProtocol).build();
+                transportProtocol).setChannelInMhz(5750, true).build();
 
         // validate format
         collector.checkThat("role", WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER,
@@ -1098,6 +1104,8 @@ public class WifiAwareManagerTest {
         collector.checkThat("passphrase", passphrase, equalTo(nsb.passphrase));
         collector.checkThat("port", port, equalTo(nsb.port));
         collector.checkThat("transportProtocol", transportProtocol, equalTo(nsb.transportProtocol));
+        collector.checkThat("channel", 5750, equalTo(nsb.getChannelInMhz()));
+        collector.checkThat("ForceChannel", true, equalTo(nsb.isChannelRequired()));
 
         verifyNoMoreInteractions(mockCallback, mockSessionCallback, mockAwareService,
                 mockPublishSession, mockRttListener);
@@ -1620,7 +1628,7 @@ public class WifiAwareManagerTest {
         WifiAwareNetworkSpecifier ns = new WifiAwareNetworkSpecifier(NETWORK_SPECIFIER_TYPE_IB,
                 WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER, 5, 568, 334,
                 HexEncoding.decode("000102030405".toCharArray(), false),
-                "01234567890123456789012345678901".getBytes(), "blah blah", 666, 4);
+                "01234567890123456789012345678901".getBytes(), "blah blah", 666, 4, 0, false);
 
         Parcel parcelW = Parcel.obtain();
         ns.writeToParcel(parcelW, 0);
