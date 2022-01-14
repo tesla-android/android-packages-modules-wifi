@@ -38,6 +38,7 @@ import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
 import org.junit.Before;
@@ -66,6 +67,8 @@ public class WifiBlocklistMonitorTest {
     private static final String TEST_BSSID_1 = "0a:08:5c:67:89:00";
     private static final String TEST_BSSID_2 = "0a:08:5c:67:89:01";
     private static final String TEST_BSSID_3 = "0a:08:5c:67:89:02";
+    private static final int TEST_DEVICE_OWNER_UID = 123123;
+    private static final String TEST_DEVICE_OWNER_PACKAGE_NAME = "DEVICE_OWNER";
     private static final long TEST_ELAPSED_UPDATE_NETWORK_SELECTION_TIME_MILLIS = 29457631;
     private static final int TEST_GOOD_RSSI = -50;
     private static final int TEST_SUFFICIENT_RSSI = -67;
@@ -107,6 +110,7 @@ public class WifiBlocklistMonitorTest {
     @Mock private WifiScoreCard mWifiScoreCard;
     @Mock private ScoringParams mScoringParams;
     @Mock private WifiMetrics mWifiMetrics;
+    @Mock private WifiPermissionsUtil mWifiPermissionsUtil;
     @Mock private WifiScoreCard.PerNetwork mPerNetwork;
     @Mock private WifiScoreCard.NetworkConnectionStats mRecentStats;
 
@@ -191,9 +195,12 @@ public class WifiBlocklistMonitorTest {
         when(mContext.getResources()).thenReturn(mResources);
         when(mPerNetwork.getRecentStats()).thenReturn(mRecentStats);
         when(mWifiScoreCard.lookupNetwork(anyString())).thenReturn(mPerNetwork);
+        when(mWifiPermissionsUtil.isAdmin(TEST_DEVICE_OWNER_UID,
+                TEST_DEVICE_OWNER_PACKAGE_NAME)).thenReturn(true);
+
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
                 mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams,
-                mWifiMetrics);
+                mWifiMetrics, mWifiPermissionsUtil);
     }
 
     private void verifyAddTestBssidToBlocklist() {
@@ -433,20 +440,32 @@ public class WifiBlocklistMonitorTest {
 
     @Test
     public void testSsidsDoNotBlocklist_NotAddedToBssidBlocklist() {
-        // first verify that normally a BSSID gets blocked when failing too many times
-        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_1, TEST_SSID_1, TEST_L2_FAILURE,
-                NUM_FAILURES_TO_BLOCKLIST);
-        assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_1));
+        // config1 is normal network
+        WifiConfiguration config1 = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID_1);
 
-        // add TEST_SSID_2 to "do not blocklist", and verify that BSSIDs under this SSID will not
-        // get blocked.
+        // config 2 is a enterprise owned network
+        WifiConfiguration config2 = WifiConfigurationTestUtil.createPskNetwork(TEST_SSID_2);
+        config2.creatorUid = TEST_DEVICE_OWNER_UID;
+        config2.creatorName = TEST_DEVICE_OWNER_PACKAGE_NAME;
+
+        // add both networks to "do not blocklist"
         List<WifiSsid> expectedSsids = new ArrayList<>();
-        expectedSsids.add(WifiSsid.fromString(TEST_SSID_2));
+        expectedSsids.add(WifiSsid.fromString(config1.SSID));
+        expectedSsids.add(WifiSsid.fromString(config2.SSID));
         mWifiBlocklistMonitor.setSsidsDoNotBlocklist(expectedSsids);
         assertEquals(expectedSsids,
                 mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
-        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_2, TEST_SSID_2, TEST_L2_FAILURE,
-                NUM_FAILURES_TO_BLOCKLIST);
+
+        // verify that BSSID for config1 still gets block because it's not enterprise owned
+        mWifiBlocklistMonitor.handleBssidConnectionFailure(TEST_BSSID_1, config1,
+                WifiBlocklistMonitor.REASON_WRONG_PASSWORD,
+                TEST_GOOD_RSSI);
+        assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_1));
+
+        // verify that BSSID for config2 do not get blocked when failing.
+        mWifiBlocklistMonitor.handleBssidConnectionFailure(TEST_BSSID_2, config2,
+                WifiBlocklistMonitor.REASON_WRONG_PASSWORD,
+                TEST_GOOD_RSSI);
         assertFalse(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_2));
 
         // Verify that setting the "do not blocklist" to empty list will make the BSSID
@@ -454,8 +473,9 @@ public class WifiBlocklistMonitorTest {
         mWifiBlocklistMonitor.setSsidsDoNotBlocklist(Collections.EMPTY_LIST);
         assertEquals(Collections.EMPTY_LIST,
                 mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
-        handleBssidConnectionFailureMultipleTimes(TEST_BSSID_2, TEST_SSID_2, TEST_L2_FAILURE,
-                NUM_FAILURES_TO_BLOCKLIST);
+        mWifiBlocklistMonitor.handleBssidConnectionFailure(TEST_BSSID_2, config2,
+                WifiBlocklistMonitor.REASON_WRONG_PASSWORD,
+                TEST_GOOD_RSSI);
         assertTrue(mWifiBlocklistMonitor.updateAndGetBssidBlocklist().contains(TEST_BSSID_2));
     }
 
@@ -464,6 +484,8 @@ public class WifiBlocklistMonitorTest {
         // Create 2 test networks
         WifiConfiguration openNetwork1 = WifiConfigurationTestUtil.createOpenNetwork();
         WifiConfiguration openNetwork2 = WifiConfigurationTestUtil.createOpenNetwork();
+        openNetwork2.creatorUid = TEST_DEVICE_OWNER_UID;
+        openNetwork2.creatorName = TEST_DEVICE_OWNER_PACKAGE_NAME;
 
         // Add SSID of openNetwork2 to the "do not blocklist"
         List<WifiSsid> expectedSsids = new ArrayList<>();
@@ -1338,7 +1360,7 @@ public class WifiBlocklistMonitorTest {
                 R.integer.config_wifiDisableReasonDhcpFailureThreshold, newThreshold);
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
                 mWifiLastResortWatchdog, mClock, mLocalLog, mWifiScoreCard, mScoringParams,
-                mWifiMetrics);
+                mWifiMetrics, mWifiPermissionsUtil);
 
         // Verify that the threshold is updated in the copied version
         assertEquals(newThreshold, mWifiBlocklistMonitor.getNetworkSelectionDisableThreshold(

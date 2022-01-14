@@ -34,6 +34,7 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
 import java.io.FileDescriptor;
@@ -124,6 +125,7 @@ public class WifiBlocklistMonitor {
     private final WifiScoreCard mWifiScoreCard;
     private final ScoringParams mScoringParams;
     private final WifiMetrics mWifiMetrics;
+    private final WifiPermissionsUtil mWifiPermissionsUtil;
     private final Map<Integer, BssidDisableReason> mBssidDisableReasons =
             buildBssidDisableReasons();
     private final SparseArray<DisableReasonInfo> mDisableReasonInfo;
@@ -197,7 +199,8 @@ public class WifiBlocklistMonitor {
      */
     WifiBlocklistMonitor(Context context, WifiConnectivityHelper connectivityHelper,
             WifiLastResortWatchdog wifiLastResortWatchdog, Clock clock, LocalLog localLog,
-            WifiScoreCard wifiScoreCard, ScoringParams scoringParams, WifiMetrics wifiMetrics) {
+            WifiScoreCard wifiScoreCard, ScoringParams scoringParams, WifiMetrics wifiMetrics,
+            WifiPermissionsUtil wifiPermissionsUtil) {
         mContext = context;
         mConnectivityHelper = connectivityHelper;
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
@@ -207,6 +210,7 @@ public class WifiBlocklistMonitor {
         mScoringParams = scoringParams;
         mDisableReasonInfo = DISABLE_REASON_INFOS.clone();
         mWifiMetrics = wifiMetrics;
+        mWifiPermissionsUtil = wifiPermissionsUtil;
         loadCustomConfigsForDisableReasonInfos();
     }
 
@@ -304,9 +308,16 @@ public class WifiBlocklistMonitor {
                     + ", reasonCode=" + reasonCode);
             return false;
         }
+        return !isConfigExemptFromBlocklist(config);
+    }
+
+    private boolean isConfigExemptFromBlocklist(@NonNull WifiConfiguration config) {
         try {
+            // Only enterprise owned configs that are in the doNoBlocklist are exempt from
+            // blocklisting.
             WifiSsid wifiSsid = WifiSsid.fromString(config.SSID);
-            return !mSsidsDoNotBlocklist.contains(wifiSsid);
+            return mSsidsDoNotBlocklist.contains(wifiSsid)
+                    && mWifiPermissionsUtil.isAdmin(config.creatorUid, config.creatorName);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Failed to convert raw ssid=" + config.SSID + " to WifiSsid");
             return false;
@@ -1017,16 +1028,9 @@ public class WifiBlocklistMonitor {
         NetworkSelectionStatus networkStatus = config.getNetworkSelectionStatus();
         if (reason != NetworkSelectionStatus.DISABLED_NONE) {
             // Do not disable if in the exception list
-            if (reason != NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER) {
-                try {
-                    WifiSsid wifiSsid = WifiSsid.fromString(config.SSID);
-                    if (mSsidsDoNotBlocklist.contains(wifiSsid)) {
-                        return false;
-                    }
-                } catch (IllegalArgumentException e) {
-                    Log.e(TAG, "Failed to convert raw ssid=" + config.SSID + " to WifiSsid");
-                    return false;
-                }
+            if (reason != NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER
+                    && isConfigExemptFromBlocklist(config)) {
+                return false;
             }
 
             // Do not update SSID blocklist with information if this is the only
