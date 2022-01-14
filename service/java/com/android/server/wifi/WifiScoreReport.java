@@ -24,6 +24,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkScore;
 import android.net.wifi.IWifiConnectedNetworkScorer;
+import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConnectedSessionInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -120,7 +121,9 @@ public class WifiScoreReport {
     private final WifiGlobals mWifiGlobals;
     private final ActiveModeWarden mActiveModeWarden;
     private final WifiConnectivityManager mWifiConnectivityManager;
+    private final WifiConfigManager mWifiConfigManager;
     private long mLastLowScoreScanTimestampMs = -1;
+    private WifiConfiguration mCurrentWifiConfiguration;
 
     /**
      * Callback from {@link ExternalScoreUpdateObserverProxy}
@@ -148,7 +151,7 @@ public class WifiScoreReport {
             //  removed when the WiFi mainline module is no longer updated on Android 11.
             if (score == WIFI_SCORE_TO_TERMINATE_CONNECTION_BLOCKLIST_BSSID) {
                 mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfoNoReset.getBSSID(),
-                        mWifiInfoNoReset.getSSID(),
+                        mCurrentWifiConfiguration,
                         WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE,
                         mWifiInfoNoReset.getRssi());
                 return;
@@ -314,7 +317,7 @@ public class WifiScoreReport {
             }
             if (mWifiInfoNoReset.getBSSID() != null) {
                 mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfoNoReset.getBSSID(),
-                        mWifiInfoNoReset.getSSID(),
+                        mCurrentWifiConfiguration,
                         WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE,
                         mWifiInfoNoReset.getRssi());
             }
@@ -509,7 +512,8 @@ public class WifiScoreReport {
             WifiSettingsStore wifiSettingsStore,
             WifiGlobals wifiGlobals,
             ActiveModeWarden activeModeWarden,
-            WifiConnectivityManager wifiConnectivityManager) {
+            WifiConnectivityManager wifiConnectivityManager,
+            WifiConfigManager wifiConfigManager) {
         mScoringParams = scoringParams;
         mClock = clock;
         mAdaptiveConnectivityEnabledSettingObserver = adaptiveConnectivityEnabledSettingObserver;
@@ -530,6 +534,7 @@ public class WifiScoreReport {
         mWifiGlobals = wifiGlobals;
         mActiveModeWarden = activeModeWarden;
         mWifiConnectivityManager = wifiConnectivityManager;
+        mWifiConfigManager = wifiConfigManager;
     }
 
     /**
@@ -950,6 +955,8 @@ public class WifiScoreReport {
                     + " sessionId=" + sessionId);
             return;
         }
+        mCurrentWifiConfiguration = mWifiConfigManager.getConfiguredNetwork(
+                mWifiInfo.getNetworkId());
         mWifiInfo.setScore(ConnectedScore.WIFI_MAX_SCORE);
         mWifiConnectedNetworkScorerHolder.startSession(sessionId, mIsUserSelected);
         mWifiInfoNoReset.setBSSID(mWifiInfo.getBSSID());
@@ -975,7 +982,7 @@ public class WifiScoreReport {
                 && ((millis - mLastScoreBreachLowTimeMillis)
                         >= MIN_TIME_TO_WAIT_BEFORE_BLOCKLIST_BSSID_MILLIS)) {
             mWifiBlocklistMonitor.handleBssidConnectionFailure(mWifiInfo.getBSSID(),
-                    mWifiInfo.getSSID(),
+                    mCurrentWifiConfiguration,
                     WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_CONNECTED_SCORE,
                     mWifiInfo.getRssi());
             mLastScoreBreachLowTimeMillis = INVALID_WALL_CLOCK_MILLIS;

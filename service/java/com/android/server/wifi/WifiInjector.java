@@ -763,7 +763,7 @@ public class WifiInjector {
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
                         ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore, mWifiGlobals,
-                        mActiveModeWarden, mWifiConnectivityManager),
+                        mActiveModeWarden, mWifiConnectivityManager, mWifiConfigManager),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
                 this, mSettingsConfigStore, verboseLoggingEnabled, mWifiNotificationManager);

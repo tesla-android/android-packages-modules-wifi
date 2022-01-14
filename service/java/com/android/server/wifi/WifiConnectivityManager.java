@@ -2387,10 +2387,10 @@ public class WifiConnectivityManager {
      *
      * @param failureCode {@link WifiMetrics.ConnectionEvent} failure code.
      * @param bssid the failed network.
-     * @param ssid identifies the failed network.
+     * @param config identifies the failed network.
      */
     public void handleConnectionAttemptEnded(@NonNull ClientModeManager clientModeManager,
-            int failureCode, @NonNull String bssid, @NonNull String ssid) {
+            int failureCode, @NonNull String bssid, @NonNull WifiConfiguration config) {
         List<ClientModeManager> internetConnectivityCmms =
                 mActiveModeWarden.getInternetConnectivityClientModeManagers();
         if (!internetConnectivityCmms.contains(clientModeManager)) {
@@ -2407,13 +2407,13 @@ public class WifiConnectivityManager {
             // Only attempt to reconnect when connection on the primary CMM fails, since MBB
             // CMM will be destroyed after the connection failure.
             if (clientModeManager.getRole() == ROLE_CLIENT_PRIMARY) {
-                retryConnectionOnLatestCandidates(clientModeManager, bssid, ssid);
+                retryConnectionOnLatestCandidates(clientModeManager, bssid, config);
             }
         }
     }
 
     private void retryConnectionOnLatestCandidates(@NonNull ClientModeManager clientModeManager,
-            String bssid, String ssid) {
+            String bssid, @NonNull WifiConfiguration configuration) {
         try {
             if (mLatestCandidates == null || mLatestCandidates.size() == 0
                     || mClock.getElapsedSinceBootMillis() - mLatestCandidatesTimestampMs
@@ -2444,7 +2444,7 @@ public class WifiConnectivityManager {
                 localLog("Automatic retry on the next best WNS candidate-" + candidate.SSID);
                 // Make sure that the failed BSSID is blocked for at least TEMP_BSSID_BLOCK_DURATION
                 // to prevent the supplicant from trying it again.
-                mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, ssid,
+                mWifiBlocklistMonitor.blockBssidForDurationMs(bssid, configuration,
                         TEMP_BSSID_BLOCK_DURATION,
                         WifiBlocklistMonitor.REASON_FRAMEWORK_DISCONNECT_FAST_RECONNECT, 0);
                 triggerConnectToNetworkUsingCmm(clientModeManager, candidate,
