@@ -26,6 +26,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_OCE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_PASSPOINT_TERMS_AND_CONDITIONS;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_SAE_PK;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WAPI;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WFD_R2;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_WPA3_SAE;
@@ -2582,6 +2583,14 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
                 featureSet |= WIFI_FEATURE_WFD_R2;
                 if (mVerboseLoggingEnabled) {
                     Log.v(TAG, methodStr + ": WFD-R2 supported");
+                }
+            }
+
+            if ((drvCapabilitiesMask
+                    & WpaDriverCapabilitiesMask.TRUST_ON_FIRST_USE) != 0) {
+                featureSet |= WIFI_FEATURE_TRUST_ON_FIRST_USE;
+                if (mVerboseLoggingEnabled) {
+                    Log.v(TAG, methodStr + ": Trust-On-First-Use supported");
                 }
             }
 

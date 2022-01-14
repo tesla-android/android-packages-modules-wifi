@@ -192,6 +192,7 @@
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificThreshold" />
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificDurationMs" />
           <item type="bool" name="config_wifiAllowMultipleNetworksOnSameAwareNdi"/>
+          <item type="bool" name="config_wifiSupportChannelOnDataPath"/>
           <item type="integer" name="config_wifiTrafficPollerTxPacketThreshold"/>
           <item type="integer" name="config_wifiTrafficPollerRxPacketThreshold"/>
           <item type="integer" name="config_wifiLinkBandwidthUpdateThresholdPercent" />
@@ -209,6 +210,7 @@
           <item type="integer" name="config_wifiClientModeImplNumLogRecs" />
           <item type="bool" name="config_wifiDriverSupportedNl80211RegChangedEvent" />
           <item type="integer" name="config_wifiVerboseLoggingAlwaysOnLevel" />
+          <item type="string" name="config_wifiCertInstallationHelpLink" />
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

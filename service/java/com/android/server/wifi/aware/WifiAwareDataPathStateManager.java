@@ -21,6 +21,7 @@ import static android.net.RouteInfo.RTN_UNICAST;
 import android.content.Context;
 import android.hardware.wifi.V1_0.NanDataPathChannelCfg;
 import android.hardware.wifi.V1_0.NanStatusType;
+import android.hardware.wifi.V1_0.WifiChannelWidthInMhz;
 import android.hardware.wifi.V1_2.NanDataPathChannelInfo;
 import android.net.ConnectivityManager;
 import android.net.IpPrefix;
@@ -36,8 +37,10 @@ import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.net.RouteInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.aware.TlvBufferUtils;
 import android.net.wifi.aware.WifiAwareAgentNetworkSpecifier;
+import android.net.wifi.aware.WifiAwareChannelInfo;
 import android.net.wifi.aware.WifiAwareManager;
 import android.net.wifi.aware.WifiAwareNetworkInfo;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
@@ -69,6 +72,7 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -610,7 +614,7 @@ public class WifiAwareDataPathStateManager {
         if (accept) {
             ndpInfo.peerDataMac = mac;
             ndpInfo.state = NdpInfo.STATE_CONFIRMED;
-            ndpInfo.channelInfo = channelInfo;
+            ndpInfo.channelInfos = covertHalChannelInfo(channelInfo);
             nnri.state = AwareNetworkRequestInformation.STATE_CONFIRMED;
             // NetworkAgent may already be created for accept any peer request, interface should be
             // ready in that case.
@@ -723,7 +727,8 @@ public class WifiAwareDataPathStateManager {
         if (nnri.networkAgent == null) {
             // Setup first NDP for new networkAgent.
             final WifiAwareNetworkInfo ni = new WifiAwareNetworkInfo(ndpInfo.peerIpv6,
-                    ndpInfo.peerPort, ndpInfo.peerTransportProtocol);
+                    ndpInfo.peerPort, ndpInfo.peerTransportProtocol,
+                    ndpInfo.channelInfos);
             ncBuilder.setTransportInfo(ni);
             if (VDBG) {
                 Log.v(TAG, "onDataPathConfirm: AwareNetworkInfo=" + ni);
@@ -820,7 +825,7 @@ public class WifiAwareDataPathStateManager {
                 continue;
             }
 
-            ndpInfo.channelInfo = channelInfo;
+            ndpInfo.channelInfos = covertHalChannelInfo(channelInfo);
         }
     }
 
@@ -1014,8 +1019,17 @@ public class WifiAwareDataPathStateManager {
                     return;
                 }
 
+                int channel = selectChannelForRequest(nnri);
+                int channelRequestType = NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED;
+                if (mContext.getResources().getBoolean(R.bool.config_wifiSupportChannelOnDataPath)
+                        && nnri.networkSpecifier.getChannelInMhz() != 0) {
+                    channel = nnri.networkSpecifier.getChannelInMhz();
+                    channelRequestType = nnri.networkSpecifier.isChannelRequired()
+                            ? NanDataPathChannelCfg.FORCE_CHANNEL_SETUP
+                            : NanDataPathChannelCfg.REQUEST_CHANNEL_SETUP;
+                }
                 mMgr.initiateDataPathSetup(networkSpecifier, nnri.specifiedPeerInstanceId,
-                        NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED, selectChannelForRequest(nnri),
+                        channelRequestType, channel,
                         nnri.specifiedPeerDiscoveryMac, nnri.interfaceName,
                         nnri.networkSpecifier.pmk, nnri.networkSpecifier.passphrase,
                         nnri.networkSpecifier.isOutOfBand(), null);
@@ -1262,7 +1276,7 @@ public class WifiAwareDataPathStateManager {
         public int peerPort = 0; // uninitialized (invalid) value
         public int peerTransportProtocol = -1; // uninitialized (invalid) value
         public byte[] peerIpv6Override = null;
-        public List<NanDataPathChannelInfo> channelInfo;
+        public List<WifiAwareChannelInfo> channelInfos;
         public long startTimestamp = 0; // request is made (initiator) / get request (responder)
 
         NdpInfo(int ndpId) {
@@ -1285,7 +1299,7 @@ public class WifiAwareDataPathStateManager {
                     peerPort).append(", peerTransportProtocol=").append(
                     peerTransportProtocol).append(", startTimestamp=").append(
                     startTimestamp).append(", channelInfo=").append(
-                    channelInfo);
+                            channelInfos);
             sb.append("]");
             return sb.toString();
         }
@@ -1359,10 +1373,10 @@ public class WifiAwareDataPathStateManager {
                 return builder.setTransportInfo(new WifiAwareNetworkInfo()).build();
             }
             if (ndpInfos.valueAt(0).peerIpv6 != null) {
+                NdpInfo ndpInfo = ndpInfos.valueAt(0);
                 builder.setTransportInfo(
-                        new WifiAwareNetworkInfo(ndpInfos.valueAt(0).peerIpv6,
-                                ndpInfos.valueAt(0).peerPort,
-                                ndpInfos.valueAt(0).peerTransportProtocol));
+                        new WifiAwareNetworkInfo(ndpInfo.peerIpv6, ndpInfo.peerPort,
+                                ndpInfo.peerTransportProtocol, ndpInfo.channelInfos));
             }
             return builder.build();
         }
@@ -1858,6 +1872,35 @@ public class WifiAwareDataPathStateManager {
                 }
             }
             return Pair.create(port, transportProtocol);
+        }
+    }
+
+    private List<WifiAwareChannelInfo> covertHalChannelInfo(
+            List<NanDataPathChannelInfo> channelInfos) {
+        List<WifiAwareChannelInfo> wifiAwareChannelInfos = new ArrayList<>();
+        if (channelInfos == null) {
+            return null;
+        }
+        for (NanDataPathChannelInfo channelInfo : channelInfos) {
+            wifiAwareChannelInfos.add(new WifiAwareChannelInfo(channelInfo.channelFreq,
+                    getChannelBandwidth(channelInfo.channelBandwidth),
+                    channelInfo.numSpatialStreams));
+        }
+        return wifiAwareChannelInfos;
+    }
+
+    private int getChannelBandwidth(int channelBandwidth) {
+        switch(channelBandwidth) {
+            case WifiChannelWidthInMhz.WIDTH_40:
+                return ScanResult.CHANNEL_WIDTH_40MHZ;
+            case WifiChannelWidthInMhz.WIDTH_80:
+                return ScanResult.CHANNEL_WIDTH_80MHZ;
+            case WifiChannelWidthInMhz.WIDTH_160:
+                return ScanResult.CHANNEL_WIDTH_160MHZ;
+            case WifiChannelWidthInMhz.WIDTH_80P80:
+                return ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
+            default:
+                return ScanResult.CHANNEL_WIDTH_20MHZ;
         }
     }
 

@@ -608,6 +608,47 @@ public class WifiEnterpriseConfigTest {
         assertEquals(TEST_DECORATED_IDENTITY_PREFIX, config.getDecoratedIdentityPrefix());
     }
 
+    @Test
+    public void testTrustOnFirstUse() {
+        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
+
+        assertFalse(config.isTrustOnFirstUseEnabled());
+        config.enableTrustOnFirstUse(true);
+        assertTrue(config.isTrustOnFirstUseEnabled());
+        config.enableTrustOnFirstUse(false);
+        assertFalse(config.isTrustOnFirstUseEnabled());
+    }
+
+    @Test
+    public void testHasCaCertificate() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
+        assertFalse(config.hasCaCertificate());
+        config.setCaPath("/tmp/testCa.cert");
+        assertTrue(config.hasCaCertificate());
+
+        config = new WifiEnterpriseConfig();
+        assertFalse(config.hasCaCertificate());
+        config.setCaCertificate(FakeKeys.CA_CERT0);
+        assertTrue(config.hasCaCertificate());
+
+        config = new WifiEnterpriseConfig();
+        assertFalse(config.hasCaCertificate());
+        config.setCaCertificateAliases(new String[] {"single_alias 0"});
+        assertTrue(config.hasCaCertificate());
+    }
+
+    @Test
+    public void testUserApproveNoCaCert() {
+        WifiEnterpriseConfig config = new WifiEnterpriseConfig();
+
+        assertFalse(config.isUserApproveNoCaCert());
+        config.setUserApproveNoCaCert(true);
+        assertTrue(config.isUserApproveNoCaCert());
+        config.setUserApproveNoCaCert(false);
+        assertFalse(config.isUserApproveNoCaCert());
+    }
+
     /**
      * Verify that the set decorated identity prefix doesn't accept a malformed input.
      *

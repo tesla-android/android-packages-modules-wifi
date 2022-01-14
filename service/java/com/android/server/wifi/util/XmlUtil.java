@@ -1294,6 +1294,8 @@ public class XmlUtil {
         public static final String XML_TAG_APP_INSTALLED_PRIVATE_KEY = "AppInstalledPrivateKey";
         public static final String XML_TAG_KEYCHAIN_KEY_ALIAS = "KeyChainAlias";
         public static final String XML_TAG_DECORATED_IDENTITY_PREFIX = "DecoratedIdentityPrefix";
+        public static final String XML_TAG_TRUST_ON_FIRST_USE = "TrustOnFirstUse";
+        public static final String XML_TAG_USER_APPROVE_NO_CA_CERT = "UserApproveNoCaCert";
 
         /**
          * Write password key to the XML stream.
@@ -1377,6 +1379,10 @@ public class XmlUtil {
                 XmlUtil.writeNextValue(out, XML_TAG_DECORATED_IDENTITY_PREFIX,
                         enterpriseConfig.getDecoratedIdentityPrefix());
             }
+            XmlUtil.writeNextValue(out, XML_TAG_TRUST_ON_FIRST_USE,
+                    enterpriseConfig.isTrustOnFirstUseEnabled());
+            XmlUtil.writeNextValue(out, XML_TAG_USER_APPROVE_NO_CA_CERT,
+                    enterpriseConfig.isUserApproveNoCaCert());
         }
 
         /**
@@ -1492,6 +1498,12 @@ public class XmlUtil {
                             if (SdkLevel.isAtLeastS()) {
                                 enterpriseConfig.setDecoratedIdentityPrefix((String) value);
                             }
+                            break;
+                        case XML_TAG_TRUST_ON_FIRST_USE:
+                            enterpriseConfig.enableTrustOnFirstUse((boolean) value);
+                            break;
+                        case XML_TAG_USER_APPROVE_NO_CA_CERT:
+                            enterpriseConfig.setUserApproveNoCaCert((boolean) value);
                             break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);

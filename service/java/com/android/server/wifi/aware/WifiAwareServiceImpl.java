@@ -194,6 +194,12 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     }
 
     @Override
+    public boolean isSetChannelOnDataPathSupported() {
+        enforceAccessPermission();
+        return mStateManager.isSetChannelOnDataPathSupported();
+    }
+
+    @Override
     public void connect(final IBinder binder, String callingPackage, String callingFeatureId,
             IWifiAwareEventCallback callback, ConfigRequest configRequest,
             boolean notifyOnIdentityChanged, Bundle extras) {

@@ -17,6 +17,8 @@
 package com.android.server.wifi.aware;
 
 import static android.hardware.wifi.V1_0.NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED;
+import static android.hardware.wifi.V1_0.WifiChannelWidthInMhz.WIDTH_80;
+import static android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ;
 
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.junit.Assert.assertArrayEquals;
@@ -44,6 +46,7 @@ import android.app.test.TestAlarmManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.wifi.V1_0.NanStatusType;
+import android.hardware.wifi.V1_2.NanDataPathChannelInfo;
 import android.net.ConnectivityManager;
 import android.net.MacAddress;
 import android.net.NetworkCapabilities;
@@ -65,6 +68,7 @@ import android.net.wifi.aware.PublishDiscoverySession;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.SubscribeDiscoverySession;
 import android.net.wifi.aware.TlvBufferUtils;
+import android.net.wifi.aware.WifiAwareChannelInfo;
 import android.net.wifi.aware.WifiAwareManager;
 import android.net.wifi.aware.WifiAwareNetworkInfo;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
@@ -116,6 +120,10 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
     private static final String sAwareInterfacePrefix = "aware_data";
     private static final String TEST_PACKAGE_NAME = "com.android.somePackage";
     private static final String TEST_FEATURE_ID = "com.android.someFeature";
+
+    private static final NanDataPathChannelInfo CHANNEL_INFO = new NanDataPathChannelInfo();
+    private static final WifiAwareChannelInfo AWARE_CHANNEL_INFO =
+            new WifiAwareChannelInfo(5750, CHANNEL_WIDTH_80MHZ, 2);
 
     private TestLooper mMockLooper;
     private Handler mMockLooperHandler;
@@ -189,6 +197,10 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         mResources = new MockResources();
         mResources.setBoolean(R.bool.config_wifiAllowMultipleNetworksOnSameAwareNdi, false);
         when(mMockContext.getResources()).thenReturn(mResources);
+
+        CHANNEL_INFO.channelFreq = 5750;
+        CHANNEL_INFO.channelBandwidth = WIDTH_80;
+        CHANNEL_INFO.numSpatialStreams = 2;
     }
 
     /**
@@ -521,7 +533,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
 
             // (2) get confirmation
             mDut.onDataPathConfirmNotification(ndpId + i, peerDataPathMac, true, 0,
-                    buildTlv(port, transportProtocol, true), null);
+                    buildTlv(port, transportProtocol, true), List.of(CHANNEL_INFO));
             mMockLooper.dispatchAll();
             if (first) {
                 inOrder.verify(mMockNetdWrapper).setInterfaceUp(anyString());
@@ -542,6 +554,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             assertEquals(port, netInfo.getPort());
             assertEquals(transportProtocol, netInfo.getTransportProtocol());
             assertEquals(i + 1, mDut.mDataPathMgr.getNumOfNdps());
+            assertEquals(AWARE_CHANNEL_INFO, netInfo.getChannelInfos().get(0));
         }
 
         // (3) end data-path (unless didn't get confirmation)
@@ -1334,7 +1347,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(Process.myUid());
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME);
@@ -1395,7 +1408,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(0 + 1); // corruption hack
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME);
@@ -1458,7 +1471,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 ns.pmk,
                 ns.passphrase,
                 0,
-                0);
+                0, 0, false);
         nr.networkCapabilities.setNetworkSpecifier(ns);
         nr.networkCapabilities.setRequestorUid(Process.myUid()); // corruption hack
         nr.networkCapabilities.setRequestorPackageName(TEST_PACKAGE_NAME + "h"); // corruption hack
@@ -2056,7 +2069,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 pmk,
                 passphrase,
                 port,
-                transportProtocol);
+                transportProtocol, 0, false);
     }
 
     /**
@@ -2076,7 +2089,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
                 pmk,
                 passphrase,
                 port,
-                transportProtocol);
+                transportProtocol, 0, false);
     }
 
     private static class DataPathEndPointInfo {

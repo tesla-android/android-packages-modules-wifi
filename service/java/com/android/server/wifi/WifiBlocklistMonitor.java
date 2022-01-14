@@ -27,6 +27,7 @@ import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus.DisableReasonInfo;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus.NetworkSelectionDisableReason;
 import android.net.wifi.WifiManager;
+import android.net.wifi.WifiSsid;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.LocalLog;
@@ -138,6 +139,7 @@ public class WifiBlocklistMonitor {
 
     // Map of ssid to Allowlist SSIDs
     private Map<String, List<String>> mSsidAllowlistMap = new ArrayMap<>();
+    private Set<WifiSsid> mSsidsDoNotBlocklist = new ArraySet<>();
 
     /**
      * Verbose logging flag. Toggled by developer options.
@@ -280,7 +282,21 @@ public class WifiBlocklistMonitor {
         return status;
     }
 
-    private boolean isValidNetworkAndFailureReason(String bssid, String ssid,
+    /**
+     * Set a list of SSIDs that will always be enabled for network selection.
+     */
+    public void setSsidsDoNotBlocklist(@NonNull List<WifiSsid> ssids) {
+        mSsidsDoNotBlocklist = new ArraySet<>(ssids);
+    }
+
+    /**
+     * Get the list of SSIDs that will always be enabled for network selection.
+     */
+    public List<WifiSsid> getSsidsDoNotBlocklist() {
+        return new ArrayList<>(mSsidsDoNotBlocklist);
+    }
+
+    private boolean isValidNetworkAndFailureReasonForBssidBlocking(String bssid, String ssid,
             @FailureReason int reasonCode) {
         if (bssid == null || ssid == null || WifiManager.UNKNOWN_SSID.equals(ssid)
                 || bssid.equals(ClientModeImpl.SUPPLICANT_BSSID_ANY)
@@ -289,7 +305,13 @@ public class WifiBlocklistMonitor {
                     + ", reasonCode=" + reasonCode);
             return false;
         }
-        return true;
+        try {
+            WifiSsid wifiSsid = WifiSsid.fromString(ssid);
+            return !mSsidsDoNotBlocklist.contains(wifiSsid);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "Failed to convert raw ssid=" + ssid + " to WifiSsid");
+            return false;
+        }
     }
 
     private boolean shouldWaitForWatchdogToTriggerFirst(String bssid,
@@ -312,7 +334,8 @@ public class WifiBlocklistMonitor {
      */
     public void blockBssidForDurationMs(@NonNull String bssid, @NonNull String ssid,
             long durationMs, @FailureReason int blockReason, int rssi) {
-        if (durationMs <= 0 || !isValidNetworkAndFailureReason(bssid, ssid, blockReason)) {
+        if (durationMs <= 0 || !isValidNetworkAndFailureReasonForBssidBlocking(
+                bssid, ssid, blockReason)) {
             Log.e(TAG, "Invalid input: BSSID=" + bssid + ", SSID=" + ssid
                     + ", durationMs=" + durationMs + ", blockReason=" + blockReason
                     + ", rssi=" + rssi);
@@ -415,7 +438,7 @@ public class WifiBlocklistMonitor {
      */
     public boolean handleBssidConnectionFailure(String bssid, String ssid,
             @FailureReason int reasonCode, int rssi) {
-        if (!isValidNetworkAndFailureReason(bssid, ssid, reasonCode)) {
+        if (!isValidNetworkAndFailureReasonForBssidBlocking(bssid, ssid, reasonCode)) {
             return false;
         }
         BssidDisableReason bssidDisableReason = mBssidDisableReasons.get(reasonCode);
@@ -817,6 +840,10 @@ public class WifiBlocklistMonitor {
             for (String line : mLogBuffer) {
                 pw.println(line);
             }
+            pw.println("List of SSIDs to never block:");
+            for (WifiSsid ssid : mSsidsDoNotBlocklist) {
+                pw.println(ssid.toString());
+            }
             pw.println("WifiBlocklistMonitor - Bssid blocklist logs end ----");
         }
     }
@@ -989,6 +1016,19 @@ public class WifiBlocklistMonitor {
         }
         NetworkSelectionStatus networkStatus = config.getNetworkSelectionStatus();
         if (reason != NetworkSelectionStatus.DISABLED_NONE) {
+            // Do not disable if in the exception list
+            if (reason != NetworkSelectionStatus.DISABLED_BY_WIFI_MANAGER) {
+                try {
+                    WifiSsid wifiSsid = WifiSsid.fromString(config.SSID);
+                    if (mSsidsDoNotBlocklist.contains(wifiSsid)) {
+                        return false;
+                    }
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "Failed to convert raw ssid=" + config.SSID + " to WifiSsid");
+                    return false;
+                }
+            }
+
             // Do not update SSID blocklist with information if this is the only
             // SSID be observed. By ignoring it we will cause additional failures
             // which will trigger Watchdog.

@@ -701,7 +701,7 @@ public class WifiAwareMetricsTest extends WifiBaseTest {
                     .AwareNetworkRequestInformation> networkRequestCache,
             int index, int uid, String packageName, String interfaceName, String passphrase) {
         WifiAwareNetworkSpecifier ns = new WifiAwareNetworkSpecifier(0, 0, 0, index, 0, null, null,
-                passphrase, 0, 0);
+                passphrase, 0, 0, 0, false);
         WifiAwareDataPathStateManager.AwareNetworkRequestInformation anri =
                 new WifiAwareDataPathStateManager.AwareNetworkRequestInformation();
         anri.networkSpecifier = ns;

@@ -16,6 +16,7 @@
 
 package android.net.wifi.aware;
 
+import static android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ;
 import static android.net.wifi.aware.WifiAwareManager.WIFI_AWARE_DISCOVERY_LOST_REASON_PEER_NOT_VISIBLE;
 import static android.net.wifi.aware.WifiAwareNetworkSpecifier.NETWORK_SPECIFIER_TYPE_IB;
 
@@ -158,6 +159,12 @@ public class WifiAwareManagerTest {
         assumeTrue(SdkLevel.isAtLeastS());
         mDut.isDeviceAttached();
         verify(mockAwareService).isDeviceAttached();
+    }
+
+    @Test
+    public void testIsSetChannelOnDataPathSupported() throws Exception {
+        mDut.isSetChannelOnDataPathSupported();
+        verify(mockAwareService).isSetChannelOnDataPathSupported();
     }
 
     /**
@@ -1079,7 +1086,7 @@ public class WifiAwareManagerTest {
                         peerHandle, passphrase);
         nsb = new WifiAwareNetworkSpecifier.Builder(publishSession.getValue(),
                 peerHandle).setPskPassphrase(passphrase).setPort(port).setTransportProtocol(
-                transportProtocol).build();
+                transportProtocol).setChannelInMhz(5750, true).build();
 
         // validate format
         collector.checkThat("role", WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER,
@@ -1097,6 +1104,8 @@ public class WifiAwareManagerTest {
         collector.checkThat("passphrase", passphrase, equalTo(nsb.passphrase));
         collector.checkThat("port", port, equalTo(nsb.port));
         collector.checkThat("transportProtocol", transportProtocol, equalTo(nsb.transportProtocol));
+        collector.checkThat("channel", 5750, equalTo(nsb.getChannelInMhz()));
+        collector.checkThat("ForceChannel", true, equalTo(nsb.isChannelRequired()));
 
         verifyNoMoreInteractions(mockCallback, mockSessionCallback, mockAwareService,
                 mockPublishSession, mockRttListener);
@@ -1619,7 +1628,7 @@ public class WifiAwareManagerTest {
         WifiAwareNetworkSpecifier ns = new WifiAwareNetworkSpecifier(NETWORK_SPECIFIER_TYPE_IB,
                 WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER, 5, 568, 334,
                 HexEncoding.decode("000102030405".toCharArray(), false),
-                "01234567890123456789012345678901".getBytes(), "blah blah", 666, 4);
+                "01234567890123456789012345678901".getBytes(), "blah blah", 666, 4, 0, false);
 
         Parcel parcelW = Parcel.obtain();
         ns.writeToParcel(parcelW, 0);
@@ -1638,6 +1647,8 @@ public class WifiAwareManagerTest {
 
     @Test
     public void testWifiAwareNetworkCapabilitiesParcel() throws UnknownHostException {
+        final WifiAwareChannelInfo channelInfo = new WifiAwareChannelInfo(5750,
+                CHANNEL_WIDTH_80MHZ, 2);
         final Inet6Address inet6 = MacAddress.fromString(
                 "11:22:33:44:55:66").getLinkLocalIpv6FromEui48Mac();
         // note: placeholder scope = 5
@@ -1646,7 +1657,8 @@ public class WifiAwareManagerTest {
         final int transportProtocol = 6;
 
         assertEquals(inet6Scoped.toString(), "/fe80::1322:33ff:fe44:5566%5");
-        WifiAwareNetworkInfo cap = new WifiAwareNetworkInfo(inet6Scoped, port, transportProtocol);
+        WifiAwareNetworkInfo cap = new WifiAwareNetworkInfo(inet6Scoped, port, transportProtocol,
+                List.of(channelInfo));
 
         Parcel parcelW = Parcel.obtain();
         cap.writeToParcel(parcelW, 0);
@@ -1662,6 +1674,7 @@ public class WifiAwareManagerTest {
         assertEquals(cap.getPeerIpv6Addr().toString(), "/fe80::1322:33ff:fe44:5566%5");
         assertEquals(cap, rereadCap);
         assertEquals(cap.hashCode(), rereadCap.hashCode());
+        assertEquals(cap.getChannelInfos(), rereadCap.getChannelInfos());
     }
 
     // ParcelablePeerHandle tests

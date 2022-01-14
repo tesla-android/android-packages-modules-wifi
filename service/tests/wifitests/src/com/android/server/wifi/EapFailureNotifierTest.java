@@ -248,4 +248,24 @@ public class EapFailureNotifierTest extends WifiBaseTest {
         assertEquals(TEST_SETTINGS_PACKAGE, intent.getValue().getPackage());
         assertEquals(Settings.ACTION_WIFI_SETTINGS, intent.getValue().getAction());
     }
+
+    /**
+     * Verify that no eap failure notification will be generated with the following conditions :
+     * No eap failure notification of eap failure is displayed now.
+     * Error code is negative
+     * @throws Exception
+     */
+    @Test
+    public void onEapFailureWithNegativeErrorCode() throws Exception {
+        when(mFrameworkFacade.makeNotificationBuilder(any(),
+                eq(WifiService.NOTIFICATION_NETWORK_ALERTS))).thenReturn(mNotificationBuilder);
+        StatusBarNotification[] activeNotifications = new StatusBarNotification[1];
+        activeNotifications[0] = new StatusBarNotification("android", "", 56, "", 0, 0, 0,
+                mNotification, android.os.Process.myUserHandle(), 0);
+        when(mWifiNotificationManager.getActiveNotifications()).thenReturn(activeNotifications);
+        mWifiConfiguration.SSID = SSID_1;
+        mEapFailureNotifier.onEapFailure(-1, mWifiConfiguration, true);
+        verify(mFrameworkFacade, never()).makeNotificationBuilder(any(),
+                eq(WifiService.NOTIFICATION_NETWORK_ALERTS));
+    }
 }

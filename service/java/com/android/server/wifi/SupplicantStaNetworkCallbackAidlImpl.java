@@ -25,6 +25,17 @@ import android.hardware.wifi.supplicant.TransitionDisableIndication;
 
 import com.android.server.wifi.util.NativeUtil;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+
 class SupplicantStaNetworkCallbackAidlImpl extends ISupplicantStaNetworkCallback.Stub {
     private final SupplicantStaNetworkHalAidlImpl mNetworkHal;
     /**
@@ -109,6 +120,97 @@ class SupplicantStaNetworkCallbackAidlImpl extends ISupplicantStaNetworkCallback
 
             mWifiMonitor.broadcastTransitionDisableEvent(
                     mIfaceName, mFrameworkNetworkId, frameworkBits);
+        }
+    }
+
+    private String byteArrayToString(byte[] byteArray) {
+        // Not a valid bytes for a string
+        if (byteArray == null) return null;
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        try {
+            CharBuffer decoded = decoder.decode(ByteBuffer.wrap(byteArray));
+            return decoded.toString();
+        } catch (CharacterCodingException cce) {
+        }
+        return null;
+    }
+
+    @Override
+    public void onServerCertificateAvailable(
+            int depth,
+            byte[] subjectBytes,
+            byte[] certHashBytes,
+            byte[] certBytes) {
+        synchronized (mLock) {
+            // OpenSSL default maximum depth is 100.
+            if (depth < 0 || depth > 100) {
+                mNetworkHal.logCallback("onServerCertificateAvailable: invalid depth " + depth);
+                return;
+            }
+            if (null == subjectBytes) {
+                mNetworkHal.logCallback("onServerCertificateAvailable: subject is null.");
+                return;
+            }
+            if (null == certHashBytes) {
+                mNetworkHal.logCallback("onServerCertificateAvailable: cert hash is null.");
+                return;
+            }
+            if (null == certBytes) {
+                mNetworkHal.logCallback("onServerCertificateAvailable: cert is null.");
+                return;
+            }
+
+            mNetworkHal.logCallback("onServerCertificateAvailable: "
+                    + " depth=" + depth
+                    + " subjectBytes size=" + subjectBytes.length
+                    + " certHashBytes size=" + certHashBytes.length
+                    + " certBytes size=" + certBytes.length);
+
+            if (0 == certHashBytes.length) return;
+            if (0 == certBytes.length) return;
+
+            String subject = byteArrayToString(subjectBytes);
+            if (null == subject) {
+                mNetworkHal.logCallback(
+                        "onServerCertificateAvailable: cannot convert subject bytes to string.");
+                return;
+            }
+            String certHash = byteArrayToString(certHashBytes);
+            if (null == subject) {
+                mNetworkHal.logCallback(
+                        "onServerCertificateAvailable: cannot convert cert hash bytes to string.");
+                return;
+            }
+            X509Certificate cert = null;
+            try {
+                CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+                InputStream in = new ByteArrayInputStream(certBytes);
+                cert = (X509Certificate) certFactory.generateCertificate(in);
+            } catch (CertificateException e) {
+                cert = null;
+                mNetworkHal.logCallback(
+                        "onServerCertificateAvailable: "
+                        + "Failed to get instance for CertificateFactory: " + e);
+            } catch (IllegalArgumentException e) {
+                cert = null;
+                mNetworkHal.logCallback(
+                        "onServerCertificateAvailable: Failed to decode the data: " + e);
+            }
+            if (null == cert) {
+                mNetworkHal.logCallback(
+                        "onServerCertificateAvailable: Failed to read certificate.");
+                return;
+            }
+            // Not a CA certificate, ignore it.
+            if (cert.getBasicConstraints() < 0) return;
+
+            mNetworkHal.logCallback("onServerCertificateAvailable:"
+                    + " depth=" + depth
+                    + " subject=" + subject
+                    + " certHash=" + certHash
+                    + " cert=" + cert);
+            mWifiMonitor.broadcastCertificationEvent(
+                    mIfaceName, mFrameworkNetworkId, mSsid, cert);
         }
     }
 }
