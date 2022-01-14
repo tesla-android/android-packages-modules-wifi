@@ -124,6 +124,16 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public void setSsidsDoNotBlocklist(String packageName, List<WifiSsid> ssids) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<WifiSsid> getSsidsDoNotBlocklist(String packageName) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Map<OsuProvider, List<ScanResult>> getMatchingOsuProviders(
             List<ScanResult> scanResults) {
         throw new UnsupportedOperationException();

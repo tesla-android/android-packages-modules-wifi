@@ -67,6 +67,11 @@ public class EapFailureNotifier {
      * @return true if the receiving error code is found in wifi resource
      */
     public boolean onEapFailure(int errorCode, WifiConfiguration config, boolean showNotification) {
+        if (errorCode < 0) {
+            // EapErrorCode is defined as an unsigned uint32_t in ISupplicantStaIfaceCallback, so
+            // only consider non-negative error codes for carrier-specific error messages.
+            return false;
+        }
         WifiStringResourceWrapper sr = mContext.getStringResourceWrapper(
                 mWifiCarrierInfoManager.getBestMatchSubscriptionId(config),
                 config.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID

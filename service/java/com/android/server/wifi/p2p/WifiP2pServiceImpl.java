@@ -1226,6 +1226,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     return "WifiP2pMonitor.SUP_CONNECTION_EVENT";
                 case WifiP2pMonitor.SUP_DISCONNECTION_EVENT:
                     return "WifiP2pMonitor.SUP_DISCONNECTION_EVENT";
+                case WifiP2pMonitor.P2P_FREQUENCY_CHANGED_EVENT:
+                    return "WifiP2pMonitor.P2P_FREQUENCY_CHANGED_EVENT";
                 case WpsInfo.DISPLAY:
                     return "WpsInfo.DISPLAY";
                 case WpsInfo.KEYPAD:
@@ -1345,6 +1347,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     WifiP2pMonitor.SUP_CONNECTION_EVENT, getHandler());
             mWifiMonitor.registerHandler(mInterfaceName,
                     WifiP2pMonitor.SUP_DISCONNECTION_EVENT, getHandler());
+            mWifiMonitor.registerHandler(mInterfaceName,
+                    WifiP2pMonitor.P2P_FREQUENCY_CHANGED_EVENT, getHandler());
 
             mWifiMonitor.startMonitoring(mInterfaceName);
         }
@@ -3674,6 +3678,12 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
 
                         replyToMessage(message, WifiP2pManager.CANCEL_CONNECT_SUCCEEDED);
+                        break;
+                    case WifiP2pMonitor.P2P_FREQUENCY_CHANGED_EVENT:
+                        if (mGroup != null) {
+                            mGroup.setFrequency(message.arg1);
+                            sendP2pConnectionChangedBroadcast();
+                        }
                         break;
                     default:
                         return NOT_HANDLED;

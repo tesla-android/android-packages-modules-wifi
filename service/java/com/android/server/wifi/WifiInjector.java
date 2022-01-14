@@ -766,7 +766,7 @@ public class WifiInjector {
                         mActiveModeWarden, mWifiConnectivityManager),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
-                this, mSettingsConfigStore, verboseLoggingEnabled);
+                this, mSettingsConfigStore, verboseLoggingEnabled, mWifiNotificationManager);
     }
 
     public WifiNetworkAgent makeWifiNetworkAgent(
