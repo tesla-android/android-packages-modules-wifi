@@ -62,6 +62,9 @@ import com.android.wifi.resources.R;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Captor;
@@ -70,10 +73,13 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.verification.VerificationMode;
 
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Unit tests for {@link com.android.server.wifi.WifiScoreReport}.
  */
+@RunWith(Parameterized.class)
 @SmallTest
 public class WifiScoreReportTest extends WifiBaseTest {
     class FakeClock extends Clock {
@@ -143,6 +149,17 @@ public class WifiScoreReportTest extends WifiBaseTest {
         }
     }
 
+    @Parameterized.Parameter(0)
+    public boolean mIsPrimary;
+
+    @Parameters(name = "{0}")
+    public static List<Boolean> isPrimaryValueList() {
+        if (SdkLevel.isAtLeastT()) {
+            return Arrays.asList(true, false);
+        }
+        return Arrays.asList(true);
+    }
+
     /**
      * Sets up resource values for testing
      *
@@ -206,7 +223,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mLooper = new TestLooper();
         when(mActiveModeWarden.canRequestSecondaryTransientClientModeManager()).thenReturn(true);
         when(mWifiGlobals.getWifiLowConnectedScoreThresholdToTriggerScanForMbb()).thenReturn(
-                ConnectedScore.WIFI_TRANSITION_SCORE);
+                getTransitionScore());
         when(mWifiGlobals.getWifiLowConnectedScoreScanPeriodSeconds()).thenReturn(
                 TEST_LOW_CONNECTED_SCORE_SCAN_PERIOD_SECONDS);
         when(mContext.getResources()).thenReturn(mResources);
@@ -227,7 +244,8 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 mAdaptiveConnectivityEnabledSettingObserver, TEST_IFACE_NAME,
                 mExternalScoreUpdateObserverProxy, mWifiSettingsStore,
                 mWifiGlobals, mActiveModeWarden, mWifiConnectivityManager, mWifiConfigManager);
-        mWifiScoreReport.onRoleChanged(ActiveModeManager.ROLE_CLIENT_PRIMARY);
+        mWifiScoreReport.onRoleChanged(mIsPrimary ? ActiveModeManager.ROLE_CLIENT_PRIMARY
+                : ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED);
         mWifiScoreReport.setNetworkAgent(mNetworkAgent);
         when(mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs()).thenReturn(
                 DeviceConfigFacade.DEFAULT_MIN_CONFIRMATION_DURATION_SEND_LOW_SCORE_MS);
@@ -288,6 +306,16 @@ public class WifiScoreReportTest extends WifiBaseTest {
 
     private void verifySentAnyNetworkScore() {
         verifySentAnyNetworkScore(times(1));
+    }
+
+    private int getTransitionScore() {
+        return mIsPrimary ? ConnectedScore.WIFI_TRANSITION_SCORE
+                : ConnectedScore.WIFI_SECONDARY_TRANSITION_SCORE;
+    }
+
+    private int getMaxScore() {
+        return mIsPrimary ? ConnectedScore.WIFI_MAX_SCORE
+                : ConnectedScore.WIFI_SECONDARY_MAX_SCORE;
     }
 
     /**
@@ -488,6 +516,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
      */
     @Test
     public void allowLowRssiIfDataIsMoving() throws Exception {
+        assumeTrue(mIsPrimary);
         mWifiInfo.setRssi(-80);
         mWifiInfo.setLinkSpeed(6); // Mbps
         mWifiInfo.setSuccessfulTxPacketsPerSecond(5.1); // proportional to pps
@@ -496,7 +525,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
         }
         int score = mWifiInfo.getScore();
-        assertTrue(score > ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(score > getTransitionScore());
         verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
     }
 
@@ -523,14 +552,14 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
         }
         int score = mWifiInfo.getScore();
-        assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(score < getTransitionScore());
         if (SdkLevel.isAtLeastS()) {
             ArgumentCaptor<NetworkScore> scoreCaptor = ArgumentCaptor.forClass(NetworkScore.class);
             verify(mNetworkAgent, times(2)).sendNetworkScore(scoreCaptor.capture());
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(score, ns.getLegacyInt());
             assertTrue(ns.isExiting());
-            assertTrue(ns.isTransportPrimary());
+            if (mIsPrimary) assertTrue(ns.isTransportPrimary());
         } else {
             verify(mNetworkAgent).sendNetworkScore(score);
         }
@@ -552,7 +581,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
         }
         assertTrue("wifi score should be high",
-                mWifiInfo.getScore() >= ConnectedScore.WIFI_TRANSITION_SCORE);
+                mWifiInfo.getScore() >= getTransitionScore());
         verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
 
         // Then simulate low RSSI and traffic, and verify score becomes low and a scan is triggered.
@@ -561,7 +590,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
         }
         assertTrue("wifi score should be low",
-                mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+                mWifiInfo.getScore() < getTransitionScore());
         verify(mWifiConnectivityManager).forceConnectivityScan(WIFI_WORK_SOURCE);
 
         // move time forward slightly, not passing enough time to do another scan.
@@ -592,13 +621,13 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
         }
         int score = mWifiInfo.getScore();
-        assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(score < getTransitionScore());
         verify(mWifiConnectivityManager, never()).forceConnectivityScan(any());
 
         // when the external score is cleared, scan should be triggered.
         mWifiScoreReport.clearWifiConnectedNetworkScorer();
         mWifiScoreReport.calculateAndReportScore();
-        assertTrue(score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(score < getTransitionScore());
         verify(mWifiConnectivityManager).forceConnectivityScan(any());
         verify(mWifiGlobals).setUsingExternalScorer(false);
     }
@@ -618,7 +647,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         }
         int score = mWifiInfo.getScore();
         verifySentNetworkScore(score);
-        assertTrue(oops, score < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(oops, score < getTransitionScore());
     }
 
     /**
@@ -628,6 +657,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
      */
     @Test
     public void stayOnIfRssiDoesNotGetBelowEntryThreshold() throws Exception {
+        assumeTrue(mIsPrimary);
         String oops = "didNotStickLanding";
         int minScore = 100;
         mWifiInfo.setLinkSpeed(6); // Mbps
@@ -644,7 +674,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             oops += ":" + mWifiInfo.getScore();
             if (mWifiInfo.getScore() < minScore) minScore = mWifiInfo.getScore();
         }
-        assertTrue(oops, minScore > ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(oops, minScore > getTransitionScore());
     }
 
     /**
@@ -656,6 +686,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
      */
     @Test
     public void allowTerribleRssiIfDataIsMovingWell() throws Exception {
+        assumeTrue(mIsPrimary);
         mWifiInfo.setSuccessfulTxPacketsPerSecond(
                 mScoringParams.getYippeeSkippyPacketsPerSecond() + 0.1);
         mWifiInfo.setSuccessfulRxPacketsPerSecond(
@@ -665,19 +696,19 @@ public class WifiScoreReportTest extends WifiBaseTest {
         for (int r = -30; r >= -120; r -= 2) {
             mWifiInfo.setRssi(r);
             mWifiScoreReport.calculateAndReportScore();
-            assertTrue(mWifiInfo.getScore() > ConnectedScore.WIFI_TRANSITION_SCORE);
+            assertTrue(mWifiInfo.getScore() > getTransitionScore());
         }
         // If the throughput dips, we should let go
         mWifiInfo.setSuccessfulRxPacketsPerSecond(
                 mScoringParams.getYippeeSkippyPacketsPerSecond() - 0.1);
         mWifiScoreReport.calculateAndReportScore();
-        assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() < getTransitionScore());
         // And even if throughput improves again, once we have decided to let go, disregard
         // the good rates.
         mWifiInfo.setSuccessfulRxPacketsPerSecond(
                 mScoringParams.getYippeeSkippyPacketsPerSecond() + 0.1);
         mWifiScoreReport.calculateAndReportScore();
-        assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() < getTransitionScore());
     }
 
     /**
@@ -700,6 +731,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
      */
     @Test
     public void eventuallyAskForNudCheckWhenNudKnobIsOne() throws Exception {
+        assumeTrue(mIsPrimary);
         String oops = "nud=1";
         long lastAskedMillis = 0; // Check that we don't send too soon
         int asks = 0; // Keep track of how many time we asked
@@ -711,7 +743,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
             boolean ask = mWifiScoreReport.shouldCheckIpLayer();
             if (ask) {
-                assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+                assertTrue(mWifiInfo.getScore() < getTransitionScore());
                 assertTrue(oops, mClock.mWallClockMillis >= lastAskedMillis + 5000);
                 lastAskedMillis = mClock.mWallClockMillis;
                 oops += " " + lastAskedMillis + ":" + mWifiInfo.getScore();
@@ -728,6 +760,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
      */
     @Test
     public void askForMoreNudChecksWhenNudKnobIsBigger() throws Exception {
+        assumeTrue(mIsPrimary);
         String oops = "nud=10";
         long lastAskedMillis = 0; // Check that we don't send too soon
         int asks = 0; // Keep track of how many time we asked
@@ -739,7 +772,9 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiScoreReport.calculateAndReportScore();
             boolean ask = mWifiScoreReport.shouldCheckIpLayer();
             if (ask) {
-                assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+                assertTrue("rssi " + rssi + " score " + mWifiInfo.getScore()
+                        + " higher than " + getTransitionScore(),
+                        mWifiInfo.getScore() < getTransitionScore());
                 assertTrue(oops, mClock.mWallClockMillis >= lastAskedMillis + 5000);
                 lastAskedMillis = mClock.mWallClockMillis;
                 oops += " " + lastAskedMillis + ":" + mWifiInfo.getScore();
@@ -828,7 +863,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiInfo.setRssi(rssi);
             mWifiScoreReport.calculateAndReportScore();
         }
-        assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() < getTransitionScore());
 
         // Then, set high RSSI value to exceed the transition score
         mWifiInfo.setRssi(-50);
@@ -836,11 +871,11 @@ public class WifiScoreReportTest extends WifiBaseTest {
         for (int i = 0; i < 8; i++) {
             mWifiScoreReport.calculateAndReportScore();
         }
-        assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() < getTransitionScore());
 
         // 9 seconds elapse
         mWifiScoreReport.calculateAndReportScore();
-        assertTrue(mWifiInfo.getScore() > ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() > getTransitionScore());
     }
 
     /**
@@ -857,14 +892,14 @@ public class WifiScoreReportTest extends WifiBaseTest {
             mWifiInfo.setRssi(rssi);
             mWifiScoreReport.calculateAndReportScore();
         }
-        assertTrue(mWifiInfo.getScore() < ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() < getTransitionScore());
 
         // Then, set high RSSI value to exceed the transition score
         mWifiInfo.setRssi(-50);
         // Reset the internal timer so that no need to wait for 9 seconds
         mWifiScoreReport.reset();
         mWifiScoreReport.calculateAndReportScore();
-        assertTrue(mWifiInfo.getScore() > ConnectedScore.WIFI_TRANSITION_SCORE);
+        assertTrue(mWifiInfo.getScore() > getTransitionScore());
     }
 
     /**
@@ -1024,11 +1059,11 @@ public class WifiScoreReportTest extends WifiBaseTest {
         mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(-1, 49);
         if (SdkLevel.isAtLeastS()) {
             NetworkScore score = mWifiScoreReport.getScore();
-            assertEquals(ConnectedScore.WIFI_MAX_SCORE, score.getLegacyInt());
-            assertTrue(score.isTransportPrimary());
+            assertEquals(getMaxScore(), score.getLegacyInt());
+            if (mIsPrimary) assertTrue(score.isTransportPrimary());
             assertFalse(score.isExiting());
         } else {
-            assertEquals(ConnectedScore.WIFI_MAX_SCORE, mWifiScoreReport.getLegacyIntScore());
+            assertEquals(getMaxScore(), mWifiScoreReport.getLegacyIntScore());
         }
 
         // Incorrect session ID
@@ -1036,11 +1071,11 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 scorerImpl.mSessionId + 10, 49);
         if (SdkLevel.isAtLeastS()) {
             NetworkScore score = mWifiScoreReport.getScore();
-            assertEquals(ConnectedScore.WIFI_MAX_SCORE, score.getLegacyInt());
-            assertTrue(score.isTransportPrimary());
+            assertEquals(getMaxScore(), score.getLegacyInt());
+            if (mIsPrimary) assertTrue(score.isTransportPrimary());
             assertFalse(score.isExiting());
         } else {
-            assertEquals(ConnectedScore.WIFI_MAX_SCORE, mWifiScoreReport.getLegacyIntScore());
+            assertEquals(getMaxScore(), mWifiScoreReport.getLegacyIntScore());
         }
 
         mExternalScoreUpdateObserverCbCaptor.getValue().notifyScoreUpdate(
@@ -1050,7 +1085,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastS()) {
             NetworkScore score = mWifiScoreReport.getScore();
             assertEquals(score.getLegacyInt(), 49);
-            assertTrue(score.isTransportPrimary());
+            if (mIsPrimary) assertTrue(score.isTransportPrimary());
             assertTrue(score.isExiting());
         } else {
             assertEquals(49, mWifiScoreReport.getLegacyIntScore());
@@ -1063,7 +1098,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastS()) {
             NetworkScore score = mWifiScoreReport.getScore();
             assertEquals(score.getLegacyInt(), 59);
-            assertTrue(score.isTransportPrimary());
+            if (mIsPrimary) assertTrue(score.isTransportPrimary());
             assertFalse(score.isExiting());
         } else {
             assertEquals(59, mWifiScoreReport.getLegacyIntScore());
@@ -1224,9 +1259,9 @@ public class WifiScoreReportTest extends WifiBaseTest {
     @Test
     public void testOnStartInitialScoreInWifiInfoIsMaxScore() throws Exception {
         when(mNetwork.getNetId()).thenReturn(TEST_NETWORK_ID);
-        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID, TEST_USER_SELECTED);
         mWifiScoreReport.setWifiConnectedNetworkScorer(mAppBinder, mWifiConnectedNetworkScorer);
-        assertEquals(ConnectedScore.WIFI_MAX_SCORE, mWifiInfo.getScore());
+        mWifiScoreReport.startConnectedNetworkScorer(TEST_NETWORK_ID, TEST_USER_SELECTED);
+        assertEquals(getMaxScore(), mWifiInfo.getScore());
     }
 
     /**
@@ -1445,7 +1480,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(51, ns.getLegacyInt());
             assertFalse(ns.isExiting());
-            assertTrue(ns.isTransportPrimary());
+            if (mIsPrimary) assertTrue(ns.isTransportPrimary());
         } else {
             verify(mNetworkAgent).sendNetworkScore(51);
         }
@@ -1471,7 +1506,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(51, ns.getLegacyInt());
             assertFalse(ns.isExiting());
-            assertTrue(ns.isTransportPrimary());
+            if (mIsPrimary) assertTrue(ns.isTransportPrimary());
         } else {
             verify(mNetworkAgent).sendNetworkScore(51);
         }
@@ -1594,7 +1629,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(60, ns.getLegacyInt());
             assertFalse(ns.isExiting());
-            assertTrue(ns.isTransportPrimary());
+            if (mIsPrimary) assertTrue(ns.isTransportPrimary());
         }
 
         mExternalScoreUpdateObserverCbCaptor.getValue().notifyStatusUpdate(
@@ -1608,7 +1643,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
             NetworkScore ns = scoreCaptor.getValue();
             assertEquals(60, ns.getLegacyInt());
             assertTrue(ns.isExiting());
-            assertTrue(ns.isTransportPrimary());
+            if (mIsPrimary) assertTrue(ns.isTransportPrimary());
         }
     }
 

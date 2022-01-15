@@ -142,6 +142,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             "set-verbose-logging",
             "set-wifi-enabled",
             "set-passpoint-enabled",
+            "set-multi-internet-state",
             "start-scan",
             "start-softap",
             "status",
@@ -603,6 +604,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                 case "set-passpoint-enabled": {
                     boolean enabled = getNextArgRequiredTrueOrFalse("enabled", "disabled");
                     mWifiService.setWifiPasspointEnabled(enabled);
+                    return 0;
+                }
+                case "set-multi-internet-mode": {
+                    int mode = Integer.parseInt(getNextArgRequired());
+                    mWifiService.setStaConcurrencyForMultiInternetMode(mode);
                     return 0;
                 }
                 case "set-scan-always-available": {
@@ -1312,38 +1318,58 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     }
 
     private NetworkRequest buildNetworkRequest(PrintWriter pw) {
-        boolean isGlob = "-g".equals(getNextOption());
-        String ssid = getNextArgRequired();
-        String type = getNextArgRequired();
+        String firstOpt = getNextOption();
+        boolean isGlob = "-g".equals(firstOpt);
+        boolean noSsid = "-s".equals(firstOpt);
+        String ssid = noSsid ? null : getNextArgRequired();
+        String type = noSsid ? null : getNextArgRequired();
         WifiNetworkSpecifier.Builder specifierBuilder =
                 new WifiNetworkSpecifier.Builder();
         if (isGlob) {
             specifierBuilder.setSsidPattern(
                     new PatternMatcher(ssid, PatternMatcher.PATTERN_ADVANCED_GLOB));
         } else {
-            specifierBuilder.setSsid(ssid);
+            if (ssid != null) specifierBuilder.setSsid(ssid);
         }
-        if (TextUtils.equals(type, "wpa3")) {
-            specifierBuilder.setWpa3Passphrase(getNextArgRequired());
-        } else if (TextUtils.equals(type, "wpa3_transition")) {
-            specifierBuilder.setWpa3Passphrase(getNextArgRequired());
-        } else if (TextUtils.equals(type, "wpa2")) {
-            specifierBuilder.setWpa2Passphrase(getNextArgRequired());
-        } else if (TextUtils.equals(type, "owe")) {
-            specifierBuilder.setIsEnhancedOpen(true);
-        } else if (TextUtils.equals(type, "open")) {
-            // nothing to do.
-        } else {
-            throw new IllegalArgumentException("Unknown network type " + type);
+        if (type != null) {
+            if (TextUtils.equals(type, "wpa3")) {
+                specifierBuilder.setWpa3Passphrase(getNextArgRequired());
+            } else if (TextUtils.equals(type, "wpa3_transition")) {
+                specifierBuilder.setWpa3Passphrase(getNextArgRequired());
+            } else if (TextUtils.equals(type, "wpa2")) {
+                specifierBuilder.setWpa2Passphrase(getNextArgRequired());
+            } else if (TextUtils.equals(type, "owe")) {
+                specifierBuilder.setIsEnhancedOpen(true);
+            } else if (TextUtils.equals(type, "open")) {
+                // nothing to do.
+            } else {
+                throw new IllegalArgumentException("Unknown network type " + type);
+            }
         }
         String bssid = null;
         String option = getNextOption();
         boolean nullBssid = false;
+        boolean hasInternet = false;
         while (option != null) {
             if (option.equals("-b")) {
                 bssid = getNextArgRequired();
             } else if (option.equals("-n")) {
                 nullBssid = true;
+            } else if (option.equals("-d")) {
+                String band = getNextArgRequired();
+                if (band.equals("2")) {
+                    specifierBuilder.setBand(ScanResult.WIFI_BAND_24_GHZ);
+                } else if (band.equals("5")) {
+                    specifierBuilder.setBand(ScanResult.WIFI_BAND_5_GHZ);
+                } else if (band.equals("6")) {
+                    specifierBuilder.setBand(ScanResult.WIFI_BAND_6_GHZ);
+                } else if (band.equals("60")) {
+                    specifierBuilder.setBand(ScanResult.WIFI_BAND_60_GHZ);
+                } else {
+                    throw new IllegalArgumentException("Unknown band " + band);
+                }
+            } else if (option.equals("-i")) {
+                hasInternet = true;
             } else {
                 pw.println("Ignoring unknown option " + option);
             }
@@ -1370,11 +1396,14 @@ public class WifiShellCommand extends BasicShellCommandHandler {
             }
         }
         if (bssid != null && !nullBssid) specifierBuilder.setBssid(MacAddress.fromString(bssid));
-        return new NetworkRequest.Builder()
-                .addTransportType(TRANSPORT_WIFI)
-                .removeCapability(NET_CAPABILITY_INTERNET)
-                .setNetworkSpecifier(specifierBuilder.build())
-                .build();
+        NetworkRequest.Builder builder = new NetworkRequest.Builder()
+                .addTransportType(TRANSPORT_WIFI);
+        if (hasInternet) {
+            builder.addCapability(NET_CAPABILITY_INTERNET);
+        } else {
+            builder.removeCapability(NET_CAPABILITY_INTERNET);
+        }
+        return builder.setNetworkSpecifier(specifierBuilder.build()).build();
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -1796,7 +1825,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    each on a separate line.");
         pw.println("  settings-reset");
         pw.println("    Initiates wifi settings reset");
-        pw.println("  add-request [-g] <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-b <bssid>] [-n]");
+        pw.println("  add-request [-g] [-i] [-n] [-s] <ssid> open|owe|wpa2|wpa3 [<passphrase>]"
+                + " [-b <bssid>] [-d <band=2|5|6|60>]");
         pw.println("    Add a network request with provided params");
         pw.println("    Use 'network-requests-set-user-approved android yes'"
                 +  " to pre-approve requests added via rooted shell (Not persisted)");
@@ -1810,6 +1840,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
         pw.println("           - 'wpa3' - WPA-3 PSK networks");
         pw.println("    -b <bssid> - Set specific BSSID.");
+        pw.println("    -i Set internet capability.");
+        pw.println("    -d Specify the band of access point: 2, 5, 6, or 60");
+        pw.println("    -s No SSID provided, to be chosen by network selection.");
         pw.println("    -n - Prevent auto-selection of BSSID and force it to be null so that the "
                 + "request matches all BSSIDs.");
         pw.println("  remove-request <ssid>");
@@ -1896,6 +1929,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Note: If the band option is not provided, 2.4GHz is the preferred band.");
         pw.println("  stop-lohs");
         pw.println("    Stop local only softap (hotspot)");
+        pw.println("  set-multi-internet-mode 0|1|2");
+        pw.println("    Sets Multi Internet use case mode. 0-disabled 1-dbs 2-multi ap");
     }
 
     @Override

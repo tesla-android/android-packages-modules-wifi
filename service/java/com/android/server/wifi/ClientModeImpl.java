@@ -345,6 +345,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     // This is the BSSID we are trying to associate to, it can be set to SUPPLICANT_BSSID_ANY
     // if we havent selected a BSSID for joining.
     private String mTargetBssid = SUPPLICANT_BSSID_ANY;
+    private int mTargetBand = ScanResult.UNSPECIFIED;
     // This one is used to track the current target network ID. This is used for error
     // handling during connection setup since many error message from supplicant does not report
     // SSID. Once connected, it will be set to invalid
@@ -414,6 +415,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     @VisibleForTesting
     InsecureEapNetworkHandler.InsecureEapNetworkHandlerCallbacks
             mInsecureEapNetworkHandlerCallbacksImpl;
+    private final MultiInternetManager mMultiInternetManager;
 
     @VisibleForTesting
     @Nullable
@@ -680,6 +682,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             @NonNull UntrustedWifiNetworkFactory untrustedWifiNetworkFactory,
             @NonNull OemWifiNetworkFactory oemPaidWifiNetworkFactory,
             @NonNull RestrictedWifiNetworkFactory restrictedWifiNetworkFactory,
+            @NonNull MultiInternetManager multiInternetManager,
             @NonNull WifiLastResortWatchdog wifiLastResortWatchdog,
             @NonNull WakeupController wakeupController,
             @NonNull WifiLockManager wifiLockManager,
@@ -768,6 +771,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mUntrustedNetworkFactory = untrustedWifiNetworkFactory;
         mOemWifiNetworkFactory = oemPaidWifiNetworkFactory;
         mRestrictedWifiNetworkFactory = restrictedWifiNetworkFactory;
+        mMultiInternetManager = multiInternetManager;
 
         mWifiLastResortWatchdog = wifiLastResortWatchdog;
         mWakeupController = wakeupController;
@@ -1332,7 +1336,14 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             return null;
         }
         mLastLinkLayerStatsUpdate = mClock.getWallClockMillis();
-        WifiLinkLayerStats stats = mWifiNative.getWifiLinkLayerStats(mInterfaceName);
+        WifiLinkLayerStats stats = null;
+        if (isPrimary()) {
+            stats = mWifiNative.getWifiLinkLayerStats(mInterfaceName);
+        } else {
+            if (mVerboseLoggingEnabled) {
+                Log.w(getTag(), "Can't getWifiLinkLayerStats on secondary iface");
+            }
+        }
         if (stats != null) {
             mOnTime = stats.on_time;
             mTxTime = stats.tx_time;
@@ -2219,6 +2230,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return mClientModeManager.getRole() == ROLE_CLIENT_PRIMARY;
     }
 
+    /** Check whether this connection is the secondary internet wifi connection. */
+    private boolean isSecondaryInternet() {
+        return mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_LONG_LIVED
+                && mClientModeManager.isSecondaryInternet();
+    }
+
     private void handleScreenStateChanged(boolean screenOn) {
         mScreenOn = screenOn;
         if (mVerboseLoggingEnabled) {
@@ -2228,7 +2245,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             R.bool.config_wifiSuspendOptimizationsEnabled)
                     + " state " + getCurrentState().getName());
         }
-        if (isPrimary()) {
+        if (isPrimary() || isSecondaryInternet()) {
             // Only enable RSSI polling on primary STA, none of the secondary STA use-cases
             // can become the default route when other networks types that provide internet
             // connectivity (e.g. cellular) are available. So, no point in scoring
@@ -3310,7 +3327,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         }
         String currentMacString = mWifiNative.getMacAddress(mInterfaceName);
         MacAddress currentMac = getMacAddressFromBssidString(currentMacString);
-        MacAddress newMac = mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
+        MacAddress newMac = isSecondaryInternet() && mClientModeManager.isSecondaryInternetDbsAp()
+                ? MacAddressUtils.createRandomUnicastAddress()
+                : mWifiConfigManager.getRandomizedMacAndUpdateIfNeeded(config);
         if (!WifiConfiguration.isValidMacAddressForRandomization(newMac)) {
             Log.wtf(getTag(), "Config generated an invalid MAC address");
         } else if (newMac.equals(currentMac)) {
@@ -4153,7 +4172,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 mNetworkFactory.getSpecificNetworkRequestUidAndPackageName(
                         currentWifiConfiguration, currentBssid);
         // There is an active specific request.
-        if (specificRequestUidAndPackageName.first != Process.INVALID_UID) {
+        // TODO: Check if the specific Request is for dual band Wifi or local only.
+        if (specificRequestUidAndPackageName.first != Process.INVALID_UID
+                && !mWifiConnectivityManager.hasMultiInternetConnection()) {
             // Remove internet capability.
             builder.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
             // Fill up the uid/packageName for this connection.
@@ -5308,6 +5329,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             }
                         }
                         sendNetworkChangeBroadcastWithCurrentState();
+                        mMultiInternetManager.notifyBssidAssociatedEvent(mClientModeManager);
                     }
                     break;
                 }
@@ -6220,7 +6242,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return mNetworkFactory.hasConnectionRequests()
                 || mUntrustedNetworkFactory.hasConnectionRequests()
                 || mOemWifiNetworkFactory.hasConnectionRequests()
-                || mRestrictedWifiNetworkFactory.hasConnectionRequests();
+                || mRestrictedWifiNetworkFactory.hasConnectionRequests()
+                || mMultiInternetManager.hasPendingConnectionRequests();
     }
 
     /**
@@ -6758,7 +6781,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 enableRssiPolling(true);
             }
         } else {
-            if (mScreenOn) {
+            if (mScreenOn && !isSecondaryInternet()) {
                 // Stop RSSI polling (if enabled) for the secondary network.
                 enableRssiPolling(false);
             }

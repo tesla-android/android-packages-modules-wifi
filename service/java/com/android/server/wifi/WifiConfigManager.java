@@ -430,6 +430,12 @@ public class WifiConfigManager {
      * @return
      */
     public boolean shouldUseNonPersistentRandomization(WifiConfiguration config) {
+        // If this is the secondary STA for multi internet for DBS AP, use non persistent mac
+        // randomization, as the primary and secondary STAs could connect to the same SSID.
+        if (isMacRandomizationSupported() && config.dbsSecondaryInternet) {
+            return true;
+        }
+
         if (!isMacRandomizationSupported()
                 || config.macRandomizationSetting == WifiConfiguration.RANDOMIZATION_NONE) {
             return false;
@@ -1122,6 +1128,7 @@ public class WifiConfigManager {
         internalConfig.trusted = externalConfig.trusted;
         internalConfig.oemPaid = externalConfig.oemPaid;
         internalConfig.oemPrivate = externalConfig.oemPrivate;
+        internalConfig.dbsSecondaryInternet = externalConfig.dbsSecondaryInternet;
         internalConfig.carrierMerged = externalConfig.carrierMerged;
         internalConfig.restricted = externalConfig.restricted;
 

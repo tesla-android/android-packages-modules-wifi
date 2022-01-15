@@ -812,13 +812,15 @@ public class WifiNetworkSelector {
      * @param oemPaidNetworkAllowed    True if oem paid networks are allowed for connection
      * @param oemPrivateNetworkAllowed True if oem private networks are allowed for connection
      * @param restrictedNetworkAllowed True if restricted networks are allowed for connection
+     * @param multiInternetNetworkAllowed True if multi internet networks are allowed for
+     *                                    connection.
      * @return list of valid Candidate(s)
      */
     public List<WifiCandidates.Candidate> getCandidatesFromScan(
             @NonNull List<ScanDetail> scanDetails, @NonNull Set<String> bssidBlocklist,
             @NonNull List<ClientModeManagerState> cmmStates, boolean untrustedNetworkAllowed,
             boolean oemPaidNetworkAllowed, boolean oemPrivateNetworkAllowed,
-            boolean restrictedNetworkAllowed) {
+            boolean restrictedNetworkAllowed, boolean multiInternetNetworkAllowed) {
         mFilteredNetworks.clear();
         mConnectableNetworks.clear();
         if (scanDetails.size() == 0) {
@@ -837,7 +839,7 @@ public class WifiNetworkSelector {
         updateCandidatesSecurityParams(scanDetails);
 
         // Shall we start network selection at all?
-        if (!isNetworkSelectionNeeded(scanDetails, cmmStates)) {
+        if (!multiInternetNetworkAllowed && !isNetworkSelectionNeeded(scanDetails, cmmStates)) {
             return null;
         }
 
@@ -1062,6 +1064,19 @@ public class WifiNetworkSelector {
      */
     @Nullable
     public WifiConfiguration selectNetwork(@NonNull List<WifiCandidates.Candidate> candidates) {
+        return selectNetwork(candidates, true);
+    }
+
+    /**
+     * Using the registered Scorers, choose the best network from the list of Candidate(s).
+     * The ScanDetailCache is also updated here.
+     * @param candidates - Candidates to perferm network selection on.
+     * @param overrideEnabled If it is allowed to override candidate with User Connect Choice.
+     * @return WifiConfiguration - the selected network, or null.
+     */
+    @Nullable
+    public WifiConfiguration selectNetwork(@NonNull List<WifiCandidates.Candidate> candidates,
+            boolean overrideEnabled) {
         if (candidates == null || candidates.size() == 0) {
             return null;
         }
@@ -1137,7 +1152,7 @@ public class WifiNetworkSelector {
         // Get a fresh copy of WifiConfiguration reflecting any scan result updates
         WifiConfiguration selectedNetwork =
                 mWifiConfigManager.getConfiguredNetwork(selectedNetworkId);
-        if (selectedNetwork != null && legacyOverrideWanted) {
+        if (selectedNetwork != null && legacyOverrideWanted && overrideEnabled) {
             selectedNetwork = overrideCandidateWithUserConnectChoice(selectedNetwork);
         }
         if (selectedNetwork != null) {
