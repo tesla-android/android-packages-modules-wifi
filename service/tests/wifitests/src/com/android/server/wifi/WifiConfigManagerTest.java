@@ -6599,6 +6599,9 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         int baseSecurityType = baseConfig.getDefaultSecurityParams().getSecurityType();
         int upgradableSecurityType = upgradableConfig.getDefaultSecurityParams().getSecurityType();
 
+        // The source guarantees that base configuration has necessary auto-upgrade type.
+        WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(baseConfig);
+
         // Set up the store data.
         List<WifiConfiguration> sharedNetworks = new ArrayList<WifiConfiguration>() {
             {

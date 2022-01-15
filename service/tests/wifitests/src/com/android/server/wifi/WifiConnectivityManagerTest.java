@@ -1060,10 +1060,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
         // Simulate connection failing on the secondary
         clearInvocations(mSecondaryClientModeManager, mPrimaryClientModeManager, mWifiNS);
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mSecondaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
         // verify connection is never restarted when a connection on the secondary STA fails.
         verify(mWifiNS, never()).selectNetwork(any());
         verify(mSecondaryClientModeManager, never()).startConnectToNetwork(
@@ -1732,13 +1733,14 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         verify(mPrimaryClientModeManager).startConnectToNetwork(anyInt(), anyInt(), any());
 
         // Simulate the connection failing
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
         // Verify the failed BSSID is added to blocklist
         verify(mWifiBlocklistMonitor).blockBssidForDurationMs(eq(CANDIDATE_BSSID),
-                eq(CANDIDATE_SSID), anyLong(), anyInt(), anyInt());
+                eq(config), anyLong(), anyInt(), anyInt());
         // Verify another connection starting
         verify(mWifiNS).selectNetwork((List<WifiCandidates.Candidate>)
                 argThat(new WifiCandidatesListSizeMatcher(1)));
@@ -1749,7 +1751,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID_2,
-                CANDIDATE_SSID);
+                config);
         // Verify there are no more connections
         verify(mWifiNS).selectNetwork((List<WifiCandidates.Candidate>)
                 argThat(new WifiCandidatesListSizeMatcher(0)));
@@ -1799,10 +1801,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
 
         // Simulate the connection failing after the cache timeout period.
         when(mClock.getElapsedSinceBootMillis()).thenReturn(TEMP_BSSID_BLOCK_DURATION_MS + 1L);
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
         // verify there are no additional connections.
         verify(mPrimaryClientModeManager).startConnectToNetwork(anyInt(), anyInt(), any());
     }
@@ -1839,10 +1842,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mWifiConnectivityManager.clearCachedCandidates();
 
         // Simulate the connection failing
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
 
         // Verify there no re-attempt to connect
         verify(mPrimaryClientModeManager).startConnectToNetwork(anyInt(), anyInt(), any());
@@ -1886,10 +1890,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
                 .thenReturn(candidateOtherConfig);
 
         // Simulate the connection failing
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_ASSOCIATION_REJECTION, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
 
         // Verify no more connections since there are 0 valid candidates remaining.
         verify(mWifiNS).selectNetwork((List<WifiCandidates.Candidate>)
@@ -2006,9 +2011,10 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
     public void wifiConnected_openNetworkNotifierHandlesConnection() {
         // Set WiFi to connected state
         mWifiInfo.setSSID(WifiSsid.fromUtf8Text(CANDIDATE_SSID));
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
-                WifiMetrics.ConnectionEvent.FAILURE_NONE, CANDIDATE_BSSID, CANDIDATE_SSID);
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, CANDIDATE_BSSID, config);
         verify(mOpenNetworkNotifier).handleWifiConnected(CANDIDATE_SSID);
     }
 
@@ -2037,10 +2043,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
      */
     @Test
     public void wifiConnectionEndsWithFailure_openNetworkNotifierHandlesConnectionFailure() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
                 WifiMetrics.ConnectionEvent.FAILURE_CONNECT_NETWORK_FAILED, CANDIDATE_BSSID,
-                CANDIDATE_SSID);
+                config);
 
         verify(mOpenNetworkNotifier).handleConnectionFailure();
     }
@@ -2054,9 +2061,10 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
      */
     @Test
     public void wifiConnectionEndsWithSuccess_openNetworkNotifierDoesNotHandleConnectionFailure() {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPskNetwork(CANDIDATE_SSID);
         mWifiConnectivityManager.handleConnectionAttemptEnded(
                 mPrimaryClientModeManager,
-                WifiMetrics.ConnectionEvent.FAILURE_NONE, CANDIDATE_BSSID, CANDIDATE_SSID);
+                WifiMetrics.ConnectionEvent.FAILURE_NONE, CANDIDATE_BSSID, config);
 
         verify(mOpenNetworkNotifier, never()).handleConnectionFailure();
     }
