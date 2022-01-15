@@ -270,6 +270,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     private WifiNative.ConnectionCapabilities mLastConnectionCapabilities;
     private int mPowerSaveDisableRequests = 0; // mask based on @PowerSaveClientType
     private boolean mIsUserSelected = false;
+    private boolean mCurrentConnectionDetectedCaptivePortal;
 
     private String getTag() {
         return TAG + "[" + (mInterfaceName == null ? "unknown" : mInterfaceName) + "]";
@@ -2791,6 +2792,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         registerDisconnected();
         mLastNetworkId = WifiConfiguration.INVALID_NETWORK_ID;
         mLastSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        mCurrentConnectionDetectedCaptivePortal = false;
         mLastSimBasedConnectionCarrierName = null;
         checkAbnormalDisconnectionAndTakeBugReport();
         mWifiScoreCard.resetConnectionState(mInterfaceName);
@@ -3738,6 +3740,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         loge("CMD_START_CONNECT and no config, bail out...");
                         break;
                     }
+                    mCurrentConnectionDetectedCaptivePortal = false;
                     mTargetNetworkId = netId;
                     // Update scorecard while there is still state from existing connection
                     mLastScanRssi = mWifiConfigManager.findScanRssi(netId,
@@ -4306,6 +4309,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         + ", redirectUri=" + redirectUri);
                 mWifiConfigManager.noteCaptivePortalDetected(mWifiInfo.getNetworkId());
                 mCmiMonitor.onCaptivePortalDetected(mClientModeManager);
+                mCurrentConnectionDetectedCaptivePortal = true;
             }
         }
 
@@ -5830,7 +5834,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 mWifiScoreCard.noteValidationFailure(mWifiInfo);
                             }
                         }
-                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT) {
+                        if (mClientModeManager.getRole() == ROLE_CLIENT_SECONDARY_TRANSIENT
+                                && !mCurrentConnectionDetectedCaptivePortal) {
                             Log.d(getTag(), "Internet validation failed during MBB,"
                                     + " disconnecting ClientModeManager=" + mClientModeManager);
                             mWifiMetrics.logStaEvent(
