@@ -124,6 +124,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock ActiveModeWarden mActiveModeWarden;
     @Mock WifiConnectivityManager mWifiConnectivityManager;
+    @Mock WifiConfigManager mWifiConfigManager;
     @Captor ArgumentCaptor<WifiManager.ScoreUpdateObserver> mExternalScoreUpdateObserverCbCaptor;
     private TestLooper mLooper;
 
@@ -225,7 +226,7 @@ public class WifiScoreReportTest extends WifiBaseTest {
                 mDeviceConfigFacade, mContext,
                 mAdaptiveConnectivityEnabledSettingObserver, TEST_IFACE_NAME,
                 mExternalScoreUpdateObserverProxy, mWifiSettingsStore,
-                mWifiGlobals, mActiveModeWarden, mWifiConnectivityManager);
+                mWifiGlobals, mActiveModeWarden, mWifiConnectivityManager, mWifiConfigManager);
         mWifiScoreReport.onRoleChanged(ActiveModeManager.ROLE_CLIENT_PRIMARY);
         mWifiScoreReport.setNetworkAgent(mNetworkAgent);
         when(mDeviceConfigFacade.getMinConfirmationDurationSendLowScoreMs()).thenReturn(

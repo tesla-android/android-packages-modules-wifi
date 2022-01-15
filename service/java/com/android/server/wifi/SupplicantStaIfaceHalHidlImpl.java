@@ -74,7 +74,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -100,8 +99,6 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
     public static final String HAL_INSTANCE_NAME = "default";
     @VisibleForTesting
     public static final long WAIT_FOR_DEATH_TIMEOUT_MS = 50L;
-    @VisibleForTesting
-    static final String PMK_CACHE_EXPIRATION_ALARM_TAG = "PMK_CACHE_EXPIRATION_TIMER";
     /**
      * Regex pattern for extracting the wps device type bytes.
      * Matches a strings like the following: "<categ>-<OUI>-<subcateg>";
@@ -125,7 +122,7 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
     private Map<String, List<Pair<SupplicantStaNetworkHalHidlImpl, WifiConfiguration>>>
             mLinkedNetworkLocalAndRemoteConfigs = new HashMap<>();
     @VisibleForTesting
-    Map<Integer, PmkCacheStoreData> mPmkCacheEntries = new HashMap<>();
+    PmkCacheManager mPmkCacheManager;
     private SupplicantDeathEventHandler mDeathEventHandler;
     private ServiceManagerDeathRecipient mServiceManagerDeathRecipient;
     private SupplicantDeathRecipient mSupplicantDeathRecipient;
@@ -181,19 +178,6 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
         }
     }
 
-    @VisibleForTesting
-    static class PmkCacheStoreData {
-        public long expirationTimeInSec;
-        public ArrayList<Byte> data;
-        public MacAddress macAddress;
-
-        PmkCacheStoreData(long timeInSec, ArrayList<Byte> serializedData, MacAddress macAddress) {
-            expirationTimeInSec = timeInSec;
-            data = serializedData;
-            this.macAddress = macAddress;
-        }
-    }
-
     public SupplicantStaIfaceHalHidlImpl(Context context, WifiMonitor monitor,
             FrameworkFacade frameworkFacade, Handler handler,
             Clock clock, WifiMetrics wifiMetrics,
@@ -208,6 +192,7 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
 
         mServiceManagerDeathRecipient = new ServiceManagerDeathRecipient();
         mSupplicantDeathRecipient = new SupplicantDeathRecipient();
+        mPmkCacheManager = new PmkCacheManager(mClock, mEventHandler);
     }
 
     /**
@@ -1072,13 +1057,15 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
 
             SecurityParams params = config.getNetworkSelectionStatus()
                     .getCandidateSecurityParams();
-            PmkCacheStoreData pmkData = mPmkCacheEntries.get(config.networkId);
-            if (pmkData != null && params != null
-                    && !params.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)
-                    && pmkData.expirationTimeInSec > mClock.getElapsedSinceBootMillis() / 1000) {
-                logi("Set PMK cache for config id " + config.networkId);
-                if (networkHandle.setPmkCache(pmkData.data)) {
-                    mWifiMetrics.setConnectionPmkCache(ifaceName, true);
+            if (params != null && !params.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) {
+                List<ArrayList<Byte>> pmkDataList = mPmkCacheManager.get(config.networkId);
+                if (pmkDataList != null) {
+                    logi("Set PMK cache for config id " + config.networkId);
+                    pmkDataList.forEach(pmkData -> {
+                        if (networkHandle.setPmkCache(pmkData)) {
+                            mWifiMetrics.setConnectionPmkCache(ifaceName, true);
+                        }
+                    });
                 }
             }
 
@@ -1157,13 +1144,7 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
      */
     public void removeNetworkCachedDataIfNeeded(int networkId, MacAddress curMacAddress) {
         synchronized (mLock) {
-            PmkCacheStoreData pmkData = mPmkCacheEntries.get(networkId);
-
-            if (pmkData == null) return;
-
-            if (curMacAddress.equals(pmkData.macAddress)) return;
-
-            removeNetworkCachedData(networkId);
+            mPmkCacheManager.remove(networkId, curMacAddress);
         }
     }
 
@@ -2875,63 +2856,18 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
             String ifaceName,
             int networkId, long expirationTimeInSec, ArrayList<Byte> serializedEntry) {
         String macAddressStr = getMacAddress(ifaceName);
-        if (macAddressStr == null) {
-            Log.w(TAG, "Omit PMK cache due to no valid MAC address on " + ifaceName);
-            return;
-        }
         try {
-            MacAddress macAddress = MacAddress.fromString(macAddressStr);
-            mPmkCacheEntries.put(networkId,
-                    new PmkCacheStoreData(expirationTimeInSec, serializedEntry, macAddress));
-            updatePmkCacheExpiration();
+            if (!mPmkCacheManager.add(MacAddress.fromString(macAddressStr),
+                    networkId, expirationTimeInSec, serializedEntry)) {
+                Log.w(TAG, "Cannot add PMK cache for " + ifaceName);
+            }
         } catch (IllegalArgumentException ex) {
-            Log.w(TAG, "Invalid MAC address string " + macAddressStr);
+            Log.w(TAG, "Cannot add PMK cache: " + ex);
         }
     }
 
     protected void removePmkCacheEntry(int networkId) {
-        if (mPmkCacheEntries.remove(networkId) != null) {
-            updatePmkCacheExpiration();
-        }
-    }
-
-    private void updatePmkCacheExpiration() {
-        synchronized (mLock) {
-            mEventHandler.removeCallbacksAndMessages(PMK_CACHE_EXPIRATION_ALARM_TAG);
-
-            long elapseTimeInSecond = mClock.getElapsedSinceBootMillis() / 1000;
-            long nextUpdateTimeInSecond = Long.MAX_VALUE;
-            logd("Update PMK cache expiration at " + elapseTimeInSecond);
-
-            Iterator<Map.Entry<Integer, PmkCacheStoreData>> iter =
-                    mPmkCacheEntries.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<Integer, PmkCacheStoreData> entry = iter.next();
-                if (entry.getValue().expirationTimeInSec <= elapseTimeInSecond) {
-                    logd("Config " + entry.getKey() + " PMK is expired.");
-                    iter.remove();
-                } else if (entry.getValue().expirationTimeInSec <= 0) {
-                    logd("Config " + entry.getKey() + " PMK expiration time is invalid.");
-                    iter.remove();
-                } else if (nextUpdateTimeInSecond > entry.getValue().expirationTimeInSec) {
-                    nextUpdateTimeInSecond = entry.getValue().expirationTimeInSec;
-                }
-            }
-
-            // No need to arrange next update since there is no valid PMK in the cache.
-            if (nextUpdateTimeInSecond == Long.MAX_VALUE) {
-                return;
-            }
-
-            logd("PMK cache next expiration time: " + nextUpdateTimeInSecond);
-            long delayedTimeInMs = (nextUpdateTimeInSecond - elapseTimeInSecond) * 1000;
-            mEventHandler.postDelayed(
-                    () -> {
-                        updatePmkCacheExpiration();
-                    },
-                    PMK_CACHE_EXPIRATION_ALARM_TAG,
-                    (delayedTimeInMs > 0) ? delayedTimeInMs : 0);
-        }
+        mPmkCacheManager.remove(networkId);
     }
 
     private static void logd(String s) {

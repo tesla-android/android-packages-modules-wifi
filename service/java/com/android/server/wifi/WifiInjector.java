@@ -360,7 +360,7 @@ public class WifiInjector {
         mWifiBlocklistMonitor = new WifiBlocklistMonitor(mContext, mWifiConnectivityHelper,
                 mWifiLastResortWatchdog, mClock, new LocalLog(
                 mContext.getSystemService(ActivityManager.class).isLowRamDevice() ? 128 : 256),
-                mWifiScoreCard, mScoringParams, mWifiMetrics);
+                mWifiScoreCard, mScoringParams, mWifiMetrics, mWifiPermissionsUtil);
         mWifiMetrics.setWifiBlocklistMonitor(mWifiBlocklistMonitor);
         // Config Manager
         mWifiConfigManager = new WifiConfigManager(mContext, mClock,
@@ -763,7 +763,7 @@ public class WifiInjector {
                         mWifiNative, mWifiBlocklistMonitor, mWifiThreadRunner, mWifiScoreCard,
                         mDeviceConfigFacade, mContext, mAdaptiveConnectivityEnabledSettingObserver,
                         ifaceName, mExternalScoreUpdateObserverProxy, mSettingsStore, mWifiGlobals,
-                        mActiveModeWarden, mWifiConnectivityManager),
+                        mActiveModeWarden, mWifiConnectivityManager, mWifiConfigManager),
                 mWifiP2pConnection, mWifiGlobals, ifaceName, clientModeManager,
                 mCmiMonitor, mBroadcastQueue, mWifiNetworkSelector, makeTelephonyManager(),
                 this, mSettingsConfigStore, verboseLoggingEnabled, mWifiNotificationManager);

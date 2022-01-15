@@ -2703,10 +2703,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyString(), nullable(String.class), anyInt(), nullable(String.class));
         when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
                 .thenReturn(true);
-        if (SdkLevel.isAtLeastT()) {
-            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
-                    .thenReturn(true);
-        }
+        when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
 
         mLooper.startAutoDispatch();
         ParceledListSlice<WifiConfiguration> configs =
@@ -5899,6 +5897,33 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that add or update networks is not allowed for apps targeting below Q SDK
+     * when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddOrUpdateNetworkIsNotAllowedForAppsTargetingBelowQSdkWithUserRestriction()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        doReturn(AppOpsManager.MODE_ALLOWED).when(mAppOpsManager)
+                .noteOp(AppOpsManager.OPSTR_CHANGE_WIFI_STATE, Process.myUid(), TEST_PACKAGE_NAME);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
+                new NetworkUpdateResult(0));
+        when(mWifiPermissionsUtil.isTargetSdkLessThan(anyString(),
+                eq(Build.VERSION_CODES.Q), anyInt())).thenReturn(true);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        mLooper.startAutoDispatch();
+        assertEquals(-1, mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verifyCheckChangePermission(TEST_PACKAGE_NAME);
+        verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any());
+        verify(mWifiMetrics, never()).incrementNumAddOrUpdateNetworkCalls();
+    }
+
+    /**
      * Verify that add or update networks is allowed for settings app.
      */
     @Test
@@ -5979,10 +6004,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .thenReturn(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
                 new NetworkUpdateResult(0));
-        if (SdkLevel.isAtLeastT()) {
-            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
-                    .thenReturn(true);
-        }
+        when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
 
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
         mLooper.startAutoDispatch();
@@ -6005,10 +6028,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .thenReturn(true);
         when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any())).thenReturn(
                 new NetworkUpdateResult(0));
-        if (SdkLevel.isAtLeastT()) {
-            when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
-                    .thenReturn(true);
-        }
+        when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+                .thenReturn(true);
 
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
         mLooper.startAutoDispatch();
@@ -6090,21 +6111,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
     }
 
     /**
-     * Verify that a Device Owner (DO) app is allowed to call addOrUpdateNetworkPrivileged.
+     * Verify that an admin app is allowed to call addOrUpdateNetworkPrivileged.
      */
     @Test
-    public void testAddOrUpdateNetworkPrivilegedIsAllowedForDOApp() throws Exception {
-        when(mWifiPermissionsUtil.isDeviceOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
-                .thenReturn(true);
-        verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
-    }
-
-    /**
-     * Verify that a Profile Owner (PO) app is allowed to call addOrUpdateNetworkPrivileged.
-     */
-    @Test
-    public void testAddOrUpdateNetworkPrivilegedIsAllowedForPOApp() throws Exception {
-        when(mWifiPermissionsUtil.isProfileOwner(Binder.getCallingUid(), TEST_PACKAGE_NAME))
+    public void testAddOrUpdateNetworkPrivilegedIsAllowedForAdminApp() throws Exception {
+        when(mWifiPermissionsUtil.isAdmin(Binder.getCallingUid(), TEST_PACKAGE_NAME))
                 .thenReturn(true);
         verifyAddOrUpdateNetworkPrivilegedDoesNotThrowException();
     }
@@ -6250,6 +6261,122 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         verify(mWifiNetworkSuggestionsManager, times(2)).add(
                 any(), eq(Binder.getCallingUid()), eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
+    }
+
+    /**
+     * Ensure that we invoke {@link WifiNetworkSuggestionsManager} to add network
+     * suggestions for carrier app when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddNetworkSuggestionsIsAllowedForCarrierAppWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiNetworkSuggestionsManager.add(any(), anyInt(), anyString(),
+                nullable(String.class))).thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+        when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(anyString())).thenReturn(
+                TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiServiceImpl.addNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        TEST_FEATURE_ID));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiNetworkSuggestionsManager).add(
+                any(), eq(Binder.getCallingUid()), eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
+    }
+
+    /**
+     * Ensure that we invoke {@link WifiNetworkSuggestionsManager} to add network
+     * suggestions for privileged app when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddNetworkSuggestionsIsAllowedForPrivilegedAppWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiNetworkSuggestionsManager.add(any(), anyInt(), anyString(),
+                nullable(String.class))).thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+        when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
+                anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
+
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiServiceImpl.addNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        TEST_FEATURE_ID));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiNetworkSuggestionsManager).add(
+                any(), eq(Binder.getCallingUid()), eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
+    }
+
+    /**
+     * Ensure that we invoke {@link WifiNetworkSuggestionsManager} to add network
+     * suggestions for system app when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddNetworkSuggestionsIsAllowedForSystemAppWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiNetworkSuggestionsManager.add(any(), anyInt(), anyString(),
+                nullable(String.class))).thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+        when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(true);
+
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiServiceImpl.addNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        TEST_FEATURE_ID));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiNetworkSuggestionsManager).add(
+                any(), eq(Binder.getCallingUid()), eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
+    }
+
+    /**
+     * Ensure that we invoke {@link WifiNetworkSuggestionsManager} to add network
+     * suggestions for admin app when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddNetworkSuggestionsIsAllowedForAdminAppWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiNetworkSuggestionsManager.add(any(), anyInt(), anyString(),
+                nullable(String.class))).thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+        when(mWifiPermissionsUtil.isAdmin(anyInt(), anyString())).thenReturn(true);
+
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiServiceImpl.addNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        TEST_FEATURE_ID));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiNetworkSuggestionsManager).add(
+                any(), eq(Binder.getCallingUid()), eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
+    }
+
+    /**
+     * Ensure that we don't invoke {@link WifiNetworkSuggestionsManager} to add network
+     * suggestions for normal app when DISALLOW_ADD_WIFI_CONFIG user restriction is set.
+     */
+    @Test
+    public void testAddNetworkSuggestionsIsNotAllowedForNormalAppWithUserRestriction() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        when(mWifiNetworkSuggestionsManager.add(any(), anyInt(), anyString(),
+                nullable(String.class))).thenReturn(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS);
+        when(mUserManager.hasUserRestrictionForUser(eq(UserManager.DISALLOW_ADD_WIFI_CONFIG),
+                any())).thenReturn(true);
+
+        mLooper.startAutoDispatch();
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_RESTRICTED_BY_ADMIN,
+                mWifiServiceImpl.addNetworkSuggestions(mock(List.class), TEST_PACKAGE_NAME,
+                        TEST_FEATURE_ID));
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mWifiNetworkSuggestionsManager, never()).add(any(), eq(Binder.getCallingUid()),
+                eq(TEST_PACKAGE_NAME), eq(TEST_FEATURE_ID));
     }
 
     /**
