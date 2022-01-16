@@ -363,4 +363,8 @@ interface IWifiManager
     boolean isWifiPasspointEnabled();
 
     void setWifiPasspointEnabled(boolean enabled);
+
+    int getStaConcurrencyForMultiInternetMode();
+
+    boolean setStaConcurrencyForMultiInternetMode(int mode);
 }

@@ -1492,6 +1492,14 @@ public class WifiConfiguration implements Parcelable {
     public boolean oemPrivate;
 
     /**
+     * Indicate whether or not the network is a secondary network with internet, associated with
+     * a DBS AP same as the primary network on a different band.
+     * This bit is set when this Wifi configuration is created from {@link WifiConnectivityManager}.
+     * @hide
+     */
+    public boolean dbsSecondaryInternet;
+
+    /**
      * Indicate whether or not the network is a carrier merged network.
      * This bit can only be used by suggestion network, see
      * {@link WifiNetworkSuggestion.Builder#setCarrierMerged(boolean)}
@@ -2910,6 +2918,7 @@ public class WifiConfiguration implements Parcelable {
         carrierMerged = false;
         fromWifiNetworkSuggestion = false;
         fromWifiNetworkSpecifier = false;
+        dbsSecondaryInternet = false;
         meteredHint = false;
         meteredOverride = METERED_OVERRIDE_NONE;
         useExternalScores = false;
@@ -3046,12 +3055,13 @@ public class WifiConfiguration implements Parcelable {
         if (this.carrierMerged) sbuf.append(" carrierMerged");
         if (this.fromWifiNetworkSuggestion) sbuf.append(" fromWifiNetworkSuggestion");
         if (this.fromWifiNetworkSpecifier) sbuf.append(" fromWifiNetworkSpecifier");
+        if (this.dbsSecondaryInternet) sbuf.append(" dbsSecondaryInternet");
         if (this.meteredHint) sbuf.append(" meteredHint");
         if (this.useExternalScores) sbuf.append(" useExternalScores");
         if (this.validatedInternetAccess || this.ephemeral || this.trusted || this.oemPaid
                 || this.oemPrivate || this.carrierMerged || this.fromWifiNetworkSuggestion
                 || this.fromWifiNetworkSpecifier || this.meteredHint || this.useExternalScores
-                || this.restricted) {
+                || this.restricted || this.dbsSecondaryInternet) {
             sbuf.append("\n");
         }
         if (this.meteredOverride != METERED_OVERRIDE_NONE) {
@@ -3602,6 +3612,7 @@ public class WifiConfiguration implements Parcelable {
             carrierMerged = source.carrierMerged;
             fromWifiNetworkSuggestion = source.fromWifiNetworkSuggestion;
             fromWifiNetworkSpecifier = source.fromWifiNetworkSpecifier;
+            dbsSecondaryInternet = source.dbsSecondaryInternet;
             meteredHint = source.meteredHint;
             meteredOverride = source.meteredOverride;
             useExternalScores = source.useExternalScores;
@@ -3693,6 +3704,7 @@ public class WifiConfiguration implements Parcelable {
         dest.writeInt(carrierMerged ? 1 : 0);
         dest.writeInt(fromWifiNetworkSuggestion ? 1 : 0);
         dest.writeInt(fromWifiNetworkSpecifier ? 1 : 0);
+        dest.writeInt(dbsSecondaryInternet ? 1 : 0);
         dest.writeInt(meteredHint ? 1 : 0);
         dest.writeInt(meteredOverride);
         dest.writeInt(useExternalScores ? 1 : 0);
@@ -3779,8 +3791,9 @@ public class WifiConfiguration implements Parcelable {
                 config.oemPaid = in.readInt() != 0;
                 config.oemPrivate = in.readInt() != 0;
                 config.carrierMerged = in.readInt() != 0;
-                config.fromWifiNetworkSuggestion =  in.readInt() != 0;
-                config.fromWifiNetworkSpecifier =  in.readInt() != 0;
+                config.fromWifiNetworkSuggestion = in.readInt() != 0;
+                config.fromWifiNetworkSpecifier = in.readInt() != 0;
+                config.dbsSecondaryInternet = in.readInt() != 0;
                 config.meteredHint = in.readInt() != 0;
                 config.meteredOverride = in.readInt();
                 config.useExternalScores = in.readInt() != 0;

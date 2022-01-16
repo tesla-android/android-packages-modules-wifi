@@ -187,6 +187,7 @@
           <item type="bool" name="config_wifiMultiStaNetworkSwitchingMakeBeforeBreakEnabled" />
           <item type="bool" name="config_wifiMultiStaLocalOnlyConcurrencyEnabled" />
           <item type="bool" name="config_wifiMultiStaRestrictedConcurrencyEnabled" />
+          <item type="bool" name="config_wifiMultiStaMultiInternetConcurrencyEnabled" />
           <item type="bool" name="config_wifiDefaultCoexAlgorithmEnabled"/>
           <item type="string" name="config_wifiCoexTableFilepath"/>
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificThreshold" />
