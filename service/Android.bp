@@ -78,6 +78,7 @@ java_library {
         "android.hardware.wifi-V1.3-java",
         "android.hardware.wifi-V1.4-java",
         "android.hardware.wifi-V1.5-java",
+        "android.hardware.wifi-V1.6-java",
         // AIDL hostapd implementation
         "android.hardware.wifi.hostapd-V1-java",
         // HIDL hostapd implementation

@@ -897,6 +897,32 @@ public final class ScanResult implements Parcelable {
     }
 
     /**
+     * Returns the band for the ScanResult according to its frequency.
+     * @hide
+     */
+    @WifiBand public static int toBand(int frequency) {
+        if (ScanResult.is24GHz(frequency)) {
+            return ScanResult.WIFI_BAND_24_GHZ;
+        } else if (ScanResult.is5GHz(frequency)) {
+            return ScanResult.WIFI_BAND_5_GHZ;
+        } else if (ScanResult.is6GHz(frequency)) {
+            return ScanResult.WIFI_BAND_6_GHZ;
+        } else if (ScanResult.is60GHz(frequency)) {
+            return ScanResult.WIFI_BAND_60_GHZ;
+        }
+        return ScanResult.UNSPECIFIED;
+    }
+
+    /**
+     * Returns the band for the ScanResult according to its frequency.
+     * @hide
+     */
+    @SystemApi
+    @WifiBand public int getBand() {
+        return ScanResult.toBand(this.frequency);
+    }
+
+    /**
      * @hide
      */
     public boolean is24GHz() {

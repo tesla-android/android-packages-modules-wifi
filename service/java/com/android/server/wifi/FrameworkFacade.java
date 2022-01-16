@@ -355,4 +355,42 @@ public class FrameworkFacade {
     public String getWifiKeyGrantAsUser(Context context, UserHandle user, String alias) {
         return KeyChain.getWifiKeyGrantAsUser(context, user, alias);
     }
+
+    /**
+     * Check if the request comes from foreground app/service.
+     * @param context Application context
+     * @param requestorPackageName requestor package name
+     * @return true if the requestor is foreground app/service.
+     */
+    public boolean isRequestFromForegroundAppOrService(Context context,
+            @NonNull String requestorPackageName) {
+        ActivityManager activityManager = getActivityManager(context);
+        if (activityManager == null) return false;
+        try {
+            return activityManager.getPackageImportance(requestorPackageName)
+                    <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND_SERVICE;
+        } catch (SecurityException e) {
+            Log.e(TAG, "Failed to check the app state", e);
+            return false;
+        }
+    }
+
+    /**
+     * Check if the request comes from foreground app.
+     * @param context Application context
+     * @param requestorPackageName requestor package name
+     * @return true if requestor is foreground app.
+     */
+    public boolean isRequestFromForegroundApp(Context context,
+            @NonNull String requestorPackageName) {
+        ActivityManager activityManager = getActivityManager(context);
+        if (activityManager == null) return false;
+        try {
+            return activityManager.getPackageImportance(requestorPackageName)
+                    <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+        } catch (SecurityException e) {
+            Log.e(TAG, "Failed to check the app state", e);
+            return false;
+        }
+    }
 }

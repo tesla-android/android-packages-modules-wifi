@@ -247,6 +247,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     @VisibleForTesting
     public final CountryCodeTracker mCountryCodeTracker;
+    private final MultiInternetManager mMultiInternetManager;
 
     /**
      * Callback for use with LocalOnlyHotspot to unregister requesting applications upon death.
@@ -471,6 +472,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mDefaultClientModeManager = mWifiInjector.getDefaultClientModeManager();
         mCountryCodeTracker = new CountryCodeTracker();
         mWifiTetheringDisallowed = false;
+        mMultiInternetManager = mWifiInjector.getMultiInternetManager();
     }
 
     /**
@@ -716,6 +718,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().register();
             mWifiInjector.getRestrictedWifiNetworkFactory().register();
             mWifiInjector.getOemWifiNetworkFactory().register();
+            mWifiInjector.getMultiInternetWifiNetworkFactory().register();
             mWifiInjector.getWifiP2pConnection().handleBootCompleted();
             // Start to listen country code change to avoid query supported channels causes boot
             // time increased.
@@ -4485,6 +4488,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mWifiInjector.getUntrustedWifiNetworkFactory().dump(fd, pw, args);
             mWifiInjector.getOemWifiNetworkFactory().dump(fd, pw, args);
             mWifiInjector.getRestrictedWifiNetworkFactory().dump(fd, pw, args);
+            mWifiInjector.getMultiInternetWifiNetworkFactory().dump(fd, pw, args);
             pw.println("Wlan Wake Reasons:" + mWifiNative.getWlanWakeReasonCount());
             pw.println();
             mWifiConfigManager.dump(fd, pw, args);
@@ -5027,6 +5031,10 @@ public class WifiServiceImpl extends BaseWifiService {
                     }
                     if (mActiveModeWarden.isStaStaConcurrencySupportedForRestrictedConnections()) {
                         concurrencyFeatureSet |= WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTED;
+                    }
+                    if (mActiveModeWarden.isStaStaConcurrencySupportedForMultiInternet()) {
+                        concurrencyFeatureSet |= WifiManager
+                                .WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET;
                     }
                     return concurrencyFeatureSet;
                 }, 0L);
@@ -6093,5 +6101,50 @@ public class WifiServiceImpl extends BaseWifiService {
      */
     private boolean isTrustOnFirstUseSupported() {
         return (getSupportedFeatures() & WIFI_FEATURE_TRUST_ON_FIRST_USE) != 0;
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#getStaConcurrencyForMultiInternetMode()}.
+     */
+    @Override
+    public @WifiManager.WifiMultiInternetMode int getStaConcurrencyForMultiInternetMode() {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        enforceAccessPermission();
+
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("getStaConcurrencyForMultiInternetMode uid=%")
+                    .c(Binder.getCallingUid()).flush();
+        }
+        // Post operation to handler thread
+        return mWifiThreadRunner.call(
+                () -> mMultiInternetManager.getStaConcurrencyForMultiInternetMode(),
+                WifiManager.WIFI_MULTI_INTERNET_MODE_DISABLED);
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#setStaConcurrencyForMultiInternetMode()}.
+     */
+    @Override
+    public boolean setStaConcurrencyForMultiInternetMode(
+            @WifiManager.WifiMultiInternetMode int mode) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        if (!isSettingsOrSuw(pid, uid)) {
+            throw new SecurityException(TAG + ": Permission denied");
+        }
+
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setStaConcurrencyForMultiInternetMode uid=% pid=% mode=%")
+                .c(uid).c(pid).c(mode)
+                .flush();
+        }
+        // Post operation to handler thread
+        return mWifiThreadRunner.call(() ->
+                mMultiInternetManager.setStaConcurrencyForMultiInternetMode(mode), false);
     }
 }
