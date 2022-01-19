@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package android.net.wifi;
-
-import static android.net.wifi.WifiStringResourceWrapper.CARRIER_ID_RESOURCE_NAME_SUFFIX;
+package com.android.server.wifi;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
+import static com.android.server.wifi.WifiStringResourceWrapper.CARRIER_ID_RESOURCE_NAME_SUFFIX;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -44,7 +43,7 @@ import org.mockito.MockitoSession;
  * Unit tests for {@link WifiStringResourceWrapper}
  */
 @SmallTest
-public class WifiStringResourceWrapperTest {
+public class WifiStringResourceWrapperTest extends WifiBaseTest {
     private MockitoSession mStaticMockSession = null;
 
     @Mock WifiContext mContext;
