@@ -27,7 +27,6 @@ import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.net.wifi.WifiContext;
 
 import androidx.test.filters.SmallTest;
 
@@ -45,8 +44,7 @@ import org.mockito.MockitoAnnotations;
 public class SoftApNotifierTest extends WifiBaseTest {
     private static final String TEST_SSID = "Test SSID";
 
-    @Mock
-    WifiContext mContext;
+    @Mock WifiContext mContext;
     @Mock Resources mResources;
     @Mock WifiNotificationManager mWifiNotificationManager;
     @Mock FrameworkFacade mFrameworkFacade;

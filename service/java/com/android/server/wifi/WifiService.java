@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.content.Context;
-import android.net.wifi.WifiContext;
 import android.util.Log;
 
 import com.android.server.SystemService;

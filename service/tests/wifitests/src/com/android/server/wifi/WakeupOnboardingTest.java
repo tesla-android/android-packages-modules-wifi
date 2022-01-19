@@ -31,7 +31,6 @@ import static org.mockito.Mockito.verify;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.wifi.WifiContext;
 import android.os.Handler;
 import android.os.test.TestLooper;
 import android.provider.Settings;

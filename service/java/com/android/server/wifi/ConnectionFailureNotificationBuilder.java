@@ -24,7 +24,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.drawable.Icon;
 import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiContext;
 import android.view.WindowManager;
 
 import com.android.wifi.resources.R;
