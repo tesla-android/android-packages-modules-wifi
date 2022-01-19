@@ -30,6 +30,7 @@ import android.content.IntentFilter;
 import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiContext;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.os.Handler;
 import android.provider.Browser;
