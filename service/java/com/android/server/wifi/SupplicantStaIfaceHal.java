@@ -2810,13 +2810,13 @@ public class SupplicantStaIfaceHal {
 
     protected class SupplicantStaIfaceHalCallback extends SupplicantStaIfaceCallbackImpl {
         SupplicantStaIfaceHalCallback(@NonNull String ifaceName) {
-            super(SupplicantStaIfaceHal.this, ifaceName, mLock, mWifiMonitor);
+            super(SupplicantStaIfaceHal.this, ifaceName, new Object(), mWifiMonitor);
         }
     }
 
     protected class SupplicantStaIfaceHalCallbackV1_1 extends SupplicantStaIfaceCallbackV1_1Impl {
         SupplicantStaIfaceHalCallbackV1_1(@NonNull String ifaceName) {
-            super(SupplicantStaIfaceHal.this, ifaceName, mLock, mWifiMonitor);
+            super(SupplicantStaIfaceHal.this, ifaceName, new Object(), mWifiMonitor);
         }
     }
 
@@ -2834,7 +2834,7 @@ public class SupplicantStaIfaceHal {
 
     protected class SupplicantStaIfaceHalCallbackV1_4 extends SupplicantStaIfaceCallbackV1_4Impl {
         SupplicantStaIfaceHalCallbackV1_4(@NonNull String ifaceName) {
-            super(SupplicantStaIfaceHal.this, ifaceName, mLock, mWifiMonitor);
+            super(SupplicantStaIfaceHal.this, ifaceName, new Object(), mWifiMonitor);
         }
     }
 
