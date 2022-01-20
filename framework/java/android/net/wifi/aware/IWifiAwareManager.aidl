@@ -26,6 +26,7 @@ import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.AwareResources;
+import android.net.wifi.aware.AwareParams;
 
 import android.os.Bundle;
 
@@ -44,6 +45,7 @@ interface IWifiAwareManager
     void enableInstantCommunicationMode(in String callingPackage, boolean enable);
     boolean isInstantCommunicationModeEnabled();
     boolean isSetChannelOnDataPathSupported();
+    void setAwareParams(in AwareParams parameters);
 
     // client API
     void connect(in IBinder binder, in String callingPackage, in String callingFeatureId,

@@ -1037,4 +1037,21 @@ public class WifiAwareManager {
             mOriginalCallback.onSessionTerminated();
         }
     }
+
+    /**
+     * Set Wi-Fi Aware protocol parameters.
+     * @hide
+     * @param params An object contain specified parameters. Use {@code null} to remove previously
+     *               set configuration and restore default behavior.
+     */
+    @SystemApi
+    @RequiresPermission(allOf = {android.Manifest.permission.OVERRIDE_WIFI_CONFIG,
+            CHANGE_WIFI_STATE})
+    public void setAwareParams(@Nullable AwareParams params) {
+        try {
+            mService.setAwareParams(params);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }
