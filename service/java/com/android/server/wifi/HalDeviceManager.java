@@ -2076,18 +2076,16 @@ public class HalDeviceManager {
         for (WifiIfaceInfo ifaceInfo : ifaceInfosForExistingIfaceType) {
             int newRequestorWsPriority = getRequestorWsPriority(newRequestorWsHelper);
             int existingRequestorWsPriority = getRequestorWsPriority(ifaceInfo.requestorWsHelper);
-            if (allowedToDelete(
-                    requestedIfaceType, newRequestorWsPriority, existingIfaceType,
-                    existingRequestorWsPriority)) {
-                if (mDbg) {
-                    Log.d(TAG, "allowedToDeleteIfaceTypeForRequestedType: Allowed to delete "
-                            + "requestedIfaceType=" + requestedIfaceType
-                            + "existingIfaceType=" + existingIfaceType
-                            + ", newRequestorWsPriority=" + newRequestorWsHelper
-                            + ", existingRequestorWsPriority" + existingRequestorWsPriority);
-                }
-                return true;
+            boolean isAllowedToDelete = allowedToDelete(requestedIfaceType, newRequestorWsPriority,
+                    existingIfaceType, existingRequestorWsPriority);
+            if (mDbg) {
+                Log.d(TAG, "allowedToDeleteIfaceTypeForRequestedType = " + isAllowedToDelete
+                        + " requestedIfaceType=" + requestedIfaceType
+                        + " existingIfaceType=" + existingIfaceType
+                        + ", newRequestorWsPriority=" + newRequestorWsPriority
+                        + ", existingRequestorWsPriority=" + existingRequestorWsPriority);
             }
+            if (isAllowedToDelete) return true;
         }
         return false;
     }
@@ -2102,7 +2100,8 @@ public class HalDeviceManager {
      *      - Else, not allowed to delete.
      *  - Delete ifaces based on the descending requestor priority
      *    (i.e bg app requests are deleted first, privileged app requests are deleted last)
-     *  - If there are > 1 ifaces within the same priority group to delete, select them randomly.
+     *  - If there are > 1 ifaces within the same priority group to delete, later created iface
+     *    is deleted first.
      *
      * @param excessInterfaces Number of interfaces which need to be selected.
      * @param requestedIfaceType Requested iface type.
@@ -2125,7 +2124,9 @@ public class HalDeviceManager {
         boolean lookupError = false;
         // Map of priority levels to ifaces to delete.
         Map<Integer, List<WifiIfaceInfo>> ifacesToDeleteMap = new HashMap<>();
-        for (WifiIfaceInfo info : interfaces) {
+        // Reverse order to make sure later created interfaces deleted firstly
+        for (int i = interfaces.length - 1; i >= 0; i--) {
+            WifiIfaceInfo info = interfaces[i];
             InterfaceCacheEntry cacheEntry;
             synchronized (mLock) {
                 cacheEntry = mInterfaceInfoCache.get(Pair.create(info.name, getType(info.iface)));
@@ -2138,8 +2139,15 @@ public class HalDeviceManager {
             }
             int newRequestorWsPriority = getRequestorWsPriority(newRequestorWsHelper);
             int existingRequestorWsPriority = getRequestorWsPriority(cacheEntry.requestorWsHelper);
-            if (allowedToDelete(requestedIfaceType, newRequestorWsPriority, existingIfaceType,
-                    existingRequestorWsPriority)) {
+            boolean isAllowedToDelete = allowedToDelete(requestedIfaceType, newRequestorWsPriority,
+                    existingIfaceType, existingRequestorWsPriority);
+            if (VDBG) {
+                Log.d(TAG, "info=" + info + ":  allowedToDelete=" + isAllowedToDelete
+                        + " (requestedIfaceType=" + requestedIfaceType + ", newRequestorWsPriority="
+                        + newRequestorWsPriority + ", existingIfaceType=" + existingIfaceType
+                        + ", existingRequestorWsPriority=" + existingRequestorWsPriority + ")");
+            }
+            if (isAllowedToDelete) {
                 ifacesToDeleteMap.computeIfAbsent(
                         existingRequestorWsPriority, v -> new ArrayList<>()).add(info);
             }
@@ -2176,8 +2184,9 @@ public class HalDeviceManager {
     private boolean canIfaceComboSupportRequestedIfaceCombo(
             int[] chipIfaceCombo, int[] requestedIfaceCombo) {
         if (VDBG) {
-            Log.d(TAG, "canIfaceComboSupportRequest: chipIfaceCombo=" + chipIfaceCombo
-                    + ", requestedIfaceCombo=" + requestedIfaceCombo);
+            Log.d(TAG, "canIfaceComboSupportRequestedIfaceCombo: chipIfaceCombo="
+                    + Arrays.toString(chipIfaceCombo)
+                    + ", requestedIfaceCombo=" + Arrays.toString(requestedIfaceCombo));
         }
         for (int ifaceType : IFACE_TYPES_BY_PRIORITY) {
             if (chipIfaceCombo[ifaceType] < requestedIfaceCombo[ifaceType]) {
@@ -2193,7 +2202,7 @@ public class HalDeviceManager {
             long requiredChipCapabilities, int[] ifaceCombo) {
         if (VDBG) {
             Log.d(TAG, "isItPossibleToCreateIfaceCombo: chipInfos=" + Arrays.deepToString(chipInfos)
-                    + ", ifaceType=" + ifaceCombo
+                    + ", ifaceType=" + Arrays.toString(ifaceCombo)
                     + ", requiredChipCapabilities=" + requiredChipCapabilities);
         }
 

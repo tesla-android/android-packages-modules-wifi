@@ -459,19 +459,22 @@ public class WifiApConfigStore {
      */
     SoftApConfiguration randomizeBssidIfUnset(Context context, SoftApConfiguration config) {
         SoftApConfiguration.Builder configBuilder = new SoftApConfiguration.Builder(config);
-        if (config.getBssid() == null && ApConfigUtil.isApMacRandomizationSupported(mContext)) {
+        if (config.getBssid() == null && ApConfigUtil.isApMacRandomizationSupported(mContext)
+                && config.getMacRandomizationSettingInternal()
+                    != SoftApConfiguration.RANDOMIZATION_NONE) {
+            MacAddress macAddress = null;
             if (config.getMacRandomizationSettingInternal()
-                    == SoftApConfiguration.RANDOMIZATION_NONE) {
-                return configBuilder.build();
+                    == SoftApConfiguration.RANDOMIZATION_PERSISTENT) {
+                WifiSsid ssid = config.getWifiSsid();
+                macAddress = mMacAddressUtil.calculatePersistentMac(
+                        ssid != null ? ssid.toString() : null,
+                        mMacAddressUtil.obtainMacRandHashFunctionForSap(Process.WIFI_UID));
+                if (macAddress == null) {
+                    Log.e(TAG, "Failed to calculate MAC from SSID. "
+                            + "Generating new random MAC instead.");
+                }
             }
-
-            WifiSsid ssid = config.getWifiSsid();
-            MacAddress macAddress = mMacAddressUtil.calculatePersistentMac(
-                    ssid != null ? ssid.toString() : null,
-                    mMacAddressUtil.obtainMacRandHashFunctionForSap(Process.WIFI_UID));
             if (macAddress == null) {
-                Log.e(TAG, "Failed to calculate MAC from SSID. "
-                        + "Generating new random MAC instead.");
                 macAddress = MacAddressUtils.createRandomUnicastAddress();
             }
             configBuilder.setBssid(macAddress);

@@ -107,20 +107,22 @@ public class SoftApConfigurationTest {
         assertThat(original.isHiddenSsid()).isEqualTo(false);
         assertThat(original.getMaxNumberOfClients()).isEqualTo(0);
         if (SdkLevel.isAtLeastS()) {
-            assertThat(original.getMacRandomizationSetting())
-                    .isEqualTo(SoftApConfiguration.RANDOMIZATION_PERSISTENT);
             assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
                     .isEqualTo(true);
             assertThat(original.isIeee80211axEnabled())
                     .isEqualTo(true);
             assertThat(original.isUserConfiguration())
                     .isEqualTo(true);
-        }
-
-        if (SdkLevel.isAtLeastT()) {
-            assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
-                    .isEqualTo(0);
-            assertThat(original.getVendorElements().size()).isEqualTo(0);
+            if (SdkLevel.isAtLeastT()) {
+                assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
+                        .isEqualTo(0);
+                assertThat(original.getMacRandomizationSetting())
+                        .isEqualTo(SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
+                assertThat(original.getVendorElements().size()).isEqualTo(0);
+            } else {
+                assertThat(original.getMacRandomizationSetting())
+                        .isEqualTo(SoftApConfiguration.RANDOMIZATION_PERSISTENT);
+            }
         }
 
         SoftApConfiguration unparceled = parcelUnparcel(original);
