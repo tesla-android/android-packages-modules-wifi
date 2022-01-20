@@ -106,10 +106,13 @@ import android.net.Uri;
 import android.net.apf.ApfCapabilities;
 import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
+import android.net.networkstack.aidl.ip.ReachabilityLossInfoParcelable;
+import android.net.networkstack.aidl.ip.ReachabilityLossReason;
 import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ScanResult;
+import android.net.wifi.ScanResult.InformationElement;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
@@ -2361,6 +2364,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         assertEquals("CMD_PRE_DHCP_ACTION", mCmi.getWhatToString(CMD_PRE_DHCP_ACTION));
         assertEquals("CMD_IP_REACHABILITY_LOST", mCmi.getWhatToString(
                 ClientModeImpl.CMD_IP_REACHABILITY_LOST));
+        assertEquals("CMD_IP_REACHABILITY_FAILURE", mCmi.getWhatToString(
+                ClientModeImpl.CMD_IP_REACHABILITY_FAILURE));
     }
 
     @Test
@@ -5065,6 +5070,21 @@ public class ClientModeImplTest extends WifiBaseTest {
     }
 
     /**
+     * Verify bugreport will be taken when get IP_REACHABILITY_FAILURE
+     */
+    @Test
+    public void testTakeBugReportByIpReachabilityFailure() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ROAM);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiDiagnostics).triggerBugReportDataCapture(
+                eq(WifiDiagnostics.REPORT_REASON_REACHABILITY_FAILURE));
+    }
+    /**
      * Verifies that WifiLastResortWatchdog is notified of FOURWAY_HANDSHAKE_TIMEOUT.
      */
     @Test
@@ -5148,6 +5168,27 @@ public class ClientModeImplTest extends WifiBaseTest {
         connect();
 
         mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_LOST);
+        mLooper.dispatchAll();
+        verify(mWifiMetrics).logWifiIsUnusableEvent(WIFI_IFACE_NAME,
+                WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
+        verify(mWifiMetrics).addToWifiUsabilityStatsList(WIFI_IFACE_NAME,
+                WifiUsabilityStats.LABEL_BAD,
+                WifiUsabilityStats.TYPE_IP_REACHABILITY_LOST, -1);
+    }
+
+    /**
+     * Verify that a WifiIsUnusableEvent is logged and the current list of usability stats entries
+     * are labeled and saved when receiving an IP reachability failure message with non roam type.
+     * @throws Exception
+     */
+    @Test
+    public void verifyIpReachabilityFailureMsgUpdatesWifiUsabilityMetrics() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.CONFIRM);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
         mLooper.dispatchAll();
         verify(mWifiMetrics).logWifiIsUnusableEvent(WIFI_IFACE_NAME,
                 WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
@@ -6048,6 +6089,82 @@ public class ClientModeImplTest extends WifiBaseTest {
         // Set MAC address thrice - once at bootup, twice for the connections,
         // once for the disconnect.
         verify(mWifiNative, times(4)).setStaMacAddress(eq(WIFI_IFACE_NAME), any());
+    }
+
+    @Test
+    public void testIpReachabilityFailureConfirmTriggersDisconnection() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { }, (cap) -> { });
+        reset(mWifiNetworkAgent);
+
+        // Trigger ip reachability failure and ensure we trigger a disconnect.
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.CONFIRM);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+    }
+
+    @Test
+    public void testIpReachabilityFailureOrganicTriggersDisconnection() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { }, (cap) -> { });
+        reset(mWifiNetworkAgent);
+
+        // Trigger ip reachability failure and ensure we trigger a disconnect.
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ORGANIC);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
+    }
+
+    @Test
+    public void testIpReachabilityFailureRoamL3ProvisioningState() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { }, (cap) -> { });
+        reset(mWifiNetworkAgent);
+
+        // Trigger ip reachability failure and ensure we do not trigger a disconnect.
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ROAM);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiNative, never()).disconnect(WIFI_IFACE_NAME);
+        assertEquals("L3ProvisioningState", getCurrentState().getName());
+    }
+
+    @Test
+    public void testIpReachabilityFailureRoamNoActionForKtNetworks() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String ssid = ClientModeImpl.L3_REFRESH_OPT_OUT_SSID_SET.iterator().next();
+        ScanResult scanResult = new ScanResult(WifiSsid.fromString(ssid),
+                ssid, TEST_BSSID_STR, 1245, 0, "", -58, 2412, 1025, 22, 33, 20, 0, 0, true);
+        ScanResult.InformationElement ie = createIE(InformationElement.EID_VSA,
+                ClientModeImpl.L3_REFRESH_OPT_OUT_OUI);
+        scanResult.informationElements = new ScanResult.InformationElement[]{ie};
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = ssid;
+
+        connect();
+        expectRegisterNetworkAgent((agentConfig) -> { }, (cap) -> { });
+        reset(mWifiNetworkAgent);
+
+        when(mWifiConfigManager.getScanDetailCacheForNetwork(anyInt()))
+                .thenReturn(mScanDetailCache);
+        when(mScanDetailCache.getScanResult(anyString())).thenReturn(scanResult);
+        when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
+
+        // Trigger ip reachability failure and ensure there is no action.
+        ReachabilityLossInfoParcelable lossInfo =
+                new ReachabilityLossInfoParcelable("", ReachabilityLossReason.ROAM);
+        mCmi.sendMessage(ClientModeImpl.CMD_IP_REACHABILITY_FAILURE, lossInfo);
+        mLooper.dispatchAll();
+        verify(mWifiNative, never()).disconnect(WIFI_IFACE_NAME);
+        assertEquals("L3ConnectedState", getCurrentState().getName());
     }
 
     @Test

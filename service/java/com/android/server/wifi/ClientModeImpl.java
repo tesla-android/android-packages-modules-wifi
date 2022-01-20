@@ -63,6 +63,8 @@ import android.net.ip.IIpClient;
 import android.net.ip.IpClientCallbacks;
 import android.net.ip.IpClientManager;
 import android.net.networkstack.aidl.dhcp.DhcpOption;
+import android.net.networkstack.aidl.ip.ReachabilityLossInfoParcelable;
+import android.net.networkstack.aidl.ip.ReachabilityLossReason;
 import android.net.shared.Layer2Information;
 import android.net.shared.ProvisioningConfiguration;
 import android.net.shared.ProvisioningConfiguration.ScanResultInfo;
@@ -161,6 +163,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -508,6 +511,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     /* A layer 3 neighbor on the Wi-Fi link became unreachable. */
     static final int CMD_IP_REACHABILITY_LOST                           = BASE + 149;
 
+    static final int CMD_IP_REACHABILITY_FAILURE                        = BASE + 150;
+
     static final int CMD_ACCEPT_UNVALIDATED                             = BASE + 153;
 
     /* used to offload sending IP packet */
@@ -647,6 +652,21 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
     public static final long DURATION_TO_WAIT_ADD_STATS_AFTER_DATA_STALL_MS = 30 * 1000;
     private long mDataStallTriggerTimeMs = -1;
     private int mLastStatusDataStall = WifiIsUnusableEvent.TYPE_UNKNOWN;
+
+    // Initialize configurable particular set of SSIDs that opt out of refreshing L3 information
+    // after NUD probe failure due to subnet change. See b/131797393 and b/204723906 for more
+    // details.
+    @VisibleForTesting
+    public static final Set<String> L3_REFRESH_OPT_OUT_SSID_SET = new HashSet<>(
+            Arrays.asList(
+                    "\"0001docomo\"", "\"ollehWiFi\"", "\"olleh GiGa WiFi\"", "\"KT WiFi\"",
+                    "\"KT GiGA WiFi\"", "\"marente\""
+    ));
+    // Initialize configurable particular OUI that opts out of refreshing L3 information after
+    // NUD probe failure due to subnet change. See b/131797393 and b/204723906 for more details.
+    @VisibleForTesting
+    public static final byte[] L3_REFRESH_OPT_OUT_OUI =
+            new byte[]{ (byte) 0x00, (byte) 0x17, (byte) 0xc3 };
 
     @Nullable
     private StateMachineObituary mObituary = null;
@@ -1004,6 +1024,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         public void onReachabilityLost(String logMsg) {
             mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_CMD_IP_REACHABILITY_LOST);
             sendMessage(CMD_IP_REACHABILITY_LOST, logMsg);
+        }
+
+        @Override
+        public void onReachabilityFailure(ReachabilityLossInfoParcelable lossInfo) {
+            sendMessage(CMD_IP_REACHABILITY_FAILURE, lossInfo);
         }
 
         @Override
@@ -2054,6 +2079,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     sb.append(" ").append((String) msg.obj);
                 }
                 break;
+            case CMD_IP_REACHABILITY_FAILURE:
+                if (msg.obj != null) {
+                    sb.append(" ").append(/* ReachabilityLossInfoParcelable */ msg.obj);
+                }
+                break;
             case CMD_INSTALL_PACKET_FILTER:
                 sb.append(" len=" + ((byte[]) msg.obj).length);
                 break;
@@ -2135,6 +2165,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 return "CMD_IP_CONFIGURATION_SUCCESSFUL";
             case CMD_IP_REACHABILITY_LOST:
                 return "CMD_IP_REACHABILITY_LOST";
+            case CMD_IP_REACHABILITY_FAILURE:
+                return "CMD_IP_REACHABILITY_FAILURE";
             case CMD_IPV4_PROVISIONING_FAILURE:
                 return "CMD_IPV4_PROVISIONING_FAILURE";
             case CMD_IPV4_PROVISIONING_SUCCESS:
@@ -3263,6 +3295,105 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiNative.disconnect(mInterfaceName);
     }
 
+    private void handleIpReachabilityFailure(ReachabilityLossInfoParcelable lossInfo) {
+        if (lossInfo == null || lossInfo.reason == ReachabilityLossReason.CONFIRM
+                || lossInfo.reason == ReachabilityLossReason.ORGANIC) {
+            mWifiMetrics.logStaEvent(mInterfaceName, StaEvent.TYPE_CMD_IP_REACHABILITY_LOST);
+            mWifiMetrics.logWifiIsUnusableEvent(mInterfaceName,
+                    WifiIsUnusableEvent.TYPE_IP_REACHABILITY_LOST);
+            mWifiMetrics.addToWifiUsabilityStatsList(mInterfaceName,
+                    WifiUsabilityStats.LABEL_BAD,
+                    WifiUsabilityStats.TYPE_IP_REACHABILITY_LOST, -1);
+            if (mWifiGlobals.getIpReachabilityDisconnectEnabled()) {
+                handleIpReachabilityLost();
+            } else {
+                logd("CMD_IP_REACHABILITY_LOST but disconnect disabled -- ignore");
+            }
+            return;
+        }
+
+        if (lossInfo.reason == ReachabilityLossReason.ROAM) {
+            final WifiConfiguration config = getConnectedWifiConfigurationInternal();
+
+            // Keep L3 information and current NetworkAgent if the SSID and the OUI opts out of
+            // refreshing L3 information after NUD probe failure due to subnet change. Remove this
+            // check when the inactive mode of NetworkAgent is implemented in ConnectivityService.
+            List<byte[]> ouis = getOuiInternal(config);
+            boolean ifOuiMatched = false;
+            for (byte[] oui : ouis) {
+                if (Arrays.equals(oui, L3_REFRESH_OPT_OUT_OUI)) {
+                    ifOuiMatched = true;
+                    break;
+                }
+            }
+            if (ifOuiMatched && L3_REFRESH_OPT_OUT_SSID_SET.contains(config.SSID)) {
+                return;
+            }
+
+            final NetworkAgentConfig naConfig = getNetworkAgentConfigInternal(config);
+            final NetworkCapabilities nc = getCapabilities(
+                    getConnectedWifiConfigurationInternal(), getConnectedBssidInternal());
+
+            mWifiInfo.setInetAddress(null);
+            if (mNetworkAgent != null) {
+                mNetworkAgent.unregister();
+                mNetworkAgent = null;
+            }
+            mNetworkAgent = mWifiInjector.makeWifiNetworkAgent(nc, mLinkProperties, naConfig,
+                    mNetworkFactory.getProvider(), new WifiNetworkAgentCallback());
+            mWifiScoreReport.setNetworkAgent(mNetworkAgent);
+
+            transitionTo(mL3ProvisioningState);
+        } else {
+            logd("Invalid failure reason from onIpReachabilityFailure");
+        }
+    }
+
+    private NetworkAgentConfig getNetworkAgentConfigInternal(WifiConfiguration config) {
+        boolean explicitlySelected = false;
+        // Non primary CMMs is never user selected. This prevents triggering the No Internet
+        // dialog for those networks, which is difficult to handle.
+        if (isPrimary() && isRecentlySelectedByTheUser(config)) {
+            // If explicitlySelected is true, the network was selected by the user via Settings
+            // or QuickSettings. If this network has Internet access, switch to it. Otherwise,
+            // switch to it only if the user confirms that they really want to switch, or has
+            // already confirmed and selected "Don't ask again".
+            explicitlySelected =
+                    mWifiPermissionsUtil.checkNetworkSettingsPermission(config.lastConnectUid);
+            if (mVerboseLoggingEnabled) {
+                log("Network selected by UID " + config.lastConnectUid
+                        + " explicitlySelected=" + explicitlySelected);
+            }
+        }
+        NetworkAgentConfig.Builder naConfigBuilder = new NetworkAgentConfig.Builder()
+                .setLegacyType(ConnectivityManager.TYPE_WIFI)
+                .setLegacyTypeName(NETWORKTYPE)
+                .setExplicitlySelected(explicitlySelected)
+                .setUnvalidatedConnectivityAcceptable(
+                        explicitlySelected && config.noInternetAccessExpected)
+                .setPartialConnectivityAcceptable(config.noInternetAccessExpected);
+        if (config.carrierMerged) {
+            String subscriberId = null;
+            TelephonyManager subMgr = mTelephonyManager.createForSubscriptionId(
+                    config.subscriptionId);
+            if (subMgr != null) {
+                subscriberId = subMgr.getSubscriberId();
+            }
+            if (subscriberId != null) {
+                naConfigBuilder.setSubscriberId(subscriberId);
+            }
+        }
+        if (mVcnManager == null && SdkLevel.isAtLeastS()) {
+            mVcnManager = mContext.getSystemService(VcnManager.class);
+        }
+        if (mVcnManager != null && mVcnPolicyChangeListener == null) {
+            mVcnPolicyChangeListener = new WifiVcnNetworkPolicyChangeListener();
+            mVcnManager.addVcnNetworkPolicyChangeListener(new HandlerExecutor(getHandler()),
+                    mVcnPolicyChangeListener);
+        }
+        return naConfigBuilder.build();
+    }
+
     /*
      * Read a MAC address in /proc/net/arp, used by ClientModeImpl
      * so as to record MAC address of default gateway.
@@ -4054,7 +4185,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 case CMD_STOP_RSSI_MONITORING_OFFLOAD:
                 case CMD_IP_CONFIGURATION_SUCCESSFUL:
                 case CMD_IP_CONFIGURATION_LOST:
-                case CMD_IP_REACHABILITY_LOST: {
+                case CMD_IP_REACHABILITY_LOST:
+                case CMD_IP_REACHABILITY_FAILURE: {
                     mMessageHandlingStatus = MESSAGE_HANDLING_STATUS_DISCARD;
                     break;
                 }
@@ -5069,56 +5201,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             // ConnectivityService of that fact so the system can treat it appropriately.
             final WifiConfiguration config = getConnectedWifiConfigurationInternal();
 
-            final boolean explicitlySelected;
-            // Non primary CMMs is never user selected. This prevents triggering the No Internet
-            // dialog for those networks, which is difficult to handle.
-            if (isPrimary() && isRecentlySelectedByTheUser(config)) {
-                // If explicitlySelected is true, the network was selected by the user via Settings
-                // or QuickSettings. If this network has Internet access, switch to it. Otherwise,
-                // switch to it only if the user confirms that they really want to switch, or has
-                // already confirmed and selected "Don't ask again".
-                explicitlySelected =
-                        mWifiPermissionsUtil.checkNetworkSettingsPermission(config.lastConnectUid);
-                if (mVerboseLoggingEnabled) {
-                    log("Network selected by UID " + config.lastConnectUid + " explicitlySelected="
-                            + explicitlySelected);
-                }
-            } else {
-                explicitlySelected = false;
-            }
-
-            if (mVerboseLoggingEnabled) {
-                log("explicitlySelected=" + explicitlySelected + " acceptUnvalidated="
-                        + config.noInternetAccessExpected);
-            }
-
-            NetworkAgentConfig.Builder naConfigBuilder = new NetworkAgentConfig.Builder()
-                    .setLegacyType(ConnectivityManager.TYPE_WIFI)
-                    .setLegacyTypeName(NETWORKTYPE)
-                    .setExplicitlySelected(explicitlySelected)
-                    .setUnvalidatedConnectivityAcceptable(
-                            explicitlySelected && config.noInternetAccessExpected)
-                    .setPartialConnectivityAcceptable(config.noInternetAccessExpected);
-            if (config.carrierMerged) {
-                String subscriberId = null;
-                TelephonyManager subMgr = mTelephonyManager.createForSubscriptionId(
-                        config.subscriptionId);
-                if (subMgr != null) {
-                    subscriberId = subMgr.getSubscriberId();
-                }
-                if (subscriberId != null) {
-                    naConfigBuilder.setSubscriberId(subscriberId);
-                }
-            }
-            if (mVcnManager == null && SdkLevel.isAtLeastS()) {
-                mVcnManager = mContext.getSystemService(VcnManager.class);
-            }
-            if (mVcnManager != null && mVcnPolicyChangeListener == null) {
-                mVcnPolicyChangeListener = new WifiVcnNetworkPolicyChangeListener();
-                mVcnManager.addVcnNetworkPolicyChangeListener(new HandlerExecutor(getHandler()),
-                        mVcnPolicyChangeListener);
-            }
-            final NetworkAgentConfig naConfig = naConfigBuilder.build();
+            final NetworkAgentConfig naConfig = getNetworkAgentConfigInternal(config);
             final NetworkCapabilities nc = getCapabilities(
                     getConnectedWifiConfigurationInternal(), getConnectedBssidInternal());
             // This should never happen.
@@ -5248,6 +5331,12 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                     } else {
                         logd("CMD_IP_REACHABILITY_LOST but disconnect disabled -- ignore");
                     }
+                    break;
+                }
+                case CMD_IP_REACHABILITY_FAILURE: {
+                    mWifiDiagnostics.triggerBugReportDataCapture(
+                            WifiDiagnostics.REPORT_REASON_REACHABILITY_FAILURE);
+                    handleIpReachabilityFailure((ReachabilityLossInfoParcelable) message.obj);
                     break;
                 }
                 case WifiP2pServiceImpl.DISCONNECT_WIFI_REQUEST: {
