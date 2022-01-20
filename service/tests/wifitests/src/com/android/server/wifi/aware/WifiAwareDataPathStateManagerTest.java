@@ -17,7 +17,6 @@
 package com.android.server.wifi.aware;
 
 import static android.hardware.wifi.V1_0.NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED;
-import static android.hardware.wifi.V1_0.WifiChannelWidthInMhz.WIDTH_80;
 import static android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ;
 
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -46,7 +45,6 @@ import android.app.test.TestAlarmManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.wifi.V1_0.NanStatusType;
-import android.hardware.wifi.V1_2.NanDataPathChannelInfo;
 import android.net.ConnectivityManager;
 import android.net.MacAddress;
 import android.net.NetworkCapabilities;
@@ -121,7 +119,6 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
     private static final String TEST_PACKAGE_NAME = "com.android.somePackage";
     private static final String TEST_FEATURE_ID = "com.android.someFeature";
 
-    private static final NanDataPathChannelInfo CHANNEL_INFO = new NanDataPathChannelInfo();
     private static final WifiAwareChannelInfo AWARE_CHANNEL_INFO =
             new WifiAwareChannelInfo(5750, CHANNEL_WIDTH_80MHZ, 2);
 
@@ -197,10 +194,6 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
         mResources = new MockResources();
         mResources.setBoolean(R.bool.config_wifiAllowMultipleNetworksOnSameAwareNdi, false);
         when(mMockContext.getResources()).thenReturn(mResources);
-
-        CHANNEL_INFO.channelFreq = 5750;
-        CHANNEL_INFO.channelBandwidth = WIDTH_80;
-        CHANNEL_INFO.numSpatialStreams = 2;
     }
 
     /**
@@ -533,7 +526,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
 
             // (2) get confirmation
             mDut.onDataPathConfirmNotification(ndpId + i, peerDataPathMac, true, 0,
-                    buildTlv(port, transportProtocol, true), List.of(CHANNEL_INFO));
+                    buildTlv(port, transportProtocol, true), List.of(AWARE_CHANNEL_INFO));
             mMockLooper.dispatchAll();
             if (first) {
                 inOrder.verify(mMockNetdWrapper).setInterfaceUp(anyString());
