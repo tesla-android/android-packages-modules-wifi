@@ -2059,6 +2059,21 @@ public class ActiveModeWarden {
                             requestInfo.listener, requestInfo.requestorWs);
                     return;
                 }
+
+                // fallback decision
+                if (requestInfo.clientRole == ROLE_CLIENT_LOCAL_ONLY
+                        && mContext.getResources().getBoolean(
+                        R.bool.config_wifiMultiStaLocalOnlyConcurrencyEnabled)
+                        && !mWifiPermissionsUtil.isTargetSdkLessThan(
+                        requestInfo.requestorWs.getPackageName(0), Build.VERSION_CODES.S,
+                        requestInfo.requestorWs.getUid(0))) {
+                    Log.d(TAG, "Will not fall back to single STA for a local-only connection when "
+                            + "STA+STA is supported (unless for a pre-S legacy app). "
+                            + " Priority inversion.");
+                    requestInfo.listener.onAnswer(null);
+                    return;
+                }
+
                 // Fall back to single STA behavior.
                 Log.v(TAG, "Falling back to single STA behavior using primary ClientModeManager="
                         + primaryManager);

@@ -257,21 +257,36 @@ public final class SoftApConfiguration implements Parcelable {
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"RANDOMIZATION_"}, value = {
             RANDOMIZATION_NONE,
-            RANDOMIZATION_PERSISTENT})
+            RANDOMIZATION_PERSISTENT,
+            RANDOMIZATION_NON_PERSISTENT})
     public @interface MacRandomizationSetting {}
 
     /**
-     * Use factory MAC as BSSID for the AP
+     * Use the factory MAC address as the BSSID of the AP.
+     *
      * @hide
      */
     @SystemApi
     public static final int RANDOMIZATION_NONE = 0;
+
     /**
-     * Generate a randomized MAC as BSSID for the AP
+     * Generate a persistent randomized MAC address as the BSSID of the AP.
+     * The MAC address is persisted per SSID - i.e. as long as the SSID of the AP doesn't change
+     * then it will have a persistent MAC address (which is initially random and is not the factory
+     * MAC address).
+     *
      * @hide
      */
     @SystemApi
     public static final int RANDOMIZATION_PERSISTENT = 1;
+
+    /**
+     * Generate a randomized MAC address as the BSSID of the AP. The MAC address is not persisted
+     * - it is re-generated every time the AP is re-enabled.
+     * @hide
+     */
+    @SystemApi
+    public static final int RANDOMIZATION_NON_PERSISTENT = 2;
 
     /**
      * Level of MAC randomization for the AP BSSID.
@@ -987,7 +1002,11 @@ public final class SoftApConfiguration implements Parcelable {
             mClientControlByUser = false;
             mBlockedClientList = new ArrayList<>();
             mAllowedClientList = new ArrayList<>();
-            mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
+            if (SdkLevel.isAtLeastT()) {
+                mMacRandomizationSetting = RANDOMIZATION_NON_PERSISTENT;
+            } else {
+                mMacRandomizationSetting = RANDOMIZATION_PERSISTENT;
+            }
             mBridgedModeOpportunisticShutdownEnabled = true;
             mIeee80211axEnabled = true;
             mIsUserConfiguration = true;
@@ -1578,20 +1597,23 @@ public final class SoftApConfiguration implements Parcelable {
          * Specifies the level of MAC randomization for the AP BSSID.
          * The Soft AP BSSID will be randomized only if the BSSID isn't set
          * {@link #setBssid(MacAddress)} and this method is either uncalled
-         * or called with {@link #RANDOMIZATION_PERSISTENT}.
+         * or called with {@link #RANDOMIZATION_PERSISTENT} or
+         * {@link #RANDOMIZATION_NON_PERSISTENT}.
          *
          * <p>
-         * <li>If not set, defaults to {@link #RANDOMIZATION_PERSISTENT}</li>
+         * <li>If not set, defaults to {@link #RANDOMIZATION_NON_PERSISTENT}</li>
          *
          * <p>
-         * Requires HAL support when set to {@link #RANDOMIZATION_PERSISTENT}.
+         * Requires HAL support when set to {@link #RANDOMIZATION_PERSISTENT} or
+         * {@link #RANDOMIZATION_NON_PERSISTENT}.
          * Use {@link WifiManager.SoftApCallback#onCapabilityChanged(SoftApCapability)} and
          * {@link SoftApCapability#areFeaturesSupported(long)}
          * with {@link SoftApCapability.SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION} to determine
          * whether or not this feature is supported.
          *
          * @param macRandomizationSetting One of the following setting:
-         * {@link #RANDOMIZATION_NONE} or {@link #RANDOMIZATION_PERSISTENT}.
+         * {@link #RANDOMIZATION_NONE}, {@link #RANDOMIZATION_PERSISTENT} or
+         * {@link #RANDOMIZATION_NON_PERSISTENT}.
          * @return Builder for chaining.
          *
          * @see #setBssid(MacAddress)
