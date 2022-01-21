@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.server.wifi;
+package android.net.wifi;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -42,6 +42,8 @@ import com.android.internal.annotations.VisibleForTesting;
  *
  * The WiFi-stack specific solution is to store the strings in the general name-space with a known
  * prefix.
+ *
+ * @hide
  */
 public class WifiStringResourceWrapper {
     private static final String TAG = "WifiStringResourceWrapper";
@@ -63,7 +65,7 @@ public class WifiStringResourceWrapper {
      * @param context a WifiContext
      * @param subId   the sub ID to use for all the resources (overlays or carrier ID)
      */
-    WifiStringResourceWrapper(WifiContext context, int subId, int carrierId) {
+    public WifiStringResourceWrapper(WifiContext context, int subId, int carrierId) {
         mContext = context;
         mSubId = subId;
         mCarrierId = carrierId;
