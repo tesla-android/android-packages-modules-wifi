@@ -38,6 +38,7 @@ import android.Manifest;
 import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.net.wifi.WifiScanner;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
@@ -192,7 +193,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     @Test
     public void testInstantCommunicationMode() {
         mDut.isInstantCommunicationModeEnabled();
-        verify(mAwareStateManagerMock).isInstantCommunicationModeEnabled();
+        verify(mAwareStateManagerMock).isInstantCommModeGlobalEnable();
 
         // Non-system package could not enable this mode.
         when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(false);
@@ -789,7 +790,8 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         // caught by the Builder. Want to test whether service side will catch invalidly
         // constructed configs.
         PublishConfig publishConfig = new PublishConfig(serviceName.getBytes(), ssi, matchFilter,
-                PublishConfig.PUBLISH_TYPE_UNSOLICITED, 0, true, false);
+                PublishConfig.PUBLISH_TYPE_UNSOLICITED, 0, true, false, false,
+                WifiScanner.WIFI_BAND_24_GHZ);
         int clientId = doConnect();
         IWifiAwareDiscoverySessionCallback mockCallback = mock(
                 IWifiAwareDiscoverySessionCallback.class);
@@ -805,7 +807,8 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         // caught by the Builder. Want to test whether service side will catch invalidly
         // constructed configs.
         SubscribeConfig subscribeConfig = new SubscribeConfig(serviceName.getBytes(), ssi,
-                matchFilter, SubscribeConfig.SUBSCRIBE_TYPE_PASSIVE, 0, true, false, 0, false, 0);
+                matchFilter, SubscribeConfig.SUBSCRIBE_TYPE_PASSIVE, 0, true, false, 0, false, 0,
+                false, WifiScanner.WIFI_BAND_24_GHZ);
         int clientId = doConnect();
         IWifiAwareDiscoverySessionCallback mockCallback = mock(
                 IWifiAwareDiscoverySessionCallback.class);

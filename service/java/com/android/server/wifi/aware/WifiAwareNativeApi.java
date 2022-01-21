@@ -385,18 +385,20 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
      * @param isIdle PowerManager.isIdle
      * @param rangingEnabled Indicates whether or not enable ranging.
      * @param isInstantCommunicationEnabled Indicates whether or not enable instant communication
-     *                                      mode.
+     * @param instantModeChannel
      */
     public boolean enableAndConfigure(short transactionId, ConfigRequest configRequest,
             boolean notifyIdentityChange, boolean initialConfiguration, boolean isInteractive,
-            boolean isIdle, boolean rangingEnabled, boolean isInstantCommunicationEnabled) {
+            boolean isIdle, boolean rangingEnabled, boolean isInstantCommunicationEnabled,
+            int instantModeChannel) {
         if (mDbg) {
             Log.v(TAG, "enableAndConfigure: transactionId=" + transactionId + ", configRequest="
                     + configRequest + ", notifyIdentityChange=" + notifyIdentityChange
                     + ", initialConfiguration=" + initialConfiguration
                     + ", isInteractive=" + isInteractive + ", isIdle=" + isIdle
                     + ", isRangingEnabled=" + rangingEnabled
-                    + ", isInstantCommunicationEnabled=" + isInstantCommunicationEnabled);
+                    + ", isInstantCommunicationEnabled=" + isInstantCommunicationEnabled
+                    + ", instantModeChannel=" + instantModeChannel);
         }
         recordTransactionId(transactionId);
 
@@ -408,10 +410,13 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         android.hardware.wifi.V1_2.IWifiNanIface iface12 = mockableCastTo_1_2(iface);
         android.hardware.wifi.V1_4.IWifiNanIface iface14 = mockableCastTo_1_4(iface);
         android.hardware.wifi.V1_5.IWifiNanIface iface15 = mockableCastTo_1_5(iface);
+        android.hardware.wifi.V1_6.IWifiNanIface iface16 = mockableCastTo_1_6(iface);
         android.hardware.wifi.V1_2.NanConfigRequestSupplemental configSupplemental12 =
                 new android.hardware.wifi.V1_2.NanConfigRequestSupplemental();
         android.hardware.wifi.V1_5.NanConfigRequestSupplemental configSupplemental15 =
                 new android.hardware.wifi.V1_5.NanConfigRequestSupplemental();
+        android.hardware.wifi.V1_6.NanConfigRequestSupplemental configSupplemental16 =
+                new android.hardware.wifi.V1_6.NanConfigRequestSupplemental();
         if (iface12 != null || iface14 != null) {
             configSupplemental12.discoveryBeaconIntervalMs = 0;
             configSupplemental12.numberOfSpatialStreamsInDiscovery = 0;
@@ -422,6 +427,10 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         if (iface15 != null) {
             configSupplemental15.V1_2 = configSupplemental12;
             configSupplemental15.enableInstantCommunicationMode = isInstantCommunicationEnabled;
+        }
+        if (iface16 != null) {
+            configSupplemental16.V1_5 = configSupplemental15;
+            configSupplemental16.instantModeChannel = instantModeChannel;
         }
 
         NanBandSpecificConfig config24 = new NanBandSpecificConfig();
@@ -477,7 +486,7 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         try {
             WifiStatus status;
             if (initialConfiguration) {
-                if (iface14 != null || iface15 != null) {
+                if (iface14 != null || iface15 != null || iface16 != null) {
                     // translate framework to HIDL configuration (V_1.4)
                     android.hardware.wifi.V1_4.NanEnableRequest req =
                             new android.hardware.wifi.V1_4.NanEnableRequest();
@@ -533,7 +542,10 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     updateConfigForPowerSettings14(req.configParams, configSupplemental12,
                             isInteractive, isIdle);
 
-                    if (iface15 != null) {
+                    if (iface16 != null) {
+                        status = iface16.enableRequest_1_6(transactionId, req,
+                                configSupplemental16);
+                    } else if (iface15 != null) {
                         status = iface15.enableRequest_1_5(transactionId, req,
                                 configSupplemental15);
                     } else {
@@ -594,7 +606,7 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     }
                 }
             } else {
-                if (iface14 != null || iface15 != null) {
+                if (iface14 != null || iface15 != null || iface16 != null) {
                     android.hardware.wifi.V1_4.NanConfigRequest req =
                             new android.hardware.wifi.V1_4.NanConfigRequest();
                     req.masterPref = (byte) configRequest.mMasterPreference;
@@ -616,7 +628,10 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
 
                     updateConfigForPowerSettings14(req, configSupplemental12,
                             isInteractive, isIdle);
-                    if (iface15 != null) {
+                    if (iface16 != null) {
+                        status = iface16.configRequest_1_6(transactionId, req,
+                                configSupplemental16);
+                    } else if (iface15 != null) {
                         status = iface15.configRequest_1_5(transactionId, req,
                                 configSupplemental15);
                     } else {

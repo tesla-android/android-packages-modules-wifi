@@ -19,9 +19,15 @@ package android.net.wifi.aware;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.net.wifi.WifiScanner;
 import android.net.wifi.util.HexEncoding;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import androidx.annotation.RequiresApi;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -83,10 +89,15 @@ public final class PublishConfig implements Parcelable {
     /** @hide */
     public final boolean mEnableRanging;
 
+    private final boolean mEnableInstantMode;
+
+    private final int mBand;
+
     /** @hide */
     public PublishConfig(byte[] serviceName, byte[] serviceSpecificInfo, byte[] matchFilter,
             int publishType, int ttlSec, boolean enableTerminateNotification,
-            boolean enableRanging) {
+            boolean enableRanging, boolean enableInstantMode, @WifiScanner.WifiBand int
+            band) {
         mServiceName = serviceName;
         mServiceSpecificInfo = serviceSpecificInfo;
         mMatchFilter = matchFilter;
@@ -94,6 +105,8 @@ public final class PublishConfig implements Parcelable {
         mTtlSec = ttlSec;
         mEnableTerminateNotification = enableTerminateNotification;
         mEnableRanging = enableRanging;
+        mEnableInstantMode = enableInstantMode;
+        mBand = band;
     }
 
     @Override
@@ -109,7 +122,9 @@ public final class PublishConfig implements Parcelable {
                 + ", mMatchFilter.length=" + (mMatchFilter == null ? 0 : mMatchFilter.length)
                 + ", mPublishType=" + mPublishType + ", mTtlSec=" + mTtlSec
                 + ", mEnableTerminateNotification=" + mEnableTerminateNotification
-                + ", mEnableRanging=" + mEnableRanging + "]";
+                + ", mEnableRanging=" + mEnableRanging + "]"
+                + ", mEnableInstantMode=" + mEnableInstantMode
+                + ", mBand=" + mBand;
     }
 
     @Override
@@ -126,6 +141,8 @@ public final class PublishConfig implements Parcelable {
         dest.writeInt(mTtlSec);
         dest.writeInt(mEnableTerminateNotification ? 1 : 0);
         dest.writeInt(mEnableRanging ? 1 : 0);
+        dest.writeBoolean(mEnableInstantMode);
+        dest.writeInt(mBand);
     }
 
     public static final @android.annotation.NonNull Creator<PublishConfig> CREATOR = new Creator<PublishConfig>() {
@@ -143,9 +160,12 @@ public final class PublishConfig implements Parcelable {
             int ttlSec = in.readInt();
             boolean enableTerminateNotification = in.readInt() != 0;
             boolean enableRanging = in.readInt() != 0;
+            boolean enableInstantMode = in.readBoolean();
+            int band = in.readInt();
 
-            return new PublishConfig(serviceName, ssi, matchFilter, publishType,
-                    ttlSec, enableTerminateNotification, enableRanging);
+            return new PublishConfig(serviceName, ssi, matchFilter, publishType, ttlSec,
+                    enableTerminateNotification, enableRanging, enableInstantMode,
+                    band);
         }
     };
 
@@ -166,14 +186,16 @@ public final class PublishConfig implements Parcelable {
                 && mPublishType == lhs.mPublishType
                 && mTtlSec == lhs.mTtlSec
                 && mEnableTerminateNotification == lhs.mEnableTerminateNotification
-                && mEnableRanging == lhs.mEnableRanging;
+                && mEnableRanging == lhs.mEnableRanging
+                && mEnableInstantMode == lhs.mEnableInstantMode
+                && mBand == lhs.mBand;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(Arrays.hashCode(mServiceName), Arrays.hashCode(mServiceSpecificInfo),
                 Arrays.hashCode(mMatchFilter), mPublishType, mTtlSec, mEnableTerminateNotification,
-                mEnableRanging);
+                mEnableRanging, mEnableInstantMode, mBand);
     }
 
     /**
@@ -215,11 +237,40 @@ public final class PublishConfig implements Parcelable {
                 throw new IllegalArgumentException(
                         "Match filter longer than supported by device characteristics");
             }
+
+            if (mEnableInstantMode) {
+                if (SdkLevel.isAtLeastT()
+                        && characteristics.isInstantCommunicationModeSupported()) {
+                    // Valid to use instant communication mode
+                } else {
+                    throw new IllegalArgumentException("instant mode is not supported");
+                }
+            }
         }
 
         if (!rttSupported && mEnableRanging) {
             throw new IllegalArgumentException("Ranging is not supported");
         }
+
+    }
+
+    /**
+     * Check if instant communication mode is enabled for this publish session.
+     * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
+     * @return true for enabled, false otherwise.
+     */
+    public boolean isEnableInstantCommunicationMode() {
+        return mEnableInstantMode;
+    }
+
+    /**
+     * Get the Wi-FI band for instant communication mode for this publish session
+     * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
+     * @return The Wi-Fi band, one of the {@link WifiScanner#WIFI_BAND_24_GHZ}
+     * or {@link WifiScanner#WIFI_BAND_5_GHZ}
+     */
+    public @WifiScanner.WifiBand int getInstantCommunicationBand() {
+        return mBand;
     }
 
     /**
@@ -233,6 +284,8 @@ public final class PublishConfig implements Parcelable {
         private int mTtlSec = 0;
         private boolean mEnableTerminateNotification = true;
         private boolean mEnableRanging = false;
+        private boolean mEnableInstantMode = false;
+        private int mBand = WifiScanner.WIFI_BAND_24_GHZ;
 
         /**
          * Specify the service name of the publish session. The actual on-air
@@ -385,12 +438,44 @@ public final class PublishConfig implements Parcelable {
         }
 
         /**
+         * Configure whether to enable and use instant communication for this publish session.
+         * Instant communication will speed up service discovery and any data-path set up as part of
+         * this session. Use {@link Characteristics#isInstantCommunicationModeSupported()} to check
+         * if the device supports this feature.
+         *
+         * Note: due to increased power requirements of this mode - it will only remain enabled for
+         * 30 seconds from the time the discovery session is started.
+         *
+         * @param enabled true for enable instant communication mode, default is false.
+         * @param band Either {@link WifiScanner#WIFI_BAND_24_GHZ}
+         *             or {@link WifiScanner#WIFI_BAND_5_GHZ}. When setting to
+         *             {@link WifiScanner#WIFI_BAND_5_GHZ}, device will try to enable instant
+         *             communication mode on 5Ghz, but may fall back to 2.4Ghz due to regulatory
+         *             requirements.
+         * @return the current {@link Builder} builder, enabling chaining of builder methods.
+         */
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+        public @NonNull Builder setInstantCommunicationModeEnabled(boolean enabled,
+                @WifiScanner.WifiBand int band) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
+            if (band != WifiScanner.WIFI_BAND_24_GHZ && band != WifiScanner.WIFI_BAND_5_GHZ) {
+                throw new IllegalArgumentException();
+            }
+            mBand = band;
+            mEnableInstantMode = enabled;
+            return this;
+        }
+
+        /**
          * Build {@link PublishConfig} given the current requests made on the
          * builder.
          */
         public PublishConfig build() {
             return new PublishConfig(mServiceName, mServiceSpecificInfo, mMatchFilter, mPublishType,
-                    mTtlSec, mEnableTerminateNotification, mEnableRanging);
+                    mTtlSec, mEnableTerminateNotification, mEnableRanging, mEnableInstantMode,
+                    mBand);
         }
     }
 }

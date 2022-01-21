@@ -776,6 +776,8 @@ package android.net.wifi.aware {
 
   public final class PublishConfig implements android.os.Parcelable {
     method public int describeContents();
+    method public int getInstantCommunicationBand();
+    method public boolean isEnableInstantCommunicationMode();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.PublishConfig> CREATOR;
     field public static final int PUBLISH_TYPE_SOLICITED = 1; // 0x1
@@ -785,6 +787,7 @@ package android.net.wifi.aware {
   public static final class PublishConfig.Builder {
     ctor public PublishConfig.Builder();
     method public android.net.wifi.aware.PublishConfig build();
+    method @NonNull public android.net.wifi.aware.PublishConfig.Builder setInstantCommunicationModeEnabled(boolean, int);
     method public android.net.wifi.aware.PublishConfig.Builder setMatchFilter(@Nullable java.util.List<byte[]>);
     method public android.net.wifi.aware.PublishConfig.Builder setPublishType(int);
     method public android.net.wifi.aware.PublishConfig.Builder setRangingEnabled(boolean);
@@ -800,6 +803,8 @@ package android.net.wifi.aware {
 
   public final class SubscribeConfig implements android.os.Parcelable {
     method public int describeContents();
+    method public int getInstantCommunicationBand();
+    method public boolean isEnableInstantCommunicationMode();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.SubscribeConfig> CREATOR;
     field public static final int SUBSCRIBE_TYPE_ACTIVE = 1; // 0x1
@@ -809,6 +814,7 @@ package android.net.wifi.aware {
   public static final class SubscribeConfig.Builder {
     ctor public SubscribeConfig.Builder();
     method public android.net.wifi.aware.SubscribeConfig build();
+    method @NonNull public android.net.wifi.aware.SubscribeConfig.Builder setInstantCommunicationModeEnabled(boolean, int);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMatchFilter(@Nullable java.util.List<byte[]>);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMaxDistanceMm(int);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMinDistanceMm(int);

@@ -50,7 +50,8 @@ public class TestUtils {
 
         public boolean enableAndConfigure(short transactionId, ConfigRequest configRequest,
                 boolean notifyIdentityChange, boolean initialConfiguration, boolean isInteractive,
-                boolean isIdle, boolean rangingEnabled, boolean isInstantCommunicationEnabled) {
+                boolean isIdle, boolean rangingEnabled, boolean isInstantCommunicationEnabled,
+                int instantModeChannel) {
             addTransactionId(transactionId);
             return true;
         }

@@ -40,6 +40,7 @@ import android.net.wifi.aware.WifiAwareManager;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
 import android.net.wifi.util.HexEncoding;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.PowerManager;
@@ -96,6 +97,10 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     @VisibleForTesting
     public static final String HAL_DATA_PATH_CONFIRM_TIMEOUT_TAG =
             TAG + " HAL Data Path Confirm Timeout";
+
+    public static final int INSTANT_MODE_DISABLED = 0;
+    public static final int INSTANT_MODE_24GHZ = 1;
+    public static final int INSTANT_MODE_5GHZ = 3;
 
     /*
      * State machine message types. There are sub-types for the messages (except for TIMEOUTs).
@@ -233,12 +238,15 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     private PowerManager mPowerManager;
     private LocationManager mLocationManager;
     private WifiManager mWifiManager;
+    private Handler mHandler;
 
     private final SparseArray<WifiAwareClientState> mClients = new SparseArray<>();
     private ConfigRequest mCurrentAwareConfiguration = null;
     private boolean mCurrentIdentityNotification = false;
     private boolean mCurrentRangingEnabled = false;
-    private boolean mIsInstantCommunicationModeEnabled = false;
+    private boolean mInstantCommModeGlobalEnable = false;
+    private int mInstantCommModeClientRequest = INSTANT_MODE_DISABLED;
+
 
     private static final byte[] ALL_ZERO_MAC = new byte[] {0, 0, 0, 0, 0, 0};
     private byte[] mCurrentDiscoveryInterfaceMac = ALL_ZERO_MAC;
@@ -433,6 +441,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mSm = new WifiAwareStateMachine(TAG, looper);
         mSm.setDbg(VDBG);
         mSm.start();
+        mHandler = new Handler(looper);
 
         mDataPathMgr = new WifiAwareDataPathStateManager(this, clock);
         mDataPathMgr.start(mContext, mSm.getHandler().getLooper(), awareMetrics,
@@ -684,8 +693,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             }
             return;
         }
-        boolean changed = mIsInstantCommunicationModeEnabled != enabled;
-        mIsInstantCommunicationModeEnabled = enabled;
+        boolean changed = mInstantCommModeGlobalEnable != enabled;
+        mInstantCommModeGlobalEnable = enabled;
         if (!changed) {
             return;
         }
@@ -696,8 +705,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
      * Get if instant communication mode is currently enabled.
      * @return true if enabled, false otherwise.
      */
-    public boolean isInstantCommunicationModeEnabled() {
-        return mIsInstantCommunicationModeEnabled;
+    public boolean isInstantCommModeGlobalEnable() {
+        return mInstantCommModeGlobalEnable;
     }
 
     /**
@@ -2413,6 +2422,16 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         boolean notificationRequired =
                 doesAnyClientNeedIdentityChangeNotifications() || notifyIdentityChange;
         boolean rangingRequired = doesAnyClientNeedRanging();
+        int instantMode = getInstantModeFromAllClients();
+        boolean enableInstantMode = false;
+        int instantModeChannel = 0;
+        if (instantMode == INSTANT_MODE_5GHZ) {
+            enableInstantMode = true;
+            instantModeChannel = 5745; // TODO: get usable channel
+        } else if (instantMode == INSTANT_MODE_24GHZ || mInstantCommModeGlobalEnable) {
+            enableInstantMode = true;
+            instantModeChannel = 2437; // TODO: get usable channel
+        }
 
         if (mCurrentAwareConfiguration == null) {
             mWifiAwareNativeManager.tryToGetAware(new WorkSource(uid, callingPackage));
@@ -2421,7 +2440,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         boolean success = mWifiAwareNativeApi.enableAndConfigure(transactionId, merged,
                 notificationRequired, mCurrentAwareConfiguration == null,
                 mPowerManager.isInteractive(), mPowerManager.isDeviceIdleMode(),
-                rangingRequired, mIsInstantCommunicationModeEnabled);
+                rangingRequired, enableInstantMode, instantModeChannel);
         if (!success) {
             try {
                 callback.onConnectFail(NanStatusType.INTERNAL_FAILURE);
@@ -2459,6 +2478,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             mDataPathMgr.deleteAllInterfaces();
             mCurrentRangingEnabled = false;
             mCurrentIdentityNotification = false;
+            mInstantCommModeClientRequest = INSTANT_MODE_DISABLED;
             deferDisableAware();
             return false;
         }
@@ -2474,15 +2494,26 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
         boolean notificationReqs = doesAnyClientNeedIdentityChangeNotifications();
         boolean rangingEnabled = doesAnyClientNeedRanging();
+        int instantMode = getInstantModeFromAllClients();
+        boolean enableInstantMode = false;
+        int instantModeChannel = 0;
+        if (instantMode == INSTANT_MODE_5GHZ) {
+            enableInstantMode = true;
+            instantModeChannel = 5745; // TODO: get usable channel
+        } else if (instantMode == INSTANT_MODE_24GHZ || mInstantCommModeGlobalEnable) {
+            enableInstantMode = true;
+            instantModeChannel = 2437; // TODO: get usable channel
+        }
         if (merged.equals(mCurrentAwareConfiguration)
                 && mCurrentIdentityNotification == notificationReqs
-                && mCurrentRangingEnabled == rangingEnabled) {
+                && mCurrentRangingEnabled == rangingEnabled
+                && mInstantCommModeClientRequest == instantMode) {
             return false;
         }
 
         return mWifiAwareNativeApi.enableAndConfigure(transactionId, merged, notificationReqs,
                 false, mPowerManager.isInteractive(), mPowerManager.isDeviceIdleMode(),
-                rangingEnabled, mIsInstantCommunicationModeEnabled);
+                rangingEnabled, enableInstantMode, instantModeChannel);
     }
 
     private boolean reconfigureLocal(short transactionId) {
@@ -2495,11 +2526,21 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
         boolean notificationReqs = doesAnyClientNeedIdentityChangeNotifications();
         boolean rangingEnabled = doesAnyClientNeedRanging();
+        int instantMode = getInstantModeFromAllClients();
+        boolean enableInstantMode = false;
+        int instantModeChannel = 0;
+        if (instantMode == INSTANT_MODE_5GHZ) {
+            enableInstantMode = true;
+            instantModeChannel = 5745; // TODO: get usable channel
+        } else if (instantMode == INSTANT_MODE_24GHZ || mInstantCommModeGlobalEnable) {
+            enableInstantMode = true;
+            instantModeChannel = 2437; // TODO: get usable channel
+        }
 
         return mWifiAwareNativeApi.enableAndConfigure(transactionId, mCurrentAwareConfiguration,
                 notificationReqs, false, mPowerManager.isInteractive(),
                 mPowerManager.isDeviceIdleMode(), rangingEnabled,
-                mIsInstantCommunicationModeEnabled);
+                enableInstantMode, instantModeChannel);
     }
 
     private void terminateSessionLocal(int clientId, int sessionId) {
@@ -2515,8 +2556,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
 
         WifiAwareDiscoverySessionState session = client.terminateSession(sessionId);
-        // If Ranging enabled require changes, reconfigure.
-        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()) {
+        // If Ranging enabled or instant mode require changes, reconfigure.
+        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()
+                || mInstantCommModeClientRequest != getInstantModeFromAllClients()) {
             reconfigure();
         }
         if (session != null) {
@@ -2698,6 +2740,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mUsageEnabled = markAsAvailable;
         mCurrentRangingEnabled = false;
         mCurrentIdentityNotification = false;
+        mInstantCommModeClientRequest = INSTANT_MODE_DISABLED;
         deferDisableAware();
         sendAwareStateChangedBroadcast(markAsAvailable);
         mAwareMetrics.recordDisableUsage();
@@ -2818,6 +2861,13 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
         mCurrentIdentityNotification = doesAnyClientNeedIdentityChangeNotifications();
         mCurrentRangingEnabled = doesAnyClientNeedRanging();
+        mInstantCommModeClientRequest = getInstantModeFromAllClients();
+        if (mInstantCommModeClientRequest != INSTANT_MODE_DISABLED
+                && !mInstantCommModeGlobalEnable) {
+            // Change the instant communication mode when timeout
+            mHandler.postDelayed(() -> reconfigure(), (long) mContext.getResources()
+                    .getInteger(R.integer.config_wifiAwareInstantCommunicationModeDurationMillis));
+        }
     }
 
     private void onConfigFailedLocal(Message failedCommand, int reason) {
@@ -2880,12 +2930,16 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
 
         boolean isRangingEnabled = false;
+        boolean enableInstantMode = false;
+        int instantModeBand;
         int minRange = -1;
         int maxRange = -1;
         if (isPublish) {
             PublishConfig publishConfig = completedCommand.getData().getParcelable(
                     MESSAGE_BUNDLE_KEY_CONFIG);
             isRangingEnabled = publishConfig.mEnableRanging;
+            enableInstantMode = publishConfig.isEnableInstantCommunicationMode();
+            instantModeBand = publishConfig.getInstantCommunicationBand();
         } else {
             SubscribeConfig subscribeConfig = completedCommand.getData().getParcelable(
                     MESSAGE_BUNDLE_KEY_CONFIG);
@@ -2897,6 +2951,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             if (subscribeConfig.mMaxDistanceMmSet) {
                 maxRange = subscribeConfig.mMaxDistanceMm;
             }
+            enableInstantMode = subscribeConfig.isEnableInstantCommunicationMode();
+            instantModeBand = subscribeConfig.getInstantCommunicationBand();
         }
 
         if (completedCommand.arg1 == COMMAND_TYPE_PUBLISH
@@ -2922,7 +2978,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
             WifiAwareDiscoverySessionState session = new WifiAwareDiscoverySessionState(
                     mWifiAwareNativeApi, sessionId, pubSubId, callback, isPublish, isRangingEnabled,
-                    SystemClock.elapsedRealtime());
+                    SystemClock.elapsedRealtime(), enableInstantMode, instantModeBand);
             session.enableVerboseLogging(mDbg);
             client.addSession(session);
 
@@ -2962,6 +3018,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                         + e);
             }
             session.setRangingEnabled(isRangingEnabled);
+            session.setInstantModeEnabled(enableInstantMode);
+            session.setInstantModeBand(instantModeBand);
             mAwareMetrics.recordDiscoveryStatus(client.getUid(), NanStatusType.SUCCESS,
                     completedCommand.arg1 == COMMAND_TYPE_UPDATE_PUBLISH);
         } else {
@@ -2969,8 +3027,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     "onSessionConfigSuccessLocal: unexpected completedCommand=" + completedCommand);
             return;
         }
-        // If ranging require changes, reconfigure.
-        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()) {
+        // If Ranging enabled or instant mode require changes, reconfigure.
+        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()
+                || mInstantCommModeClientRequest != getInstantModeFromAllClients()) {
             reconfigure();
         }
     }
@@ -3029,7 +3088,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
 
             if (reason == NanStatusType.INVALID_SESSION_ID) {
                 client.removeSession(sessionId);
-                if (mCurrentRangingEnabled != doesAnyClientNeedRanging()) {
+                // If Ranging enabled or instant mode require changes, reconfigure.
+                if (mCurrentRangingEnabled != doesAnyClientNeedRanging()
+                        || mInstantCommModeClientRequest != getInstantModeFromAllClients()) {
                     reconfigure();
                 }
             }
@@ -3279,7 +3340,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     "onSessionTerminatedLocal onSessionTerminated(): RemoteException (FYI): " + e);
         }
         data.first.removeSession(data.second.getSessionId());
-        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()) {
+        // If Ranging enabled or instant mode require changes, reconfigure.
+        if (mCurrentRangingEnabled != doesAnyClientNeedRanging()
+                || mInstantCommModeClientRequest != getInstantModeFromAllClients()) {
             reconfigure();
         }
         mAwareMetrics.recordDiscoverySessionDuration(data.second.getCreationTime(),
@@ -3471,6 +3534,21 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             }
         }
         return false;
+    }
+
+    private int getInstantModeFromAllClients() {
+        int instantMode = INSTANT_MODE_DISABLED;
+        for (int i = 0; i < mClients.size(); ++i) {
+            int currentClient = mClients.valueAt(i).getInstantMode((long) mContext.getResources()
+                    .getInteger(R.integer.config_wifiAwareInstantCommunicationModeDurationMillis));
+            if (currentClient == INSTANT_MODE_5GHZ) {
+                return currentClient;
+            }
+            if (currentClient == INSTANT_MODE_24GHZ) {
+                instantMode = currentClient;
+            }
+        }
+        return instantMode;
     }
 
     private static String messageToString(Message msg) {
