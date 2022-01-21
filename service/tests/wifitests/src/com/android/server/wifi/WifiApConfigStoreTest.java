@@ -218,8 +218,13 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         }
         assertEquals(15, config.getPassphrase().length());
         if (isMacRandomizationSupport) {
-            assertEquals(config.getMacRandomizationSettingInternal(),
-                    SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
+            if (SdkLevel.isAtLeastT()) {
+                assertEquals(config.getMacRandomizationSettingInternal(),
+                        SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
+            } else {
+                assertEquals(config.getMacRandomizationSettingInternal(),
+                        SoftApConfiguration.RANDOMIZATION_PERSISTENT);
+            }
         } else {
             assertEquals(config.getMacRandomizationSettingInternal(),
                     SoftApConfiguration.RANDOMIZATION_NONE);
@@ -261,8 +266,13 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         assertEquals(15, config.getPassphrase().length());
         assertFalse(config.isAutoShutdownEnabled());
         if (isMacRandomizationSupport) {
-            assertEquals(config.getMacRandomizationSettingInternal(),
-                    SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
+            if (SdkLevel.isAtLeastT()) {
+                assertEquals(config.getMacRandomizationSettingInternal(),
+                        SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
+            } else {
+                assertEquals(config.getMacRandomizationSettingInternal(),
+                        SoftApConfiguration.RANDOMIZATION_PERSISTENT);
+            }
         } else {
             assertEquals(config.getMacRandomizationSettingInternal(),
                     SoftApConfiguration.RANDOMIZATION_NONE);
@@ -591,6 +601,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
 
     @Test
     public void randomizeBssid_randomizesPersistWhenEnabled() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
         SoftApConfiguration baseConfig = new SoftApConfiguration.Builder()
                 .setMacRandomizationSetting(RANDOMIZATION_PERSISTENT).build();
@@ -608,6 +619,7 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
 
     @Test
     public void randomizeBssid_randomizesNonPersistWhenEnabled() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
         SoftApConfiguration baseConfig = new SoftApConfiguration.Builder()
                 .setMacRandomizationSetting(RANDOMIZATION_NON_PERSISTENT).build();
