@@ -778,9 +778,7 @@ public class HostapdHalHidlImp implements IHostapdHal {
 
     private void updateIfaceParams_1_2FromResource(
             android.hardware.wifi.hostapd.V1_2.IHostapd.IfaceParams ifaceParams12) {
-        ifaceParams12.hwModeParams.enable80211AX =
-                mContext.getResources().getBoolean(
-                        R.bool.config_wifiSoftapIeee80211axSupported);
+        ifaceParams12.hwModeParams.enable80211AX = ApConfigUtil.isIeee80211axSupported(mContext);
         ifaceParams12.hwModeParams.enable6GhzBand =
                 ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext);
         ifaceParams12.hwModeParams.enableHeSingleUserBeamformer =
