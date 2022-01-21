@@ -21,8 +21,6 @@ import static android.net.RouteInfo.RTN_UNICAST;
 import android.content.Context;
 import android.hardware.wifi.V1_0.NanDataPathChannelCfg;
 import android.hardware.wifi.V1_0.NanStatusType;
-import android.hardware.wifi.V1_0.WifiChannelWidthInMhz;
-import android.hardware.wifi.V1_2.NanDataPathChannelInfo;
 import android.net.ConnectivityManager;
 import android.net.IpPrefix;
 import android.net.LinkAddress;
@@ -37,7 +35,6 @@ import android.net.NetworkProvider;
 import android.net.NetworkRequest;
 import android.net.NetworkSpecifier;
 import android.net.RouteInfo;
-import android.net.wifi.ScanResult;
 import android.net.wifi.aware.TlvBufferUtils;
 import android.net.wifi.aware.WifiAwareAgentNetworkSpecifier;
 import android.net.wifi.aware.WifiAwareChannelInfo;
@@ -72,7 +69,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -574,7 +570,7 @@ public class WifiAwareDataPathStateManager {
      * @return False if has error, otherwise return true
      */
     public boolean onDataPathConfirm(int ndpId, byte[] mac, boolean accept,
-            int reason, byte[] message, List<NanDataPathChannelInfo> channelInfo) {
+            int reason, byte[] message, List<WifiAwareChannelInfo> channelInfo) {
         if (mDbg) {
             Log.v(TAG, "onDataPathConfirm: ndpId=" + ndpId + ", mac=" + String.valueOf(
                     HexEncoding.encode(mac)) + ", accept=" + accept + ", reason=" + reason
@@ -614,7 +610,7 @@ public class WifiAwareDataPathStateManager {
         if (accept) {
             ndpInfo.peerDataMac = mac;
             ndpInfo.state = NdpInfo.STATE_CONFIRMED;
-            ndpInfo.channelInfos = covertHalChannelInfo(channelInfo);
+            ndpInfo.channelInfos = channelInfo;
             nnri.state = AwareNetworkRequestInformation.STATE_CONFIRMED;
             // NetworkAgent may already be created for accept any peer request, interface should be
             // ready in that case.
@@ -804,7 +800,7 @@ public class WifiAwareDataPathStateManager {
      * NDP ids has been updated.
      */
     public void onDataPathSchedUpdate(byte[] peerMac, List<Integer> ndpIds,
-            List<NanDataPathChannelInfo> channelInfo) {
+            List<WifiAwareChannelInfo> channelInfo) {
         if (mDbg) {
             Log.v(TAG, "onDataPathSchedUpdate: peerMac=" + MacAddress.fromBytes(peerMac).toString()
                     + ", ndpIds=" + ndpIds + ", channelInfo=" + channelInfo);
@@ -825,7 +821,7 @@ public class WifiAwareDataPathStateManager {
                 continue;
             }
 
-            ndpInfo.channelInfos = covertHalChannelInfo(channelInfo);
+            ndpInfo.channelInfos = channelInfo;
         }
     }
 
@@ -1872,35 +1868,6 @@ public class WifiAwareDataPathStateManager {
                 }
             }
             return Pair.create(port, transportProtocol);
-        }
-    }
-
-    private List<WifiAwareChannelInfo> covertHalChannelInfo(
-            List<NanDataPathChannelInfo> channelInfos) {
-        List<WifiAwareChannelInfo> wifiAwareChannelInfos = new ArrayList<>();
-        if (channelInfos == null) {
-            return null;
-        }
-        for (NanDataPathChannelInfo channelInfo : channelInfos) {
-            wifiAwareChannelInfos.add(new WifiAwareChannelInfo(channelInfo.channelFreq,
-                    getChannelBandwidth(channelInfo.channelBandwidth),
-                    channelInfo.numSpatialStreams));
-        }
-        return wifiAwareChannelInfos;
-    }
-
-    private int getChannelBandwidth(int channelBandwidth) {
-        switch(channelBandwidth) {
-            case WifiChannelWidthInMhz.WIDTH_40:
-                return ScanResult.CHANNEL_WIDTH_40MHZ;
-            case WifiChannelWidthInMhz.WIDTH_80:
-                return ScanResult.CHANNEL_WIDTH_80MHZ;
-            case WifiChannelWidthInMhz.WIDTH_160:
-                return ScanResult.CHANNEL_WIDTH_160MHZ;
-            case WifiChannelWidthInMhz.WIDTH_80P80:
-                return ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
-            default:
-                return ScanResult.CHANNEL_WIDTH_20MHZ;
         }
     }
 
