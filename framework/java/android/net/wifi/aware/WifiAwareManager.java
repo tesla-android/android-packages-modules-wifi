@@ -564,7 +564,7 @@ public class WifiAwareManager {
 
     /** @hide */
     @RequiresPermission(android.Manifest.permission.NETWORK_STACK)
-    public void requestMacAddresses(int uid, List<Integer> peerIds,
+    public void requestMacAddresses(int uid, int[] peerIds,
             IWifiAwareMacAddressProvider callback) {
         try {
             mService.requestMacAddresses(uid, peerIds, callback);

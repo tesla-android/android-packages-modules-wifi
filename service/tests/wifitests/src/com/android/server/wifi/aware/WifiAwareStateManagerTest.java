@@ -24,6 +24,7 @@ import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -59,6 +60,7 @@ import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
 import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.aware.IWifiAwareMacAddressProvider;
+import android.net.wifi.aware.MacAddrMapping;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.WifiAwareManager;
@@ -97,11 +99,9 @@ import org.mockito.Spy;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -231,7 +231,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
      * Test the PeerHandle -> MAC address API:
      * - Start up discovery of 2 sessions
      * - Get multiple matches (PeerHandles)
-     * - Request translation as UID of sesssion #1 for PeerHandles of the same UID + of the other
+     * - Request translation as UID of session #1 for PeerHandles of the same UID + of the other
      *   discovery session (to which we shouldn't have access) + invalid PeerHandle.
      * -> validate results
      */
@@ -334,16 +334,16 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         int peerId3 = peerIdCaptor.getAllValues().get(0);
 
         // request MAC addresses
-        List<Integer> request = new ArrayList<>();
-        request.add(peerId1);
-        request.add(peerId2);
-        request.add(peerId3); // for uid2: so should not be in results
-        request.add(peerId1 * 20 + peerId2 + peerId3); // garbage values != to any
-        Mutable<Map> response = new Mutable<>();
+        int[] request = new int[4];
+        request[0] = peerId1;
+        request[1] = peerId2;
+        request[2] = peerId3; // for uid2: so should not be in results
+        request[3] = peerId1 * 20 + peerId2 + peerId3; // garbage values != to any
+        Mutable<MacAddrMapping[]> response = new Mutable<>();
         mDut.requestMacAddresses(uid1, request, new IWifiAwareMacAddressProvider() {
             @Override
-            public void macAddress(Map peerIdToMacMap) throws RemoteException {
-                response.value = peerIdToMacMap;
+            public void macAddress(MacAddrMapping[] peerIdToMacList) throws RemoteException {
+                response.value = peerIdToMacList;
             }
 
             @Override
@@ -354,9 +354,21 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         mMockLooper.dispatchAll();
 
         assertNotEquals("Non-null result", null, response.value);
-        assertEquals("Number of results", 2, response.value.size());
-        assertEquals("Results[peerId1]", peerMac1, response.value.get(peerId1));
-        assertEquals("Results[peerId2]", peerMac2, response.value.get(peerId2));
+        assertEquals("Number of results", 2, response.value.length);
+
+        MacAddrMapping responseMapping1, responseMapping2;
+        responseMapping1 = responseMapping2 = null;
+        for (MacAddrMapping mapping : response.value) {
+            if (mapping.peerId == peerId1) {
+                responseMapping1 = mapping;
+            } else if (mapping.peerId == peerId2) {
+                responseMapping2 = mapping;
+            }
+        }
+        assertNotNull(responseMapping1);
+        assertNotNull(responseMapping2);
+        assertEquals("Results[peerId1]", peerMac1, responseMapping1.macAddress);
+        assertEquals("Results[peerId2]", peerMac2, responseMapping2.macAddress);
     }
 
     /**

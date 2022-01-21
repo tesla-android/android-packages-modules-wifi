@@ -25,6 +25,7 @@ import android.content.IntentFilter;
 import android.hardware.wifi.V1_0.NanStatusType;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.location.LocationManager;
+import android.net.MacAddress;
 import android.net.wifi.WifiManager;
 import android.net.wifi.aware.AwareResources;
 import android.net.wifi.aware.Characteristics;
@@ -32,6 +33,7 @@ import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
 import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.aware.IWifiAwareMacAddressProvider;
+import android.net.wifi.aware.MacAddrMapping;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.WifiAwareChannelInfo;
@@ -593,11 +595,11 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     /**
      * Translate (and return in the callback) the peerId to its MAC address representation.
      */
-    public void requestMacAddresses(int uid, List<Integer> peerIds,
+    public void requestMacAddresses(int uid, int[] peerIds,
             IWifiAwareMacAddressProvider callback) {
         mSm.getHandler().post(() -> {
             if (VDBG) Log.v(TAG, "requestMacAddresses: uid=" + uid + ", peerIds=" + peerIds);
-            Map<Integer, byte[]> peerIdToMacMap = new HashMap<>();
+            Map<Integer, MacAddrMapping> peerIdToMacMap = new HashMap<>();
             for (int i = 0; i < mClients.size(); ++i) {
                 WifiAwareClientState client = mClients.valueAt(i);
                 if (client.getUid() != uid) {
@@ -612,15 +614,27 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                         WifiAwareDiscoverySessionState.PeerInfo peerInfo = session.getPeerInfo(
                                 peerId);
                         if (peerInfo != null) {
-                            peerIdToMacMap.put(peerId, peerInfo.mMac);
+                            MacAddrMapping mapping = new MacAddrMapping();
+                            mapping.peerId = peerId;
+                            mapping.macAddress = peerInfo.mMac;
+                            peerIdToMacMap.put(peerId, mapping);
                         }
                     }
                 }
             }
 
             try {
-                if (mDbg) Log.v(TAG, "requestMacAddresses: peerIdToMacMap=" + peerIdToMacMap);
-                callback.macAddress(peerIdToMacMap);
+                MacAddrMapping[] peerIdToMacList = peerIdToMacMap.values()
+                        .toArray(new MacAddrMapping[0]);
+                if (mDbg) {
+                    Log.v(TAG, "requestMacAddresses: peerIdToMacList begin");
+                    for (MacAddrMapping mapping : peerIdToMacList) {
+                        Log.v(TAG, "    " + mapping.peerId + ": "
+                                + MacAddress.fromBytes(mapping.macAddress));
+                    }
+                    Log.v(TAG, "requestMacAddresses: peerIdToMacList end");
+                }
+                callback.macAddress(peerIdToMacList);
             } catch (RemoteException e) {
                 Log.e(TAG, "requestMacAddress (sync): exception on callback -- " + e);
 

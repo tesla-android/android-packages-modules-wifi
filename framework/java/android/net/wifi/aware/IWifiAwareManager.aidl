@@ -66,5 +66,5 @@ interface IWifiAwareManager
     void terminateSession(int clientId, int discoverySessionId);
 
     // internal APIs: intended to be used between System Services (restricted permissions)
-    void requestMacAddresses(int uid, in List peerIds, in IWifiAwareMacAddressProvider callback);
+    void requestMacAddresses(int uid, in int[] peerIds, in IWifiAwareMacAddressProvider callback);
 }
