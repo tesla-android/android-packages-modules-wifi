@@ -41,6 +41,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
@@ -72,6 +73,7 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -492,6 +494,50 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         mWifiApConfigStore.disableForceSoftApBandOrChannel();
                         return 0;
                     }
+                }
+                case "set-pno-request": {
+                    if (!SdkLevel.isAtLeastT()) {
+                        pw.println("This feature is only supported on SdkLevel T or later.");
+                        return -1;
+                    }
+                    String ssid = getNextArgRequired();
+                    WifiSsid wifiSsid = WifiSsid.fromString("\"" + ssid + "\"");
+                    IPnoScanResultsCallback.Stub callback = new IPnoScanResultsCallback.Stub() {
+                        @Override
+                        public void onScanResultsAvailable(List<ScanResult> scanResults) {
+                            Log.v(TAG, "PNO scan results available:");
+                            for (ScanResult result : scanResults) {
+                                Log.v(TAG, result.getWifiSsid().toString());
+                            }
+                        }
+                        @Override
+                        public void onRegisterSuccess() {
+                            Log.v(TAG, "PNO scan request register success");
+                        }
+
+                        @Override
+                        public void onRegisterFailed(int reason) {
+                            Log.v(TAG, "PNO scan request register failed reason=" + reason);
+                        }
+
+                        @Override
+                        public void onRemoved(int reason) {
+                            Log.v(TAG, "PNO scan request callback removed reason=" + reason);
+                        }
+                    };
+                    pw.println("requesting PNO scan for: " + wifiSsid);
+                    mWifiService.setExternalPnoScanRequest(new Binder(), callback,
+                            Arrays.asList(wifiSsid), mContext.getOpPackageName(),
+                            mContext.getAttributionTag());
+                    return 0;
+                }
+                case "clear-pno-request": {
+                    if (!SdkLevel.isAtLeastT()) {
+                        pw.println("This feature is only supported on SdkLevel T or later.");
+                        return -1;
+                    }
+                    mWifiService.clearExternalPnoScanRequest();
+                    return 0;
                 }
                 case "start-lohs": {
                     CountDownLatch countDownLatch = new CountDownLatch(2);
@@ -1932,6 +1978,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Stop local only softap (hotspot)");
         pw.println("  set-multi-internet-mode 0|1|2");
         pw.println("    Sets Multi Internet use case mode. 0-disabled 1-dbs 2-multi ap");
+        pw.println("  set-pno-request <ssid>");
+        pw.println("    Requests to include a non-quoted UTF-8 SSID in PNO scans");
+        pw.println("  clear-pno-request");
+        pw.println("    Clear the PNO scan request.");
     }
 
     @Override

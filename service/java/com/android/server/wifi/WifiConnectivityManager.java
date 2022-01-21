@@ -2983,10 +2983,12 @@ public class WifiConnectivityManager {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of WifiConnectivityManager");
         pw.println("WifiConnectivityManager - Log Begin ----");
+        pw.println("mIsLocationModeEnabled: " + mIsLocationModeEnabled);
         mLocalLog.dump(fd, pw, args);
         pw.println("WifiConnectivityManager - Log End ----");
         pw.println(TAG + ": mMultiInternetConnectionState " + mMultiInternetConnectionState);
         mOpenNetworkNotifier.dump(fd, pw, args);
         mWifiBlocklistMonitor.dump(fd, pw, args);
+        mExternalPnoScanRequestManager.dump(fd, pw, args);
     }
 }

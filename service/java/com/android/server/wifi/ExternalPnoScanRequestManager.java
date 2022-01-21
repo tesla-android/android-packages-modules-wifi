@@ -30,6 +30,8 @@ import android.os.RemoteException;
 import android.util.ArraySet;
 import android.util.Log;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +46,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
     private static final String TAG = "ExternalPnoScanRequestManager";
     private ExternalPnoScanRequest mCurrentRequest;
     private final Handler mHandler;
+    private int mCurrentRequestOnPnoNetworkFoundCount = 0;
 
     /**
      * Creates a ExternalPnoScanRequestManager.
@@ -104,6 +107,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
             }
         }
         mCurrentRequest = null;
+        mCurrentRequestOnPnoNetworkFoundCount = 0;
     }
 
     /**
@@ -133,6 +137,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
         if (mCurrentRequest == null) {
             return;
         }
+        mCurrentRequestOnPnoNetworkFoundCount++;
         List<ScanResult> requestedResults = new ArrayList<>();
         for (ScanResult result : results) {
             if (mCurrentRequest.mSsidStrings.contains(result.getWifiSsid().toString())) {
@@ -178,6 +183,19 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
                 mSsidStrings.add(wifiSsid.toString());
             }
         }
+
+        @Override
+        public String toString() {
+            StringBuilder sbuf = new StringBuilder();
+            sbuf.append("uid=").append(mUid)
+                    .append(", binder=").append(mBinder)
+                    .append(", callback=").append(mCallback)
+                    .append(", mSsidStrings=");
+            for (String s : mSsidStrings) {
+                sbuf.append(s).append(", ");
+            }
+            return sbuf.toString();
+        }
     }
 
     /**
@@ -186,5 +204,22 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
     @Override
     public void binderDied() {
         mHandler.post(() -> removeCurrentRequest());
+    }
+
+    /**
+     * Dump the local logs.
+     */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("Dump of ExternalPnoScanRequestManager");
+        pw.println("ExternalPnoScanRequestManager - Log Begin ----");
+        if (mCurrentRequest != null) {
+            pw.println("Current external PNO scan request:");
+            pw.println(mCurrentRequest.toString());
+        } else {
+            pw.println("No external PNO scan request set.");
+        }
+        pw.println("mCurrentRequestOnPnoNetworkFoundCount: "
+                + mCurrentRequestOnPnoNetworkFoundCount);
+        pw.println("ExternalPnoScanRequestManager - Log End ----");
     }
 }
