@@ -4454,6 +4454,42 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiBackupRestore, never()).retrieveConfigurationsFromBackupData(any(byte[].class));
     }
 
+    private void testRestoreNetworkConfiguration(int configNum, int batchNum) {
+        List<WifiConfiguration> configurations = new ArrayList<>();
+        when(mResources.getInteger(
+                eq(R.integer.config_wifiConfigurationRestoreNetworksBatchNum)))
+                .thenReturn(batchNum);
+        WifiConfiguration config = new WifiConfiguration();
+        config.SSID = TEST_SSID;
+        for (int i = 0; i < configNum; i++) {
+            configurations.add(config);
+        }
+        reset(mWifiConfigManager);
+        when(mWifiConfigManager.addOrUpdateNetwork(any(), anyInt()))
+                .thenReturn(new NetworkUpdateResult(TEST_NETWORK_ID));
+        mWifiServiceImpl.restoreNetworks(configurations);
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager, times(configNum)).addOrUpdateNetwork(eq(config), anyInt());
+        verify(mWifiConfigManager, times(configNum)).enableNetwork(
+                eq(TEST_NETWORK_ID), eq(false), anyInt(), eq(null));
+        verify(mWifiConfigManager, times(configNum)).allowAutojoin(eq(TEST_NETWORK_ID),
+                anyBoolean());
+    }
+
+    /**
+     * Verify that a call to
+     * {@link WifiServiceImpl#restoreNetworks(List<WifiConfiguration> configurations)}
+     * trigeering the process of the network restoration in batches.
+     */
+    @Test
+    public void testRestoreNetworksWithBatch() {
+        testRestoreNetworkConfiguration(0 /* configNum */, 50 /* batchNum*/);
+        testRestoreNetworkConfiguration(1 /* configNum */, 50 /* batchNum*/);
+        testRestoreNetworkConfiguration(20 /* configNum */, 50 /* batchNum*/);
+        testRestoreNetworkConfiguration(700 /* configNum */, 50 /* batchNum*/);
+        testRestoreNetworkConfiguration(700 /* configNum */, 0 /* batchNum*/);
+    }
+
     /**
      * Verify that a call to {@link WifiServiceImpl#restoreSupplicantBackupData(byte[], byte[])} is
      * only allowed from callers with the signature only NETWORK_SETTINGS permission.

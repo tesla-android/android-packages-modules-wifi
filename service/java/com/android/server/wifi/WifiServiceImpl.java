@@ -4807,34 +4807,62 @@ public class WifiServiceImpl extends BaseWifiService {
         return backupData;
     }
 
+    private final class NetworkUpdater implements Runnable {
+        private final int mCallingUid;
+        private final List<WifiConfiguration> mConfigurations;
+        private final int mStartIdx;
+        private final int mBatchNum;
+
+        NetworkUpdater(int callingUid, List<WifiConfiguration> configurations, int startIdx,
+                int batchNum) {
+            mCallingUid = callingUid;
+            mConfigurations = configurations;
+            mStartIdx = startIdx;
+            mBatchNum = batchNum;
+        }
+
+        @Override
+        public void run() {
+            final int nextStartIdx = Math.min(mStartIdx + mBatchNum, mConfigurations.size());
+            for (int i = mStartIdx; i < nextStartIdx; i++) {
+                WifiConfiguration configuration = mConfigurations.get(i);
+                int networkId =
+                        mWifiConfigManager.addOrUpdateNetwork(configuration, mCallingUid)
+                                .getNetworkId();
+                if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
+                    Log.e(TAG, "Restore network failed: "
+                            + configuration.getProfileKey());
+                } else {
+                    // Enable all networks restored.
+                    mWifiConfigManager.enableNetwork(networkId, false, mCallingUid, null);
+                    // Restore auto-join param.
+                    mWifiConfigManager.allowAutojoin(networkId, configuration.allowAutojoin);
+                }
+            }
+            if (nextStartIdx < mConfigurations.size()) {
+                mWifiThreadRunner.post(new NetworkUpdater(mCallingUid, mConfigurations,
+                        nextStartIdx, mBatchNum));
+            }
+        }
+    }
+
     /**
      * Helper method to restore networks retrieved from backup data.
      *
      * @param configurations list of WifiConfiguration objects parsed from the backup data.
      */
-    private void restoreNetworks(List<WifiConfiguration> configurations) {
+    @VisibleForTesting
+    void restoreNetworks(List<WifiConfiguration> configurations) {
         if (configurations == null) {
             Log.e(TAG, "Backup data parse failed");
             return;
         }
         int callingUid = Binder.getCallingUid();
-        mWifiThreadRunner.run(
-                () -> {
-                    for (WifiConfiguration configuration : configurations) {
-                        int networkId =
-                                mWifiConfigManager.addOrUpdateNetwork(configuration, callingUid)
-                                        .getNetworkId();
-                        if (networkId == WifiConfiguration.INVALID_NETWORK_ID) {
-                            Log.e(TAG, "Restore network failed: "
-                                    + configuration.getProfileKey());
-                            continue;
-                        }
-                        // Enable all networks restored.
-                        mWifiConfigManager.enableNetwork(networkId, false, callingUid, null);
-                        // Restore auto-join param.
-                        mWifiConfigManager.allowAutojoin(networkId, configuration.allowAutojoin);
-                    }
-                });
+        if (configurations.isEmpty()) return;
+        final int batchNum = mContext.getResources().getInteger(
+                    R.integer.config_wifiConfigurationRestoreNetworksBatchNum);
+        mWifiThreadRunner.run(new NetworkUpdater(callingUid, configurations, 0,
+                batchNum > 0 ? batchNum : configurations.size()));
     }
 
     /**
@@ -4850,7 +4878,7 @@ public class WifiServiceImpl extends BaseWifiService {
         List<WifiConfiguration> wifiConfigurations =
                 mWifiBackupRestore.retrieveConfigurationsFromBackupData(data);
         restoreNetworks(wifiConfigurations);
-        Log.d(TAG, "Restored backup data");
+        Log.d(TAG, "Restored backup data for " + wifiConfigurations.size() + " configs ");
     }
 
     /**
