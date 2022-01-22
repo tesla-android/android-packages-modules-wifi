@@ -102,6 +102,8 @@ import static org.mockito.Mockito.when;
 import android.Manifest;
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
+import android.app.admin.DevicePolicyManager;
+import android.app.admin.WifiSsidPolicy;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.bluetooth.BluetoothAdapter;
 import android.content.AttributionSource;
@@ -399,6 +401,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock IOnWifiDriverCountryCodeChangedListener mIOnWifiDriverCountryCodeChangedListener;
     @Mock WifiShellCommand mWifiShellCommand;
     @Mock AttributionSource mAttributionSource;
+    @Mock DevicePolicyManager mDevicePolicyManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -553,6 +556,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getSelfRecovery()).thenReturn(mSelfRecovery);
         when(mWifiInjector.getLastCallerInfoManager()).thenReturn(mLastCallerInfoManager);
         when(mUserManager.getUserRestrictions()).thenReturn(mBundle);
+        when(mContext.getSystemService(DevicePolicyManager.class)).thenReturn(mDevicePolicyManager);
 
         doAnswer(new AnswerWithArguments() {
             public void answer(Runnable onStoppedListener) throws Throwable {
@@ -9485,32 +9489,27 @@ public class WifiServiceImplTest extends WifiBaseTest {
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID);
         assertThrows(SecurityException.class, () -> {
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, null);
-            fail("Null bundle should fail!");
         });
 
         assertThrows(SecurityException.class, () -> {
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, new Bundle());
-            fail("Empty bundle should fail!");
         });
 
         assertThrows(SecurityException.class, () -> {
             Bundle nullEntry = new Bundle();
             nullEntry.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, null);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, nullEntry);
-            fail("Bundle with null entry (correct key) should fail!");
         });
 
         assertThrows(SecurityException.class, () -> {
             Bundle incorrectEntry = new Bundle();
             incorrectEntry.putInt(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, 10);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, incorrectEntry);
-            fail("Bundle with incorrect entry type (correct key) should fail!");
         });
 
         assertThrows(SecurityException.class, () -> {
             when(mAttributionSource.checkCallingUid()).thenReturn(false);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, mAttribution);
-            fail("Attribution which fails checkCallingUid should fail!");
         });
         when(mAttributionSource.checkCallingUid()).thenReturn(true); // restore
 
@@ -9531,7 +9530,6 @@ public class WifiServiceImplTest extends WifiBaseTest {
             when(originalCaller.isTrusted(any(Context.class))).thenReturn(false);
             when(mAttributionSource.getNext()).thenReturn(originalCaller);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, mAttribution);
-            fail("Attributions on chain which fails isTrusted should fail!");
         });
     }
 
@@ -9642,5 +9640,149 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatch();
         verify(mWifiConfigManager).addOrUpdateNetwork(config, TEST_UID,
                 TEST_PACKAGE_NAME);
+    }
+
+    /**
+     * Test that validateCurrentWifiMeetsAdminRequirements disconnects the current network
+     * due to SSID allowlist restriction
+     */
+    @Test
+    public void testValidateCurrentWifiMeetsAdminRequirementsWithAllowlistRestriction()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        WifiInfo wifiInfo = new WifiInfo();
+        wifiInfo.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
+        wifiInfo.setBSSID(TEST_BSSID);
+        wifiInfo.setNetworkId(TEST_NETWORK_ID);
+        wifiInfo.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PSK);
+
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Collections.singletonList(mClientModeManager));
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+
+        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+                Collections.singleton("SSID"));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mClientModeManager).disconnect();
+    }
+
+    /**
+     * Test that validateCurrentWifiMeetsAdminRequirements disconnects the current network
+     * due to SSID denylist restriction
+     */
+    @Test
+    public void testValidateCurrentWifiMeetsAdminRequirementsWithDenylistRestriction()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        WifiInfo wifiInfo = new WifiInfo();
+        wifiInfo.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
+        wifiInfo.setBSSID(TEST_BSSID);
+        wifiInfo.setNetworkId(TEST_NETWORK_ID);
+        wifiInfo.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PSK);
+
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Collections.singletonList(mClientModeManager));
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+
+        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+                Collections.singleton(TEST_SSID));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mClientModeManager).disconnect();
+    }
+
+    /**
+     * Test that validateCurrentWifiMeetsAdminRequirements does not disconnect the current network
+     * due to SSID restriction for Passpoint networks
+     */
+    @Test
+    public void testValidateCurrentWifiMeetsAdminRequirementsWithSsidRestrictionForPasspoint()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        WifiInfo wifiInfo = setupForGetConnectionInfo();
+        wifiInfo.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R1_R2);
+
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Collections.singletonList(mClientModeManager));
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+
+        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+                Collections.singleton("SSID"));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mClientModeManager, never()).disconnect();
+    }
+
+    /**
+     * Test that validateCurrentWifiMeetsAdminRequirements does not disconnect the current network
+     * due to SSID restriction for Osu networks
+     */
+    @Test
+    public void testValidateCurrentWifiMeetsAdminRequirementsWithSsidRestrictionForOsu()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        WifiInfo wifiInfo = new WifiInfo();
+        wifiInfo.setSSID(WifiSsid.fromUtf8Text(TEST_SSID));
+        wifiInfo.setBSSID(TEST_BSSID);
+        wifiInfo.setNetworkId(TEST_NETWORK_ID);
+        wifiInfo.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3);
+        wifiInfo.setOsuAp(true);
+
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Collections.singletonList(mClientModeManager));
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+
+        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+                Collections.singleton(TEST_SSID));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mClientModeManager, never()).disconnect();
+    }
+
+    /**
+     * Test that validateCurrentWifiMeetsAdminRequirements disconnects the current network
+     * due to minimum security level restriction
+     */
+    @Test
+    public void testValidateCurrentWifiMeetsAdminRequirementsWithSecurityLevelRestriction()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        WifiInfo wifiInfo = setupForGetConnectionInfo();
+        wifiInfo.setCurrentSecurityType(WifiConfiguration.SECURITY_TYPE_PSK);
+
+        when(mActiveModeWarden.getClientModeManagers()).thenReturn(
+                Collections.singletonList(mClientModeManager));
+        when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
+
+        when(mDevicePolicyManager.getMinimumRequiredWifiSecurityLevel()).thenReturn(
+                DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP);
+
+        mLooper.startAutoDispatch();
+        mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
+        mLooper.stopAutoDispatchAndIgnoreExceptions();
+
+        verify(mClientModeManager).disconnect();
     }
 }

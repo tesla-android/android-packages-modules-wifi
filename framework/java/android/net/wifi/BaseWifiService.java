@@ -849,5 +849,10 @@ public class BaseWifiService extends IWifiManager.Stub {
             @WifiManager.WifiMultiInternetMode int mode) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void validateCurrentWifiMeetsAdminRequirements() {
+        throw new UnsupportedOperationException();
+    }
 }
 

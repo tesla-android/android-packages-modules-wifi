@@ -42,6 +42,8 @@ import android.annotation.CheckResult;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
+import android.app.admin.DevicePolicyManager;
+import android.app.admin.WifiSsidPolicy;
 import android.bluetooth.BluetoothAdapter;
 import android.content.AttributionSource;
 import android.content.BroadcastReceiver;
@@ -6313,5 +6315,65 @@ public class WifiServiceImpl extends BaseWifiService {
         // Post operation to handler thread
         return mWifiThreadRunner.call(() ->
                 mMultiInternetManager.setStaConcurrencyForMultiInternetMode(mode), false);
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#validateCurrentWifiMeetsAdminRequirements()}.
+     */
+    @Override
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void validateCurrentWifiMeetsAdminRequirements() {
+        mWifiThreadRunner.post(() -> {
+            DevicePolicyManager devicePolicyManager =
+                    WifiPermissionsUtil.retrieveDevicePolicyManagerFromContext(mContext);
+            if (devicePolicyManager == null) return;
+
+            int adminMinimumSecurityLevel =
+                    devicePolicyManager.getMinimumRequiredWifiSecurityLevel();
+            WifiSsidPolicy policy = devicePolicyManager.getWifiSsidPolicy();
+
+            for (ClientModeManager cmm : mActiveModeWarden.getClientModeManagers()) {
+                WifiInfo wifiInfo = cmm.syncRequestConnectionInfo();
+                if (wifiInfo == null) continue;
+
+                //check minimum security level restriction
+                int currentSecurityLevel = WifiInfo.convertSecurityTypeToDpmWifiSecurity(
+                        wifiInfo.getCurrentSecurityType());
+
+                // Unknown security type is permitted when security type restriction is not set
+                if (adminMinimumSecurityLevel == DevicePolicyManager.WIFI_SECURITY_OPEN
+                        && currentSecurityLevel == WifiInfo.DPM_SECURITY_TYPE_UNKNOWN) {
+                    continue;
+                }
+                if (adminMinimumSecurityLevel > currentSecurityLevel) {
+                    cmm.disconnect();
+                    mLog.info("disconnect admin restricted network").flush();
+                    continue;
+                }
+
+                //check SSID restriction
+                if (policy != null) {
+                    //skip SSID restriction check for Osu and Passpoint networks
+                    if (wifiInfo.isOsuAp() || wifiInfo.isPasspointAp()) continue;
+
+                    int policyType = policy.getPolicyType();
+                    Set<String> ssids = policy.getSsids();
+                    String ssid = wifiInfo.getWifiSsid().getUtf8Text().toString();
+
+                    if (policyType == WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST
+                            && !ssids.contains(ssid)) {
+                        cmm.disconnect();
+                        mLog.info("disconnect admin restricted network").flush();
+                        continue;
+                    }
+                    if (policyType == WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_DENYLIST
+                            && ssids.contains(ssid)) {
+                        cmm.disconnect();
+                        mLog.info("disconnect admin restricted network").flush();
+                        continue;
+                    }
+                }
+            }
+        });
     }
 }
