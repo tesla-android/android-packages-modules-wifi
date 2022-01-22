@@ -36,6 +36,7 @@ import android.app.Notification;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiContext;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.os.Handler;
 import android.view.Window;

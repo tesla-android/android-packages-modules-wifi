@@ -239,7 +239,7 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
 
             ISupplicantStaIfaceCallback callback = new SupplicantStaIfaceCallbackAidlImpl(
                     SupplicantStaIfaceHalAidlImpl.this, ifaceName,
-                    mLock, mContext, mWifiMonitor);
+                    new Object(), mContext, mWifiMonitor);
             if (registerCallback(iface, callback)) {
                 mISupplicantStaIfaces.put(ifaceName, iface);
                 // Keep callback in a store to avoid recycling by garbage collector
