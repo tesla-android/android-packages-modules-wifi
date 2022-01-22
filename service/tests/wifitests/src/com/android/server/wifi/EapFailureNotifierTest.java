@@ -34,6 +34,8 @@ import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiContext;
+import android.net.wifi.WifiStringResourceWrapper;
 import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 

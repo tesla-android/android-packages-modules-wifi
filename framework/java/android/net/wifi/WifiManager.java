@@ -3471,7 +3471,7 @@ public class WifiManager {
      *
      *</p>
      * Usage example:
-     * <pre>{@code
+     * <pre>
      * final NetworkRequest request =
      *      new NetworkRequest.Builder()
      *      .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -3480,10 +3480,10 @@ public class WifiManager {
      *      context.getSystemService(ConnectivityManager.class);
      * final NetworkCallback networkCallback = new NetworkCallback() {
      *      ...
-     *      {@literal @}Override
+     *      &#64;Override
      *      void onAvailable(Network network) {}
      *
-     *      {@literal @}Override
+     *      &#64;Override
      *      void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
      *          WifiInfo wifiInfo = (WifiInfo) networkCapabilities.getTransportInfo();
      *      }
@@ -3491,7 +3491,7 @@ public class WifiManager {
      * };
      * connectivityManager.requestNetwork(request, networkCallback); // For request
      * connectivityManager.registerNetworkCallback(request, networkCallback); // For listen
-     * }</pre>
+     * </pre>
      * <p>
      * <b>Compatibility Notes:</b>
      * <li>Apps can continue using this API, however newer features
@@ -5020,7 +5020,7 @@ public class WifiManager {
     public static final int WPS_TIMED_OUT               = 7;
 
     /**
-     * Interface for callback invocation on an application action
+     * Interface for callback invocation on an application action.
      * @hide
      */
     @SystemApi
@@ -5033,20 +5033,20 @@ public class WifiManager {
 
         /**
          * Passed with {@link #onFailure}.
-         * Indicates that the operation is already in progress
+         * Indicates that the operation is already in progress.
          */
         int FAILURE_IN_PROGRESS = 1;
 
         /**
          * Passed with {@link #onFailure}.
-         * Indicates that the operation failed because the framework is busy and
-         * unable to service the request
+         * Indicates that the operation failed because the framework is busy and is unable to
+         * service the request.
          */
         int FAILURE_BUSY = 2;
 
         /**
          * Passed with {@link #onFailure}.
-         * Indicates that the operation failed due to invalid inputs
+         * Indicates that the operation failed due to invalid inputs.
          */
         int FAILURE_INVALID_ARGS = 3;
 
