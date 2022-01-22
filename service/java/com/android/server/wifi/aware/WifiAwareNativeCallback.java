@@ -554,7 +554,7 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
         mWifiAwareStateManager.onMatchNotification(event.discoverySessionId, event.peerId,
                 event.addr, convertArrayListToNativeByteArray(event.serviceSpecificInfo),
                 convertArrayListToNativeByteArray(event.matchFilter), event.rangingIndicationType,
-                event.rangingMeasurementInCm * 10);
+                event.rangingMeasurementInCm * 10, new byte[0], 0);
     }
 
     @Override
@@ -575,10 +575,13 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
         }
         incrementCbCount(CB_EV_MATCH);
 
+        // TODO: b/69428593 get rid of conversion once HAL moves from CM to MM
         mWifiAwareStateManager.onMatchNotification(event.discoverySessionId, event.peerId,
                 event.addr, convertArrayListToNativeByteArray(event.serviceSpecificInfo),
                 convertArrayListToNativeByteArray(event.matchFilter), event.rangingIndicationType,
-                event.rangingMeasurementInMm);
+                event.rangingMeasurementInMm,
+                convertArrayListToNativeByteArray(event.scid),
+                toPublicCipherSuites(event.peerCipherType));
     }
 
     @Override

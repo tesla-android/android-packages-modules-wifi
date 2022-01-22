@@ -33,7 +33,7 @@ import java.util.Objects;
 
 /**
  * Wi-Fi Aware data-path security config. The config is used with
- * {@link WifiAwareNetworkSpecifier.Builder#setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
+ * {@link WifiAwareNetworkSpecifier.Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
  * to request a secure data-path.
  */
 public final class WifiAwareDataPathSecurityConfig implements Parcelable {
@@ -45,7 +45,7 @@ public final class WifiAwareDataPathSecurityConfig implements Parcelable {
     /**
      * Generate a security config with necessary parameters. Use {@link #isValid()} to check before
      * calling
-     * {@link WifiAwareNetworkSpecifier.Builder#setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
+     * {@link WifiAwareNetworkSpecifier.Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
      * @param passphrase The passphrase to be used to encrypt the link.
      *                      See {@link Builder#setPskPassphrase(String)}
      * @param cipherSuite The cipher suite to be used to encrypt the link.
@@ -225,7 +225,7 @@ public final class WifiAwareDataPathSecurityConfig implements Parcelable {
          * {@link Characteristics#WIFI_AWARE_CIPHER_SUITE_NCS_PK_256}. Both PMK and PMKID must be
          * set.</li>
          * </ul>
-         * @see WifiAwareNetworkSpecifier.Builder#setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)
+         * @see WifiAwareNetworkSpecifier.Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)
          * @param cipherSuite The cipher suite to be used to encrypt the link. One of the
          *                    {@link Characteristics#WIFI_AWARE_CIPHER_SUITE_NCS_SK_128},
          *                    {@link Characteristics#WIFI_AWARE_CIPHER_SUITE_NCS_SK_256},
@@ -310,7 +310,7 @@ public final class WifiAwareDataPathSecurityConfig implements Parcelable {
 
         /**
          * Create a {@link WifiAwareDataPathSecurityConfig} to set in
-         * {@link WifiAwareNetworkSpecifier.Builder#setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to encrypt the link.
+         * {@link WifiAwareNetworkSpecifier.Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to encrypt the link.
          * @return A {@link WifiAwareDataPathSecurityConfig} to be used for encrypting the Wi-Fi
          * Aware data-path.
          */

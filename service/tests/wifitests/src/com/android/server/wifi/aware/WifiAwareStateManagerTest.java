@@ -325,20 +325,23 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback2).onSessionStarted(sessionId.capture());
 
         // (3) 2 matches on session 1 (second one with distance), 1 match on session 2
-        mDut.onMatchNotification(subscribeId1, requestorIdBase, peerMac1, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId1, requestorIdBase, peerMac1, null, null, 0, 0,
+                null, 0);
         mDut.onMatchNotification(subscribeId1, requestorIdBase + 1, peerMac2, null, null,
-                NanRangingIndication.INGRESS_MET_MASK, distance);
+                NanRangingIndication.INGRESS_MET_MASK, distance, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback1).onMatch(peerIdCaptor.capture(), isNull(),
-                isNull());
+                isNull(), anyInt(), any());
         inOrder.verify(mockSessionCallback1).onMatchWithDistance(peerIdCaptor.capture(), isNull(),
-                isNull(), eq(distance));
+                isNull(), eq(distance), anyInt(), any());
         int peerId1 = peerIdCaptor.getAllValues().get(0);
         int peerId2 = peerIdCaptor.getAllValues().get(1);
 
-        mDut.onMatchNotification(subscribeId2, requestorIdBase + 2, peerMac3, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId2, requestorIdBase + 2, peerMac3, null, null, 0, 0,
+                null, 0);
         mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback2).onMatch(peerIdCaptor.capture(), isNull(), isNull());
+        inOrder.verify(mockSessionCallback2).onMatch(peerIdCaptor.capture(), isNull(), isNull(),
+                anyInt(), any());
         int peerId3 = peerIdCaptor.getAllValues().get(0);
 
         // request MAC addresses
@@ -1484,18 +1487,19 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         // (2) 2 matches : with and w/o range
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
         inOrderM.verify(mAwareMetricsMock).recordMatchIndicationForRangeEnabledSubscribe(false);
         int peerId1 = peerIdCaptor.getValue();
 
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), EGRESS_MET_MASK, rangedDistance);
+                peerMatchFilter.getBytes(), EGRESS_MET_MASK, rangedDistance, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onMatchWithDistance(peerIdCaptor.capture(),
-                eq(peerSsi.getBytes()), eq(peerMatchFilter.getBytes()), eq(rangedDistance));
+                eq(peerSsi.getBytes()), eq(peerMatchFilter.getBytes()), eq(rangedDistance),
+                anyInt(), any());
         inOrderM.verify(mAwareMetricsMock).recordMatchIndicationForRangeEnabledSubscribe(true);
         int peerId2 = peerIdCaptor.getValue();
 
@@ -1793,11 +1797,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 eq(subscribeConfig));
         mDut.onSessionConfigSuccessResponse(transactionId.getValue(), false, subscribeId);
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
 
         // (3) send message to invalid peer ID
         mDut.sendMessage(uid, clientId, sessionId.getValue(), peerIdCaptor.getValue() + 5,
@@ -1861,11 +1865,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 eq(subscribeConfig));
         mDut.onSessionConfigSuccessResponse(transactionId.getValue(), false, subscribeId);
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
 
         // (3) send 2 messages and enqueue successfully
         mDut.sendMessage(uid, clientId, sessionId.getValue(), peerIdCaptor.getValue(),
@@ -1986,11 +1990,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 eq(subscribeConfig));
         mDut.onSessionConfigSuccessResponse(transactionId.getValue(), false, subscribeId);
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
 
         // (3) send message and enqueue successfully
         mDut.sendMessage(uid, clientId, sessionId.getValue(), peerIdCaptor.getValue(),
@@ -2072,11 +2076,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 eq(subscribeConfig));
         mDut.onSessionConfigSuccessResponse(transactionId.getValue(), false, subscribeId);
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
 
         // (3) send message and enqueue successfully
         mDut.sendMessage(uid, clientId, sessionId.getValue(), peerIdCaptor.getValue(),
@@ -2163,9 +2167,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
 
         // (2) match
-        mDut.onMatchNotification(subscribeId, requestorId, peerMac, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId, requestorId, peerMac, null, null, 0, 0,
+                null, 0);
         mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), isNull(), isNull());
+        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), isNull(), isNull(),
+                anyInt(), any());
 
         // (3) transmit messages
         SendMessageQueueModelAnswer answerObj = new SendMessageQueueModelAnswer(queueDepth,
@@ -2294,13 +2300,17 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId2.capture());
 
         // (2) match
-        mDut.onMatchNotification(subscribeId1, requestorId1, peerMac1, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId1, requestorId1, peerMac1, null, null, 0, 0,
+                null, 0);
         mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor1.capture(), isNull(), isNull());
+        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor1.capture(), isNull(), isNull(),
+                anyInt(), any());
 
-        mDut.onMatchNotification(subscribeId2, requestorId2, peerMac2, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId2, requestorId2, peerMac2, null, null, 0, 0,
+                null, 0);
         mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor2.capture(), isNull(), isNull());
+        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor2.capture(), isNull(), isNull(),
+                anyInt(), any());
 
         // (3) Enqueue messages
         SendMessageQueueModelAnswer answerObj = new SendMessageQueueModelAnswer(queueDepth,
@@ -2414,9 +2424,11 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
 
         // (2) match
-        mDut.onMatchNotification(subscribeId, requestorId, peerMac, null, null, 0, 0);
+        mDut.onMatchNotification(subscribeId, requestorId, peerMac, null, null, 0, 0,
+                null, 0);
         mMockLooper.dispatchAll();
-        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), isNull(), isNull());
+        inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), isNull(), isNull(),
+                anyInt(), any());
 
         // (3) transmit messages: configure a mix of failures/success
         Set<Integer> failQueueCommandImmediately = new HashSet<>();
@@ -2547,10 +2559,10 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         // (2) match
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
 
         // (3) message null Tx successful queuing
         mDut.sendMessage(uid, clientId, sessionId.getValue(), peerIdCaptor.getValue(),
@@ -3101,7 +3113,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         mDut.onMessageSendQueuedSuccessResponse(transactionIdConfig);
         mDut.onMessageSendQueuedFailResponse(transactionIdConfig, -1);
         mDut.onSessionConfigFailResponse(transactionIdConfig, false, -1);
-        mDut.onMatchNotification(-1, -1, new byte[0], new byte[0], new byte[0], 0, 0);
+        mDut.onMatchNotification(-1, -1, new byte[0], new byte[0], new byte[0], 0, 0, null, 0);
         mDut.onSessionTerminatedNotification(-1, -1, true);
         mDut.onSessionTerminatedNotification(-1, -1, false);
         mDut.onMessageReceivedNotification(-1, -1, new byte[0], new byte[0]);
@@ -3677,18 +3689,19 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         // (2) 2 matches : with and w/o range
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), 0, 0);
+                peerMatchFilter.getBytes(), 0, 0, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onMatch(peerIdCaptor.capture(), eq(peerSsi.getBytes()),
-                eq(peerMatchFilter.getBytes()));
+                eq(peerMatchFilter.getBytes()), anyInt(), any());
         inOrderM.verify(mAwareMetricsMock).recordMatchIndicationForRangeEnabledSubscribe(false);
         int peerId1 = peerIdCaptor.getValue();
 
         mDut.onMatchNotification(subscribeId, requestorId, peerMac, peerSsi.getBytes(),
-                peerMatchFilter.getBytes(), EGRESS_MET_MASK, rangedDistance);
+                peerMatchFilter.getBytes(), EGRESS_MET_MASK, rangedDistance, null, 0);
         mMockLooper.dispatchAll();
         inOrder.verify(mockSessionCallback).onMatchWithDistance(peerIdCaptor.capture(),
-                eq(peerSsi.getBytes()), eq(peerMatchFilter.getBytes()), eq(rangedDistance));
+                eq(peerSsi.getBytes()), eq(peerMatchFilter.getBytes()), eq(rangedDistance),
+                anyInt(), any());
         inOrderM.verify(mAwareMetricsMock).recordMatchIndicationForRangeEnabledSubscribe(true);
         int peerId2 = peerIdCaptor.getValue();
 

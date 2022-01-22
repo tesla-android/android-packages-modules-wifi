@@ -93,11 +93,13 @@ public final class PublishConfig implements Parcelable {
 
     private final int mBand;
 
+    private final WifiAwareDataPathSecurityConfig mSecurityConfig;
+
     /** @hide */
     public PublishConfig(byte[] serviceName, byte[] serviceSpecificInfo, byte[] matchFilter,
             int publishType, int ttlSec, boolean enableTerminateNotification,
             boolean enableRanging, boolean enableInstantMode, @WifiScanner.WifiBand int
-            band) {
+            band, WifiAwareDataPathSecurityConfig securityConfig) {
         mServiceName = serviceName;
         mServiceSpecificInfo = serviceSpecificInfo;
         mMatchFilter = matchFilter;
@@ -107,6 +109,7 @@ public final class PublishConfig implements Parcelable {
         mEnableRanging = enableRanging;
         mEnableInstantMode = enableInstantMode;
         mBand = band;
+        mSecurityConfig = securityConfig;
     }
 
     @Override
@@ -124,7 +127,8 @@ public final class PublishConfig implements Parcelable {
                 + ", mEnableTerminateNotification=" + mEnableTerminateNotification
                 + ", mEnableRanging=" + mEnableRanging + "]"
                 + ", mEnableInstantMode=" + mEnableInstantMode
-                + ", mBand=" + mBand;
+                + ", mBand=" + mBand
+                + ", mSecurityConfig" + mSecurityConfig;
     }
 
     @Override
@@ -143,6 +147,7 @@ public final class PublishConfig implements Parcelable {
         dest.writeInt(mEnableRanging ? 1 : 0);
         dest.writeBoolean(mEnableInstantMode);
         dest.writeInt(mBand);
+        dest.writeParcelable(mSecurityConfig, flags);
     }
 
     public static final @android.annotation.NonNull Creator<PublishConfig> CREATOR = new Creator<PublishConfig>() {
@@ -162,10 +167,12 @@ public final class PublishConfig implements Parcelable {
             boolean enableRanging = in.readInt() != 0;
             boolean enableInstantMode = in.readBoolean();
             int band = in.readInt();
+            WifiAwareDataPathSecurityConfig securityConfig = in
+                    .readParcelable(WifiAwareDataPathSecurityConfig.class.getClassLoader());
 
             return new PublishConfig(serviceName, ssi, matchFilter, publishType, ttlSec,
                     enableTerminateNotification, enableRanging, enableInstantMode,
-                    band);
+                    band, securityConfig);
         }
     };
 
@@ -188,14 +195,15 @@ public final class PublishConfig implements Parcelable {
                 && mEnableTerminateNotification == lhs.mEnableTerminateNotification
                 && mEnableRanging == lhs.mEnableRanging
                 && mEnableInstantMode == lhs.mEnableInstantMode
-                && mBand == lhs.mBand;
+                && mBand == lhs.mBand
+                && Objects.equals(mSecurityConfig, lhs.mSecurityConfig);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(Arrays.hashCode(mServiceName), Arrays.hashCode(mServiceSpecificInfo),
                 Arrays.hashCode(mMatchFilter), mPublishType, mTtlSec, mEnableTerminateNotification,
-                mEnableRanging, mEnableInstantMode, mBand);
+                mEnableRanging, mEnableInstantMode, mBand, mSecurityConfig);
     }
 
     /**
@@ -218,6 +226,9 @@ public final class PublishConfig implements Parcelable {
         if (mTtlSec < 0) {
             throw new IllegalArgumentException("Invalid ttlSec - must be non-negative");
         }
+        if (mSecurityConfig != null && mSecurityConfig.isValid()) {
+            throw new IllegalArgumentException("WifiAwareDataPathSecurityConfig is invalid");
+        }
 
         if (characteristics != null) {
             int maxServiceNameLength = characteristics.getMaxServiceNameLength();
@@ -237,7 +248,6 @@ public final class PublishConfig implements Parcelable {
                 throw new IllegalArgumentException(
                         "Match filter longer than supported by device characteristics");
             }
-
             if (mEnableInstantMode) {
                 if (SdkLevel.isAtLeastT()
                         && characteristics.isInstantCommunicationModeSupported()) {
@@ -246,12 +256,15 @@ public final class PublishConfig implements Parcelable {
                     throw new IllegalArgumentException("instant mode is not supported");
                 }
             }
+            if (mSecurityConfig != null && (characteristics.getSupportedCipherSuites()
+                    & mSecurityConfig.getCipherSuite()) == 0) {
+                throw new IllegalArgumentException("Unsupported cipher suite");
+            }
         }
 
         if (!rttSupported && mEnableRanging) {
             throw new IllegalArgumentException("Ranging is not supported");
         }
-
     }
 
     /**
@@ -274,6 +287,16 @@ public final class PublishConfig implements Parcelable {
     }
 
     /**
+     * Get the data-path security config for this publish session
+     * @see Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)
+     * @return A {@link WifiAwareDataPathSecurityConfig} specified in this config.
+     */
+    @Nullable
+    public WifiAwareDataPathSecurityConfig getSecurityConfig() {
+        return mSecurityConfig;
+    }
+
+    /**
      * Builder used to build {@link PublishConfig} objects.
      */
     public static final class Builder {
@@ -286,6 +309,7 @@ public final class PublishConfig implements Parcelable {
         private boolean mEnableRanging = false;
         private boolean mEnableInstantMode = false;
         private int mBand = WifiScanner.WIFI_BAND_24_GHZ;
+        private WifiAwareDataPathSecurityConfig mSecurityConfig = null;
 
         /**
          * Specify the service name of the publish session. The actual on-air
@@ -469,13 +493,43 @@ public final class PublishConfig implements Parcelable {
         }
 
         /**
+         * Configure security config for the Wi-Fi Aware publish session. The security config set
+         * here must be the same as the one used to request Wi-Fi Aware data-path connection using
+         * {@link WifiAwareNetworkSpecifier.Builder#setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}.
+         * This security config will create a security identifier (SCID) which contains a PMKID and
+         * transmitted in the publish message. The device which subscribe this session can get this
+         * info by {@link ServiceDiscoveryInfo#getScid()}
+         * This method is optional - if not called, then no security context identifier will be
+         * passed in the publish message, then no security context identifier will be provided in
+         * the {@link ServiceDiscoveryInfo} on the subscriber. Security can still be negotiated
+         * using out-of-band (OOB) mechanisms.
+         *
+         * @param securityConfig The (optional) security config to be used to create security
+         *                       context Identifier
+         * @return the current {@link Builder} builder, enabling chaining of builder methods.
+         */
+        public @NonNull Builder setDataPathSecurityConfig(
+                @NonNull WifiAwareDataPathSecurityConfig securityConfig) {
+            if (securityConfig == null) {
+                throw new IllegalArgumentException("The WifiAwareDataPathSecurityConfig "
+                        + "should be non-null");
+            }
+            if (!securityConfig.isValid()) {
+                throw new IllegalArgumentException("The WifiAwareDataPathSecurityConfig "
+                        + "is invalid");
+            }
+            mSecurityConfig = securityConfig;
+            return this;
+        }
+
+        /**
          * Build {@link PublishConfig} given the current requests made on the
          * builder.
          */
         public PublishConfig build() {
             return new PublishConfig(mServiceName, mServiceSpecificInfo, mMatchFilter, mPublishType,
                     mTtlSec, mEnableTerminateNotification, mEnableRanging, mEnableInstantMode,
-                    mBand);
+                    mBand, mSecurityConfig);
         }
     }
 }

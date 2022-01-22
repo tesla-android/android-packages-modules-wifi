@@ -372,7 +372,8 @@ public class WifiAwareManagerTest {
 
         // (3) ...
         publishSession.getValue().sendMessage(peerHandle, messageId, string1.getBytes());
-        sessionProxyCallback.getValue().onMatch(peerHandle.peerId, string1.getBytes(), matchFilter);
+        sessionProxyCallback.getValue().onMatch(peerHandle.peerId, string1.getBytes(), matchFilter,
+                0, new byte[0]);
         sessionProxyCallback.getValue().onMessageReceived(peerHandle.peerId, string1.getBytes());
         sessionProxyCallback.getValue().onMessageSendFail(messageId, reason);
         sessionProxyCallback.getValue().onMessageSendSuccess(messageId);
@@ -383,6 +384,7 @@ public class WifiAwareManagerTest {
         inOrder.verify(mockSessionCallback).onServiceDiscovered(peerIdCaptor.capture(),
                 eq(string1.getBytes()),
                 matchFilterCaptor.capture());
+        inOrder.verify(mockSessionCallback).onServiceDiscovered(any(ServiceDiscoveryInfo.class));
 
         // note: need to capture/compare elements since the Mockito eq() is a shallow comparator
         List<byte[]> parsedMatchFilter = new TlvBufferUtils.TlvIterable(0, 1, matchFilter).toList();
@@ -528,9 +530,10 @@ public class WifiAwareManagerTest {
 
         // (3) ...
         subscribeSession.getValue().sendMessage(peerHandle, messageId, string1.getBytes());
-        sessionProxyCallback.getValue().onMatch(peerHandle.peerId, string1.getBytes(), matchFilter);
+        sessionProxyCallback.getValue().onMatch(peerHandle.peerId, string1.getBytes(), matchFilter,
+                0, new byte[0]);
         sessionProxyCallback.getValue().onMatchWithDistance(peerHandle.peerId, string1.getBytes(),
-                matchFilter, distanceMm);
+                matchFilter, distanceMm, 0, new byte[0]);
         sessionProxyCallback.getValue().onMessageReceived(peerHandle.peerId, string1.getBytes());
         sessionProxyCallback.getValue().onMessageSendFail(messageId, reason);
         sessionProxyCallback.getValue().onMessageSendSuccess(messageId);
@@ -539,9 +542,12 @@ public class WifiAwareManagerTest {
         inOrder.verify(mockAwareService).sendMessage(eq(clientId), eq(sessionId),
                 eq(peerHandle.peerId), eq(string1.getBytes()), eq(messageId), eq(0));
         inOrder.verify(mockSessionCallback).onServiceDiscovered(peerIdCaptor.capture(),
-                eq(string1.getBytes()), isNull());
+                eq(string1.getBytes()), any());
+        inOrder.verify(mockSessionCallback).onServiceDiscovered(any(ServiceDiscoveryInfo.class));
         inOrder.verify(mockSessionCallback).onServiceDiscoveredWithinRange(peerIdCaptor.capture(),
-                eq(string1.getBytes()), isNull(), eq(distanceMm));
+                eq(string1.getBytes()), any(), eq(distanceMm));
+        inOrder.verify(mockSessionCallback).onServiceDiscoveredWithinRange(
+                any(ServiceDiscoveryInfo.class), eq(distanceMm));
         assertEquals((peerIdCaptor.getValue()).peerId, peerHandle.peerId);
         inOrder.verify(mockSessionCallback).onMessageReceived(peerIdCaptor.capture(),
                 eq(string1.getBytes()));

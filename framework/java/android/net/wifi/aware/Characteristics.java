@@ -162,6 +162,7 @@ public final class Characteristics implements Parcelable {
 
     /** @hide */
     @IntDef(flag = true, prefix = { "WIFI_AWARE_CIPHER_SUITE_" }, value = {
+            WIFI_AWARE_CIPHER_SUITE_NONE,
             WIFI_AWARE_CIPHER_SUITE_NCS_SK_128,
             WIFI_AWARE_CIPHER_SUITE_NCS_SK_256,
             WIFI_AWARE_CIPHER_SUITE_NCS_PK_128,
@@ -170,6 +171,10 @@ public final class Characteristics implements Parcelable {
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiAwareCipherSuites {}
 
+    /**
+     * Wi-Fi Aware supported open (unencrypted) data-path.
+     */
+    public static final int WIFI_AWARE_CIPHER_SUITE_NONE = 0;
     /**
      * Wi-Fi Aware supported cipher suite representing NCS SK 128: 128 bit shared-key.
      */
@@ -194,8 +199,9 @@ public final class Characteristics implements Parcelable {
      * Returns the set of cipher suites supported by the device for use in Wi-Fi Aware data-paths.
      * The device automatically picks the strongest cipher suite when initiating a data-path setup.
      *
-     * @return A set of flags from {@link #WIFI_AWARE_CIPHER_SUITE_NCS_SK_128}, or
-     * {@link #WIFI_AWARE_CIPHER_SUITE_NCS_SK_256}.
+     * @return A set of flags from {@link #WIFI_AWARE_CIPHER_SUITE_NCS_SK_128},
+     * {@link #WIFI_AWARE_CIPHER_SUITE_NCS_SK_256}, {@link #WIFI_AWARE_CIPHER_SUITE_NCS_PK_128},
+     * or {@link #WIFI_AWARE_CIPHER_SUITE_NCS_PK_256}
      */
     public @WifiAwareCipherSuites int getSupportedCipherSuites() {
         return mCharacteristics.getInt(KEY_SUPPORTED_CIPHER_SUITES);

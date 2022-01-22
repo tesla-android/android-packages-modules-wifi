@@ -735,6 +735,7 @@ package android.net.wifi.aware {
     field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_PK_256 = 8; // 0x8
     field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 = 1; // 0x1
     field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 = 2; // 0x2
+    field public static final int WIFI_AWARE_CIPHER_SUITE_NONE = 0; // 0x0
   }
 
   public class DiscoverySession implements java.lang.AutoCloseable {
@@ -751,7 +752,9 @@ package android.net.wifi.aware {
     method public void onMessageSendSucceeded(int);
     method public void onPublishStarted(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method public void onServiceDiscovered(android.net.wifi.aware.PeerHandle, byte[], java.util.List<byte[]>);
+    method public void onServiceDiscovered(@NonNull android.net.wifi.aware.ServiceDiscoveryInfo);
     method public void onServiceDiscoveredWithinRange(android.net.wifi.aware.PeerHandle, byte[], java.util.List<byte[]>, int);
+    method public void onServiceDiscoveredWithinRange(@NonNull android.net.wifi.aware.ServiceDiscoveryInfo, int);
     method public void onServiceLost(@NonNull android.net.wifi.aware.PeerHandle, int);
     method public void onSessionConfigFailed();
     method public void onSessionConfigUpdated();
@@ -777,6 +780,7 @@ package android.net.wifi.aware {
   public final class PublishConfig implements android.os.Parcelable {
     method public int describeContents();
     method public int getInstantCommunicationBand();
+    method @Nullable public android.net.wifi.aware.WifiAwareDataPathSecurityConfig getSecurityConfig();
     method public boolean isEnableInstantCommunicationMode();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.PublishConfig> CREATOR;
@@ -787,6 +791,7 @@ package android.net.wifi.aware {
   public static final class PublishConfig.Builder {
     ctor public PublishConfig.Builder();
     method public android.net.wifi.aware.PublishConfig build();
+    method @NonNull public android.net.wifi.aware.PublishConfig.Builder setDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
     method @NonNull public android.net.wifi.aware.PublishConfig.Builder setInstantCommunicationModeEnabled(boolean, int);
     method public android.net.wifi.aware.PublishConfig.Builder setMatchFilter(@Nullable java.util.List<byte[]>);
     method public android.net.wifi.aware.PublishConfig.Builder setPublishType(int);
@@ -799,6 +804,14 @@ package android.net.wifi.aware {
 
   public class PublishDiscoverySession extends android.net.wifi.aware.DiscoverySession {
     method public void updatePublish(@NonNull android.net.wifi.aware.PublishConfig);
+  }
+
+  public class ServiceDiscoveryInfo {
+    method @NonNull public java.util.List<byte[]> getMatchFilters();
+    method public int getPeerCipherSuite();
+    method @NonNull public android.net.wifi.aware.PeerHandle getPeerHandle();
+    method @Nullable public byte[] getScid();
+    method @Nullable public byte[] getServiceSpecificInfo();
   }
 
   public final class SubscribeConfig implements android.os.Parcelable {
@@ -896,11 +909,11 @@ package android.net.wifi.aware {
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier build();
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelInMhz(@IntRange(from=0) int, boolean);
+    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPmk(@NonNull byte[]);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPort(@IntRange(from=0, to=65535) int);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPskPassphrase(@NonNull String);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setTransportProtocol(@IntRange(from=0, to=255) int);
-    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setWifiAwareDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
   }
 
   public class WifiAwareSession implements java.lang.AutoCloseable {

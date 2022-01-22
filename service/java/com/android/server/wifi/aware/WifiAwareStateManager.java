@@ -205,10 +205,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     private static final String MESSAGE_BUNDLE_KEY_SENT_MESSAGE = "send_message";
     private static final String MESSAGE_BUNDLE_KEY_MESSAGE_ARRIVAL_SEQ = "message_arrival_seq";
     private static final String MESSAGE_BUNDLE_KEY_NOTIFY_IDENTITY_CHANGE = "notify_identity_chg";
-    private static final String MESSAGE_BUNDLE_KEY_PMK = "pmk";
-    private static final String MESSAGE_BUNDLE_KEY_PMK_ID = "pmk_id";
+    private static final String MESSAGE_BUNDLE_KEY_SCID = "scid";
     private static final String MESSAGE_BUNDLE_KEY_CIPHER_SUITE = "cipher_suite";
-    private static final String MESSAGE_BUNDLE_KEY_PASSPHRASE = "passphrase";
     private static final String MESSAGE_BUNDLE_KEY_OOB = "out_of_band";
     private static final String MESSAGE_RANGING_INDICATION = "ranging_indication";
     private static final String MESSAGE_RANGE_MM = "range_mm";
@@ -1208,7 +1206,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
      * matching service (to the one we were looking for).
      */
     public void onMatchNotification(int pubSubId, int requestorInstanceId, byte[] peerMac,
-            byte[] serviceSpecificInfo, byte[] matchFilter, int rangingIndication, int rangeMm) {
+            byte[] serviceSpecificInfo, byte[] matchFilter, int rangingIndication, int rangeMm,
+            byte[] scid, int peerCipherSuite) {
         Message msg = mSm.obtainMessage(MESSAGE_TYPE_NOTIFICATION);
         msg.arg1 = NOTIFICATION_TYPE_MATCH;
         msg.arg2 = pubSubId;
@@ -1218,6 +1217,9 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         msg.getData().putByteArray(MESSAGE_BUNDLE_KEY_FILTER_DATA, matchFilter);
         msg.getData().putInt(MESSAGE_RANGING_INDICATION, rangingIndication);
         msg.getData().putInt(MESSAGE_RANGE_MM, rangeMm);
+        msg.getData().putInt(MESSAGE_BUNDLE_KEY_CIPHER_SUITE, peerCipherSuite);
+        msg.getData().putByteArray(MESSAGE_BUNDLE_KEY_SCID, scid);
+
         mSm.sendMessage(msg);
     }
 
@@ -1551,9 +1553,11 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                     byte[] matchFilter = msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_FILTER_DATA);
                     int rangingIndication = msg.getData().getInt(MESSAGE_RANGING_INDICATION);
                     int rangeMm = msg.getData().getInt(MESSAGE_RANGE_MM);
+                    int cipherSuite = msg.getData().getInt(MESSAGE_BUNDLE_KEY_CIPHER_SUITE);
+                    byte[] scid = msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_SCID);
 
                     onMatchLocal(pubSubId, requestorInstanceId, peerMac, serviceSpecificInfo,
-                            matchFilter, rangingIndication, rangeMm);
+                            matchFilter, rangingIndication, rangeMm, cipherSuite, scid);
                     break;
                 }
                 case NOTIFICATION_TYPE_MATCH_EXPIRED: {
@@ -3280,7 +3284,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     }
 
     private void onMatchLocal(int pubSubId, int requestorInstanceId, byte[] peerMac,
-            byte[] serviceSpecificInfo, byte[] matchFilter, int rangingIndication, int rangeMm) {
+            byte[] serviceSpecificInfo, byte[] matchFilter, int rangingIndication, int rangeMm,
+            int cipherSuite, byte[] scid) {
         if (VDBG) {
             Log.v(TAG,
                     "onMatch: pubSubId=" + pubSubId + ", requestorInstanceId=" + requestorInstanceId
@@ -3301,7 +3306,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             mAwareMetrics.recordMatchIndicationForRangeEnabledSubscribe(rangingIndication != 0);
         }
         data.second.onMatch(requestorInstanceId, peerMac, serviceSpecificInfo, matchFilter,
-                rangingIndication, rangeMm);
+                rangingIndication, rangeMm, cipherSuite, scid);
     }
 
     private void onMatchExpiredLocal(int pubSubId, int requestorInstanceId) {

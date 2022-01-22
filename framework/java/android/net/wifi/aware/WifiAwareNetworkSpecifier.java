@@ -430,7 +430,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * Configure the PSK Passphrase for the Wi-Fi Aware connection being requested. This method
          * is optional - if not called, then an Open (unencrypted) connection will be created.
          * Note: Use
-         * {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
+         * {@link #setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
          * interoperability issues when devices support different cipher suites by explicitly
          * specifying a cipher suite as opposed to relying on a default cipher suite.
          * {@link WifiAwareDataPathSecurityConfig.Builder#Builder(int)}
@@ -452,7 +452,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * Configure the PMK for the Wi-Fi Aware connection being requested. This method
          * is optional - if not called, then an Open (unencrypted) connection will be created.
          * Note: Use
-         * {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
+         * {@link #setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)} to avoid
          * interoperability issues when devices support different cipher suites by explicitly
          * specifying a cipher suite as opposed to relying on a default cipher suite.
          *
@@ -478,7 +478,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * <ul>
          *     <li>The server device must be the Publisher device!
          *     <li>The port information can only be specified on secure links, specified using
-         *     {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
+         *     {@link #setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}
          * </ul>
          *
          * @param port A positive integer indicating the port to be used for communication.
@@ -502,7 +502,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          *     <li>The server device must be the Publisher device!
          *     <li>The transport protocol information can only be specified on secure links,
          *     specified using
-         *     {@link #setWifiAwareDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}.
+         *     {@link #setDataPathSecurityConfig(WifiAwareDataPathSecurityConfig)}.
          * </ul>
          * The transport protocol number is assigned by the Internet Assigned Numbers Authority
          * (IANA) https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml.
@@ -550,8 +550,13 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          * @return the current {@link Builder} builder, enabling chaining of builder
          *         methods.
          */
-        public @NonNull Builder setWifiAwareDataPathSecurityConfig(
+        public @NonNull Builder setDataPathSecurityConfig(
                 @NonNull WifiAwareDataPathSecurityConfig securityConfig) {
+            if (securityConfig == null) {
+                throw new IllegalArgumentException("The WifiAwareDataPathSecurityConfig "
+                        + "should be non-null");
+            }
+
             if (!securityConfig.isValid()) {
                 throw new IllegalArgumentException("The WifiAwareDataPathSecurityConfig "
                         + "is invalid");

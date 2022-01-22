@@ -294,28 +294,30 @@ public class WifiAwareDiscoverySessionState {
      * Callback from HAL when a discovery occurs - i.e. when a match to an
      * active subscription request or to a solicited publish request occurs.
      * Propagates to client if registered.
-     *
-     * @param requestorInstanceId The ID used to identify the peer in this
+     *  @param requestorInstanceId The ID used to identify the peer in this
      *            matched session.
      * @param peerMac The MAC address of the peer. Never propagated to client
      *            due to privacy concerns.
      * @param serviceSpecificInfo Information from the discovery advertisement
-     *            (usually not used in the match decisions).
+ *            (usually not used in the match decisions).
      * @param matchFilter The filter from the discovery advertisement (which was
-     *            used in the match decision).
+*            used in the match decision).
      * @param rangingIndication Bit mask indicating the type of ranging event triggered.
      * @param rangeMm The range to the peer in mm (valid if rangingIndication specifies ingress
-     *                or egress events - i.e. non-zero).
+     * @param peerCiphersuite
+     * @param scid
      */
     public void onMatch(int requestorInstanceId, byte[] peerMac, byte[] serviceSpecificInfo,
-            byte[] matchFilter, int rangingIndication, int rangeMm) {
+            byte[] matchFilter, int rangingIndication, int rangeMm, int peerCiphersuite,
+            byte[] scid) {
         int peerId = getPeerIdOrAddIfNew(requestorInstanceId, peerMac);
 
         try {
             if (rangingIndication == 0) {
-                mCallback.onMatch(peerId, serviceSpecificInfo, matchFilter);
+                mCallback.onMatch(peerId, serviceSpecificInfo, matchFilter, peerCiphersuite, scid);
             } else {
-                mCallback.onMatchWithDistance(peerId, serviceSpecificInfo, matchFilter, rangeMm);
+                mCallback.onMatchWithDistance(peerId, serviceSpecificInfo, matchFilter, rangeMm,
+                        peerCiphersuite, scid);
             }
         } catch (RemoteException e) {
             Log.w(TAG, "onMatch: RemoteException (FYI): " + e);

@@ -52,6 +52,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
 import java.nio.BufferOverflowException;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -770,6 +771,8 @@ public class WifiAwareManager {
 
         private static final String MESSAGE_BUNDLE_KEY_MESSAGE = "message";
         private static final String MESSAGE_BUNDLE_KEY_MESSAGE2 = "message2";
+        private static final String MESSAGE_BUNDLE_KEY_CIPHER_SUITE = "key_cipher_suite";
+        private static final String MESSAGE_BUNDLE_KEY_SCID = "key_scid";
 
         private final WeakReference<WifiAwareManager> mAwareManager;
         private final boolean mIsPublish;
@@ -823,29 +826,44 @@ public class WifiAwareManager {
                             break;
                         case CALLBACK_MATCH:
                         case CALLBACK_MATCH_WITH_DISTANCE:
-                            {
                             List<byte[]> matchFilter = null;
-                            byte[] arg = msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE2);
+                            Bundle data = msg.getData();
+                            byte[] arg = data.getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE2);
                             try {
                                 matchFilter = new TlvBufferUtils.TlvIterable(0, 1, arg).toList();
                             } catch (BufferOverflowException e) {
-                                matchFilter = null;
+                                matchFilter = Collections.emptyList();
                                 Log.e(TAG, "onServiceDiscovered: invalid match filter byte array '"
                                         + new String(HexEncoding.encode(arg))
                                         + "' - cannot be parsed: e=" + e);
                             }
                             if (msg.what == CALLBACK_MATCH) {
                                 mOriginalCallback.onServiceDiscovered(new PeerHandle(msg.arg1),
-                                        msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE),
+                                        data.getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE),
                                         matchFilter);
+                                mOriginalCallback.onServiceDiscovered(
+                                        new ServiceDiscoveryInfo(
+                                                new PeerHandle(msg.arg1),
+                                                data.getInt(MESSAGE_BUNDLE_KEY_CIPHER_SUITE),
+                                                data.getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE),
+                                                matchFilter,
+                                                data.getByteArray(MESSAGE_BUNDLE_KEY_SCID)));
+
                             } else {
                                 mOriginalCallback.onServiceDiscoveredWithinRange(
                                         new PeerHandle(msg.arg1),
                                         msg.getData().getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE),
                                         matchFilter, msg.arg2);
+                                mOriginalCallback.onServiceDiscoveredWithinRange(
+                                        new ServiceDiscoveryInfo(
+                                                new PeerHandle(msg.arg1),
+                                                data.getInt(MESSAGE_BUNDLE_KEY_CIPHER_SUITE),
+                                                data.getByteArray(MESSAGE_BUNDLE_KEY_MESSAGE),
+                                                matchFilter,
+                                                data.getByteArray(MESSAGE_BUNDLE_KEY_SCID)),
+                                        msg.arg2);
                             }
                             break;
-                        }
                         case CALLBACK_MESSAGE_SEND_SUCCESS:
                             mOriginalCallback.onMessageSendSucceeded(msg.arg1);
                             break;
@@ -902,10 +920,12 @@ public class WifiAwareManager {
         }
 
         private void onMatchCommon(int messageType, int peerId, byte[] serviceSpecificInfo,
-                byte[] matchFilter, int distanceMm) {
+                byte[] matchFilter, int distanceMm, int peerCipherSuite, byte[] scid) {
             Bundle data = new Bundle();
             data.putByteArray(MESSAGE_BUNDLE_KEY_MESSAGE, serviceSpecificInfo);
             data.putByteArray(MESSAGE_BUNDLE_KEY_MESSAGE2, matchFilter);
+            data.putInt(MESSAGE_BUNDLE_KEY_CIPHER_SUITE, peerCipherSuite);
+            data.putByteArray(MESSAGE_BUNDLE_KEY_SCID, scid);
 
             Message msg = mHandler.obtainMessage(messageType);
             msg.arg1 = peerId;
@@ -915,21 +935,23 @@ public class WifiAwareManager {
         }
 
         @Override
-        public void onMatch(int peerId, byte[] serviceSpecificInfo, byte[] matchFilter) {
+        public void onMatch(int peerId, byte[] serviceSpecificInfo, byte[] matchFilter,
+                int peerCipherSuite, byte[] scid) {
             if (VDBG) Log.v(TAG, "onMatch: peerId=" + peerId);
 
-            onMatchCommon(CALLBACK_MATCH, peerId, serviceSpecificInfo, matchFilter, 0);
+            onMatchCommon(CALLBACK_MATCH, peerId, serviceSpecificInfo, matchFilter, 0,
+                    peerCipherSuite, scid);
         }
 
         @Override
         public void onMatchWithDistance(int peerId, byte[] serviceSpecificInfo, byte[] matchFilter,
-                int distanceMm) {
+                int distanceMm, int peerCipherSuite, byte[] scid) {
             if (VDBG) {
                 Log.v(TAG, "onMatchWithDistance: peerId=" + peerId + ", distanceMm=" + distanceMm);
             }
 
             onMatchCommon(CALLBACK_MATCH_WITH_DISTANCE, peerId, serviceSpecificInfo, matchFilter,
-                    distanceMm);
+                    distanceMm, peerCipherSuite, scid);
         }
         @Override
         public void onMatchExpired(int peerId) {

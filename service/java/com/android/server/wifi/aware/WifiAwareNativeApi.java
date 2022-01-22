@@ -730,45 +730,125 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
             return false;
         }
 
-        NanPublishRequest req = new NanPublishRequest();
-        req.baseConfigs.sessionId = publishId;
-        req.baseConfigs.ttlSec = (short) publishConfig.mTtlSec;
-        req.baseConfigs.discoveryWindowPeriod = 1;
-        req.baseConfigs.discoveryCount = 0;
-        convertNativeByteArrayToArrayList(publishConfig.mServiceName, req.baseConfigs.serviceName);
-        req.baseConfigs.discoveryMatchIndicator = NanMatchAlg.MATCH_NEVER;
-        convertNativeByteArrayToArrayList(publishConfig.mServiceSpecificInfo,
-                req.baseConfigs.serviceSpecificInfo);
-        convertNativeByteArrayToArrayList(publishConfig.mMatchFilter,
-                publishConfig.mPublishType == PublishConfig.PUBLISH_TYPE_UNSOLICITED
-                        ? req.baseConfigs.txMatchFilter : req.baseConfigs.rxMatchFilter);
-        req.baseConfigs.useRssiThreshold = false;
-        req.baseConfigs.disableDiscoveryTerminationIndication =
-                !publishConfig.mEnableTerminateNotification;
-        req.baseConfigs.disableMatchExpirationIndication = true;
-        req.baseConfigs.disableFollowupReceivedIndication = false;
+        android.hardware.wifi.V1_6.IWifiNanIface iface16 = mockableCastTo_1_6(iface);
+        if (iface16 == null) {
+            NanPublishRequest req = new NanPublishRequest();
+            req.baseConfigs.sessionId = publishId;
+            req.baseConfigs.ttlSec = (short) publishConfig.mTtlSec;
+            req.baseConfigs.discoveryWindowPeriod = 1;
+            req.baseConfigs.discoveryCount = 0;
+            convertNativeByteArrayToArrayList(publishConfig.mServiceName,
+                    req.baseConfigs.serviceName);
+            req.baseConfigs.discoveryMatchIndicator = NanMatchAlg.MATCH_NEVER;
+            convertNativeByteArrayToArrayList(publishConfig.mServiceSpecificInfo,
+                    req.baseConfigs.serviceSpecificInfo);
+            convertNativeByteArrayToArrayList(publishConfig.mMatchFilter,
+                    publishConfig.mPublishType == PublishConfig.PUBLISH_TYPE_UNSOLICITED
+                            ? req.baseConfigs.txMatchFilter : req.baseConfigs.rxMatchFilter);
+            req.baseConfigs.useRssiThreshold = false;
+            req.baseConfigs.disableDiscoveryTerminationIndication =
+                    !publishConfig.mEnableTerminateNotification;
+            req.baseConfigs.disableMatchExpirationIndication = true;
+            req.baseConfigs.disableFollowupReceivedIndication = false;
 
-        req.autoAcceptDataPathRequests = false;
+            req.autoAcceptDataPathRequests = false;
 
-        req.baseConfigs.rangingRequired = publishConfig.mEnableRanging;
+            req.baseConfigs.rangingRequired = publishConfig.mEnableRanging;
 
-        // TODO: configure security
-        req.baseConfigs.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            req.baseConfigs.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            WifiAwareDataPathSecurityConfig securityConfig = publishConfig.getSecurityConfig();
+            if (securityConfig != null) {
+                req.baseConfigs.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
+                    req.baseConfigs.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.baseConfigs.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.baseConfigs.securityConfig.securityType =
+                            NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.baseConfigs.securityConfig.passphrase);
+                }
+            }
 
-        req.publishType = publishConfig.mPublishType;
-        req.txType = NanTxType.BROADCAST;
+            req.publishType = publishConfig.mPublishType;
+            req.txType = NanTxType.BROADCAST;
 
-        try {
-            WifiStatus status = iface.startPublishRequest(transactionId, req);
-            if (status.code == WifiStatusCode.SUCCESS) {
-                return true;
-            } else {
-                Log.e(TAG, "publish: error: " + statusString(status));
+            try {
+                WifiStatus status = iface.startPublishRequest(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "publish: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "publish: exception: " + e);
                 return false;
             }
-        } catch (RemoteException e) {
-            Log.e(TAG, "publish: exception: " + e);
-            return false;
+        } else {
+            android.hardware.wifi.V1_6.NanPublishRequest req =
+                    new android.hardware.wifi.V1_6.NanPublishRequest();
+            req.baseConfigs.sessionId = publishId;
+            req.baseConfigs.ttlSec = (short) publishConfig.mTtlSec;
+            req.baseConfigs.discoveryWindowPeriod = 1;
+            req.baseConfigs.discoveryCount = 0;
+            convertNativeByteArrayToArrayList(publishConfig.mServiceName,
+                    req.baseConfigs.serviceName);
+            req.baseConfigs.discoveryMatchIndicator = NanMatchAlg.MATCH_NEVER;
+            convertNativeByteArrayToArrayList(publishConfig.mServiceSpecificInfo,
+                    req.baseConfigs.serviceSpecificInfo);
+            convertNativeByteArrayToArrayList(publishConfig.mMatchFilter,
+                    publishConfig.mPublishType == PublishConfig.PUBLISH_TYPE_UNSOLICITED
+                            ? req.baseConfigs.txMatchFilter : req.baseConfigs.rxMatchFilter);
+            req.baseConfigs.useRssiThreshold = false;
+            req.baseConfigs.disableDiscoveryTerminationIndication =
+                    !publishConfig.mEnableTerminateNotification;
+            req.baseConfigs.disableMatchExpirationIndication = true;
+            req.baseConfigs.disableFollowupReceivedIndication = false;
+
+            req.autoAcceptDataPathRequests = false;
+
+            req.baseConfigs.rangingRequired = publishConfig.mEnableRanging;
+
+            req.baseConfigs.securityConfig.securityType = NanDataPathSecurityType.OPEN;
+            WifiAwareDataPathSecurityConfig securityConfig = publishConfig.getSecurityConfig();
+            if (securityConfig != null) {
+                req.baseConfigs.securityConfig.cipherType = getHalCipherSuiteType(
+                        securityConfig.getCipherSuite());
+                if (securityConfig.getPmk() != null && securityConfig.getPmk().length != 0) {
+                    req.baseConfigs.securityConfig.securityType = NanDataPathSecurityType.PMK;
+                    copyArray(securityConfig.getPmk(), req.baseConfigs.securityConfig.pmk);
+                }
+                if (securityConfig.getPskPassphrase() != null
+                        && securityConfig.getPskPassphrase().length() != 0) {
+                    req.baseConfigs.securityConfig.securityType =
+                            NanDataPathSecurityType.PASSPHRASE;
+                    convertNativeByteArrayToArrayList(securityConfig.getPskPassphrase().getBytes(),
+                            req.baseConfigs.securityConfig.passphrase);
+                }
+                if (securityConfig.getPmkId() != null && securityConfig.getPmkId().length != 0) {
+                    copyArray(securityConfig.getPmkId(), req.baseConfigs.securityConfig.scid);
+                }
+            }
+
+            req.publishType = publishConfig.mPublishType;
+            req.txType = NanTxType.BROADCAST;
+
+            try {
+                WifiStatus status = iface16.startPublishRequest_1_6(transactionId, req);
+                if (status.code == WifiStatusCode.SUCCESS) {
+                    return true;
+                } else {
+                    Log.e(TAG, "publish: error: " + statusString(status));
+                    return false;
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, "publish: exception: " + e);
+                return false;
+            }
         }
     }
 
