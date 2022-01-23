@@ -362,7 +362,7 @@ package android.net.wifi {
   }
 
   @Deprecated public class WifiConfiguration implements android.os.Parcelable {
-    method @Deprecated @NonNull public java.util.Set<java.lang.String> getAllPersistableNetworkKeys();
+    method @Deprecated @NonNull public java.util.Set<java.lang.String> getAllNetworkKeys();
     method @Deprecated public int getAuthType();
     method @Deprecated public int getDeletionPriority();
     method @Deprecated @NonNull public android.net.IpConfiguration getIpConfiguration();
@@ -495,8 +495,8 @@ package android.net.wifi {
   }
 
   public class WifiInfo implements android.os.Parcelable android.net.TransportInfo {
-    method @Nullable public String getCurrentNetworkKey();
     method public double getLostTxPacketsPerSecond();
+    method @Nullable public String getNetworkKey();
     method @Nullable public String getRequestingPackageName();
     method public double getRetriedTxPacketsPerSecond();
     method public int getScore();
