@@ -428,7 +428,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Key of the current network.
      */
-    private String mCurrentNetworkKey;
+    private String mNetworkKey;
 
     /** @hide */
     @UnsupportedAppUsage
@@ -443,7 +443,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mSubscriptionId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         mSecurityType = -1;
         mIsPrimary = IS_PRIMARY_FALSE;
-        mCurrentNetworkKey = null;
+        mNetworkKey = null;
     }
 
     /** @hide */
@@ -483,7 +483,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         mTxRetriedTxPacketsPerSecond = 0;
         score = 0;
         mSecurityType = -1;
-        mCurrentNetworkKey = null;
+        mNetworkKey = null;
     }
 
     /**
@@ -551,8 +551,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
             mIsPrimary = shouldRedactNetworkSettingsFields(redactions)
                     ? IS_PRIMARY_NO_PERMISSION : source.mIsPrimary;
             mSecurityType = source.mSecurityType;
-            mCurrentNetworkKey = shouldRedactLocationSensitiveFields(redactions)
-                    ? null : source.mCurrentNetworkKey;
+            mNetworkKey = shouldRedactLocationSensitiveFields(redactions)
+                    ? null : source.mNetworkKey;
         }
     }
 
@@ -1216,7 +1216,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(", CarrierMerged: ").append(mCarrierMerged)
                 .append(", SubscriptionId: ").append(mSubscriptionId)
                 .append(", IsPrimary: ").append(mIsPrimary)
-                .append(mCurrentNetworkKey == null ? none : mCurrentNetworkKey);
+                .append(mNetworkKey == null ? none : mNetworkKey);
         return sb.toString();
     }
 
@@ -1289,7 +1289,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             dest.writeInt(mIsPrimary);
         }
         dest.writeInt(mSecurityType);
-        dest.writeString(mCurrentNetworkKey);
+        dest.writeString(mNetworkKey);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1345,7 +1345,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                     info.mIsPrimary = in.readInt();
                 }
                 info.mSecurityType = in.readInt();
-                info.mCurrentNetworkKey = in.readString();
+                info.mNetworkKey = in.readString();
                 return info;
             }
 
@@ -1490,7 +1490,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 && Objects.equals(mInformationElements, thatWifiInfo.mInformationElements)
                 && Objects.equals(mIsPrimary, thatWifiInfo.mIsPrimary)
                 && Objects.equals(mSecurityType, thatWifiInfo.mSecurityType)
-                && Objects.equals(mCurrentNetworkKey, thatWifiInfo.mCurrentNetworkKey);
+                && Objects.equals(mNetworkKey, thatWifiInfo.mNetworkKey);
     }
 
     @Override
@@ -1536,7 +1536,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 mInformationElements,
                 mIsPrimary,
                 mSecurityType,
-                mCurrentNetworkKey);
+                mNetworkKey);
     }
 
     /**
@@ -1631,18 +1631,21 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @param currentNetworkKey the network key of the current Wi-Fi network.
      * @hide
      */
-    public void setCurrentNetworkKey(@NonNull String currentNetworkKey) {
-        mCurrentNetworkKey = currentNetworkKey;
+    public void setNetworkKey(@NonNull String currentNetworkKey) {
+        mNetworkKey = currentNetworkKey;
     }
 
     /**
      * Returns the network key of the current Wi-Fi network.
      *
+     * The network key may be {@code null}, if there is no network currently connected
+     * or if the caller has insufficient permissions to access the network key.
+     *
      * @hide
      */
     @SystemApi
     @Nullable
-    public String getCurrentNetworkKey() {
-        return mCurrentNetworkKey;
+    public String getNetworkKey() {
+        return mNetworkKey;
     }
 }

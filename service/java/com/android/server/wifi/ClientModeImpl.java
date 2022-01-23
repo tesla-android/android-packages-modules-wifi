@@ -4401,7 +4401,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             mPasspointManager.requestVenueUrlAnqpElement(scanResult);
                         }
                     }
-                    mWifiInfo.setCurrentNetworkKey(config.getNetworkKeyFromSecurityType(
+                    mWifiInfo.setNetworkKey(config.getNetworkKeyFromSecurityType(
                             mWifiInfo.getCurrentSecurityType()));
                     transitionTo(mL3ProvisioningState);
                     break;
@@ -4681,7 +4681,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                                 mWifiInfo.setOsuAp(true);
                             }
                             mWifiInfo.setProviderFriendlyName(config.providerFriendlyName);
-                            mWifiInfo.setCurrentNetworkKey(
+                            mWifiInfo.setNetworkKey(
                                     config.getNetworkKeyFromSecurityType(
                                             mWifiInfo.getCurrentSecurityType()));
                         }
