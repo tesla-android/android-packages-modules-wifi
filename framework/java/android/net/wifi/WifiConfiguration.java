@@ -3946,7 +3946,7 @@ public class WifiConfiguration implements Parcelable {
      *
      * Note: DO NOT change this function. It is used to be a key to store Wi-Fi data usage data.
      * Create a new function if we plan to change the key for Wi-Fi data usage and add the new key
-     * to {@link #getAllPersistableNetworkKeys()}.
+     * to {@link #getAllNetworkKeys()}.
      *
      * @param securityType the security type corresponding to the target network.
      * @hide
@@ -3977,7 +3977,7 @@ public class WifiConfiguration implements Parcelable {
      * Returns a list of all persistable network keys corresponding to this configuration.
      * There may be multiple keys since they are security-type specific and a configuration may
      * support multiple security types. The persistable key of a specific network connection may
-     * be obtained from {@link WifiInfo#getCurrentNetworkKey()}.
+     * be obtained from {@link WifiInfo#getNetworkKey()}.
      * An example of usage of such persistable network keys is to query the Wi-Fi data usage
      * corresponding to this configuration. See {@code NetworkTemplate} to know the detail.
      *
@@ -3985,7 +3985,7 @@ public class WifiConfiguration implements Parcelable {
      */
     @SystemApi
     @NonNull
-    public Set<String> getAllPersistableNetworkKeys() {
+    public Set<String> getAllNetworkKeys() {
         Set<String> keys = new HashSet<>();
         for (SecurityParams securityParam : mSecurityParamsList) {
             keys.add(getNetworkKeyFromSecurityType(securityParam.getSecurityType()));
