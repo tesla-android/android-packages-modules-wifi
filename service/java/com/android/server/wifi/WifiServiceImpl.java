@@ -2009,12 +2009,13 @@ public class WifiServiceImpl extends BaseWifiService {
 
         @GuardedBy("mLocalOnlyHotspotRequests")
         private void startForFirstRequestLocked(LocalOnlyHotspotRequestInfo request) {
+            final SoftApCapability lohsCapability = mLohsSoftApTracker.getSoftApCapability();
             SoftApConfiguration softApConfig = mWifiApConfigStore.generateLocalOnlyHotspotConfig(
-                    mContext, request.getCustomConfig());
+                    mContext, request.getCustomConfig(), lohsCapability);
 
             mActiveConfig = new SoftApModeConfiguration(
                     WifiManager.IFACE_IP_MODE_LOCAL_ONLY,
-                    softApConfig, mLohsSoftApTracker.getSoftApCapability());
+                    softApConfig, lohsCapability);
             mIsExclusive = (request.getCustomConfig() != null);
             // Report the error if we got failure in startSoftApInternal
             if (!startSoftApInternal(mActiveConfig, request.getWorkSource())) {
