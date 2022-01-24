@@ -20,30 +20,6 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.DhcpInfo;
 import android.net.Network;
-import android.net.wifi.CoexUnsafeChannel;
-import android.net.wifi.IActionListener;
-import android.net.wifi.ICoexCallback;
-import android.net.wifi.IDppCallback;
-import android.net.wifi.ILocalOnlyHotspotCallback;
-import android.net.wifi.INetworkRequestMatchCallback;
-import android.net.wifi.IOnWifiActivityEnergyInfoListener;
-import android.net.wifi.IOnWifiUsabilityStatsListener;
-import android.net.wifi.IScanResultsCallback;
-import android.net.wifi.ISoftApCallback;
-import android.net.wifi.ISubsystemRestartCallback;
-import android.net.wifi.ISuggestionConnectionStatusListener;
-import android.net.wifi.ISuggestionUserApprovalStatusListener;
-import android.net.wifi.ITrafficStateCallback;
-import android.net.wifi.IWifiConnectedNetworkScorer;
-import android.net.wifi.IWifiManager;
-import android.net.wifi.IWifiVerboseLoggingStatusChangedListener;
-import android.net.wifi.ScanResult;
-import android.net.wifi.SoftApConfiguration;
-import android.net.wifi.WifiAvailableChannel;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
-import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 import android.net.wifi.hotspot2.OsuProvider;
 import android.net.wifi.hotspot2.PasspointConfiguration;
@@ -750,6 +726,18 @@ public class BaseWifiService extends IWifiManager.Stub {
     @Override
     public List<WifiConfiguration> getWifiConfigForMatchedNetworkSuggestionsSharedWithUser(
             List<ScanResult> scanResults) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setExternalPnoScanRequest(@NonNull IBinder binder,
+            @NonNull IPnoScanResultsCallback callback,
+            @NonNull List<WifiSsid> ssids, @NonNull String packageName, @NonNull String featureId) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void clearExternalPnoScanRequest() {
         throw new UnsupportedOperationException();
     }
 
