@@ -2688,9 +2688,23 @@ public class HalDeviceManager {
 
                 Mutable<IWifiRttController> rttResp = new Mutable<>();
                 try {
+                    android.hardware.wifi.V1_6.IWifiChip chip16 =
+                            android.hardware.wifi.V1_6.IWifiChip.castFrom(chipInfo.chip);
                     android.hardware.wifi.V1_4.IWifiChip chip14 =
                             android.hardware.wifi.V1_4.IWifiChip.castFrom(chipInfo.chip);
-                    if (chip14 != null) {
+
+                    if (chip16 != null) {
+                        chip16.createRttController_1_6(null,
+                                (WifiStatus status,
+                                 android.hardware.wifi.V1_6.IWifiRttController rtt) -> {
+                                    if (status.code == WifiStatusCode.SUCCESS) {
+                                        rttResp.value = rtt;
+                                    } else {
+                                        Log.e(TAG, "IWifiChip.createRttController_1_6 failed: "
+                                                + statusString(status));
+                                    }
+                                });
+                    } else if (chip14 != null) {
                         chip14.createRttController_1_4(null,
                                 (WifiStatus status,
                                  android.hardware.wifi.V1_4.IWifiRttController rtt) -> {
