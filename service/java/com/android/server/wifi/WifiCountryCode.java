@@ -168,6 +168,7 @@ public class WifiCountryCode {
         public void onSetCountryCodeSucceeded(String country) {
             Log.i(TAG, "Receive onSetCountryCodeSucceeded " + country);
             if (!isDriverSupportedRegChangedEvent()) {
+                mWifiNative.countryCodeChanged(country);
                 handleCountryCodeChanged(country);
             }
         }
