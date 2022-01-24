@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.MacAddress;
+import android.net.wifi.SoftApCapability;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.BandType;
 import android.net.wifi.WifiSsid;
@@ -34,6 +35,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.net.module.util.MacAddressUtils;
 import com.android.server.wifi.util.ApConfigUtil;
+import com.android.server.wifi.util.ArrayUtils;
 import com.android.wifi.resources.R;
 
 import java.nio.charset.CharsetEncoder;
@@ -398,8 +400,8 @@ public class WifiApConfigStore {
      * Generate a temporary WPA2 based configuration for use by the local only hotspot.
      * This config is not persisted and will not be stored by the WifiApConfigStore.
      */
-    public SoftApConfiguration generateLocalOnlyHotspotConfig(Context context,
-            @Nullable SoftApConfiguration customConfig) {
+    public SoftApConfiguration generateLocalOnlyHotspotConfig(@NonNull Context context,
+            @Nullable SoftApConfiguration customConfig, @NonNull SoftApCapability capability) {
         SoftApConfiguration.Builder configBuilder;
         if (customConfig != null) {
             configBuilder = new SoftApConfiguration.Builder(customConfig);
@@ -437,11 +439,15 @@ public class WifiApConfigStore {
         // Automotive mode can force the LOHS to specific bands
         if (hasAutomotiveFeature(context)) {
             if (context.getResources().getBoolean(R.bool.config_wifiLocalOnlyHotspot6ghz)
-                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext)) {
+                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_6GHZ, mContext)
+                    && !ArrayUtils.isEmpty(capability
+                          .getSupportedChannelList(SoftApConfiguration.BAND_6GHZ))) {
                 configBuilder.setBand(SoftApConfiguration.BAND_6GHZ);
             } else if (context.getResources().getBoolean(
                         R.bool.config_wifi_local_only_hotspot_5ghz)
-                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_5GHZ, mContext)) {
+                    && ApConfigUtil.isBandSupported(SoftApConfiguration.BAND_5GHZ, mContext)
+                    && !ArrayUtils.isEmpty(capability
+                          .getSupportedChannelList(SoftApConfiguration.BAND_5GHZ))) {
                 configBuilder.setBand(SoftApConfiguration.BAND_5GHZ);
             }
         }
