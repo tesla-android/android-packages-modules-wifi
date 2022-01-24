@@ -85,7 +85,7 @@ interface IWifiManager
 
     Map getMatchingPasspointConfigsForOsuProviders(in List<OsuProvider> osuProviders);
 
-    int addOrUpdateNetwork(in WifiConfiguration config, String packageName);
+    int addOrUpdateNetwork(in WifiConfiguration config, String packageName, in Bundle extras);
 
     WifiManager.AddNetworkResult addOrUpdateNetworkPrivileged(in WifiConfiguration config, String packageName);
 

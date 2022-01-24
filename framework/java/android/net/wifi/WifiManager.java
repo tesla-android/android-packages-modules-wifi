@@ -2111,8 +2111,14 @@ public class WifiManager {
      * @return the ID of the network on success, {@code -1} on failure.
      */
     private int addOrUpdateNetwork(WifiConfiguration config) {
+        Bundle extras = new Bundle();
+        if (SdkLevel.isAtLeastS()) {
+            extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                    mContext.getAttributionSource());
+        }
+
         try {
-            return mService.addOrUpdateNetwork(config, mContext.getOpPackageName());
+            return mService.addOrUpdateNetwork(config, mContext.getOpPackageName(), extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
