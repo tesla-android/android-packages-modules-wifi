@@ -20,6 +20,7 @@ import static android.net.wifi.ScanResult.InformationElement.EID_VSA;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
@@ -95,17 +96,16 @@ public class SoftApConfigurationTest {
         String utf8Ssid = "ssid";
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setSsid(utf8Ssid)
-                .setBssid(testBssid)
                 .build();
         assertThat(original.getSsid()).isEqualTo(utf8Ssid);
         assertThat(original.getWifiSsid()).isEqualTo(WifiSsid.fromUtf8Text(utf8Ssid));
-        assertThat(original.getBssid()).isEqualTo(testBssid);
         assertThat(original.getPassphrase()).isNull();
         assertThat(original.getSecurityType()).isEqualTo(SoftApConfiguration.SECURITY_TYPE_OPEN);
         assertThat(original.getBand()).isEqualTo(SoftApConfiguration.BAND_2GHZ);
         assertThat(original.getChannel()).isEqualTo(0);
         assertThat(original.isHiddenSsid()).isEqualTo(false);
         assertThat(original.getMaxNumberOfClients()).isEqualTo(0);
+        assertThat(original.getPersistentRandomizedMacAddress()).isNull();
         if (SdkLevel.isAtLeastS()) {
             assertThat(original.isBridgedModeOpportunisticShutdownEnabled())
                     .isEqualTo(true);
@@ -195,6 +195,7 @@ public class SoftApConfigurationTest {
 
     @Test
     public void testWpa2WithAllFieldCustomized() {
+        MacAddress testRandomizedMacAddress = MacAddress.fromString(TEST_BSSID);
         List<MacAddress> testBlockedClientList = new ArrayList<>();
         List<MacAddress> testAllowedClientList = new ArrayList<>();
         testBlockedClientList.add(MacAddress.fromString("11:22:33:44:55:66"));
@@ -208,7 +209,8 @@ public class SoftApConfigurationTest {
                 .setShutdownTimeoutMillis(500000)
                 .setClientControlByUserEnabled(true)
                 .setBlockedClientList(testBlockedClientList)
-                .setAllowedClientList(testAllowedClientList);
+                .setAllowedClientList(testAllowedClientList)
+                .setRandomizedMacAddress(testRandomizedMacAddress);
         if (SdkLevel.isAtLeastS()) {
             originalBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
             originalBuilder.setBridgedModeOpportunisticShutdownEnabled(false);
@@ -234,6 +236,8 @@ public class SoftApConfigurationTest {
         assertThat(original.isClientControlByUserEnabled()).isEqualTo(true);
         assertThat(original.getBlockedClientList()).isEqualTo(testBlockedClientList);
         assertThat(original.getAllowedClientList()).isEqualTo(testAllowedClientList);
+        assertThat(original.getPersistentRandomizedMacAddress())
+                .isEqualTo(testRandomizedMacAddress);
         if (SdkLevel.isAtLeastS()) {
             assertThat(original.getMacRandomizationSetting())
                     .isEqualTo(SoftApConfiguration.RANDOMIZATION_NONE);
@@ -635,5 +639,44 @@ public class SoftApConfigurationTest {
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setVendorElements(dupElements)
                 .build();
+    }
+
+    @Test
+    // TODO: b/216875688 enable it after updating target SDK build version
+    // (expected = IllegalArgumentException.class)
+    public void testThrowsExceptionWhenBssidSetButMacRandomizationSettingIsPersistent() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        MacAddress testBssid = MacAddress.fromString(TEST_BSSID);
+        SoftApConfiguration config_setBssidAfterSetMacRandomizationSettingToPersistent =
+                new SoftApConfiguration.Builder()
+                .setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_PERSISTENT)
+                .setBssid(testBssid)
+                .build();
+    }
+
+    @Test
+    // TODO: b/216875688 enable it after updating target SDK build version
+    // (expected = IllegalArgumentException.class)
+    public void testThrowsExceptionWhenBssidSetButMacRandomizationSettingIsNonPersistent() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        MacAddress testBssid = MacAddress.fromString(TEST_BSSID);
+        SoftApConfiguration config_setBssidAfterSetMacRandomizationSettingToNonPersistent =
+                new SoftApConfiguration.Builder()
+                .setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT)
+                .setBssid(testBssid)
+                .build();
+    }
+
+    @Test
+    public void testSetBssidSucceededWWithDisableMacRandomizationSetting() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        MacAddress testBssid = MacAddress.fromString(TEST_BSSID);
+        SoftApConfiguration config_setBssidAfterSetMacRandomizationSettingToNone =
+                new SoftApConfiguration.Builder()
+                .setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE)
+                .setBssid(testBssid)
+                .build();
+        assertEquals(config_setBssidAfterSetMacRandomizationSettingToNone.getBssid(),
+                testBssid);
     }
 }

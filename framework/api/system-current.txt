@@ -282,6 +282,7 @@ package android.net.wifi {
     method @NonNull public android.util.SparseIntArray getChannels();
     method public int getMacRandomizationSetting();
     method public int getMaxNumberOfClients();
+    method @NonNull public android.net.MacAddress getPersistentRandomizedMacAddress();
     method public long getShutdownTimeoutMillis();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getVendorElements();
     method public boolean isAutoShutdownEnabled();

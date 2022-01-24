@@ -100,6 +100,7 @@ java_defaults {
         "androidx.annotation_annotation",
         "unsupportedappusage", // for android.compat.annotation.UnsupportedAppUsage
         "framework-connectivity.stubs.module_lib",
+        "app-compat-annotations",
     ],
     aidl: {
         include_dirs: [
@@ -189,4 +190,10 @@ java_defaults {
 filegroup {
     name: "wifi-jarjar-rules",
     srcs: ["jarjar-rules.txt"],
+}
+
+platform_compat_config
+{
+    name: "wifi-compat-config",
+    src: ":framework-wifi-pre-jarjar",
 }
