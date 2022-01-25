@@ -75,6 +75,7 @@ import android.text.TextUtils;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -172,6 +173,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiApConfigStore mWifiApConfigStore;
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
     private final ScanRequestProxy mScanRequestProxy;
+    private final @NonNull WifiDialogManager mWifiDialogManager;
 
     private class SoftApCallbackProxy extends ISoftApCallback.Stub {
         private final PrintWriter mPrintWriter;
@@ -280,6 +282,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mSelfRecovery = wifiInjector.getSelfRecovery();
         mWifiApConfigStore = wifiInjector.getWifiApConfigStore();
         mScanRequestProxy = wifiInjector.getScanRequestProxy();
+        mWifiDialogManager = wifiInjector.getWifiDialogManager();
     }
 
     @Override
@@ -1090,6 +1093,48 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     }
                     mScanRequestProxy.enableScanning(enabled, hiddenEnabled);
                     return 0;
+                case "launch-dialog-p2p-invitation-received":
+                    String deviceName = getNextArgRequired();
+                    boolean isPinRequested = false;
+                    String displayPin = null;
+                    String pinOption = getNextOption();
+                    while (pinOption != null) {
+                        if (pinOption.equals("-p")) {
+                            isPinRequested = true;
+                        } else if (pinOption.equals("-d")) {
+                            displayPin = getNextArgRequired();
+                        } else {
+                            pw.println("Ignoring unknown option " + pinOption);
+                        }
+                        pinOption = getNextOption();
+                    }
+                    ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
+                    WifiDialogManager.P2pInvitationReceivedDialogCallback callback =
+                            new WifiDialogManager.P2pInvitationReceivedDialogCallback() {
+                        @Override
+                        public void onAccepted(@Nullable String optionalPin) {
+                            queue.offer("Invitation accepted with optionalPin=" + optionalPin);
+                        }
+
+                        @Override
+                        public void onDeclined() {
+                            queue.offer("Invitation declined");
+                        }
+                    };
+                    mWifiDialogManager.launchP2pInvitationReceivedDialog(
+                            deviceName,
+                            isPinRequested,
+                            displayPin,
+                            callback);
+                    pw.println("Launched dialog. Waiting up to 15 seconds for user response.");
+                    pw.flush();
+                    String msg = queue.poll(15, TimeUnit.SECONDS);
+                    if (msg == null) {
+                        pw.println("No response received.");
+                    } else {
+                        pw.println(msg);
+                    }
+                    return 0;
                 default:
                     return handleDefaultCommands(cmd);
             }
@@ -1776,6 +1821,12 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println(
                 "    Reset the WiFi resources cache which will cause them to be reloaded next "
                         + "time they are accessed. Necessary if overlays are manually modified.");
+        pw.println("  launch-dialog-p2p-invitation-received <device_name> [-p] [-d <pin>]");
+        pw.println("    Launches a P2P Invitation Received dialog and waits up to 30 seconds to"
+                + " print the response.");
+        pw.println("    <device_name> - Name of the device sending the invitation");
+        pw.println("    -p - Show PIN input");
+        pw.println("    -d - Display PIN <pin>");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {
