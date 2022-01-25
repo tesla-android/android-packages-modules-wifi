@@ -1042,7 +1042,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private boolean isTargetSdkLessThanROrPrivileged(String packageName, int pid, int uid) {
         return mWifiPermissionsUtil.isTargetSdkLessThan(packageName, Build.VERSION_CODES.R, uid)
                 || isPrivileged(pid, uid)
-                || isDeviceOrProfileOwner(uid, packageName)
+                || mWifiPermissionsUtil.isAdmin(uid, packageName)
                 || mWifiPermissionsUtil.isSystem(packageName, uid);
     }
 
@@ -3291,7 +3291,7 @@ public class WifiServiceImpl extends BaseWifiService {
                         || mWifiPermissionsUtil.isAdmin(callingUid, packageName)
                         || mWifiPermissionsUtil.isSystem(packageName, callingUid))) {
             mLog.info("addOrUpdateNetwork not allowed for normal apps targeting SDK less "
-                    + "than Q when the DISALLOW_ADD_WIFI_CONFIG user restriction is set ").flush();
+                    + "than Q when the DISALLOW_ADD_WIFI_CONFIG user restriction is set").flush();
             return -1;
         }
         mLog.info("addOrUpdateNetwork uid=%").c(callingUid).flush();
@@ -3853,6 +3853,13 @@ public class WifiServiceImpl extends BaseWifiService {
                 packageName, Binder.getCallingPid(), callingUid)) {
             mLog.info("addOrUpdatePasspointConfiguration not allowed for uid=%")
                     .c(Binder.getCallingUid()).flush();
+            return false;
+        }
+        if (SdkLevel.isAtLeastT() && mUserManager.hasUserRestrictionForUser(
+                UserManager.DISALLOW_ADD_WIFI_CONFIG, UserHandle.getUserHandleForUid(callingUid))
+                && !mWifiPermissionsUtil.isAdmin(callingUid, packageName)) {
+            mLog.info("addOrUpdatePasspointConfiguration only allowed for admin"
+                    + "when the DISALLOW_ADD_WIFI_CONFIG user restriction is set").flush();
             return false;
         }
         mLog.info("addorUpdatePasspointConfiguration uid=%").c(callingUid).flush();
