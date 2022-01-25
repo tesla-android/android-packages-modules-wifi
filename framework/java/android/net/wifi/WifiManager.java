@@ -2488,17 +2488,16 @@ public class WifiManager {
      *
      * See {@link WifiNetworkSuggestion} for a detailed explanation of the parameters.
      * See {@link WifiNetworkSuggestion#equals(Object)} for the equivalence evaluation used.
+     * <p></
+     * Note: Use {@link #removeNetworkSuggestions(List, int)}. An {@code action} of
+     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT} is equivalent to the current behavior.
      *
      * @param networkSuggestions List of network suggestions to be removed. Pass an empty list
      *                           to remove all the previous suggestions provided by the app.
      * @return Status code for the operation. One of the {@code STATUS_NETWORK_SUGGESTIONS_*}
      * values. Any matching suggestions are removed from the device and will not be considered for
      * any further connection attempts.
-     *
-     * @deprecated Use {@link #removeNetworkSuggestions(List, int)}. An {@code action} of
-     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT} is equivalent to the current behavior.
      */
-    @Deprecated
     @RequiresPermission(CHANGE_WIFI_STATE)
     public @NetworkSuggestionsStatusCode int removeNetworkSuggestions(
             @NonNull List<WifiNetworkSuggestion> networkSuggestions) {

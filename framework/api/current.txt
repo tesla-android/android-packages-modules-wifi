@@ -427,7 +427,7 @@ package android.net.wifi {
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerScanResultsCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.ScanResultsCallback);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void registerSubsystemRestartTrackingCallback(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiManager.SubsystemRestartTrackingCallback);
     method @Deprecated public boolean removeNetwork(int);
-    method @Deprecated @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
+    method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>);
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public int removeNetworkSuggestions(@NonNull java.util.List<android.net.wifi.WifiNetworkSuggestion>, int);
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public boolean removeNonCallerConfiguredNetworks();
     method @Deprecated public void removePasspointConfiguration(String);
