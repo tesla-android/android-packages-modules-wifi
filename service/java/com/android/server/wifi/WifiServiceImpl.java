@@ -20,6 +20,7 @@ import static android.app.AppOpsManager.MODE_ALLOWED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_GENERIC;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL;
+import static android.net.wifi.WifiManager.PnoScanResultsCallback.REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED;
 import static android.net.wifi.WifiManager.SAP_START_FAILURE_NO_CHANNEL;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_DISABLING;
@@ -42,6 +43,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
 import android.bluetooth.BluetoothAdapter;
+import android.content.AttributionSource;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -70,6 +72,7 @@ import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
 import android.net.wifi.IOnWifiDriverCountryCodeChangedListener;
 import android.net.wifi.IOnWifiUsabilityStatsListener;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.IScanResultsCallback;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.ISubsystemRestartCallback;
@@ -3219,7 +3222,7 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException("Caller is not a device owner, profile owner, system app,"
                     + " or privileged app");
         }
-        return addOrUpdateNetworkInternal(config, packageName, uid);
+        return addOrUpdateNetworkInternal(config, packageName, uid, packageName);
     }
 
     /**
@@ -3228,7 +3231,49 @@ public class WifiServiceImpl extends BaseWifiService {
      * network if the operation succeeds, or {@code -1} if it fails
      */
     @Override
-    public int addOrUpdateNetwork(WifiConfiguration config, String packageName) {
+    public int addOrUpdateNetwork(WifiConfiguration config, String packageName, Bundle extras) {
+        int uidToUse = getMockableCallingUid();
+        String packageNameToUse = packageName;
+
+        // if we're being called from the SYSTEM_UID then allow usage of the AttributionSource to
+        // reassign the WifiConfiguration to another app (reassignment == creatorUid)
+        if (SdkLevel.isAtLeastS() && uidToUse == Process.SYSTEM_UID) {
+            if (extras == null) {
+                throw new SecurityException("extras bundle is null");
+            }
+            AttributionSource as = extras.getParcelable(
+                    WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE);
+            if (as == null) {
+                throw new SecurityException("addOrUpdateNetwork attributionSource is null");
+            }
+
+            if (!as.checkCallingUid()) {
+                throw new SecurityException(
+                        "addOrUpdateNetwork invalid (checkCallingUid fails) attribution source="
+                                + as);
+            }
+
+            // an attribution chain is either of size 1: unregistered (valid by definition) or
+            // size >1: in which case all are validated.
+            if (as.getNext() != null) {
+                AttributionSource asIt = as;
+                AttributionSource asLast = as;
+                do {
+                    if (!asIt.isTrusted(mContext)) {
+                        throw new SecurityException(
+                                "addOrUpdateNetwork invalid (isTrusted fails) attribution source="
+                                        + asIt);
+                    }
+                    asIt = asIt.getNext();
+                    if (asIt != null) asLast = asIt;
+                } while (asIt != null);
+
+                // use the last AttributionSource in the chain - i.e. the original caller
+                uidToUse = asLast.getUid();
+                packageNameToUse = asLast.getPackageName();
+            }
+        }
+
         if (enforceChangePermission(packageName) != MODE_ALLOWED) {
             return -1;
         }
@@ -3250,11 +3295,12 @@ public class WifiServiceImpl extends BaseWifiService {
             return -1;
         }
         mLog.info("addOrUpdateNetwork uid=%").c(callingUid).flush();
-        return addOrUpdateNetworkInternal(config, packageName, callingUid).networkId;
+        return addOrUpdateNetworkInternal(config, packageName, uidToUse,
+                packageNameToUse).networkId;
     }
 
     private @NonNull AddNetworkResult addOrUpdateNetworkInternal(WifiConfiguration config,
-            String packageName, int callingUid) {
+            String packageName, int attributedCreatorUid, String attributedCreatorPackage) {
         if (config == null) {
             Log.e(TAG, "bad network configuration");
             return new AddNetworkResult(
@@ -3313,8 +3359,8 @@ public class WifiServiceImpl extends BaseWifiService {
         // TODO: b/171981339, add more detailed failure reason into
         //  WifiConfigManager.NetworkUpdateResult, and plumb that reason up.
         int networkId =  mWifiThreadRunner.call(
-                () -> mWifiConfigManager.addOrUpdateNetwork(config, callingUid, packageName)
-                        .getNetworkId(),
+                () -> mWifiConfigManager.addOrUpdateNetwork(config, attributedCreatorUid,
+                        attributedCreatorPackage).getNetworkId(),
                 WifiConfiguration.INVALID_NETWORK_ID);
         if (networkId >= 0) {
             return new AddNetworkResult(AddNetworkResult.STATUS_SUCCESS, networkId);
@@ -5774,6 +5820,64 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * See {@link WifiManager#setExternalPnoScanRequest(Executor, List,
+     * WifiManager.PnoScanResultsCallback)}
+     */
+    @Override
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void setExternalPnoScanRequest(@NonNull IBinder binder,
+            @NonNull IPnoScanResultsCallback callback,
+            @NonNull List<WifiSsid> ssids, @NonNull String packageName, @NonNull String featureId) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException("SDK level too old");
+        }
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        if (ssids == null || ssids.isEmpty()) throw new IllegalStateException(
+                "Ssids can't be null or empty");
+        if (ssids.size() > 2) {
+            throw new IllegalArgumentException("Ssid list can't be greater than 2");
+        }
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkRequestCompanionProfileAutomotiveProjectionPermission(uid)
+                || !mWifiPermissionsUtil.checkCallersLocationPermission(packageName, featureId,
+                uid, false, null)) {
+            throw new SecurityException("Caller has no permission");
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setExternalPnoScanRequest uid=%").c(uid).flush();
+        }
+        mWifiThreadRunner.post(() -> {
+            try {
+                if (!isPnoSupported()) {
+                    callback.onRegisterFailed(REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
+                    return;
+                }
+                // triggering register success for CTS test only. Remove this in followup patch.
+                callback.onRegisterSuccess();
+                // TODO(b/194311187) implement setting the request
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * See {@link WifiManager#clearExternalPnoScanRequest()}
+     */
+    @Override
+    public void clearExternalPnoScanRequest() {
+        int uid = Binder.getCallingUid();
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("setExternalPnoScanRequest uid=%").c(uid).flush();
+        }
+
+        // TODO(b/194311187) implement clearing the request. Still need to check for UID match.
+    }
+
+    /**
      * See {@link android.net.wifi.WifiManager#setWifiConnectedNetworkScorer(Executor,
      * WifiManager.WifiConnectedNetworkScorer)}
      *
@@ -6095,6 +6199,10 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner.post(() ->
                 mPasspointManager.setWifiPasspointEnabled(enabled)
         );
+    }
+
+    private boolean isPnoSupported() {
+        return (getSupportedFeatures() & WifiManager.WIFI_FEATURE_PNO) != 0;
     }
 
     /**

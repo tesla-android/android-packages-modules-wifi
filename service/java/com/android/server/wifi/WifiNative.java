@@ -4146,4 +4146,15 @@ public class WifiNative {
     public SecurityParams getCurrentNetworkSecurityParams(@NonNull String ifaceName) {
         return mSupplicantStaIfaceHal.getCurrentNetworkSecurityParams(ifaceName);
     }
+
+    /**
+     * Notify wificond daemon of country code have changed.
+     */
+    public void countryCodeChanged(String countryCode) {
+        if (SdkLevel.isAtLeastT()) {
+            if (!mWifiCondManager.notifyCountryCodeChanged()) {
+                Log.e(TAG, "Fail to notify wificond country code changed to " + countryCode);
+            }
+        }
+    }
 }

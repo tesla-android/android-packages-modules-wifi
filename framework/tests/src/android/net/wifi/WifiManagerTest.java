@@ -23,6 +23,7 @@ import static android.net.wifi.WifiManager.ActionListener;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_SOFTAP;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_AWARE;
 import static android.net.wifi.WifiManager.COEX_RESTRICTION_WIFI_DIRECT;
+import static android.net.wifi.WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_GENERIC;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE;
 import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL;
@@ -83,6 +84,7 @@ import static org.mockito.Mockito.when;
 
 import android.annotation.NonNull;
 import android.app.ActivityManager;
+import android.content.AttributionSource;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.net.DhcpInfo;
@@ -181,6 +183,7 @@ public class WifiManagerTest {
     @Mock WifiConnectedNetworkScorer mWifiConnectedNetworkScorer;
     @Mock SuggestionUserApprovalStatusListener mSuggestionUserApprovalStatusListener;
     @Mock ActiveCountryCodeChangedCallback mActiveCountryCodeChangedCallback;
+    @Mock AttributionSource mAttributionSource;
 
     private Handler mHandler;
     private TestLooper mLooper;
@@ -277,6 +280,7 @@ public class WifiManagerTest {
         mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         when(mContext.getApplicationInfo()).thenReturn(mApplicationInfo);
         when(mContext.getOpPackageName()).thenReturn(TEST_PACKAGE_NAME);
+        when(mContext.getAttributionSource()).thenReturn(mAttributionSource);
         mWifiManager = new WifiManager(mContext, mWifiService, mLooper.getLooper());
         verify(mWifiService).getVerboseLoggingLevel();
         mWifiNetworkSuggestion = new WifiNetworkSuggestion();
@@ -2487,11 +2491,20 @@ public class WifiManagerTest {
     @Test
     public void testAddNetwork() throws Exception {
         WifiConfiguration configuration = new WifiConfiguration();
-        when(mWifiService.addOrUpdateNetwork(any(), anyString()))
+        when(mWifiService.addOrUpdateNetwork(any(), anyString(), any()))
                 .thenReturn(TEST_NETWORK_ID);
 
+        ArgumentCaptor<Bundle> bundleCaptor = ArgumentCaptor.forClass(Bundle.class);
+
         assertEquals(mWifiManager.addNetwork(configuration), TEST_NETWORK_ID);
-        verify(mWifiService).addOrUpdateNetwork(configuration, mContext.getOpPackageName());
+        verify(mWifiService).addOrUpdateNetwork(eq(configuration), eq(TEST_PACKAGE_NAME),
+                bundleCaptor.capture());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(mContext.getAttributionSource(),
+                    bundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        } else {
+            assertNull(bundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        }
 
         // send a null config
         assertEquals(mWifiManager.addNetwork(null), -1);
@@ -2522,12 +2535,21 @@ public class WifiManagerTest {
     @Test
     public void testUpdateNetwork() throws Exception {
         WifiConfiguration configuration = new WifiConfiguration();
-        when(mWifiService.addOrUpdateNetwork(any(), anyString()))
+        when(mWifiService.addOrUpdateNetwork(any(), anyString(), any()))
                 .thenReturn(TEST_NETWORK_ID);
+
+        ArgumentCaptor<Bundle> bundleCaptor = ArgumentCaptor.forClass(Bundle.class);
 
         configuration.networkId = TEST_NETWORK_ID;
         assertEquals(mWifiManager.updateNetwork(configuration), TEST_NETWORK_ID);
-        verify(mWifiService).addOrUpdateNetwork(configuration, mContext.getOpPackageName());
+        verify(mWifiService).addOrUpdateNetwork(eq(configuration), eq(TEST_PACKAGE_NAME),
+                bundleCaptor.capture());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(mContext.getAttributionSource(),
+                    bundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        } else {
+            assertNull(bundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        }
 
         // config with invalid network ID
         configuration.networkId = -1;

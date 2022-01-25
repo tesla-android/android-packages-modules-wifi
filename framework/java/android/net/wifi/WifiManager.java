@@ -22,6 +22,7 @@ import static android.Manifest.permission.CHANGE_WIFI_STATE;
 import static android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN;
 import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
 import static android.Manifest.permission.READ_WIFI_CREDENTIAL;
+import static android.Manifest.permission.REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION;
 
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
@@ -2110,8 +2111,14 @@ public class WifiManager {
      * @return the ID of the network on success, {@code -1} on failure.
      */
     private int addOrUpdateNetwork(WifiConfiguration config) {
+        Bundle extras = new Bundle();
+        if (SdkLevel.isAtLeastS()) {
+            extras.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                    mContext.getAttributionSource());
+        }
+
         try {
-            return mService.addOrUpdateNetwork(config, mContext.getOpPackageName());
+            return mService.addOrUpdateNetwork(config, mContext.getOpPackageName(), extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -8259,6 +8266,149 @@ public class WifiManager {
         void onSetScoreUpdateObserver(@NonNull ScoreUpdateObserver observerImpl);
     }
 
+
+    /**
+     * Callback registered with {@link #setExternalPnoScanRequest(Executor, List,
+     * PnoScanResultsCallback)}. Returns status and result information on offloaded external PNO
+     * requests.
+     * @hide
+     */
+    @SystemApi
+    public interface PnoScanResultsCallback {
+        /**
+         * A status code returned by {@link #onRegisterFailed(int)}.
+         * Unknown failure.
+         */
+        int REGISTER_PNO_CALLBACK_UNKNOWN = 0;
+
+        /**
+         * A status code returned by {@link #onRegisterFailed(int)}.
+         * A callback has already been registered by the caller.
+         */
+        int REGISTER_PNO_CALLBACK_ALREADY_REGISTERED = 1;
+
+        /**
+         * A status code returned by {@link #onRegisterFailed(int)}.
+         * The platform is unable to serve this request because another app has a PNO scan request
+         * active.
+         */
+        int REGISTER_PNO_CALLBACK_RESOURCE_BUSY = 2;
+
+        /**
+         * A status code returned by {@link #onRegisterFailed(int)}.
+         * PNO scans are not supported on this device.
+         */
+        int REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED = 3;
+
+        /** @hide */
+        @IntDef(prefix = { "REGISTER_PNO_CALLBACK_" }, value = {
+                REGISTER_PNO_CALLBACK_UNKNOWN,
+                REGISTER_PNO_CALLBACK_ALREADY_REGISTERED,
+                REGISTER_PNO_CALLBACK_RESOURCE_BUSY,
+                REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface RegisterFailureReason {}
+
+        /**
+         * A status code returned by {@link #onRemoved(int)}.
+         * Unknown reason.
+         */
+        int REMOVE_PNO_CALLBACK_UNKNOWN = 0;
+
+        /**
+         * A status code returned by {@link #onRemoved(int)}.
+         * This Callback is automatically removed after results ScanResults are delivered.
+         */
+        int REMOVE_PNO_CALLBACK_RESULTS_DELIVERED = 1;
+
+        /**
+         * A status code returned by {@link #onRemoved(int)}.
+         * This callback has been unregistered via {@link WifiManager#clearExternalPnoScanRequest()}
+         */
+        int REMOVE_PNO_CALLBACK_UNREGISTERED = 2;
+
+        /** @hide */
+        @IntDef(prefix = { "REMOVE_PNO_CALLBACK_" }, value = {
+                REMOVE_PNO_CALLBACK_UNKNOWN,
+                REMOVE_PNO_CALLBACK_RESULTS_DELIVERED,
+                REMOVE_PNO_CALLBACK_UNREGISTERED
+        })
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface RemovalReason {}
+
+        /**
+         * Called when PNO scan finds one of the requested SSIDs. This is a one time callback.
+         * After results are reported the callback will be automatically unregistered.
+         */
+        void onScanResultsAvailable(@NonNull List<ScanResult> scanResults);
+
+        /**
+         * Called when this callback has been successfully registered.
+         */
+        void onRegisterSuccess();
+
+        /**
+         * Called when this callback failed to register with the failure reason.
+         * See {@link RegisterFailureReason} for details.
+         */
+        void onRegisterFailed(@RegisterFailureReason int reason);
+
+        /**
+         * Called when this callback has been unregistered from the Wi-Fi subsystem.
+         * See {@link RemovalReason} for details.
+         */
+        void onRemoved(@RemovalReason int reason);
+    }
+
+
+    private class PnoScanResultsCallbackProxy extends IPnoScanResultsCallback.Stub {
+        private Executor mExecutor;
+        private PnoScanResultsCallback mCallback;
+
+        PnoScanResultsCallbackProxy(@NonNull Executor executor,
+                @NonNull PnoScanResultsCallback callback) {
+            mExecutor = executor;
+            mCallback = callback;
+        }
+
+        @Override
+        public void onScanResultsAvailable(List<ScanResult> scanResults) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "PnoScanResultsCallback: " + "onScanResultsAvailable");
+            }
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> mCallback.onScanResultsAvailable(scanResults));
+        }
+
+        @Override
+        public void onRegisterSuccess() {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "PnoScanResultsCallback: " + "onRegisterSuccess");
+            }
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> mCallback.onRegisterSuccess());
+        }
+
+        @Override
+        public void onRegisterFailed(int reason) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "PnoScanResultsCallback: " + "onRegisterFailed " + reason);
+            }
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> mCallback.onRegisterFailed(reason));
+        }
+
+        @Override
+        public void onRemoved(int reason) {
+            if (mVerboseLoggingEnabled) {
+                Log.v(TAG, "PnoScanResultsCallback: " + "onRemoved");
+            }
+            Binder.clearCallingIdentity();
+            mExecutor.execute(() -> mCallback.onRemoved(reason));
+        }
+    }
+
     /**
      * Callback proxy for {@link WifiConnectedNetworkScorer} objects.
      *
@@ -8300,6 +8450,75 @@ public class WifiManager {
             Binder.clearCallingIdentity();
             mExecutor.execute(() -> mScorer.onSetScoreUpdateObserver(
                     new ScoreUpdateObserverProxy(observerImpl)));
+        }
+    }
+
+    /**
+     * This API allows the caller to program up to 2 SSIDs for PNO scans. PNO scans are offloaded
+     * to the Wi-Fi chip when the device is inactive (typically screen-off).
+     * If the screen is currently off when this API is called, then a PNO scan including the
+     * requested SSIDs will immediately get started. If the screen is on when this API is called,
+     * the requested SSIDs will get included for PNO scans the next time the screen turns off.
+     * <p>
+     * Note, due to PNO being a limited resource, only one external PNO request is supported, and
+     * calling this API will fail if an external PNO scan request is already registered.
+     * <p>
+     * After this API is called, {@link PnoScanResultsCallback#onRegisterSuccess()} will be invoked
+     * if the operation is successful, or {@link PnoScanResultsCallback#onRegisterFailed(int)} will
+     * be invoked if the operation failed.
+     * <p>
+     * {@link PnoScanResultsCallback#onRemoved(int)} will be invoked to notify the caller when the
+     * external PNO scan request is removed, which will happen when one of the following events
+     * happen:
+     * </p>
+     * <ul>
+     * <li>Upon finding any of the requested SSIDs, the matching ScanResults will be returned
+     * via {@link PnoScanResultsCallback#onScanResultsAvailable(List)}, and the registered PNO
+     * scan request will get automatically removed.</li>
+     * <li>The external PNO scan request is removed by a call to
+     * {@link #clearExternalPnoScanRequest()}</li>
+     * </ul>
+     *
+     * @param executor The executor on which callback will be invoked.
+     * @param ssids The list of SSIDs to request for PNO scan.
+     * @param callback For the calling application to receive results and status updates.
+     *
+     * @throws SecurityException if the caller does not have permission.
+     * @throws IllegalArgumentException if the caller provided invalid inputs.
+     * @throws UnsupportedOperationException if this API is not supported on this SDK version.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(allOf = {ACCESS_FINE_LOCATION,
+            REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION})
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void setExternalPnoScanRequest(@NonNull @CallbackExecutor Executor executor,
+            @NonNull List<WifiSsid> ssids, @NonNull PnoScanResultsCallback callback) {
+        if (executor == null) throw new IllegalArgumentException("executor cannot be null");
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        try {
+            mService.setExternalPnoScanRequest(new Binder(),
+                    new PnoScanResultsCallbackProxy(executor, callback),
+                    ssids, mContext.getOpPackageName(), mContext.getAttributionTag());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Clear the current PNO scan request that's been set by the calling UID. Note, the call will
+     * be no-op if the current PNO scan request is set by a different UID.
+     *
+     * @throws UnsupportedOperationException if the API is not supported on this SDK version.
+     * @hide
+     */
+    @SystemApi
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void clearExternalPnoScanRequest() {
+        try {
+            mService.clearExternalPnoScanRequest();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
         }
     }
 
