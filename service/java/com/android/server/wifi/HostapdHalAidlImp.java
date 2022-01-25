@@ -808,8 +808,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
         hwModeParams.enable80211N = true;
         hwModeParams.enable80211AC = mContext.getResources().getBoolean(
                 R.bool.config_wifi_softap_ieee80211ac_supported);
-        hwModeParams.enable80211AX = mContext.getResources().getBoolean(
-                R.bool.config_wifiSoftapIeee80211axSupported);
+        hwModeParams.enable80211AX = ApConfigUtil.isIeee80211axSupported(mContext);
         //Update 80211ax support with the configuration.
         hwModeParams.enable80211AX &= config.isIeee80211axEnabledInternal();
         hwModeParams.enable6GhzBand = ApConfigUtil.isBandSupported(
