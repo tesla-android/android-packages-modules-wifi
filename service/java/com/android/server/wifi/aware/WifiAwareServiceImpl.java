@@ -202,7 +202,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     @Override
     public void setAwareParams(AwareParams params) {
         enforceChangePermission();
-        int uid = Binder.getCallingUid();
+        int uid = getMockableCallingUid();
         if (!mWifiPermissionsUtil.checkConfigOverridePermission(uid)) {
             throw new SecurityException("App not allowed to update Aware parameters "
                     + "(uid = " + uid + ")");
