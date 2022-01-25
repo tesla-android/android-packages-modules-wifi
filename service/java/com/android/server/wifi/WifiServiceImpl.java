@@ -53,6 +53,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.location.LocationManager;
 import android.net.DhcpInfo;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
@@ -306,6 +307,7 @@ public class WifiServiceImpl extends BaseWifiService {
 
     private boolean mWifiTetheringDisallowed;
     private boolean mIsBootComplete;
+    private boolean mIsLocationModeEnabled;
 
     /**
      * The wrapper of SoftApCallback is used in WifiService internally.
@@ -580,6 +582,22 @@ public class WifiServiceImpl extends BaseWifiService {
                     new IntentFilter(Intent.ACTION_LOCALE_CHANGED),
                     null,
                     new Handler(mWifiHandlerThread.getLooper()));
+
+            mContext.registerReceiver(
+                    new BroadcastReceiver() {
+                        @Override
+                        public void onReceive(Context context, Intent intent) {
+                            if (isVerboseLoggingEnabled()) {
+                                Log.v(TAG, "onReceive: MODE_CHANGED_ACTION: intent=" + intent);
+                            }
+                            updateLocationMode();
+                        }
+                    },
+                    new IntentFilter(LocationManager.MODE_CHANGED_ACTION),
+                    null,
+                    new Handler(mWifiHandlerThread.getLooper()));
+            updateLocationMode();
+
             if (SdkLevel.isAtLeastT()) {
                 mContext.registerReceiver(
                         new BroadcastReceiver() {
@@ -606,6 +624,11 @@ public class WifiServiceImpl extends BaseWifiService {
             registerForCarrierConfigChange();
             mWifiInjector.getAdaptiveConnectivityEnabledSettingObserver().initialize();
         });
+    }
+
+    private void updateLocationMode() {
+        mIsLocationModeEnabled = mWifiPermissionsUtil.isLocationModeEnabled();
+        mWifiConnectivityManager.setLocationModeEnabled(mIsLocationModeEnabled);
     }
 
 
@@ -5866,6 +5889,7 @@ public class WifiServiceImpl extends BaseWifiService {
         if (!SdkLevel.isAtLeastT()) {
             throw new UnsupportedOperationException("SDK level too old");
         }
+        if (binder == null) throw new IllegalArgumentException("binder cannot be null");
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         if (ssids == null || ssids.isEmpty()) throw new IllegalStateException(
                 "Ssids can't be null or empty");
@@ -5887,9 +5911,7 @@ public class WifiServiceImpl extends BaseWifiService {
                     callback.onRegisterFailed(REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
                     return;
                 }
-                // triggering register success for CTS test only. Remove this in followup patch.
-                callback.onRegisterSuccess();
-                // TODO(b/194311187) implement setting the request
+                mWifiConnectivityManager.setExternalPnoScanRequest(uid, binder, callback, ssids);
             } catch (RemoteException e) {
                 Log.e(TAG, e.getMessage());
             }
@@ -5908,8 +5930,9 @@ public class WifiServiceImpl extends BaseWifiService {
         if (isVerboseLoggingEnabled()) {
             mLog.info("setExternalPnoScanRequest uid=%").c(uid).flush();
         }
-
-        // TODO(b/194311187) implement clearing the request. Still need to check for UID match.
+        mWifiThreadRunner.post(() -> {
+            mWifiConnectivityManager.clearExternalPnoScanRequest(uid);
+        });
     }
 
     /**
