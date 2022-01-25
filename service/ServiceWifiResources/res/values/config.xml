@@ -772,6 +772,12 @@
     <!-- Indicate the number of networks to restore in a batch. 0 : all networks in a batch -->
     <integer translatable="false" name="config_wifiConfigurationRestoreNetworksBatchNum">50</integer>
 
+    <!-- OEM privileged WiFi admin package names. Empty by default-->
+    <string-array translatable="false" name="config_oemPrivilegedWifiAdminPackages">
+        <!-- Add package names here, example: -->
+        <!-- <item>com.something.manager</item> -->
+    </string-array>
+
     <!-- Wifi driver supports Opportunistic Wireless Encryption (OWE) Transition
          aka Enhanced Open for Soft-AP -->
     <bool translatable="false" name="config_wifiSoftapOweTransitionSupported">false</bool>

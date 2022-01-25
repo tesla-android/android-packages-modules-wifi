@@ -6437,4 +6437,13 @@ public class WifiServiceImpl extends BaseWifiService {
                 android.Manifest.permission.OVERRIDE_WIFI_CONFIG);
         mWifiThreadRunner.post(() -> mWifiConfigManager.removeCustomDhcpOptions(ssid, oui));
     }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#getOemPrivilegedAdmins
+     */
+    @Override
+    public String[] getOemPrivilegedAdmins() {
+        return mContext.getResources()
+                .getStringArray(R.array.config_oemPrivilegedWifiAdminPackages);
+    }
 }

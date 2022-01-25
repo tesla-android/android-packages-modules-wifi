@@ -46,6 +46,7 @@ import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.location.LocationManager;
 import android.net.NetworkStack;
 import android.os.Build;
@@ -62,6 +63,7 @@ import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
 import com.android.server.wifi.WifiInjector;
+import com.android.wifi.resources.R;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -1573,5 +1575,52 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
         // verify that checking Coarse for apps!
         verify(mMockAppOps).noteOp(eq(AppOpsManager.OPSTR_COARSE_LOCATION), anyInt(), anyString(),
                 any(), any());
+    }
+
+    @Test
+    public void testIsOemPrivilegedAdmin_notAllowListed() throws Exception {
+        setupTestCase();
+        setupOemAdmins(false, false);
+
+        WifiPermissionsUtil codeUnderTest = new WifiPermissionsUtil(mMockPermissionsWrapper,
+                mMockContext, mMockUserManager, mWifiInjector);
+
+        assertFalse(codeUnderTest.isOemPrivilegedAdmin(TEST_CALLING_UID));
+    }
+
+    @Test
+    public void testIsOemPrivilegedAdmin_allowListedNotSigned() throws Exception {
+        setupTestCase();
+        setupOemAdmins(true, false);
+
+        WifiPermissionsUtil codeUnderTest = new WifiPermissionsUtil(mMockPermissionsWrapper,
+                mMockContext, mMockUserManager, mWifiInjector);
+
+        assertFalse(codeUnderTest.isOemPrivilegedAdmin(TEST_CALLING_UID));
+    }
+
+    @Test
+    public void testIsOemPrivilegedAdmin_allowListedAndSigned() throws Exception {
+        setupTestCase();
+        setupOemAdmins(true, true);
+
+        WifiPermissionsUtil codeUnderTest = new WifiPermissionsUtil(mMockPermissionsWrapper,
+                mMockContext, mMockUserManager, mWifiInjector);
+
+        assertTrue(codeUnderTest.isOemPrivilegedAdmin(TEST_CALLING_UID));
+    }
+
+    private void setupOemAdmins(boolean allowlisted, boolean platformSigned) {
+        Resources mockResources = mock(Resources.class);
+        when(mockResources.getStringArray(R.array.config_oemPrivilegedWifiAdminPackages))
+                .thenReturn(allowlisted ? new String[]{TEST_PACKAGE_NAME} : new String[0]);
+        when(mMockContext.getResources()).thenReturn(mockResources);
+        when(mMockPkgMgr.getPackagesForUid(TEST_CALLING_UID))
+                .thenReturn(new String[]{TEST_PACKAGE_NAME});
+
+        when(mMockPkgMgr.checkSignatures(anyInt(), anyInt()))
+                .thenReturn(platformSigned
+                        ? PackageManager.SIGNATURE_MATCH
+                        : PackageManager.SIGNATURE_NO_MATCH);
     }
 }
