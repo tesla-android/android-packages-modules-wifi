@@ -19,6 +19,7 @@ package com.android.server.wifi.util;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
 import static android.Manifest.permission.RENOUNCE_PERMISSIONS;
+import static android.Manifest.permission.REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
 
 import android.Manifest;
@@ -695,6 +696,15 @@ public class WifiPermissionsUtil {
                     mContext, Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF)
                     == Settings.Secure.LOCATION_MODE_ON;
         }
+    }
+
+    /**
+     * Returns true if the |uid| holds REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION permission.
+     */
+    public boolean checkRequestCompanionProfileAutomotiveProjectionPermission(int uid) {
+        return mWifiPermissionsWrapper.getUidPermission(
+                REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION, uid)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     /**

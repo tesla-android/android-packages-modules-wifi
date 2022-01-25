@@ -498,6 +498,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         mClientModeImplListenerCaptor.getValue().onConnectionStart(mClientModeManager);
         verify(mClientModeManager).setCountryCode(anyString());
         assertEquals(mDefaultCountryCode, mWifiCountryCode.getCurrentDriverCountryCode());
+        verify(mWifiNative, never()).countryCodeChanged(any());
     }
 
     @Test
@@ -510,6 +511,7 @@ public class WifiCountryCodeTest extends WifiBaseTest {
         // Wifi get L2 connected.
         mClientModeImplListenerCaptor.getValue().onConnectionStart(mClientModeManager);
         verify(mClientModeManager).setCountryCode(anyString());
+        verify(mWifiNative).countryCodeChanged(mDefaultCountryCode);
         assertEquals(mDefaultCountryCode, mWifiCountryCode.getCurrentDriverCountryCode());
         verify(mExternalChangeListener).onDriverCountryCodeChanged(mDefaultCountryCode);
     }
