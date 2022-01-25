@@ -3051,10 +3051,10 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * See {@link WifiManager#setSsidsDoNotBlocklist(Set)}
+     * See {@link WifiManager#setSsidsAllowlist(Set)}
      */
     @Override
-    public void setSsidsDoNotBlocklist(@NonNull String packageName, @NonNull List<WifiSsid> ssids) {
+    public void setSsidsAllowlist(@NonNull String packageName, @NonNull List<WifiSsid> ssids) {
         int uid = Binder.getCallingUid();
         mWifiPermissionsUtil.checkPackage(uid, packageName);
         boolean hasPermission = mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
@@ -3067,17 +3067,17 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException(TAG + ": Permission denied");
         }
         if (isVerboseLoggingEnabled()) {
-            mLog.info("setSsidsDoNotBlocklist uid=%").c(uid).flush();
+            mLog.info("setSsidsAllowlist uid=%").c(uid).flush();
         }
         mWifiThreadRunner.post(() ->
-                mWifiBlocklistMonitor.setSsidsDoNotBlocklist(ssids));
+                mWifiBlocklistMonitor.setSsidsAllowlist(ssids));
     }
 
     /**
-     * See {@link WifiManager#getSsidsDoNotBlocklist()}
+     * See {@link WifiManager#getSsidsAllowlist()}
      */
     @Override
-    public @NonNull List<WifiSsid> getSsidsDoNotBlocklist(String packageName) {
+    public @NonNull List<WifiSsid> getSsidsAllowlist(String packageName) {
         int uid = Binder.getCallingUid();
         mWifiPermissionsUtil.checkPackage(uid, packageName);
         boolean hasPermission = mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
@@ -3090,10 +3090,10 @@ public class WifiServiceImpl extends BaseWifiService {
             throw new SecurityException(TAG + ": Permission denied");
         }
         if (isVerboseLoggingEnabled()) {
-            mLog.info("getSsidsDoNotBlocklist uid=%").c(uid).flush();
+            mLog.info("getSsidsAllowlist uid=%").c(uid).flush();
         }
         return mWifiThreadRunner.call(
-                () -> mWifiBlocklistMonitor.getSsidsDoNotBlocklist(), Collections.EMPTY_LIST);
+                () -> mWifiBlocklistMonitor.getSsidsAllowlist(), Collections.EMPTY_LIST);
     }
 
     /**
