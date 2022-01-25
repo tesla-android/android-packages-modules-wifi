@@ -63,6 +63,7 @@ java_library {
         strict_updatability_linting: true,
     },
     libs: [
+        "androidx.annotation_annotation",
         "error_prone_annotations",
         "jsr305",
         "framework-annotations-lib",
@@ -94,7 +95,6 @@ java_library {
         "android.hardware.wifi.supplicant-V1.3-java",
         "android.hardware.wifi.supplicant-V1.4-java",
         "android.hidl.manager-V1.2-java",
-        "androidx.annotation_annotation",
         "bouncycastle-unbundled",
         "ksoap2",
         // Note: libprotobuf-java-lite uses a few core platform APIs which
