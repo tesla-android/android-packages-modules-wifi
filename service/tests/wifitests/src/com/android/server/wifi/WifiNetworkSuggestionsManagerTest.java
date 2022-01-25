@@ -3765,6 +3765,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
      */
     @Test
     public void testSimStateChangeWillResetCarrierPrivilegedApp() {
+        if (SdkLevel.isAtLeastT()) {
+            return;
+        }
         WifiConfiguration config =
                 WifiConfigurationTestUtil.createEapNetwork(WifiEnterpriseConfig.Eap.SIM,
                         WifiEnterpriseConfig.Phase2.NONE);
@@ -3782,7 +3785,49 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         verify(mWifiNotificationManager, never()).notify(anyInt(), any());
         when(mWifiCarrierInfoManager.getCarrierIdForPackageWithCarrierPrivileges(TEST_PACKAGE_1))
                 .thenReturn(TelephonyManager.UNKNOWN_CARRIER_ID);
-        mWifiNetworkSuggestionsManager.resetCarrierPrivilegedApps();
+        mWifiNetworkSuggestionsManager.updateCarrierPrivilegedApps();
+        assertEquals(0,  mWifiNetworkSuggestionsManager.get(TEST_PACKAGE_1, TEST_UID_1).size());
+        verify(mWifiConfigManager, times(2)).saveToStore(true);
+        status = mWifiNetworkSuggestionsManager
+                .add(networkSuggestionList, TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_NOT_ALLOWED, status);
+        networkSuggestionList.clear();
+        networkSuggestionList.add(createWifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createOpenNetwork(), null, true, false, true, true,
+                DEFAULT_PRIORITY_GROUP));
+        status = mWifiNetworkSuggestionsManager
+                .add(networkSuggestionList, TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS, status);
+        verify(mWifiNotificationManager).notify(anyInt(), any());
+    }
+
+    /**
+     * Verify when SIM changes, the app loses carrier privilege. Suggestions from this app will be
+     * removed. If this app suggests again, it will be considered as normal suggestor.
+     */
+    @Test
+    public void testCarrierPrivilegedChangeWillResetCarrierPrivilegedApp() {
+        if (!SdkLevel.isAtLeastT()) {
+            return;
+        }
+        WifiConfiguration config =
+                WifiConfigurationTestUtil.createEapNetwork(WifiEnterpriseConfig.Eap.SIM,
+                        WifiEnterpriseConfig.Phase2.NONE);
+        WifiNetworkSuggestion networkSuggestion = createWifiNetworkSuggestion(
+                config, null, true, false, true, true, DEFAULT_PRIORITY_GROUP);
+        List<WifiNetworkSuggestion> networkSuggestionList = new ArrayList<>();
+        networkSuggestionList.add(networkSuggestion);
+        when(mWifiPermissionsUtil.checkNetworkCarrierProvisioningPermission(TEST_UID_1))
+                .thenReturn(false);
+        when(mWifiCarrierInfoManager.getCarrierIdForPackageWithCarrierPrivileges(TEST_PACKAGE_1))
+                .thenReturn(VALID_CARRIER_ID);
+        int status = mWifiNetworkSuggestionsManager
+                .add(networkSuggestionList, TEST_UID_1, TEST_PACKAGE_1, TEST_FEATURE);
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS, status);
+        verify(mWifiNotificationManager, never()).notify(anyInt(), any());
+        when(mWifiCarrierInfoManager.getCarrierIdForPackageWithCarrierPrivileges(TEST_PACKAGE_1))
+                .thenReturn(TelephonyManager.UNKNOWN_CARRIER_ID);
+        mWifiNetworkSuggestionsManager.updateCarrierPrivilegedApps(Collections.emptySet());
         assertEquals(0,  mWifiNetworkSuggestionsManager.get(TEST_PACKAGE_1, TEST_UID_1).size());
         verify(mWifiConfigManager, times(2)).saveToStore(true);
         status = mWifiNetworkSuggestionsManager

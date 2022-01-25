@@ -2938,16 +2938,21 @@ public class WifiConfigManager {
     }
 
     /**
-     * Clear all ephemeral carrier networks, make the subscriptionId update during the next network
-     * selection.
+     * Clear all ephemeral carrier networks from the app without carrier privilege, which leads to
+     * a disconnection.
+     * Disconnection and removing networks installed by privileged apps is handled by will be
+     * cleaned when privilege revokes.
      */
-    public void removeEphemeralCarrierNetworks() {
+    public void removeEphemeralCarrierNetworks(Set<String> carrierPrivilegedPackages) {
         if (mVerboseLoggingEnabled) localLog("removeEphemeralCarrierNetwork");
         WifiConfiguration[] copiedConfigs =
                 mConfiguredNetworks.valuesForAllUsers().toArray(new WifiConfiguration[0]);
         for (WifiConfiguration config : copiedConfigs) {
             if (!config.ephemeral
                     || config.subscriptionId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                continue;
+            }
+            if (carrierPrivilegedPackages.contains(config.creatorName)) {
                 continue;
             }
             removeNetwork(config.networkId, config.creatorUid, config.creatorName);

@@ -70,6 +70,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.AdditionalAnswers.returnsSecondArg;
 import static org.mockito.AdditionalMatchers.aryEq;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Matchers.any;
@@ -5659,7 +5660,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager).resetSimNetworks();
         verify(mWifiConfigManager).stopRestrictingAutoJoinToSubscriptionId();
         verify(mSimRequiredNotifier, never()).dismissSimRequiredNotification();
-        verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
+        verify(mWifiNetworkSuggestionsManager).updateCarrierPrivilegedApps();
         verify(mWifiConfigManager, never()).removeAllEphemeralOrPasspointConfiguredNetworks();
         verify(mWifiNetworkSuggestionsManager).resetSimNetworkSuggestions();
         verify(mPasspointManager).resetSimPasspointNetwork();
@@ -5689,7 +5690,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiNetworkSuggestionsManager, never()).resetSimNetworkSuggestions();
         verify(mWifiConfigManager, never()).stopRestrictingAutoJoinToSubscriptionId();
         verify(mSimRequiredNotifier).dismissSimRequiredNotification();
-        verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
+        verify(mWifiNetworkSuggestionsManager).updateCarrierPrivilegedApps();
         verify(mWifiConfigManager, never()).removeAllEphemeralOrPasspointConfiguredNetworks();
         verify(mWifiConfigManager).enableTemporaryDisabledNetworks();
         verify(mWifiConnectivityManager).forceConnectivityScan(any());
@@ -5714,8 +5715,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager).resetSimNetworks();
         verify(mWifiConfigManager).stopRestrictingAutoJoinToSubscriptionId();
         verify(mSimRequiredNotifier, never()).dismissSimRequiredNotification();
-        verify(mWifiNetworkSuggestionsManager).resetCarrierPrivilegedApps();
-        verify(mWifiConfigManager).removeEphemeralCarrierNetworks();
+        verify(mWifiNetworkSuggestionsManager).updateCarrierPrivilegedApps();
+        verify(mWifiConfigManager).removeEphemeralCarrierNetworks(anySet());
         verify(mWifiNetworkSuggestionsManager).resetSimNetworkSuggestions();
         verify(mPasspointManager).resetSimPasspointNetwork();
         verify(mWifiDataStall).resetPhoneStateListener();
