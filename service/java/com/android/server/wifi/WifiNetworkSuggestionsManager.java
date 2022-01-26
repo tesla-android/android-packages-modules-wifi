@@ -2292,7 +2292,10 @@ public class WifiNetworkSuggestionsManager {
      * If app changes from privileged to not privileged, remove all suggestions and reset state.
      * If app changes from not privileges to privileged, set target carrier id for all suggestions.
      */
-    public void resetCarrierPrivilegedApps() {
+    public void updateCarrierPrivilegedApps() {
+        if (SdkLevel.isAtLeastT()) {
+            return;
+        }
         Log.w(TAG, "SIM state is changed!");
         Iterator<Map.Entry<String, PerAppInfo>> iter =
                 mActiveNetworkSuggestionsPerApp.entrySet().iterator();
@@ -2315,6 +2318,56 @@ public class WifiNetworkSuggestionsManager {
             for (ExtendedWifiNetworkSuggestion ewns : appInfo.extNetworkSuggestions.values()) {
                 ewns.wns.wifiConfiguration.carrierId = carrierId;
             }
+        }
+        saveToStore();
+    }
+
+    /**
+     * When carrier privileged packages list changes, handle the apps which privileged state changed
+     * - If app changes from privileged to not privileged, remove all suggestions and reset state
+     * - If app changes from not privileges to privileged, set target carrier id for all suggestions
+     */
+    public void updateCarrierPrivilegedApps(Set<String> privilegedApps) {
+        if (!SdkLevel.isAtLeastT()) {
+            return;
+        }
+        if (mVerboseLoggingEnabled) {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("Carrier privileged packages changed, privileged apps=[");
+            for (String packagesName : privilegedApps) {
+                stringBuilder.append(packagesName).append(", ");
+            }
+            stringBuilder.append("]");
+            Log.d(TAG, stringBuilder.toString());
+        }
+        Iterator<Map.Entry<String, PerAppInfo>> iter =
+                mActiveNetworkSuggestionsPerApp.entrySet().iterator();
+        while (iter.hasNext()) {
+            PerAppInfo appInfo = iter.next().getValue();
+            if (privilegedApps.contains(appInfo.packageName)) {
+                if (appInfo.carrierId != TelephonyManager.UNKNOWN_CARRIER_ID) {
+                    // Already privileged before, no change.
+                    continue;
+                }
+                // for (newly) privileged packages: update carrier ID
+                int carrierId = mWifiCarrierInfoManager
+                        .getCarrierIdForPackageWithCarrierPrivileges(appInfo.packageName);
+                Log.i(TAG, "Carrier privilege granted for " + appInfo.packageName);
+                appInfo.carrierId = carrierId;
+                for (ExtendedWifiNetworkSuggestion ewns : appInfo.extNetworkSuggestions.values()) {
+                    ewns.wns.wifiConfiguration.carrierId = carrierId;
+                }
+                continue;
+            }
+            if (appInfo.carrierId == TelephonyManager.UNKNOWN_CARRIER_ID) {
+                // Apps never got privileged, no change.
+                continue;
+            }
+            // Carrier privilege revoked, remove.
+            Log.i(TAG, "Carrier privilege revoked for " + appInfo.packageName);
+            removeInternal(List.of(), appInfo.packageName, appInfo,
+                    ACTION_REMOVE_SUGGESTION_DISCONNECT);
+            iter.remove();
         }
         saveToStore();
     }

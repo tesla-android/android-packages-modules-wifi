@@ -147,6 +147,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     @Mock WifiMetrics mWifiMetrics;
     @Mock WifiCarrierInfoManager.OnCarrierOffloadDisabledListener mOnCarrierOffloadDisabledListener;
     @Mock Clock mClock;
+    @Mock WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
 
     private List<SubscriptionInfo> mSubInfoList;
 
@@ -159,6 +160,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     private ArgumentCaptor<SubscriptionManager.OnSubscriptionsChangedListener>
             mListenerArgumentCaptor = ArgumentCaptor.forClass(
                     SubscriptionManager.OnSubscriptionsChangedListener.class);
+    private TelephonyManager.CarrierPrivilegesListener mCarrierPrivilegesListener;
 
     @Before
     public void setUp() throws Exception {
@@ -198,6 +200,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(mWifiCarrierInfoStoreManagerData);
         when(mWifiInjector.getWifiConfigManager()).thenReturn(mWifiConfigManager);
         when(mWifiInjector.getWifiNotificationManager()).thenReturn(mWifiNotificationManager);
+        when(mWifiInjector.getWifiNetworkSuggestionsManager())
+                .thenReturn(mWifiNetworkSuggestionsManager);
         mWifiCarrierInfoManager = new WifiCarrierInfoManager(mTelephonyManager,
                 mSubscriptionManager, mWifiInjector, mFrameworkFacade, mContext, mWifiConfigStore,
                 new Handler(mLooper.getLooper()), mWifiMetrics, mClock);
@@ -225,6 +229,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
                 .thenReturn(mNonDataTelephonyManager);
         when(mTelephonyManager.getSimApplicationState(anyInt()))
                 .thenReturn(TelephonyManager.SIM_STATE_LOADED);
+        when(mTelephonyManager.getActiveModemCount()).thenReturn(2);
         when(mCarrierConfigManager.getConfigForSubId(anyInt()))
                 .thenReturn(generateTestCarrierConfig(false));
         when(mSubscriptionManager.getActiveSubscriptionInfoList()).thenReturn(mSubInfoList);
@@ -284,6 +289,14 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         verify(mSubscriptionManager).addOnSubscriptionsChangedListener(any(),
                 mListenerArgumentCaptor.capture());
         mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
+        if (SdkLevel.isAtLeastT()) {
+            ArgumentCaptor<TelephonyManager.CarrierPrivilegesListener> listenerArgumentCaptor =
+                    ArgumentCaptor.forClass(TelephonyManager.CarrierPrivilegesListener.class);
+            verify(mTelephonyManager, times(2))
+                    .addCarrierPrivilegesListener(anyInt(), any(),
+                            listenerArgumentCaptor.capture());
+            mCarrierPrivilegesListener = listenerArgumentCaptor.getValue();
+        }
         mLooper.dispatchAll();
         when(mClock.getElapsedSinceBootMillis()).thenReturn(1000L);
     }
@@ -2204,5 +2217,12 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     public void testGetActiveSubsctionIdInGroup() {
         assertEquals(DATA_SUBID, mWifiCarrierInfoManager
                 .getActiveSubscriptionIdInGroup(GROUP_UUID));
+    }
+
+    @Test
+    public void testCarrierPrivilegedListenerChange() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        mCarrierPrivilegesListener.onCarrierPrivilegesChanged(Collections.emptyList(), new int[0]);
+        verify(mWifiNetworkSuggestionsManager).updateCarrierPrivilegedApps(any());
     }
 }

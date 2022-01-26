@@ -667,15 +667,19 @@ public class WifiServiceImpl extends BaseWifiService {
         for (ClientModeManager cmm : mActiveModeWarden.getClientModeManagers()) {
             cmm.resetSimAuthNetworks(resetReason);
         }
-        mWifiThreadRunner.post(mWifiNetworkSuggestionsManager::resetCarrierPrivilegedApps);
+        mWifiThreadRunner.post(mWifiNetworkSuggestionsManager::updateCarrierPrivilegedApps);
         if (resetReason == RESET_SIM_REASON_SIM_INSERTED) {
             // clear the blocklists in case any SIM based network were disabled due to the SIM
             // not being available.
             mWifiConfigManager.enableTemporaryDisabledNetworks();
             mWifiConnectivityManager.forceConnectivityScan(ClientModeImpl.WIFI_WORK_SOURCE);
         } else {
-            // Remove all ephemeral carrier networks keep subscriptionId update with SIM changes
-            mWifiThreadRunner.post(mWifiConfigManager::removeEphemeralCarrierNetworks);
+            // Remove ephemeral carrier networks from Carrier unprivileged Apps, which will lead to
+            // a disconnection. Privileged App will handle by the
+            // mWifiNetworkSuggestionsManager#updateCarrierPrivilegedApps
+            mWifiThreadRunner.post(() -> mWifiConfigManager
+                    .removeEphemeralCarrierNetworks(mWifiCarrierInfoManager
+                            .getCurrentCarrierPrivilegedPackages()));
         }
     }
 
