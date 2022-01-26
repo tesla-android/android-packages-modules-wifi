@@ -9035,7 +9035,11 @@ public class WifiManager {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "validateCurrentWifiMeetsAdminRequirements");
         }
-        //TODO: check current network meets all the admin restrictions
+        try {
+            mService.validateCurrentWifiMeetsAdminRequirements();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**
