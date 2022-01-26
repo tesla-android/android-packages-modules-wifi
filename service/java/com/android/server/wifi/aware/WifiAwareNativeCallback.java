@@ -850,6 +850,8 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
                 return ScanResult.CHANNEL_WIDTH_160MHZ;
             case WifiChannelWidthInMhz.WIDTH_80P80:
                 return ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
+            case WifiChannelWidthInMhz.WIDTH_320:
+                return ScanResult.CHANNEL_WIDTH_320MHZ;
             default:
                 return ScanResult.CHANNEL_WIDTH_20MHZ;
         }

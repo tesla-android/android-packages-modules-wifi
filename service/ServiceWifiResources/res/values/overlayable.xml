@@ -25,6 +25,7 @@
           <item type="bool" name="config_wifi6ghzSupport" />
           <item type="bool" name="config_wifi60ghzSupport" />
           <item type="bool" name="config_wifi11axSupportOverride" />
+          <item type="bool" name="config_wifi11beSupportOverride" />
           <item type="bool" name="config_wifiFrameworkMaxNumSpatialStreamDeviceOverrideEnable" />
           <item type="integer" name="config_wifiFrameworkMaxNumSpatialStreamDeviceOverrideValue" />
           <item type="bool" name="config_wifi_fast_bss_transition_enabled" />
@@ -94,6 +95,7 @@
           <item type="bool" name="config_wifiSoftapMacAddressCustomizationSupported" />
           <item type="bool" name="config_wifi_softap_ieee80211ac_supported" />
           <item type="bool" name="config_wifiSoftapIeee80211axSupported" />
+          <item type="bool" name="config_wifiSoftapIeee80211beSupported" />
           <item type="bool" name="config_wifiSoftap24ghzSupported" />
           <item type="bool" name="config_wifiSoftap5ghzSupported" />
           <item type="bool" name="config_wifiSoftap6ghzSupported" />

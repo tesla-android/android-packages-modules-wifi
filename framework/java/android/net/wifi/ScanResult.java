@@ -354,6 +354,10 @@ public final class ScanResult implements Parcelable {
     * AP Channel bandwidth is 160 MHZ, but 80MHZ + 80MHZ
     */
     public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4;
+   /**
+    * AP Channel bandwidth is 320 MHZ
+    */
+    public static final int CHANNEL_WIDTH_320MHZ = 5;
 
     /**
      * Preamble type: Legacy.
@@ -371,6 +375,11 @@ public final class ScanResult implements Parcelable {
      * Preamble type: HE.
      */
     public static final int PREAMBLE_HE = 3;
+
+    /**
+     * Preamble type: EHT.
+     */
+    public static final int PREAMBLE_EHT = 4;
 
     /**
      * Wi-Fi unknown standard
@@ -401,6 +410,11 @@ public final class ScanResult implements Parcelable {
      * Wi-Fi 802.11ad
      */
     public static final int WIFI_STANDARD_11AD = 7;
+
+    /**
+     * Wi-Fi 802.11be
+     */
+    public static final int WIFI_STANDARD_11BE = 8;
 
     /**
      * Wi-Fi 2.4 GHz band.
@@ -469,6 +483,8 @@ public final class ScanResult implements Parcelable {
                 return "11ax";
             case WIFI_STANDARD_11AD:
                 return "11ad";
+            case WIFI_STANDARD_11BE:
+                return "11be";
             case WIFI_STANDARD_UNKNOWN:
                 return "unknown";
         }
@@ -477,14 +493,14 @@ public final class ScanResult implements Parcelable {
 
     /**
      * AP Channel bandwidth; one of {@link #CHANNEL_WIDTH_20MHZ}, {@link #CHANNEL_WIDTH_40MHZ},
-     * {@link #CHANNEL_WIDTH_80MHZ}, {@link #CHANNEL_WIDTH_160MHZ}
+     * {@link #CHANNEL_WIDTH_80MHZ}, {@link #CHANNEL_WIDTH_160MHZ}, {@link #CHANNEL_WIDTH_320MHZ},
      * or {@link #CHANNEL_WIDTH_80MHZ_PLUS_MHZ}.
      */
     public @ChannelWidth int channelWidth;
 
     /**
      * Not used if the AP bandwidth is 20 MHz
-     * If the AP use 40, 80 or 160 MHz, this is the center frequency (in MHz)
+     * If the AP use 40, 80, 160 or 320MHz, this is the center frequency (in MHz)
      * if the AP use 80 + 80 MHz, this is the center frequency of the first segment (in MHz)
      */
     public int centerFreq0;
@@ -1021,6 +1037,10 @@ public final class ScanResult implements Parcelable {
         public static final int EID_EXT_HE_CAPABILITIES = 35;
         /** @hide */
         public static final int EID_EXT_HE_OPERATION = 36;
+        /** @hide */
+        public static final int EID_EXT_EHT_CAPABILITIES = 108;
+        /** @hide */
+        public static final int EID_EXT_EHT_OPERATION = 106;
 
         /** @hide */
         @UnsupportedAppUsage
