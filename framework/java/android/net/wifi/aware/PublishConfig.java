@@ -226,7 +226,7 @@ public final class PublishConfig implements Parcelable {
         if (mTtlSec < 0) {
             throw new IllegalArgumentException("Invalid ttlSec - must be non-negative");
         }
-        if (mSecurityConfig != null && mSecurityConfig.isValid()) {
+        if (mSecurityConfig != null && !mSecurityConfig.isValid()) {
             throw new IllegalArgumentException("WifiAwareDataPathSecurityConfig is invalid");
         }
 
