@@ -1102,7 +1102,7 @@ public class WifiScanner {
      */
     @RequiresPermission(anyOf = {
             Manifest.permission.LOCATION_HARDWARE,
-            Manifest.permission.NETWORK_STACK}, conditional = true)
+            Manifest.permission.NETWORK_STACK})
     public void registerScanListener(@NonNull @CallbackExecutor Executor executor,
             @NonNull ScanListener listener) {
         Objects.requireNonNull(executor, "executor cannot be null");
