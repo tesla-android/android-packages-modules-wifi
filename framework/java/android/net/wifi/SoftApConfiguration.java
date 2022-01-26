@@ -118,6 +118,16 @@ public final class SoftApConfiguration implements Parcelable {
     @SystemApi
     public static final int BAND_ANY = BAND_2GHZ | BAND_5GHZ | BAND_6GHZ;
 
+    /**
+     * A default value used to configure shut down timeout setting to default value.
+     * See {@link Builder#setShutdownTimeoutMillis(long)} or
+     * {@link Builder#setBridgedModeOpportunisticShutdownTimeoutMillis(long)} for details.
+     *
+     * @hide
+     */
+    @SystemApi
+    public static final long DEFAULT_TIMEOUT = -1;
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(flag = true, prefix = { "BAND_TYPE_" }, value = {
@@ -154,6 +164,16 @@ public final class SoftApConfiguration implements Parcelable {
     @ChangeId
     @EnabledAfter(targetSdkVersion = Build.VERSION_CODES.S)
     private static final long FORCE_MUTUAL_EXCLUSIVE_BSSID_MAC_RAMDONIZATION_SETTING = 215656264L;
+
+    /**
+     * Removes zero support on
+     * {@link android.net.wifi.SoftApConfiguration.Builder#setShutdownTimeoutMillis(long)}.
+     *
+     * @hide
+     */
+    @ChangeId
+    @EnabledAfter(targetSdkVersion = Build.VERSION_CODES.S)
+    public static final long REMOVE_ZERO_FOR_TIMEOUT_SETTING = 213289672L;
 
     private static boolean isChannelBandPairValid(int channel, @BandType int band) {
         switch (band) {
@@ -852,6 +872,11 @@ public final class SoftApConfiguration implements Parcelable {
      */
     @SystemApi
     public long getShutdownTimeoutMillis() {
+        if (!Compatibility.isChangeEnabled(
+                REMOVE_ZERO_FOR_TIMEOUT_SETTING) && mShutdownTimeoutMillis == DEFAULT_TIMEOUT) {
+            // For legacy application, return 0 when setting is DEFAULT_TIMEOUT.
+            return 0;
+        }
         return mShutdownTimeoutMillis;
     }
 
@@ -1191,7 +1216,7 @@ public final class SoftApConfiguration implements Parcelable {
             mMaxNumberOfClients = 0;
             mSecurityType = SECURITY_TYPE_OPEN;
             mAutoShutdownEnabled = true; // enabled by default.
-            mShutdownTimeoutMillis = 0;
+            mShutdownTimeoutMillis = DEFAULT_TIMEOUT;
             mClientControlByUser = false;
             mBlockedClientList = new ArrayList<>();
             mAllowedClientList = new ArrayList<>();
@@ -1204,7 +1229,7 @@ public final class SoftApConfiguration implements Parcelable {
             mIeee80211axEnabled = true;
             mIeee80211beEnabled = true;
             mIsUserConfiguration = true;
-            mBridgedModeOpportunisticShutdownTimeoutMillis = 0;
+            mBridgedModeOpportunisticShutdownTimeoutMillis = DEFAULT_TIMEOUT;
             mVendorElements = new ArrayList<>();
             mPersistentRandomizedMacAddress = null;
             mAllowedAcsChannels2g = new HashSet<>();
@@ -1264,6 +1289,11 @@ public final class SoftApConfiguration implements Parcelable {
                     && mBssid != null && mMacRandomizationSetting != RANDOMIZATION_NONE) {
                 throw new IllegalArgumentException("A BSSID had configured but MAC randomization"
                         + " setting is not NONE");
+            }
+
+            if (!Compatibility.isChangeEnabled(
+                    REMOVE_ZERO_FOR_TIMEOUT_SETTING) && mShutdownTimeoutMillis == DEFAULT_TIMEOUT) {
+                mShutdownTimeoutMillis = 0; // Use 0 for legacy app.
             }
             return new SoftApConfiguration(mWifiSsid, mBssid, mPassphrase,
                     mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
@@ -1707,23 +1737,31 @@ public final class SoftApConfiguration implements Parcelable {
          * The Soft AP will shut down when there are no devices connected to it for
          * the timeout duration.
          *
-         * Specify a value of 0 to have the framework automatically use default timeout
-         * setting which defined in {@link R.integer.config_wifi_framework_soft_ap_timeout_delay}
+         * Specify a value of {@link #DEFAULT_TIMEOUT} to have the framework automatically use
+         * default timeout setting which defined in
+         * {@link R.integer.config_wifi_framework_soft_ap_timeout_delay}
          *
          * <p>
-         * <li>If not set, defaults to 0</li>
+         * <li>If not set, defaults to {@link #DEFAULT_TIMEOUT}</li>
          * <li>The shut down timeout will apply when {@link #setAutoShutdownEnabled(boolean)} is
          * set to true</li>
          *
-         * @param timeoutMillis milliseconds of the timeout delay.
+         * @param timeoutMillis milliseconds of the timeout delay. Any value less than 1 is invalid
+         *                      except {@link #DEFAULT_TIMEOUT}.
          * @return Builder for chaining.
          *
          * @see #setAutoShutdownEnabled(boolean)
          */
         @NonNull
-        public Builder setShutdownTimeoutMillis(@IntRange(from = 0) long timeoutMillis) {
-            if (timeoutMillis < 0) {
-                throw new IllegalArgumentException("Invalid timeout value");
+        public Builder setShutdownTimeoutMillis(@IntRange(from = -1) long timeoutMillis) {
+            if (Compatibility.isChangeEnabled(
+                    REMOVE_ZERO_FOR_TIMEOUT_SETTING) && timeoutMillis < 1) {
+                if (timeoutMillis != DEFAULT_TIMEOUT) {
+                    throw new IllegalArgumentException("Invalid timeout value: " + timeoutMillis);
+                }
+            } else if (timeoutMillis < 0) {
+                throw new IllegalArgumentException("Invalid timeout value from legacy app: "
+                        + timeoutMillis);
             }
             mShutdownTimeoutMillis = timeoutMillis;
             return this;
@@ -2029,26 +2067,31 @@ public final class SoftApConfiguration implements Parcelable {
          * An instance of bridged Soft AP will shut down when there is no device connected to it
          * for this timeout duration.
          *
-         * Specify a value of 0 to have the framework automatically use default timeout
-         * setting defined by
+         * Specify a value of {@link DEFAULT_TIMEOUT} to have the framework automatically use
+         * default timeout setting defined by
          * {@link
          * R.integer.config_wifiFrameworkSoftApShutDownIdleInstanceInBridgedModeTimeoutMillisecond}
          *
          * <p>
-         * <li>If not set, defaults to 0</li>
+         * <li>If not set, defaults to {@link #DEFAULT_TIMEOUT}</li>
          * <li>The shut down timeout will apply when
          * {@link #setBridgedModeOpportunisticShutdownEnabled(boolean)} is set to true</li>
          *
-         * @param timeoutMillis milliseconds of the timeout delay.
+         * @param timeoutMillis milliseconds of the timeout delay. Any value less than 1 is invalid
+         *                      except {@link #DEFAULT_TIMEOUT}.
          * @return Builder for chaining.
          *
          * @see #setBridgedModeOpportunisticShutdownEnabled(boolean)
          */
         @RequiresApi(Build.VERSION_CODES.TIRAMISU)
         @NonNull
-        public Builder setBridgedModeOpportunisticShutdownTimeoutMillis(long timeoutMillis) {
+        public Builder setBridgedModeOpportunisticShutdownTimeoutMillis(
+                @IntRange(from = -1) long timeoutMillis) {
             if (!SdkLevel.isAtLeastT()) {
                 throw new UnsupportedOperationException();
+            }
+            if (timeoutMillis < 1 && timeoutMillis != DEFAULT_TIMEOUT) {
+                throw new IllegalArgumentException("Invalid timeout value: " + timeoutMillis);
             }
             mBridgedModeOpportunisticShutdownTimeoutMillis = timeoutMillis;
             return this;

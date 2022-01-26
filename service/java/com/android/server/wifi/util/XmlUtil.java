@@ -18,6 +18,7 @@ package com.android.server.wifi.util;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.compat.Compatibility;
 import android.net.InetAddresses;
 import android.net.IpConfiguration;
 import android.net.IpConfiguration.IpAssignment;
@@ -1672,7 +1673,7 @@ public class XmlUtil {
         public static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
         public static final String XML_TAG_80211_BE_ENABLED = "80211beEnabled";
         public static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
-        public static final String XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS =
+        public static final String XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS =
                 "BridgedModeOpportunisticShutdownTimeoutMillis";
         public static final String XML_TAG_VENDOR_ELEMENT = "VendorElement";
         public static final String XML_TAG_VENDOR_ELEMENTS = "VendorElements";
@@ -1883,7 +1884,7 @@ public class XmlUtil {
             }
             if (SdkLevel.isAtLeastT()) {
                 XmlUtil.writeNextValue(out,
-                        XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS,
+                        XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS,
                         softApConfig.getBridgedModeOpportunisticShutdownTimeoutMillisInternal());
                 XmlUtil.writeNextSectionStart(out, XML_TAG_VENDOR_ELEMENTS);
                 XmlUtil.SoftApConfigurationXmlUtil.writeVendorElementsSetToXml(out,
@@ -1981,12 +1982,18 @@ public class XmlUtil {
                                 autoShutdownEnabledTagPresent = true;
                                 break;
                             case XML_TAG_SHUTDOWN_TIMEOUT_MILLIS:
+                                long shutDownMillis = 0;
                                 if (value instanceof Integer) {
-                                    softApConfigBuilder
-                                            .setShutdownTimeoutMillis(Long.valueOf((int) value));
+                                    shutDownMillis = Long.valueOf((int) value);
                                 } else if (value instanceof Long) {
-                                    softApConfigBuilder.setShutdownTimeoutMillis((long) value);
+                                    shutDownMillis = (long) value;
                                 }
+                                if (SdkLevel.isAtLeastT() && shutDownMillis == 0
+                                        && Compatibility.isChangeEnabled(
+                                        SoftApConfiguration.REMOVE_ZERO_FOR_TIMEOUT_SETTING)) {
+                                    shutDownMillis = SoftApConfiguration.DEFAULT_TIMEOUT;
+                                }
+                                softApConfigBuilder.setShutdownTimeoutMillis(shutDownMillis);
                                 break;
                             case XML_TAG_CLIENT_CONTROL_BY_USER:
                                 softApConfigBuilder.setClientControlByUserEnabled((boolean) value);
@@ -2017,11 +2024,14 @@ public class XmlUtil {
                                     softApConfigBuilder.setUserConfiguration((boolean) value);
                                 }
                                 break;
-                            case XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS:
+                            case XML_TAG_BRIDGED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS:
                                 if (SdkLevel.isAtLeastT()) {
+                                    long bridgedTimeout = (long) value;
+                                    bridgedTimeout = bridgedTimeout == 0
+                                            ? SoftApConfiguration.DEFAULT_TIMEOUT : bridgedTimeout;
                                     softApConfigBuilder
                                             .setBridgedModeOpportunisticShutdownTimeoutMillis(
-                                                    (long) value);
+                                                    bridgedTimeout);
                                 }
                                 break;
                             default:

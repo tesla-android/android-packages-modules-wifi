@@ -117,7 +117,7 @@ public class SoftApConfigurationTest {
                     .isEqualTo(true);
             if (SdkLevel.isAtLeastT()) {
                 assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
-                        .isEqualTo(0);
+                        .isEqualTo(SoftApConfiguration.DEFAULT_TIMEOUT);
                 assertThat(original.getMacRandomizationSetting())
                         .isEqualTo(SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
                 assertThat(original.getVendorElements().size()).isEqualTo(0);
@@ -410,7 +410,21 @@ public class SoftApConfigurationTest {
     @Test(expected = IllegalArgumentException.class)
     public void testInvalieShutdownTimeoutMillis() {
         SoftApConfiguration original = new SoftApConfiguration.Builder()
-                .setShutdownTimeoutMillis(-1)
+                .setShutdownTimeoutMillis(-2)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testZeroIsInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setBridgedModeOpportunisticShutdownTimeoutMillis(0)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setBridgedModeOpportunisticShutdownTimeoutMillis(-2)
                 .build();
     }
 
