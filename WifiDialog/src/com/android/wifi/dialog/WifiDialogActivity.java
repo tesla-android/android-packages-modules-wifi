@@ -33,6 +33,7 @@ import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
 import android.util.SparseArray;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -57,6 +58,7 @@ public class WifiDialogActivity extends Activity  {
     private @Nullable WifiContext mWifiContext;
     private @Nullable WifiManager mWifiManager;
     private boolean mIsVerboseLoggingEnabled;
+    private int mGravity = Gravity.NO_GRAVITY;
 
     private @NonNull SparseArray<Intent> mIntentsPerId = new SparseArray<>();
     private @NonNull SparseArray<Dialog> mActiveDialogsPerId = new SparseArray<>();
@@ -100,6 +102,12 @@ public class WifiDialogActivity extends Activity  {
                 name, "string", getWifiContext().getWifiOverlayApkPkgName());
     }
 
+    private int getIntegerId(@NonNull String name) {
+        Resources res = getResources();
+        return res.getIdentifier(
+                name, "integer", getWifiContext().getWifiOverlayApkPkgName());
+    }
+
     private int getLayoutId(@NonNull String name) {
         Resources res = getResources();
         return res.getIdentifier(
@@ -128,6 +136,7 @@ public class WifiDialogActivity extends Activity  {
         if (mIsVerboseLoggingEnabled) {
             Log.v(TAG, "Creating WifiDialogActivity.");
         }
+        mGravity = getResources().getInteger(getIntegerId("config_wifiDialogGravity"));
         List<Intent> receivedIntents = new ArrayList<>();
         if (savedInstanceState != null) {
             if (mIsVerboseLoggingEnabled) {
@@ -270,6 +279,9 @@ public class WifiDialogActivity extends Activity  {
             return false;
         }
         mActiveDialogsPerId.put(dialogId, dialog);
+        if (mGravity != Gravity.NO_GRAVITY) {
+            dialog.getWindow().setGravity(mGravity);
+        }
         dialog.show();
         if (mIsVerboseLoggingEnabled) {
             Log.v(TAG, "Showing dialog " + dialogId);
