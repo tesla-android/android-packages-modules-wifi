@@ -9074,6 +9074,22 @@ public class WifiManager {
     }
 
     /**
+     * Intent action to launch a dialog from the WifiDialog app.
+     * Must include EXTRA_DIALOG_ID, EXTRA_DIALOG_TYPE, and appropriate extras for the dialog type.
+     * @hide
+     */
+    public static final String ACTION_LAUNCH_DIALOG =
+            "android.net.wifi.action.LAUNCH_DIALOG";
+
+    /**
+     * Intent action to cancel an existing dialog from the WifiDialog app.
+     * Must include EXTRA_DIALOG_ID.
+     * @hide
+     */
+    public static final String ACTION_CANCEL_DIALOG =
+            "android.net.wifi.action.CANCEL_DIALOG";
+
+    /**
      * Unknown DialogType.
      * @hide
      */
