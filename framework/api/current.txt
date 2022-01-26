@@ -731,8 +731,11 @@ package android.net.wifi.aware {
     method public boolean isInstantCommunicationModeSupported();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.Characteristics> CREATOR;
+    field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_PK_128 = 4; // 0x4
+    field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_PK_256 = 8; // 0x8
     field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 = 1; // 0x1
     field public static final int WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 = 2; // 0x2
+    field public static final int WIFI_AWARE_CIPHER_SUITE_NONE = 0; // 0x0
   }
 
   public class DiscoverySession implements java.lang.AutoCloseable {
@@ -749,7 +752,9 @@ package android.net.wifi.aware {
     method public void onMessageSendSucceeded(int);
     method public void onPublishStarted(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method public void onServiceDiscovered(android.net.wifi.aware.PeerHandle, byte[], java.util.List<byte[]>);
+    method public void onServiceDiscovered(@NonNull android.net.wifi.aware.ServiceDiscoveryInfo);
     method public void onServiceDiscoveredWithinRange(android.net.wifi.aware.PeerHandle, byte[], java.util.List<byte[]>, int);
+    method public void onServiceDiscoveredWithinRange(@NonNull android.net.wifi.aware.ServiceDiscoveryInfo, int);
     method public void onServiceLost(@NonNull android.net.wifi.aware.PeerHandle, int);
     method public void onSessionConfigFailed();
     method public void onSessionConfigUpdated();
@@ -774,6 +779,9 @@ package android.net.wifi.aware {
 
   public final class PublishConfig implements android.os.Parcelable {
     method public int describeContents();
+    method public int getInstantCommunicationBand();
+    method @Nullable public android.net.wifi.aware.WifiAwareDataPathSecurityConfig getSecurityConfig();
+    method public boolean isEnableInstantCommunicationMode();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.PublishConfig> CREATOR;
     field public static final int PUBLISH_TYPE_SOLICITED = 1; // 0x1
@@ -783,6 +791,8 @@ package android.net.wifi.aware {
   public static final class PublishConfig.Builder {
     ctor public PublishConfig.Builder();
     method public android.net.wifi.aware.PublishConfig build();
+    method @NonNull public android.net.wifi.aware.PublishConfig.Builder setDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
+    method @NonNull public android.net.wifi.aware.PublishConfig.Builder setInstantCommunicationModeEnabled(boolean, int);
     method public android.net.wifi.aware.PublishConfig.Builder setMatchFilter(@Nullable java.util.List<byte[]>);
     method public android.net.wifi.aware.PublishConfig.Builder setPublishType(int);
     method public android.net.wifi.aware.PublishConfig.Builder setRangingEnabled(boolean);
@@ -796,8 +806,18 @@ package android.net.wifi.aware {
     method public void updatePublish(@NonNull android.net.wifi.aware.PublishConfig);
   }
 
+  public class ServiceDiscoveryInfo {
+    method @NonNull public java.util.List<byte[]> getMatchFilters();
+    method public int getPeerCipherSuite();
+    method @NonNull public android.net.wifi.aware.PeerHandle getPeerHandle();
+    method @Nullable public byte[] getScid();
+    method @Nullable public byte[] getServiceSpecificInfo();
+  }
+
   public final class SubscribeConfig implements android.os.Parcelable {
     method public int describeContents();
+    method public int getInstantCommunicationBand();
+    method public boolean isEnableInstantCommunicationMode();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.SubscribeConfig> CREATOR;
     field public static final int SUBSCRIBE_TYPE_ACTIVE = 1; // 0x1
@@ -807,6 +827,7 @@ package android.net.wifi.aware {
   public static final class SubscribeConfig.Builder {
     ctor public SubscribeConfig.Builder();
     method public android.net.wifi.aware.SubscribeConfig build();
+    method @NonNull public android.net.wifi.aware.SubscribeConfig.Builder setInstantCommunicationModeEnabled(boolean, int);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMatchFilter(@Nullable java.util.List<byte[]>);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMaxDistanceMm(int);
     method public android.net.wifi.aware.SubscribeConfig.Builder setMinDistanceMm(int);
@@ -828,6 +849,24 @@ package android.net.wifi.aware {
     method @IntRange(from=0) public int getNumSpatialStreams();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareChannelInfo> CREATOR;
+  }
+
+  public final class WifiAwareDataPathSecurityConfig implements android.os.Parcelable {
+    method public int describeContents();
+    method public int getCipherSuite();
+    method @Nullable public byte[] getPmk();
+    method @Nullable public byte[] getPmkId();
+    method @Nullable public String getPskPassphrase();
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareDataPathSecurityConfig> CREATOR;
+  }
+
+  public static final class WifiAwareDataPathSecurityConfig.Builder {
+    ctor public WifiAwareDataPathSecurityConfig.Builder(int);
+    method @NonNull public android.net.wifi.aware.WifiAwareDataPathSecurityConfig build();
+    method @NonNull public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPmk(@NonNull byte[]);
+    method @NonNull public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPmkId(@NonNull byte[]);
+    method @NonNull public android.net.wifi.aware.WifiAwareDataPathSecurityConfig.Builder setPskPassphrase(@NonNull String);
   }
 
   public class WifiAwareManager {
@@ -859,6 +898,7 @@ package android.net.wifi.aware {
   public final class WifiAwareNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     method public int describeContents();
     method @IntRange(from=0) public int getChannelInMhz();
+    method @Nullable public android.net.wifi.aware.WifiAwareDataPathSecurityConfig getWifiAwareDataPathSecurityConfig();
     method public boolean isChannelRequired();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareNetworkSpecifier> CREATOR;
@@ -869,6 +909,7 @@ package android.net.wifi.aware {
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier build();
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelInMhz(@IntRange(from=0) int, boolean);
+    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPmk(@NonNull byte[]);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPort(@IntRange(from=0, to=65535) int);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPskPassphrase(@NonNull String);

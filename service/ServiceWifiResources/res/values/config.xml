@@ -688,6 +688,11 @@
     -->
     <bool translatable="false" name="config_wifiSupportChannelOnDataPath">false</bool>
 
+    <!-- A value indicate the duration of Wi-Fi Aware Instant Communication Mode for a single
+    session. When duration is finished, framework will disable the Instant Communication Mode.
+    -->
+    <integer translatable="false" name="config_wifiAwareInstantCommunicationModeDurationMillis">30000</integer>
+
     <!-- Integer threshold for minimum packets required to notify clients of data activity -->
     <integer translatable="false" name="config_wifiTrafficPollerTxPacketThreshold">0</integer>
     <integer translatable="false" name="config_wifiTrafficPollerRxPacketThreshold">0</integer>

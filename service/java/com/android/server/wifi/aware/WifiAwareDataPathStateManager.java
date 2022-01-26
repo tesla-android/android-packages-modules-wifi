@@ -38,10 +38,10 @@ import android.net.RouteInfo;
 import android.net.wifi.aware.TlvBufferUtils;
 import android.net.wifi.aware.WifiAwareAgentNetworkSpecifier;
 import android.net.wifi.aware.WifiAwareChannelInfo;
+import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
 import android.net.wifi.aware.WifiAwareManager;
 import android.net.wifi.aware.WifiAwareNetworkInfo;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
-import android.net.wifi.aware.WifiAwareUtils;
 import android.net.wifi.util.HexEncoding;
 import android.os.Build;
 import android.os.Handler;
@@ -75,6 +75,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -463,7 +464,7 @@ public class WifiAwareDataPathStateManager {
             if (VDBG) {
                 Log.v(TAG, "onDataPathRequest: network request cache = " + mNetworkRequestsCache);
             }
-            mMgr.respondToDataPathRequest(false, ndpId, "", null, null, null, false);
+            mMgr.respondToDataPathRequest(false, ndpId, "", null, false, null);
             return false;
         }
 
@@ -473,7 +474,7 @@ public class WifiAwareDataPathStateManager {
         if (nnri.interfaceName == null) {
             Log.w(TAG,
                     "onDataPathRequest: request " + networkSpecifier + " no interface available");
-            mMgr.respondToDataPathRequest(false, ndpId, "", null, null, null, false);
+            mMgr.respondToDataPathRequest(false, ndpId, "", null, false, null);
             mNetworkRequestsCache.remove(networkSpecifier);
             mNetworkFactory.letAppKnowThatRequestsAreUnavailable(nnri);
             return false;
@@ -486,11 +487,11 @@ public class WifiAwareDataPathStateManager {
         nnri.ndpInfos.put(ndpId, ndpInfo);
 
         nnri.state = AwareNetworkRequestInformation.STATE_IN_SETUP;
-        mMgr.respondToDataPathRequest(true, ndpId, nnri.interfaceName, nnri.networkSpecifier.pmk,
-                nnri.networkSpecifier.passphrase,
+        mMgr.respondToDataPathRequest(true, ndpId, nnri.interfaceName,
                 NetworkInformationData.buildTlv(nnri.networkSpecifier.port,
                         nnri.networkSpecifier.transportProtocol),
-                nnri.networkSpecifier.isOutOfBand());
+                nnri.networkSpecifier.isOutOfBand(),
+                nnri.networkSpecifier.getWifiAwareDataPathSecurityConfig());
 
         return true;
     }
@@ -1027,8 +1028,8 @@ public class WifiAwareDataPathStateManager {
                 mMgr.initiateDataPathSetup(networkSpecifier, nnri.specifiedPeerInstanceId,
                         channelRequestType, channel,
                         nnri.specifiedPeerDiscoveryMac, nnri.interfaceName,
-                        nnri.networkSpecifier.pmk, nnri.networkSpecifier.passphrase,
-                        nnri.networkSpecifier.isOutOfBand(), null);
+                        nnri.networkSpecifier.isOutOfBand(), null
+                );
                 nnri.state =
                         AwareNetworkRequestInformation.STATE_INITIATOR_WAIT_FOR_REQUEST_RESPONSE;
             } else {
@@ -1381,8 +1382,9 @@ public class WifiAwareDataPathStateManager {
          * Returns a canonical descriptor for the network request.
          */
         CanonicalConnectionInfo getCanonicalDescriptor() {
-            return new CanonicalConnectionInfo(specifiedPeerDiscoveryMac, networkSpecifier.pmk,
-                    networkSpecifier.sessionId, networkSpecifier.passphrase);
+            return new CanonicalConnectionInfo(specifiedPeerDiscoveryMac,
+                    networkSpecifier.sessionId,
+                    networkSpecifier.getWifiAwareDataPathSecurityConfig());
         }
 
         static AwareNetworkRequestInformation processNetworkSpecifier(NetworkRequest request,
@@ -1458,7 +1460,8 @@ public class WifiAwareDataPathStateManager {
                             + " -- port/transportProtocol can only be specified on responder");
                     return null;
                 }
-                if (TextUtils.isEmpty(ns.passphrase) && ns.pmk == null) {
+                if (ns.getWifiAwareDataPathSecurityConfig() == null
+                        || !ns.getWifiAwareDataPathSecurityConfig().isValid()) {
                     Log.e(TAG, "processNetworkSpecifier: networkSpecifier=" + ns
                             + " -- port/transportProtocol can only be specified on secure ndp");
                     return null;
@@ -1521,17 +1524,13 @@ public class WifiAwareDataPathStateManager {
             }
 
             // validate passphrase & PMK (if provided)
-            if (!TextUtils.isEmpty(ns.passphrase)) { // non-null indicates usage
-                if (!WifiAwareUtils.validatePassphrase(ns.passphrase)) {
+            if (ns.getWifiAwareDataPathSecurityConfig() != null
+                    && (!ns.getWifiAwareDataPathSecurityConfig().isValid()
+                    || (mgr.getCapabilities().supportedCipherSuites
+                    & ns.getWifiAwareDataPathSecurityConfig().getCipherSuite()) == 0)) {
                     Log.e(TAG, "processNetworkSpecifier: networkSpecifier=" + ns.toString()
-                            + " -- invalid passphrase length: " + ns.passphrase.length());
+                            + " -- invalid security config: ");
                     return null;
-                }
-            }
-            if (ns.pmk != null && !WifiAwareUtils.validatePmk(ns.pmk)) { // non-null indicates usage
-                Log.e(TAG, "processNetworkSpecifier: networkSpecifier=" + ns.toString()
-                        + " -- invalid pmk length: " + ns.pmk.length);
-                return null;
             }
 
             // create container and populate
@@ -1577,41 +1576,32 @@ public class WifiAwareDataPathStateManager {
      * A canonical (unique) descriptor of the peer connection.
      */
     static class CanonicalConnectionInfo {
-        CanonicalConnectionInfo(byte[] peerDiscoveryMac, byte[] pmk, int sessionId,
-                String passphrase) {
+        CanonicalConnectionInfo(byte[] peerDiscoveryMac, int sessionId,
+                WifiAwareDataPathSecurityConfig securityConfig) {
             this.peerDiscoveryMac = peerDiscoveryMac;
-            this.pmk = pmk;
             this.sessionId = sessionId;
-            this.passphrase = passphrase;
+            this.securityConfig = securityConfig;
         }
 
         public final byte[] peerDiscoveryMac;
 
-        /*
-         * Security configuration matching:
-         * - open: pmk/passphrase = null
-         * - pmk: pmk != null, passphrase = null
-         * - passphrase: passphrase != null, sessionId used (==0 for OOB), pmk=null
-         */
-        public final byte[] pmk;
 
         public final int sessionId;
-        public final String passphrase;
+        public final WifiAwareDataPathSecurityConfig securityConfig;
 
         public boolean matches(CanonicalConnectionInfo other) {
             return Arrays.equals(peerDiscoveryMac, other.peerDiscoveryMac)
-                    && Arrays.equals(pmk, other.pmk)
-                    && TextUtils.equals(passphrase, other.passphrase)
-                    && (TextUtils.isEmpty(passphrase) || sessionId == other.sessionId);
+                    && Objects.equals(securityConfig, other.securityConfig)
+                    && (securityConfig == null || sessionId == other.sessionId);
         }
 
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder("CanonicalConnectionInfo: [");
             sb.append("peerDiscoveryMac=").append(peerDiscoveryMac == null ? ""
-                    : String.valueOf(HexEncoding.encode(peerDiscoveryMac))).append(", pmk=").append(
-                    pmk == null ? "" : "*").append(", sessionId=").append(sessionId).append(
-                    ", passphrase=").append(passphrase == null ? "" : "*").append("]");
+                    : String.valueOf(HexEncoding.encode(peerDiscoveryMac)))
+                    .append(", security=").append(securityConfig == null ? "" : securityConfig)
+                    .append(", sessionId=").append(sessionId).append("]");
             return sb.toString();
         }
     }

@@ -193,6 +193,7 @@
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificThreshold" />
           <item type="integer" name="config_wifiDisableReasonAuthenticationFailureCarrierSpecificDurationMs" />
           <item type="bool" name="config_wifiAllowMultipleNetworksOnSameAwareNdi"/>
+          <item type="integer" name="config_wifiAwareInstantCommunicationModeDurationMillis" />
           <item type="bool" name="config_wifiSupportChannelOnDataPath"/>
           <item type="integer" name="config_wifiTrafficPollerTxPacketThreshold"/>
           <item type="integer" name="config_wifiTrafficPollerRxPacketThreshold"/>
