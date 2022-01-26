@@ -46,6 +46,7 @@ import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.aware.IWifiAwareMacAddressProvider;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
+import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.HandlerThread;
@@ -764,6 +765,38 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastS()) {
             assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
         }
+    }
+
+    @Test
+    public void testPublishWifiValidSecurityConfig() {
+        WifiAwareDataPathSecurityConfig securityConfig = new WifiAwareDataPathSecurityConfig
+                .Builder(Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256)
+                .setPskPassphrase("somePassphrase").build();
+        PublishConfig publishConfig = new PublishConfig.Builder().setServiceName("something.valid")
+                .setDataPathSecurityConfig(securityConfig)
+                .setRangingEnabled(true).build();
+        int clientId = doConnect();
+        IWifiAwareDiscoverySessionCallback mockCallback = mock(
+                IWifiAwareDiscoverySessionCallback.class);
+
+        mDut.publish(mPackageName, mFeatureId, clientId, publishConfig, mockCallback, mExtras);
+
+        verify(mAwareStateManagerMock).publish(clientId, publishConfig, mockCallback);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testPublishWifiInvalidSecurityConfig() {
+        WifiAwareDataPathSecurityConfig securityConfig = new WifiAwareDataPathSecurityConfig
+                .Builder(Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128)
+                .setPskPassphrase("somePassphrase").build();
+        PublishConfig publishConfig = new PublishConfig.Builder().setServiceName("something.valid")
+                .setDataPathSecurityConfig(securityConfig)
+                .setRangingEnabled(true).build();
+        int clientId = doConnect();
+        IWifiAwareDiscoverySessionCallback mockCallback = mock(
+                IWifiAwareDiscoverySessionCallback.class);
+
+        mDut.publish(mPackageName, mFeatureId, clientId, publishConfig, mockCallback, mExtras);
     }
 
     /*
