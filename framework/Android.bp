@@ -94,10 +94,10 @@ java_defaults {
     static_libs: [
         "framework-wifi-util-lib",
         "android.hardware.wifi-V1.0-java-constants",
-        "androidx.annotation_annotation",
         "wifi-modules-utils",
     ],
     libs: [
+        "androidx.annotation_annotation",
         "unsupportedappusage", // for android.compat.annotation.UnsupportedAppUsage
         "framework-connectivity.stubs.module_lib",
     ],
