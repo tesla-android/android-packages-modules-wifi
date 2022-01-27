@@ -630,6 +630,7 @@ package android.net.wifi {
     method @Nullable public String getSsid();
     method @Nullable public android.os.ParcelUuid getSubscriptionGroup();
     method public int getSubscriptionId();
+    method @Nullable public android.net.wifi.WifiSsid getWifiSsid();
     method public boolean isAppInteractionRequired();
     method public boolean isCarrierMerged();
     method public boolean isCredentialSharedWithUser();
@@ -670,6 +671,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setUntrusted(boolean);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWapiEnterpriseConfig(@NonNull android.net.wifi.WifiEnterpriseConfig);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWapiPassphrase(@NonNull String);
+    method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWifiSsid(@NonNull android.net.wifi.WifiSsid);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWpa2EnterpriseConfig(@NonNull android.net.wifi.WifiEnterpriseConfig);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWpa2Passphrase(@NonNull String);
     method @NonNull public android.net.wifi.WifiNetworkSuggestion.Builder setWpa3Enterprise192BitModeConfig(@NonNull android.net.wifi.WifiEnterpriseConfig);
