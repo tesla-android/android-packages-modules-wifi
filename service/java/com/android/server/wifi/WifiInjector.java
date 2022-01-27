@@ -221,6 +221,7 @@ public class WifiInjector {
     private final SettingsMigrationDataHolder mSettingsMigrationDataHolder;
     private final LruConnectionTracker mLruConnectionTracker;
     private final WifiConnectivityManager mWifiConnectivityManager;
+    private final ExternalPnoScanRequestManager mExternalPnoScanRequestManager;
     private final ConnectHelper mConnectHelper;
     private final ConnectionFailureNotifier mConnectionFailureNotifier;
     private final WifiNetworkFactory mWifiNetworkFactory;
@@ -240,6 +241,7 @@ public class WifiInjector {
     private final ExternalScoreUpdateObserverProxy mExternalScoreUpdateObserverProxy;
     private final WifiNotificationManager mWifiNotificationManager;
     private final LastCallerInfoManager mLastCallerInfoManager;
+    @NonNull private final WifiDialogManager mWifiDialogManager;
 
     public WifiInjector(WifiContext context) {
         if (context == null) {
@@ -457,6 +459,7 @@ public class WifiInjector {
                 mMakeBeforeBreakManager, mWifiNotificationManager);
         mMultiInternetManager = new MultiInternetManager(mActiveModeWarden, mFrameworkFacade,
                 mContext, mCmiMonitor, mSettingsStore, wifiHandler, mClock);
+        mExternalPnoScanRequestManager = new ExternalPnoScanRequestManager(wifiHandler);
         mWifiConnectivityManager = new WifiConnectivityManager(
                 mContext, mScoringParams, mWifiConfigManager,
                 mWifiNetworkSuggestionsManager, mWifiNetworkSelector,
@@ -464,7 +467,8 @@ public class WifiInjector {
                 mWifiMetrics, wifiHandler,
                 mClock, mConnectivityLocalLog, mWifiScoreCard, mWifiBlocklistMonitor,
                 mWifiChannelUtilizationScan, mPasspointManager, mMultiInternetManager,
-                mDeviceConfigFacade, mActiveModeWarden, mFrameworkFacade, mWifiGlobals);
+                mDeviceConfigFacade, mActiveModeWarden, mFrameworkFacade, mWifiGlobals,
+                mExternalPnoScanRequestManager);
         mMboOceController = new MboOceController(makeTelephonyManager(), mActiveModeWarden);
         mCountryCode = new WifiCountryCode(mContext, mActiveModeWarden,
                 mCmiMonitor, mWifiNative, mSettingsConfigStore);
@@ -527,6 +531,7 @@ public class WifiInjector {
         mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade,
                 mWifiNotificationManager);
         mLastCallerInfoManager = new LastCallerInfoManager();
+        mWifiDialogManager = new WifiDialogManager(mContext);
     }
 
     /**
@@ -581,6 +586,7 @@ public class WifiInjector {
         }
         mWifiPermissionsWrapper.enableVerboseLogging(verboseEnabled);
         mWifiPermissionsUtil.enableVerboseLogging(verboseEnabled);
+        mWifiDialogManager.enableVerboseLogging(verboseEnabled);
     }
 
     public UserManager getUserManager() {
@@ -1088,6 +1094,11 @@ public class WifiInjector {
 
     public LastCallerInfoManager getLastCallerInfoManager() {
         return mLastCallerInfoManager;
+    }
+
+    @NonNull
+    public WifiDialogManager getWifiDialogManager() {
+        return mWifiDialogManager;
     }
 
     public BuildProperties getBuildProperties() {

@@ -544,14 +544,24 @@ public class MultiInternetManager {
                     + requestorWs);
         }
         if (requestorWs == null) {
-            mNetworkConnectionStates.remove(band);
-        } else {
-            if (mNetworkConnectionStates.contains(band)) {
-                Log.w(TAG, "band " + band + " already requested.");
+            // Disconnect secondary network if the request is removed.
+            if (band == getSecondaryConnectedNetworkBand()) {
+                for (ConcreteClientModeManager cmm : mActiveModeWarden.getClientModeManagersInRoles(
+                        ROLE_CLIENT_SECONDARY_LONG_LIVED)) {
+                    if (cmm.isSecondaryInternet()) {
+                        cmm.disconnect();
+                    }
+                }
             }
-            mNetworkConnectionStates.put(band, new NetworkConnectionState(requestorWs,
-                        mClock.getElapsedSinceBootMillis()));
+            mNetworkConnectionStates.remove(band);
+            updateNetworkConnectionStates();
+            return;
         }
+        if (mNetworkConnectionStates.contains(band)) {
+            Log.w(TAG, "band " + band + " already requested.");
+        }
+        mNetworkConnectionStates.put(band, new NetworkConnectionState(requestorWs,
+                    mClock.getElapsedSinceBootMillis()));
         startConnectivityScan();
     }
 

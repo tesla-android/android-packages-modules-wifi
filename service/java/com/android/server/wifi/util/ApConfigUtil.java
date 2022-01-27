@@ -709,6 +709,11 @@ public class ApConfigUtil {
             features |= SoftApCapability.SOFTAP_FEATURE_IEEE80211_AX;
         }
 
+        if (isIeee80211beSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add be support");
+            features |= SoftApCapability.SOFTAP_FEATURE_IEEE80211_BE;
+        }
+
         SoftApCapability capability = new SoftApCapability(features);
         int hardwareSupportedMaxClient = context.getResources().getInteger(
                 R.integer.config_wifiHardwareSoftapMaxClientCount);
@@ -729,6 +734,17 @@ public class ApConfigUtil {
     public static boolean isIeee80211axSupported(@NonNull Context context) {
         return context.getResources().getBoolean(
                     R.bool.config_wifiSoftapIeee80211axSupported);
+    }
+
+    /**
+     * Helper function to get device support 802.11 BE on Soft AP or not
+     *
+     * @param context the caller context used to get value from resource file.
+     * @return true if supported, false otherwise.
+     */
+    public static boolean isIeee80211beSupported(@NonNull Context context) {
+        return context.getResources().getBoolean(
+                    R.bool.config_wifiSoftapIeee80211beSupported);
     }
 
     /**

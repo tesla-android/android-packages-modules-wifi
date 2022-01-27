@@ -717,6 +717,8 @@ public class HostapdHalAidlImp implements IHostapdHal {
                 return SoftApInfo.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
             case Bandwidth.BANDWIDTH_160:
                 return SoftApInfo.CHANNEL_WIDTH_160MHZ;
+            case Bandwidth.BANDWIDTH_320:
+                return SoftApInfo.CHANNEL_WIDTH_320MHZ;
             case Bandwidth.BANDWIDTH_2160:
                 return SoftApInfo.CHANNEL_WIDTH_2160MHZ;
             case Bandwidth.BANDWIDTH_4320:
@@ -747,6 +749,8 @@ public class HostapdHalAidlImp implements IHostapdHal {
                 return ScanResult.WIFI_STANDARD_11AC;
             case Generation.WIFI_STANDARD_11AX:
                 return ScanResult.WIFI_STANDARD_11AX;
+            case Generation.WIFI_STANDARD_11BE:
+                return ScanResult.WIFI_STANDARD_11BE;
             case Generation.WIFI_STANDARD_11AD:
                 return ScanResult.WIFI_STANDARD_11AD;
             default:
@@ -821,6 +825,9 @@ public class HostapdHalAidlImp implements IHostapdHal {
                 R.bool.config_wifiSoftapHeMuBeamformerSupported);
         hwModeParams.enableHeTargetWakeTime = mContext.getResources().getBoolean(
                 R.bool.config_wifiSoftapHeTwtSupported);
+        hwModeParams.enable80211BE = ApConfigUtil.isIeee80211beSupported(mContext);
+        //Update 80211be support with the configuration.
+        hwModeParams.enable80211BE &= config.isIeee80211beEnabledInternal();
         return hwModeParams;
     }
 

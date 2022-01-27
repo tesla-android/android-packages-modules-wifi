@@ -508,6 +508,32 @@ public class InformationElementUtil {
     }
 
     /**
+     * EhtOperation: represents the EHT Operation IE
+     */
+    public static class EhtOperation {
+        private boolean mPresent = false;
+
+        /**
+         * Returns whether the EHT Information Element is present.
+         */
+        public boolean isPresent() {
+            return mPresent;
+        }
+
+        /** Parse EHT Operation IE */
+        public void from(InformationElement ie) {
+            if (ie.id != InformationElement.EID_EXTENSION_PRESENT
+                    || ie.idExt != InformationElement.EID_EXT_EHT_OPERATION) {
+                throw new IllegalArgumentException("Element id is not EHT_OPERATION");
+            }
+
+            mPresent = true;
+
+            //TODO put more functionality for parsing the IE
+        }
+    }
+
+    /**
      * HtCapabilities: represents the HT Capabilities IE
      */
     public static class HtCapabilities {
@@ -621,6 +647,28 @@ public class InformationElementUtil {
                     + (ie.bytes[17] & Constants.BYTE_MASK);
             mMaxNumberSpatialStreams = parseMaxNumberSpatialStreamsFromMcsMap(mcsMap);
             mPresent = true;
+        }
+    }
+
+    /**
+     * EhtCapabilities: represents the EHT Capabilities IE
+     */
+    public static class EhtCapabilities {
+        private boolean mPresent = false;
+        /** Returns whether HE Capabilities IE is present */
+        public boolean isPresent() {
+            return mPresent;
+        }
+
+        /** Parse EHT Capabilities IE */
+        public void from(InformationElement ie) {
+            if (ie.id != InformationElement.EID_EXTENSION_PRESENT
+                    || ie.idExt != InformationElement.EID_EXT_EHT_CAPABILITIES) {
+                throw new IllegalArgumentException("Element id is not EHT_CAPABILITIES: " + ie.id);
+            }
+            mPresent = true;
+
+            //TODO Add code to parse the IE
         }
     }
 
@@ -1565,7 +1613,7 @@ public class InformationElementUtil {
     }
 
     /**
-     * This util class determines the 802.11 standard (a/b/g/n/ac/ax) being used
+     * This util class determines the 802.11 standard (a/b/g/n/ac/ax/be) being used
      */
     public static class WifiMode {
         public static final int MODE_UNDEFINED = 0; // Unknown/undefined
@@ -1575,15 +1623,18 @@ public class InformationElementUtil {
         public static final int MODE_11N = 4;       // 802.11n
         public static final int MODE_11AC = 5;      // 802.11ac
         public static final int MODE_11AX = 6;      // 802.11ax
+        public static final int MODE_11BE = 7;      // 802.11be
         //<TODO> add support for 802.11ad and be more selective instead of defaulting to 11A
 
         /**
-         * Use frequency, max supported rate, and the existence of HE, VHT, HT & ERP fields in scan
+         * Use frequency, max supported rate, and the existence of EHT, HE, VHT, HT & ERP fields in
          * scan result to determine the 802.11 Wifi standard being used.
          */
-        public static int determineMode(int frequency, int maxRate, boolean foundHe,
-                boolean foundVht, boolean foundHt, boolean foundErp) {
-            if (foundHe) {
+        public static int determineMode(int frequency, int maxRate, boolean foundEht,
+                boolean foundHe, boolean foundVht, boolean foundHt, boolean foundErp) {
+            if (foundEht) {
+                return MODE_11BE;
+            } else if (foundHe) {
                 return MODE_11AX;
             } else if (!ScanResult.is24GHz(frequency) && foundVht) {
                 // Do not include subset of VHT on 2.4 GHz vendor extension
@@ -1605,7 +1656,7 @@ public class InformationElementUtil {
         }
 
         /**
-         * Map the wifiMode integer to its type, and output as String MODE_11<A/B/G/N/AC>
+         * Map the wifiMode integer to its type, and output as String MODE_11<A/B/G/N/AC/AX/BE>
          */
         public static String toString(int mode) {
             switch(mode) {
@@ -1621,6 +1672,8 @@ public class InformationElementUtil {
                     return "MODE_11AC";
                 case MODE_11AX:
                     return "MODE_11AX";
+                case MODE_11BE:
+                    return "MODE_11BE";
                 default:
                     return "MODE_UNDEFINED";
             }

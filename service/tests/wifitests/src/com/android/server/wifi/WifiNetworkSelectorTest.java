@@ -28,20 +28,25 @@ import static com.android.server.wifi.WifiNetworkSelector.experimentIdFromIdenti
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
+import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
 
 import android.annotation.NonNull;
+import android.app.admin.DevicePolicyManager;
+import android.app.admin.WifiSsidPolicy;
 import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.os.SystemClock;
+import android.util.ArraySet;
 import android.util.LocalLog;
 
 import androidx.test.filters.SmallTest;
 
 import com.android.dx.mockito.inline.extended.ExtendedMockito;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNetworkSelector.ClientModeManagerState;
 import com.android.server.wifi.WifiNetworkSelectorTestUtil.ScanDetailsAndWifiConfigs;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
@@ -86,6 +91,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         // static mocking
         mSession = ExtendedMockito.mockitoSession()
                 .mockStatic(WifiInjector.class, withSettings().lenient())
+                .mockStatic(WifiInfo.class, withSettings().lenient())
                 .startMocking();
         when(WifiInjector.getInstance()).thenReturn(mWifiInjector);
         setupContext();
@@ -285,6 +291,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
     @Mock private WifiChannelUtilization mWifiChannelUtilization;
     @Mock private WifiGlobals mWifiGlobals;
     @Mock private ScanRequestProxy mScanRequestProxy;
+    @Mock private DevicePolicyManager mDevicePolicyManager;
     private ScoringParams mScoringParams;
     private LocalLog mLocalLog;
     private int mThresholdMinimumRssi2G;
@@ -299,6 +306,7 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
 
     private void setupContext() {
         when(mContext.getResources()).thenReturn(mResource);
+        when(mContext.getSystemService(DevicePolicyManager.class)).thenReturn(mDevicePolicyManager);
     }
 
     private int setupIntegerResource(int resourceName, int value) {
@@ -741,6 +749,204 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         verify(mWifiMetrics).incrementNetworkSelectionFilteredBssidCount(1);
         assertEquals("Expect null configuration", null, candidate);
         assertTrue(mWifiNetworkSelector.getConnectableScanDetails().isEmpty());
+    }
+
+    /**
+     * Admin allowlist restricted SSID is filtered out for network selection.
+     *
+     * ClientModeImpl is disconnected.
+     * scanDetails contains a network which is admin allowlist restricted.
+     *
+     * Expected behavior: no network recommended by Network Selector
+     */
+    @Test
+    public void filterOutAdminAllowlistRestrictedSsid() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String[] ssids = {"\"test1\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3"};
+        int[] freqs = {5180};
+        String[] caps = {"[WPA2-PSK][ESS]"};
+        int[] levels = {mThresholdQualifiedRssi5G + 8};
+        int[] securities = {SECURITY_PSK};
+        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+                new ArraySet<>(Arrays.asList("test2", "test3")));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        HashSet<String> blocklist = new HashSet<String>();
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true, false, false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
+        assertEquals("Expect null configuration", null, candidate);
+    }
+
+    /**
+     * Admin denylist restricted SSID is filtered out for network selection.
+     *
+     * ClientModeImpl is disconnected.
+     * scanDetails contains a network which is admin denylist restricted.
+     *
+     * Expected behavior: no network recommended by Network Selector
+     */
+    @Test
+    public void filterOutAdminDenylistRestrictedSsid() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String[] ssids = {"\"test1\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3"};
+        int[] freqs = {5180};
+        String[] caps = {"[WPA2-PSK][ESS]"};
+        int[] levels = {mThresholdQualifiedRssi5G + 8};
+        int[] securities = {SECURITY_PSK};
+        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+                new ArraySet<>(Arrays.asList("test1", "test2")));
+        when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        HashSet<String> blocklist = new HashSet<String>();
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true, false, false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
+        assertEquals("Expect null configuration", null, candidate);
+    }
+
+    /**
+     * Admin security type restricted network is filtered out for network selection.
+     *
+     * ClientModeImpl is disconnected.
+     * scanDetails contains a network which is admin security type restricted.
+     *
+     * Expected behavior: no network recommended by Network Selector
+     */
+    @Test
+    public void filterOutAdminSecurityTypeRestrictedSsid() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String[] ssids = {"\"test1\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3"};
+        int[] freqs = {5180};
+        String[] caps = {"[WPA2-PSK][ESS]"};
+        int[] levels = {mThresholdQualifiedRssi5G + 8};
+        int[] securities = {SECURITY_PSK};
+        int securityLevel = DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP;
+
+        when(mDevicePolicyManager.getMinimumRequiredWifiSecurityLevel()).thenReturn(securityLevel);
+        when(WifiInfo.convertWifiConfigurationSecurityType(
+                WifiConfiguration.SECURITY_TYPE_PSK)).thenReturn(WifiInfo.SECURITY_TYPE_PSK);
+        when(WifiInfo.convertSecurityTypeToDpmWifiSecurity(WifiInfo.SECURITY_TYPE_PSK)).thenReturn(
+                DevicePolicyManager.WIFI_SECURITY_PERSONAL);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        HashSet<String> blocklist = new HashSet<String>();
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true, false, false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
+        assertEquals("Expect null configuration", null, candidate);
+    }
+
+    /**
+     * Unknown security type network is filtered out for network selection when
+     * admin security type restriction is set.
+     *
+     * ClientModeImpl is disconnected.
+     * scanDetails contains a network which has an unknown security type
+     * and admin set the security type restriction.
+     *
+     * Expected behavior: no network recommended by Network Selector
+     */
+    @Test
+    public void filterOutUnknownSecurityTypeSsidsWhenAdminSecurityTypeRestrictionSet() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String[] ssids = {"\"test1\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3"};
+        int[] freqs = {5180};
+        String[] caps = {"[WPA2-PSK][ESS]"};
+        int[] levels = {mThresholdQualifiedRssi5G + 8};
+        int[] securities = {SECURITY_PSK};
+        int securityLevel = DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP;
+
+        when(mDevicePolicyManager.getMinimumRequiredWifiSecurityLevel()).thenReturn(securityLevel);
+
+        when(WifiInfo.convertWifiConfigurationSecurityType(
+                WifiConfiguration.SECURITY_TYPE_PSK)).thenReturn(WifiInfo.SECURITY_TYPE_UNKNOWN);
+        when(WifiInfo.convertSecurityTypeToDpmWifiSecurity(
+                WifiInfo.SECURITY_TYPE_UNKNOWN)).thenReturn(WifiInfo.DPM_SECURITY_TYPE_UNKNOWN);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        HashSet<String> blocklist = new HashSet<String>();
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true, false, false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
+        assertEquals("Expect null configuration", null, candidate);
+    }
+
+    /**
+     * Only the unknown security type network is filtered out for network selection when
+     * admin security type restriction is set. Other networks are not affected.
+     *
+     * ClientModeImpl is disconnected.
+     * scanDetails contains a network which has an unknown security type
+     * and a network with a known security type and admin set the security type restriction.
+     *
+     * Expected behavior: network with known security type recommended by Network Selector
+     */
+    @Test
+    public void filterOutOnlyUnknownSecurityTypeSsidsWhenAdminSecurityTypeRestrictionSet() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        String[] ssids = {"\"test1\"", "\"test2\""};
+        String[] bssids = {"6c:f3:7f:ae:8c:f3", "6c:f3:7f:ae:8c:f4"};
+        int[] freqs = {2437, 2457};
+        String[] caps = {"[WPA2-EAP/SHA1-CCMP][ESS]", "[WPA2-PSK][ESS]"};
+        int[] levels = {mThresholdMinimumRssi2G + 20, mThresholdMinimumRssi2G + RSSI_BUMP};
+        int[] securities = {SECURITY_EAP, SECURITY_PSK};
+        int securityLevel = DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP;
+
+        when(mDevicePolicyManager.getMinimumRequiredWifiSecurityLevel()).thenReturn(securityLevel);
+
+        when(WifiInfo.convertWifiConfigurationSecurityType(
+                WifiConfiguration.SECURITY_TYPE_PSK)).thenReturn(WifiInfo.SECURITY_TYPE_UNKNOWN);
+        when(WifiInfo.convertSecurityTypeToDpmWifiSecurity(
+                WifiInfo.SECURITY_TYPE_UNKNOWN)).thenReturn(WifiInfo.DPM_SECURITY_TYPE_UNKNOWN);
+        when(WifiInfo.convertWifiConfigurationSecurityType(
+                WifiConfiguration.SECURITY_TYPE_EAP)).thenReturn(WifiInfo.SECURITY_TYPE_EAP);
+        when(WifiInfo.convertSecurityTypeToDpmWifiSecurity(WifiInfo.SECURITY_TYPE_EAP)).thenReturn(
+                DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP);
+
+        ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
+                WifiNetworkSelectorTestUtil.setupScanDetailsAndConfigStore(ssids, bssids,
+                        freqs, caps, levels, securities, mWifiConfigManager, mClock);
+        List<ScanDetail> scanDetails = scanDetailsAndConfigs.getScanDetails();
+        WifiConfiguration[] wifiConfigs = scanDetailsAndConfigs.getWifiConfigs();
+        WifiConfiguration knownSecurityTypeNetwork = wifiConfigs[0];
+        HashSet<String> blocklist = new HashSet<String>();
+
+        List<WifiCandidates.Candidate> candidates = mWifiNetworkSelector.getCandidatesFromScan(
+                scanDetails, blocklist,
+                Arrays.asList(new ClientModeManagerState(TEST_IFACE_NAME, false, true, mWifiInfo)),
+                false, true, true, false, false);
+        WifiConfiguration candidate = mWifiNetworkSelector.selectNetwork(candidates);
     }
 
     /**

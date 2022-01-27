@@ -1809,31 +1809,34 @@ public class InformationElementUtilTest extends WifiBaseTest {
     public void determineMode() throws Exception {
         assertEquals(InformationElementUtil.WifiMode.MODE_11B,
                 InformationElementUtil.WifiMode.determineMode(
-                        2412, 11000000, false, false, false, false));
+                        2412, 11000000, false, false, false, false, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11G,
                 InformationElementUtil.WifiMode.determineMode(
-                        2412, 54000000, false, false, false, false));
+                        2412, 54000000, false, false, false, false, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11A,
                 InformationElementUtil.WifiMode.determineMode(
-                        5180, 54000000, false, false, false, false));
+                        5180, 54000000, false, false, false, false, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11G,
                 InformationElementUtil.WifiMode.determineMode(
-                        2412, 54000000, false, false, false, true));
+                        2412, 54000000, false, false, false, false, true));
         assertEquals(InformationElementUtil.WifiMode.MODE_11N,
                 InformationElementUtil.WifiMode.determineMode(
-                        2412, 72000000, false, false, true, false));
+                        2412, 72000000, false, false, false, true, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11N,
                 InformationElementUtil.WifiMode.determineMode(
-                        2412, 72000000, false, true, true, false));
+                        2412, 72000000, false, false, true, true, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11AC,
                 InformationElementUtil.WifiMode.determineMode(
-                        5180, 866000000, false, true, true, false));
+                        5180, 866000000, false, false, true, true, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11AX,
                 InformationElementUtil.WifiMode.determineMode(
-                       5180, 866000000, true, true, true, false));
+                        5180, 866000000, false, true, true, true, false));
         assertEquals(InformationElementUtil.WifiMode.MODE_11AX,
                 InformationElementUtil.WifiMode.determineMode(
-                      2412, 72000000, true, true, true, false));
+                        2412, 72000000, false, true, true, true, false));
+        assertEquals(InformationElementUtil.WifiMode.MODE_11BE,
+                InformationElementUtil.WifiMode.determineMode(
+                        5180, 866000000, true, true, true, true, false));
     }
 
     /**

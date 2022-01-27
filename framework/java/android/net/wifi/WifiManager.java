@@ -2488,17 +2488,16 @@ public class WifiManager {
      *
      * See {@link WifiNetworkSuggestion} for a detailed explanation of the parameters.
      * See {@link WifiNetworkSuggestion#equals(Object)} for the equivalence evaluation used.
+     * <p></
+     * Note: Use {@link #removeNetworkSuggestions(List, int)}. An {@code action} of
+     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT} is equivalent to the current behavior.
      *
      * @param networkSuggestions List of network suggestions to be removed. Pass an empty list
      *                           to remove all the previous suggestions provided by the app.
      * @return Status code for the operation. One of the {@code STATUS_NETWORK_SUGGESTIONS_*}
      * values. Any matching suggestions are removed from the device and will not be considered for
      * any further connection attempts.
-     *
-     * @deprecated Use {@link #removeNetworkSuggestions(List, int)}. An {@code action} of
-     * {@link #ACTION_REMOVE_SUGGESTION_DISCONNECT} is equivalent to the current behavior.
      */
-    @Deprecated
     @RequiresPermission(CHANGE_WIFI_STATE)
     public @NetworkSuggestionsStatusCode int removeNetworkSuggestions(
             @NonNull List<WifiNetworkSuggestion> networkSuggestions) {
@@ -9036,7 +9035,11 @@ public class WifiManager {
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "validateCurrentWifiMeetsAdminRequirements");
         }
-        //TODO: check current network meets all the admin restrictions
+        try {
+            mService.validateCurrentWifiMeetsAdminRequirements();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
     }
 
     /**
@@ -9068,4 +9071,54 @@ public class WifiManager {
             throw e.rethrowFromSystemServer();
         }
     }
+
+    /**
+     * Unknown DialogType.
+     * @hide
+     */
+    public static final int DIALOG_TYPE_UNKNOWN = 0;
+
+    /**
+     * DialogType for a P2P Invitation Received dialog.
+     * @hide
+     */
+    public static final int DIALOG_TYPE_P2P_INVITATION_RECEIVED = 1;
+
+    /** @hide */
+    @IntDef(prefix = { "DIALOG_TYPE_" }, value = {
+            DIALOG_TYPE_UNKNOWN,
+            DIALOG_TYPE_P2P_INVITATION_RECEIVED,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DialogType {}
+
+    /**
+     * Extra int indicating the type of dialog to display.
+     * @hide
+     */
+    public static final String EXTRA_DIALOG_TYPE = "android.net.wifi.extra.DIALOG_TYPE";
+
+    /**
+     * Extra int indicating the ID of a dialog. The value must be non-negative.
+     * @hide
+     */
+    public static final String EXTRA_DIALOG_ID = "android.net.wifi.extra.DIALOG_ID";
+
+    /**
+     * Extra String indicating a P2P device name for a P2P Invitation Sent/Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_DEVICE_NAME = "android.net.wifi.extra.P2P_DEVICE_NAME";
+
+    /**
+     * Extra boolean indicating that a PIN is requested for a P2P Invitation Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_PIN_REQUESTED = "android.net.wifi.extra.P2P_PIN_REQUESTED";
+
+    /**
+     * Extra String indicating the PIN to be displayed for a P2P Invitation Sent/Received dialog.
+     * @hide
+     */
+    public static final String EXTRA_P2P_DISPLAY_PIN = "android.net.wifi.extra.P2P_DISPLAY_PIN";
 }

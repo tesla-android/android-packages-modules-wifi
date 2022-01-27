@@ -38,7 +38,7 @@ import android.Manifest;
 import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.hardware.wifi.V1_0.NanCipherSuiteType;
+import android.net.wifi.WifiScanner;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
@@ -46,6 +46,7 @@ import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.aware.IWifiAwareMacAddressProvider;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
+import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.HandlerThread;
@@ -193,7 +194,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     @Test
     public void testInstantCommunicationMode() {
         mDut.isInstantCommunicationModeEnabled();
-        verify(mAwareStateManagerMock).isInstantCommunicationModeEnabled();
+        verify(mAwareStateManagerMock).isInstantCommModeGlobalEnable();
 
         // Non-system package could not enable this mode.
         when(mWifiPermissionsUtil.isSystem(anyString(), anyInt())).thenReturn(false);
@@ -748,7 +749,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         cap.maxNdpSessions = 1;
         cap.maxAppInfoLen = 255;
         cap.maxQueuedTransmitMessages = 6;
-        cap.supportedCipherSuites = NanCipherSuiteType.SHARED_KEY_256_MASK;
+        cap.supportedCipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256;
         cap.isInstantCommunicationModeSupported = true;
 
         Characteristics characteristics = cap.toPublicCharacteristics();
@@ -764,6 +765,38 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         if (SdkLevel.isAtLeastS()) {
             assertEquals(characteristics.isInstantCommunicationModeSupported(), true);
         }
+    }
+
+    @Test
+    public void testPublishWifiValidSecurityConfig() {
+        WifiAwareDataPathSecurityConfig securityConfig = new WifiAwareDataPathSecurityConfig
+                .Builder(Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256)
+                .setPskPassphrase("somePassphrase").build();
+        PublishConfig publishConfig = new PublishConfig.Builder().setServiceName("something.valid")
+                .setDataPathSecurityConfig(securityConfig)
+                .setRangingEnabled(true).build();
+        int clientId = doConnect();
+        IWifiAwareDiscoverySessionCallback mockCallback = mock(
+                IWifiAwareDiscoverySessionCallback.class);
+
+        mDut.publish(mPackageName, mFeatureId, clientId, publishConfig, mockCallback, mExtras);
+
+        verify(mAwareStateManagerMock).publish(clientId, publishConfig, mockCallback);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testPublishWifiInvalidSecurityConfig() {
+        WifiAwareDataPathSecurityConfig securityConfig = new WifiAwareDataPathSecurityConfig
+                .Builder(Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128)
+                .setPskPassphrase("somePassphrase").build();
+        PublishConfig publishConfig = new PublishConfig.Builder().setServiceName("something.valid")
+                .setDataPathSecurityConfig(securityConfig)
+                .setRangingEnabled(true).build();
+        int clientId = doConnect();
+        IWifiAwareDiscoverySessionCallback mockCallback = mock(
+                IWifiAwareDiscoverySessionCallback.class);
+
+        mDut.publish(mPackageName, mFeatureId, clientId, publishConfig, mockCallback, mExtras);
     }
 
     /*
@@ -790,7 +823,8 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         // caught by the Builder. Want to test whether service side will catch invalidly
         // constructed configs.
         PublishConfig publishConfig = new PublishConfig(serviceName.getBytes(), ssi, matchFilter,
-                PublishConfig.PUBLISH_TYPE_UNSOLICITED, 0, true, false);
+                PublishConfig.PUBLISH_TYPE_UNSOLICITED, 0, true, false, false,
+                WifiScanner.WIFI_BAND_24_GHZ, null);
         int clientId = doConnect();
         IWifiAwareDiscoverySessionCallback mockCallback = mock(
                 IWifiAwareDiscoverySessionCallback.class);
@@ -806,7 +840,8 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         // caught by the Builder. Want to test whether service side will catch invalidly
         // constructed configs.
         SubscribeConfig subscribeConfig = new SubscribeConfig(serviceName.getBytes(), ssi,
-                matchFilter, SubscribeConfig.SUBSCRIBE_TYPE_PASSIVE, 0, true, false, 0, false, 0);
+                matchFilter, SubscribeConfig.SUBSCRIBE_TYPE_PASSIVE, 0, true, false, 0, false, 0,
+                false, WifiScanner.WIFI_BAND_24_GHZ);
         int clientId = doConnect();
         IWifiAwareDiscoverySessionCallback mockCallback = mock(
                 IWifiAwareDiscoverySessionCallback.class);
@@ -845,7 +880,7 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         cap.maxNdpSessions = 1;
         cap.maxAppInfoLen = 255;
         cap.maxQueuedTransmitMessages = 6;
-        cap.supportedCipherSuites = NanCipherSuiteType.SHARED_KEY_256_MASK;
+        cap.supportedCipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256;
         cap.isInstantCommunicationModeSupported = false;
         return cap.toPublicCharacteristics();
     }

@@ -31,6 +31,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.MacAddress;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiContext;
@@ -41,9 +42,11 @@ import android.net.wifi.WifiNetworkSuggestion;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiScanner.PnoSettings;
 import android.net.wifi.WifiScanner.ScanSettings;
+import android.net.wifi.WifiSsid;
 import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.util.ScanResultUtil;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.WorkSource;
@@ -149,6 +152,7 @@ public class WifiConnectivityManager {
     private final WifiMetrics mWifiMetrics;
     private final AlarmManager mAlarmManager;
     private final Handler mEventHandler;
+    private final ExternalPnoScanRequestManager mExternalPnoScanRequestManager;
     private final Clock mClock;
     private final ScoringParams mScoringParams;
     private final LocalLog mLocalLog;
@@ -201,6 +205,7 @@ public class WifiConnectivityManager {
     private Object mPeriodicScanTimerToken = new Object();
     private boolean mDelayedPartialScanTimerSet = false;
     private boolean mWatchdogScanTimerSet = false;
+    private boolean mIsLocationModeEnabled;
 
     // Used for Initial Scan metrics
     private boolean mFailedInitialPartialScan = false;
@@ -1090,6 +1095,9 @@ public class WifiConnectivityManager {
                             resetLowRssiNetworkRetryDelay();
                         }
                     });
+            if (mIsLocationModeEnabled) {
+                mExternalPnoScanRequestManager.onPnoNetworkFound(results);
+            }
         }
     }
 
@@ -1211,7 +1219,8 @@ public class WifiConnectivityManager {
             DeviceConfigFacade deviceConfigFacade,
             ActiveModeWarden activeModeWarden,
             FrameworkFacade frameworkFacade,
-            WifiGlobals wifiGlobals) {
+            WifiGlobals wifiGlobals,
+            ExternalPnoScanRequestManager externalPnoScanRequestManager) {
         mContext = context;
         mScoringParams = scoringParams;
         mConfigManager = configManager;
@@ -1236,6 +1245,7 @@ public class WifiConnectivityManager {
 
         mAlarmManager = context.getSystemService(AlarmManager.class);
         mPowerManager = mContext.getSystemService(PowerManager.class);
+        mExternalPnoScanRequestManager = externalPnoScanRequestManager;
 
         // Listen for screen state change events.
         // TODO: We should probably add a shared broadcast receiver in the wifi stack which
@@ -1681,18 +1691,18 @@ public class WifiConnectivityManager {
      * Add the channels into the channel set with a size limit.
      * If maxCount equals to 0, will add all available channels into the set.
      * @param channelSet Target set for adding channel to.
-     * @param config Network for query channel from WifiScoreCard
+     * @param ssid Identifies the network to obtain from WifiScoreCard.
      * @param maxCount Size limit of the set. If equals to 0, means no limit.
      * @param ageInMillis Only consider channel info whose timestamps are younger than this value.
      * @return True if all available channels for this network are added, otherwise false.
      */
     private boolean addChannelFromWifiScoreCard(@NonNull Set<Integer> channelSet,
-            @NonNull WifiConfiguration config, int maxCount, long ageInMillis) {
-        WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(config.SSID);
+            @NonNull String ssid, int maxCount, long ageInMillis) {
+        WifiScoreCard.PerNetwork network = mWifiScoreCard.lookupNetwork(ssid);
         for (Integer channel : network.getFrequencies(ageInMillis)) {
             if (maxCount > 0 && channelSet.size() >= maxCount) {
                 localLog("addChannelFromWifiScoreCard: size limit reached for network:"
-                        + config.SSID);
+                        + ssid);
                 return false;
             }
             channelSet.add(channel);
@@ -1718,7 +1728,7 @@ public class WifiConnectivityManager {
             channelSet.add(wifiInfo.getFrequency());
         }
         // Then get channels for the network.
-        addChannelFromWifiScoreCard(channelSet, config, maxNumActiveChannelsForPartialScans,
+        addChannelFromWifiScoreCard(channelSet, config.SSID, maxNumActiveChannelsForPartialScans,
                 CHANNEL_LIST_AGE_MS);
         return channelSet;
     }
@@ -1739,7 +1749,7 @@ public class WifiConnectivityManager {
         Set<Integer> channelSet = new HashSet<>();
 
         for (WifiConfiguration config : networks) {
-            if (!addChannelFromWifiScoreCard(channelSet, config, maxCount, ageInMillis)) {
+            if (!addChannelFromWifiScoreCard(channelSet, config.SSID, maxCount, ageInMillis)) {
                 return channelSet;
             }
         }
@@ -2153,13 +2163,46 @@ public class WifiConnectivityManager {
     }
 
     /**
+     * Sets whether global location mode is enabled.
+     */
+    public void setLocationModeEnabled(boolean enabled) {
+        mIsLocationModeEnabled = enabled;
+    }
+
+    /**
+     * Sets a external PNO scan request
+     */
+    public void setExternalPnoScanRequest(int uid, @NonNull IBinder binder,
+            @NonNull IPnoScanResultsCallback callback, @NonNull List<WifiSsid> ssids) {
+        if (mExternalPnoScanRequestManager.setRequest(uid, binder, callback, ssids)
+                && mPnoScanStarted) {
+            Log.d(TAG, "Restarting PNO Scan with external requested SSIDs");
+            stopPnoScan();
+            startDisconnectedPnoScan();
+        }
+    }
+
+    /**
+     * Clears the external PNO scan request.
+     */
+    public void clearExternalPnoScanRequest(int uid) {
+        if (mExternalPnoScanRequestManager.removeRequest(uid)) {
+            Log.d(TAG, "Restarting PNO Scan after removing external requested SSIDs");
+            stopPnoScan();
+            startDisconnectedPnoScan();
+        }
+    }
+
+
+    /**
      * Retrieve the PnoNetworks from Saved and suggestion non-passpoint network.
      */
     @VisibleForTesting
     public List<PnoSettings.PnoNetwork> retrievePnoNetworkList() {
         List<WifiConfiguration> networks = getAllScanOptimizationNetworks();
-
-        if (networks.isEmpty()) {
+        Set<String> externalRequestedPnoSsids = mIsLocationModeEnabled
+                ? mExternalPnoScanRequestManager.getExternalPnoScanSsids() : Collections.EMPTY_SET;
+        if (networks.isEmpty() && externalRequestedPnoSsids.isEmpty()) {
             return Collections.EMPTY_LIST;
         }
         Collections.sort(networks, mConfigManager.getScanListComparator());
@@ -2167,20 +2210,37 @@ public class WifiConnectivityManager {
                 .getBoolean(R.bool.config_wifiPnoFrequencyCullingEnabled);
 
         List<PnoSettings.PnoNetwork> pnoList = new ArrayList<>();
-        Set<WifiScanner.PnoSettings.PnoNetwork> pnoSet = new HashSet<>();
-        for (WifiConfiguration config : networks) {
-            WifiScanner.PnoSettings.PnoNetwork pnoNetwork =
-                    WifiConfigurationUtil.createPnoNetwork(config);
-            if (pnoSet.contains(pnoNetwork)) {
+        Set<String> pnoSet = new HashSet<>();
+
+        // Add any externally requested SSIDs to PNO scan list
+        for (String ssid : externalRequestedPnoSsids) {
+            if (pnoSet.contains(ssid)) {
                 continue;
             }
+            WifiScanner.PnoSettings.PnoNetwork pnoNetwork = new PnoSettings.PnoNetwork(ssid);
             pnoList.add(pnoNetwork);
-            pnoSet.add(pnoNetwork);
+            pnoSet.add(ssid);
             if (!pnoFrequencyCullingEnabled) {
                 continue;
             }
             Set<Integer> channelList = new HashSet<>();
-            addChannelFromWifiScoreCard(channelList, config, 0,
+            addChannelFromWifiScoreCard(channelList, ssid, 0,
+                    MAX_PNO_SCAN_FREQUENCY_AGE_MS);
+            pnoNetwork.frequencies = channelList.stream().mapToInt(Integer::intValue).toArray();
+        }
+        for (WifiConfiguration config : networks) {
+            if (pnoSet.contains(config.SSID)) {
+                continue;
+            }
+            WifiScanner.PnoSettings.PnoNetwork pnoNetwork =
+                    WifiConfigurationUtil.createPnoNetwork(config);
+            pnoList.add(pnoNetwork);
+            pnoSet.add(config.SSID);
+            if (!pnoFrequencyCullingEnabled) {
+                continue;
+            }
+            Set<Integer> channelList = new HashSet<>();
+            addChannelFromWifiScoreCard(channelList, config.SSID, 0,
                     MAX_PNO_SCAN_FREQUENCY_AGE_MS);
             pnoNetwork.frequencies = channelList.stream().mapToInt(Integer::intValue).toArray();
         }
@@ -2923,10 +2983,12 @@ public class WifiConnectivityManager {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("Dump of WifiConnectivityManager");
         pw.println("WifiConnectivityManager - Log Begin ----");
+        pw.println("mIsLocationModeEnabled: " + mIsLocationModeEnabled);
         mLocalLog.dump(fd, pw, args);
         pw.println("WifiConnectivityManager - Log End ----");
         pw.println(TAG + ": mMultiInternetConnectionState " + mMultiInternetConnectionState);
         mOpenNetworkNotifier.dump(fd, pw, args);
         mWifiBlocklistMonitor.dump(fd, pw, args);
+        mExternalPnoScanRequestManager.dump(fd, pw, args);
     }
 }
