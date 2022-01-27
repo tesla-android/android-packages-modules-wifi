@@ -1781,6 +1781,8 @@ public class WifiNative {
                 return ScanResult.WIFI_STANDARD_11AC;
             case InformationElementUtil.WifiMode.MODE_11AX:
                 return ScanResult.WIFI_STANDARD_11AX;
+            case InformationElementUtil.WifiMode.MODE_11BE:
+                return ScanResult.WIFI_STANDARD_11BE;
             case InformationElementUtil.WifiMode.MODE_UNDEFINED:
             default:
                 return ScanResult.WIFI_STANDARD_UNKNOWN;

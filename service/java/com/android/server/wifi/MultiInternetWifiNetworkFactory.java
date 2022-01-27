@@ -149,9 +149,10 @@ public class MultiInternetWifiNetworkFactory extends NetworkFactory {
         // Only allow specific wifi network request with band from apps or services with settings
         // or network stack permission.
         if (!isFromSetting && !isFromNetworkStack) {
-            Log.e(TAG, "Request is from app or service does not have the permission."
+            // Do not release the network request. The app will not get onUnavailable right away,
+            // it can wait when another app with permission make the request and obtain the network.
+            Log.w(TAG, "Request is from app or service does not have the permission."
                     + " Rejecting request from " + networkRequest.getRequestorPackageName());
-            releaseRequestAsUnfulfillableByAnyFactory(networkRequest);
             return false;
         }
         WifiNetworkSpecifier wns = (WifiNetworkSpecifier) networkRequest.getNetworkSpecifier();
@@ -209,6 +210,7 @@ public class MultiInternetWifiNetworkFactory extends NetworkFactory {
         if (!isWifiMultiInternetRequest(networkRequest)) {
             return;
         }
+        localLog("releaseNetworkFor " + networkRequest);
         final int band = ((WifiNetworkSpecifier) networkRequest.getNetworkSpecifier()).getBand();
         int reqCount = mConnectionReqCount.contains(band)
                 ? mConnectionReqCount.get(band) : 0;

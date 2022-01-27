@@ -25,6 +25,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.RequiresPermission;
 import android.annotation.SystemApi;
+import android.app.admin.DevicePolicyManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
@@ -158,6 +159,13 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * and PMF must be set to Required.
      */
     public static final int SECURITY_TYPE_PASSPOINT_R3 = 12;
+
+    /**
+     * Unknown security type that cannot be converted to
+     * DevicePolicyManager.WifiSecurity security type.
+     * @hide
+     */
+    public static final int DPM_SECURITY_TYPE_UNKNOWN = -1;
 
     /**
      * Security type of current connection.
@@ -1694,6 +1702,37 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 return SECURITY_TYPE_PASSPOINT_R3;
             default:
                 return SECURITY_TYPE_UNKNOWN;
+        }
+    }
+
+    /**
+     * Utility method to convert WifiInfo.SecurityType to DevicePolicyManager.WifiSecurity
+     * @param securityType WifiInfo.SecurityType to convert
+     * @return DevicePolicyManager.WifiSecurity security level, or
+     * {@link #DPM_SECURITY_TYPE_UNKNOWN} for unknown security types
+     * @hide
+     */
+    public static int convertSecurityTypeToDpmWifiSecurity(
+            @WifiInfo.SecurityType int securityType) {
+        switch (securityType) {
+            case SECURITY_TYPE_OPEN:
+            case SECURITY_TYPE_OWE:
+                return DevicePolicyManager.WIFI_SECURITY_OPEN;
+            case SECURITY_TYPE_WEP:
+            case SECURITY_TYPE_PSK:
+            case SECURITY_TYPE_SAE:
+            case SECURITY_TYPE_WAPI_PSK:
+                return DevicePolicyManager.WIFI_SECURITY_PERSONAL;
+            case SECURITY_TYPE_EAP:
+            case SECURITY_TYPE_EAP_WPA3_ENTERPRISE:
+            case SECURITY_TYPE_PASSPOINT_R1_R2:
+            case SECURITY_TYPE_PASSPOINT_R3:
+            case SECURITY_TYPE_WAPI_CERT:
+                return DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP;
+            case SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT:
+                return DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_192;
+            default:
+                return DPM_SECURITY_TYPE_UNKNOWN;
         }
     }
 

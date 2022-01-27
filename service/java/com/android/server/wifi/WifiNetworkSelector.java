@@ -21,6 +21,9 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.annotation.SuppressLint;
+import android.app.admin.DevicePolicyManager;
+import android.app.admin.WifiSsidPolicy;
 import android.content.Context;
 import android.net.MacAddress;
 import android.net.wifi.ScanResult;
@@ -39,9 +42,11 @@ import android.util.Pair;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.util.Preconditions;
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.proto.nano.WifiMetricsProto;
 import com.android.server.wifi.util.InformationElementUtil.BssLoad;
+import com.android.server.wifi.util.WifiPermissionsUtil;
 import com.android.wifi.resources.R;
 
 import java.lang.annotation.Retention;
@@ -399,6 +404,7 @@ public class WifiNetworkSelector {
         return (scanResult.level < mScoringParams.getEntryRssi(scanResult.frequency));
     }
 
+    @SuppressLint("NewApi")
     private List<ScanDetail> filterScanResults(List<ScanDetail> scanDetails,
             Set<String> bssidBlocklist, List<ClientModeManagerState> cmmStates) {
         List<ScanDetail> validScanDetails = new ArrayList<>();
@@ -406,11 +412,35 @@ public class WifiNetworkSelector {
         StringBuffer blockedBssid = new StringBuffer();
         StringBuffer lowRssi = new StringBuffer();
         StringBuffer mboAssociationDisallowedBssid = new StringBuffer();
+        StringBuffer adminRestrictedSsid = new StringBuffer();
         List<String> currentBssids = cmmStates.stream()
                 .map(cmmState -> cmmState.wifiInfo.getBSSID())
                 .collect(Collectors.toList());
         Set<String> scanResultPresentForCurrentBssids = new ArraySet<>();
+
+        int adminMinimumSecurityLevel = 0;
+        boolean adminSsidRestrictionSet = false;
+        Set<String> adminSsidAllowlist = new ArraySet<>();
+        Set<String> admindSsidDenylist = new ArraySet<>();
+
         int numBssidFiltered = 0;
+
+        DevicePolicyManager devicePolicyManager =
+                WifiPermissionsUtil.retrieveDevicePolicyManagerFromContext(mContext);
+
+        if (devicePolicyManager != null && SdkLevel.isAtLeastT()) {
+            adminMinimumSecurityLevel =
+                    devicePolicyManager.getMinimumRequiredWifiSecurityLevel();
+            WifiSsidPolicy policy = devicePolicyManager.getWifiSsidPolicy();
+            if (policy != null) {
+                adminSsidRestrictionSet = true;
+                if (policy.getPolicyType() == WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST) {
+                    adminSsidAllowlist = policy.getSsids();
+                } else {
+                    admindSsidDenylist = policy.getSsids();
+                }
+            }
+        }
 
         for (ScanDetail scanDetail : scanDetails) {
             ScanResult scanResult = scanDetail.getScanResult();
@@ -463,6 +493,44 @@ public class WifiNetworkSelector {
                 }
             }
 
+            // Skip network that does not meet the admin set SSID restriction
+            if (adminSsidRestrictionSet) {
+                String ssid = scanResult.getWifiSsid().getUtf8Text().toString();
+                // Allowlist policy set but network is not present in the list
+                if (!adminSsidAllowlist.isEmpty() && !adminSsidAllowlist.contains(ssid)) {
+                    adminRestrictedSsid.append(scanId).append(" / ");
+                    continue;
+                }
+                // Denylist policy set but network is present in the list
+                if (!admindSsidDenylist.isEmpty() && admindSsidDenylist.contains(ssid)) {
+                    adminRestrictedSsid.append(scanId).append(" / ");
+                    continue;
+                }
+            }
+
+            // Skip network that does not meet the admin set minimum security level restriction
+            if (adminMinimumSecurityLevel != 0) {
+                boolean securityRestrictionPassed = false;
+                @WifiInfo.SecurityType int[] securityTypes = scanResult.getSecurityTypes();
+                for (int type : securityTypes) {
+                    int securityLevel = WifiInfo.convertSecurityTypeToDpmWifiSecurity(type);
+
+                    // Skip unknown security type since security level cannot be determined.
+                    // If all the security types are unknown when the minimum security level
+                    // restriction is set, the scan result is ignored.
+                    if (securityLevel == WifiInfo.DPM_SECURITY_TYPE_UNKNOWN) continue;
+
+                    if (adminMinimumSecurityLevel <= securityLevel) {
+                        securityRestrictionPassed = true;
+                        break;
+                    }
+                }
+                if (!securityRestrictionPassed) {
+                    adminRestrictedSsid.append(scanId).append(" / ");
+                    continue;
+                }
+            }
+
             validScanDetails.add(scanDetail);
         }
         mWifiMetrics.incrementNetworkSelectionFilteredBssidCount(numBssidFiltered);
@@ -498,6 +566,10 @@ public class WifiNetworkSelector {
         if (mboAssociationDisallowedBssid.length() != 0) {
             localLog("Networks filtered out due to mbo association disallowed indication: "
                     + mboAssociationDisallowedBssid);
+        }
+
+        if (adminRestrictedSsid.length() != 0) {
+            localLog("Networks filtered out due to admin restrictions: " + adminRestrictedSsid);
         }
 
         return validScanDetails;

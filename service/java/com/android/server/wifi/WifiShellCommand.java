@@ -41,6 +41,7 @@ import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
+import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.IScoreUpdateObserver;
 import android.net.wifi.ISoftApCallback;
 import android.net.wifi.IWifiConnectedNetworkScorer;
@@ -72,9 +73,11 @@ import android.telephony.PhysicalChannelConfig;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -172,6 +175,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private final WifiApConfigStore mWifiApConfigStore;
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
     private final ScanRequestProxy mScanRequestProxy;
+    private final @NonNull WifiDialogManager mWifiDialogManager;
 
     private class SoftApCallbackProxy extends ISoftApCallback.Stub {
         private final PrintWriter mPrintWriter;
@@ -280,6 +284,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mSelfRecovery = wifiInjector.getSelfRecovery();
         mWifiApConfigStore = wifiInjector.getWifiApConfigStore();
         mScanRequestProxy = wifiInjector.getScanRequestProxy();
+        mWifiDialogManager = wifiInjector.getWifiDialogManager();
     }
 
     @Override
@@ -492,6 +497,50 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         mWifiApConfigStore.disableForceSoftApBandOrChannel();
                         return 0;
                     }
+                }
+                case "set-pno-request": {
+                    if (!SdkLevel.isAtLeastT()) {
+                        pw.println("This feature is only supported on SdkLevel T or later.");
+                        return -1;
+                    }
+                    String ssid = getNextArgRequired();
+                    WifiSsid wifiSsid = WifiSsid.fromString("\"" + ssid + "\"");
+                    IPnoScanResultsCallback.Stub callback = new IPnoScanResultsCallback.Stub() {
+                        @Override
+                        public void onScanResultsAvailable(List<ScanResult> scanResults) {
+                            Log.v(TAG, "PNO scan results available:");
+                            for (ScanResult result : scanResults) {
+                                Log.v(TAG, result.getWifiSsid().toString());
+                            }
+                        }
+                        @Override
+                        public void onRegisterSuccess() {
+                            Log.v(TAG, "PNO scan request register success");
+                        }
+
+                        @Override
+                        public void onRegisterFailed(int reason) {
+                            Log.v(TAG, "PNO scan request register failed reason=" + reason);
+                        }
+
+                        @Override
+                        public void onRemoved(int reason) {
+                            Log.v(TAG, "PNO scan request callback removed reason=" + reason);
+                        }
+                    };
+                    pw.println("requesting PNO scan for: " + wifiSsid);
+                    mWifiService.setExternalPnoScanRequest(new Binder(), callback,
+                            Arrays.asList(wifiSsid), mContext.getOpPackageName(),
+                            mContext.getAttributionTag());
+                    return 0;
+                }
+                case "clear-pno-request": {
+                    if (!SdkLevel.isAtLeastT()) {
+                        pw.println("This feature is only supported on SdkLevel T or later.");
+                        return -1;
+                    }
+                    mWifiService.clearExternalPnoScanRequest();
+                    return 0;
                 }
                 case "start-lohs": {
                     CountDownLatch countDownLatch = new CountDownLatch(2);
@@ -1089,6 +1138,48 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         }
                     }
                     mScanRequestProxy.enableScanning(enabled, hiddenEnabled);
+                    return 0;
+                case "launch-dialog-p2p-invitation-received":
+                    String deviceName = getNextArgRequired();
+                    boolean isPinRequested = false;
+                    String displayPin = null;
+                    String pinOption = getNextOption();
+                    while (pinOption != null) {
+                        if (pinOption.equals("-p")) {
+                            isPinRequested = true;
+                        } else if (pinOption.equals("-d")) {
+                            displayPin = getNextArgRequired();
+                        } else {
+                            pw.println("Ignoring unknown option " + pinOption);
+                        }
+                        pinOption = getNextOption();
+                    }
+                    ArrayBlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
+                    WifiDialogManager.P2pInvitationReceivedDialogCallback callback =
+                            new WifiDialogManager.P2pInvitationReceivedDialogCallback() {
+                        @Override
+                        public void onAccepted(@Nullable String optionalPin) {
+                            queue.offer("Invitation accepted with optionalPin=" + optionalPin);
+                        }
+
+                        @Override
+                        public void onDeclined() {
+                            queue.offer("Invitation declined");
+                        }
+                    };
+                    mWifiDialogManager.launchP2pInvitationReceivedDialog(
+                            deviceName,
+                            isPinRequested,
+                            displayPin,
+                            callback);
+                    pw.println("Launched dialog. Waiting up to 15 seconds for user response.");
+                    pw.flush();
+                    String msg = queue.poll(15, TimeUnit.SECONDS);
+                    if (msg == null) {
+                        pw.println("No response received.");
+                    } else {
+                        pw.println(msg);
+                    }
                     return 0;
                 default:
                     return handleDefaultCommands(cmd);
@@ -1776,6 +1867,12 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println(
                 "    Reset the WiFi resources cache which will cause them to be reloaded next "
                         + "time they are accessed. Necessary if overlays are manually modified.");
+        pw.println("  launch-dialog-p2p-invitation-received <device_name> [-p] [-d <pin>]");
+        pw.println("    Launches a P2P Invitation Received dialog and waits up to 30 seconds to"
+                + " print the response.");
+        pw.println("    <device_name> - Name of the device sending the invitation");
+        pw.println("    -p - Show PIN input");
+        pw.println("    -d - Display PIN <pin>");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {
@@ -1932,6 +2029,10 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Stop local only softap (hotspot)");
         pw.println("  set-multi-internet-mode 0|1|2");
         pw.println("    Sets Multi Internet use case mode. 0-disabled 1-dbs 2-multi ap");
+        pw.println("  set-pno-request <ssid>");
+        pw.println("    Requests to include a non-quoted UTF-8 SSID in PNO scans");
+        pw.println("  clear-pno-request");
+        pw.println("    Clear the PNO scan request.");
     }
 
     @Override

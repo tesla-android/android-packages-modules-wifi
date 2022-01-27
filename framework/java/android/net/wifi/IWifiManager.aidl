@@ -372,4 +372,6 @@ interface IWifiManager
     int getStaConcurrencyForMultiInternetMode();
 
     boolean setStaConcurrencyForMultiInternetMode(int mode);
+
+    void validateCurrentWifiMeetsAdminRequirements();
 }

@@ -1640,6 +1640,7 @@ public class XmlUtil {
         public static final String XML_TAG_MAC_RAMDOMIZATION_SETTING = "MacRandomizationSetting";
         public static final String XML_TAG_BAND_CHANNEL_MAP = "BandChannelMap";
         public static final String XML_TAG_80211_AX_ENABLED = "80211axEnabled";
+        public static final String XML_TAG_80211_BE_ENABLED = "80211beEnabled";
         public static final String XML_TAG_USER_CONFIGURATION = "UserConfiguration";
         public static final String XML_TAG_BRIDTED_MODE_OPPORTUNISTIC_SHUTDOWN_TIMEOUT_MILLIS =
                 "BridgedModeOpportunisticShutdownTimeoutMillis";
@@ -1858,6 +1859,8 @@ public class XmlUtil {
                 XmlUtil.SoftApConfigurationXmlUtil.writeVendorElementsSetToXml(out,
                         softApConfig.getVendorElementsInternal());
                 XmlUtil.writeNextSectionEnd(out, XML_TAG_VENDOR_ELEMENTS);
+                XmlUtil.writeNextValue(out, XML_TAG_80211_BE_ENABLED,
+                        softApConfig.isIeee80211beEnabled());
             }
         } // End of writeSoftApConfigurationToXml
 
@@ -1972,6 +1975,11 @@ public class XmlUtil {
                             case XML_TAG_80211_AX_ENABLED:
                                 if (SdkLevel.isAtLeastS()) {
                                     softApConfigBuilder.setIeee80211axEnabled((boolean) value);
+                                }
+                                break;
+                            case XML_TAG_80211_BE_ENABLED:
+                                if (SdkLevel.isAtLeastT()) {
+                                    softApConfigBuilder.setIeee80211beEnabled((boolean) value);
                                 }
                                 break;
                             case XML_TAG_USER_CONFIGURATION:

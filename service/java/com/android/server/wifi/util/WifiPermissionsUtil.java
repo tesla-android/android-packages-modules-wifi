@@ -811,7 +811,10 @@ public class WifiPermissionsUtil {
         return mode == AppOpsManager.MODE_ALLOWED;
     }
 
-    private static DevicePolicyManager retrieveDevicePolicyManagerFromContext(Context context) {
+    /**
+     * Returns the DevicePolicyManager from context
+     */
+    public static DevicePolicyManager retrieveDevicePolicyManagerFromContext(Context context) {
         DevicePolicyManager devicePolicyManager =
                 context.getSystemService(DevicePolicyManager.class);
         if (devicePolicyManager == null

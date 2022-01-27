@@ -119,6 +119,17 @@ public final class SoftApCapability implements Parcelable {
      */
     public static final long SOFTAP_FEATURE_BAND_60G_SUPPORTED = 1 << 8;
 
+    /**
+     * Support for 802.11be SAP.
+     * flag when {@code R.bool.config_wifiSoftapIeee80211beSupported} is true
+     *
+     * <p>
+     * Use this flag with {@link #areFeaturesSupported(long)}
+     * to verify that 802.11be is supported before enabling it using
+     * {@link SoftApConfiguration.Builder#setIeee80211beEnabled(boolean)}
+     */
+    public static final long SOFTAP_FEATURE_IEEE80211_BE = 1 << 9;
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @LongDef(flag = true, prefix = { "SOFTAP_FEATURE_" }, value = {
@@ -127,10 +138,11 @@ public final class SoftApCapability implements Parcelable {
             SOFTAP_FEATURE_WPA3_SAE,
             SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION,
             SOFTAP_FEATURE_IEEE80211_AX,
+            SOFTAP_FEATURE_IEEE80211_BE,
             SOFTAP_FEATURE_BAND_24G_SUPPORTED,
             SOFTAP_FEATURE_BAND_5G_SUPPORTED,
             SOFTAP_FEATURE_BAND_6G_SUPPORTED,
-            SOFTAP_FEATURE_BAND_60G_SUPPORTED
+            SOFTAP_FEATURE_BAND_60G_SUPPORTED,
     })
     public @interface HotspotFeatures {}
 

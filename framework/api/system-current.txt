@@ -268,6 +268,7 @@ package android.net.wifi {
     field public static final long SOFTAP_FEATURE_BAND_6G_SUPPORTED = 128L; // 0x80L
     field public static final long SOFTAP_FEATURE_CLIENT_FORCE_DISCONNECT = 2L; // 0x2L
     field public static final long SOFTAP_FEATURE_IEEE80211_AX = 16L; // 0x10L
+    field public static final long SOFTAP_FEATURE_IEEE80211_BE = 512L; // 0x200L
     field public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 8L; // 0x8L
     field public static final long SOFTAP_FEATURE_WPA3_SAE = 4L; // 0x4L
   }
@@ -287,6 +288,7 @@ package android.net.wifi {
     method public boolean isBridgedModeOpportunisticShutdownEnabled();
     method public boolean isClientControlByUserEnabled();
     method public boolean isIeee80211axEnabled();
+    method public boolean isIeee80211beEnabled();
     method public boolean isUserConfiguration();
     method @Nullable public android.net.wifi.WifiConfiguration toWifiConfiguration();
     field public static final int BAND_2GHZ = 1; // 0x1
@@ -316,6 +318,7 @@ package android.net.wifi {
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setClientControlByUserEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setHiddenSsid(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setIeee80211axEnabled(boolean);
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setIeee80211beEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setMacRandomizationSetting(int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setMaxNumberOfClients(@IntRange(from=0) int);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setPassphrase(@Nullable String, int);
@@ -337,6 +340,7 @@ package android.net.wifi {
     field public static final int CHANNEL_WIDTH_20MHZ = 2; // 0x2
     field public static final int CHANNEL_WIDTH_20MHZ_NOHT = 1; // 0x1
     field public static final int CHANNEL_WIDTH_2160MHZ = 7; // 0x7
+    field public static final int CHANNEL_WIDTH_320MHZ = 11; // 0xb
     field public static final int CHANNEL_WIDTH_40MHZ = 3; // 0x3
     field public static final int CHANNEL_WIDTH_4320MHZ = 8; // 0x8
     field public static final int CHANNEL_WIDTH_6480MHZ = 9; // 0x9
@@ -804,7 +808,7 @@ package android.net.wifi {
     method @Deprecated @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE) public boolean getScanResults();
     method @NonNull @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE) public java.util.List<android.net.wifi.ScanResult> getSingleScanResults();
     method @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE) public boolean isScanning();
-    method @RequiresPermission(anyOf={android.Manifest.permission.LOCATION_HARDWARE, android.Manifest.permission.NETWORK_STACK}, conditional=true) public void registerScanListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiScanner.ScanListener);
+    method @RequiresPermission(anyOf={android.Manifest.permission.LOCATION_HARDWARE, android.Manifest.permission.NETWORK_STACK}) public void registerScanListener(@NonNull java.util.concurrent.Executor, @NonNull android.net.wifi.WifiScanner.ScanListener);
     method @RequiresPermission(android.Manifest.permission.NETWORK_STACK) public void setScanningEnabled(boolean);
     method @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE) public void startBackgroundScan(android.net.wifi.WifiScanner.ScanSettings, android.net.wifi.WifiScanner.ScanListener);
     method @Deprecated @RequiresPermission(android.Manifest.permission.LOCATION_HARDWARE) public void startBackgroundScan(android.net.wifi.WifiScanner.ScanSettings, android.net.wifi.WifiScanner.ScanListener, android.os.WorkSource);
@@ -991,12 +995,14 @@ package android.net.wifi {
     field public static final int WIFI_BANDWIDTH_10_MHZ = 6; // 0x6
     field public static final int WIFI_BANDWIDTH_160_MHZ = 3; // 0x3
     field public static final int WIFI_BANDWIDTH_20_MHZ = 0; // 0x0
+    field public static final int WIFI_BANDWIDTH_320_MHZ = 7; // 0x7
     field public static final int WIFI_BANDWIDTH_40_MHZ = 1; // 0x1
     field public static final int WIFI_BANDWIDTH_5_MHZ = 5; // 0x5
     field public static final int WIFI_BANDWIDTH_80P80_MHZ = 4; // 0x4
     field public static final int WIFI_BANDWIDTH_80_MHZ = 2; // 0x2
     field public static final int WIFI_BANDWIDTH_INVALID = -1; // 0xffffffff
     field public static final int WIFI_PREAMBLE_CCK = 1; // 0x1
+    field public static final int WIFI_PREAMBLE_EHT = 6; // 0x6
     field public static final int WIFI_PREAMBLE_HE = 5; // 0x5
     field public static final int WIFI_PREAMBLE_HT = 2; // 0x2
     field public static final int WIFI_PREAMBLE_INVALID = -1; // 0xffffffff
@@ -1181,9 +1187,11 @@ package android.net.wifi.rtt {
     method @NonNull public static android.net.wifi.rtt.ResponderConfig fromWifiAwarePeerMacAddressWithDefaults(@NonNull android.net.MacAddress);
     field public static final int CHANNEL_WIDTH_160MHZ = 3; // 0x3
     field public static final int CHANNEL_WIDTH_20MHZ = 0; // 0x0
+    field public static final int CHANNEL_WIDTH_320MHZ = 5; // 0x5
     field public static final int CHANNEL_WIDTH_40MHZ = 1; // 0x1
     field public static final int CHANNEL_WIDTH_80MHZ = 2; // 0x2
     field public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 4; // 0x4
+    field public static final int PREAMBLE_EHT = 4; // 0x4
     field public static final int PREAMBLE_HE = 3; // 0x3
     field public static final int PREAMBLE_HT = 1; // 0x1
     field public static final int PREAMBLE_LEGACY = 0; // 0x0

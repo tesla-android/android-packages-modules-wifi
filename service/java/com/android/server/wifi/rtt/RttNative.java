@@ -20,17 +20,17 @@ import android.annotation.IntDef;
 import android.annotation.Nullable;
 import android.hardware.wifi.V1_0.IWifiRttController;
 import android.hardware.wifi.V1_0.IWifiRttControllerEventCallback;
-import android.hardware.wifi.V1_0.RttBw;
 import android.hardware.wifi.V1_0.RttCapabilities;
 import android.hardware.wifi.V1_0.RttConfig;
 import android.hardware.wifi.V1_0.RttPeerType;
-import android.hardware.wifi.V1_0.RttPreamble;
 import android.hardware.wifi.V1_0.RttResult;
 import android.hardware.wifi.V1_0.RttStatus;
 import android.hardware.wifi.V1_0.RttType;
-import android.hardware.wifi.V1_0.WifiChannelWidthInMhz;
 import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
+import android.hardware.wifi.V1_6.RttBw;
+import android.hardware.wifi.V1_6.RttPreamble;
+import android.hardware.wifi.V1_6.WifiChannelWidthInMhz;
 import android.net.MacAddress;
 import android.net.wifi.rtt.RangingRequest;
 import android.net.wifi.rtt.RangingResult;
@@ -510,13 +510,10 @@ public class RttNative {
         if (bw == RttBw.BW_40MHZ && preamble >= RttPreamble.HT) {
             return;
         }
-        if (bw == android.hardware.wifi.V1_6.RttBw.BW_320MHZ
-                && preamble == android.hardware.wifi.V1_6.RttPreamble.EHT) {
+        if (bw == RttBw.BW_320MHZ && preamble == RttPreamble.EHT) {
             return;
         }
-        if (bw >= RttBw.BW_80MHZ
-                && bw < android.hardware.wifi.V1_6.RttBw.BW_320MHZ
-                && preamble >= RttPreamble.VHT) {
+        if (bw >= RttBw.BW_80MHZ && bw < RttBw.BW_320MHZ && preamble >= RttPreamble.VHT) {
             return;
         }
         throw new IllegalArgumentException(
@@ -691,6 +688,8 @@ public class RttNative {
                 return WifiChannelWidthInMhz.WIDTH_160;
             case ResponderConfig.CHANNEL_WIDTH_80MHZ_PLUS_MHZ:
                 return WifiChannelWidthInMhz.WIDTH_80P80;
+            case ResponderConfig.CHANNEL_WIDTH_320MHZ:
+                return WifiChannelWidthInMhz.WIDTH_320;
             default:
                 throw new IllegalArgumentException(
                         "halChannelWidthFromResponderChannelWidth: bad " + responderChannelWidth);
@@ -708,6 +707,8 @@ public class RttNative {
             case ResponderConfig.CHANNEL_WIDTH_160MHZ:
             case ResponderConfig.CHANNEL_WIDTH_80MHZ_PLUS_MHZ:
                 return RttBw.BW_160MHZ;
+            case ResponderConfig.CHANNEL_WIDTH_320MHZ:
+                return RttBw.BW_320MHZ;
             default:
                 throw new IllegalArgumentException(
                         "halRttChannelBandwidthFromHalBandwidth: bad " + responderChannelWidth);
@@ -723,7 +724,9 @@ public class RttNative {
             case ResponderConfig.PREAMBLE_VHT:
                 return RttPreamble.VHT;
             case ResponderConfig.PREAMBLE_HE:
-                return android.hardware.wifi.V1_4.RttPreamble.HE;
+                return RttPreamble.HE;
+            case ResponderConfig.PREAMBLE_EHT:
+                return RttPreamble.EHT;
             default:
                 throw new IllegalArgumentException(
                         "halRttPreambleFromResponderPreamble: bad " + responderPreamble);
@@ -739,7 +742,7 @@ public class RttNative {
             case ResponderConfig.PREAMBLE_VHT:
                 return RttPreamble.VHT;
             case ResponderConfig.PREAMBLE_HE:
-                return android.hardware.wifi.V1_4.RttPreamble.HE;
+                return RttPreamble.HE;
             default:
                 throw new IllegalArgumentException(
                         "halRttPreamble14FromResponderPreamble: bad " + responderPreamble);

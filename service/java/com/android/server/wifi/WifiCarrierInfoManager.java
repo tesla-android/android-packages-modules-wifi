@@ -77,8 +77,10 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -203,6 +205,9 @@ public class WifiCarrierInfoManager {
             new ArrayList<>();
     private final SparseArray<SimInfo> mSubIdToSimInfoSparseArray = new SparseArray<>();
     private final Map<ParcelUuid, List<Integer>> mSubscriptionGroupMap = new HashMap<>();
+    private List<WifiCarrierPrivilegeListener> mCarrierPrivilegeListeners;
+    private final SparseArray<List<String>> mCarrierPrivilegedPackagesBySimSlot =
+            new SparseArray<>();
 
     private List<SubscriptionInfo> mActiveSubInfos = null;
 
@@ -456,6 +461,42 @@ public class WifiCarrierInfoManager {
             if (mVerboseLogEnabled) {
                 Log.v(TAG, "active subscription changes: " + mActiveSubInfos);
             }
+            if (SdkLevel.isAtLeastT()) {
+                for (int simSlot = 0; simSlot < mTelephonyManager.getActiveModemCount();
+                        simSlot++) {
+                    if (!mCarrierPrivilegedPackagesBySimSlot.contains(simSlot)) {
+                        WifiCarrierPrivilegeListener listener =
+                                new WifiCarrierPrivilegeListener(simSlot);
+                        mTelephonyManager.addCarrierPrivilegesListener(simSlot,
+                                new HandlerExecutor(mHandler), listener);
+                        mCarrierPrivilegedPackagesBySimSlot.append(simSlot,
+                                Collections.emptyList());
+                        mCarrierPrivilegeListeners.add(listener);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Listener for carrier privilege changes.
+     */
+    @VisibleForTesting
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public final class WifiCarrierPrivilegeListener implements
+            TelephonyManager.CarrierPrivilegesListener {
+        private int mSimSlot = -1;
+
+        public WifiCarrierPrivilegeListener(int simSlot) {
+            mSimSlot = simSlot;
+        }
+
+        @Override
+        public void onCarrierPrivilegesChanged(
+                @androidx.annotation.NonNull List<String> privilegedPackageNames,
+                @androidx.annotation.NonNull int[] privilegedUids) {
+            mCarrierPrivilegedPackagesBySimSlot.put(mSimSlot, privilegedPackageNames);
+            resetCarrierPrivilegedApps();
         }
     }
 
@@ -522,6 +563,9 @@ public class WifiCarrierInfoManager {
                         mHandler.post(() -> onCarrierConfigChanged(context));
                     }
                 });
+        if (SdkLevel.isAtLeastT()) {
+            mCarrierPrivilegeListeners = new ArrayList<>();
+        }
     }
 
     /**
@@ -1573,7 +1617,22 @@ public class WifiCarrierInfoManager {
         pw.println("mSubIdToSimInfoSparseArray=" + mSubIdToSimInfoSparseArray);
         pw.println("mActiveSubInfos=" + mActiveSubInfos);
         pw.println("mCachedCarrierConfigPerSubId=" + mCachedCarrierConfigPerSubId);
+        pw.println("mCarrierPrivilegedPackagesBySimSlot=[ ");
+        for (int i = 0; i < mCarrierPrivilegedPackagesBySimSlot.size(); i++) {
+            pw.println(mCarrierPrivilegedPackagesBySimSlot.valueAt(i));
+        }
+        pw.println("]");
     }
+
+    private void resetCarrierPrivilegedApps() {
+        Set<String> packageNames = new HashSet<>();
+        for (int i = 0; i < mCarrierPrivilegedPackagesBySimSlot.size(); i++) {
+            packageNames.addAll(mCarrierPrivilegedPackagesBySimSlot.valueAt(i));
+        }
+        mWifiInjector.getWifiNetworkSuggestionsManager().updateCarrierPrivilegedApps(packageNames);
+    }
+
+
 
     /**
      * Get the carrier ID {@link TelephonyManager#getSimCarrierId()} of the carrier which give
@@ -1916,11 +1975,18 @@ public class WifiCarrierInfoManager {
         mMergedCarrierNetworkOffloadMap.clear();
         mUnmergedCarrierNetworkOffloadMap.clear();
         mUserDataEnabled.clear();
+        mCarrierPrivilegedPackagesBySimSlot.clear();
         if (SdkLevel.isAtLeastS()) {
             for (UserDataEnabledChangedListener listener : mUserDataEnabledListenerList) {
                 listener.unregisterListener();
             }
             mUserDataEnabledListenerList.clear();
+        }
+        if (SdkLevel.isAtLeastT()) {
+            for (WifiCarrierPrivilegeListener listener : mCarrierPrivilegeListeners) {
+                mTelephonyManager.removeCarrierPrivilegesListener(listener);
+            }
+            mCarrierPrivilegeListeners.clear();
         }
         resetNotification();
         saveToStore();
@@ -2022,5 +2088,16 @@ public class WifiCarrierInfoManager {
             }
         }
         return activeSubId;
+    }
+
+    /**
+     * Get the packages name of the apps current have carrier privilege.
+     */
+    public Set<String> getCurrentCarrierPrivilegedPackages() {
+        Set<String> packages = new HashSet<>();
+        for (int i = 0; i < mCarrierPrivilegedPackagesBySimSlot.size(); i++) {
+            packages.addAll(mCarrierPrivilegedPackagesBySimSlot.valueAt(i));
+        }
+        return packages;
     }
 }
