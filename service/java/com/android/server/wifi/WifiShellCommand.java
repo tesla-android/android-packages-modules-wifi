@@ -1171,7 +1171,8 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                             deviceName,
                             isPinRequested,
                             displayPin,
-                            callback);
+                            callback,
+                            mWifiThreadRunner);
                     pw.println("Launched dialog. Waiting up to 15 seconds for user response.");
                     pw.flush();
                     String msg = queue.poll(15, TimeUnit.SECONDS);

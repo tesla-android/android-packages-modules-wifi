@@ -92,6 +92,7 @@ import android.net.wifi.WifiAnnotations.WifiStandard;
 import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiContext;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.AddNetworkResult;
@@ -204,7 +205,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
 
-    private final Context mContext;
+    private final WifiContext mContext;
     private final FrameworkFacade mFacade;
     private final Clock mClock;
 
@@ -306,6 +307,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final SimRequiredNotifier mSimRequiredNotifier;
     private final MakeBeforeBreakManager mMakeBeforeBreakManager;
     private final LastCallerInfoManager mLastCallerInfoManager;
+    private final @NonNull WifiDialogManager mWifiDialogManager;
 
     private boolean mWifiTetheringDisallowed;
     private boolean mIsBootComplete;
@@ -427,7 +429,7 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
 
-    public WifiServiceImpl(Context context, WifiInjector wifiInjector) {
+    public WifiServiceImpl(WifiContext context, WifiInjector wifiInjector) {
         mContext = context;
         mWifiInjector = wifiInjector;
         mClock = wifiInjector.getClock();
@@ -475,6 +477,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiCarrierInfoManager = wifiInjector.getWifiCarrierInfoManager();
         mMakeBeforeBreakManager = mWifiInjector.getMakeBeforeBreakManager();
         mLastCallerInfoManager = mWifiInjector.getLastCallerInfoManager();
+        mWifiDialogManager = mWifiInjector.getWifiDialogManager();
         mBuildProperties = mWifiInjector.getBuildProperties();
         mDefaultClientModeManager = mWifiInjector.getDefaultClientModeManager();
         mCountryCodeTracker = new CountryCodeTracker();
@@ -6379,5 +6382,29 @@ public class WifiServiceImpl extends BaseWifiService {
                 }
             }
         });
+    }
+
+    /**
+     * Method for WifiDialog to notify the framework of a reply to a P2P Invitation Received dialog.
+     * @param dialogId id of the replying dialog.
+     * @param accepted Whether the invitation was accepted.
+     * @param optionalPin PIN of the reply, or {@code null} if none was supplied.
+     */
+    @Override
+    public void replyToP2pInvitationReceivedDialog(
+            int dialogId, boolean accepted, @Nullable String optionalPin) {
+        int uid = Binder.getCallingUid();
+        int pid = Binder.getCallingPid();
+        mWifiPermissionsUtil.checkPackage(uid, mContext.getWifiDialogApkPkgName());
+        if (isVerboseLoggingEnabled()) {
+            mLog.info("replyToP2pInvitationReceivedDialog uid=% pid=%"
+                            + " dialogId=% accepted=% optionalPin=%")
+                    .c(uid).c(pid).c(dialogId).c(accepted).c(optionalPin)
+                    .flush();
+        }
+        mWifiThreadRunner.post(() ->
+                mWifiDialogManager.replyToP2pInvitationReceivedDialog(
+                        dialogId, accepted, optionalPin)
+        );
     }
 }

@@ -147,6 +147,7 @@ import android.net.wifi.SoftApInfo;
 import android.net.wifi.WifiClient;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.KeyMgmt;
+import android.net.wifi.WifiContext;
 import android.net.wifi.WifiEnterpriseConfig;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -313,7 +314,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
             ArgumentCaptor.forClass(SoftApModeConfiguration.class);
 
     @Mock Bundle mBundle;
-    @Mock Context mContext;
+    @Mock WifiContext mContext;
     @Mock Context mContextAsUser;
     @Mock WifiInjector mWifiInjector;
     @Mock WifiCountryCode mWifiCountryCode;

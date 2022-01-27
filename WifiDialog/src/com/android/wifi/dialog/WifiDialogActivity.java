@@ -327,28 +327,27 @@ public class WifiDialogActivity extends Activity  {
                         Log.v(TAG, "P2P Invitation Received Dialog id=" + dialogId
                                 + " accepted with pin=" + pin);
                     }
-                    // TODO: Plumb this response to framework.
+                    getWifiManager().replyToP2pInvitationReceivedDialog(dialogId, true, pin);
                 })
                 .setNegativeButton(getStringId("decline"), (dialogNegative, which) -> {
                     if (mIsVerboseLoggingEnabled) {
                         Log.v(TAG, "P2P Invitation Received dialog id=" + dialogId
                                 + " declined.");
                     }
-                    // TODO: Plumb this response to framework.
+                    getWifiManager().replyToP2pInvitationReceivedDialog(dialogId, false, null);
                 })
                 .setOnCancelListener((dialogCancel) -> {
                     if (mIsVerboseLoggingEnabled) {
                         Log.v(TAG, "P2P Invitation Received dialog id=" + dialogId
                                 + " cancelled.");
                     }
-                    // TODO: Plumb this response to framework.
+                    getWifiManager().replyToP2pInvitationReceivedDialog(dialogId, false, null);
                 })
                 .setOnDismissListener((dialogDismiss) -> {
                     if (mIsVerboseLoggingEnabled) {
                         Log.v(TAG, "P2P Invitation Received dialog id=" + dialogId
                                 + " dismissed.");
                     }
-                    // TODO: Plumb this response to framework.
                     removeIntentAndPossiblyFinish(dialogId);
                 })
                 .create();
