@@ -737,7 +737,8 @@ public class BaseWifiService extends IWifiManager.Stub {
     @Override
     public void setExternalPnoScanRequest(@NonNull IBinder binder,
             @NonNull IPnoScanResultsCallback callback,
-            @NonNull List<WifiSsid> ssids, @NonNull String packageName, @NonNull String featureId) {
+            @NonNull List<WifiSsid> ssids, @NonNull int[] frequencies,
+            @NonNull String packageName, @NonNull String featureId) {
         throw new UnsupportedOperationException();
     }
 

@@ -5884,14 +5884,15 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * See {@link WifiManager#setExternalPnoScanRequest(Executor, List,
+     * See {@link WifiManager#setExternalPnoScanRequest(Executor, List, int[],
      * WifiManager.PnoScanResultsCallback)}
      */
     @Override
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     public void setExternalPnoScanRequest(@NonNull IBinder binder,
             @NonNull IPnoScanResultsCallback callback,
-            @NonNull List<WifiSsid> ssids, @NonNull String packageName, @NonNull String featureId) {
+            @NonNull List<WifiSsid> ssids, @NonNull int[] frequencies,
+            @NonNull String packageName, @NonNull String featureId) {
         if (!SdkLevel.isAtLeastT()) {
             throw new UnsupportedOperationException("SDK level too old");
         }
@@ -5901,6 +5902,12 @@ public class WifiServiceImpl extends BaseWifiService {
                 "Ssids can't be null or empty");
         if (ssids.size() > 2) {
             throw new IllegalArgumentException("Ssid list can't be greater than 2");
+        }
+        if (frequencies == null) {
+            throw new IllegalArgumentException("frequencies should not be null");
+        }
+        if (frequencies.length > 10) {
+            throw new IllegalArgumentException("Length of frequencies must be smaller than 10");
         }
         int uid = Binder.getCallingUid();
         if (!mWifiPermissionsUtil.checkRequestCompanionProfileAutomotiveProjectionPermission(uid)
@@ -5917,7 +5924,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     callback.onRegisterFailed(REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);
                     return;
                 }
-                mWifiConnectivityManager.setExternalPnoScanRequest(uid, binder, callback, ssids);
+                mWifiConnectivityManager.setExternalPnoScanRequest(uid, binder, callback, ssids,
+                        frequencies);
             } catch (RemoteException e) {
                 Log.e(TAG, e.getMessage());
             }

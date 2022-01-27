@@ -9080,9 +9080,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
         IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
         List<WifiSsid> ssids = new ArrayList<>();
         ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+        int[] frequencies = new int[] {TEST_AP_FREQUENCY};
 
-        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
-                TEST_FEATURE_ID);
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, frequencies,
+                TEST_PACKAGE_NAME, TEST_FEATURE_ID);
     }
 
     @Test
@@ -9096,12 +9097,13 @@ public class WifiServiceImplTest extends WifiBaseTest {
         IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
         List<WifiSsid> ssids = new ArrayList<>();
         ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+        int[] frequencies = new int[] {TEST_AP_FREQUENCY};
 
-        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
-                TEST_FEATURE_ID);
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, frequencies,
+                TEST_PACKAGE_NAME, TEST_FEATURE_ID);
         mLooper.dispatchAll();
         verify(mWifiConnectivityManager).setExternalPnoScanRequest(anyInt(), any(), eq(callback),
-                eq(ssids));
+                eq(ssids), eq(frequencies));
     }
 
     @Test
@@ -9115,9 +9117,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
         IPnoScanResultsCallback callback = mock(IPnoScanResultsCallback.class);
         List<WifiSsid> ssids = new ArrayList<>();
         ssids.add(WifiSsid.fromString("\"TEST_SSID_1\""));
+        int[] frequencies = new int[] {TEST_AP_FREQUENCY};
 
-        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, TEST_PACKAGE_NAME,
-                TEST_FEATURE_ID);
+        mWifiServiceImpl.setExternalPnoScanRequest(mAppBinder, callback, ssids, frequencies,
+                TEST_PACKAGE_NAME, TEST_FEATURE_ID);
         mLooper.dispatchAll();
         verify(callback).onRegisterFailed(WifiManager.PnoScanResultsCallback
                 .REGISTER_PNO_CALLBACK_PNO_NOT_SUPPORTED);

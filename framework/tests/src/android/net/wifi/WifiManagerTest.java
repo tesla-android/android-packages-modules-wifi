@@ -3338,6 +3338,15 @@ public class WifiManagerTest {
     }
 
     @Test
+    public void testSetExternalPnoScanRequestNullFrequencies() throws Exception {
+        mWifiManager.setExternalPnoScanRequest(mock(Executor.class), Collections.EMPTY_LIST,
+                null, mock(WifiManager.PnoScanResultsCallback.class));
+        // null frequencies should get converted to empty array
+        verify(mWifiService).setExternalPnoScanRequest(any(), any(), eq(Collections.EMPTY_LIST),
+                eq(new int[0]), any(), any());
+    }
+
+    @Test
     public void testSetEmergencyScanRequestInProgress() throws Exception {
         mWifiManager.setEmergencyScanRequestInProgress(true);
         verify(mWifiService).setEmergencyScanRequestInProgress(true);
