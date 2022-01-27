@@ -122,46 +122,25 @@
     <string name="wifi_softap_auto_shutdown_timeout_expired_summary" msgid="7975476698140267728">"Niciun dispozitiv conectat. Atingeți pentru a modifica."</string>
     <string name="wifi_sim_required_title" msgid="2262227800991155459">"Rețea Wi-Fi deconectată"</string>
     <string name="wifi_sim_required_message" msgid="284812212346125745">"Pentru a vă conecta la <xliff:g id="SSID">%1$s</xliff:g>, introduceți un SIM <xliff:g id="CARRIER_NAME">%2$s</xliff:g>"</string>
-    <!-- no translation found for wifi_ca_cert_dialog_title (3872340345882915806) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_continue_text (1674156611893471003) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_abort_text (1303170595421648059) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_hint (5969214285536370126) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_server_name_text (3707809865604348289) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_issuer_name_text (1147216922475192304) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_organization_text (4936354600863239487) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_contact_text (5799083318641183815) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_signature_name_text (704614002854299776) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_title (537569884930429796) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_message (6413248690626616961) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_failed_to_install_ca_cert (4864192219789736195) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_title (6916320484037009061) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_continue_text (3181614240421159530) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_abort_text (1195575129023960325) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_hint (5682518783200852031) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_link (6325483132538546884) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_title (7255129934648316663) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_message (4565553176090475724) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_continue_text (1525418430746943670) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_abort_text (8307996031461071854) -->
-    <skip />
+    <string name="wifi_ca_cert_dialog_title" msgid="3872340345882915806">"Această rețea este de încredere?"</string>
+    <string name="wifi_ca_cert_dialog_continue_text" msgid="1674156611893471003">"Da, conectează"</string>
+    <string name="wifi_ca_cert_dialog_abort_text" msgid="1303170595421648059">"Nu, nu conecta"</string>
+    <string name="wifi_ca_cert_dialog_message_hint" msgid="5969214285536370126">"Permite conectarea la această rețea numai dacă informațiile de mai jos par corecte.\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_server_name_text" msgid="3707809865604348289">"Numele serverului:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_issuer_name_text" msgid="1147216922475192304">"Numele emitentului:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_organization_text" msgid="4936354600863239487">"Organizație:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_contact_text" msgid="5799083318641183815">"Persoana de contact:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_signature_name_text" msgid="704614002854299776">"Semnătura:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_notification_title" msgid="537569884930429796">"Rețeaua trebuie să fie verificată"</string>
+    <string name="wifi_ca_cert_notification_message" msgid="6413248690626616961">"Examinați detaliile rețelei pentru <xliff:g id="SSID">%1$s</xliff:g> înainte de conectare. Atingeți pentru a continua."</string>
+    <string name="wifi_ca_cert_failed_to_install_ca_cert" msgid="4864192219789736195">"Certificatul nu a fost instalat."</string>
+    <string name="wifi_ca_cert_dialog_preT_title" msgid="6916320484037009061">"Rețeaua nu poate fi verificată"</string>
+    <string name="wifi_ca_cert_dialog_preT_continue_text" msgid="3181614240421159530">"Conectează oricum"</string>
+    <string name="wifi_ca_cert_dialog_preT_abort_text" msgid="1195575129023960325">"Nu conecta"</string>
+    <string name="wifi_ca_cert_dialog_preT_message_hint" msgid="5682518783200852031">"Lipsește un certificat pentru rețeaua <xliff:g id="SSID">%1$s</xliff:g>."</string>
+    <string name="wifi_ca_cert_dialog_preT_message_link" msgid="6325483132538546884">"Aflați cum să adăugați certificate"</string>
+    <string name="wifi_ca_cert_notification_preT_title" msgid="7255129934648316663">"Rețeaua nu poate fi verificată"</string>
+    <string name="wifi_ca_cert_notification_preT_message" msgid="4565553176090475724">"Lipsește un certificat pentru rețeaua <xliff:g id="SSID">%1$s</xliff:g>. Atingeți pentru a afla cum să adăugați certificate."</string>
+    <string name="wifi_ca_cert_notification_preT_continue_text" msgid="1525418430746943670">"Conectează oricum"</string>
+    <string name="wifi_ca_cert_notification_preT_abort_text" msgid="8307996031461071854">"Nu conecta"</string>
 </resources>
