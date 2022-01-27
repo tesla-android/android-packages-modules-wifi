@@ -39,6 +39,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiSsid;
 import android.os.SystemClock;
 import android.util.ArraySet;
 import android.util.LocalLog;
@@ -769,7 +770,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         int[] levels = {mThresholdQualifiedRssi5G + 8};
         int[] securities = {SECURITY_PSK};
         WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
-                new ArraySet<>(Arrays.asList("test2", "test3")));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("test2"),
+                        WifiSsid.fromUtf8Text("test3"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
         ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
@@ -804,7 +806,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         int[] levels = {mThresholdQualifiedRssi5G + 8};
         int[] securities = {SECURITY_PSK};
         WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
-                new ArraySet<>(Arrays.asList("test1", "test2")));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("test1"),
+                        WifiSsid.fromUtf8Text("test2"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
         ScanDetailsAndWifiConfigs scanDetailsAndConfigs =
