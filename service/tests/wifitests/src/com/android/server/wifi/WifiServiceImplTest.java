@@ -183,7 +183,6 @@ import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
-import androidx.annotation.RequiresApi;
 import androidx.test.filters.SmallTest;
 
 import com.android.internal.os.PowerProfile;
@@ -9475,13 +9474,16 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 WifiManager.WIFI_MULTI_INTERNET_MODE_MULTI_AP);
     }
 
-    /*
+    /**
      * Verify attribution is passed in correctly by WifiManager#addOrUpdateNetwork.
      */
     @Test
     public void testAddOrUpdateNetworkAttribution_InvalidAttributions() {
         assumeTrue(SdkLevel.isAtLeastS());
-        AttributionSource attributionSource = mockAttributionSource();
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
+        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
         mWifiServiceImpl = spy(mWifiServiceImpl);
         lenient().when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(Process.SYSTEM_UID);
         WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork(TEST_SSID);
@@ -9505,8 +9507,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, incorrectEntry);
         });
 
+        when(attributionSource.checkCallingUid()).thenReturn(false);
         assertThrows(SecurityException.class, () -> {
-            when(attributionSource.checkCallingUid()).thenReturn(false);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, mAttribution);
         });
         when(attributionSource.checkCallingUid()).thenReturn(true); // restore
@@ -9521,12 +9523,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, freshAttribution);
         verify(freshAs, never()).isTrusted(any());
 
+        AttributionSource originalCaller = mock(AttributionSource.class);
+        when(originalCaller.getUid()).thenReturn(OTHER_TEST_UID);
+        when(originalCaller.getPackageName()).thenReturn(TEST_PACKAGE_NAME_OTHER);
+        when(originalCaller.isTrusted(any(Context.class))).thenReturn(false);
+        when(attributionSource.getNext()).thenReturn(originalCaller);
         assertThrows(SecurityException.class, () -> {
-            AttributionSource originalCaller = mock(AttributionSource.class);
-            when(originalCaller.getUid()).thenReturn(OTHER_TEST_UID);
-            when(originalCaller.getPackageName()).thenReturn(TEST_PACKAGE_NAME_OTHER);
-            when(originalCaller.isTrusted(any(Context.class))).thenReturn(false);
-            when(attributionSource.getNext()).thenReturn(originalCaller);
             mWifiServiceImpl.addOrUpdateNetwork(config, TEST_PACKAGE_NAME, mAttribution);
         });
     }
@@ -9537,7 +9539,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testAddOrUpdateNetworkAttribution_CorrectParsingNoChainSystemServer() {
         assumeTrue(SdkLevel.isAtLeastS());
-        AttributionSource attributionSource = mockAttributionSource();
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
+        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
         mWifiServiceImpl = spy(mWifiServiceImpl);
         lenient().when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(Process.SYSTEM_UID);
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
@@ -9583,7 +9588,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testAddOrUpdateNetworkAttribution_CorrectParsingWithChain() {
         assumeTrue(SdkLevel.isAtLeastS());
-        AttributionSource attributionSource = mockAttributionSource();
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
+        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
         mWifiServiceImpl = spy(mWifiServiceImpl);
         lenient().when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(Process.SYSTEM_UID);
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
@@ -9617,7 +9625,10 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testAddOrUpdateNetworkAttribution_CorrectParsingWithChainButNotFromSystemServer() {
         assumeTrue(SdkLevel.isAtLeastS());
-        AttributionSource attributionSource = mockAttributionSource();
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
+        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
         mWifiServiceImpl = spy(mWifiServiceImpl);
         lenient().when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(TEST_UID);
         when(mContext.checkPermission(eq(android.Manifest.permission.NETWORK_SETTINGS),
@@ -9785,14 +9796,5 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.stopAutoDispatchAndIgnoreExceptions();
 
         verify(mClientModeManager).disconnect();
-    }
-
-    @RequiresApi(Build.VERSION_CODES.S)
-    private AttributionSource mockAttributionSource() {
-        AttributionSource attributionSource = mock(AttributionSource.class);
-        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
-        when(attributionSource.checkCallingUid()).thenReturn(true);
-        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
-        return attributionSource;
     }
 }
