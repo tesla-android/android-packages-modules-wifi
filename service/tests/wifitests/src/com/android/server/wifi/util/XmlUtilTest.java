@@ -20,6 +20,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 import android.net.IpConfiguration;
+import android.net.MacAddress;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiConfiguration.NetworkSelectionStatus;
 import android.net.wifi.WifiEnterpriseConfig;
@@ -50,6 +51,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * Unit tests for {@link com.android.server.wifi.util.XmlUtil}.
@@ -94,7 +96,9 @@ public class XmlUtilTest extends WifiBaseTest {
     @Test
     public void testOpenWifiConfigurationSerializeDeserialize()
             throws IOException, XmlPullParserException {
-        serializeDeserializeWifiConfiguration(WifiConfigurationTestUtil.createOpenNetwork());
+        WifiConfiguration config = WifiConfigurationTestUtil.createOpenNetwork();
+        config.setBssidAllowlist(List.of(MacAddress.fromString("6c:f3:7f:ae:8c:f3")));
+        serializeDeserializeWifiConfiguration(config);
     }
 
     /**
