@@ -1070,12 +1070,33 @@ package android.net.wifi {
 
 package android.net.wifi.aware {
 
+  public final class AwareParams implements android.os.Parcelable {
+    ctor public AwareParams();
+    method public int describeContents();
+    method public int getDiscoveryBeaconIntervalMills();
+    method public int getDiscoveryWindowWakeInterval24Ghz();
+    method public int getDiscoveryWindowWakeInterval5Ghz();
+    method public int getMacRandomizationIntervalSeconds();
+    method public int getNumSpatialStreamsInDiscovery();
+    method public boolean isDwEarlyTerminationEnabled();
+    method public void setDiscoveryBeaconIntervalMills(@IntRange(from=1) int);
+    method public void setDiscoveryWindowWakeInterval24Ghz(@IntRange(from=1, to=5) int);
+    method public void setDiscoveryWindowWakeInterval5Ghz(@IntRange(from=0, to=5) int);
+    method public void setDwEarlyTerminationEnabled(boolean);
+    method public void setMacRandomizationIntervalSeconds(@IntRange(from=1, to=1800) int);
+    method public void setNumSpatialStreamsInDiscovery(@IntRange(from=1) int);
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.AwareParams> CREATOR;
+    field public static final int UNSET_PARAMETER = -1; // 0xffffffff
+  }
+
   public class DiscoverySession implements java.lang.AutoCloseable {
     method @Deprecated public android.net.NetworkSpecifier createNetworkSpecifierPmk(@NonNull android.net.wifi.aware.PeerHandle, @NonNull byte[]);
   }
 
   public class WifiAwareManager {
     method @RequiresPermission(android.Manifest.permission.CHANGE_WIFI_STATE) public void enableInstantCommunicationMode(boolean);
+    method @RequiresPermission(allOf={android.Manifest.permission.OVERRIDE_WIFI_CONFIG, android.Manifest.permission.CHANGE_WIFI_STATE}) public void setAwareParams(@Nullable android.net.wifi.aware.AwareParams);
   }
 
   public class WifiAwareSession implements java.lang.AutoCloseable {

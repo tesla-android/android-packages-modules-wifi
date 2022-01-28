@@ -27,6 +27,7 @@ import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.location.LocationManager;
 import android.net.MacAddress;
 import android.net.wifi.WifiManager;
+import android.net.wifi.aware.AwareParams;
 import android.net.wifi.aware.AwareResources;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.ConfigRequest;
@@ -728,6 +729,17 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
     public boolean isSetChannelOnDataPathSupported() {
         return mContext.getResources()
                 .getBoolean(R.bool.config_wifiSupportChannelOnDataPath);
+    }
+
+    /**
+     * Accept using parameter from external to config the Aware,
+     * @see WifiAwareManager#setAwareParams(AwareParams)
+     */
+    public void setAwareParams(AwareParams parameters) {
+        mHandler.post(() -> {
+            mWifiAwareNativeApi.setAwareParams(parameters);
+            reconfigure();
+        });
     }
 
     /**
