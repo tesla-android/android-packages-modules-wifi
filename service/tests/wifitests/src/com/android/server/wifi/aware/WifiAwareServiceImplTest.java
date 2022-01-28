@@ -44,6 +44,7 @@ import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
 import android.net.wifi.aware.IWifiAwareEventCallback;
 import android.net.wifi.aware.IWifiAwareMacAddressProvider;
+import android.net.wifi.aware.MacAddrMapping;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
@@ -73,9 +74,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -695,10 +693,10 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     @Test
     public void testRequestMacAddress() {
         int uid = 1005;
-        List<Integer> list = new ArrayList<>();
+        int[] peerIdArray = new int[0];
         IWifiAwareMacAddressProvider callback = new IWifiAwareMacAddressProvider() { // placeholder
             @Override
-            public void macAddress(Map peerIdToMacMap) throws RemoteException {
+            public void macAddress(MacAddrMapping[] peerIdToMacList) throws RemoteException {
                 // empty
             }
 
@@ -708,9 +706,9 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
             }
         };
 
-        mDut.requestMacAddresses(uid, list, callback);
+        mDut.requestMacAddresses(uid, peerIdArray, callback);
 
-        verify(mAwareStateManagerMock).requestMacAddresses(uid, list, callback);
+        verify(mAwareStateManagerMock).requestMacAddresses(uid, peerIdArray, callback);
     }
 
     @Test(expected = SecurityException.class)
@@ -718,9 +716,10 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         doThrow(new SecurityException()).when(mContextMock).enforceCallingOrSelfPermission(
                 eq(Manifest.permission.NETWORK_STACK), anyString());
 
-        mDut.requestMacAddresses(1005, new ArrayList<>(), new IWifiAwareMacAddressProvider() {
+        mDut.requestMacAddresses(1005, new int[0], new IWifiAwareMacAddressProvider() {
             @Override
-            public void macAddress(Map peerIdToMacMap) throws RemoteException {
+            public void macAddress(MacAddrMapping[] peerIdToMacList) throws RemoteException {
+                // empty
             }
 
             @Override

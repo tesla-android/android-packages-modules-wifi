@@ -56,7 +56,6 @@ import com.android.server.wifi.util.WifiPermissionsWrapper;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.List;
 
 /**
  * Implementation of the IWifiAwareManager AIDL interface. Performs validity
@@ -458,7 +457,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     }
 
     @Override
-    public void requestMacAddresses(int uid, List peerIds, IWifiAwareMacAddressProvider callback) {
+    public void requestMacAddresses(int uid, int[] peerIds, IWifiAwareMacAddressProvider callback) {
         enforceNetworkStackPermission();
 
         mStateManager.requestMacAddresses(uid, peerIds, callback);
