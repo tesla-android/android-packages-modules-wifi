@@ -1844,7 +1844,7 @@ public class XmlUtil {
             }
             XmlUtil.writeNextValue(out, XML_TAG_HIDDEN_SSID, softApConfig.isHiddenSsid());
             XmlUtil.writeNextValue(out, XML_TAG_SECURITY_TYPE, softApConfig.getSecurityType());
-            if (softApConfig.getSecurityType() != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+            if (!ApConfigUtil.isNonPasswordAP(softApConfig.getSecurityType())) {
                 XmlUtil.writeNextValue(out, XML_TAG_PASSPHRASE,
                         softApConfig.getPassphrase());
             }
@@ -2088,7 +2088,7 @@ public class XmlUtil {
                     Log.e(TAG, "Failed to parse SSID");
                     return null;
                 }
-                if (securityType != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+                if (!ApConfigUtil.isNonPasswordAP(securityType)) {
                     softApConfigBuilder.setPassphrase(passphrase, securityType);
                 }
                 if (!autoShutdownEnabledTagPresent) {

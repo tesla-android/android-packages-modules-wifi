@@ -270,6 +270,7 @@ package android.net.wifi {
     field public static final long SOFTAP_FEATURE_IEEE80211_AX = 16L; // 0x10L
     field public static final long SOFTAP_FEATURE_IEEE80211_BE = 512L; // 0x200L
     field public static final long SOFTAP_FEATURE_MAC_ADDRESS_CUSTOMIZATION = 8L; // 0x8L
+    field public static final long SOFTAP_FEATURE_WPA3_OWE_TRANSITION = 1024L; // 0x400L
     field public static final long SOFTAP_FEATURE_WPA3_SAE = 4L; // 0x4L
   }
 

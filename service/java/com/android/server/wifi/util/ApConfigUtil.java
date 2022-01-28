@@ -714,6 +714,11 @@ public class ApConfigUtil {
             features |= SoftApCapability.SOFTAP_FEATURE_IEEE80211_BE;
         }
 
+        if (isOweTransitionSupported(context)) {
+            Log.d(TAG, "Update Softap capability, add OWE Transition feature support");
+            features |= SoftApCapability.SOFTAP_FEATURE_WPA3_OWE_TRANSITION;
+        }
+
         SoftApCapability capability = new SoftApCapability(features);
         int hardwareSupportedMaxClient = context.getResources().getInteger(
                 R.integer.config_wifiHardwareSoftapMaxClientCount);
@@ -882,6 +887,17 @@ public class ApConfigUtil {
     public static boolean isSoftApDynamicCountryCodeSupported(@NonNull Context context) {
         return context.getResources().getBoolean(
                 R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported);
+    }
+
+    /**
+     * Helper function to get OWE-Transition is support or not.
+     *
+     * @param context the caller context used to get value from resource file.
+     * @return true if supported, false otherwise.
+     */
+    public static boolean isOweTransitionSupported(@NonNull Context context) {
+        return context.getResources().getBoolean(
+                R.bool.config_wifiSoftapOweTransitionSupported);
     }
 
     /**
@@ -1095,5 +1111,16 @@ public class ApConfigUtil {
             }
         }
         return newSoftApCapability;
+    }
+
+    /**
+     * Helper function to check if security type can ignore password.
+     *
+     * @param security type for SoftApConfiguration.
+     * @return true for Open/Owe-Transition SoftAp AKM.
+     */
+    public static boolean isNonPasswordAP(int security) {
+        return (security == SoftApConfiguration.SECURITY_TYPE_OPEN
+                || security == SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
     }
 }
