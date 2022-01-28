@@ -122,46 +122,25 @@
     <string name="wifi_softap_auto_shutdown_timeout_expired_summary" msgid="7975476698140267728">"មិនមាន​ឧបករណ៍​ដែល​បានភ្ជាប់ទេ។ សូមចុច ដើម្បី​កែ។"</string>
     <string name="wifi_sim_required_title" msgid="2262227800991155459">"បានផ្តាច់ Wi-Fi"</string>
     <string name="wifi_sim_required_message" msgid="284812212346125745">"ដើម្បី​ភ្ជាប់ <xliff:g id="SSID">%1$s</xliff:g> សូមបញ្ចូល​ស៊ីម <xliff:g id="CARRIER_NAME">%2$s</xliff:g>"</string>
-    <!-- no translation found for wifi_ca_cert_dialog_title (3872340345882915806) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_continue_text (1674156611893471003) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_abort_text (1303170595421648059) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_hint (5969214285536370126) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_server_name_text (3707809865604348289) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_issuer_name_text (1147216922475192304) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_organization_text (4936354600863239487) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_contact_text (5799083318641183815) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_signature_name_text (704614002854299776) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_title (537569884930429796) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_message (6413248690626616961) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_failed_to_install_ca_cert (4864192219789736195) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_title (6916320484037009061) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_continue_text (3181614240421159530) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_abort_text (1195575129023960325) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_hint (5682518783200852031) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_link (6325483132538546884) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_title (7255129934648316663) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_message (4565553176090475724) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_continue_text (1525418430746943670) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_abort_text (8307996031461071854) -->
-    <skip />
+    <string name="wifi_ca_cert_dialog_title" msgid="3872340345882915806">"តើជឿទុកចិត្ត​បណ្តាញនេះ​បានទេ?"</string>
+    <string name="wifi_ca_cert_dialog_continue_text" msgid="1674156611893471003">"បាទ/ចាស ភ្ជាប់"</string>
+    <string name="wifi_ca_cert_dialog_abort_text" msgid="1303170595421648059">"ទេ កុំភ្ជាប់"</string>
+    <string name="wifi_ca_cert_dialog_message_hint" msgid="5969214285536370126">"អនុញ្ញាតឱ្យតែ​បណ្ដាញនេះ​ភ្ជាប់ប៉ុណ្ណោះ ប្រសិនបើ​ព័ត៌មានខាងក្រោម​ត្រឹមត្រូវ។\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_server_name_text" msgid="3707809865604348289">"ឈ្មោះ​ម៉ាស៊ីនមេ៖\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_issuer_name_text" msgid="1147216922475192304">"ឈ្មោះស្ថាប័ន​ចេញ​វិញ្ញាបនបត្រ៖\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_organization_text" msgid="4936354600863239487">"ស្ថាប័ន៖\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_contact_text" msgid="5799083318641183815">"ទំនាក់ទំនង៖\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_signature_name_text" msgid="704614002854299776">"ហត្ថលេខា៖\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_notification_title" msgid="537569884930429796">"ចាំបាច់ត្រូវ​ផ្ទៀងផ្ទាត់​បណ្ដាញ"</string>
+    <string name="wifi_ca_cert_notification_message" msgid="6413248690626616961">"ពិនិត្យមើល​ព័ត៌មានលម្អិត​អំពីបណ្ដាញ​ពាក់ព័ន្ធនឹង <xliff:g id="SSID">%1$s</xliff:g> មុននឹង​ភ្ជាប់។ ចុច​ដើម្បី​បន្ត។"</string>
+    <string name="wifi_ca_cert_failed_to_install_ca_cert" msgid="4864192219789736195">"ការដំឡើង​វិញ្ញាបនបត្រ​មិនបានសម្រេចទេ។"</string>
+    <string name="wifi_ca_cert_dialog_preT_title" msgid="6916320484037009061">"មិនអាច​ផ្ទៀងផ្ទាត់​បណ្ដាញនេះ​បានទេ"</string>
+    <string name="wifi_ca_cert_dialog_preT_continue_text" msgid="3181614240421159530">"មិនអីទេ ភ្ជាប់ចុះ"</string>
+    <string name="wifi_ca_cert_dialog_preT_abort_text" msgid="1195575129023960325">"កុំ​ភ្ជាប់"</string>
+    <string name="wifi_ca_cert_dialog_preT_message_hint" msgid="5682518783200852031">"បណ្ដាញ <xliff:g id="SSID">%1$s</xliff:g> មិនមាន​វិញ្ញាបនបត្រ​ទេ។"</string>
+    <string name="wifi_ca_cert_dialog_preT_message_link" msgid="6325483132538546884">"ស្វែងយល់​អំពីរបៀប​បញ្ចូល​វិញ្ញាបនបត្រ"</string>
+    <string name="wifi_ca_cert_notification_preT_title" msgid="7255129934648316663">"មិនអាច​ផ្ទៀងផ្ទាត់​បណ្ដាញនេះ​បានទេ"</string>
+    <string name="wifi_ca_cert_notification_preT_message" msgid="4565553176090475724">"បណ្ដាញ <xliff:g id="SSID">%1$s</xliff:g> មិនមាន​វិញ្ញាបនបត្រ​ទេ។ ចុចដើម្បី​ស្វែងយល់​អំពីរបៀបបញ្ចូល​វិញ្ញាបនបត្រ។"</string>
+    <string name="wifi_ca_cert_notification_preT_continue_text" msgid="1525418430746943670">"មិនអីទេ ភ្ជាប់ចុះ"</string>
+    <string name="wifi_ca_cert_notification_preT_abort_text" msgid="8307996031461071854">"កុំ​ភ្ជាប់"</string>
 </resources>

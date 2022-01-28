@@ -122,46 +122,25 @@
     <string name="wifi_softap_auto_shutdown_timeout_expired_summary" msgid="7975476698140267728">"Nėra jokių prijungtų įrenginių. Palieskite, kad pakeistumėte."</string>
     <string name="wifi_sim_required_title" msgid="2262227800991155459">"„Wi-Fi“ atjungtas"</string>
     <string name="wifi_sim_required_message" msgid="284812212346125745">"Jei norite prisijungti prie „<xliff:g id="SSID">%1$s</xliff:g>“, įdėkite „<xliff:g id="CARRIER_NAME">%2$s</xliff:g>“ SIM kortelę"</string>
-    <!-- no translation found for wifi_ca_cert_dialog_title (3872340345882915806) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_continue_text (1674156611893471003) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_abort_text (1303170595421648059) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_hint (5969214285536370126) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_server_name_text (3707809865604348289) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_issuer_name_text (1147216922475192304) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_organization_text (4936354600863239487) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_contact_text (5799083318641183815) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_message_signature_name_text (704614002854299776) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_title (537569884930429796) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_message (6413248690626616961) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_failed_to_install_ca_cert (4864192219789736195) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_title (6916320484037009061) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_continue_text (3181614240421159530) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_abort_text (1195575129023960325) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_hint (5682518783200852031) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_dialog_preT_message_link (6325483132538546884) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_title (7255129934648316663) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_message (4565553176090475724) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_continue_text (1525418430746943670) -->
-    <skip />
-    <!-- no translation found for wifi_ca_cert_notification_preT_abort_text (8307996031461071854) -->
-    <skip />
+    <string name="wifi_ca_cert_dialog_title" msgid="3872340345882915806">"Ar šis tinklas patikimas?"</string>
+    <string name="wifi_ca_cert_dialog_continue_text" msgid="1674156611893471003">"Taip, prisijungti"</string>
+    <string name="wifi_ca_cert_dialog_abort_text" msgid="1303170595421648059">"Ne, neprisijungti"</string>
+    <string name="wifi_ca_cert_dialog_message_hint" msgid="5969214285536370126">"Leisti prisijungti prie šio tinklo, tik jei toliau pateikta informacija yra tinkama.\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_server_name_text" msgid="3707809865604348289">"Serverio pavadinimas:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_issuer_name_text" msgid="1147216922475192304">"Leidėjo pavadinimas:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_organization_text" msgid="4936354600863239487">"Organizacija:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_contact_text" msgid="5799083318641183815">"Susisiekti su:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_dialog_message_signature_name_text" msgid="704614002854299776">"Parašas:\n<xliff:g id="VALUE">%1$s</xliff:g>\n\n"</string>
+    <string name="wifi_ca_cert_notification_title" msgid="537569884930429796">"Reikia patvirtinti tinklą"</string>
+    <string name="wifi_ca_cert_notification_message" msgid="6413248690626616961">"Prieš prisijungdami peržiūrėkite išsamią <xliff:g id="SSID">%1$s</xliff:g> tinklo informaciją. Palieskite ir tęskite."</string>
+    <string name="wifi_ca_cert_failed_to_install_ca_cert" msgid="4864192219789736195">"Nepavyko įdiegti sertifikato."</string>
+    <string name="wifi_ca_cert_dialog_preT_title" msgid="6916320484037009061">"Nepavyko patvirtinti šio tinklo"</string>
+    <string name="wifi_ca_cert_dialog_preT_continue_text" msgid="3181614240421159530">"Vis tiek prisijungti"</string>
+    <string name="wifi_ca_cert_dialog_preT_abort_text" msgid="1195575129023960325">"Neprisijungti"</string>
+    <string name="wifi_ca_cert_dialog_preT_message_hint" msgid="5682518783200852031">"Trūksta tinklo <xliff:g id="SSID">%1$s</xliff:g> sertifikato."</string>
+    <string name="wifi_ca_cert_dialog_preT_message_link" msgid="6325483132538546884">"Sužinokite, kaip pridėti sertifikatus"</string>
+    <string name="wifi_ca_cert_notification_preT_title" msgid="7255129934648316663">"Nepavyko patvirtinti šio tinklo"</string>
+    <string name="wifi_ca_cert_notification_preT_message" msgid="4565553176090475724">"Trūksta tinklo <xliff:g id="SSID">%1$s</xliff:g> sertifikato. Palieskite, kad sužinotumėte, kaip pridėti sertifikatus."</string>
+    <string name="wifi_ca_cert_notification_preT_continue_text" msgid="1525418430746943670">"Vis tiek prisijungti"</string>
+    <string name="wifi_ca_cert_notification_preT_abort_text" msgid="8307996031461071854">"Neprisijungti"</string>
 </resources>
