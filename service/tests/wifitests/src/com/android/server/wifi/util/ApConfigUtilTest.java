@@ -604,7 +604,7 @@ public class ApConfigUtilTest extends WifiBaseTest {
         when(mResources.getBoolean(R.bool.config_wifiSoftap6ghzSupported)).thenReturn(true);
         when(mResources.getBoolean(R.bool.config_wifiSoftap60ghzSupported)).thenReturn(true);
         when(mResources.getBoolean(R.bool.config_wifiSoftapIeee80211axSupported)).thenReturn(true);
-        when(mResources.getBoolean(R.bool.config_wifiSoftapIeee80211axSupported)).thenReturn(false);
+        when(mResources.getBoolean(R.bool.config_wifiSoftapIeee80211beSupported)).thenReturn(false);
         assertEquals(ApConfigUtil.updateCapabilityFromResource(mContext),
                 capability);
     }
