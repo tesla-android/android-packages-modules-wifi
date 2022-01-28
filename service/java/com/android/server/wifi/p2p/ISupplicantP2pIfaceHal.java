@@ -72,14 +72,18 @@ interface ISupplicantP2pIfaceHal {
     boolean isInitializationComplete();
 
     /**
-     * Initiate a P2P service discovery with a (optional) timeout.
+     * Initiate a P2P device discovery with a (optional) frequency and a (optional) timeout.
      *
+     * @param freq is the frequency to be scanned,
+     *        Valid values are {@link WifiP2pManager#WIFI_P2P_SCAN_FULL} for doing full P2P scan,
+     *        {@link WifiP2pManager#WIFI_P2P_SCAN_SOCIAL} for scanning social channels,
+     *        a non zero valid frequency for scanning a specified frequency.
      * @param timeout Max time to be spent is performing discovery.
      *        Set to 0 to indefinitely continue discovery until an explicit
      *        |stopFind| is sent.
      * @return boolean value indicating whether operation was successful.
      */
-    boolean find(int timeout);
+    boolean find(int freq, int timeout);
 
     /**
      * Stop an ongoing P2P service discovery.

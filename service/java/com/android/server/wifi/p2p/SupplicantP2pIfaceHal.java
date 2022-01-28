@@ -183,21 +183,14 @@ public class SupplicantP2pIfaceHal {
         }
     }
 
-    /**
-     * Initiate a P2P service discovery with a (optional) timeout.
-     *
-     * @param timeout Max time to be spent is performing discovery.
-     *        Set to 0 to indefinitely continue discovery until an explicit
-     *        |stopFind| is sent.
-     * @return boolean value indicating whether operation was successful.
-     */
-    public boolean find(int timeout) {
+    /** See {@link ISupplicantStaNetwork#find(int, int)} for documentation. */
+    public boolean find(int freq, int timeout) {
         synchronized (mLock) {
             String methodStr = "find";
             if (mP2pIfaceHal == null) {
                 return handleNullHal(methodStr);
             }
-            return mP2pIfaceHal.find(timeout);
+            return mP2pIfaceHal.find(freq, timeout);
         }
     }
 

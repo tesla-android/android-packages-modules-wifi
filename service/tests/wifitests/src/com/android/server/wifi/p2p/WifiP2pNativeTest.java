@@ -296,9 +296,10 @@ public class WifiP2pNativeTest extends WifiBaseTest {
      */
     @Test
     public void testP2pFindIndefinitely() {
-        when(mSupplicantP2pIfaceHalMock.find(anyInt())).thenReturn(true);
+        when(mSupplicantP2pIfaceHalMock.find(anyInt(), anyInt())).thenReturn(true);
         assertTrue(mWifiP2pNative.p2pFind());
-        verify(mSupplicantP2pIfaceHalMock).find(eq(0));
+        verify(mSupplicantP2pIfaceHalMock).find(eq(
+                WifiP2pManager.WIFI_P2P_SCAN_FULL), eq(0));
     }
 
     /**
@@ -306,9 +307,10 @@ public class WifiP2pNativeTest extends WifiBaseTest {
      */
     @Test
     public void testP2pFindWithTimeout() {
-        when(mSupplicantP2pIfaceHalMock.find(anyInt())).thenReturn(true);
+        when(mSupplicantP2pIfaceHalMock.find(anyInt(), anyInt())).thenReturn(true);
         assertTrue(mWifiP2pNative.p2pFind(TEST_P2P_FIND_TIMEOUT));
-        verify(mSupplicantP2pIfaceHalMock).find(eq(TEST_P2P_FIND_TIMEOUT));
+        verify(mSupplicantP2pIfaceHalMock).find(
+                eq(WifiP2pManager.WIFI_P2P_SCAN_FULL), eq(TEST_P2P_FIND_TIMEOUT));
     }
 
     /**
