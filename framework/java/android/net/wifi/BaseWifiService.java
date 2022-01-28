@@ -100,12 +100,12 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void setSsidsDoNotBlocklist(String packageName, List<WifiSsid> ssids) {
+    public void setSsidsAllowlist(String packageName, List<WifiSsid> ssids) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<WifiSsid> getSsidsDoNotBlocklist(String packageName) {
+    public List<WifiSsid> getSsidsAllowlist(String packageName) {
         throw new UnsupportedOperationException();
     }
 

@@ -7260,7 +7260,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test(expected = SecurityException.class)
     public void testSetSsidsDoNotBlocklist_NoPermission() throws Exception {
         // by default no permissions are given so the call should fail.
-        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME,
+        mWifiServiceImpl.setSsidsAllowlist(TEST_PACKAGE_NAME,
                 Collections.EMPTY_LIST);
     }
 
@@ -7269,17 +7269,17 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
 
         // verify setting an empty list
-        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME,
+        mWifiServiceImpl.setSsidsAllowlist(TEST_PACKAGE_NAME,
                 Collections.EMPTY_LIST);
         mLooper.dispatchAll();
-        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(Collections.EMPTY_LIST);
+        verify(mWifiBlocklistMonitor).setSsidsAllowlist(Collections.EMPTY_LIST);
 
         // verify setting a list of valid SSIDs
         List<WifiSsid> expectedSsids = new ArrayList<>();
         expectedSsids.add(WifiSsid.fromString(TEST_SSID_WITH_QUOTES));
-        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME, expectedSsids);
+        mWifiServiceImpl.setSsidsAllowlist(TEST_PACKAGE_NAME, expectedSsids);
         mLooper.dispatchAll();
-        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(expectedSsids);
+        verify(mWifiBlocklistMonitor).setSsidsAllowlist(expectedSsids);
     }
 
     @Test
@@ -7290,9 +7290,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         List<WifiSsid> expectedSsids = new ArrayList<>();
         expectedSsids.add(WifiSsid.fromString(TEST_SSID_WITH_QUOTES));
-        mWifiServiceImpl.setSsidsDoNotBlocklist(TEST_PACKAGE_NAME, expectedSsids);
+        mWifiServiceImpl.setSsidsAllowlist(TEST_PACKAGE_NAME, expectedSsids);
         mLooper.dispatchAll();
-        verify(mWifiBlocklistMonitor).setSsidsDoNotBlocklist(expectedSsids);
+        verify(mWifiBlocklistMonitor).setSsidsAllowlist(expectedSsids);
     }
 
     @Test

@@ -725,12 +725,12 @@ public class WifiManagerTest {
         // test non-empty set
         List<WifiSsid> expectedSsids = new ArrayList<>();
         expectedSsids.add(WifiSsid.fromString("\"TEST_SSID\""));
-        mWifiManager.setSsidsDoNotBlocklist(new ArraySet<>(expectedSsids));
-        verify(mWifiService).setSsidsDoNotBlocklist(any(), eq(expectedSsids));
+        mWifiManager.setSsidsAllowlist(new ArraySet<>(expectedSsids));
+        verify(mWifiService).setSsidsAllowlist(any(), eq(expectedSsids));
 
         // test empty set
-        mWifiManager.setSsidsDoNotBlocklist(Collections.EMPTY_SET);
-        verify(mWifiService).setSsidsDoNotBlocklist(any(),
+        mWifiManager.setSsidsAllowlist(Collections.EMPTY_SET);
+        verify(mWifiService).setSsidsAllowlist(any(),
                 eq(Collections.EMPTY_LIST));
     }
 
