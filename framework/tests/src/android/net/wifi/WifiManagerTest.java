@@ -183,7 +183,6 @@ public class WifiManagerTest {
     @Mock WifiConnectedNetworkScorer mWifiConnectedNetworkScorer;
     @Mock SuggestionUserApprovalStatusListener mSuggestionUserApprovalStatusListener;
     @Mock ActiveCountryCodeChangedCallback mActiveCountryCodeChangedCallback;
-    @Mock AttributionSource mAttributionSource;
 
     private Handler mHandler;
     private TestLooper mLooper;
@@ -280,7 +279,6 @@ public class WifiManagerTest {
         mApplicationInfo.targetSdkVersion = Build.VERSION_CODES.Q;
         when(mContext.getApplicationInfo()).thenReturn(mApplicationInfo);
         when(mContext.getOpPackageName()).thenReturn(TEST_PACKAGE_NAME);
-        when(mContext.getAttributionSource()).thenReturn(mAttributionSource);
         mWifiManager = new WifiManager(mContext, mWifiService, mLooper.getLooper());
         verify(mWifiService).getVerboseLoggingLevel();
         mWifiNetworkSuggestion = new WifiNetworkSuggestion();
@@ -298,6 +296,8 @@ public class WifiManagerTest {
                     mRunnable.run();
                 }
             };
+            AttributionSource attributionSource = mock(AttributionSource.class);
+            when(mContext.getAttributionSource()).thenReturn(attributionSource);
         }
         mRestartCallback = new SubsystemRestartTrackingCallback() {
             @Override
