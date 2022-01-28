@@ -45,6 +45,7 @@ import android.hardware.wifi.supplicant.ISupplicantStaIfaceCallback;
 import android.hardware.wifi.supplicant.MboAssocDisallowedReasonCode;
 import android.hardware.wifi.supplicant.MboCellularDataConnectionPrefValue;
 import android.hardware.wifi.supplicant.MboTransitionReasonCode;
+import android.hardware.wifi.supplicant.QosPolicyData;
 import android.hardware.wifi.supplicant.StaIfaceCallbackState;
 import android.hardware.wifi.supplicant.StaIfaceReasonCode;
 import android.hardware.wifi.supplicant.StaIfaceStatusCode;
@@ -1086,5 +1087,19 @@ class SupplicantStaIfaceCallbackAidlImpl extends ISupplicantStaIfaceCallback.Stu
         mStaIfaceHal.logCallback("onNetworkNotFoundNotification");
         mWifiMonitor.broadcastNetworkNotFoundEvent(mIfaceName,
                 NativeUtil.encodeSsid(NativeUtil.byteArrayToArrayList(ssid)));
+    }
+
+    @Override
+    public void onQosPolicyReset() {
+        synchronized (mLock) {
+            mStaIfaceHal.logCallback("onQosPolicyReset");
+        }
+    }
+
+    @Override
+    public void onQosPolicyRequest(QosPolicyData[] qosPolicyData) {
+        synchronized (mLock) {
+            mStaIfaceHal.logCallback("onQosPolicyRequest");
+        }
     }
 }
