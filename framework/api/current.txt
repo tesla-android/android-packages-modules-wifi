@@ -676,10 +676,7 @@ package android.net.wifi {
   public final class WifiSsid implements android.os.Parcelable {
     method public int describeContents();
     method @NonNull public static android.net.wifi.WifiSsid fromBytes(@Nullable byte[]);
-    method @NonNull public static android.net.wifi.WifiSsid fromString(@Nullable String);
-    method @NonNull public static android.net.wifi.WifiSsid fromUtf8Text(@Nullable CharSequence);
     method @NonNull public byte[] getBytes();
-    method @Nullable public CharSequence getUtf8Text();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.WifiSsid> CREATOR;
   }
