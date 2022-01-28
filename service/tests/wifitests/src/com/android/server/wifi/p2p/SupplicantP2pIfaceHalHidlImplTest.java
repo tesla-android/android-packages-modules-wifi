@@ -2746,6 +2746,15 @@ public class SupplicantP2pIfaceHalHidlImplTest extends WifiBaseTest {
     }
 
     /**
+     * Normal scenario for removeClient()
+     */
+    @Test
+    public void testRemoveClient() throws Exception {
+        assertFalse(mDut.removeClient(mPeerMacAddress, true));
+        assertFalse(mDut.removeClient(mPeerMacAddress, false));
+    }
+
+    /**
      * Calls.initialize(), mocking various call back answers and verifying flow, asserting for the
      * expected result. Verifies if ISupplicantP2pIface manager is initialized or reset.
      * Each of the arguments will cause a different failure mode when set true.

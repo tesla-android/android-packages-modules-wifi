@@ -1158,6 +1158,7 @@ package android.net.wifi.p2p {
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void discoverPeers(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void discoverServices(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public android.net.wifi.p2p.WifiP2pManager.Channel initialize(android.content.Context, android.os.Looper, android.net.wifi.p2p.WifiP2pManager.ChannelListener);
+    method public void removeClient(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.MacAddress, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeGroup(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeLocalService(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceInfo, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeServiceRequest(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceRequest, android.net.wifi.p2p.WifiP2pManager.ActionListener);

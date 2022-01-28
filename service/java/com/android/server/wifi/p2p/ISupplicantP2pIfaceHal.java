@@ -525,4 +525,13 @@ interface ISupplicantP2pIfaceHal {
      * @return true, if operation was successful.
      */
     boolean setWfdR2DeviceInfo(String info);
+
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @param isLegacyClient Indicate if client is a legacy client or not.
+     * @return true if success
+     */
+    boolean removeClient(String peerAddress, boolean isLegacyClient);
 }

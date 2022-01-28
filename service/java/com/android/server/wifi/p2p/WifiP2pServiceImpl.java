@@ -38,6 +38,7 @@ import android.net.ConnectivityManager;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
 import android.net.LinkProperties;
+import android.net.MacAddress;
 import android.net.NetworkInfo;
 import android.net.NetworkStack;
 import android.net.TetheringManager;
@@ -507,6 +508,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.REQUEST_NETWORK_INFO:
                 case WifiP2pManager.UPDATE_CHANNEL_INFO:
                 case WifiP2pManager.REQUEST_DEVICE_INFO:
+                case WifiP2pManager.REMOVE_CLIENT:
                     mP2pStateMachine.sendMessage(Message.obtain(msg));
                     break;
                 default:
@@ -1182,6 +1184,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     return "WifiP2pManager.STOP_LISTEN";
                 case WifiP2pManager.UPDATE_CHANNEL_INFO:
                     return "WifiP2pManager.UPDATE_CHANNEL_INFO";
+                case WifiP2pManager.REMOVE_CLIENT:
+                    return "WifiP2pManager.REMOVE_CLIENT";
                 case WifiP2pMonitor.AP_STA_CONNECTED_EVENT:
                     return "WifiP2pMonitor.AP_STA_CONNECTED_EVENT";
                 case WifiP2pMonitor.AP_STA_DISCONNECTED_EVENT:
@@ -1377,6 +1381,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.CLEAR_LOCAL_SERVICES:
                 case WifiP2pManager.REMOVE_SERVICE_REQUEST:
                 case WifiP2pManager.CLEAR_SERVICE_REQUESTS:
+                case WifiP2pManager.REMOVE_CLIENT:
                 // These commands return wifi service p2p information which
                 // does not need active P2P.
                 case WifiP2pManager.REQUEST_P2P_STATE:
@@ -1777,6 +1782,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 maybeEraseOwnDeviceAddress(mThisDevice, message.sendingUid));
                         break;
                     }
+                    case WifiP2pManager.REMOVE_CLIENT:
+                        replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_SUCCEEDED);
+                        break;
                     default:
                         loge("Unhandled message " + message);
                         return NOT_HANDLED;
@@ -1874,6 +1882,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     case WifiP2pManager.FACTORY_RESET:
                         replyToMessage(message, WifiP2pManager.FACTORY_RESET_FAILED,
+                                WifiP2pManager.P2P_UNSUPPORTED);
+                        break;
+                    case WifiP2pManager.REMOVE_CLIENT:
+                        replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_FAILED,
                                 WifiP2pManager.P2P_UNSUPPORTED);
                         break;
 
@@ -3685,6 +3697,20 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             sendP2pConnectionChangedBroadcast();
                         }
                         break;
+                    case WifiP2pManager.REMOVE_CLIENT:
+                    {
+                        if (mVerboseLoggingEnabled) logd(getName() + " remove client");
+                        MacAddress peerAddress = (MacAddress) message.obj;
+
+                        if (peerAddress != null
+                                && mWifiNative.removeClient(peerAddress.toString())) {
+                            replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_SUCCEEDED);
+                        } else {
+                            replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        break;
+                    }
                     default:
                         return NOT_HANDLED;
                 }

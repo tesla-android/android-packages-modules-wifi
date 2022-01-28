@@ -1039,6 +1039,23 @@ public class SupplicantP2pIfaceHal {
         }
     }
 
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @param isLegacyClient Indicate if client is a legacy client or not.
+     * @return true if success
+     */
+    public boolean removeClient(String peerAddress, boolean isLegacyClient) {
+        synchronized (mLock) {
+            String methodStr = "removeClient";
+            if (mP2pIfaceHal == null) {
+                return handleNullHal(methodStr);
+            }
+            return mP2pIfaceHal.removeClient(peerAddress, isLegacyClient);
+        }
+    }
+
     private boolean handleNullHal(String methodStr) {
         Log.e(TAG, "Cannot call " + methodStr + " because HAL object is null.");
         return false;
