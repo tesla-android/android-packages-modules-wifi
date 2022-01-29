@@ -381,6 +381,7 @@ public class XmlUtil {
         private static final String XML_TAG_IS_MOST_RECENTLY_CONNECTED = "IsMostRecentlyConnected";
         private static final String XML_TAG_IS_RESTRICTED = "IsRestricted";
         private static final String XML_TAG_SUBSCRIPTION_GROUP = "SubscriptionGroup";
+        public static final String XML_TAG_BSSID_ALLOW_LIST = "bssidAllowList";
 
         /**
          * Write WepKeys to the XML stream.
@@ -587,6 +588,31 @@ public class XmlUtil {
                 XmlUtil.writeNextValue(out, XML_TAG_SUBSCRIPTION_GROUP,
                         configuration.getSubscriptionGroup().toString());
             }
+            if (configuration.getBssidAllowlistInternal() != null) {
+                XmlUtil.writeNextValue(out, XML_TAG_BSSID_ALLOW_LIST,
+                        covertMacAddressListToStringList(configuration
+                                .getBssidAllowlistInternal()));
+            }
+        }
+
+        private static List<String> covertMacAddressListToStringList(List<MacAddress> macList) {
+            List<String> bssidList = new ArrayList<>();
+            for (MacAddress address : macList) {
+                bssidList.add(address.toString());
+            }
+            return bssidList;
+        }
+
+        private static List<MacAddress> covertStringListToMacAddressList(List<String> stringList) {
+            List<MacAddress> macAddressList = new ArrayList<>();
+            for (String address : stringList) {
+                try {
+                    macAddressList.add(MacAddress.fromString(address));
+                } catch (Exception e) {
+                    Log.e(TAG, "Invalid BSSID String: " + address);
+                }
+            }
+            return macAddressList;
         }
 
         /**
@@ -862,6 +888,10 @@ public class XmlUtil {
                         case XML_TAG_SUBSCRIPTION_GROUP:
                             configuration.setSubscriptionGroup(
                                     ParcelUuid.fromString((String) value));
+                            break;
+                        case XML_TAG_BSSID_ALLOW_LIST:
+                            configuration.setBssidAllowlist(
+                                    covertStringListToMacAddressList((List<String>) value));
                             break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);
@@ -1814,7 +1844,7 @@ public class XmlUtil {
             }
             XmlUtil.writeNextValue(out, XML_TAG_HIDDEN_SSID, softApConfig.isHiddenSsid());
             XmlUtil.writeNextValue(out, XML_TAG_SECURITY_TYPE, softApConfig.getSecurityType());
-            if (softApConfig.getSecurityType() != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+            if (!ApConfigUtil.isNonPasswordAP(softApConfig.getSecurityType())) {
                 XmlUtil.writeNextValue(out, XML_TAG_PASSPHRASE,
                         softApConfig.getPassphrase());
             }
@@ -2058,7 +2088,7 @@ public class XmlUtil {
                     Log.e(TAG, "Failed to parse SSID");
                     return null;
                 }
-                if (securityType != SoftApConfiguration.SECURITY_TYPE_OPEN) {
+                if (!ApConfigUtil.isNonPasswordAP(securityType)) {
                     softApConfigBuilder.setPassphrase(passphrase, securityType);
                 }
                 if (!autoShutdownEnabledTagPresent) {

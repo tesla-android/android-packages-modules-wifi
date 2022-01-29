@@ -140,7 +140,7 @@ public class WifiBlocklistMonitor {
 
     // Map of ssid to Allowlist SSIDs
     private Map<String, List<String>> mSsidAllowlistMap = new ArrayMap<>();
-    private Set<WifiSsid> mSsidsDoNotBlocklist = new ArraySet<>();
+    private Set<WifiSsid> mSsidsAllowlistForNetworkSelection = new ArraySet<>();
 
     /**
      * Verbose logging flag. Toggled by developer options.
@@ -288,15 +288,15 @@ public class WifiBlocklistMonitor {
     /**
      * Set a list of SSIDs that will always be enabled for network selection.
      */
-    public void setSsidsDoNotBlocklist(@NonNull List<WifiSsid> ssids) {
-        mSsidsDoNotBlocklist = new ArraySet<>(ssids);
+    public void setSsidsAllowlist(@NonNull List<WifiSsid> ssids) {
+        mSsidsAllowlistForNetworkSelection = new ArraySet<>(ssids);
     }
 
     /**
      * Get the list of SSIDs that will always be enabled for network selection.
      */
-    public List<WifiSsid> getSsidsDoNotBlocklist() {
-        return new ArrayList<>(mSsidsDoNotBlocklist);
+    public List<WifiSsid> getSsidsAllowlist() {
+        return new ArrayList<>(mSsidsAllowlistForNetworkSelection);
     }
 
     private boolean isValidNetworkAndFailureReasonForBssidBlocking(String bssid,
@@ -316,7 +316,7 @@ public class WifiBlocklistMonitor {
             // Only enterprise owned configs that are in the doNoBlocklist are exempt from
             // blocklisting.
             WifiSsid wifiSsid = WifiSsid.fromString(config.SSID);
-            return mSsidsDoNotBlocklist.contains(wifiSsid)
+            return mSsidsAllowlistForNetworkSelection.contains(wifiSsid)
                     && mWifiPermissionsUtil.isAdmin(config.creatorUid, config.creatorName);
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Failed to convert raw ssid=" + config.SSID + " to WifiSsid");
@@ -852,7 +852,7 @@ public class WifiBlocklistMonitor {
                 pw.println(line);
             }
             pw.println("List of SSIDs to never block:");
-            for (WifiSsid ssid : mSsidsDoNotBlocklist) {
+            for (WifiSsid ssid : mSsidsAllowlistForNetworkSelection) {
                 pw.println(ssid.toString());
             }
             pw.println("WifiBlocklistMonitor - Bssid blocklist logs end ----");

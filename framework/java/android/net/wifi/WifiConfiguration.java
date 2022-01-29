@@ -1005,6 +1005,55 @@ public class WifiConfiguration implements Parcelable {
      */
     public String BSSID;
 
+    private List<MacAddress> mBssidAllowlist;
+
+    /**
+     * Set a list of BSSIDs to control if this network configuration entry should be used to
+     * associate an AP.
+     * <ul>
+     * <li>If set with {@code null}, then there are no restrictions on the connection. The
+     * configuration will associate to any AP.</li>
+     * <li>If set to an empty list then the configuration will not associate to any AP.</li>
+     * <li>If set to a non-empty list then the configuration will only associate to APs whose BSSID
+     * is on the list.</li>
+     * </ul>
+     * @param bssidAllowlist A list of {@link MacAddress} representing the BSSID of APs,
+     * {@code null} to allow all BSSIDs (no restriction).
+     * @hide
+     */
+    @SystemApi
+    public void setBssidAllowlist(@Nullable List<MacAddress> bssidAllowlist) {
+        if (bssidAllowlist == null) {
+            mBssidAllowlist = null;
+            return;
+        }
+        mBssidAllowlist = new ArrayList<>(bssidAllowlist);
+    }
+
+    /**
+     * Get a list of BSSIDs specified on this network configuration entry, set by
+     * {@link #setBssidAllowlist(List)}.
+     * @return A list of {@link MacAddress} representing BSSID to allow associate, {@code null} for
+     * allowing all BSSIDs (no restriction).
+     * @hide
+     */
+    @SuppressLint("NullableCollection")
+    @SystemApi
+    @Nullable
+    public List<MacAddress> getBssidAllowlist() {
+        if (mBssidAllowlist == null) {
+            return null;
+        }
+        return new ArrayList<>(mBssidAllowlist);
+    }
+
+    /**
+     * @hide
+     */
+    public List<MacAddress> getBssidAllowlistInternal() {
+        return mBssidAllowlist;
+    }
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = {"AP_BAND_"}, value = {
@@ -2931,6 +2980,7 @@ public class WifiConfiguration implements Parcelable {
         mRandomizedMacAddress = MacAddress.fromString(WifiInfo.DEFAULT_MAC_ADDRESS);
         numRebootsSinceLastUse = 0;
         restricted = false;
+        mBssidAllowlist = null;
     }
 
     /**
@@ -3222,6 +3272,16 @@ public class WifiConfiguration implements Parcelable {
         sbuf.append("recentFailure: ").append("Association Rejection code: ")
                 .append(recentFailure.getAssociationStatus()).append(", last update time: ")
                 .append(recentFailure.getLastUpdateTimeSinceBootMillis()).append("\n");
+        if (mBssidAllowlist != null) {
+            sbuf.append("bssidAllowList: [");
+            for (MacAddress bssid : mBssidAllowlist) {
+                sbuf.append(bssid + ", ");
+            }
+            sbuf.append("]");
+        } else {
+            sbuf.append("bssidAllowlist unset");
+        }
+        sbuf.append("\n");
         return sbuf.toString();
     }
 
@@ -3647,6 +3707,11 @@ public class WifiConfiguration implements Parcelable {
             subscriptionId = source.subscriptionId;
             mPasspointUniqueId = source.mPasspointUniqueId;
             mSubscriptionGroup = source.mSubscriptionGroup;
+            if (source.mBssidAllowlist != null) {
+                mBssidAllowlist = new ArrayList<>(source.mBssidAllowlist);
+            } else {
+                mBssidAllowlist = null;
+            }
         }
     }
 
@@ -3733,6 +3798,7 @@ public class WifiConfiguration implements Parcelable {
         dest.writeInt(subscriptionId);
         dest.writeBoolean(restricted);
         dest.writeParcelable(mSubscriptionGroup, flags);
+        dest.writeList(mBssidAllowlist);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -3821,6 +3887,7 @@ public class WifiConfiguration implements Parcelable {
                 config.subscriptionId = in.readInt();
                 config.restricted = in.readBoolean();
                 config.mSubscriptionGroup = in.readParcelable(null);
+                config.mBssidAllowlist = in.readArrayList(MacAddress.class.getClassLoader());
                 return config;
             }
 

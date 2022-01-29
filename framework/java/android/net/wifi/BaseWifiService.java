@@ -100,12 +100,12 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
-    public void setSsidsDoNotBlocklist(String packageName, List<WifiSsid> ssids) {
+    public void setSsidsAllowlist(String packageName, List<WifiSsid> ssids) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public List<WifiSsid> getSsidsDoNotBlocklist(String packageName) {
+    public List<WifiSsid> getSsidsAllowlist(String packageName) {
         throw new UnsupportedOperationException();
     }
 
@@ -854,5 +854,10 @@ public class BaseWifiService extends IWifiManager.Stub {
     public void validateCurrentWifiMeetsAdminRequirements() {
         throw new UnsupportedOperationException();
     }
-}
 
+    @Override
+    public void replyToP2pInvitationReceivedDialog(
+            int dialogId, boolean accepted, @Nullable String optionalPin) {
+        throw new UnsupportedOperationException();
+    }
+}

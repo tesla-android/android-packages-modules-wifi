@@ -218,6 +218,15 @@ public class WifiBackupRestore {
                         + configuration.getKey());
                 continue;
             }
+            // Skip if user has never connected due to wrong password.
+            if (!configuration.getNetworkSelectionStatus().hasEverConnected()) {
+                int disableReason = configuration.getNetworkSelectionStatus()
+                        .getNetworkSelectionDisableReason();
+                if (disableReason
+                        == WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD) {
+                    continue;
+                }
+            }
             // Write this configuration data now.
             XmlUtil.writeNextSectionStart(out, XML_TAG_SECTION_HEADER_NETWORK);
             writeNetworkConfigurationToXml(out, configuration);

@@ -101,6 +101,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             }};
 
     private static final boolean TEST_80211AX_ENABLED = false;
+    private static final boolean TEST_80211BE_ENABLED = false;
     private static final boolean TEST_USER_CONFIGURATION = false;
     private static final String TEST_TWO_VENDOR_ELEMENTS_HEX = "DD04AABBCCDDDD0401020304";
 
@@ -272,7 +273,9 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     + "<VendorElements>\n"
                     + "<string name=\"VendorElement\">DD04AABBCCDD</string>\n"
                     + "<string name=\"VendorElement\">DD0401020304</string>\n"
-                    + "</VendorElements>\n";
+                    + "</VendorElements>\n"
+                    + "<boolean name=\"80211beEnabled\" value=\""
+                    + TEST_80211BE_ENABLED + "\" />\n";
 
     @Mock private Context mContext;
     @Mock SoftApStoreData.DataSource mDataSource;
@@ -391,6 +394,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             softApConfigBuilder.setVendorElements(Arrays.asList(
                     InformationElementUtil.parseInformationElements(
                             TEST_TWO_VENDOR_ELEMENTS_HEX)));
+            softApConfigBuilder.setIeee80211beEnabled(TEST_80211BE_ENABLED);
         }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
@@ -441,6 +445,7 @@ public class SoftApStoreDataTest extends WifiBaseTest {
             softApConfigBuilder.setVendorElements(Arrays.asList(
                     InformationElementUtil.parseInformationElements(
                             TEST_TWO_VENDOR_ELEMENTS_HEX)));
+            softApConfigBuilder.setIeee80211beEnabled(TEST_80211BE_ENABLED);
         }
         when(mDataSource.toSerialize()).thenReturn(softApConfigBuilder.build());
         byte[] actualData = serializeData();
@@ -499,6 +504,9 @@ public class SoftApStoreDataTest extends WifiBaseTest {
                     TEST_BRIDGED_OPPORTUNISTIC_SHUTDOWN_ENABLED);
             assertEquals(softApConfig.isIeee80211axEnabled(), TEST_80211AX_ENABLED);
             assertEquals(softApConfig.isUserConfiguration(), TEST_USER_CONFIGURATION);
+        }
+        if (SdkLevel.isAtLeastT()) {
+            assertEquals(softApConfig.isIeee80211beEnabled(), TEST_80211BE_ENABLED);
         }
     }
 

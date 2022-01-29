@@ -21,6 +21,7 @@ import static android.net.wifi.ScanResult.InformationElement.EID_VSA;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -313,6 +314,37 @@ public class SoftApConfigurationTest {
         assertThat(copy).isNotSameInstanceAs(original);
         assertThat(copy).isEqualTo(original);
         assertThat(copy.hashCode()).isEqualTo(original.hashCode());
+    }
+
+    @Test
+    public void testWpa3OweTransition() {
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setPassphrase("",
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION)
+                .setChannel(149, SoftApConfiguration.BAND_5GHZ)
+                .setHiddenSsid(false)
+                .build();
+        assertThat(original.getSecurityType()).isEqualTo(
+                SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
+        assertThat(original.getPassphrase()).isEqualTo("");
+        assertThat(original.getBand()).isEqualTo(SoftApConfiguration.BAND_5GHZ);
+        assertThat(original.getChannel()).isEqualTo(149);
+        assertThat(original.isHiddenSsid()).isEqualTo(false);
+
+        SoftApConfiguration unparceled = parcelUnparcel(original);
+        assertThat(unparceled).isNotSameInstanceAs(original);
+        assertThat(unparceled).isEqualTo(original);
+        assertThat(unparceled.hashCode()).isEqualTo(original.hashCode());
+
+        SoftApConfiguration copy = new SoftApConfiguration.Builder(original).build();
+        assertThat(copy).isNotSameInstanceAs(original);
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.hashCode()).isEqualTo(original.hashCode());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder().setPassphrase(
+                        "something or other",
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION));
     }
 
     @Test(expected = IllegalArgumentException.class)

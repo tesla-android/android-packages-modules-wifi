@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.wifi.V1_0.NanStatusType;
 import android.net.wifi.WifiManager;
+import android.net.wifi.aware.AwareParams;
 import android.net.wifi.aware.AwareResources;
 import android.net.wifi.aware.Characteristics;
 import android.net.wifi.aware.ConfigRequest;
@@ -56,7 +57,6 @@ import com.android.server.wifi.util.WifiPermissionsWrapper;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.List;
 
 /**
  * Implementation of the IWifiAwareManager AIDL interface. Performs validity
@@ -197,6 +197,17 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     public boolean isSetChannelOnDataPathSupported() {
         enforceAccessPermission();
         return mStateManager.isSetChannelOnDataPathSupported();
+    }
+
+    @Override
+    public void setAwareParams(AwareParams params) {
+        enforceChangePermission();
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkConfigOverridePermission(uid)) {
+            throw new SecurityException("App not allowed to update Aware parameters "
+                    + "(uid = " + uid + ")");
+        }
+        mStateManager.setAwareParams(params);
     }
 
     @Override
@@ -458,7 +469,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     }
 
     @Override
-    public void requestMacAddresses(int uid, List peerIds, IWifiAwareMacAddressProvider callback) {
+    public void requestMacAddresses(int uid, int[] peerIds, IWifiAwareMacAddressProvider callback) {
         enforceNetworkStackPermission();
 
         mStateManager.requestMacAddresses(uid, peerIds, callback);

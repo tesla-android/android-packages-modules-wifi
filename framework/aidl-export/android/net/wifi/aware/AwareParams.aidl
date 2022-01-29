@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,4 @@
 
 package android.net.wifi.aware;
 
-import android.net.wifi.aware.MacAddrMapping;
-
-/**
- * Callback for IWifiAwareManager.getMacAddressFromPeerHandle
- *
- * @hide
- */
-oneway interface IWifiAwareMacAddressProvider
-{
-    void macAddress(in MacAddrMapping[] peerIdToMacList);
-}
+parcelable AwareParams;

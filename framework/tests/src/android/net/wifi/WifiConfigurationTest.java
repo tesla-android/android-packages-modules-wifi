@@ -140,6 +140,7 @@ public class WifiConfigurationTest {
         assertEquals(config.subscriptionId, reconfig.subscriptionId);
         assertEquals(config.getSubscriptionGroup(), reconfig.getSubscriptionGroup());
         assertTrue(reconfig.restricted);
+        assertEquals(config.getBssidAllowlist(), reconfig.getBssidAllowlist());
 
         Parcel parcelWW = Parcel.obtain();
         reconfig.writeToParcel(parcelWW, 0);

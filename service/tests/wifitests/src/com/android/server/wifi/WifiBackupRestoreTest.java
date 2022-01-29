@@ -984,6 +984,46 @@ public class WifiBackupRestoreTest extends WifiBaseTest {
     }
 
     /**
+     * Verify that a network that has never been connected to due to a wrong password
+     * is not serialized. Networks that have connected, or that have not connected for a
+     * different reason, should be serialized and deserialized correctly.
+     */
+    @Test
+    public void testNeverConnectedDueToWrongPasswordRestore() {
+        List<WifiConfiguration> configurations = new ArrayList<>();
+        List<WifiConfiguration> expectedConfigurations = new ArrayList<>();
+
+        // Never connected due to wrong password. Should not be in |expectedConfigurations|.
+        WifiConfiguration neverConnectedWrongPass = WifiConfigurationTestUtil.createWepNetwork();
+        neverConnectedWrongPass.getNetworkSelectionStatus().setHasEverConnected(false);
+        neverConnectedWrongPass.getNetworkSelectionStatus().setNetworkSelectionDisableReason(
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD);
+        configurations.add(neverConnectedWrongPass);
+
+        // Has connected but has wrong password. Should be in |expectedConfigurations|.
+        WifiConfiguration hasConnectedWrongPass = WifiConfigurationTestUtil.createWepNetwork();
+        hasConnectedWrongPass.getNetworkSelectionStatus().setHasEverConnected(true);
+        hasConnectedWrongPass.getNetworkSelectionStatus().setNetworkSelectionDisableReason(
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_BY_WRONG_PASSWORD);
+        configurations.add(hasConnectedWrongPass);
+        expectedConfigurations.add(hasConnectedWrongPass);
+
+        // Never connected for some other reason. Should be in |expectedConfigurations|.
+        WifiConfiguration neverConnectedOtherReason = WifiConfigurationTestUtil.createWepNetwork();
+        neverConnectedOtherReason.getNetworkSelectionStatus().setHasEverConnected(false);
+        neverConnectedOtherReason.getNetworkSelectionStatus().setNetworkSelectionDisableReason(
+                WifiConfiguration.NetworkSelectionStatus.DISABLED_NO_INTERNET_TEMPORARY);
+        configurations.add(neverConnectedOtherReason);
+        expectedConfigurations.add(neverConnectedOtherReason);
+
+        byte[] backupData = mWifiBackupRestore.retrieveBackupDataFromConfigurations(configurations);
+        List<WifiConfiguration> retrievedConfigurations =
+                mWifiBackupRestore.retrieveConfigurationsFromBackupData(backupData);
+        WifiConfigurationTestUtil.assertConfigurationsEqualForBackup(
+                expectedConfigurations, retrievedConfigurations);
+    }
+
+    /**
      * Verifying that backup data containing some unknown keys is properly restored.
      * The backup data used here is a PII masked version of a backup data seen in a reported bug.
      */
