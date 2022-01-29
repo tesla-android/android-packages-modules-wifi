@@ -660,9 +660,15 @@ public class ApConfigUtilTest extends WifiBaseTest {
         assertTrue(ApConfigUtil.checkConfigurationChangeNeedToRestart(currentConfig,
                 newConfig_ssidChanged));
         // Test BSSID changed
-        SoftApConfiguration newConfig_bssidChanged = new SoftApConfiguration
+        SoftApConfiguration.Builder newConfig_bssidChangedBuilder = new SoftApConfiguration
                 .Builder(newConfig_noChange)
-                .setBssid(testBssid).build();
+                .setBssid(testBssid);
+
+        if (SdkLevel.isAtLeastS()) {
+            newConfig_bssidChangedBuilder.setMacRandomizationSetting(
+                    SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        SoftApConfiguration newConfig_bssidChanged = newConfig_bssidChangedBuilder.build();
         assertTrue(ApConfigUtil.checkConfigurationChangeNeedToRestart(currentConfig,
                 newConfig_bssidChanged));
         // Test Passphrase Changed

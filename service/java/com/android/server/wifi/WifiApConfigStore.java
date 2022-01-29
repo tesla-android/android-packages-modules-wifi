@@ -142,6 +142,7 @@ public class WifiApConfigStore {
             Log.d(TAG, "persisted config was converted, need to resave it");
             persistConfigAndTriggerBackupManagerProxy(sanitizedPersistentconfig);
         }
+
         if (mForceApChannel) {
             Log.d(TAG, "getApConfiguration: Band force to " + mForcedApBand
                     + ", and channel force to " + mForcedApChannel);
@@ -151,7 +152,7 @@ public class WifiApConfigStore {
                     : new SoftApConfiguration.Builder(mPersistentWifiApConfig)
                             .setChannel(mForcedApChannel, mForcedApBand).build();
         }
-        return mPersistentWifiApConfig;
+        return updatePersistentRandomizedMacAddress(mPersistentWifiApConfig);
     }
 
     /**
@@ -451,12 +452,11 @@ public class WifiApConfigStore {
                 configBuilder.setBand(SoftApConfiguration.BAND_5GHZ);
             }
         }
-
         if (customConfig == null || customConfig.getSsid() == null) {
             configBuilder.setSsid(generateLohsSsid(context));
         }
 
-        return configBuilder.build();
+        return updatePersistentRandomizedMacAddress(configBuilder.build());
     }
 
     /**
@@ -484,6 +484,9 @@ public class WifiApConfigStore {
                 macAddress = MacAddressUtils.createRandomUnicastAddress();
             }
             configBuilder.setBssid(macAddress);
+            if (macAddress != null && SdkLevel.isAtLeastS()) {
+                configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+            }
         }
         return configBuilder.build();
     }
@@ -656,5 +659,15 @@ public class WifiApConfigStore {
      */
     public void disableForceSoftApBandOrChannel() {
         mForceApChannel = false;
+    }
+
+    private SoftApConfiguration updatePersistentRandomizedMacAddress(SoftApConfiguration config) {
+        // Update randomized MacAddress
+        WifiSsid ssid = config.getWifiSsid();
+        MacAddress randomizedMacAddress = mMacAddressUtil.calculatePersistentMac(
+                ssid != null ? ssid.toString() : null,
+                mMacAddressUtil.obtainMacRandHashFunctionForSap(Process.WIFI_UID));
+        return new SoftApConfiguration.Builder(config)
+                .setRandomizedMacAddress(randomizedMacAddress).build();
     }
 }

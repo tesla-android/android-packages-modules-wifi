@@ -3425,9 +3425,14 @@ public class WifiServiceImplTest extends WifiBaseTest {
     public void testCustomLohs_ForwardsBssid() {
         mLooper.startAutoDispatch();
         SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
-        SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
-                .setBssid(MacAddress.fromString("aa:bb:cc:dd:ee:ff"))
-                .build();
+        SoftApConfiguration.Builder customizedConfigBuilder =
+                new SoftApConfiguration.Builder(lohsConfig)
+                .setBssid(MacAddress.fromString("aa:bb:cc:dd:ee:ff"));
+        if (SdkLevel.isAtLeastS()) {
+            customizedConfigBuilder.setMacRandomizationSetting(
+                    SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        SoftApConfiguration customizedConfig = customizedConfigBuilder.build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
                 eq(mContext), eq(customizedConfig), any()))
                 .thenReturn(customizedConfig);

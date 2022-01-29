@@ -21,6 +21,9 @@ import android.annotation.IntRange;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.annotation.SystemApi;
+import android.compat.Compatibility;
+import android.compat.annotation.ChangeId;
+import android.compat.annotation.EnabledAfter;
 import android.net.MacAddress;
 import android.net.wifi.util.HexEncoding;
 import android.os.Build;
@@ -142,7 +145,12 @@ public final class SoftApConfiguration implements Parcelable {
     private static final int MIN_CH_60G_BAND = 1;
     private static final int MAX_CH_60G_BAND = 6;
 
-
+    /**
+     * Requires to configure MAC randomization setting to None when configuring BSSID.
+     */
+    @ChangeId
+    @EnabledAfter(targetSdkVersion = Build.VERSION_CODES.S)
+    private static final long FORCE_MUTUAL_EXCLUSIVE_BSSID_MAC_RAMDONIZATION_SETTING = 215656264L;
 
     private static boolean isChannelBandPairValid(int channel, @BandType int band) {
         switch (band) {
@@ -316,6 +324,12 @@ public final class SoftApConfiguration implements Parcelable {
     private boolean mIsUserConfiguration;
 
     /**
+     * Randomized MAC address to use with this configuration when MAC randomization setting
+     * is {@link #RANDOMIZATION_PERSISTENT}.
+     */
+    private final @Nullable MacAddress mPersistentRandomizedMacAddress;
+
+    /**
      * Delay in milliseconds before shutting down an instance in bridged AP.
      */
     private final long mBridgedModeOpportunisticShutdownTimeoutMillis;
@@ -365,7 +379,8 @@ public final class SoftApConfiguration implements Parcelable {
             int macRandomizationSetting, boolean bridgedModeOpportunisticShutdownEnabled,
             boolean ieee80211axEnabled, boolean ieee80211beEnabled, boolean isUserConfiguration,
             long bridgedModeOpportunisticShutdownTimeoutMillis,
-            @NonNull List<ScanResult.InformationElement> vendorElements) {
+            @NonNull List<ScanResult.InformationElement> vendorElements,
+            @Nullable MacAddress persistentRandomizedMacAddress) {
         mWifiSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -391,6 +406,7 @@ public final class SoftApConfiguration implements Parcelable {
         mBridgedModeOpportunisticShutdownTimeoutMillis =
                 bridgedModeOpportunisticShutdownTimeoutMillis;
         mVendorElements = new ArrayList<>(vendorElements);
+        mPersistentRandomizedMacAddress = persistentRandomizedMacAddress;
     }
 
     @Override
@@ -422,7 +438,9 @@ public final class SoftApConfiguration implements Parcelable {
                 && mIsUserConfiguration == other.mIsUserConfiguration
                 && mBridgedModeOpportunisticShutdownTimeoutMillis
                         == other.mBridgedModeOpportunisticShutdownTimeoutMillis
-                && Objects.equals(mVendorElements, other.mVendorElements);
+                && Objects.equals(mVendorElements, other.mVendorElements)
+                && Objects.equals(mPersistentRandomizedMacAddress,
+                        other.mPersistentRandomizedMacAddress);
     }
 
     @Override
@@ -433,7 +451,7 @@ public final class SoftApConfiguration implements Parcelable {
                 mAllowedClientList, mMacRandomizationSetting,
                 mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled, mIeee80211beEnabled,
                 mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
-                mVendorElements);
+                mVendorElements, mPersistentRandomizedMacAddress);
     }
 
     @Override
@@ -461,6 +479,8 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n Ieee80211beEnabled = ").append(mIeee80211beEnabled);
         sbuf.append(" \n isUserConfiguration = ").append(mIsUserConfiguration);
         sbuf.append(" \n vendorElements = ").append(mVendorElements);
+        sbuf.append(" \n mPersistentRandomizedMacAddress = ")
+                .append(mPersistentRandomizedMacAddress);
         return sbuf.toString();
     }
 
@@ -485,6 +505,7 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeBoolean(mIsUserConfiguration);
         dest.writeLong(mBridgedModeOpportunisticShutdownTimeoutMillis);
         dest.writeTypedList(mVendorElements);
+        dest.writeParcelable(mPersistentRandomizedMacAddress, flags);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -540,7 +561,8 @@ public final class SoftApConfiguration implements Parcelable {
                     in.createTypedArrayList(MacAddress.CREATOR),
                     in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
                     in.readBoolean(), in.readBoolean(), in.readBoolean(), in.readLong(),
-                    in.createTypedArrayList(ScanResult.InformationElement.CREATOR));
+                    in.createTypedArrayList(ScanResult.InformationElement.CREATOR),
+                    in.readParcelable(MacAddress.class.getClassLoader()));
         }
 
         @Override
@@ -904,6 +926,20 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns the randomized MAC address to be used by this configuration.
+     *
+     * The Soft AP may be configured to use a persistent randomized MAC address with
+     * {@link Builder#setMacRandomizationSetting(int)}. This method returns the persistent
+     * randomized MAC address which will be used for the Soft AP controlled by this configuration.
+     *
+     * @hide
+     */
+    @SystemApi
+    public @NonNull MacAddress getPersistentRandomizedMacAddress() {
+        return mPersistentRandomizedMacAddress;
+    }
+
+    /**
      * @hide
      */
     public boolean isUserConfigurationInternal() {
@@ -1024,6 +1060,7 @@ public final class SoftApConfiguration implements Parcelable {
         private boolean mIsUserConfiguration;
         private long mBridgedModeOpportunisticShutdownTimeoutMillis;
         private List<ScanResult.InformationElement> mVendorElements;
+        private MacAddress mPersistentRandomizedMacAddress;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -1053,6 +1090,7 @@ public final class SoftApConfiguration implements Parcelable {
             mIsUserConfiguration = true;
             mBridgedModeOpportunisticShutdownTimeoutMillis = 0;
             mVendorElements = new ArrayList<>();
+            mPersistentRandomizedMacAddress = null;
         }
 
         /**
@@ -1082,6 +1120,7 @@ public final class SoftApConfiguration implements Parcelable {
             mBridgedModeOpportunisticShutdownTimeoutMillis =
                     other.mBridgedModeOpportunisticShutdownTimeoutMillis;
             mVendorElements = new ArrayList<>(other.mVendorElements);
+            mPersistentRandomizedMacAddress = other.mPersistentRandomizedMacAddress;
         }
 
         /**
@@ -1096,13 +1135,22 @@ public final class SoftApConfiguration implements Parcelable {
                     throw new IllegalArgumentException("A MacAddress exist in both client list");
                 }
             }
+
+            // mMacRandomizationSetting supported from S.
+            if (SdkLevel.isAtLeastS() && Compatibility.isChangeEnabled(
+                    FORCE_MUTUAL_EXCLUSIVE_BSSID_MAC_RAMDONIZATION_SETTING)
+                    && mBssid != null && mMacRandomizationSetting != RANDOMIZATION_NONE) {
+                throw new IllegalArgumentException("A BSSID had configured but MAC randomization"
+                        + " setting is not NONE");
+            }
             return new SoftApConfiguration(mWifiSsid, mBssid, mPassphrase,
                     mHiddenSsid, mChannels, mSecurityType, mMaxNumberOfClients,
                     mAutoShutdownEnabled, mShutdownTimeoutMillis, mClientControlByUser,
                     mBlockedClientList, mAllowedClientList, mMacRandomizationSetting,
                     mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
                     mIeee80211beEnabled, mIsUserConfiguration,
-                    mBridgedModeOpportunisticShutdownTimeoutMillis, mVendorElements);
+                    mBridgedModeOpportunisticShutdownTimeoutMillis, mVendorElements,
+                    mPersistentRandomizedMacAddress);
         }
 
         /**
@@ -1191,6 +1239,9 @@ public final class SoftApConfiguration implements Parcelable {
          * Specifies a BSSID for the AP.
          * <p>
          * <li>If not set, defaults to null.</li>
+         *
+         * When this method is called, the caller needs to configure MAC randomization settings to
+         * {@link #RANDOMIZATION_NONE}. See {@link #setMacRandomizationSetting(int)} for details.
          *
          * If multiple bands are requested via {@link #setBands(int[])} or
          * {@link #setChannels(SparseIntArray)}, HAL will derive 2 MAC addresses since framework
@@ -1646,7 +1697,9 @@ public final class SoftApConfiguration implements Parcelable {
          * The Soft AP BSSID will be randomized only if the BSSID isn't set
          * {@link #setBssid(MacAddress)} and this method is either uncalled
          * or called with {@link #RANDOMIZATION_PERSISTENT} or
-         * {@link #RANDOMIZATION_NON_PERSISTENT}.
+         * {@link #RANDOMIZATION_NON_PERSISTENT}. When this method is called with
+         * {@link #RANDOMIZATION_PERSISTENT} or {@link #RANDOMIZATION_NON_PERSISTENT}, the caller
+         * the caller must not call {@link #setBssid(MacAddress)}.
          *
          * <p>
          * <li>If not set, defaults to {@link #RANDOMIZATION_NON_PERSISTENT}</li>
@@ -1815,6 +1868,20 @@ public final class SoftApConfiguration implements Parcelable {
                 throw new UnsupportedOperationException();
             }
             mBridgedModeOpportunisticShutdownTimeoutMillis = timeoutMillis;
+            return this;
+        }
+
+        /**
+         * @param mac persistent randomized MacAddress generated by the frameworks.
+         * @hide
+         */
+        @NonNull
+        public Builder setRandomizedMacAddress(@NonNull MacAddress mac) {
+            if (mac == null) {
+                throw new IllegalArgumentException("setRandomizedMacAddress received"
+                        + " null MacAddress.");
+            }
+            mPersistentRandomizedMacAddress = mac;
             return this;
         }
     }
