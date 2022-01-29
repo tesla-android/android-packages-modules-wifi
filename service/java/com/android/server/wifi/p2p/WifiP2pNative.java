@@ -24,6 +24,7 @@ import android.net.wifi.nl80211.WifiNl80211Manager;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pGroupList;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 import android.os.Handler;
 import android.os.WorkSource;
@@ -406,13 +407,26 @@ public class WifiP2pNative {
     /**
      * Initiate a P2P service discovery with a (optional) timeout.
      *
-     * @param timeout Max time to be spent is peforming discovery.
-     *        Set to 0 to indefinely continue discovery untill and explicit
+     * @param timeout The maximum amount of time to be spent in performing discovery.
+     *        Set to 0 to indefinitely continue discovery until an explicit
      *        |stopFind| is sent.
      * @return boolean value indicating whether operation was successful.
      */
     public boolean p2pFind(int timeout) {
-        return mSupplicantP2pIfaceHal.find(timeout);
+        return mSupplicantP2pIfaceHal.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, timeout);
+    }
+
+    /**
+     * Initiate a P2P device discovery with a (optional) frequency and a (optional) timeout.
+     *
+     * @param freq is the frequency to be scanned.
+     * @param timeout The maximum amount of time to be spent in performing discovery.
+     *        Set to 0 to indefinitely continue discovery until an explicit
+     *        |stopFind| is sent.
+     * @return boolean value indicating whether operation was successful.
+     */
+    public boolean p2pFind(int freq, int timeout) {
+        return mSupplicantP2pIfaceHal.find(freq, timeout);
     }
 
     /**
@@ -843,5 +857,16 @@ public class WifiP2pNative {
      */
     public boolean setWfdR2DeviceInfo(String hex) {
         return mSupplicantP2pIfaceHal.setWfdR2DeviceInfo(hex);
+    }
+
+    /**
+     * Remove the client with the MAC address from the group.
+     *
+     * @param peerAddress Mac address of the client.
+     * @return true if success
+     */
+    public boolean removeClient(String peerAddress) {
+        // The client is deemed as a P2P client, not a legacy client, hence the false.
+        return mSupplicantP2pIfaceHal.removeClient(peerAddress, false);
     }
 }

@@ -410,11 +410,11 @@ public class SupplicantP2pIfaceHalHidlImplTest extends WifiBaseTest {
     public void testFind_success() throws Exception {
         when(mISupplicantP2pIfaceMock.find(anyInt())).thenReturn(mStatusSuccess);
         // Default value when service is not yet initialized.
-        assertFalse(mDut.find(1));
+        assertFalse(mDut.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, 1));
 
         executeAndValidateInitializationSequence(false, false, false);
-        assertTrue(mDut.find(1));
-        assertFalse(mDut.find(-1));
+        assertTrue(mDut.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, 1));
+        assertFalse(mDut.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, -1));
     }
 
     /**
@@ -424,7 +424,7 @@ public class SupplicantP2pIfaceHalHidlImplTest extends WifiBaseTest {
     public void testFind_failure() throws Exception {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.find(anyInt())).thenReturn(mStatusFailure);
-        assertFalse(mDut.find(1));
+        assertFalse(mDut.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, 1));
         // Check that service is still alive.
         assertTrue(mDut.isInitializationComplete());
     }
@@ -436,7 +436,7 @@ public class SupplicantP2pIfaceHalHidlImplTest extends WifiBaseTest {
     public void testFind_exception() throws Exception {
         executeAndValidateInitializationSequence(false, false, false);
         when(mISupplicantP2pIfaceMock.find(anyInt())).thenThrow(mRemoteException);
-        assertFalse(mDut.find(0));
+        assertFalse(mDut.find(WifiP2pManager.WIFI_P2P_SCAN_FULL, 0));
         // Check service is dead.
         assertFalse(mDut.isInitializationComplete());
     }
@@ -2743,6 +2743,15 @@ public class SupplicantP2pIfaceHalHidlImplTest extends WifiBaseTest {
         executeAndValidateInitializationSequence(false, false, false);
         assertTrue(mDut.setMacRandomization(true));
         verify(mISupplicantP2pIfaceMockV12).setMacRandomization(eq(true));
+    }
+
+    /**
+     * Normal scenario for removeClient()
+     */
+    @Test
+    public void testRemoveClient() throws Exception {
+        assertFalse(mDut.removeClient(mPeerMacAddress, true));
+        assertFalse(mDut.removeClient(mPeerMacAddress, false));
     }
 
     /**

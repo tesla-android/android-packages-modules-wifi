@@ -651,6 +651,7 @@ public class WifiManager {
      * @hide
      */
     @SystemApi
+    @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE)
     public static final String WIFI_AP_STATE_CHANGED_ACTION =
         "android.net.wifi.WIFI_AP_STATE_CHANGED";
 
@@ -1780,7 +1781,7 @@ public class WifiManager {
      * Specify a set of SSIDs that will not get disabled internally by the Wi-Fi subsystem when
      * connection issues occur. To clear the list, call this API with an empty Set.
      * <p>
-     * {@link #getSsidsDoNotBlocklist()} can be used to check the SSIDs that have been set.
+     * {@link #getSsidsAllowlist()} can be used to check the SSIDs that have been set.
      * @param ssids - list of WifiSsid that will not get disabled internally
      * @throws SecurityException if the calling app is not a Device Owner (DO), Profile Owner (PO),
      *                           or a privileged app that has one of the permissions required by
@@ -1792,12 +1793,12 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
-    public void setSsidsDoNotBlocklist(@NonNull Set<WifiSsid> ssids) {
+    public void setSsidsAllowlist(@NonNull Set<WifiSsid> ssids) {
         if (ssids == null) {
             throw new IllegalArgumentException(TAG + ": ssids can not be null");
         }
         try {
-            mService.setSsidsDoNotBlocklist(mContext.getOpPackageName(), new ArrayList<>(ssids));
+            mService.setSsidsAllowlist(mContext.getOpPackageName(), new ArrayList<>(ssids));
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -1815,10 +1816,10 @@ public class WifiManager {
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
             android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
-    public @NonNull Set<WifiSsid> getSsidsDoNotBlocklist() {
+    public @NonNull Set<WifiSsid> getSsidsAllowlist() {
         try {
             return new ArraySet<WifiSsid>(
-                    mService.getSsidsDoNotBlocklist(mContext.getOpPackageName()));
+                    mService.getSsidsAllowlist(mContext.getOpPackageName()));
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
@@ -9121,4 +9122,26 @@ public class WifiManager {
      * @hide
      */
     public static final String EXTRA_P2P_DISPLAY_PIN = "android.net.wifi.extra.P2P_DISPLAY_PIN";
+
+    /**
+     * Method for WifiDialog to notify the framework of a reply to a P2P Invitation Received dialog.
+     * @param dialogId id of the replying dialog.
+     * @param accepted Whether the invitation was accepted.
+     * @param optionalPin PIN of the reply, or {@code null} if none was supplied.
+     * @hide
+     */
+    public void replyToP2pInvitationReceivedDialog(
+            int dialogId, boolean accepted, @Nullable String optionalPin) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "notifyP2pInvitationResponse: "
+                    + "dialogId=" + dialogId
+                    + ", accepted=" + accepted
+                    + ", pin=" + optionalPin);
+        }
+        try {
+            mService.replyToP2pInvitationReceivedDialog(dialogId, accepted, optionalPin);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
 }

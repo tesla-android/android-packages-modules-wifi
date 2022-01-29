@@ -452,9 +452,9 @@ public class WifiBlocklistMonitorTest {
         List<WifiSsid> expectedSsids = new ArrayList<>();
         expectedSsids.add(WifiSsid.fromString(config1.SSID));
         expectedSsids.add(WifiSsid.fromString(config2.SSID));
-        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(expectedSsids);
+        mWifiBlocklistMonitor.setSsidsAllowlist(expectedSsids);
         assertEquals(expectedSsids,
-                mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+                mWifiBlocklistMonitor.getSsidsAllowlist());
 
         // verify that BSSID for config1 still gets block because it's not enterprise owned
         mWifiBlocklistMonitor.handleBssidConnectionFailure(TEST_BSSID_1, config1,
@@ -470,9 +470,9 @@ public class WifiBlocklistMonitorTest {
 
         // Verify that setting the "do not blocklist" to empty list will make the BSSID
         // blockable again.
-        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(Collections.EMPTY_LIST);
+        mWifiBlocklistMonitor.setSsidsAllowlist(Collections.EMPTY_LIST);
         assertEquals(Collections.EMPTY_LIST,
-                mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+                mWifiBlocklistMonitor.getSsidsAllowlist());
         mWifiBlocklistMonitor.handleBssidConnectionFailure(TEST_BSSID_2, config2,
                 WifiBlocklistMonitor.REASON_WRONG_PASSWORD,
                 TEST_GOOD_RSSI);
@@ -490,8 +490,8 @@ public class WifiBlocklistMonitorTest {
         // Add SSID of openNetwork2 to the "do not blocklist"
         List<WifiSsid> expectedSsids = new ArrayList<>();
         expectedSsids.add(WifiSsid.fromString(openNetwork2.SSID));
-        mWifiBlocklistMonitor.setSsidsDoNotBlocklist(expectedSsids);
-        assertEquals(expectedSsids, mWifiBlocklistMonitor.getSsidsDoNotBlocklist());
+        mWifiBlocklistMonitor.setSsidsAllowlist(expectedSsids);
+        assertEquals(expectedSsids, mWifiBlocklistMonitor.getSsidsAllowlist());
 
         // verify that openNetwork1 gets disabled due to wrong password
         assertTrue(mWifiBlocklistMonitor.updateNetworkSelectionStatus(openNetwork1,

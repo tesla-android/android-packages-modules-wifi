@@ -1142,6 +1142,7 @@ public class WifiConfigManager {
                 .setConnectChoice(externalConfig.getNetworkSelectionStatus().getConnectChoice());
         internalConfig.getNetworkSelectionStatus().setConnectChoiceRssi(
                 externalConfig.getNetworkSelectionStatus().getConnectChoiceRssi());
+        internalConfig.setBssidAllowlist(externalConfig.getBssidAllowlistInternal());
     }
 
     /**

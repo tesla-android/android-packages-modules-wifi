@@ -160,7 +160,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     private ArgumentCaptor<SubscriptionManager.OnSubscriptionsChangedListener>
             mListenerArgumentCaptor = ArgumentCaptor.forClass(
                     SubscriptionManager.OnSubscriptionsChangedListener.class);
-    private TelephonyManager.CarrierPrivilegesListener mCarrierPrivilegesListener;
 
     @Before
     public void setUp() throws Exception {
@@ -289,14 +288,6 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         verify(mSubscriptionManager).addOnSubscriptionsChangedListener(any(),
                 mListenerArgumentCaptor.capture());
         mListenerArgumentCaptor.getValue().onSubscriptionsChanged();
-        if (SdkLevel.isAtLeastT()) {
-            ArgumentCaptor<TelephonyManager.CarrierPrivilegesListener> listenerArgumentCaptor =
-                    ArgumentCaptor.forClass(TelephonyManager.CarrierPrivilegesListener.class);
-            verify(mTelephonyManager, times(2))
-                    .addCarrierPrivilegesListener(anyInt(), any(),
-                            listenerArgumentCaptor.capture());
-            mCarrierPrivilegesListener = listenerArgumentCaptor.getValue();
-        }
         mLooper.dispatchAll();
         when(mClock.getElapsedSinceBootMillis()).thenReturn(1000L);
     }
@@ -2222,7 +2213,13 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
     @Test
     public void testCarrierPrivilegedListenerChange() {
         assumeTrue(SdkLevel.isAtLeastT());
-        mCarrierPrivilegesListener.onCarrierPrivilegesChanged(Collections.emptyList(), new int[0]);
+        TelephonyManager.CarrierPrivilegesListener carrierPrivilegesListener;
+        ArgumentCaptor<TelephonyManager.CarrierPrivilegesListener> listenerArgumentCaptor =
+                ArgumentCaptor.forClass(TelephonyManager.CarrierPrivilegesListener.class);
+        verify(mTelephonyManager, times(2))
+                .addCarrierPrivilegesListener(anyInt(), any(), listenerArgumentCaptor.capture());
+        carrierPrivilegesListener = listenerArgumentCaptor.getValue();
+        carrierPrivilegesListener.onCarrierPrivilegesChanged(Collections.emptyList(), new int[0]);
         verify(mWifiNetworkSuggestionsManager).updateCarrierPrivilegedApps(any());
     }
 }

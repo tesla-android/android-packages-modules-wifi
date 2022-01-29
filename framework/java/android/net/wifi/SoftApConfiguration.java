@@ -340,6 +340,11 @@ public final class SoftApConfiguration implements Parcelable {
      */
     public static final int SECURITY_TYPE_WPA3_SAE = 3;
 
+    /**
+     * The definition of security type WPA3-OWE Transition.
+     */
+    public static final int SECURITY_TYPE_WPA3_OWE_TRANSITION = 4;
+
     /** @hide */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(prefix = { "SECURITY_TYPE_" }, value = {
@@ -347,6 +352,7 @@ public final class SoftApConfiguration implements Parcelable {
         SECURITY_TYPE_WPA2_PSK,
         SECURITY_TYPE_WPA3_SAE_TRANSITION,
         SECURITY_TYPE_WPA3_SAE,
+        SECURITY_TYPE_WPA3_OWE_TRANSITION,
     })
     public @interface SecurityType {}
 
@@ -704,7 +710,8 @@ public final class SoftApConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_OPEN},
      * {@link #SECURITY_TYPE_WPA2_PSK},
      * {@link #SECURITY_TYPE_WPA3_SAE_TRANSITION},
-     * {@link #SECURITY_TYPE_WPA3_SAE}
+     * {@link #SECURITY_TYPE_WPA3_SAE},
+     * {@link #SECURITY_TYPE_WPA3_OWE_TRANSITION}
      */
     public @SecurityType int getSecurityType() {
         return mSecurityType;
@@ -1231,19 +1238,25 @@ public final class SoftApConfiguration implements Parcelable {
          * {@link #SECURITY_TYPE_OPEN},
          * {@link #SECURITY_TYPE_WPA2_PSK},
          * {@link #SECURITY_TYPE_WPA3_SAE_TRANSITION},
-         * {@link #SECURITY_TYPE_WPA3_SAE}.
+         * {@link #SECURITY_TYPE_WPA3_SAE},
+         * {@link #SECURITY_TYPE_WPA3_OWE_TRANSITION}.
          * @param passphrase The passphrase to use for sepcific {@code securityType} configuration
          * or null with {@link #SECURITY_TYPE_OPEN}.
          *
          * @return Builder for chaining.
          * @throws IllegalArgumentException when the passphrase length is invalid and
-         *         {@code securityType} is not {@link #SECURITY_TYPE_OPEN}
+         *         {@code securityType} is not {@link #SECURITY_TYPE_OPEN} and
+         *         not {@link #SECURITY_TYPE_WPA3_OWE_TRANSITION}
          *         or non-null passphrase and {@code securityType} is
-         *         {@link #SECURITY_TYPE_OPEN}.
+         *         {@link #SECURITY_TYPE_OPEN} or {@link #SECURITY_TYPE_WPA3_OWE_TRANSITION}.
          */
         @NonNull
         public Builder setPassphrase(@Nullable String passphrase, @SecurityType int securityType) {
-            if (securityType == SECURITY_TYPE_OPEN) {
+            if (!SdkLevel.isAtLeastT() && securityType == SECURITY_TYPE_WPA3_OWE_TRANSITION) {
+                throw new UnsupportedOperationException();
+            }
+            if (securityType == SECURITY_TYPE_OPEN
+                    || securityType == SECURITY_TYPE_WPA3_OWE_TRANSITION) {
                 if (passphrase != null) {
                     throw new IllegalArgumentException(
                             "passphrase should be null when security type is open");

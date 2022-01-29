@@ -570,6 +570,9 @@ public class HostapdHalAidlImp implements IHostapdHal {
             case SoftApConfiguration.SECURITY_TYPE_WPA3_SAE:
                 encryptionType = EncryptionType.WPA3_SAE;
                 break;
+            case SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION:
+                encryptionType = EncryptionType.OWE_TRANSITION;
+                break;
             default:
                 // We really shouldn't default to None, but this was how NetworkManagementService
                 // used to do this.
@@ -834,14 +837,20 @@ public class HostapdHalAidlImp implements IHostapdHal {
     private ChannelParams[] prepareChannelParamsList(SoftApConfiguration config)
             throws IllegalArgumentException {
         int nChannels = 1;
+        boolean repeatBand = false;
         if (SdkLevel.isAtLeastS()) {
             nChannels = config.getChannels().size();
+        }
+        if (config.getSecurityType()
+                == SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION) {
+            nChannels = 2;
+            repeatBand = true;
         }
         ChannelParams[] channelParamsList = new ChannelParams[nChannels];
         for (int i = 0; i < nChannels; i++) {
             int band = config.getBand();
             int channel = config.getChannel();
-            if (SdkLevel.isAtLeastS()) {
+            if (SdkLevel.isAtLeastS() && !repeatBand) {
                 band = config.getChannels().keyAt(i);
                 channel = config.getChannels().valueAt(i);
             }

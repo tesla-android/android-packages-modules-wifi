@@ -77,9 +77,9 @@ interface IWifiManager
 
     Map getAllMatchingFqdnsForScanResults(in List<ScanResult> scanResult);
 
-    void setSsidsDoNotBlocklist(String packageName, in List<WifiSsid> ssids);
+    void setSsidsAllowlist(String packageName, in List<WifiSsid> ssids);
 
-    List getSsidsDoNotBlocklist(String packageName);
+    List getSsidsAllowlist(String packageName);
 
     Map getMatchingOsuProviders(in List<ScanResult> scanResult);
 
@@ -374,4 +374,6 @@ interface IWifiManager
     boolean setStaConcurrencyForMultiInternetMode(int mode);
 
     void validateCurrentWifiMeetsAdminRequirements();
+
+    void replyToP2pInvitationReceivedDialog(int dialogId, boolean accepted, String optionalPin);
 }

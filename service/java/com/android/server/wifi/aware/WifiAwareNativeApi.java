@@ -38,12 +38,14 @@ import android.hardware.wifi.V1_0.NanTxType;
 import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
 import android.hardware.wifi.V1_6.NanCipherSuiteType;
+import android.net.wifi.aware.AwareParams;
 import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.PublishConfig;
 import android.net.wifi.aware.SubscribeConfig;
 import android.net.wifi.aware.WifiAwareDataPathSecurityConfig;
 import android.net.wifi.util.HexEncoding;
 import android.os.RemoteException;
+import android.util.ArrayMap;
 import android.util.Log;
 import android.util.SparseIntArray;
 
@@ -87,7 +89,6 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
     public void enableVerboseLogging(boolean verbose) {
         mDbg = verbose | VDBG;
     }
-
 
     private void recordTransactionId(int transactionId) {
         if (!VDBG) return;
@@ -183,8 +184,48 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
     /* package */ static final String PARAM_MAC_RANDOM_INTERVAL_SEC = "mac_random_interval_sec";
     private static final int PARAM_MAC_RANDOM_INTERVAL_SEC_DEFAULT = 1800; // 30 minutes
 
-    private Map<String, Map<String, Integer>> mSettablePowerParameters = new HashMap<>();
-    private Map<String, Integer> mSettableParameters = new HashMap<>();
+    private final Map<String, Map<String, Integer>> mSettablePowerParameters = new HashMap<>();
+    private final Map<String, Integer> mSettableParameters = new HashMap<>();
+    private final Map<String, Integer> mExternalSetParams = new ArrayMap<>();
+
+    /**
+     * Accept using parameter from external to config the Aware
+     */
+    public void setAwareParams(AwareParams parameters) {
+        mExternalSetParams.clear();
+        if (parameters == null) {
+            return;
+        }
+        if (mDbg) {
+            Log.v(TAG, "setting Aware Parameters=" + parameters);
+        }
+        if (parameters.getDiscoveryWindowWakeInterval24Ghz() > 0
+                && parameters.getDiscoveryWindowWakeInterval24Ghz() <= 5) {
+            mExternalSetParams.put(PARAM_DW_24GHZ,
+                    parameters.getDiscoveryWindowWakeInterval24Ghz());
+        }
+        if (parameters.getDiscoveryWindowWakeInterval5Ghz() >= 0
+                && parameters.getDiscoveryWindowWakeInterval5Ghz() <= 5) {
+            mExternalSetParams.put(PARAM_DW_5GHZ, parameters.getDiscoveryWindowWakeInterval5Ghz());
+        }
+        if (parameters.getDiscoveryBeaconIntervalMills() > 0) {
+            mExternalSetParams.put(PARAM_DISCOVERY_BEACON_INTERVAL_MS,
+                    parameters.getDiscoveryBeaconIntervalMills());
+        }
+        if (parameters.getNumSpatialStreamsInDiscovery() > 0) {
+            mExternalSetParams.put(PARAM_NUM_SS_IN_DISCOVERY,
+                    parameters.getNumSpatialStreamsInDiscovery());
+        }
+        if (parameters.getMacRandomizationIntervalSeconds() > 0
+                && parameters.getMacRandomizationIntervalSeconds() <= 1800) {
+            mExternalSetParams.put(PARAM_MAC_RANDOM_INTERVAL_SEC,
+                    parameters.getMacRandomizationIntervalSeconds());
+        }
+        if (parameters.isDwEarlyTerminationEnabled()) {
+            mExternalSetParams.put(PARAM_ENABLE_DW_EARLY_TERM, 1);
+        }
+    }
+
 
     /**
      * Interpreter of adb shell command 'adb shell wifiaware native_api ...'.
@@ -317,6 +358,7 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
 
         mSettableParameters.put(PARAM_MAC_RANDOM_INTERVAL_SEC,
                 PARAM_MAC_RANDOM_INTERVAL_SEC_DEFAULT);
+        mExternalSetParams.clear();
     }
 
     @Override
@@ -506,8 +548,9 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     req.configParams.includeSubscribeServiceIdsInBeacon = true;
                     req.configParams.numberOfSubscribeServiceIdsInBeacon = 0;
                     req.configParams.rssiWindowSize = 8;
-                    req.configParams.macAddressRandomizationIntervalSec = mSettableParameters.get(
-                            PARAM_MAC_RANDOM_INTERVAL_SEC);
+                    req.configParams.macAddressRandomizationIntervalSec =
+                            mExternalSetParams.getOrDefault(PARAM_MAC_RANDOM_INTERVAL_SEC,
+                                    mSettableParameters.get(PARAM_MAC_RANDOM_INTERVAL_SEC));
 
                     req.configParams.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ] = config24;
                     req.configParams.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ] = config5;
@@ -569,8 +612,9 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     req.configParams.includeSubscribeServiceIdsInBeacon = true;
                     req.configParams.numberOfSubscribeServiceIdsInBeacon = 0;
                     req.configParams.rssiWindowSize = 8;
-                    req.configParams.macAddressRandomizationIntervalSec = mSettableParameters.get(
-                            PARAM_MAC_RANDOM_INTERVAL_SEC);
+                    req.configParams.macAddressRandomizationIntervalSec =
+                            mExternalSetParams.getOrDefault(PARAM_MAC_RANDOM_INTERVAL_SEC,
+                                    mSettableParameters.get(PARAM_MAC_RANDOM_INTERVAL_SEC));
 
                     req.configParams.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ] = config24;
                     req.configParams.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ] = config5;
@@ -618,8 +662,9 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     req.includeSubscribeServiceIdsInBeacon = true;
                     req.numberOfSubscribeServiceIdsInBeacon = 0;
                     req.rssiWindowSize = 8;
-                    req.macAddressRandomizationIntervalSec = mSettableParameters.get(
-                            PARAM_MAC_RANDOM_INTERVAL_SEC);
+                    req.macAddressRandomizationIntervalSec =
+                            mExternalSetParams.getOrDefault(PARAM_MAC_RANDOM_INTERVAL_SEC,
+                                    mSettableParameters.get(PARAM_MAC_RANDOM_INTERVAL_SEC));
 
                     req.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ] = config24;
                     req.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ] = config5;
@@ -649,8 +694,9 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                     req.includeSubscribeServiceIdsInBeacon = true;
                     req.numberOfSubscribeServiceIdsInBeacon = 0;
                     req.rssiWindowSize = 8;
-                    req.macAddressRandomizationIntervalSec = mSettableParameters.get(
-                            PARAM_MAC_RANDOM_INTERVAL_SEC);
+                    req.macAddressRandomizationIntervalSec =
+                            mExternalSetParams.getOrDefault(PARAM_MAC_RANDOM_INTERVAL_SEC,
+                                    mSettableParameters.get(PARAM_MAC_RANDOM_INTERVAL_SEC));
 
                     req.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ] = config24;
                     req.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ] = config5;
@@ -1441,16 +1487,16 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         }
 
         updateSingleConfigForPowerSettings(req.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ],
-                mSettablePowerParameters.get(key).get(PARAM_DW_5GHZ));
+                getSettablePowerParameters(key, PARAM_DW_5GHZ));
         updateSingleConfigForPowerSettings(req.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ],
-                mSettablePowerParameters.get(key).get(PARAM_DW_24GHZ));
+                getSettablePowerParameters(key, PARAM_DW_24GHZ));
 
-        configSupplemental12.discoveryBeaconIntervalMs = mSettablePowerParameters.get(key).get(
+        configSupplemental12.discoveryBeaconIntervalMs = getSettablePowerParameters(key,
                 PARAM_DISCOVERY_BEACON_INTERVAL_MS);
-        configSupplemental12.numberOfSpatialStreamsInDiscovery = mSettablePowerParameters.get(
-                key).get(PARAM_NUM_SS_IN_DISCOVERY);
-        configSupplemental12.enableDiscoveryWindowEarlyTermination = mSettablePowerParameters.get(
-                key).get(PARAM_ENABLE_DW_EARLY_TERM) != 0;
+        configSupplemental12.numberOfSpatialStreamsInDiscovery = getSettablePowerParameters(key,
+                PARAM_NUM_SS_IN_DISCOVERY);
+        configSupplemental12.enableDiscoveryWindowEarlyTermination = getSettablePowerParameters(key,
+                PARAM_ENABLE_DW_EARLY_TERM) != 0;
     }
 
     /**
@@ -1467,19 +1513,26 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
         }
 
         updateSingleConfigForPowerSettings(req.bandSpecificConfig[NanBandIndex.NAN_BAND_5GHZ],
-                mSettablePowerParameters.get(key).get(PARAM_DW_5GHZ));
+                getSettablePowerParameters(key, PARAM_DW_5GHZ));
         updateSingleConfigForPowerSettings(req.bandSpecificConfig[NanBandIndex.NAN_BAND_24GHZ],
-                mSettablePowerParameters.get(key).get(PARAM_DW_24GHZ));
+                getSettablePowerParameters(key, PARAM_DW_24GHZ));
         updateSingleConfigForPowerSettings(req.bandSpecificConfig[
                 android.hardware.wifi.V1_4.NanBandIndex.NAN_BAND_6GHZ],
-                mSettablePowerParameters.get(key).get(PARAM_DW_6GHZ));
+                getSettablePowerParameters(key, PARAM_DW_6GHZ));
 
-        configSupplemental12.discoveryBeaconIntervalMs = mSettablePowerParameters.get(key).get(
+        configSupplemental12.discoveryBeaconIntervalMs = getSettablePowerParameters(key,
                 PARAM_DISCOVERY_BEACON_INTERVAL_MS);
-        configSupplemental12.numberOfSpatialStreamsInDiscovery = mSettablePowerParameters.get(
-                key).get(PARAM_NUM_SS_IN_DISCOVERY);
-        configSupplemental12.enableDiscoveryWindowEarlyTermination = mSettablePowerParameters.get(
-                key).get(PARAM_ENABLE_DW_EARLY_TERM) != 0;
+        configSupplemental12.numberOfSpatialStreamsInDiscovery = getSettablePowerParameters(key,
+                PARAM_NUM_SS_IN_DISCOVERY);
+        configSupplemental12.enableDiscoveryWindowEarlyTermination =
+                getSettablePowerParameters(key, PARAM_ENABLE_DW_EARLY_TERM) != 0;
+    }
+
+    private int getSettablePowerParameters(String state, String key) {
+        if (mExternalSetParams.containsKey(key)) {
+            return mExternalSetParams.get(key);
+        }
+        return mSettablePowerParameters.get(state).get(key);
     }
 
     private void updateSingleConfigForPowerSettings(NanBandSpecificConfig cfg, int override) {
@@ -1556,6 +1609,7 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("WifiAwareNativeApi:");
         pw.println("  mSettableParameters: " + mSettableParameters);
+        pw.println("  mExternalSetParams" + mExternalSetParams);
         mHal.dump(fd, pw, args);
     }
 }
