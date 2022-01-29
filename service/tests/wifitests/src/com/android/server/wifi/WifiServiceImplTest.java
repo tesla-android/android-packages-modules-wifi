@@ -6805,9 +6805,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         // For these tests, always use distinct interface names for LOHS and tethered.
         mLohsInterfaceName = WIFI_IFACE_NAME2;
 
-        mLooper.startAutoDispatch();
         setupLocalOnlyHotspot();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
         reset(mActiveModeWarden);
 
         when(mActiveModeWarden.canRequestMoreSoftApManagers(
