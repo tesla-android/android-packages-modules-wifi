@@ -18,6 +18,7 @@ package com.android.server.wifi.p2p;
 
 import static android.net.NetworkInfo.DetailedState.FAILED;
 import static android.net.NetworkInfo.DetailedState.IDLE;
+import static android.net.wifi.WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE;
 
 import static com.android.dx.mockito.inline.extended.ExtendedMockito.mockitoSession;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_P2P_DEVICE_NAME;
@@ -28,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
@@ -44,6 +46,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
@@ -55,6 +58,7 @@ import android.annotation.Nullable;
 import android.app.AlarmManager;
 import android.app.BroadcastOptions;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
+import android.content.AttributionSource;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -91,6 +95,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.Process;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.os.WorkSource;
@@ -158,6 +163,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
     private ArgumentCaptor<BroadcastReceiver> mBcastRxCaptor = ArgumentCaptor.forClass(
             BroadcastReceiver.class);
+    private ArgumentCaptor<WorkSource> mWsCaptor = ArgumentCaptor.forClass(WorkSource.class);
     private Binder mClient1;
     private Binder mClient2;
 
@@ -181,6 +187,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private WifiP2pDevice mTestThisDevice;
     private ArgumentCaptor<Message> mMessageCaptor = ArgumentCaptor.forClass(Message.class);
     private MockitoSession mStaticMockSession = null;
+    private Bundle mAttribution = new Bundle();
 
     @Mock Bundle mBundle;
     @Mock Context mContext;
@@ -768,7 +775,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private void checkIsP2pInitWhenClientConnected(boolean expectInit,
             Binder clientBinder, WorkSource expectedRequestorWs)
             throws Exception {
-        mWifiP2pServiceImpl.getMessenger(clientBinder, TEST_PACKAGE_NAME);
+        mWifiP2pServiceImpl.getMessenger(clientBinder, TEST_PACKAGE_NAME, null);
         if (expectInit) {
             // send a command to force P2P enabled.
             sendSimpleMsg(mClientMessenger, WifiP2pManager.DISCOVER_PEERS);
@@ -5266,5 +5273,63 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         Message message = mMessageCaptor.getValue();
         assertEquals(WifiP2pManager.REMOVE_CLIENT_FAILED, message.what);
         assertEquals(WifiP2pManager.P2P_UNSUPPORTED, message.arg1);
+    }
+
+    /**
+     * Verify attribution is passed in correctly by WifiP2pManager#getMessenger.
+     */
+    @Test
+    public void testGetMessenger_InvalidAttributions() {
+        assumeTrue(SdkLevel.isAtLeastS());
+        AttributionSource attributionSource = mock(AttributionSource.class);
+        when(attributionSource.checkCallingUid()).thenReturn(true);
+        when(attributionSource.isTrusted(any(Context.class))).thenReturn(true);
+        mAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, attributionSource);
+        mWifiP2pServiceImpl = spy(mWifiP2pServiceImpl);
+        lenient().when(mWifiP2pServiceImpl.getMockableCallingUid()).thenReturn(Process.SYSTEM_UID);
+        assertThrows(SecurityException.class, () -> {
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, null);
+        });
+
+        assertThrows(SecurityException.class, () -> {
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, new Bundle());
+        });
+
+        assertThrows(SecurityException.class, () -> {
+            Bundle nullEntry = new Bundle();
+            nullEntry.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, null);
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, nullEntry);
+        });
+
+        assertThrows(SecurityException.class, () -> {
+            Bundle incorrectEntry = new Bundle();
+            incorrectEntry.putInt(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, 10);
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, incorrectEntry);
+        });
+
+        when(attributionSource.checkCallingUid()).thenReturn(false);
+        assertThrows(SecurityException.class, () -> {
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, mAttribution);
+        });
+        when(attributionSource.checkCallingUid()).thenReturn(true); // restore
+
+        // single first attributions should not fail - even if (theoretically, doesn't happen in
+        // practice) are not trusted. I.e. this call checks that this method isn't called.
+        AttributionSource freshAs = mock(AttributionSource.class);
+        Bundle freshAttribution = new Bundle();
+        freshAttribution.putParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE, freshAs);
+        when(freshAs.checkCallingUid()).thenReturn(true);
+        when(freshAs.isTrusted(any(Context.class))).thenReturn(false);
+        mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, freshAttribution);
+        verify(freshAs, never()).isTrusted(any());
+
+        AttributionSource originalCaller = mock(AttributionSource.class);
+        when(originalCaller.getUid()).thenReturn(12345);
+        when(originalCaller.getPackageName()).thenReturn(TEST_PACKAGE_NAME + ".other");
+        when(originalCaller.isTrusted(any(Context.class))).thenReturn(false);
+        when(attributionSource.getNext()).thenReturn(originalCaller);
+        assertThrows(SecurityException.class, () -> {
+            mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, mAttribution);
+        });
     }
 }

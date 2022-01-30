@@ -1211,8 +1211,9 @@ public class WifiP2pManager {
      */
     public Channel initialize(Context srcContext, Looper srcLooper, ChannelListener listener) {
         Binder binder = new Binder();
+        Bundle extras = prepareExtrasBundle(srcContext);
         Channel channel = initializeChannel(srcContext, srcLooper, listener,
-                getMessenger(binder, srcContext.getOpPackageName()), binder);
+                getMessenger(binder, srcContext.getOpPackageName(), extras), binder);
         return channel;
     }
 
@@ -1227,10 +1228,14 @@ public class WifiP2pManager {
     }
 
     private Bundle prepareExtrasBundle(Channel c) {
+        return prepareExtrasBundle(c.mContext);
+    }
+
+    private Bundle prepareExtrasBundle(Context context) {
         Bundle bundle = new Bundle();
         if (SdkLevel.isAtLeastS()) {
             bundle.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
-                    c.mContext.getAttributionSource());
+                    context.getAttributionSource());
         }
         return bundle;
     }
@@ -2122,26 +2127,13 @@ public class WifiP2pManager {
         }
     }
 
-    private Messenger getMessenger(@NonNull Binder binder, @Nullable String packageName) {
+    private Messenger getMessenger(@NonNull Binder binder, @Nullable String packageName,
+            @NonNull Bundle extras) {
         try {
-            return mService.getMessenger(binder, packageName);
+            return mService.getMessenger(binder, packageName, extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
-    }
-
-    /**
-     * Get a reference to WifiP2pService handler. This is used to establish
-     * an AsyncChannel communication with WifiService
-     *
-     * @param binder A binder for the service to associate with this client.
-     *
-     * @return Messenger pointing to the WifiP2pService handler
-     * @hide
-     */
-    public Messenger getMessenger(Binder binder) {
-        // No way to determine package name in this case.
-        return getMessenger(binder, null);
     }
 
     /**

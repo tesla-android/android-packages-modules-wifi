@@ -16,19 +16,31 @@
 
 package android.net.wifi.p2p;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
+import static android.net.wifi.WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import android.content.AttributionSource;
 import android.content.Context;
+import android.os.Bundle;
 import android.os.test.TestLooper;
 
 import androidx.test.filters.SmallTest;
+
+import com.android.modules.utils.build.SdkLevel;
 
 import libcore.junit.util.ResourceLeakageDetector;
 
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -40,6 +52,8 @@ public class WifiP2pManagerTest {
     private WifiP2pManager mDut;
     private TestLooper mTestLooper;
 
+    private static final String PACKAGE_NAME = "some.package.name";
+
     @Mock
     public Context mContextMock;
     @Mock
@@ -49,12 +63,35 @@ public class WifiP2pManagerTest {
     public ResourceLeakageDetector.LeakageDetectorRule leakageDetectorRule =
             ResourceLeakageDetector.getRule();
 
+    ArgumentCaptor<Bundle> mBundleCaptor = ArgumentCaptor.forClass(Bundle.class);
+
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
         mDut = new WifiP2pManager(mP2pServiceMock);
         mTestLooper = new TestLooper();
+
+        when(mContextMock.getOpPackageName()).thenReturn(PACKAGE_NAME);
+        if (SdkLevel.isAtLeastS()) {
+            AttributionSource attributionSource = mock(AttributionSource.class);
+            when(mContextMock.getAttributionSource()).thenReturn(attributionSource);
+        }
+    }
+
+    /**
+     * Validate initialization flow.
+     */
+    @Test
+    public void testInitialize() throws Exception {
+        mDut.initialize(mContextMock, mTestLooper.getLooper(), null);
+        verify(mP2pServiceMock).getMessenger(any(), eq(PACKAGE_NAME), mBundleCaptor.capture());
+        if (SdkLevel.isAtLeastS()) {
+            assertEquals(mContextMock.getAttributionSource(),
+                    mBundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        } else {
+            assertNull(mBundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
+        }
     }
 
     /**
