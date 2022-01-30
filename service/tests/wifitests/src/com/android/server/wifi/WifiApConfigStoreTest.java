@@ -636,9 +636,13 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void generateLohsConfig_forwardsCustomMac() throws Exception {
         WifiApConfigStore store = createWifiApConfigStore();
-        SoftApConfiguration customConfig = new SoftApConfiguration.Builder()
-                .setBssid(TEST_SAP_BSSID_MAC)
-                .build();
+        SoftApConfiguration.Builder customConfigBuilder = new SoftApConfiguration.Builder()
+                .setBssid(TEST_SAP_BSSID_MAC);
+        if (SdkLevel.isAtLeastS()) {
+            customConfigBuilder.setMacRandomizationSetting(
+                    SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        SoftApConfiguration customConfig = customConfigBuilder.build();
         SoftApConfiguration softApConfig = store.generateLocalOnlyHotspotConfig(
                 mContext, customConfig, mSoftApCapability);
         assertThat(softApConfig.getBssid().toString()).isNotEmpty();
@@ -716,6 +720,9 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         mResources.setBoolean(R.bool.config_wifi_ap_mac_randomization_supported, true);
         Builder baseConfigBuilder = new SoftApConfiguration.Builder();
         baseConfigBuilder.setBssid(TEST_SAP_BSSID_MAC);
+        if (SdkLevel.isAtLeastS()) {
+            baseConfigBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
 
         WifiApConfigStore store = createWifiApConfigStore();
         SoftApConfiguration config = store.randomizeBssidIfUnset(mContext,
@@ -1104,9 +1111,14 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void testBssidDenyIfCallerWithoutPrivileged() throws Exception {
         WifiApConfigStore store = createWifiApConfigStore();
-        SoftApConfiguration config = new SoftApConfiguration.Builder(store.getApConfiguration())
-                .setBssid(TEST_SAP_BSSID_MAC).build();
-        assertFalse(WifiApConfigStore.validateApWifiConfiguration(config, false, mContext));
+        SoftApConfiguration.Builder configBuilder =
+                new SoftApConfiguration.Builder(store.getApConfiguration())
+                .setBssid(TEST_SAP_BSSID_MAC);
+        if (SdkLevel.isAtLeastS()) {
+            configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(configBuilder.build(),
+                false, mContext));
     }
 
     /**
@@ -1115,9 +1127,14 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
     @Test
     public void testBssidAllowIfCallerOwnPrivileged() throws Exception {
         WifiApConfigStore store = createWifiApConfigStore();
-        SoftApConfiguration config = new SoftApConfiguration.Builder(store.getApConfiguration())
-                .setBssid(TEST_SAP_BSSID_MAC).build();
-        assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+        SoftApConfiguration.Builder configBuilder =
+                new SoftApConfiguration.Builder(store.getApConfiguration())
+                .setBssid(TEST_SAP_BSSID_MAC);
+        if (SdkLevel.isAtLeastS()) {
+            configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(configBuilder.build(),
+                true, mContext));
     }
 
     @Test
@@ -1272,5 +1289,14 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         verifyUpgradeConfiguration(store, false, true);
         verifyUpgradeConfiguration(store, true, false);
         verifyUpgradeConfiguration(store, false, false);
+    }
+
+    @Test
+    public void testRandomizedMacAddress() throws Exception {
+        WifiApConfigStore store = createWifiApConfigStore();
+        assertNotNull(store.getApConfiguration().getPersistentRandomizedMacAddress());
+        assertNotNull(store.generateLocalOnlyHotspotConfig(mContext, null, mSoftApCapability));
+        assertNotNull(store.generateLocalOnlyHotspotConfig(mContext, store.getApConfiguration(),
+                mSoftApCapability));
     }
 }

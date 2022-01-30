@@ -1846,6 +1846,9 @@ public class SoftApManagerTest extends WifiBaseTest {
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
         configBuilder.setSsid(TEST_SSID);
         configBuilder.setBssid(TEST_CLIENT_MAC_ADDRESS);
+        if (SdkLevel.isAtLeastS()) {
+            configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
         SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
                 IFACE_IP_MODE_LOCAL_ONLY, configBuilder.build(), mTestSoftApCapability);
         ArgumentCaptor<MacAddress> mac = ArgumentCaptor.forClass(MacAddress.class);
@@ -1863,6 +1866,9 @@ public class SoftApManagerTest extends WifiBaseTest {
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
         configBuilder.setSsid(TEST_SSID);
         configBuilder.setBssid(TEST_CLIENT_MAC_ADDRESS);
+        if (SdkLevel.isAtLeastS()) {
+            configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
         SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
                 IFACE_IP_MODE_LOCAL_ONLY, configBuilder.build(), mTestSoftApCapability);
         ArgumentCaptor<MacAddress> mac = ArgumentCaptor.forClass(MacAddress.class);
@@ -1881,6 +1887,9 @@ public class SoftApManagerTest extends WifiBaseTest {
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ);
         configBuilder.setSsid(TEST_SSID);
         configBuilder.setBssid(TEST_CLIENT_MAC_ADDRESS);
+        if (SdkLevel.isAtLeastS()) {
+            configBuilder.setMacRandomizationSetting(SoftApConfiguration.RANDOMIZATION_NONE);
+        }
         SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
                 IFACE_IP_MODE_LOCAL_ONLY, configBuilder.build(), mTestSoftApCapability);
         ArgumentCaptor<MacAddress> mac = ArgumentCaptor.forClass(MacAddress.class);
@@ -1896,9 +1905,14 @@ public class SoftApManagerTest extends WifiBaseTest {
 
     @Test
     public void setMacFailureWhenRandomMac() throws Exception {
-        SoftApConfiguration randomizedBssidConfig =
+        SoftApConfiguration.Builder randomizedBssidConfigBuilder =
                 new SoftApConfiguration.Builder(mDefaultApConfig)
-                .setBssid(TEST_CLIENT_MAC_ADDRESS).build();
+                .setBssid(TEST_CLIENT_MAC_ADDRESS);
+        if (SdkLevel.isAtLeastS()) {
+            randomizedBssidConfigBuilder.setMacRandomizationSetting(
+                    SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        SoftApConfiguration randomizedBssidConfig = randomizedBssidConfigBuilder.build();
         when(mWifiApConfigStore.randomizeBssidIfUnset(any(), any())).thenReturn(
                 randomizedBssidConfig);
         SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
@@ -2029,9 +2043,14 @@ public class SoftApManagerTest extends WifiBaseTest {
         if (expectedConfig == null) {
             if (config == null) {
                 // Only generate randomized mac for default config since test case doesn't care it.
-                randomizedBssidConfig =
+                SoftApConfiguration.Builder randomizedBssidConfigBuilder =
                         new SoftApConfiguration.Builder(mDefaultApConfig)
-                        .setBssid(TEST_INTERFACE_MAC_ADDRESS).build();
+                        .setBssid(TEST_INTERFACE_MAC_ADDRESS);
+                if (SdkLevel.isAtLeastS()) {
+                    randomizedBssidConfigBuilder.setMacRandomizationSetting(
+                            SoftApConfiguration.RANDOMIZATION_NONE);
+                }
+                randomizedBssidConfig = randomizedBssidConfigBuilder.build();
                 when(mWifiApConfigStore.randomizeBssidIfUnset(any(), any())).thenReturn(
                         randomizedBssidConfig);
                 expectedConfig = new SoftApConfiguration.Builder(randomizedBssidConfig)
@@ -2415,8 +2434,13 @@ public class SoftApManagerTest extends WifiBaseTest {
     @Test
     public void testBssidUpdatedWhenSoftApInfoUpdate() throws Exception {
         MacAddress testBssid = MacAddress.fromString("aa:bb:cc:11:22:33");
-        SoftApConfiguration customizedBssidConfig = new SoftApConfiguration
-                .Builder(mDefaultApConfig).setBssid(testBssid).build();
+        SoftApConfiguration.Builder customizedBssidConfigBuilder = new SoftApConfiguration
+                .Builder(mDefaultApConfig).setBssid(testBssid);
+        if (SdkLevel.isAtLeastS()) {
+            customizedBssidConfigBuilder.setMacRandomizationSetting(
+                    SoftApConfiguration.RANDOMIZATION_NONE);
+        }
+        SoftApConfiguration customizedBssidConfig = customizedBssidConfigBuilder.build();
         when(mWifiNative.setApMacAddress(eq(TEST_INTERFACE_NAME), eq(testBssid))).thenReturn(true);
         mTestSoftApInfo.setBssid(testBssid);
         InOrder order = inOrder(mCallback, mWifiMetrics);
