@@ -2102,6 +2102,11 @@ public class XmlUtil {
                                 migrationData.isSoftApTimeoutEnabled());
                     }
                 }
+                if (bssid != null && SdkLevel.isAtLeastS()) {
+                    // Force MAC randomization setting to none when BSSID is configured
+                    softApConfigBuilder.setMacRandomizationSetting(
+                            SoftApConfiguration.RANDOMIZATION_NONE);
+                }
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Failed to parse configuration " + e);
                 return null;
