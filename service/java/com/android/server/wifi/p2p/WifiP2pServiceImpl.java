@@ -31,7 +31,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
@@ -85,12 +84,10 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.RequiresApi;
@@ -104,10 +101,12 @@ import com.android.internal.util.WakeupMessage;
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.BuildProperties;
 import com.android.server.wifi.FrameworkFacade;
+import com.android.server.wifi.WifiDialogManager;
 import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiLog;
 import com.android.server.wifi.WifiSettingsConfigStore;
+import com.android.server.wifi.WifiThreadRunner;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
@@ -4048,86 +4047,50 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void notifyInvitationReceived() {
-            Resources r = mContext.getResources();
+            String deviceName = getDeviceName(mSavedPeerConfig.deviceAddress);
+            boolean isPinRequested = false;
+            String displayPin = null;
+
             final WpsInfo wps = mSavedPeerConfig.wps;
-            final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
-                    .inflate(R.layout.wifi_p2p_dialog, null);
-
-            ViewGroup group = (ViewGroup) textEntryView.findViewById(R.id.info);
-            addRowToDialog(group, R.string.wifi_p2p_from_message, getDeviceName(
-                    mSavedPeerConfig.deviceAddress));
-
-            final EditText pin = (EditText) textEntryView.findViewById(R.id.wifi_p2p_wps_pin);
-
-            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
-                    .setTitle(r.getString(R.string.wifi_p2p_invitation_to_connect_title))
-                    .setView(textEntryView)
-                    .setPositiveButton(r.getString(R.string.accept), new OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (wps.setup == WpsInfo.KEYPAD) {
-                                    mSavedPeerConfig.wps.pin = pin.getText().toString();
-                                }
-                                if (isVerboseLoggingEnabled()) {
-                                    logd(getName() + " accept invitation " + mSavedPeerConfig);
-                                }
-                                sendMessage(PEER_CONNECTION_USER_ACCEPT);
-                            }
-                        })
-                    .setNegativeButton(r.getString(R.string.decline), new OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (isVerboseLoggingEnabled()) logd(getName() + " ignore connect");
-                                sendMessage(PEER_CONNECTION_USER_REJECT);
-                            }
-                        })
-                    .setOnCancelListener(new DialogInterface.OnCancelListener() {
-                            @Override
-                            public void onCancel(DialogInterface arg0) {
-                                if (isVerboseLoggingEnabled()) logd(getName() + " ignore connect");
-                                sendMessage(PEER_CONNECTION_USER_REJECT);
-                            }
-                        })
-                    .create();
-            dialog.setCanceledOnTouchOutside(false);
-
-            // make the enter pin area or the display pin area visible
             switch (wps.setup) {
                 case WpsInfo.KEYPAD:
-                    if (isVerboseLoggingEnabled()) logd("Enter pin section visible");
-                    textEntryView.findViewById(R.id.enter_pin_section).setVisibility(View.VISIBLE);
+                    isPinRequested = true;
                     break;
                 case WpsInfo.DISPLAY:
-                    if (isVerboseLoggingEnabled()) logd("Shown pin section visible");
-                    addRowToDialog(group, R.string.wifi_p2p_show_pin_message, wps.pin);
+                    displayPin = wps.pin;
                     break;
                 default:
                     break;
             }
 
-            if ((r.getConfiguration().uiMode & Configuration.UI_MODE_TYPE_APPLIANCE)
-                    == Configuration.UI_MODE_TYPE_APPLIANCE) {
-                // For appliance devices, add a key listener which accepts.
-                dialog.setOnKeyListener(new DialogInterface.OnKeyListener() {
-
-                    @Override
-                    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-                        // TODO: make the actual key come from a config value.
-                        if (keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
-                            sendMessage(PEER_CONNECTION_USER_ACCEPT);
-                            dialog.dismiss();
-                            return true;
-                        }
-                        return false;
+            WifiDialogManager.P2pInvitationReceivedDialogCallback callback =
+                    new WifiDialogManager.P2pInvitationReceivedDialogCallback() {
+                @Override
+                public void onAccepted(@Nullable String optionalPin) {
+                    if (optionalPin != null) {
+                        mSavedPeerConfig.wps.pin = optionalPin;
                     }
-                });
-                // TODO: add timeout for this dialog.
-                // TODO: update UI in appliance mode to tell user what to do.
-            }
+                    if (isVerboseLoggingEnabled()) {
+                        logd(getName() + " accept invitation " + mSavedPeerConfig);
+                    }
+                    sendMessage(PEER_CONNECTION_USER_ACCEPT);
+                }
 
-            dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-            dialog.getWindow().addSystemFlags(
-                    WindowManager.LayoutParams.SYSTEM_FLAG_SHOW_FOR_ALL_USERS);
-            dialog.show();
+                @Override
+                public void onDeclined() {
+                    if (isVerboseLoggingEnabled()) {
+                        logd(getName() + " ignore connect");
+                    }
+                    sendMessage(PEER_CONNECTION_USER_REJECT);
+                }
+            };
+
+            mWifiInjector.getWifiDialogManager().launchP2pInvitationReceivedDialog(
+                    deviceName,
+                    isPinRequested,
+                    displayPin,
+                    callback,
+                    new WifiThreadRunner(getHandler()));
         }
 
         /**
