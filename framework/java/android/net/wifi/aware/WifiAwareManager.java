@@ -715,7 +715,7 @@ public class WifiAwareManager {
                             break;
                         case CALLBACK_ATTACH_TERMINATE:
                             mAwareManager.clear();
-                            attachCallback.onShutDown();
+                            attachCallback.onAwareSessionTerminated();
                     }
                 }
             };
@@ -750,7 +750,7 @@ public class WifiAwareManager {
 
         @Override
         public void onAttachTerminate() {
-            if (VDBG) Log.v(TAG, "onShutDown");
+            if (VDBG) Log.v(TAG, "onAwareSessionTerminated");
 
             Message msg = mHandler.obtainMessage(CALLBACK_ATTACH_TERMINATE);
             mHandler.sendMessage(msg);
