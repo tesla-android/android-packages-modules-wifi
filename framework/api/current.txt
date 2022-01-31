@@ -69,6 +69,7 @@ package android.net.wifi {
   }
 
   public static class ScanResult.InformationElement implements android.os.Parcelable {
+    ctor public ScanResult.InformationElement(int, int, @NonNull byte[]);
     ctor public ScanResult.InformationElement(@NonNull android.net.wifi.ScanResult.InformationElement);
     method public int describeContents();
     method @NonNull public java.nio.ByteBuffer getBytes();
