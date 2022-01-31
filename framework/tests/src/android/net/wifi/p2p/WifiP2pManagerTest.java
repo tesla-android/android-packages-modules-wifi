@@ -20,8 +20,10 @@ import static android.net.wifi.WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +32,7 @@ import android.content.AttributionSource;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.test.TestLooper;
+import android.view.Display;
 
 import androidx.test.filters.SmallTest;
 
@@ -92,6 +95,39 @@ public class WifiP2pManagerTest {
         } else {
             assertNull(mBundleCaptor.getValue().getParcelable(EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE));
         }
+        assertTrue(mBundleCaptor.getValue().containsKey(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
+        assertEquals(Display.DEFAULT_DISPLAY,
+                mBundleCaptor.getValue().getInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
+    }
+
+    /**
+     * Validate initialization flow with Display Context.
+     */
+    @Test
+    public void testInitializeWithDisplayContext() throws Exception {
+        final int displayId = 1023;
+
+        Display display = mock(Display.class);
+        when(display.getDisplayId()).thenReturn(displayId);
+        when(mContextMock.getDisplay()).thenReturn(display);
+        mDut.initialize(mContextMock, mTestLooper.getLooper(), null);
+        verify(mP2pServiceMock).getMessenger(any(), eq(PACKAGE_NAME), mBundleCaptor.capture());
+        assertTrue(mBundleCaptor.getValue().containsKey(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
+        assertEquals(displayId,
+                mBundleCaptor.getValue().getInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
+    }
+
+    /**
+     * Validate initialization flow with invalid Display Context.
+     */
+    @Test
+    public void testInitializeWithInvalidDisplayContext() throws Exception {
+        doThrow(UnsupportedOperationException.class).when(mContextMock).getDisplay();
+        mDut.initialize(mContextMock, mTestLooper.getLooper(), null);
+        verify(mP2pServiceMock).getMessenger(any(), eq(PACKAGE_NAME), mBundleCaptor.capture());
+        assertTrue(mBundleCaptor.getValue().containsKey(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
+        assertEquals(Display.DEFAULT_DISPLAY,
+                mBundleCaptor.getValue().getInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID));
     }
 
     /**

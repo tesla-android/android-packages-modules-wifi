@@ -101,6 +101,7 @@ import android.os.UserManager;
 import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.provider.Settings;
+import android.view.Display;
 
 import androidx.test.filters.SmallTest;
 
@@ -108,6 +109,7 @@ import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
+import com.android.server.wifi.WifiDialogManager;
 import com.android.server.wifi.WifiGlobals;
 import com.android.server.wifi.WifiInjector;
 import com.android.server.wifi.WifiSettingsConfigStore;
@@ -215,6 +217,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Spy MockWifiP2pMonitor mWifiMonitor;
     @Mock WifiGlobals mWifiGlobals;
     @Mock AlarmManager mAlarmManager;
+    @Mock WifiDialogManager mWifiDialogManager;
     CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
@@ -432,6 +435,14 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         msg.what = WifiP2pManager.REQUEST_PEERS;
         msg.obj = extras;
         msg.replyTo = replyMessenger;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    private void sendNegotiationRequestEvent(WifiP2pConfig config) throws Exception {
+        Message msg = Message.obtain();
+        msg.what = WifiP2pMonitor.P2P_GO_NEGOTIATION_REQUEST_EVENT;
+        msg.obj = config;
         mP2pStateMachineMessenger.send(Message.obtain(msg));
         mLooper.dispatchAll();
     }
@@ -947,6 +958,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getCoexManager()).thenReturn(mCoexManager);
         when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
         when(mWifiInjector.makeBroadcastOptions()).thenReturn(mBroadcastOptions);
+        when(mWifiInjector.getWifiDialogManager()).thenReturn(mWifiDialogManager);
         // enable all permissions, disable specific permissions in tests
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.checkNetworkStackPermission(anyInt())).thenReturn(true);
@@ -5331,5 +5343,74 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         assertThrows(SecurityException.class, () -> {
             mWifiP2pServiceImpl.getMessenger(new Binder(), TEST_PACKAGE_NAME, mAttribution);
         });
+    }
+
+    /**
+     * Verify p2p connection dialog triggering without any Display ID information
+     */
+    @Test
+    public void testInvitationReceivedDialogTrigger() throws Exception {
+        forceP2pEnabled(mClient1);
+        mockPeersList();
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = mTestWifiP2pDevice.deviceAddress;
+        config.wps = new WpsInfo();
+        config.wps.setup = WpsInfo.PBC;
+
+        // "simple" client connect (no display ID)
+        sendNegotiationRequestEvent(config);
+        verify(mWifiDialogManager).launchP2pInvitationReceivedDialog(anyString(), anyBoolean(),
+                any(), eq(Display.DEFAULT_DISPLAY), any(), any());
+    }
+
+    /**
+     * Verify p2p connection dialog triggering with a privileged caller specifying a display ID.
+     */
+    @Test
+    public void testInvitationReceivedDialogTriggerWithDisplayId() throws Exception {
+        final int someNonDefaultDisplayId = 123;
+
+        forceP2pEnabled(mClient1);
+        mockPeersList();
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = mTestWifiP2pDevice.deviceAddress;
+        config.wps = new WpsInfo();
+        config.wps.setup = WpsInfo.PBC;
+
+        // add a privileged client with a display ID
+        Bundle bundle = new Bundle();
+        bundle.putInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID, someNonDefaultDisplayId);
+        when(mWifiPermissionsUtil.isSystem(eq(TEST_PACKAGE_NAME), anyInt())).thenReturn(true);
+        mWifiP2pServiceImpl.getMessenger(mClient2, TEST_PACKAGE_NAME, bundle);
+
+        sendNegotiationRequestEvent(config);
+        verify(mWifiDialogManager).launchP2pInvitationReceivedDialog(anyString(),
+                anyBoolean(), any(), eq(someNonDefaultDisplayId), any(), any());
+    }
+
+    /**
+     * Verify p2p connection dialog triggering with a privileged client adding a Display ID but then
+     * closing (i.e. removing itself).
+     */
+    @Test
+    public void testInvitationReceivedDialogTriggerWithDisplayIdDeleted() throws Exception {
+        forceP2pEnabled(mClient1);
+        mockPeersList();
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = mTestWifiP2pDevice.deviceAddress;
+        config.wps = new WpsInfo();
+        config.wps.setup = WpsInfo.PBC;
+
+        // add a privileged client with a display ID
+        Bundle bundle = new Bundle();
+        bundle.putInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID, 123);
+        when(mWifiPermissionsUtil.isSystem(eq(TEST_PACKAGE_NAME), anyInt())).thenReturn(true);
+        mWifiP2pServiceImpl.getMessenger(mClient2, TEST_PACKAGE_NAME, bundle);
+        mWifiP2pServiceImpl.close(mClient2);
+
+        // "simple" client connect (no display ID)
+        sendNegotiationRequestEvent(config);
+        verify(mWifiDialogManager).launchP2pInvitationReceivedDialog(anyString(), anyBoolean(),
+                any(), eq(Display.DEFAULT_DISPLAY), any(), any());
     }
 }

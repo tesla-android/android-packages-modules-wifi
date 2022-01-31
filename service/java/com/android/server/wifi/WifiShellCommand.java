@@ -75,6 +75,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
+import android.view.Display;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -1144,11 +1145,23 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     boolean isPinRequested = false;
                     String displayPin = null;
                     String pinOption = getNextOption();
+                    int displayId = Display.DEFAULT_DISPLAY;
                     while (pinOption != null) {
                         if (pinOption.equals("-p")) {
                             isPinRequested = true;
                         } else if (pinOption.equals("-d")) {
                             displayPin = getNextArgRequired();
+                        } else if (pinOption.equals("-i")) {
+                            String displayIdStr = getNextArgRequired();
+                            try {
+                                displayId = Integer.parseInt(displayIdStr);
+                            } catch (NumberFormatException e) {
+                                pw.println("Invalid <display-id> argument to "
+                                        + "'launch-dialog-p2p-invitation-received' "
+                                        + "- must be an integer: "
+                                        + displayIdStr);
+                                return -1;
+                            }
                         } else {
                             pw.println("Ignoring unknown option " + pinOption);
                         }
@@ -1171,6 +1184,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                             deviceName,
                             isPinRequested,
                             displayPin,
+                            displayId,
                             callback,
                             mWifiThreadRunner);
                     pw.println("Launched dialog. Waiting up to 15 seconds for user response.");
@@ -1872,12 +1886,14 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println(
                 "    Reset the WiFi resources cache which will cause them to be reloaded next "
                         + "time they are accessed. Necessary if overlays are manually modified.");
-        pw.println("  launch-dialog-p2p-invitation-received <device_name> [-p] [-d <pin>]");
+        pw.println("  launch-dialog-p2p-invitation-received <device_name> [-p] [-d <pin>] "
+                + "[-i <display_id>]");
         pw.println("    Launches a P2P Invitation Received dialog and waits up to 30 seconds to"
                 + " print the response.");
         pw.println("    <device_name> - Name of the device sending the invitation");
         pw.println("    -p - Show PIN input");
         pw.println("    -d - Display PIN <pin>");
+        pw.println("    -i - Display ID");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {

@@ -9175,6 +9175,13 @@ public class WifiManager {
     public static final String EXTRA_P2P_DISPLAY_PIN = "android.net.wifi.extra.P2P_DISPLAY_PIN";
 
     /**
+     * Extra String indicating the Display ID to be used for the dialog. Default display is
+     * Display.DEFAULT_DISPLAY.
+     * @hide
+     */
+    public static final String EXTRA_P2P_DISPLAY_ID = "android.net.wifi.extra.P2P_DISPLAY_ID";
+
+    /**
      * Method for WifiDialog to notify the framework of a reply to a P2P Invitation Received dialog.
      * @param dialogId id of the replying dialog.
      * @param accepted Whether the invitation was accepted.

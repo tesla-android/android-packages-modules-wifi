@@ -85,6 +85,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -556,23 +557,25 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     }
 
     private class DeathHandlerData {
-        DeathHandlerData(int uid, DeathRecipient dr, Messenger m, WorkSource ws) {
+        DeathHandlerData(int uid, DeathRecipient dr, Messenger m, WorkSource ws, int displayId) {
             mUid = uid;
             mDeathRecipient = dr;
             mMessenger = m;
             mWorkSource = ws;
+            mDisplayId = displayId;
         }
 
         @Override
         public String toString() {
             return "mUid=" + mUid + ", deathRecipient=" + mDeathRecipient + ", messenger="
-                    + mMessenger + ", worksource=" + mWorkSource;
+                    + mMessenger + ", worksource=" + mWorkSource + ", displayId=" + mDisplayId;
         }
 
         final int mUid;
         final DeathRecipient mDeathRecipient;
         final Messenger mMessenger;
         final WorkSource mWorkSource;
+        final int mDisplayId;
     }
     private Object mLock = new Object();
     private final Map<IBinder, DeathHandlerData> mDeathDataByBinder = new ConcurrentHashMap<>();
@@ -786,6 +789,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
         }
 
+        // get the DisplayId of the caller (if available)
+        int displayId = Display.DEFAULT_DISPLAY;
+        if (mWifiPermissionsUtil.isSystem(packageName, callerUid)) {
+            displayId = extras.getInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID,
+                    Display.DEFAULT_DISPLAY);
+        }
+
         synchronized (mLock) {
             final Messenger messenger = new Messenger(mClientHandler);
             if (isVerboseLoggingEnabled()) {
@@ -803,7 +813,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     : new WorkSource(uidToUse);
             try {
                 binder.linkToDeath(dr, 0);
-                mDeathDataByBinder.put(binder, new DeathHandlerData(callerUid, dr, messenger, ws));
+                mDeathDataByBinder.put(binder,
+                        new DeathHandlerData(callerUid, dr, messenger, ws, displayId));
             } catch (RemoteException e) {
                 Log.e(TAG, "Error on linkToDeath: e=" + e);
                 // fall-through here - won't clean up
@@ -4102,6 +4113,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             boolean isPinRequested = false;
             String displayPin = null;
 
+            int displayId = mDeathDataByBinder.values().stream()
+                    .filter(d -> d.mDisplayId != Display.DEFAULT_DISPLAY)
+                    .findAny()
+                    .map((dhd) -> dhd.mDisplayId)
+                    .orElse(Display.DEFAULT_DISPLAY);
             final WpsInfo wps = mSavedPeerConfig.wps;
             switch (wps.setup) {
                 case WpsInfo.KEYPAD:
@@ -4140,6 +4156,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     deviceName,
                     isPinRequested,
                     displayPin,
+                    displayId,
                     callback,
                     new WifiThreadRunner(getHandler()));
         }
