@@ -1402,6 +1402,8 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
     public void testEnforceNearbyDevicesPermission_LocationCheckWithoutDisavowPass()
             throws Exception {
         assumeTrue(SdkLevel.isAtLeastT());
+        // Set location mode off and grant app location permission
+        when(mLocationManager.isLocationEnabledForUser(any())).thenReturn(false);
         AttributionSource attributionSource = mock(AttributionSource.class);
         when(attributionSource.checkCallingUid()).thenReturn(true);
         when(attributionSource.getRenouncedPermissions()).thenReturn(Collections.EMPTY_SET);
@@ -1415,7 +1417,12 @@ public class WifiPermissionsUtilTest extends WifiBaseTest {
         setupTestCase();
         WifiPermissionsUtil codeUnderTest = new WifiPermissionsUtil(mMockPermissionsWrapper,
                 mMockContext, mMockUserManager, mWifiInjector);
-        codeUnderTest.enforceNearbyDevicesPermission(attributionSource, true, "");
+        // Test should fail because location mode is off
+        assertFalse(codeUnderTest.checkNearbyDevicesPermission(attributionSource, true, ""));
+
+        // Now enable location mode and the call should pass
+        when(mLocationManager.isLocationEnabledForUser(any())).thenReturn(true);
+        assertTrue(codeUnderTest.checkNearbyDevicesPermission(attributionSource, true, ""));
 
         // verify that location check is performed since the caller did not disavow location.
         verify(mPermissionManager).checkPermissionForDataDelivery(
