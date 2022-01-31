@@ -1094,7 +1094,7 @@ public class WifiAwareManagerTest {
                         peerHandle, passphrase);
         nsb = new WifiAwareNetworkSpecifier.Builder(publishSession.getValue(),
                 peerHandle).setPskPassphrase(passphrase).setPort(port).setTransportProtocol(
-                transportProtocol).setChannelInMhz(5750, true).build();
+                transportProtocol).setChannelFrequencyMhz(5750, true).build();
 
         // validate format
         collector.checkThat("role", WifiAwareManager.WIFI_AWARE_DATA_PATH_ROLE_RESPONDER,
@@ -1114,7 +1114,7 @@ public class WifiAwareManagerTest {
                 .getWifiAwareDataPathSecurityConfig().getPskPassphrase()));
         collector.checkThat("port", port, equalTo(nsb.port));
         collector.checkThat("transportProtocol", transportProtocol, equalTo(nsb.transportProtocol));
-        collector.checkThat("channel", 5750, equalTo(nsb.getChannelInMhz()));
+        collector.checkThat("channel", 5750, equalTo(nsb.getChannelFrequencyMhz()));
         collector.checkThat("ForceChannel", true, equalTo(nsb.isChannelRequired()));
 
         verifyNoMoreInteractions(mockCallback, mockSessionCallback, mockAwareService,
@@ -1686,7 +1686,7 @@ public class WifiAwareManagerTest {
         assertEquals(cap.getPeerIpv6Addr().toString(), "/fe80::1322:33ff:fe44:5566%5");
         assertEquals(cap, rereadCap);
         assertEquals(cap.hashCode(), rereadCap.hashCode());
-        assertEquals(cap.getChannelInfos(), rereadCap.getChannelInfos());
+        assertEquals(cap.getChannelInfoList(), rereadCap.getChannelInfoList());
     }
 
     // ParcelablePeerHandle tests

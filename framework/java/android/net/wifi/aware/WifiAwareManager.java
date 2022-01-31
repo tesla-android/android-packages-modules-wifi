@@ -232,8 +232,9 @@ public class WifiAwareManager {
 
     /**
      * Return the device support for setting a channel requirement in a data-path request. If true
-     * the channel set by {@link WifiAwareNetworkSpecifier.Builder#setChannelInMhz(int, boolean)}
-     * will be honored, otherwise it will be ignored.
+     * the channel set by
+     * {@link WifiAwareNetworkSpecifier.Builder#setChannelFrequencyMhz(int, boolean)} will be
+     * honored, otherwise it will be ignored.
      * @return True is the device support set channel on data-path request, false otherwise.
      */
     @RequiresPermission(ACCESS_WIFI_STATE)

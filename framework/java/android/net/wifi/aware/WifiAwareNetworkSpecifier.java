@@ -168,17 +168,17 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
 
     /**
      * Get the specified channel in MHZ for this Wi-Fi Aware network specifier.
-     * @see Builder#setChannelInMhz(int, boolean)
+     * @see Builder#setChannelFrequencyMhz(int, boolean)
      * @return Channel frequency in Mhz. A value of 0 indicates that no channel was specified.
      */
     @IntRange(from = 0)
-    public int getChannelInMhz() {
+    public int getChannelFrequencyMhz() {
         return mChannelInMhz;
     }
 
     /**
      * Check if the specified channel is required to honor or not.
-     * @see Builder#setChannelInMhz(int, boolean)
+     * @see Builder#setChannelFrequencyMhz(int, boolean)
      * @return true if forced to honer, false for recommend to use.
      */
     public boolean isChannelRequired() {
@@ -533,7 +533,7 @@ public final class WifiAwareNetworkSpecifier extends NetworkSpecifier implements
          *               may be overridden by the firmware.
          * @return the current {@link Builder} builder, enabling chaining of builder methods.
          */
-        public @NonNull Builder setChannelInMhz(@IntRange(from = 0) int channelInMhz,
+        public @NonNull Builder setChannelFrequencyMhz(@IntRange(from = 0) int channelInMhz,
                 boolean required) {
             mChannel = channelInMhz;
             mIsRequired = required;
