@@ -131,7 +131,7 @@ public final class WifiAwareNetworkInfo implements TransportInfo, Parcelable {
      * @return A list of {@link WifiAwareChannelInfo}
      */
     @NonNull
-    public List<WifiAwareChannelInfo> getChannelInfos() {
+    public List<WifiAwareChannelInfo> getChannelInfoList() {
         return mChannelInfos;
     }
 

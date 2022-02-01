@@ -824,9 +824,9 @@ public class WifiAwareNativeCallback extends IWifiNanIfaceEventCallback.Stub imp
                 JSONArray infoJsonArray = new JSONArray();
                 for (WifiAwareChannelInfo info : mChannelInfoPerNdp.valueAt(i)) {
                     JSONObject j = new JSONObject();
-                    j.put("channelFreq", info.getChannelFreqInMhz());
+                    j.put("channelFreq", info.getChannelFrequencyMhz());
                     j.put("channelBandwidth", info.getChannelBandwidth());
-                    j.put("numSpatialStreams", info.getNumSpatialStreams());
+                    j.put("numSpatialStreams", info.getSpatialStreamCount());
                     infoJsonArray.put(j);
                 }
                 channelInfoJson.put(Integer.toString(mChannelInfoPerNdp.keyAt(i)), infoJsonArray);

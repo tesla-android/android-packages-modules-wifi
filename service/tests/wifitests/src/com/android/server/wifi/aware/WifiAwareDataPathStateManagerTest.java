@@ -557,7 +557,7 @@ public class WifiAwareDataPathStateManagerTest extends WifiBaseTest {
             assertEquals(port, netInfo.getPort());
             assertEquals(transportProtocol, netInfo.getTransportProtocol());
             assertEquals(i + 1, mDut.mDataPathMgr.getNumOfNdps());
-            assertEquals(AWARE_CHANNEL_INFO, netInfo.getChannelInfos().get(0));
+            assertEquals(AWARE_CHANNEL_INFO, netInfo.getChannelInfoList().get(0));
         }
 
         // (3) end data-path (unless didn't get confirmation)
