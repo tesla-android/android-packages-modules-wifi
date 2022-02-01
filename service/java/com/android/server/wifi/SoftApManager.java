@@ -948,6 +948,13 @@ public class SoftApManager implements ActiveModeManager {
                                         .build();
                             }
                         }
+
+                        // Remove 6GHz from requested bands if security type is restricted
+                        // Note: 6GHz only band is already handled by initial validation
+                        mCurrentSoftApConfiguration =
+                                ApConfigUtil.remove6gBandForUnsupportedSecurity(
+                                    mCurrentSoftApConfiguration);
+
                         mApInterfaceName = mWifiNative.setupInterfaceForSoftApMode(
                                 mWifiNativeInterfaceCallback, mRequestorWs,
                                 mCurrentSoftApConfiguration.getBand(), isBridgeRequired());

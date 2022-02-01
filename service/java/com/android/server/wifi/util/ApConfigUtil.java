@@ -33,6 +33,7 @@ import android.net.wifi.WifiScanner;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
+import android.util.SparseIntArray;
 
 import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.WifiNative;
@@ -338,7 +339,7 @@ public class ApConfigUtil {
      * and OEM configuration.
      *
      * @param band to get channels for
-     * @param wifiNative reference used to get regulatory restrictionsimport java.util.Arrays;
+     * @param wifiNative reference used to get regulatory restrictions.
      * @param resources used to get OEM restrictions
      * @param inFrequencyMHz true to convert channel to frequency.
      * @return A list of frequencies that are allowed, null on error.
@@ -551,6 +552,71 @@ public class ApConfigUtil {
             availableBand &= ~SoftApConfiguration.BAND_60GHZ;
         }
         return availableBand;
+    }
+
+    /**
+     * Check if security type is restricted for operation in 6GHz band
+     * As per WFA specification for 6GHz operation, the following security types are not allowed to
+     * be used in 6GHz band:
+     *   - OPEN
+     *   - WPA2-Personal
+     *   - WPA3-SAE-Transition
+     *   - WPA3-OWE-Transition
+     *
+     * @param type security type to check on
+     *
+     * @return true if security type is restricted for operation in 6GHz band, false otherwise
+     */
+    public static boolean isSecurityTypeRestrictedFor6gBand(
+            @SoftApConfiguration.SecurityType int type) {
+        switch(type) {
+            case SoftApConfiguration.SECURITY_TYPE_OPEN:
+            case SoftApConfiguration.SECURITY_TYPE_WPA2_PSK:
+            case SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION:
+            case SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION:
+                return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove {@link SoftApConfiguration#BAND_6GHZ} if multiple bands are configured
+     * as a mask when security type is restricted to operate in this band.
+     *
+     * @param config The current {@link SoftApConfiguration}.
+     *
+     * @return the updated SoftApConfiguration.
+     */
+    public static SoftApConfiguration remove6gBandForUnsupportedSecurity(
+            SoftApConfiguration config) {
+        SoftApConfiguration.Builder builder = new SoftApConfiguration.Builder(config);
+
+        if (config.getBands().length == 1) {
+            int configuredBand = config.getBand();
+            if ((configuredBand & SoftApConfiguration.BAND_6GHZ) != 0
+                    && isSecurityTypeRestrictedFor6gBand(config.getSecurityType())) {
+                Log.i(TAG, "remove BAND_6G if multiple bands are configured "
+                        + "as a mask since security type is restricted");
+                builder.setBand(configuredBand & ~SoftApConfiguration.BAND_6GHZ);
+            }
+        } else if (SdkLevel.isAtLeastS()) {
+            SparseIntArray channels = config.getChannels();
+            SparseIntArray newChannels = new SparseIntArray(channels.size());
+            if (isSecurityTypeRestrictedFor6gBand(config.getSecurityType())) {
+                for (int i = 0; i < channels.size(); i++) {
+                    int band = channels.keyAt(i);
+                    if ((band & SoftApConfiguration.BAND_6GHZ) != 0) {
+                        Log.i(TAG, "remove BAND_6G if multiple bands are configured "
+                                + "as a mask when security type is restricted");
+                        band &= ~SoftApConfiguration.BAND_6GHZ;
+                    }
+                    newChannels.put(band, channels.valueAt(i));
+                }
+                builder.setChannels(newChannels);
+            }
+        }
+
+        return builder.build();
     }
 
     /**

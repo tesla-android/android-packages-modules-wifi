@@ -19,6 +19,7 @@ package com.android.server.wifi;
 import static android.net.wifi.SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT;
 import static android.net.wifi.SoftApConfiguration.RANDOMIZATION_PERSISTENT;
 import static android.net.wifi.SoftApConfiguration.SECURITY_TYPE_WPA2_PSK;
+import static android.net.wifi.SoftApConfiguration.SECURITY_TYPE_WPA3_SAE;
 import static android.net.wifi.SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -594,8 +595,12 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         verifyDefaultLocalOnlyApConfig(config, TEST_DEFAULT_HOTSPOT_SSID,
                 SoftApConfiguration.BAND_6GHZ);
 
+        SoftApConfiguration updatedConfig = new SoftApConfiguration.Builder(config)
+                .setPassphrase("somepassword", SECURITY_TYPE_WPA3_SAE)
+                .build();
+
         // verify that the config passes the validateApWifiConfiguration check
-        assertTrue(WifiApConfigStore.validateApWifiConfiguration(config, true, mContext));
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(updatedConfig, true, mContext));
     }
 
     /**
@@ -779,6 +784,42 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         // SSID is set, so the config is now valid.
         configBuilder.setSsid("ssid");
         assertTrue(WifiApConfigStore.validateApWifiConfiguration(
+                configBuilder.build(), true, mContext));
+    }
+
+    /**
+     * Verify the 6GHz restrictions on security types.
+     */
+    @Test
+    public void test6ghzRestrictionsSecurityTypes() {
+        Builder configBuilder = new SoftApConfiguration.Builder();
+        configBuilder.setSsid("ssid");
+        configBuilder.setBand(SoftApConfiguration.BAND_6GHZ);
+
+        // OPEN
+        configBuilder.setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_OPEN);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
+                configBuilder.build(), true, mContext));
+
+        // WPA2
+        configBuilder.setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
+                configBuilder.build(), true, mContext));
+
+        // WPA3 SAE (should succeed)
+        configBuilder.setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE);
+        assertTrue(WifiApConfigStore.validateApWifiConfiguration(
+                configBuilder.build(), true, mContext));
+
+        // WPA3 SAE-Transition
+        configBuilder.setPassphrase("somepassword",
+                SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
+                configBuilder.build(), true, mContext));
+
+        // WPA3 OWE-Transition
+        configBuilder.setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
+        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
     }
 
