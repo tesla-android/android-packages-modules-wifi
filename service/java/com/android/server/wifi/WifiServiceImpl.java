@@ -3017,7 +3017,7 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
-     * See {@link WifiManager#setScreenOnScanSchedule(int[], int[])}
+     * See {@link WifiManager#setScreenOnScanSchedule(List)}
      */
     @Override
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
