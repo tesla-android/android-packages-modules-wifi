@@ -586,6 +586,16 @@ public class WifiApConfigStore {
             return false;
         }
 
+        if (ApConfigUtil.isSecurityTypeRestrictedFor6gBand(authType)) {
+            for (int band : apConfig.getBands()) {
+                // Only return failure if requested band is limitted to 6GHz only
+                if (band == SoftApConfiguration.BAND_6GHZ) {
+                    Log.d(TAG, "security type is not allowed for softap in 6GHz band");
+                    return false;
+                }
+            }
+        }
+
         if (SdkLevel.isAtLeastT()
                 && authType == SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION) {
             if (!ApConfigUtil.isBridgedModeSupported(context)) {
@@ -593,9 +603,6 @@ public class WifiApConfigStore {
                 return false;
             } else if (apConfig.getBands().length > 1) {
                 Log.d(TAG, "softap owe transition must use single band");
-                return false;
-            } else if ((apConfig.getBand() & SoftApConfiguration.BAND_6GHZ) != 0) {
-                Log.d(TAG, "softap owe transition in 6GHz band is not allowed");
                 return false;
             }
         }

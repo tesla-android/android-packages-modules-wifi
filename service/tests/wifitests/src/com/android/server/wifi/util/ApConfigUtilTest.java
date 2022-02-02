@@ -16,6 +16,7 @@
 
 package com.android.server.wifi.util;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -474,6 +475,99 @@ public class ApConfigUtilTest extends WifiBaseTest {
 
         assertEquals(freq, ApConfigUtil.convertChannelToFrequency(
                 ApConfigUtil.DEFAULT_AP_CHANNEL, ApConfigUtil.DEFAULT_AP_BAND));
+    }
+
+    /**
+     * Verify remove of 6GHz band from multiple band mask, when security type is restricted
+     */
+    @Test
+    public void updateBandMask6gSecurityRestriction() throws Exception {
+        SoftApConfiguration config;
+
+        config = new SoftApConfiguration.Builder()
+                .setBand(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_OPEN)
+                .build();
+        assertEquals(SoftApConfiguration.BAND_5GHZ,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBand());
+
+        config = new SoftApConfiguration.Builder()
+                .setBand(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .build();
+        assertEquals(SoftApConfiguration.BAND_5GHZ,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBand());
+
+        config = new SoftApConfiguration.Builder()
+                .setBand(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
+                .build();
+        assertEquals(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBand());
+
+        config = new SoftApConfiguration.Builder()
+                .setBand(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase("somepassword",
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION)
+                .build();
+        assertEquals(SoftApConfiguration.BAND_5GHZ,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBand());
+
+        config = new SoftApConfiguration.Builder()
+                .setBand(SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION)
+                .build();
+        assertEquals(SoftApConfiguration.BAND_5GHZ,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBand());
+    }
+
+    /**
+     * Verify remove of 6GHz band from multiple band mask in bridged mode,
+     * when security type is restricted.
+     */
+    @Test
+    public void updateBandMask6gSecurityRestrictionBridged() throws Exception {
+        SoftApConfiguration config;
+        int[] bands = {SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_6GHZ,
+                SoftApConfiguration.BAND_5GHZ | SoftApConfiguration.BAND_6GHZ};
+
+        int[] bands_no6g = {SoftApConfiguration.BAND_2GHZ, SoftApConfiguration.BAND_5GHZ};
+
+        config = new SoftApConfiguration.Builder()
+                .setBands(bands)
+                .setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_OPEN)
+                .build();
+        assertArrayEquals(bands_no6g,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBands());
+
+        config = new SoftApConfiguration.Builder()
+                .setBands(bands)
+                .setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .build();
+        assertArrayEquals(bands_no6g,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBands());
+
+        config = new SoftApConfiguration.Builder()
+                .setBands(bands)
+                .setPassphrase("somepassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
+                .build();
+        assertArrayEquals(bands,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBands());
+
+        config = new SoftApConfiguration.Builder()
+                .setBands(bands)
+                .setPassphrase("somepassword",
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_SAE_TRANSITION)
+                .build();
+        assertArrayEquals(bands_no6g,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBands());
+
+        config = new SoftApConfiguration.Builder()
+                .setBands(bands)
+                .setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION)
+                .build();
+        assertArrayEquals(bands_no6g,
+                ApConfigUtil.remove6gBandForUnsupportedSecurity(config).getBands());
     }
 
     /**

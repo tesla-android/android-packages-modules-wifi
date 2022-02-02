@@ -1824,6 +1824,26 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         verify(mWifiMetrics, never()).incrementNumConnectivityWatchdogPnoBad();
     }
 
+    @Test
+    public void testNetworkConnectionCancelWatchdogTimer() {
+        // Set screen to off
+        setScreenState(false);
+
+        // Set WiFi to disconnected state to trigger PNO scan
+        mWifiConnectivityManager.handleConnectionStateChanged(
+                mPrimaryClientModeManager,
+                WifiConnectivityManager.WIFI_STATE_DISCONNECTED);
+
+        // Verify the watchdog alarm has been set
+        assertTrue(mAlarmManager.isPending(WifiConnectivityManager.WATCHDOG_TIMER_TAG));
+
+        // Set WiFi to connected
+        setWifiStateConnected();
+
+        // Verify the watchdog alarm has been canceled
+        assertFalse(mAlarmManager.isPending(WifiConnectivityManager.WATCHDOG_TIMER_TAG));
+    }
+
     /**
      * Verify that 2 scans that are sufficiently far apart are required to initiate a connection
      * when the high mobility scanning optimization is enabled.

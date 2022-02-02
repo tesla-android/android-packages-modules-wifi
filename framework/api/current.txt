@@ -560,6 +560,10 @@ package android.net.wifi {
     method public abstract void onScanResultsAvailable();
   }
 
+  public static class WifiManager.ScreenOnScanSchedule {
+    ctor public WifiManager.ScreenOnScanSchedule(int, int);
+  }
+
   public abstract static class WifiManager.SubsystemRestartTrackingCallback {
     ctor public WifiManager.SubsystemRestartTrackingCallback();
     method public abstract void onSubsystemRestarted();
@@ -846,8 +850,8 @@ package android.net.wifi.aware {
   public final class WifiAwareChannelInfo implements android.os.Parcelable {
     method public int describeContents();
     method @IntRange(from=0) public int getChannelBandwidth();
-    method @IntRange(from=0) public int getChannelFreqInMhz();
-    method @IntRange(from=0) public int getNumSpatialStreams();
+    method @IntRange(from=0) public int getChannelFrequencyMhz();
+    method @IntRange(from=0) public int getSpatialStreamCount();
     method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.WifiAwareChannelInfo> CREATOR;
   }
@@ -888,7 +892,7 @@ package android.net.wifi.aware {
 
   public final class WifiAwareNetworkInfo implements android.os.Parcelable android.net.TransportInfo {
     method public int describeContents();
-    method @NonNull public java.util.List<android.net.wifi.aware.WifiAwareChannelInfo> getChannelInfos();
+    method @NonNull public java.util.List<android.net.wifi.aware.WifiAwareChannelInfo> getChannelInfoList();
     method @Nullable public java.net.Inet6Address getPeerIpv6Addr();
     method public int getPort();
     method public int getTransportProtocol();
@@ -898,7 +902,7 @@ package android.net.wifi.aware {
 
   public final class WifiAwareNetworkSpecifier extends android.net.NetworkSpecifier implements android.os.Parcelable {
     method public int describeContents();
-    method @IntRange(from=0) public int getChannelInMhz();
+    method @IntRange(from=0) public int getChannelFrequencyMhz();
     method @Nullable public android.net.wifi.aware.WifiAwareDataPathSecurityConfig getWifiAwareDataPathSecurityConfig();
     method public boolean isChannelRequired();
     method public void writeToParcel(android.os.Parcel, int);
@@ -909,7 +913,7 @@ package android.net.wifi.aware {
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.DiscoverySession, @NonNull android.net.wifi.aware.PeerHandle);
     ctor public WifiAwareNetworkSpecifier.Builder(@NonNull android.net.wifi.aware.PublishDiscoverySession);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier build();
-    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelInMhz(@IntRange(from=0) int, boolean);
+    method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setChannelFrequencyMhz(@IntRange(from=0) int, boolean);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setDataPathSecurityConfig(@NonNull android.net.wifi.aware.WifiAwareDataPathSecurityConfig);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPmk(@NonNull byte[]);
     method @NonNull public android.net.wifi.aware.WifiAwareNetworkSpecifier.Builder setPort(@IntRange(from=0, to=65535) int);

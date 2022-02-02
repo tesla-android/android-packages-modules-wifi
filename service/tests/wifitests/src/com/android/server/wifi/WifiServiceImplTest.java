@@ -2210,7 +2210,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         SoftApConfiguration config = new SoftApConfiguration.Builder()
                 .setSsid("TestAp")
-                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
                 .setBand(SoftApConfiguration.BAND_6GHZ)
                 .build();
 
@@ -2233,7 +2233,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         SoftApConfiguration config = new SoftApConfiguration.Builder()
                 .setSsid("TestAp")
-                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
                 .setBand(SoftApConfiguration.BAND_6GHZ)
                 .build();
 
@@ -2255,7 +2255,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
 
         SoftApConfiguration config = new SoftApConfiguration.Builder()
                 .setSsid("TestAp")
-                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA2_PSK)
+                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
                 .setBand(SoftApConfiguration.BAND_6GHZ)
                 .build();
 
@@ -9249,7 +9249,9 @@ public class WifiServiceImplTest extends WifiBaseTest {
         setupForCustomLohs();
         SoftApConfiguration lohsConfig = createValidSoftApConfiguration();
         SoftApConfiguration customizedConfig = new SoftApConfiguration.Builder(lohsConfig)
-                .setBand(SoftApConfiguration.BAND_6GHZ).build();
+                .setBand(SoftApConfiguration.BAND_6GHZ)
+                .setPassphrase("thisIsABadPassword", SoftApConfiguration.SECURITY_TYPE_WPA3_SAE)
+                .build();
         when(mWifiApConfigStore.generateLocalOnlyHotspotConfig(
                 any(), any(), any())).thenReturn(customizedConfig);
         // Expect the result is registered but it should get failure because non-supported
