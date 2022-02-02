@@ -817,10 +817,15 @@ public class WifiApConfigStoreTest extends WifiBaseTest {
         assertFalse(WifiApConfigStore.validateApWifiConfiguration(
                 configBuilder.build(), true, mContext));
 
-        // WPA3 OWE-Transition
-        configBuilder.setPassphrase(null, SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
-        assertFalse(WifiApConfigStore.validateApWifiConfiguration(
-                configBuilder.build(), true, mContext));
+        if (SdkLevel.isAtLeastT()) {
+            // WPA3 OWE-Transition
+            if (SdkLevel.isAtLeastT()) {
+                configBuilder.setPassphrase(null,
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
+                assertFalse(WifiApConfigStore.validateApWifiConfiguration(
+                        configBuilder.build(), true, mContext));
+            }
+        }
     }
 
     /**
