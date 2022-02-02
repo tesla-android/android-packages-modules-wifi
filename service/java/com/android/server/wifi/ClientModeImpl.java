@@ -3940,7 +3940,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                         }
                     }
                     mInsecureEapNetworkHandler.prepareConnection(mTargetWifiConfiguration);
-
+                    setSelectedRcoiForPasspoint(config);
                     connectToNetwork(config);
                     break;
                 }
@@ -7168,5 +7168,17 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
         mWifiConfigManager.setRecentFailureAssociationStatus(netId, reason);
 
+    }
+
+    private void setSelectedRcoiForPasspoint(WifiConfiguration config) {
+        // Only relevant for Passpoint providers with roaming consortium subscriptions
+        if (config.isPasspoint() && config.roamingConsortiumIds != null
+                && config.roamingConsortiumIds.length > 0) {
+            long selectedRcoi = mPasspointManager.getSelectedRcoiForNetwork(
+                    config.getPasspointUniqueId(), config.SSID);
+            if (selectedRcoi != 0) {
+                config.enterpriseConfig.setSelectedRcoi(selectedRcoi);
+            }
+        }
     }
 }

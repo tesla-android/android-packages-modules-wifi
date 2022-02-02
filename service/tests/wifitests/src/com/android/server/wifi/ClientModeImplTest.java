@@ -257,6 +257,8 @@ public class ClientModeImplTest extends WifiBaseTest {
             "https://policies.google.com/terms?hl=en-US";
     private static final String VENUE_URL =
             "https://www.android.com/android-11/";
+    private static final long[] TEST_RCOI_ARRAY = {0xcafeL, 0xbabaL};
+    private static final long TEST_MATCHED_RCOI = TEST_RCOI_ARRAY[0];
 
     private long mBinderToken;
     private MockitoSession mSession;
@@ -1597,8 +1599,12 @@ public class ClientModeImplTest extends WifiBaseTest {
         config.BSSID = TEST_BSSID_STR;
         config.networkId = FRAMEWORK_NETWORK_ID;
         config.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
+        config.roamingConsortiumIds = TEST_RCOI_ARRAY;
+        when(mPasspointManager.getSelectedRcoiForNetwork(eq(config.getPasspointUniqueId()),
+                eq(config.SSID))).thenReturn(TEST_MATCHED_RCOI);
         setupAndStartConnectSequence(config);
         validateSuccessfulConnectSequence(config);
+        assertEquals(TEST_MATCHED_RCOI, config.enterpriseConfig.getSelectedRcoi());
 
         mCmi.sendMessage(WifiMonitor.SUPPLICANT_STATE_CHANGE_EVENT, 0, 0,
                 new StateChangeResult(FRAMEWORK_NETWORK_ID, TEST_WIFI_SSID, TEST_BSSID_STR,
