@@ -17,7 +17,6 @@
 package com.android.server.wifi;
 
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.wifi.WifiContext;
 import android.net.wifi.WifiManager;
 import android.os.UserHandle;
@@ -25,34 +24,39 @@ import android.util.ArraySet;
 import android.util.Log;
 import android.util.SparseArray;
 
+import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+
+import com.android.wifi.resources.R;
 
 import java.util.Set;
 
 /**
  * Class to manage launching dialogs via WifiDialog and returning the user reply.
+ * This class is thread-safe via the use of a single WifiThreadRunner.
  */
 public class WifiDialogManager {
     private static final String TAG = "WifiDialogManager";
-    public static final String WIFI_DIALOG_ACTIVITY_CLASSNAME =
+    @VisibleForTesting static final String WIFI_DIALOG_ACTIVITY_CLASSNAME =
             "com.android.wifi.dialog.WifiDialogActivity";
 
     private boolean mVerboseLoggingEnabled;
 
     private int mNextDialogId = 0;
-    private Set<Integer> mCurrentDialogIds = new ArraySet<>();
-    private @NonNull SparseArray<P2pInvitationReceivedDialogCallback>
-            mP2pInvitationReceivedDialogCallbacks = new SparseArray<>();
-    private @NonNull SparseArray<WifiThreadRunner>
-            mP2pInvitationReceivedDialogThreadRunners = new SparseArray<>();
+    private final Set<Integer> mCurrentDialogIds = new ArraySet<>();
+    private final @NonNull SparseArray<P2pInvitationReceivedDialogHandle>
+            mP2pInvitationReceivedDialogsHandles = new SparseArray<>();
 
-    @NonNull WifiContext mContext;
-    @NonNull PackageManager mPackageManager;
+    private final @NonNull WifiContext mContext;
+    private final @NonNull WifiThreadRunner mWifiThreadRunner;
 
-    public WifiDialogManager(WifiContext context) {
+    public WifiDialogManager(
+            @NonNull WifiContext context,
+            @NonNull WifiThreadRunner wifiThreadRunner) {
         mContext = context;
-        mPackageManager = context.getPackageManager();
+        mWifiThreadRunner = wifiThreadRunner;
     }
 
     /**
@@ -67,6 +71,25 @@ public class WifiDialogManager {
             mNextDialogId = 0;
         }
         return mNextDialogId++;
+    }
+
+    /**
+     * Sends an Intent to cancel a launched dialog with the given ID.
+     */
+    private void sendCancelIntentForDialogId(int dialogId) {
+        if (!mCurrentDialogIds.contains(dialogId)) {
+            Log.e(TAG, "Tried to cancel dialog but could not find id " + dialogId);
+            return;
+        }
+        String wifiDialogApkPkgName = mContext.getWifiDialogApkPkgName();
+        if (wifiDialogApkPkgName == null) {
+            Log.e(TAG, "Tried to cancel dialog but could not find a WifiDialog apk package name!");
+            return;
+        }
+        Intent intent = new Intent(WifiManager.ACTION_CANCEL_DIALOG);
+        intent.putExtra(WifiManager.EXTRA_DIALOG_ID, dialogId);
+        intent.setClassName(mContext.getWifiDialogApkPkgName(), WIFI_DIALOG_ACTIVITY_CLASSNAME);
+        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
     }
 
     /**
@@ -86,15 +109,74 @@ public class WifiDialogManager {
     }
 
     /**
+     * Handles launching and callback response for a single P2P Invitation Received dialog
+     */
+    private class P2pInvitationReceivedDialogHandle {
+        private int mDialogId;
+        private Intent mIntent;
+        private @NonNull P2pInvitationReceivedDialogCallback mCallback;
+        private @NonNull WifiThreadRunner mCallbackThreadRunner;
+        private @Nullable Runnable mTimeoutRunnable;
+
+        P2pInvitationReceivedDialogHandle(
+                final int dialogId,
+                final @NonNull String deviceName,
+                final boolean isPinRequested,
+                @Nullable String displayPin,
+                @NonNull P2pInvitationReceivedDialogCallback callback,
+                @NonNull WifiThreadRunner callbackThreadRunner) {
+            mDialogId = dialogId;
+            Intent intent = new Intent(WifiManager.ACTION_LAUNCH_DIALOG);
+            intent.putExtra(WifiManager.EXTRA_DIALOG_TYPE,
+                    WifiManager.DIALOG_TYPE_P2P_INVITATION_RECEIVED);
+            intent.putExtra(WifiManager.EXTRA_DIALOG_ID, dialogId);
+            intent.putExtra(WifiManager.EXTRA_P2P_DEVICE_NAME, deviceName);
+            intent.putExtra(WifiManager.EXTRA_P2P_PIN_REQUESTED, isPinRequested);
+            intent.putExtra(WifiManager.EXTRA_P2P_DISPLAY_PIN, displayPin);
+            intent.setClassName(mContext.getWifiDialogApkPkgName(), WIFI_DIALOG_ACTIVITY_CLASSNAME);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mIntent = intent;
+            mCallback = callback;
+            mCallbackThreadRunner = callbackThreadRunner;
+        }
+
+        void launchDialog() {
+            mContext.startActivityAsUser(mIntent, UserHandle.CURRENT);
+            int timeoutMs = mContext.getResources()
+                    .getInteger(R.integer.config_p2pInvitationReceivedDialogTimeoutMs);
+            if (timeoutMs > 0) {
+                mTimeoutRunnable = () -> sendCancelIntentForDialogId(mDialogId);
+                mWifiThreadRunner.postDelayed(mTimeoutRunnable, timeoutMs);
+            }
+        }
+
+        void onAccepted(@Nullable String optionalPin) {
+            mCallbackThreadRunner.post(() -> mCallback.onAccepted(optionalPin));
+            if (mTimeoutRunnable != null) {
+                mWifiThreadRunner.removeCallbacks(mTimeoutRunnable);
+                mTimeoutRunnable = null;
+            }
+        }
+
+        void onDeclined() {
+            mCallbackThreadRunner.post(() -> mCallback.onDeclined());
+            if (mTimeoutRunnable != null) {
+                mWifiThreadRunner.removeCallbacks(mTimeoutRunnable);
+                mTimeoutRunnable = null;
+            }
+        }
+    }
+
+    /**
      * Launches a P2P Invitation Received dialog.
      * @param deviceName Name of the device sending the invitation.
      * @param isPinRequested True if a PIN was requested and a PIN input UI should be shown.
      * @param displayPin Display PIN, or {@code null} if no PIN should be displayed
      * @param callback Callback to receive the dialog response.
      * @param threadRunner WifiThreadRunner to run the callback on.
-     * @return id of the launched dialog, or {@code -1} if the dialog could not be created.
      */
-    public int launchP2pInvitationReceivedDialog(
+    @AnyThread
+    public void launchP2pInvitationReceivedDialog(
             String deviceName,
             boolean isPinRequested,
             @Nullable String displayPin,
@@ -102,32 +184,38 @@ public class WifiDialogManager {
             @NonNull WifiThreadRunner threadRunner) {
         if (callback == null) {
             Log.e(TAG, "Cannot launch a P2P Invitation Received dialog with null callback!");
-            return -1;
+            return;
         }
-        if (callback == null) {
-            Log.e(TAG, "Cannot launch a P2P Invitation Received dialog with null handler!");
-            return -1;
+        if (threadRunner == null) {
+            Log.e(TAG, "Cannot launch a P2P Invitation Received dialog with null thread runner!");
+            return;
         }
+        mWifiThreadRunner.post(() ->
+                launchP2pInvitationReceivedDialogInternal(
+                        deviceName,
+                        isPinRequested,
+                        displayPin,
+                        callback,
+                        threadRunner));
+    }
+
+    private void launchP2pInvitationReceivedDialogInternal(
+            String deviceName,
+            boolean isPinRequested,
+            @Nullable String displayPin,
+            @NonNull P2pInvitationReceivedDialogCallback callback,
+            @NonNull WifiThreadRunner threadRunner) {
         int dialogId = getNextDialogId();
         mCurrentDialogIds.add(dialogId);
-        Intent intent = new Intent();
-        String wifiDialogApkPkgName = mContext.getWifiDialogApkPkgName();
-        if (wifiDialogApkPkgName == null) {
-            Log.e(TAG, "Tried to launch P2P Invitation Received dialog but could not find a"
-                    + " WifiDialog apk package name!");
-            return -1;
-        }
-        intent.setClassName(wifiDialogApkPkgName, WIFI_DIALOG_ACTIVITY_CLASSNAME);
-        intent.putExtra(WifiManager.EXTRA_DIALOG_TYPE,
-                WifiManager.DIALOG_TYPE_P2P_INVITATION_RECEIVED);
-        intent.putExtra(WifiManager.EXTRA_DIALOG_ID, dialogId);
-        intent.putExtra(WifiManager.EXTRA_P2P_DEVICE_NAME, deviceName);
-        intent.putExtra(WifiManager.EXTRA_P2P_PIN_REQUESTED, isPinRequested);
-        intent.putExtra(WifiManager.EXTRA_P2P_DISPLAY_PIN, displayPin);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        mP2pInvitationReceivedDialogCallbacks.put(dialogId, callback);
-        mP2pInvitationReceivedDialogThreadRunners.put(dialogId, threadRunner);
-        mContext.startActivityAsUser(intent, UserHandle.CURRENT);
+        P2pInvitationReceivedDialogHandle dialogHandle = new P2pInvitationReceivedDialogHandle(
+                dialogId,
+                deviceName,
+                isPinRequested,
+                displayPin,
+                callback,
+                threadRunner);
+        mP2pInvitationReceivedDialogsHandles.put(dialogId, dialogHandle);
+        dialogHandle.launchDialog();
         if (mVerboseLoggingEnabled) {
             Log.v(TAG, "Launching P2P Invitation Received dialog."
                     + " id=" + dialogId
@@ -136,7 +224,6 @@ public class WifiDialogManager {
                     + " displayPin=" + displayPin
                     + " callback=" + callback);
         }
-        return dialogId;
     }
 
     /**
@@ -146,8 +233,21 @@ public class WifiDialogManager {
      * @param optionalPin PIN of the reply, or {@code null} if none was supplied.
      * @hide
      */
+    @AnyThread
     public void replyToP2pInvitationReceivedDialog(
-            final int dialogId, final boolean accepted, final @Nullable String optionalPin) {
+            int dialogId,
+            boolean accepted,
+            @Nullable String optionalPin) {
+        mWifiThreadRunner.post(() -> replyToP2pInvitationReceivedDialogInternal(
+                dialogId,
+                accepted,
+                optionalPin));
+    }
+
+    private void replyToP2pInvitationReceivedDialogInternal(
+            int dialogId,
+            boolean accepted,
+            @Nullable String optionalPin) {
         if (mVerboseLoggingEnabled) {
             Log.i(TAG, "Response received for P2P Invitation Received dialog."
                     + " id=" + dialogId
@@ -155,32 +255,20 @@ public class WifiDialogManager {
                     + " pin=" + optionalPin);
         }
         mCurrentDialogIds.remove(dialogId);
-        final P2pInvitationReceivedDialogCallback callback =
-                mP2pInvitationReceivedDialogCallbacks.get(dialogId);
-        mP2pInvitationReceivedDialogCallbacks.remove(dialogId);
-        if (callback == null) {
+        P2pInvitationReceivedDialogHandle dialogHandle =
+                mP2pInvitationReceivedDialogsHandles.get(dialogId);
+        mP2pInvitationReceivedDialogsHandles.remove(dialogId);
+        if (dialogHandle == null) {
             if (mVerboseLoggingEnabled) {
-                Log.w(TAG, "No matching callback for P2P Invitation Received dialog"
+                Log.w(TAG, "No matching dialog handle for P2P Invitation Received dialog"
                         + " id=" + dialogId);
             }
             return;
         }
-        final WifiThreadRunner threadRunner =
-                mP2pInvitationReceivedDialogThreadRunners.get(dialogId);
-        mP2pInvitationReceivedDialogThreadRunners.remove(dialogId);
-        if (threadRunner == null) {
-            if (mVerboseLoggingEnabled) {
-                Log.w(TAG, "No matching handler for P2P Invitation Received dialog"
-                        + " id=" + dialogId);
-            }
-            return;
+        if (accepted) {
+            dialogHandle.onAccepted(optionalPin);
+        } else {
+            dialogHandle.onDeclined();
         }
-        threadRunner.post(() -> {
-            if (accepted) {
-                callback.onAccepted(optionalPin);
-            } else {
-                callback.onDeclined();
-            }
-        });
     }
 }
