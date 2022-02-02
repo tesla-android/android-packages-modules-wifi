@@ -275,6 +275,7 @@ package android.net.wifi {
   }
 
   public final class SoftApConfiguration implements android.os.Parcelable {
+    method @NonNull public int[] getAllowedAcsChannels(int);
     method @NonNull public java.util.List<android.net.MacAddress> getAllowedClientList();
     method @Deprecated public int getBand();
     method @NonNull public java.util.List<android.net.MacAddress> getBlockedClientList();
@@ -307,6 +308,7 @@ package android.net.wifi {
     ctor public SoftApConfiguration.Builder();
     ctor public SoftApConfiguration.Builder(@NonNull android.net.wifi.SoftApConfiguration);
     method @NonNull public android.net.wifi.SoftApConfiguration build();
+    method @NonNull public android.net.wifi.SoftApConfiguration.Builder setAllowedAcsChannels(int, @NonNull int[]);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setAllowedClientList(@NonNull java.util.List<android.net.MacAddress>);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setAutoShutdownEnabled(boolean);
     method @NonNull public android.net.wifi.SoftApConfiguration.Builder setBand(int);

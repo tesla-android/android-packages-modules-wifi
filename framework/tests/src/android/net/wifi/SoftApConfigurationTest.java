@@ -20,6 +20,7 @@ import static android.net.wifi.ScanResult.InformationElement.EID_VSA;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -711,5 +712,48 @@ public class SoftApConfigurationTest {
                 .build();
         assertEquals(config_setBssidAfterSetMacRandomizationSettingToNone.getBssid(),
                 testBssid);
+    }
+
+    @Test
+    public void testSetAllowedAcsChannels() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        SoftApConfiguration config = new SoftApConfiguration.Builder()
+                .build();
+        assertEquals(0, config.getAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ).length);
+        assertEquals(0, config.getAllowedAcsChannels(SoftApConfiguration.BAND_5GHZ).length);
+        assertEquals(0, config.getAllowedAcsChannels(SoftApConfiguration.BAND_6GHZ).length);
+
+        int[] channels2g = {1, 6, 11};
+        int[] channels5g = {36, 149, 136};
+        int[] channels6g = {1, 2, 3};
+
+        config = new SoftApConfiguration.Builder()
+                .setAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ, channels2g)
+                .setAllowedAcsChannels(SoftApConfiguration.BAND_5GHZ, channels5g)
+                .setAllowedAcsChannels(SoftApConfiguration.BAND_6GHZ, channels6g)
+                .build();
+        assertArrayEquals(channels2g, config.getAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ));
+        assertArrayEquals(channels5g, config.getAllowedAcsChannels(SoftApConfiguration.BAND_5GHZ));
+        assertArrayEquals(channels6g, config.getAllowedAcsChannels(SoftApConfiguration.BAND_6GHZ));
+    }
+
+    @Test
+    public void testSetAllowedAcsChannelsInvalidValues() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        int[] channels2g = {1, 6, 11, 50};
+        int[] channels5g = {36, 7, 149, 800};
+        int[] channels6g = {1, 2, -1, 3};
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder()
+                        .setAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ, channels2g));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder()
+                        .setAllowedAcsChannels(SoftApConfiguration.BAND_5GHZ, channels5g));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder()
+                        .setAllowedAcsChannels(SoftApConfiguration.BAND_6GHZ, channels6g));
     }
 }
