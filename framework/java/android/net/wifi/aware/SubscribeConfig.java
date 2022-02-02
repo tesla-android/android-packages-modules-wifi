@@ -309,7 +309,7 @@ public final class SubscribeConfig implements Parcelable {
      * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
      * @return true for enabled, false otherwise.
      */
-    public boolean isEnableInstantCommunicationMode() {
+    public boolean isInstantCommunicationModeEnabled() {
         return mEnableInstantMode;
     }
 
@@ -317,7 +317,8 @@ public final class SubscribeConfig implements Parcelable {
      * Check if enable instant mode on 5G for this subscribe session
      * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
      * @return The Wi-Fi band, one of the {@link WifiScanner#WIFI_BAND_24_GHZ}
-     * or {@link WifiScanner#WIFI_BAND_5_GHZ}
+     * or {@link WifiScanner#WIFI_BAND_5_GHZ}. If instant communication mode is not enabled will
+     * return {@link WifiScanner#WIFI_BAND_24_GHZ} as default.
      */
     public @WifiScanner.WifiBand int getInstantCommunicationBand() {
         return mBand;

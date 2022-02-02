@@ -786,7 +786,7 @@ package android.net.wifi.aware {
     method public int describeContents();
     method public int getInstantCommunicationBand();
     method @Nullable public android.net.wifi.aware.WifiAwareDataPathSecurityConfig getSecurityConfig();
-    method public boolean isEnableInstantCommunicationMode();
+    method public boolean isInstantCommunicationModeEnabled();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.PublishConfig> CREATOR;
     field public static final int PUBLISH_TYPE_SOLICITED = 1; // 0x1
@@ -811,7 +811,7 @@ package android.net.wifi.aware {
     method public void updatePublish(@NonNull android.net.wifi.aware.PublishConfig);
   }
 
-  public class ServiceDiscoveryInfo {
+  public final class ServiceDiscoveryInfo {
     method @NonNull public java.util.List<byte[]> getMatchFilters();
     method public int getPeerCipherSuite();
     method @NonNull public android.net.wifi.aware.PeerHandle getPeerHandle();
@@ -822,7 +822,7 @@ package android.net.wifi.aware {
   public final class SubscribeConfig implements android.os.Parcelable {
     method public int describeContents();
     method public int getInstantCommunicationBand();
-    method public boolean isEnableInstantCommunicationMode();
+    method public boolean isInstantCommunicationModeEnabled();
     method public void writeToParcel(android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.aware.SubscribeConfig> CREATOR;
     field public static final int SUBSCRIBE_TYPE_ACTIVE = 1; // 0x1
