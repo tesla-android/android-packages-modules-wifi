@@ -94,7 +94,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         /**
          * SSID of the network.
          */
-        private String mSsid;
+        private WifiSsid mWifiSsid;
         /**
          * Optional BSSID within the network.
          */
@@ -240,7 +240,6 @@ public final class WifiNetworkSuggestion implements Parcelable {
         private ParcelUuid mSubscriptionGroup;
 
         public Builder() {
-            mSsid = null;
             mBssid =  null;
             mIsEnhancedOpen = false;
             mWpa2PskPassphrase = null;
@@ -269,12 +268,17 @@ public final class WifiNetworkSuggestion implements Parcelable {
             mSaeH2eOnlyMode = false;
             mIsNetworkRestricted = false;
             mSubscriptionGroup = null;
+            mWifiSsid = null;
         }
 
         /**
          * Set the unicode SSID for the network.
          * <p>
          * <li>Overrides any previous value set using {@link #setSsid(String)}.</li>
+         *
+         * <p>
+         * Note: use {@link #setWifiSsid(WifiSsid)} which supports both unicode and non-unicode
+         * SSID.
          *
          * @param ssid The SSID of the network. It must be valid Unicode.
          * @return Instance of {@link Builder} to enable chaining of the builder method.
@@ -286,7 +290,28 @@ public final class WifiNetworkSuggestion implements Parcelable {
             if (!unicodeEncoder.canEncode(ssid)) {
                 throw new IllegalArgumentException("SSID is not a valid unicode string");
             }
-            mSsid = new String(ssid);
+            mWifiSsid = WifiSsid.fromUtf8Text(ssid);
+            return this;
+        }
+
+        /**
+         * Set the SSID for the network. {@link WifiSsid} support both unicode and non-unicode SSID.
+         * <p>
+         * <li>Overrides any previous value set using {@link #setWifiSsid(WifiSsid)}
+         * or {@link #setSsid(String)}.</li>
+         * <p>
+         * Note: this method is the superset of the {@link #setSsid(String)}
+         *
+         * @param wifiSsid The SSID of the network, in {@link WifiSsid} format.
+         * @return Instance of {@link Builder} to enable chaining of the builder method.
+         * @throws IllegalArgumentException if the wifiSsid is invalid.
+         */
+        public @NonNull Builder setWifiSsid(@NonNull WifiSsid wifiSsid) {
+            checkNotNull(wifiSsid);
+            if (wifiSsid.getBytes().length == 0) {
+                throw new IllegalArgumentException("Empty WifiSsid is invalid");
+            }
+            mWifiSsid = WifiSsid.fromBytes(wifiSsid.getBytes());
             return this;
         }
 
@@ -1033,7 +1058,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
         private WifiConfiguration buildWifiConfiguration() {
             final WifiConfiguration wifiConfiguration = new WifiConfiguration();
             // WifiConfiguration.SSID needs quotes around unicode SSID.
-            wifiConfiguration.SSID = "\"" + mSsid + "\"";
+            wifiConfiguration.SSID = mWifiSsid.toString();
             if (mBssid != null) {
                 wifiConfiguration.BSSID = mBssid.toString();
             }
@@ -1165,7 +1190,7 @@ public final class WifiNetworkSuggestion implements Parcelable {
             validateSecurityParams();
             WifiConfiguration wifiConfiguration;
             if (mPasspointConfiguration != null) {
-                if (mSsid != null) {
+                if (mWifiSsid != null) {
                     throw new IllegalStateException("setSsid should not be invoked for suggestion "
                             + "with Passpoint configuration");
                 }
@@ -1175,10 +1200,10 @@ public final class WifiNetworkSuggestion implements Parcelable {
                 }
                 wifiConfiguration = buildWifiConfigurationForPasspoint();
             } else {
-                if (mSsid == null) {
+                if (mWifiSsid == null) {
                     throw new IllegalStateException("setSsid should be invoked for suggestion");
                 }
-                if (TextUtils.isEmpty(mSsid)) {
+                if (mWifiSsid.getBytes().length == 0) {
                     throw new IllegalStateException("invalid ssid for suggestion");
                 }
                 if (mBssid != null
@@ -1512,7 +1537,10 @@ public final class WifiNetworkSuggestion implements Parcelable {
     }
 
     /**
-     * Return the SSID of the network, or null if this is a Passpoint network.
+     * Return the unicode SSID of the network, or null if this is a Passpoint network or the SSID is
+     * non-unicode.
+     * <p>
+     * Note: use {@link #getWifiSsid()} which supports both unicode and non-unicode SSID.
      * @see Builder#setSsid(String)
      */
     @Nullable
@@ -1520,7 +1548,35 @@ public final class WifiNetworkSuggestion implements Parcelable {
         if (wifiConfiguration.SSID == null) {
             return null;
         }
-        return WifiInfo.sanitizeSsid(wifiConfiguration.SSID);
+        WifiSsid wifiSsid;
+        try {
+            wifiSsid = WifiSsid.fromString(wifiConfiguration.SSID);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        if (wifiSsid.getUtf8Text() == null) {
+            return null;
+        }
+        return wifiSsid.getUtf8Text().toString();
+    }
+
+    /**
+     * Return the {@link WifiSsid} of the network, or null if this is a Passpoint network.
+     * @see Builder#setWifiSsid(WifiSsid)
+     * @return An object representing the SSID the network. {@code null} for passpoint network.
+     */
+    @Nullable
+    public WifiSsid getWifiSsid() {
+        if (wifiConfiguration.SSID == null) {
+            return null;
+        }
+        WifiSsid wifiSsid;
+        try {
+            wifiSsid = WifiSsid.fromString(wifiConfiguration.SSID);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("Invalid SSID in the network suggestion");
+        }
+        return wifiSsid;
     }
 
     /** @see Builder#setUntrusted(boolean)  */
