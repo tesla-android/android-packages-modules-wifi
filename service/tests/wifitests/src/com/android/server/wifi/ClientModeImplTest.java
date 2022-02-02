@@ -6453,6 +6453,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         verify(mWifiNative).disconnect(WIFI_IFACE_NAME);
         verify(mWifiMetrics).logStaEvent(anyString(), eq(StaEvent.TYPE_FRAMEWORK_DISCONNECT),
                 eq(StaEvent.DISCONNECT_CARRIER_OFFLOAD_DISABLED));
+        verify(mWifiConnectivityManager).clearCachedCandidates();
     }
 
     @Test
