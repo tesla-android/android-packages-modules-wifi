@@ -1074,13 +1074,13 @@ package android.net.wifi.aware {
   public final class AwareParams implements android.os.Parcelable {
     ctor public AwareParams();
     method public int describeContents();
-    method public int getDiscoveryBeaconIntervalMills();
+    method public int getDiscoveryBeaconIntervalMillis();
     method public int getDiscoveryWindowWakeInterval24Ghz();
     method public int getDiscoveryWindowWakeInterval5Ghz();
     method public int getMacRandomizationIntervalSeconds();
     method public int getNumSpatialStreamsInDiscovery();
     method public boolean isDwEarlyTerminationEnabled();
-    method public void setDiscoveryBeaconIntervalMills(@IntRange(from=1) int);
+    method public void setDiscoveryBeaconIntervalMillis(@IntRange(from=1) int);
     method public void setDiscoveryWindowWakeInterval24Ghz(@IntRange(from=1, to=5) int);
     method public void setDiscoveryWindowWakeInterval5Ghz(@IntRange(from=0, to=5) int);
     method public void setDwEarlyTerminationEnabled(boolean);

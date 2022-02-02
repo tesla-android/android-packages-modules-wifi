@@ -208,9 +208,9 @@ public class WifiAwareNativeApi implements WifiAwareShellCommand.DelegatedShellC
                 && parameters.getDiscoveryWindowWakeInterval5Ghz() <= 5) {
             mExternalSetParams.put(PARAM_DW_5GHZ, parameters.getDiscoveryWindowWakeInterval5Ghz());
         }
-        if (parameters.getDiscoveryBeaconIntervalMills() > 0) {
+        if (parameters.getDiscoveryBeaconIntervalMillis() > 0) {
             mExternalSetParams.put(PARAM_DISCOVERY_BEACON_INTERVAL_MS,
-                    parameters.getDiscoveryBeaconIntervalMills());
+                    parameters.getDiscoveryBeaconIntervalMillis());
         }
         if (parameters.getNumSpatialStreamsInDiscovery() > 0) {
             mExternalSetParams.put(PARAM_NUM_SS_IN_DISCOVERY,
