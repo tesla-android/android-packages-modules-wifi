@@ -17,6 +17,9 @@ package com.android.server.wifi;
 
 import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
 
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_STA;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
@@ -3430,7 +3433,7 @@ public class WifiVendorHal {
      */
     public boolean isItPossibleToCreateApIface(@NonNull WorkSource requestorWs) {
         synchronized (sLock) {
-            return mHalDeviceManager.isItPossibleToCreateIface(IfaceType.AP, requestorWs);
+            return mHalDeviceManager.isItPossibleToCreateIface(HDM_CREATE_IFACE_AP, requestorWs);
         }
     }
 
@@ -3439,7 +3442,7 @@ public class WifiVendorHal {
      */
     public boolean isItPossibleToCreateStaIface(@NonNull WorkSource requestorWs) {
         synchronized (sLock) {
-            return mHalDeviceManager.isItPossibleToCreateIface(IfaceType.STA, requestorWs);
+            return mHalDeviceManager.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, requestorWs);
         }
 
     }

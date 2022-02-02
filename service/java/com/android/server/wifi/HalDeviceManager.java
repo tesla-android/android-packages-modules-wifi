@@ -88,15 +88,13 @@ public class HalDeviceManager {
     // cache the value for supporting vendor HAL or not
     private boolean mIsVendorHalSupported = false;
 
-    @VisibleForTesting
+    /**
+     * Public API for querying interfaces from the HalDeviceManager.
+     */
     public static final int HDM_CREATE_IFACE_STA = 0;
-    @VisibleForTesting
     public static final int HDM_CREATE_IFACE_AP = 1;
-    @VisibleForTesting
     public static final int HDM_CREATE_IFACE_AP_BRIDGE = 2;
-    @VisibleForTesting
     public static final int HDM_CREATE_IFACE_P2P = 3;
-    @VisibleForTesting
     public static final int HDM_CREATE_IFACE_NAN = 4;
 
     @IntDef(flag = false, prefix = { "HDM_CREATE_IFACE_TYPE_" }, value = {
@@ -605,45 +603,35 @@ public class HalDeviceManager {
     /**
      * Returns whether the provided Iface can be requested by specifier requestor.
      *
-     * @param ifaceType Type of iface requested.
+     * @param createIfaceType Type of iface requested.
      * @param requiredChipCapabilities The bitmask of Capabilities which are required.
      *                                 See IWifiChip.hal for documentation.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
      *                    interface using rules based on the requestor app's context.
      * @return true if the device supports the provided combo, false otherwise.
      */
-    public boolean isItPossibleToCreateIface(
-            int ifaceType, long requiredChipCapabilities, WorkSource requestorWs) {
+    public boolean isItPossibleToCreateIface(@HdmIfaceTypeForCreation int createIfaceType,
+            long requiredChipCapabilities, WorkSource requestorWs) {
         if (VDBG) {
-            Log.d(TAG, "isItPossibleToCreateIface: ifaceType=" + ifaceType
+            Log.d(TAG, "isItPossibleToCreateIface: createIfaceType=" + createIfaceType
                     + ", requiredChipCapabilities=" + requiredChipCapabilities);
         }
-        synchronized (mLock) {
-            if (mWifi == null) return false;
-            WifiChipInfo[] chipInfos = getAllChipInfo();
-            if (chipInfos == null) return false;
-            if (!validateInterfaceCacheAndRetrieveRequestorWs(chipInfos)) {
-                Log.e(TAG, "isItPossibleToCreateIface: local cache is invalid!");
-                stopWifi(); // major error: shutting down
-                return false;
-            }
-            return isItPossibleToCreateIface(
-                    chipInfos, ifaceType, requiredChipCapabilities, requestorWs);
-        }
+        return reportImpactToCreateIface(createIfaceType, requiredChipCapabilities, requestorWs)
+                != null;
     }
 
     /**
      * Returns whether the provided Iface can be requested by specifier requestor.
      *
-     * @param ifaceType Type of iface requested.
+     * @param createIfaceType Type of iface requested.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
      *                    interface using rules based on the requestor app's context.
      * @return true if the device supports the provided combo, false otherwise.
      */
     public boolean isItPossibleToCreateIface(
-            int ifaceType, WorkSource requestorWs) {
+            @HdmIfaceTypeForCreation int createIfaceType, WorkSource requestorWs) {
         return isItPossibleToCreateIface(
-                ifaceType, CHIP_CAPABILITY_ANY, requestorWs);
+                createIfaceType, CHIP_CAPABILITY_ANY, requestorWs);
     }
 
     /**
@@ -1830,41 +1818,6 @@ public class HalDeviceManager {
         Log.e(TAG, "createIfaceIfPossible: Failed to create iface for ifaceType=" + createIfaceType
                 + ", requestorWs=" + requestorWs);
         return null;
-    }
-
-    // similar to createIfaceIfPossible - but simpler code: not looking for best option just
-    // for any option (so terminates on first one).
-    private boolean isItPossibleToCreateIface(WifiChipInfo[] chipInfos,
-            int ifaceType, long requiredChipCapabilities,
-            WorkSource requestorWs) {
-        if (VDBG) {
-            Log.d(TAG, "isItPossibleToCreateIface: chipInfos=" + Arrays.deepToString(chipInfos)
-                    + ", ifaceType=" + ifaceType
-                    + ", requiredChipCapabilities=" + requiredChipCapabilities);
-        }
-
-        for (WifiChipInfo chipInfo: chipInfos) {
-            if (!isChipCapabilitiesSupported(chipInfo, requiredChipCapabilities)) continue;
-            for (IWifiChip.ChipMode chipMode: chipInfo.availableModes) {
-                for (IWifiChip.ChipIfaceCombination chipIfaceCombo : chipMode
-                        .availableCombinations) {
-                    int[][] expandedIfaceCombos = expandIfaceCombos(chipIfaceCombo);
-                    if (VDBG) {
-                        Log.d(TAG, chipIfaceCombo + " expands to "
-                                + Arrays.deepToString(expandedIfaceCombos));
-                    }
-
-                    for (int[] expandedIfaceCombo: expandedIfaceCombos) {
-                        if (canIfaceComboSupportRequest(chipInfo, chipMode, expandedIfaceCombo,
-                                ifaceType, requestorWs) != null) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return false;
     }
 
     /**
