@@ -1019,8 +1019,8 @@ public class WifiAwareDataPathStateManager {
                 int channel = selectChannelForRequest(nnri);
                 int channelRequestType = NanDataPathChannelCfg.CHANNEL_NOT_REQUESTED;
                 if (mContext.getResources().getBoolean(R.bool.config_wifiSupportChannelOnDataPath)
-                        && nnri.networkSpecifier.getChannelInMhz() != 0) {
-                    channel = nnri.networkSpecifier.getChannelInMhz();
+                        && nnri.networkSpecifier.getChannelFrequencyMhz() != 0) {
+                    channel = nnri.networkSpecifier.getChannelFrequencyMhz();
                     channelRequestType = nnri.networkSpecifier.isChannelRequired()
                             ? NanDataPathChannelCfg.FORCE_CHANNEL_SETUP
                             : NanDataPathChannelCfg.REQUEST_CHANNEL_SETUP;

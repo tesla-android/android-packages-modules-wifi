@@ -2620,6 +2620,7 @@ public class WifiConnectivityManager {
             setSingleScanningType(mDisconnectedSingleScanType);
             startConnectivityScan(SCAN_IMMEDIATELY);
         } else if (mWifiState == WIFI_STATE_CONNECTED) {
+            cancelWatchdogScan();
             if (useSingleSavedNetworkSchedule()) {
                 // Switch to Single-Saved-Network connected schedule
                 setSingleScanningSchedule(mConnectedSingleSavedNetworkSingleScanScheduleSec);

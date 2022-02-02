@@ -1708,6 +1708,24 @@ public class WifiManager {
         return configs;
     }
 
+    /**
+     * To be used with setScreenOnScanSchedule.
+     */
+    public static class ScreenOnScanSchedule {
+        private final int mScanTimeMs;
+        private final int mScanType;
+
+        /**
+         * Creates a ScreenOnScanSchedule.
+         * @param scanTimeMs Interval between framework-initiated connectivity scans in
+         *                   milliseconds.
+         * @param scanType One of the {@code WifiScanner.SCAN_TYPE_} values.
+         */
+        public ScreenOnScanSchedule(int scanTimeMs, @WifiAnnotations.ScanType int scanType) {
+            mScanTimeMs = scanTimeMs;
+            mScanType = scanType;
+        }
+    }
 
     /**
      * Allows a privileged app to customize the screen-on scan behavior. When a non-null schedule
@@ -1720,13 +1738,14 @@ public class WifiManager {
      * {@link WifiScanner#SCAN_TYPE_HIGH_ACCURACY}, and all
      * scheduled scans later should happen every 40 seconds using
      * {@link WifiScanner#SCAN_TYPE_LOW_POWER}.
-     * setScreenOnScanSchedule(new int[] {20, 40},
-     * new int[] {WifiScanner.SCAN_TYPE_HIGH_ACCURACY, WifiScanner.SCAN_TYPE_LOW_POWER})
-     * @param scanSchedule defines the screen-on scan schedule in seconds, or null to unset the
-     *                     customized scan schedule.
-     * @param scanType defines the screen-on scan type. Each value must be one of
-     *                 {@link WifiAnnotations#ScanType}. Set to null to unset the customized scan
-     *                 type.
+     * <pre>
+     * List<ScreenOnScanSchedule> schedule = new ArrayList<>();
+     * schedule.add(new ScreenOnScanSchedule(20, WifiScanner.SCAN_TYPE_HIGH_ACCURACY));
+     * schedule.add(new ScreenOnScanSchedule(40, WifiScanner.SCAN_TYPE_LOW_POWER));
+     * wifiManager.setScreenOnScanSchedule(schedule);
+     * </pre>
+     * @param screenOnScanSchedule defines the screen-on scan schedule and the corresponding
+     *                             scan type. Set to null to clear any previously set value.
      *
      * @throws IllegalStateException if input is invalid
      * @throws UnsupportedOperationException if the API is not supported on this SDK version.
@@ -1739,8 +1758,22 @@ public class WifiManager {
             MANAGE_WIFI_AUTO_JOIN
     })
     @SystemApi
-    public void setScreenOnScanSchedule(@Nullable int[] scanSchedule, @Nullable int[] scanType) {
+    public void setScreenOnScanSchedule(@Nullable List<ScreenOnScanSchedule> screenOnScanSchedule) {
         try {
+            if (screenOnScanSchedule == null) {
+                mService.setScreenOnScanSchedule(null, null);
+                return;
+            }
+            if (screenOnScanSchedule.isEmpty()) {
+                throw new IllegalArgumentException("The input should either be null or a non-empty"
+                        + " list");
+            }
+            int[] scanSchedule = new int[screenOnScanSchedule.size()];
+            int[] scanType = new int[screenOnScanSchedule.size()];
+            for (int i = 0; i < screenOnScanSchedule.size(); i++) {
+                scanSchedule[i] = screenOnScanSchedule.get(i).mScanTimeMs;
+                scanType[i] = screenOnScanSchedule.get(i).mScanType;
+            }
             mService.setScreenOnScanSchedule(scanSchedule, scanType);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();

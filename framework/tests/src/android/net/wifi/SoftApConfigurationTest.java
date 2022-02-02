@@ -323,14 +323,14 @@ public class SoftApConfigurationTest {
     @Test
     public void testWpa3OweTransition() {
         SoftApConfiguration original = new SoftApConfiguration.Builder()
-                .setPassphrase("",
+                .setPassphrase(null,
                         SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION)
                 .setChannel(149, SoftApConfiguration.BAND_5GHZ)
                 .setHiddenSsid(false)
                 .build();
         assertThat(original.getSecurityType()).isEqualTo(
                 SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
-        assertThat(original.getPassphrase()).isEqualTo("");
+        assertThat(original.getPassphrase()).isEqualTo(null);
         assertThat(original.getBand()).isEqualTo(SoftApConfiguration.BAND_5GHZ);
         assertThat(original.getChannel()).isEqualTo(149);
         assertThat(original.isHiddenSsid()).isEqualTo(false);

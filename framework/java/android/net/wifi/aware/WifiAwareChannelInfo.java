@@ -28,7 +28,7 @@ import java.util.Objects;
 
 /**
  * Wi-Fi Aware data-path channel information. The information can be extracted from the
- * {@link WifiAwareNetworkInfo} using {@link WifiAwareNetworkInfo#getChannelInfos()} ()}.
+ * {@link WifiAwareNetworkInfo} using {@link WifiAwareNetworkInfo#getChannelInfoList()} ()}.
  * Wi-Fi Aware data-path channel information includes the channel frequency, bandwidth and num of
  * the spatial streams.
  */
@@ -49,7 +49,7 @@ public final class WifiAwareChannelInfo implements Parcelable {
      * @return An integer represent the frequency of the channel in MHZ.
      */
     @IntRange(from = 0)
-    public int getChannelFreqInMhz() {
+    public int getChannelFrequencyMhz() {
         return mChannelFreq;
     }
 
@@ -70,7 +70,7 @@ public final class WifiAwareChannelInfo implements Parcelable {
      * @return An integer represent number of the spatial streams are using in this channel.
      */
     @IntRange(from = 0)
-    public int getNumSpatialStreams() {
+    public int getSpatialStreamCount() {
         return mNumSpatialStreams;
     }
 
