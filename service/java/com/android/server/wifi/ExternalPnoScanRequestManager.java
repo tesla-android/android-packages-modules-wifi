@@ -21,6 +21,7 @@ import static android.net.wifi.WifiManager.PnoScanResultsCallback.REGISTER_PNO_C
 import static android.net.wifi.WifiManager.PnoScanResultsCallback.REMOVE_PNO_CALLBACK_RESULTS_DELIVERED;
 import static android.net.wifi.WifiManager.PnoScanResultsCallback.REMOVE_PNO_CALLBACK_UNREGISTERED;
 
+import android.annotation.NonNull;
 import android.net.wifi.IPnoScanResultsCallback;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiSsid;
@@ -33,10 +34,12 @@ import android.util.Log;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Manages PNO scan requests from apps.
@@ -65,10 +68,19 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
     }
 
     /**
+     * Returns a copy of the current frequencies being requested for PNO scan.
+     */
+    public Set<Integer> getExternalPnoScanFrequencies() {
+        return mCurrentRequest == null ? Collections.EMPTY_SET
+                : new ArraySet<>(mCurrentRequest.mFrequencies);
+    }
+
+    /**
      * Sets the request. This will fail if there's already a request set.
      */
-    public boolean setRequest(int uid, IBinder binder, IPnoScanResultsCallback callback,
-            List<WifiSsid> ssids) {
+    public boolean setRequest(int uid, @NonNull IBinder binder,
+            @NonNull IPnoScanResultsCallback callback,
+            @NonNull List<WifiSsid> ssids, @NonNull int[] frequencies) {
         if (mCurrentRequest != null) {
             // Already has existing request. Can't set a new one.
             try {
@@ -81,7 +93,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
             return false;
         }
         ExternalPnoScanRequest request = new ExternalPnoScanRequestManager.ExternalPnoScanRequest(
-                uid, binder, callback, ssids);
+                uid, binder, callback, ssids, frequencies);
         try {
             request.mBinder.linkToDeath(this, 0);
         } catch (RemoteException e) {
@@ -164,6 +176,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
     public static class ExternalPnoScanRequest {
         private int mUid;
         private Set<String> mSsidStrings;
+        private Set<Integer> mFrequencies;
         private IPnoScanResultsCallback mCallback;
         private IBinder mBinder;
 
@@ -174,7 +187,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
          * @param ssids requested SSIDs for PNO scan
          */
         public ExternalPnoScanRequest(int uid, IBinder binder, IPnoScanResultsCallback callback,
-                List<WifiSsid> ssids) {
+                List<WifiSsid> ssids, int[] frequencies) {
             mUid = uid;
             mBinder = binder;
             mCallback = callback;
@@ -182,6 +195,7 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
             for (WifiSsid wifiSsid : ssids) {
                 mSsidStrings.add(wifiSsid.toString());
             }
+            mFrequencies = Arrays.stream(frequencies).boxed().collect(Collectors.toSet());
         }
 
         @Override
@@ -193,6 +207,10 @@ public class ExternalPnoScanRequestManager implements IBinder.DeathRecipient {
                     .append(", mSsidStrings=");
             for (String s : mSsidStrings) {
                 sbuf.append(s).append(", ");
+            }
+            sbuf.append(" frequencies=");
+            for (int f : mFrequencies) {
+                sbuf.append(f).append(", ");
             }
             return sbuf.toString();
         }

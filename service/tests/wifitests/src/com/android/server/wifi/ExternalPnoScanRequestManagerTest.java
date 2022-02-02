@@ -68,6 +68,9 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
     private static final Set<String> EXPECTED_SSIDS_SET = new ArraySet<>(
             Arrays.asList(TEST_SSID_1, TEST_SSID_2)
     );
+    private static final int[] TEST_FREQUENCIES = new int[] {2420, 5160};
+    private static final Set<Integer> EXPECTED_FREQUENCIES_SET =
+            new ArraySet<>(Arrays.asList(2420, 5160));
 
     private TestLooper mLooper;
     private ExternalPnoScanRequestManager mExternalPnoScanRequestManager;
@@ -92,18 +95,18 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
 
         // initial register should be successful
         assertTrue(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         inOrder.verify(mCallback).onRegisterSuccess();
 
         // Another register with same uid should fail with REGISTER_PNO_CALLBACK_ALREADY_REGISTERED
         assertFalse(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, anotherCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(anotherCallback).onRegisterFailed(REGISTER_PNO_CALLBACK_ALREADY_REGISTERED);
 
         // Another register with different uid should fail with REGISTER_PNO_CALLBACK_RESOURCE_BUSY
         assertFalse(mExternalPnoScanRequestManager.setRequest(TEST_UID + 1, mIBinder,
-                anotherCallback, TEST_WIFI_SSIDS));
+                anotherCallback, TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(anotherCallback).onRegisterFailed(REGISTER_PNO_CALLBACK_RESOURCE_BUSY);
 
         // Verify the original callback is not affected
@@ -111,6 +114,8 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
         inOrder.verify(mCallback, never()).onRemoved(anyInt());
         inOrder.verify(mIBinder, never()).unlinkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(EXPECTED_SSIDS_SET, mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(EXPECTED_FREQUENCIES_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 
     @Test
@@ -122,10 +127,12 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
         doThrow(new RemoteException()).when(mIBinder).linkToDeath(
                 mExternalPnoScanRequestManager, 0);
         assertFalse(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(Collections.EMPTY_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(Collections.EMPTY_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 
     @Test
@@ -136,7 +143,7 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
 
         // register a request
         assertTrue(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         inOrder.verify(mCallback).onRegisterSuccess();
 
@@ -149,6 +156,8 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
         inOrder.verify(mIBinder).unlinkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(Collections.EMPTY_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(Collections.EMPTY_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 
     @Test
@@ -157,11 +166,13 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
 
         // register a request
         assertTrue(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         inOrder.verify(mCallback).onRegisterSuccess();
         assertEquals(EXPECTED_SSIDS_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(EXPECTED_FREQUENCIES_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
 
         // Mock 3 scan results.
         // scanResults[0] is not requested.
@@ -184,6 +195,8 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
         inOrder.verify(mIBinder).unlinkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(Collections.EMPTY_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(Collections.EMPTY_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 
     @Test
@@ -192,11 +205,13 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
 
         // register a request
         assertTrue(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         inOrder.verify(mCallback).onRegisterSuccess();
         assertEquals(EXPECTED_SSIDS_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(EXPECTED_FREQUENCIES_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
 
         // Mock a scan result that's not being requested
         ScanResult scanResult1 = new ScanResult();
@@ -210,6 +225,8 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
         inOrder.verify(mIBinder, never()).unlinkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(EXPECTED_SSIDS_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(EXPECTED_FREQUENCIES_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 
     @Test
@@ -218,16 +235,20 @@ public class ExternalPnoScanRequestManagerTest extends WifiBaseTest {
 
         // register a request
         assertTrue(mExternalPnoScanRequestManager.setRequest(TEST_UID, mIBinder, mCallback,
-                TEST_WIFI_SSIDS));
+                TEST_WIFI_SSIDS, TEST_FREQUENCIES));
         inOrder.verify(mIBinder).linkToDeath(mExternalPnoScanRequestManager, 0);
         inOrder.verify(mCallback).onRegisterSuccess();
         assertEquals(EXPECTED_SSIDS_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(EXPECTED_FREQUENCIES_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
 
         mExternalPnoScanRequestManager.binderDied();
         mLooper.dispatchAll();
         inOrder.verify(mIBinder).unlinkToDeath(mExternalPnoScanRequestManager, 0);
         assertEquals(Collections.EMPTY_SET,
                 mExternalPnoScanRequestManager.getExternalPnoScanSsids());
+        assertEquals(Collections.EMPTY_SET,
+                mExternalPnoScanRequestManager.getExternalPnoScanFrequencies());
     }
 }

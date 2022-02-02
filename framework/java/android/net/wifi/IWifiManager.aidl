@@ -319,7 +319,7 @@ interface IWifiManager
 
     void clearWifiConnectedNetworkScorer();
 
-    void setExternalPnoScanRequest(in IBinder binder, in IPnoScanResultsCallback callback, in List<WifiSsid> ssids, String packageName, String featureId);
+    void setExternalPnoScanRequest(in IBinder binder, in IPnoScanResultsCallback callback, in List<WifiSsid> ssids, in int[] frequencies, String packageName, String featureId);
 
     void clearExternalPnoScanRequest();
 
