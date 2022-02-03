@@ -100,6 +100,7 @@ public class WifiDiagnostics {
     public static final int REPORT_REASON_WIFINATIVE_FAILURE        = 8;
     public static final int REPORT_REASON_REACHABILITY_LOST         = 9;
     public static final int REPORT_REASON_FATAL_FW_ALERT            = 10;
+    public static final int REPORT_REASON_REACHABILITY_FAILURE      = 11;
 
     /** number of bug reports to hold */
     public static final int MAX_BUG_REPORTS                         = 4;

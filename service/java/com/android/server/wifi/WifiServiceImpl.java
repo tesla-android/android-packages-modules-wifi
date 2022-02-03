@@ -57,6 +57,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.location.LocationManager;
 import android.net.DhcpInfo;
+import android.net.DhcpOption;
 import android.net.DhcpResultsParcelable;
 import android.net.InetAddresses;
 import android.net.MacAddress;
@@ -6406,5 +6407,26 @@ public class WifiServiceImpl extends BaseWifiService {
                 mWifiDialogManager.replyToP2pInvitationReceivedDialog(
                         dialogId, accepted, optionalPin)
         );
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#addCustomDhcpOptions}.
+     */
+    @Override
+    public void addCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui,
+            @NonNull List<DhcpOption> options) {
+        enforceAnyPermissionOf(android.Manifest.permission.NETWORK_SETTINGS,
+                android.Manifest.permission.OVERRIDE_WIFI_CONFIG);
+        mWifiThreadRunner.post(() -> mWifiConfigManager.addCustomDhcpOptions(ssid, oui, options));
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#removeCustomDhcpOptions}.
+     */
+    @Override
+    public void removeCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui) {
+        enforceAnyPermissionOf(android.Manifest.permission.NETWORK_SETTINGS,
+                android.Manifest.permission.OVERRIDE_WIFI_CONFIG);
+        mWifiThreadRunner.post(() -> mWifiConfigManager.removeCustomDhcpOptions(ssid, oui));
     }
 }

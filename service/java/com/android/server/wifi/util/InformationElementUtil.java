@@ -35,6 +35,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Locale;
@@ -146,6 +147,30 @@ public class InformationElementUtil {
             }
         }
         return vsa;
+    }
+
+    /**
+     * Parse and retrieve all Vendor Specific Information Elements from the list of IEs.
+     *
+     * @param ies List of IEs to retrieve from
+     * @return List of {@link Vsa}
+     */
+    public static List<Vsa> getVendorSpecificIE(InformationElement[] ies) {
+        List<Vsa> vsas = new ArrayList<>();
+        if (ies != null) {
+            for (InformationElement ie : ies) {
+                if (ie.id == InformationElement.EID_VSA) {
+                    try {
+                        Vsa vsa = new Vsa();
+                        vsa.from(ie);
+                        vsas.add(vsa);
+                    } catch (RuntimeException e) {
+                        Log.e(TAG, "Failed to parse Vendor Specific IE: " + e.getMessage());
+                    }
+                }
+            }
+        }
+        return vsas;
     }
 
     /**
@@ -793,6 +818,7 @@ public class InformationElementUtil {
         public boolean IsOceCapable = false;
         public int mboAssociationDisallowedReasonCode =
                 MboOceConstants.MBO_OCE_ATTRIBUTE_NOT_PRESENT;
+        public byte[] oui;
 
         private void parseVsaMboOce(InformationElement ie) {
             ByteBuffer data = ByteBuffer.wrap(ie.bytes).order(ByteOrder.LITTLE_ENDIAN);
@@ -891,6 +917,7 @@ public class InformationElementUtil {
                 return;
             }
 
+            oui = Arrays.copyOfRange(ie.bytes, 0, 3);
             int oui = (((ie.bytes[0] & Constants.BYTE_MASK) << 16)
                        | ((ie.bytes[1] & Constants.BYTE_MASK) << 8)
                        |  ((ie.bytes[2] & Constants.BYTE_MASK)));

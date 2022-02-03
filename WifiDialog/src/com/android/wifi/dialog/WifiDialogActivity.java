@@ -60,7 +60,7 @@ public class WifiDialogActivity extends Activity  {
     private boolean mIsVerboseLoggingEnabled;
     private int mGravity = Gravity.NO_GRAVITY;
 
-    private @NonNull SparseArray<Intent> mIntentsPerId = new SparseArray<>();
+    private @NonNull SparseArray<Intent> mLaunchIntentsPerId = new SparseArray<>();
     private @NonNull SparseArray<Dialog> mActiveDialogsPerId = new SparseArray<>();
 
     // Broadcast receiver for listening to ACTION_CLOSE_SYSTEM_DIALOGS
@@ -154,7 +154,7 @@ public class WifiDialogActivity extends Activity  {
                 }
                 continue;
             }
-            mIntentsPerId.put(dialogId, intent);
+            mLaunchIntentsPerId.put(dialogId, intent);
         }
     }
 
@@ -167,9 +167,9 @@ public class WifiDialogActivity extends Activity  {
         registerReceiver(
                 mCloseSystemDialogsReceiver, new IntentFilter(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
         ArraySet<Integer> invalidDialogIds = new ArraySet<>();
-        for (int i = 0; i < mIntentsPerId.size(); i++) {
-            int dialogId = mIntentsPerId.keyAt(i);
-            if (!createAndShowDialogForIntent(dialogId, mIntentsPerId.get(dialogId))) {
+        for (int i = 0; i < mLaunchIntentsPerId.size(); i++) {
+            int dialogId = mLaunchIntentsPerId.keyAt(i);
+            if (!createAndShowDialogForIntent(dialogId, mLaunchIntentsPerId.get(dialogId))) {
                 invalidDialogIds.add(dialogId);
             }
         }
@@ -192,7 +192,12 @@ public class WifiDialogActivity extends Activity  {
             }
             return;
         }
-        mIntentsPerId.put(dialogId, intent);
+        String action = intent.getAction();
+        if (WifiManager.ACTION_CANCEL_DIALOG.equals(action)) {
+            removeIntentAndPossiblyFinish(dialogId);
+            return;
+        }
+        mLaunchIntentsPerId.put(dialogId, intent);
         if (!createAndShowDialogForIntent(dialogId, intent)) {
             removeIntentAndPossiblyFinish(dialogId);
         }
@@ -214,8 +219,8 @@ public class WifiDialogActivity extends Activity  {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         ArrayList<Intent> intentList = new ArrayList<>();
-        for (int i = 0; i < mIntentsPerId.size(); i++) {
-            intentList.add(mIntentsPerId.valueAt(i));
+        for (int i = 0; i < mLaunchIntentsPerId.size(); i++) {
+            intentList.add(mLaunchIntentsPerId.valueAt(i));
         }
         outState.putParcelableArrayList(KEY_DIALOG_INTENTS, intentList);
         super.onSaveInstanceState(outState);
@@ -226,7 +231,7 @@ public class WifiDialogActivity extends Activity  {
      * there are no dialogs left to show.
      */
     private void removeIntentAndPossiblyFinish(int dialogId) {
-        mIntentsPerId.remove(dialogId);
+        mLaunchIntentsPerId.remove(dialogId);
         Dialog dialog = mActiveDialogsPerId.get(dialogId);
         mActiveDialogsPerId.remove(dialogId);
         if (dialog != null && dialog.isShowing()) {
@@ -235,7 +240,7 @@ public class WifiDialogActivity extends Activity  {
         if (mIsVerboseLoggingEnabled) {
             Log.v(TAG, "Dialog id " + dialogId + " removed.");
         }
-        if (mIntentsPerId.size() == 0) {
+        if (mLaunchIntentsPerId.size() == 0) {
             if (mIsVerboseLoggingEnabled) {
                 Log.v(TAG, "No dialogs left to show, finishing.");
             }
@@ -257,6 +262,10 @@ public class WifiDialogActivity extends Activity  {
      * Returns {@code true} if the dialog was successfully created, {@code false} otherwise.
      */
     private @Nullable boolean createAndShowDialogForIntent(int dialogId, @NonNull Intent intent) {
+        String action = intent.getAction();
+        if (!WifiManager.ACTION_LAUNCH_DIALOG.equals(action)) {
+            return false;
+        }
         Dialog dialog = null;
         int dialogType = intent.getIntExtra(
                 WifiManager.EXTRA_DIALOG_TYPE, WifiManager.DIALOG_TYPE_UNKNOWN);

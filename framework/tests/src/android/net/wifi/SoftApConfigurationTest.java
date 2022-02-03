@@ -322,6 +322,7 @@ public class SoftApConfigurationTest {
 
     @Test
     public void testWpa3OweTransition() {
+        assumeTrue(SdkLevel.isAtLeastT());
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setPassphrase(null,
                         SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION)

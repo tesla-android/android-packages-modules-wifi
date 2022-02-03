@@ -710,7 +710,7 @@ package android.net.wifi.aware {
     ctor public AttachCallback();
     method public void onAttachFailed();
     method public void onAttached(android.net.wifi.aware.WifiAwareSession);
-    method public void onShutDown();
+    method public void onAwareSessionTerminated();
   }
 
   public final class AwareResources implements android.os.Parcelable {
