@@ -178,7 +178,9 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
 
     @Override
     public void enableInstantCommunicationMode(String callingPackage, boolean enable) {
-        if (!mWifiPermissionsUtil.isSystem(callingPackage, Binder.getCallingUid())) {
+        int uid = getMockableCallingUid();
+        mWifiPermissionsUtil.checkPackage(uid, callingPackage);
+        if (!mWifiPermissionsUtil.isSystem(callingPackage, uid)) {
             Log.i(TAG, "enableInstantCommunicationMode not allowed for uid="
                     + Binder.getCallingUid());
             return;
@@ -218,7 +220,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
         enforceChangePermission();
 
         final int uid = getMockableCallingUid();
-        mAppOps.checkPackage(uid, callingPackage);
+        mWifiPermissionsUtil.checkPackage(uid, callingPackage);
 
         if (callback == null) {
             throw new IllegalArgumentException("Callback must not be null");
@@ -336,7 +338,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
         enforceChangePermission();
 
         int uid = getMockableCallingUid();
-        mAppOps.checkPackage(uid, callingPackage);
+        mWifiPermissionsUtil.checkPackage(uid, callingPackage);
 
         enforceNearbyOrLocationPermission(callingPackage, callingFeatureId,
                 getMockableCallingUid(), extras, "Wifi Aware publish");
@@ -390,7 +392,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
         enforceChangePermission();
 
         int uid = getMockableCallingUid();
-        mAppOps.checkPackage(uid, callingPackage);
+        mWifiPermissionsUtil.checkPackage(uid, callingPackage);
 
         enforceNearbyOrLocationPermission(callingPackage, callingFeatureId,
                 getMockableCallingUid(), extras, "Wifi Aware subscribe");
