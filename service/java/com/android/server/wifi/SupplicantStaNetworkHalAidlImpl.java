@@ -436,6 +436,11 @@ public class SupplicantStaNetworkHalAidlImpl {
             final Map<String, String> metadata = new HashMap<String, String>();
             if (config.isPasspoint()) {
                 metadata.put(ID_STRING_KEY_FQDN, config.FQDN);
+                /** Selected RCOI */
+                if (!setSelectedRcoi(config.enterpriseConfig.getSelectedRcoi())) {
+                    Log.e(TAG, "failed to set selected RCOI");
+                    return false;
+                }
             }
             metadata.put(ID_STRING_KEY_CONFIG_KEY, config.getProfileKey());
             metadata.put(ID_STRING_KEY_CREATOR_UID, Integer.toString(config.creatorUid));
@@ -779,7 +784,6 @@ public class SupplicantStaNetworkHalAidlImpl {
                     return false;
                 }
             }
-
             return true;
         }
     }
@@ -3579,6 +3583,57 @@ public class SupplicantStaNetworkHalAidlImpl {
             // legacy FQDN stored as a plain string. We want to return null in this case as no JSON
             // dictionary of extras was found.
             return null;
+        }
+    }
+
+    /**
+     * Returns a big-endian representation of {@code rcoi} in an 3 or 5-element byte array.
+     */
+    private static byte[] rcoiToByteArray(long rcoi) {
+        // An RCOI is either 3- or 5-octet array, IEEE Std 802.11, section 9.4.1.31: Organization
+        // Identifier field
+        int arraySize = 3;
+        rcoi &= 0xffffffffffL;
+        if ((rcoi & 0xffff000000L) != 0) {
+            // This is a 5-octet RCOI
+            arraySize = 5;
+        }
+
+        byte[] result = new byte[arraySize];
+        for (int i = arraySize - 1; i >= 0; i--) {
+            result[i] = (byte) (rcoi & 0xffL);
+            rcoi >>= 8;
+        }
+        return result;
+    }
+
+    /**
+     * Set the selected RCOI for this Passpoint network.
+     *
+     * @param selectedRcoi value to set.
+     * @return true if successful, false otherwise
+     */
+    private boolean setSelectedRcoi(long selectedRcoi) {
+        if (selectedRcoi == 0) {
+            // Nothing to set
+            return true;
+        }
+        synchronized (mLock) {
+            final String methodStr = "setSelectedRcoi";
+            if (!checkStaNetworkAndLogFailure(methodStr)) {
+                return false;
+            }
+
+            try {
+                mISupplicantStaNetwork
+                        .setRoamingConsortiumSelection(rcoiToByteArray(selectedRcoi));
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return false;
         }
     }
 }

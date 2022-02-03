@@ -218,6 +218,7 @@
           <item type="integer" name="config_wifiConfigurationRestoreNetworksBatchNum" />
           <item type="bool" name="config_wifiSoftapOweTransitionSupported" />
           <item type="integer" name="config_wifiDialogGravity" />
+          <item type="integer" name="config_p2pInvitationReceivedDialogTimeoutMs"/>
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

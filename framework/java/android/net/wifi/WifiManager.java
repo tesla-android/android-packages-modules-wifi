@@ -41,6 +41,7 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.ConnectivityManager.NetworkCallback;
 import android.net.DhcpInfo;
+import android.net.DhcpOption;
 import android.net.LinkProperties;
 import android.net.MacAddress;
 import android.net.Network;
@@ -86,6 +87,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -9107,6 +9109,22 @@ public class WifiManager {
     }
 
     /**
+     * Intent action to launch a dialog from the WifiDialog app.
+     * Must include EXTRA_DIALOG_ID, EXTRA_DIALOG_TYPE, and appropriate extras for the dialog type.
+     * @hide
+     */
+    public static final String ACTION_LAUNCH_DIALOG =
+            "android.net.wifi.action.LAUNCH_DIALOG";
+
+    /**
+     * Intent action to cancel an existing dialog from the WifiDialog app.
+     * Must include EXTRA_DIALOG_ID.
+     * @hide
+     */
+    public static final String ACTION_CANCEL_DIALOG =
+            "android.net.wifi.action.CANCEL_DIALOG";
+
+    /**
      * Unknown DialogType.
      * @hide
      */
@@ -9173,6 +9191,68 @@ public class WifiManager {
         }
         try {
             mService.replyToP2pInvitationReceivedDialog(dialogId, accepted, optionalPin);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Specify a list of DHCP options to use for any network whose SSID is specified and which
+     * transmits vendor-specific information elements (VSIEs) using the specified Organizationally
+     * Unique Identifier (OUI). If the AP transmits VSIEs for multiple specified OUIs then all
+     * matching DHCP options will be used. The allowlist for DHCP options in
+     * {@link android.net.ip.IpClient} gates whether the DHCP options will actually be used.
+     * When DHCP options are used: if the option value {@link android.net.DhcpOption#getValue()}
+     * is null, the option type {@link android.net.DhcpOption#getType()} will be put in the
+     * Parameter Request List in the DHCP packets; otherwise, the option will be included in the
+     * options section in the DHCP packets. Use {@link #removeCustomDhcpOptions(Object, Object)}
+     * to remove the specified DHCP options.
+     *
+     * @param ssid the network SSID.
+     * @param oui the 3-byte OUI.
+     * @param options the list of {@link android.net.DhcpOption}.
+     *
+     * @hide
+     */
+    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
+    public void addCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui,
+            @NonNull List<DhcpOption> options) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "addCustomDhcpOptions: ssid="
+                    + ssid + ", oui=" + Arrays.toString(oui) + ", options=" + options);
+        }
+        try {
+            mService.addCustomDhcpOptions(ssid, oui, options);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Remove custom DHCP options specified by {@link #addCustomDhcpOptions(Object, Object, List)}.
+     *
+     * @param ssid the network SSID.
+     * @param oui the 3-byte OUI.
+     *
+     * @hide
+     */
+    @SystemApi(client = SystemApi.Client.MODULE_LIBRARIES)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+    })
+    public void removeCustomDhcpOptions(@NonNull WifiSsid ssid, @NonNull byte[] oui) {
+        if (mVerboseLoggingEnabled) {
+            Log.v(TAG, "removeCustomDhcpOptions: ssid=" + ssid + ", oui=" + Arrays.toString(oui));
+        }
+        try {
+            mService.removeCustomDhcpOptions(ssid, oui);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

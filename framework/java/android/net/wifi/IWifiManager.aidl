@@ -21,6 +21,7 @@ import android.net.wifi.hotspot2.PasspointConfiguration;
 import android.net.wifi.hotspot2.IProvisioningCallback;
 
 import android.net.DhcpInfo;
+import android.net.DhcpOption;
 import android.net.Network;
 import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
@@ -376,4 +377,8 @@ interface IWifiManager
     void validateCurrentWifiMeetsAdminRequirements();
 
     void replyToP2pInvitationReceivedDialog(int dialogId, boolean accepted, String optionalPin);
+
+    void addCustomDhcpOptions(in WifiSsid ssid, in byte[] oui, in List<DhcpOption> options);
+
+    void removeCustomDhcpOptions(in WifiSsid ssid, in byte[] oui);
 }

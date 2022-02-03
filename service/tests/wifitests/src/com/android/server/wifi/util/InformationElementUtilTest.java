@@ -38,6 +38,7 @@ import org.junit.Test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Unit tests for {@link com.android.server.wifi.util.InformationElementUtil}.
@@ -1204,6 +1205,24 @@ public class InformationElementUtilTest extends WifiBaseTest {
         InformationElementUtil.Vsa vsa =
                 InformationElementUtil.getHS2VendorSpecificIE(new InformationElement[] {ie});
         assertEquals(0, vsa.anqpDomainID);
+    }
+
+    /**
+     * Verify that the expected Vendor Specific information element is parsed and retrieved from
+     * the list of IEs.
+     */
+    @Test
+    public void testVendorSpecificIEWithOneVsaAndOneNonVsa() throws Exception {
+        InformationElement ie1 = new InformationElement();
+        InformationElement ie2 = new InformationElement();
+        ie1.id = InformationElement.EID_VSA;
+        ie2.id = InformationElement.EID_COUNTRY;
+        ie1.bytes = new byte[] { (byte) 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03};
+        ie2.bytes = new byte[] { (byte) 0x04, (byte) 0x05, (byte) 0x06, (byte) 0x07};
+        List<InformationElementUtil.Vsa> vsas =
+                InformationElementUtil.getVendorSpecificIE(new InformationElement[] {ie1, ie2});
+        assertEquals(1, vsas.size());
+        assertArrayEquals(new byte[] {(byte) 0x00, (byte) 0x01, (byte) 0x02}, vsas.get(0).oui);
     }
 
     /**

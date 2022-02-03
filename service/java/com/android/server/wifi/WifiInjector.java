@@ -531,7 +531,7 @@ public class WifiInjector {
         mSimRequiredNotifier = new SimRequiredNotifier(mContext, mFrameworkFacade,
                 mWifiNotificationManager);
         mLastCallerInfoManager = new LastCallerInfoManager();
-        mWifiDialogManager = new WifiDialogManager(mContext);
+        mWifiDialogManager = new WifiDialogManager(mContext, mWifiThreadRunner);
     }
 
     /**

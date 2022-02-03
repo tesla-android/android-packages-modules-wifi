@@ -260,6 +260,11 @@ public class WifiEnterpriseConfig implements Parcelable {
     private boolean mIsTrustOnFirstUseEnabled = false;
     private boolean mUserApproveNoCaCert = false;
 
+    // Not included in parceling, hashing, or equality because it is an internal, temporary value
+    // which is valid only during an actual connection to a Passpoint network with an RCOI-based
+    // subscription.
+    private long mSelectedRcoi = 0;
+
     private static final String TAG = "WifiEnterpriseConfig";
 
     public WifiEnterpriseConfig() {
@@ -307,6 +312,7 @@ public class WifiEnterpriseConfig implements Parcelable {
         mOcsp = source.mOcsp;
         mIsTrustOnFirstUseEnabled = source.mIsTrustOnFirstUseEnabled;
         mUserApproveNoCaCert = source.mUserApproveNoCaCert;
+        mSelectedRcoi = source.mSelectedRcoi;
     }
 
     /**
@@ -1222,6 +1228,24 @@ public class WifiEnterpriseConfig implements Parcelable {
     }
 
     /**
+     * Set selected RCOI for Passpoint: Indicates which RCOI was selected on a particular network
+     * @param selectedRcoi the selected RCOI on a particular network
+     * @hide
+     */
+    public void setSelectedRcoi(long selectedRcoi) {
+        mSelectedRcoi = selectedRcoi;
+    }
+
+    /**
+     * Get the selected RCOI matched for a Passpoint connection
+     * @return the selected RCOI
+     * @hide
+     */
+    public long getSelectedRcoi() {
+        return mSelectedRcoi;
+    }
+
+    /**
      * Set plmn (Public Land Mobile Network) of the provider of Passpoint credential
      * @param plmn the plmn value derived from mcc (mobile country code) & mnc (mobile network code)
      */
@@ -1360,7 +1384,8 @@ public class WifiEnterpriseConfig implements Parcelable {
         }
         sb.append(" ocsp: ").append(mOcsp).append("\n");
         sb.append(" trust_on_first_use: ").append(mIsTrustOnFirstUseEnabled).append("\n");
-        sb.append(" user_approve_no_ca_cert").append(mUserApproveNoCaCert).append("\n");
+        sb.append(" user_approve_no_ca_cert: ").append(mUserApproveNoCaCert).append("\n");
+        sb.append(" selected_rcoi: ").append(mSelectedRcoi).append("\n");
         return sb.toString();
     }
 

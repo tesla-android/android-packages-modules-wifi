@@ -67,6 +67,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -87,6 +88,9 @@ public class SupplicantStaNetworkHalAidlImplTest extends WifiBaseTest {
             "%7B%22key1%22%3A%22value1%22%2C%22key2%22%3A%22value2%22%7D";
     private static final String ANONYMOUS_IDENTITY = "aaa@bbb.cc.ddd";
     private static final String TEST_DECORATED_IDENTITY_PREFIX = "androidwifi.dev!";
+    private static final byte[] TEST_SELECTED_RCOI_BYTE_ARRAY =
+            {(byte) 0xaa, (byte) 0xbb, (byte) 0xcc};
+    private static final long TEST_SELECTED_RCOI_LONG = 0xaabbccL;
 
     private SupplicantStaNetworkHalAidlImpl mSupplicantNetwork;
     @Mock private ISupplicantStaNetwork mISupplicantStaNetworkMock;
@@ -1077,6 +1081,21 @@ public class SupplicantStaNetworkHalAidlImplTest extends WifiBaseTest {
     }
 
     /**
+     * Tests setting the selected RCOI on Passpoint networks and saving to wpa_supplicant.
+     */
+    @Test
+    public void testEapNetworkSetsSelectedRcoi() throws Exception {
+        WifiConfiguration config = WifiConfigurationTestUtil.createPasspointNetwork();
+        config.enterpriseConfig.setAnonymousIdentity(ANONYMOUS_IDENTITY);
+        config.enterpriseConfig.setSelectedRcoi(TEST_SELECTED_RCOI_LONG);
+        // Assume that the default params is used for this test.
+        config.getNetworkSelectionStatus().setCandidateSecurityParams(
+                config.getDefaultSecurityParams());
+        assertTrue(mSupplicantNetwork.saveWifiConfiguration(config));
+        assertTrue(Arrays.equals(TEST_SELECTED_RCOI_BYTE_ARRAY, mSupplicantVariables.selectedRcoi));
+    }
+
+    /**
      * Sets up the AIDL interface mock with all the setters/getter values.
      * Note: This only sets up the mock to return success on all methods.
      */
@@ -1529,6 +1548,13 @@ public class SupplicantStaNetworkHalAidlImplTest extends WifiBaseTest {
                 mSupplicantVariables.saeH2eMode = mode;
             }
         }).when(mISupplicantStaNetworkMock).setSaeH2eMode(any(byte.class));
+
+        /** Selected RCOI */
+        doAnswer(new AnswerWithArguments() {
+            public void answer(byte[] selectedRcoi) throws RemoteException {
+                mSupplicantVariables.selectedRcoi = selectedRcoi;
+            }
+        }).when(mISupplicantStaNetworkMock).setRoamingConsortiumSelection(any(byte[].class));
     }
 
     // Private class to to store/inspect values set via the AIDL mock.
@@ -1570,5 +1596,6 @@ public class SupplicantStaNetworkHalAidlImplTest extends WifiBaseTest {
         public String wapiCertSuite;
         public boolean eapErp;
         public byte saeH2eMode;
+        public byte[] selectedRcoi;
     }
 }
