@@ -1209,6 +1209,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                 Log.i(getTag(), "Carrier network offload disabled, triggering disconnect");
                 sendMessage(CMD_DISCONNECT, StaEvent.DISCONNECT_CARRIER_OFFLOAD_DISABLED);
             }
+            mWifiConnectivityManager.clearCachedCandidates();
         }
     }
 
