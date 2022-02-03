@@ -2153,6 +2153,11 @@ public class ActiveModeWarden {
                             log("STA disabled, remain in EnabledState.");
                         }
                         break;
+                    case  CMD_DEFERRED_RECOVERY_RESTART_WIFI:
+                        // Wifi shutdown is not completed yet, still in enabled state.
+                        // Defer the message and wait for entering disabled state.
+                        deferMessage(msg);
+                        break;
                     case CMD_RECOVERY_RESTART_WIFI: {
                         final String bugTitle;
                         final String bugDetail = (String) msg.obj;
