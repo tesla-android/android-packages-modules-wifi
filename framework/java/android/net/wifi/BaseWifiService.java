@@ -882,4 +882,10 @@ public class BaseWifiService extends IWifiManager.Stub {
     public void removeCustomDhcpOptions(WifiSsid ssid, byte[] oui) {
         throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void reportImpactToCreateIfaceRequest(String packageName, int interfaceType,
+            boolean queryForNewInterface, IInterfaceCreationInfoCallback callback) {
+        throw new UnsupportedOperationException();
+    }
 }

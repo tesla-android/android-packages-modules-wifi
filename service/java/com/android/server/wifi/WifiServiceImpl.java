@@ -28,12 +28,21 @@ import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLED;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_ENABLING;
 import static android.net.wifi.WifiManager.WIFI_AP_STATE_FAILED;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_TRUST_ON_FIRST_USE;
+import static android.net.wifi.WifiManager.WIFI_INTERFACE_TYPE_AP;
+import static android.net.wifi.WifiManager.WIFI_INTERFACE_TYPE_AWARE;
+import static android.net.wifi.WifiManager.WIFI_INTERFACE_TYPE_DIRECT;
+import static android.net.wifi.WifiManager.WIFI_INTERFACE_TYPE_STA;
 
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_LOCAL_ONLY;
 import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_LONG_LIVED;
 import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_DEFAULT_DATA_SIM_CHANGED;
 import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_SIM_INSERTED;
 import static com.android.server.wifi.ClientModeImpl.RESET_SIM_REASON_SIM_REMOVED;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP_BRIDGE;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_NAN;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_P2P;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_STA;
 import static com.android.server.wifi.SelfRecovery.REASON_API_CALL;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
@@ -71,6 +80,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.IInterfaceCreationInfoCallback;
 import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
@@ -137,6 +147,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
+import android.util.SparseIntArray;
 
 import androidx.annotation.RequiresApi;
 
@@ -225,6 +237,7 @@ public class WifiServiceImpl extends BaseWifiService {
     private final CoexManager mCoexManager;
     private final WifiNetworkSuggestionsManager mWifiNetworkSuggestionsManager;
     private final WifiConfigManager mWifiConfigManager;
+    private final HalDeviceManager mHalDeviceManager;
     private final WifiBlocklistMonitor mWifiBlocklistMonitor;
     private final PasspointManager mPasspointManager;
     private final WifiLog mLog;
@@ -458,6 +471,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiThreadRunner = mWifiInjector.getWifiThreadRunner();
         mWifiHandlerThread = mWifiInjector.getWifiHandlerThread();
         mWifiConfigManager = mWifiInjector.getWifiConfigManager();
+        mHalDeviceManager = mWifiInjector.getHalDeviceManager();
         mWifiBlocklistMonitor = mWifiInjector.getWifiBlocklistMonitor();
         mPasspointManager = mWifiInjector.getPasspointManager();
         mWifiScoreCard = mWifiInjector.getWifiScoreCard();
@@ -6461,5 +6475,69 @@ public class WifiServiceImpl extends BaseWifiService {
     public String[] getOemPrivilegedAdmins() {
         return mContext.getResources()
                 .getStringArray(R.array.config_oemPrivilegedWifiAdminPackages);
+    }
+
+    /**
+     * See {@link WifiManager#reportImpactToCreateIfaceRequest(int, boolean, Executor, BiConsumer)}.
+     */
+    @Override
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    public void reportImpactToCreateIfaceRequest(String packageName, int interfaceType,
+            boolean queryForNewInterface, IInterfaceCreationInfoCallback callback) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException("SDK level too old");
+        }
+
+        final SparseIntArray hdmIfaceToWifiIfaceMap = new SparseIntArray() {{
+                put(HDM_CREATE_IFACE_STA, WIFI_INTERFACE_TYPE_STA);
+                put(HDM_CREATE_IFACE_AP, WIFI_INTERFACE_TYPE_AP);
+                put(HDM_CREATE_IFACE_AP_BRIDGE, WIFI_INTERFACE_TYPE_AP);
+                put(HDM_CREATE_IFACE_P2P, WIFI_INTERFACE_TYPE_DIRECT);
+                put(HDM_CREATE_IFACE_NAN, WIFI_INTERFACE_TYPE_AWARE);
+            }};
+        final SparseIntArray wifiIfaceToHdmIfaceMap = new SparseIntArray() {{
+                put(WIFI_INTERFACE_TYPE_STA, HDM_CREATE_IFACE_STA);
+                put(WIFI_INTERFACE_TYPE_AP, HDM_CREATE_IFACE_AP);
+                put(WIFI_INTERFACE_TYPE_AWARE, HDM_CREATE_IFACE_NAN);
+                put(WIFI_INTERFACE_TYPE_DIRECT, HDM_CREATE_IFACE_P2P);
+            }};
+
+        if (packageName == null) throw new IllegalArgumentException("Null packageName");
+        if (callback == null) throw new IllegalArgumentException("Null callback");
+        if (interfaceType != WIFI_INTERFACE_TYPE_STA && interfaceType != WIFI_INTERFACE_TYPE_AP
+                && interfaceType != WIFI_INTERFACE_TYPE_AWARE
+                && interfaceType != WIFI_INTERFACE_TYPE_DIRECT) {
+            throw new IllegalArgumentException("Invalid interfaceType");
+        }
+        enforceAccessPermission();
+        int callingUid = getMockableCallingUid();
+        if (!mWifiPermissionsUtil.checkManageWifiInterfacesPermission(callingUid)) {
+            throw new SecurityException("Missing MANAGE_WIFI_INTERFACES permission");
+        }
+        mWifiPermissionsUtil.checkPackage(callingUid, packageName);
+        mWifiThreadRunner.post(() -> {
+            List<Pair<Integer, WorkSource>> details =
+                    mHalDeviceManager.reportImpactToCreateIface(
+                            wifiIfaceToHdmIfaceMap.get(interfaceType), queryForNewInterface,
+                            new WorkSource(callingUid, packageName));
+            try {
+                if (details == null) {
+                    callback.onResults(false, null, null);
+                } else {
+                    int[] interfaces = new int[details.size()];
+                    WorkSource[] worksources = new WorkSource[details.size()];
+                    int i = 0;
+                    for (Pair<Integer, WorkSource> detail: details) {
+                        interfaces[i] = hdmIfaceToWifiIfaceMap.get(detail.first);
+                        worksources[i] = detail.second;
+                        ++i;
+                    }
+                    callback.onResults(true, interfaces, worksources);
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG,
+                        "Failed calling back with results of isItPossibleToCreateInterface - " + e);
+            }
+        });
     }
 }
