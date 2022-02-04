@@ -41,6 +41,13 @@ import java.util.Objects;
 public final class SoftApInfo implements Parcelable {
 
     /**
+     * AP Channel bandwidth is automatically selected by the chip.
+     *
+     * @see #getBandwidth()
+     */
+    public static final int CHANNEL_WIDTH_AUTO = -1;
+
+   /**
      * AP Channel bandwidth is invalid.
      *
      * @see #getBandwidth()
@@ -172,7 +179,7 @@ public final class SoftApInfo implements Parcelable {
      * {@link #CHANNEL_WIDTH_80MHZ_PLUS_MHZ}, {@link #CHANNEL_WIDTH_320MHZ},
      * {@link #CHANNEL_WIDTH_2160MHZ}, {@link #CHANNEL_WIDTH_4320MHZ},
      * {@link #CHANNEL_WIDTH_6480MHZ}, {@link #CHANNEL_WIDTH_8640MHZ},
-     * or {@link #CHANNEL_WIDTH_INVALID}.
+     * {@link #CHANNEL_WIDTH_AUTO} ,or {@link #CHANNEL_WIDTH_INVALID}.
      */
     @WifiAnnotations.Bandwidth
     public int getBandwidth() {
