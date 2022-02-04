@@ -6099,12 +6099,11 @@ public class WifiManager {
      * auto-join.
      *
      * @param allowAutojoin true to allow auto-join, false to disallow auto-join
-     * @hide
+     *
+     * Available for DO/PO apps.
+     * Other apps require {@code android.Manifest.permission#NETWORK_SETTINGS} or
+     * {@code android.Manifest.permission#MANAGE_WIFI_AUTO_JOIN} permission.
      */
-    @SystemApi
-    @RequiresPermission(anyOf = {
-            android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN})
     public void allowAutojoinGlobal(boolean allowAutojoin) {
         try {
             mService.allowAutojoinGlobal(allowAutojoin);
