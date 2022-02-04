@@ -26,6 +26,7 @@ import static com.android.server.wifi.ActiveModeManager.ROLE_CLIENT_SECONDARY_TR
 import static com.android.server.wifi.ClientModeImpl.WIFI_WORK_SOURCE;
 import static com.android.server.wifi.WifiConfigurationTestUtil.generateWifiConfig;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -4426,10 +4427,11 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         List<WifiSsid> requestedSsids = Arrays.asList(
                 WifiSsid.fromString("\"TEST_SSID_1\""),
                 WifiSsid.fromString("\"TEST_SSID_2\""));
+        int[] frequencies = new int[] {TEST_FREQUENCY};
         mWifiConnectivityManager.setExternalPnoScanRequest(testUid, binder, callback,
-                requestedSsids);
+                requestedSsids, frequencies);
         verify(mExternalPnoScanRequestManager).setRequest(testUid, binder, callback,
-                requestedSsids);
+                requestedSsids, frequencies);
         mWifiConnectivityManager.clearExternalPnoScanRequest(testUid);
         verify(mExternalPnoScanRequestManager).removeRequest(testUid);
     }
@@ -4439,15 +4441,22 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
      */
     @Test
     public void testExternalPnoScanRequest_gatedBylocationMode() {
+        when(mWifiScoreCard.lookupNetwork(any())).thenReturn(mock(WifiScoreCard.PerNetwork.class));
+        mResources.setBoolean(R.bool.config_wifiPnoFrequencyCullingEnabled, true);
         mWifiConnectivityManager.setLocationModeEnabled(false);
         // mock saved networks list to be empty
         when(mWifiConfigManager.getSavedNetworks(anyInt())).thenReturn(Collections.EMPTY_LIST);
+
 
         // Mock a couple external requested PNO SSIDs
         Set<String> requestedSsids = new ArraySet<>();
         requestedSsids.add("\"Test_SSID_1\"");
         requestedSsids.add("\"Test_SSID_2\"");
         when(mExternalPnoScanRequestManager.getExternalPnoScanSsids()).thenReturn(requestedSsids);
+        Set<Integer> frequencies = new ArraySet<>();
+        frequencies.add(TEST_FREQUENCY);
+        when(mExternalPnoScanRequestManager.getExternalPnoScanFrequencies())
+                .thenReturn(frequencies);
 
         assertEquals(Collections.EMPTY_LIST, mWifiConnectivityManager.retrievePnoNetworkList());
 
@@ -4458,6 +4467,8 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         assertEquals(2, pnoNetworks.size());
         assertEquals("\"Test_SSID_1\"", pnoNetworks.get(0).ssid);
         assertEquals("\"Test_SSID_2\"", pnoNetworks.get(1).ssid);
+        assertArrayEquals(new int[] {TEST_FREQUENCY}, pnoNetworks.get(0).frequencies);
+        assertArrayEquals(new int[] {TEST_FREQUENCY}, pnoNetworks.get(1).frequencies);
     }
 
     /**

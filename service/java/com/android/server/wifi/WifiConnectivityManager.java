@@ -2173,12 +2173,17 @@ public class WifiConnectivityManager {
      * Sets a external PNO scan request
      */
     public void setExternalPnoScanRequest(int uid, @NonNull IBinder binder,
-            @NonNull IPnoScanResultsCallback callback, @NonNull List<WifiSsid> ssids) {
-        if (mExternalPnoScanRequestManager.setRequest(uid, binder, callback, ssids)
-                && mPnoScanStarted) {
-            Log.d(TAG, "Restarting PNO Scan with external requested SSIDs");
-            stopPnoScan();
-            startDisconnectedPnoScan();
+            @NonNull IPnoScanResultsCallback callback, @NonNull List<WifiSsid> ssids,
+            @NonNull int[] frequencies) {
+        if (mExternalPnoScanRequestManager.setRequest(uid, binder, callback, ssids, frequencies)) {
+            if (mPnoScanStarted) {
+                Log.d(TAG, "Restarting PNO Scan with external requested SSIDs");
+                stopPnoScan();
+                startDisconnectedPnoScan();
+            } else if (mWifiState == WIFI_STATE_DISCONNECTED) {
+                Log.d(TAG, "Starting PNO Scan with external requested SSIDs");
+                startDisconnectedPnoScan();
+            }
         }
     }
 
@@ -2202,6 +2207,9 @@ public class WifiConnectivityManager {
         List<WifiConfiguration> networks = getAllScanOptimizationNetworks();
         Set<String> externalRequestedPnoSsids = mIsLocationModeEnabled
                 ? mExternalPnoScanRequestManager.getExternalPnoScanSsids() : Collections.EMPTY_SET;
+        Set<Integer> externalRequestedPnoFrequencies = mIsLocationModeEnabled
+                ? mExternalPnoScanRequestManager.getExternalPnoScanFrequencies()
+                : Collections.EMPTY_SET;
         if (networks.isEmpty() && externalRequestedPnoSsids.isEmpty()) {
             return Collections.EMPTY_LIST;
         }
@@ -2226,6 +2234,7 @@ public class WifiConnectivityManager {
             Set<Integer> channelList = new HashSet<>();
             addChannelFromWifiScoreCard(channelList, ssid, 0,
                     MAX_PNO_SCAN_FREQUENCY_AGE_MS);
+            channelList.addAll(externalRequestedPnoFrequencies);
             pnoNetwork.frequencies = channelList.stream().mapToInt(Integer::intValue).toArray();
         }
         for (WifiConfiguration config : networks) {

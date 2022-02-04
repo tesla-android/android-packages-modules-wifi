@@ -504,7 +504,19 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         return -1;
                     }
                     String ssid = getNextArgRequired();
+                    int frequency = -1;
                     WifiSsid wifiSsid = WifiSsid.fromString("\"" + ssid + "\"");
+                    String option = getNextOption();
+                    if (option != null) {
+                        if (option.equals("-f")) {
+                            frequency = Integer.parseInt(getNextArgRequired());
+                        } else {
+                            pw.println("Invalid argument to 'set-pno-request' "
+                                    + "- only allowed option is '-f'");
+                            return -1;
+                        }
+                    }
+                    int[] frequencies = frequency == -1 ? new int[0] : new int[] {frequency};
                     IPnoScanResultsCallback.Stub callback = new IPnoScanResultsCallback.Stub() {
                         @Override
                         public void onScanResultsAvailable(List<ScanResult> scanResults) {
@@ -530,7 +542,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                     };
                     pw.println("requesting PNO scan for: " + wifiSsid);
                     mWifiService.setExternalPnoScanRequest(new Binder(), callback,
-                            Arrays.asList(wifiSsid), mContext.getOpPackageName(),
+                            Arrays.asList(wifiSsid), frequencies, mContext.getOpPackageName(),
                             mContext.getAttributionTag());
                     return 0;
                 }
@@ -2035,7 +2047,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Stop local only softap (hotspot)");
         pw.println("  set-multi-internet-mode 0|1|2");
         pw.println("    Sets Multi Internet use case mode. 0-disabled 1-dbs 2-multi ap");
-        pw.println("  set-pno-request <ssid>");
+        pw.println("  set-pno-request <ssid> [-f <frequency>]");
         pw.println("    Requests to include a non-quoted UTF-8 SSID in PNO scans");
         pw.println("  clear-pno-request");
         pw.println("    Clear the PNO scan request.");

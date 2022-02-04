@@ -26,7 +26,7 @@ import java.util.List;
  * @see DiscoverySessionCallback#onServiceDiscovered(ServiceDiscoveryInfo)
  * @see DiscoverySessionCallback#onServiceDiscoveredWithinRange(ServiceDiscoveryInfo, int)
  */
-public class ServiceDiscoveryInfo {
+public final class ServiceDiscoveryInfo {
     private final byte[] mServiceSpecificInfo;
     private final List<byte[]> mMatchFilters;
     private final int mPeerCipherSuite;
