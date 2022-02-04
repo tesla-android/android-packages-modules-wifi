@@ -2505,6 +2505,54 @@ public class ActiveModeWardenTest extends WifiBaseTest {
     }
 
     /**
+     * The command to trigger a WiFi reset should trigger a wifi reset in SoftApManager through
+     * the ActiveModeWarden.shutdownWifi() call when in SAP enabled mode.
+     * If the shutdown isn't done fast enough to transit to disabled state it should still
+     * bring up soft ap manager later.
+     */
+    @Test
+    public void testRestartWifiStackInTetheredSoftApEnabledState_SlowDisable() throws Exception {
+        enterSoftApActiveMode();
+        verify(mWifiInjector).makeSoftApManager(
+                any(), any(), any(), eq(TEST_WORKSOURCE), eq(ROLE_SOFTAP_TETHERED), anyBoolean());
+
+        assertWifiShutDown(() -> {
+            mActiveModeWarden.recoveryRestartWifi(SelfRecovery.REASON_WIFINATIVE_FAILURE,
+                    SelfRecovery.REASON_STRINGS[SelfRecovery.REASON_WIFINATIVE_FAILURE], true);
+            mLooper.dispatchAll();
+            mLooper.moveTimeForward(TEST_WIFI_RECOVERY_DELAY_MS);
+            mLooper.dispatchAll();
+        });
+        // Wifi is still not disabled yet.
+        verify(mModeChangeCallback, never()).onActiveModeManagerRemoved(mSoftApManager);
+        verify(mWifiInjector).makeSoftApManager(
+                any(), any(), any(), eq(TEST_WORKSOURCE), eq(ROLE_SOFTAP_TETHERED), anyBoolean());
+        assertInEnabledState();
+
+        // Now complete the stop and transit to disabled state
+        mSoftApListener.onStopped(mSoftApManager);
+        // mLooper.moveTimeForward(TEST_WIFI_RECOVERY_DELAY_MS);
+        mLooper.dispatchAll();
+
+        verify(mModeChangeCallback).onActiveModeManagerRemoved(mSoftApManager);
+        // started again
+        verify(mWifiInjector, times(1)).makeSoftApManager(
+                any(), any(), any(), any(), any(), anyBoolean());
+        assertInDisabledState();
+
+        mLooper.moveTimeForward(TEST_WIFI_RECOVERY_DELAY_MS);
+        mLooper.dispatchAll();
+
+        // started again
+        verify(mWifiInjector, times(2)).makeSoftApManager(
+                any(), any(), any(), any(), any(), anyBoolean());
+        assertInEnabledState();
+
+        verify(mSubsystemRestartCallback).onSubsystemRestarting();
+        verify(mSubsystemRestartCallback).onSubsystemRestarted();
+    }
+
+    /**
      * The command to trigger a WiFi reset should trigger a wifi reset in SoftApManager &
      * ClientModeManager through the ActiveModeWarden.shutdownWifi() call when in STA + SAP
      * enabled mode.
