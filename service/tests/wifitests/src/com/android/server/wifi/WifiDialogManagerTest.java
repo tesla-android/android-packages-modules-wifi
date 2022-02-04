@@ -34,6 +34,7 @@ import android.content.res.Resources;
 import android.net.wifi.WifiContext;
 import android.net.wifi.WifiManager;
 import android.os.UserHandle;
+import android.view.Display;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -76,13 +77,14 @@ public class WifiDialogManagerTest extends WifiBaseTest {
             String deviceName,
             boolean isPinRequested,
             @Nullable String displayPin,
+            int displayId,
             @NonNull WifiDialogManager.P2pInvitationReceivedDialogCallback callback,
             @NonNull WifiThreadRunner callbackThreadRunner,
             int timeoutMs) {
         when(mResources.getInteger(R.integer.config_p2pInvitationReceivedDialogTimeoutMs))
                 .thenReturn(timeoutMs);
         mWifiDialogManager.launchP2pInvitationReceivedDialog(
-                deviceName, isPinRequested, displayPin, callback, callbackThreadRunner);
+                deviceName, isPinRequested, displayPin, displayId, callback, callbackThreadRunner);
 
         // Synchronously run the posted launchP2pInvitationReceivedDialogInternal runnable.
         ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
@@ -116,6 +118,11 @@ public class WifiDialogManagerTest extends WifiBaseTest {
         assertThat(launchIntent.hasExtra(WifiManager.EXTRA_P2P_DISPLAY_PIN)).isTrue();
         assertThat(launchIntent.getStringExtra(WifiManager.EXTRA_P2P_DISPLAY_PIN))
                 .isEqualTo(displayPin);
+        assertThat(launchIntent.hasExtra(WifiManager.EXTRA_P2P_DISPLAY_ID)).isTrue();
+        // the -1000 should always be an incorrect value - i.e. don't default (not really
+        // necessary since validation that extra exists - but a backup).
+        assertThat(launchIntent.getIntExtra(WifiManager.EXTRA_P2P_DISPLAY_ID, -1000))
+                .isEqualTo(displayId);
         return dialogId;
     }
 
@@ -154,7 +161,8 @@ public class WifiDialogManagerTest extends WifiBaseTest {
 
         // Accept without PIN
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback,
+                callbackThreadRunner, 0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, true, null);
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(1)).onAccepted(null);
@@ -165,49 +173,56 @@ public class WifiDialogManagerTest extends WifiBaseTest {
 
         // Accept with PIN
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", true, null, callback, callbackThreadRunner, 0);
+                "deviceName", true, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, true, "012345");
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(1)).onAccepted("012345");
 
         // Accept with PIN but PIN was not requested
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, 0);
+                "deviceName", false, null, 123, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, true, "012345");
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(2)).onAccepted("012345");
 
         // Accept without PIN but PIN was requested
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", true, null, callback, callbackThreadRunner, 0);
+                "deviceName", true, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, true, null);
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(2)).onAccepted(null);
 
         // Decline without PIN
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, false, null);
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(1)).onDeclined();
 
         // Decline with PIN
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", true, null, callback, callbackThreadRunner, 0);
+                "deviceName", true, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, false, "012345");
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(2)).onDeclined();
 
         // Decline with PIN but PIN was not requested
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, false, "012345");
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(3)).onDeclined();
 
         // Decline without PIN but PIN was requested
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", true, null, callback, callbackThreadRunner, 0);
+                "deviceName", true, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, false, null);
         dispatchMockWifiThreadRunner(callbackThreadRunner);
         verify(callback, times(4)).onDeclined();
@@ -223,13 +238,15 @@ public class WifiDialogManagerTest extends WifiBaseTest {
                 WifiDialogManager.P2pInvitationReceivedDialogCallback.class);
         WifiThreadRunner callbackThreadRunner = mock(WifiThreadRunner.class);
         int dialogId1 = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback1, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback1, callbackThreadRunner,
+                0);
 
         // Launch Dialog2
         WifiDialogManager.P2pInvitationReceivedDialogCallback callback2 = mock(
                 WifiDialogManager.P2pInvitationReceivedDialogCallback.class);
         int dialogId2 = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback2, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback2, callbackThreadRunner,
+                0);
 
         // callback1 notified
         replyToP2pInvitationReceivedDialogSynchronous(dialogId1, true, null);
@@ -254,7 +271,8 @@ public class WifiDialogManagerTest extends WifiBaseTest {
                 WifiDialogManager.P2pInvitationReceivedDialogCallback.class);
         WifiThreadRunner callbackThreadRunner = mock(WifiThreadRunner.class);
         launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, 0);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                0);
 
         // Verify cancel runnable wasn't posted.
         verify(mWifiDialogManagerThreadRunner, never()).postDelayed(any(Runnable.class), anyInt());
@@ -262,7 +280,8 @@ public class WifiDialogManagerTest extends WifiBaseTest {
         // Launch Dialog with timeout
         callback = mock(WifiDialogManager.P2pInvitationReceivedDialogCallback.class);
         int dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, TIMEOUT_MILLIS);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                TIMEOUT_MILLIS);
 
         // Verify the timeout runnable was posted and run it.
         ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
@@ -286,7 +305,8 @@ public class WifiDialogManagerTest extends WifiBaseTest {
         // Launch Dialog without timeout
         callback = mock(WifiDialogManager.P2pInvitationReceivedDialogCallback.class);
         dialogId = launchP2pInvitationReceivedDialogSynchronous(
-                "deviceName", false, null, callback, callbackThreadRunner, TIMEOUT_MILLIS);
+                "deviceName", false, null, Display.DEFAULT_DISPLAY, callback, callbackThreadRunner,
+                TIMEOUT_MILLIS);
 
         // Reply before the timeout is over
         replyToP2pInvitationReceivedDialogSynchronous(dialogId, true, null);
