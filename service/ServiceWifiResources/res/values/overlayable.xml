@@ -216,6 +216,7 @@
           <item type="integer" name="config_wifiVerboseLoggingAlwaysOnLevel" />
           <item type="string" name="config_wifiCertInstallationHelpLink" />
           <item type="integer" name="config_wifiConfigurationRestoreNetworksBatchNum" />
+          <item type="bool" name="config_wifiSoftapOweSupported" />
           <item type="bool" name="config_wifiSoftapOweTransitionSupported" />
           <item type="integer" name="config_wifiDialogGravity" />
           <item type="integer" name="config_p2pInvitationReceivedDialogTimeoutMs"/>
