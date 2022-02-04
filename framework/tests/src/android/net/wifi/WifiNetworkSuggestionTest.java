@@ -16,6 +16,7 @@
 
 package android.net.wifi;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -37,6 +38,7 @@ import com.android.modules.utils.build.SdkLevel;
 
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.security.cert.X509Certificate;
 
 /**
@@ -1713,6 +1715,24 @@ public class WifiNetworkSuggestionTest {
                 .setWpa2Passphrase(TEST_PRESHARED_KEY)
                 .setSubscriptionGroup(GROUP_UUID)
                 .setSubscriptionId(1)
+                .build();
+    }
+
+    @Test
+    public void testSetWifiSsid() {
+        WifiSsid ssid = WifiSsid.fromBytes("服務集識別碼".getBytes(Charset.forName("GBK")));
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setWifiSsid(ssid)
+                .build();
+        assertArrayEquals(ssid.getBytes(), suggestion.getWifiSsid().getBytes());
+        assertNull(suggestion.getSsid());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSetEmptyWifiSsid() {
+        WifiSsid ssid = WifiSsid.fromBytes(null);
+        WifiNetworkSuggestion suggestion = new WifiNetworkSuggestion.Builder()
+                .setWifiSsid(ssid)
                 .build();
     }
 }

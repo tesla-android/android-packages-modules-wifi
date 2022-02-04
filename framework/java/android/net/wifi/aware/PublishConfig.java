@@ -272,7 +272,7 @@ public final class PublishConfig implements Parcelable {
      * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
      * @return true for enabled, false otherwise.
      */
-    public boolean isEnableInstantCommunicationMode() {
+    public boolean isInstantCommunicationModeEnabled() {
         return mEnableInstantMode;
     }
 
@@ -280,7 +280,8 @@ public final class PublishConfig implements Parcelable {
      * Get the Wi-FI band for instant communication mode for this publish session
      * @see Builder#setInstantCommunicationModeEnabled(boolean, int)
      * @return The Wi-Fi band, one of the {@link WifiScanner#WIFI_BAND_24_GHZ}
-     * or {@link WifiScanner#WIFI_BAND_5_GHZ}
+     * or {@link WifiScanner#WIFI_BAND_5_GHZ}. If instant communication mode is not enabled will
+     * return {@link WifiScanner#WIFI_BAND_24_GHZ} as default.
      */
     public @WifiScanner.WifiBand int getInstantCommunicationBand() {
         return mBand;

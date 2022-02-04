@@ -117,7 +117,7 @@ public final class AwareParams implements Parcelable {
      * Beacons), however - cluster synchronization time will likely increase.
      * @param intervalInMs An integer specifying the interval in millisecond
      */
-    public void setDiscoveryBeaconIntervalMills(@IntRange(from = 1) int intervalInMs) {
+    public void setDiscoveryBeaconIntervalMillis(@IntRange(from = 1) int intervalInMs) {
         if (intervalInMs < 1) {
             throw new IllegalArgumentException("Discovery Beacon interval must >= 1");
         }
@@ -196,11 +196,11 @@ public final class AwareParams implements Parcelable {
 
     /**
      * Get the discovery beacon interval in milliseconds
-     * @see #setDiscoveryBeaconIntervalMills(int)
+     * @see #setDiscoveryBeaconIntervalMillis(int)
      * @return an integer represents discovery beacon interval in milliseconds,
      * {@link #UNSET_PARAMETER} represent this parameter is not set
      */
-    public int getDiscoveryBeaconIntervalMills() {
+    public int getDiscoveryBeaconIntervalMillis() {
         return mDiscoveryBeaconIntervalMs;
     }
 

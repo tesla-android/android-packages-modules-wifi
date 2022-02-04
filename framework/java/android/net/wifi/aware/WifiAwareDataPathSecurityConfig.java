@@ -171,6 +171,7 @@ public final class WifiAwareDataPathSecurityConfig implements Parcelable {
      * Get the cipher suite specified in this config
      * @return one of {@code Characteristics#WIFI_AWARE_CIPHER_SUITE_*"}
      */
+    @Characteristics.WifiAwareCipherSuites
     public int getCipherSuite() {
         return mCipherSuite;
     }

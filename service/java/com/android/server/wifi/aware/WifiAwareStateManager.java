@@ -2968,7 +2968,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             PublishConfig publishConfig = completedCommand.getData().getParcelable(
                     MESSAGE_BUNDLE_KEY_CONFIG);
             isRangingEnabled = publishConfig.mEnableRanging;
-            enableInstantMode = publishConfig.isEnableInstantCommunicationMode();
+            enableInstantMode = publishConfig.isInstantCommunicationModeEnabled();
             instantModeBand = publishConfig.getInstantCommunicationBand();
         } else {
             SubscribeConfig subscribeConfig = completedCommand.getData().getParcelable(
@@ -2981,7 +2981,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             if (subscribeConfig.mMaxDistanceMmSet) {
                 maxRange = subscribeConfig.mMaxDistanceMm;
             }
-            enableInstantMode = subscribeConfig.isEnableInstantCommunicationMode();
+            enableInstantMode = subscribeConfig.isInstantCommunicationModeEnabled();
             instantModeBand = subscribeConfig.getInstantCommunicationBand();
         }
 
