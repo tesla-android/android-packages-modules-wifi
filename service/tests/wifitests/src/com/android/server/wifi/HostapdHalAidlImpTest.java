@@ -53,6 +53,7 @@ import android.net.MacAddress;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.Builder;
 import android.net.wifi.WifiManager;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.IBinder.DeathRecipient;
@@ -114,8 +115,13 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
             ArgumentCaptor.forClass(NetworkParams.class);
 
     private class HostapdHalSpy extends HostapdHalAidlImp {
+        private IBinder mServiceBinderOverride;
         HostapdHalSpy() {
             super(mContext, new Handler(mLooper.getLooper()));
+        }
+
+        public void setServiceBinderOverride(IBinder serviceBinderOverride) {
+            mServiceBinderOverride = serviceBinderOverride;
         }
 
         @Override
@@ -125,7 +131,7 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
 
         @Override
         protected IBinder getServiceBinderMockable() {
-            return mServiceBinderMock;
+            return mServiceBinderOverride == null ? mServiceBinderMock : mServiceBinderOverride;
         }
 
         @Override
@@ -208,6 +214,27 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
         mHostapdDeathCaptor.getValue().binderDied();
         mLooper.dispatchAll();
         verify(mHostapdHalDeathHandler).onDeath();
+    }
+
+    /**
+     * Verifies the hostapd death handling ignored with stale death recipient.
+     */
+    @Test
+    public void testDeathHandlingIgnore() throws Exception {
+        executeAndValidateInitializationSequence(true);
+        mHostapdHal.registerDeathHandler(mHostapdHalDeathHandler);
+        DeathRecipient old = mHostapdDeathCaptor.getValue();
+        // Start the HAL again
+        reset(mServiceBinderMock);
+        reset(mIHostapdMock);
+        // Initialize and start hostapd daemon with different service binder
+        ((HostapdHalSpy) mHostapdHal).setServiceBinderOverride(new Binder());
+        assertTrue(mHostapdHal.initialize());
+        assertTrue(mHostapdHal.startDaemon());
+        // The old binder died should be ignored.
+        old.binderDied();
+        mLooper.dispatchAll();
+        verify(mHostapdHalDeathHandler, never()).onDeath();
     }
 
     /**
