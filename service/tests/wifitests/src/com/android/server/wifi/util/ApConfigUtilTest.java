@@ -962,4 +962,21 @@ public class ApConfigUtilTest extends WifiBaseTest {
             assertTrue(Arrays.stream(TEST_5G_DFS_FREQS).anyMatch(n -> n == freq));
         }
     }
+
+    @Test
+    public void testCollectAllowedAcsChannels() throws Exception {
+        List<Integer>  resultList;
+
+        // Test with empty oem and caller configs
+        resultList = ApConfigUtil.collectAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ, "",
+                new int[] {});
+        assertArrayEquals(new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
+                resultList.stream().mapToInt(x->x).toArray());
+
+        // Test with both oem and caller configs
+        resultList = ApConfigUtil.collectAllowedAcsChannels(SoftApConfiguration.BAND_2GHZ,
+                "1-6,8-9", new int[] {1, 5, 9, 10});
+        assertArrayEquals(new int[]{1, 5, 9},
+                resultList.stream().mapToInt(x->x).toArray());
+    }
 }
