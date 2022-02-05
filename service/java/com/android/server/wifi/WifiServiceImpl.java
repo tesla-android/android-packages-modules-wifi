@@ -6373,8 +6373,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     if (wifiInfo.isOsuAp() || wifiInfo.isPasspointAp()) continue;
 
                     int policyType = policy.getPolicyType();
-                    Set<String> ssids = policy.getSsids();
-                    String ssid = wifiInfo.getWifiSsid().getUtf8Text().toString();
+                    Set<WifiSsid> ssids = policy.getSsids();
+                    WifiSsid ssid = wifiInfo.getWifiSsid();
 
                     if (policyType == WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST
                             && !ssids.contains(ssid)) {

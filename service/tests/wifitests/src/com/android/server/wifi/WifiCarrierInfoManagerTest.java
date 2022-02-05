@@ -599,7 +599,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
             ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
-                    TelephonyManager.KEY_TYPE_WLAN, null, key, null);
+                    TelephonyManager.KEY_TYPE_WLAN, null, key, null, 1);
             when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(
                     eq(TelephonyManager.KEY_TYPE_WLAN)))
                     .thenReturn(info);
@@ -633,7 +633,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
             ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
-                    TelephonyManager.KEY_TYPE_WLAN, keyIdentifier, (PublicKey) null, null);
+                    TelephonyManager.KEY_TYPE_WLAN, keyIdentifier, (PublicKey) null, null, 1);
             when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(
                     eq(TelephonyManager.KEY_TYPE_WLAN)))
                     .thenReturn(info);
