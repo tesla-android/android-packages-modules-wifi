@@ -47,6 +47,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.android.server.wifi.util.WifiAsyncChannel;
+import com.android.wifi.resources.R;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -60,6 +61,13 @@ public class FrameworkFacade {
     private ContentResolver mContentResolver = null;
     private CarrierConfigManager mCarrierConfigManager = null;
     private ActivityManager mActivityManager = null;
+
+    // verbose logging controlled by user
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
+    // verbose logging on by default for userdebug
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
+    // verbose logging on by default for all builds -->
+    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
 
     private ContentResolver getContentResolver(Context context) {
         if (mContentResolver == null) {
@@ -392,5 +400,34 @@ public class FrameworkFacade {
             Log.e(TAG, "Failed to check the app state", e);
             return false;
         }
+    }
+
+    /**
+     * Check if the verbose always on is enabled
+     * @param context Application context
+     * @param buildProperties build property of current build
+     * @return true if verbose always on is enabled on current build
+     */
+    public boolean isVerboseLoggingAlwaysOn(@NonNull Context context,
+            @NonNull BuildProperties buildProperties) {
+        final int alwaysOnLevel = context.getResources()
+                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
+        switch (alwaysOnLevel) {
+            // If the overlay setting enabled for all builds
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL:
+                return true;
+            //If the overlay setting enabled for userdebug builds only
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG:
+                // If it is a userdebug build
+                if (buildProperties.isUserdebugBuild()) return true;
+                break;
+            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE:
+                // nothing
+                break;
+            default:
+                Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
+                break;
+        }
+        return false;
     }
 }

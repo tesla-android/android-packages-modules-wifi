@@ -172,13 +172,6 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     // Otherwise it will cause interface down before function timeout.
     static final long P2P_INTERFACE_IDLE_SHUTDOWN_TIMEOUT_MS = 150_000;
 
-    // verbose logging controlled by user
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
-    // verbose logging on by default for userdebug
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
-    // verbose logging on by default for all builds -->
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
-
     private Context mContext;
 
     NetdWrapper mNetdWrapper;
@@ -601,21 +594,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     }
 
     private boolean isVerboseLoggingEnabled() {
-        final int alwaysOnLevel = mContext.getResources()
-                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
-        // If the overlay setting enabled for all builds
-        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL) {
-            return true;
-        }
-        //If it is a userdebug build and the overlay setting enabled for userdebug build.
-        if (alwaysOnLevel == VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG
-                && mBuildProperties.isUserdebugBuild()) {
-            return true;
-        }
-        if (alwaysOnLevel != VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE) {
-            Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
-        }
-        return mVerboseLoggingEnabled;
+        return mFrameworkFacade.isVerboseLoggingAlwaysOn(mContext, mBuildProperties)
+                ? true : mVerboseLoggingEnabled;
     }
 
     private void enforceAccessPermission() {
