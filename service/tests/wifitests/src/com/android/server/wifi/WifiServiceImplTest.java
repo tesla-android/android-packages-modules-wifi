@@ -183,6 +183,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.util.ArraySet;
 
 import androidx.test.filters.SmallTest;
 
@@ -9750,12 +9751,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
         WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
-                Collections.singleton("SSID"));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("SSID"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
-        mLooper.startAutoDispatch();
         mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
         verify(mClientModeManager).disconnect();
     }
@@ -9780,12 +9780,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
         WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
-                Collections.singleton(TEST_SSID));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text(TEST_SSID))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
-        mLooper.startAutoDispatch();
         mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
         verify(mClientModeManager).disconnect();
     }
@@ -9807,12 +9806,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
         WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
-                Collections.singleton("SSID"));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("SSID"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
-        mLooper.startAutoDispatch();
         mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
         verify(mClientModeManager, never()).disconnect();
     }
@@ -9838,12 +9836,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
         WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
-                Collections.singleton(TEST_SSID));
+                new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text(TEST_SSID))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
-        mLooper.startAutoDispatch();
         mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
         verify(mClientModeManager, never()).disconnect();
     }
@@ -9867,9 +9864,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mDevicePolicyManager.getMinimumRequiredWifiSecurityLevel()).thenReturn(
                 DevicePolicyManager.WIFI_SECURITY_ENTERPRISE_EAP);
 
-        mLooper.startAutoDispatch();
         mWifiServiceImpl.validateCurrentWifiMeetsAdminRequirements();
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
         verify(mClientModeManager).disconnect();
     }

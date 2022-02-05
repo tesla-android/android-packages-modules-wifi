@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyByte;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
@@ -56,6 +57,7 @@ import android.hardware.wifi.V1_0.NanStatusType;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import android.net.wifi.aware.AwareResources;
 import android.net.wifi.aware.ConfigRequest;
 import android.net.wifi.aware.IWifiAwareDiscoverySessionCallback;
 import android.net.wifi.aware.IWifiAwareEventCallback;
@@ -79,6 +81,7 @@ import android.util.SparseArray;
 
 import androidx.test.filters.SmallTest;
 
+import com.android.modules.utils.build.SdkLevel;
 import com.android.server.wifi.Clock;
 import com.android.server.wifi.MockResources;
 import com.android.server.wifi.WifiBaseTest;
@@ -846,7 +849,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 IWifiAwareDiscoverySessionCallback.class);
         ArgumentCaptor<Short> transactionId = ArgumentCaptor.forClass(Short.class);
         ArgumentCaptor<Integer> sessionId = ArgumentCaptor.forClass(Integer.class);
-        InOrder inOrder = inOrder(mockCallback, mockSessionCallback, mMockNative);
+        InOrder inOrder = inOrder(mockCallback, mockSessionCallback, mMockNative, mMockContext);
         InOrder inOrderM = inOrder(mAwareMetricsMock);
 
         mDut.enableUsage();
@@ -878,6 +881,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrderM.verify(mAwareMetricsMock).recordDiscoverySession(eq(uid), any());
         inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, true);
+        validateCorrectAwareResourcesChangeBroadcast(inOrder);
         assertEquals(1, mDut.getAvailableAwareResources().getAvailablePublishSessionsCount());
         assertEquals(2, mDut.getAvailableAwareResources().getAvailableSubscribeSessionsCount());
         assertEquals(0, mDut.getAvailableAwareResources().getAvailableDataPathsCount());
@@ -1194,7 +1198,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
                 IWifiAwareDiscoverySessionCallback.class);
         ArgumentCaptor<Short> transactionId = ArgumentCaptor.forClass(Short.class);
         ArgumentCaptor<Integer> sessionId = ArgumentCaptor.forClass(Integer.class);
-        InOrder inOrder = inOrder(mockCallback, mockSessionCallback, mMockNative);
+        InOrder inOrder = inOrder(mockCallback, mockSessionCallback, mMockNative, mMockContext);
         InOrder inOrderM = inOrder(mAwareMetricsMock);
 
         mDut.enableUsage();
@@ -1225,6 +1229,7 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
         inOrder.verify(mockSessionCallback).onSessionStarted(sessionId.capture());
         inOrderM.verify(mAwareMetricsMock).recordDiscoverySession(eq(uid), any());
         inOrderM.verify(mAwareMetricsMock).recordDiscoveryStatus(uid, NanStatusType.SUCCESS, false);
+        validateCorrectAwareResourcesChangeBroadcast(inOrder);
         assertEquals(2, mDut.getAvailableAwareResources().getAvailablePublishSessionsCount());
         assertEquals(1, mDut.getAvailableAwareResources().getAvailableSubscribeSessionsCount());
         assertEquals(0, mDut.getAvailableAwareResources().getAvailableDataPathsCount());
@@ -4073,6 +4078,22 @@ public class WifiAwareStateManagerTest extends WifiBaseTest {
 
         collector.checkThat("intent action", intent.getValue().getAction(),
                 equalTo(WifiAwareManager.ACTION_WIFI_AWARE_STATE_CHANGED));
+    }
+    /**
+     * Validates that the broadcast sent on Aware status change is correct.
+     */
+    private AwareResources validateCorrectAwareResourcesChangeBroadcast(InOrder inOrder) {
+        if (!SdkLevel.isAtLeastT()) {
+            return null;
+        }
+        ArgumentCaptor<Intent> captor = ArgumentCaptor.forClass(Intent.class);
+
+        inOrder.verify(mMockContext, atLeastOnce()).sendBroadcastAsUser(captor.capture(),
+                eq(UserHandle.ALL), anyString());
+        Intent intent = captor.getValue();
+        collector.checkThat("intent action", intent.getAction(),
+                equalTo(WifiAwareManager.ACTION_WIFI_AWARE_RESOURCE_CHANGED));
+        return intent.getParcelableExtra(WifiAwareManager.EXTRA_AWARE_RESOURCES);
     }
 
     /*

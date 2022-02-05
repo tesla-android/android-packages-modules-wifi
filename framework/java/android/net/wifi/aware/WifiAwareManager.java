@@ -138,6 +138,26 @@ public class WifiAwareManager {
     @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
     public static final String ACTION_WIFI_AWARE_STATE_CHANGED =
             "android.net.wifi.aware.action.WIFI_AWARE_STATE_CHANGED";
+    /**
+     * Intent broadcast sent whenever Wi-Fi Aware resource availability has changed. The resources
+     * are attached with the {@link #EXTRA_AWARE_RESOURCES} extra. The resources can also be
+     * obtained using the {@link #getAvailableAwareResources()} method. To receive this broadcast,
+     * apps must hold {@link android.Manifest.permission#ACCESS_WIFI_STATE}.
+     * <p>Note: The broadcast is only delivered to registered receivers - no manifest registered
+     * components will be launched.
+     */
+    @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(ACCESS_WIFI_STATE)
+    public static final String ACTION_WIFI_AWARE_RESOURCE_CHANGED =
+            "android.net.wifi.aware.action.WIFI_AWARE_RESOURCE_CHANGED";
+
+    /**
+     * Sent as a part of {@link #ACTION_WIFI_AWARE_RESOURCE_CHANGED} that contains an instance of
+     * {@link AwareResources} representing the current Wi-Fi Aware resources.
+     */
+    public static final String EXTRA_AWARE_RESOURCES =
+            "android.net.wifi.aware.extra.AWARE_RESOURCES";
 
     /** @hide */
     @IntDef({

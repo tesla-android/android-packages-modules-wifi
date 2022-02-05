@@ -123,6 +123,7 @@ public class WifiDialogManager {
                 final @NonNull String deviceName,
                 final boolean isPinRequested,
                 @Nullable String displayPin,
+                int displayId,
                 @NonNull P2pInvitationReceivedDialogCallback callback,
                 @NonNull WifiThreadRunner callbackThreadRunner) {
             mDialogId = dialogId;
@@ -133,6 +134,7 @@ public class WifiDialogManager {
             intent.putExtra(WifiManager.EXTRA_P2P_DEVICE_NAME, deviceName);
             intent.putExtra(WifiManager.EXTRA_P2P_PIN_REQUESTED, isPinRequested);
             intent.putExtra(WifiManager.EXTRA_P2P_DISPLAY_PIN, displayPin);
+            intent.putExtra(WifiManager.EXTRA_P2P_DISPLAY_ID, displayId);
             intent.setClassName(mContext.getWifiDialogApkPkgName(), WIFI_DIALOG_ACTIVITY_CLASSNAME);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             mIntent = intent;
@@ -172,6 +174,8 @@ public class WifiDialogManager {
      * @param deviceName Name of the device sending the invitation.
      * @param isPinRequested True if a PIN was requested and a PIN input UI should be shown.
      * @param displayPin Display PIN, or {@code null} if no PIN should be displayed
+     * @param displayId The ID of the Display on which to place the dialog (Display.DEFAULT_DISPLAY
+     *                  refers to the default display)
      * @param callback Callback to receive the dialog response.
      * @param threadRunner WifiThreadRunner to run the callback on.
      */
@@ -180,6 +184,7 @@ public class WifiDialogManager {
             String deviceName,
             boolean isPinRequested,
             @Nullable String displayPin,
+            int displayId,
             @NonNull P2pInvitationReceivedDialogCallback callback,
             @NonNull WifiThreadRunner threadRunner) {
         if (callback == null) {
@@ -195,6 +200,7 @@ public class WifiDialogManager {
                         deviceName,
                         isPinRequested,
                         displayPin,
+                        displayId,
                         callback,
                         threadRunner));
     }
@@ -203,6 +209,7 @@ public class WifiDialogManager {
             String deviceName,
             boolean isPinRequested,
             @Nullable String displayPin,
+            int displayId,
             @NonNull P2pInvitationReceivedDialogCallback callback,
             @NonNull WifiThreadRunner threadRunner) {
         int dialogId = getNextDialogId();
@@ -212,6 +219,7 @@ public class WifiDialogManager {
                 deviceName,
                 isPinRequested,
                 displayPin,
+                displayId,
                 callback,
                 threadRunner);
         mP2pInvitationReceivedDialogsHandles.put(dialogId, dialogHandle);
@@ -222,6 +230,7 @@ public class WifiDialogManager {
                     + " deviceName=" + deviceName
                     + " isPinRequested=" + isPinRequested
                     + " displayPin=" + displayPin
+                    + " displayId=" + displayId
                     + " callback=" + callback);
         }
     }

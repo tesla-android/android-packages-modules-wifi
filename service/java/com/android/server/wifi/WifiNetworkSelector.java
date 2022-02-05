@@ -31,6 +31,7 @@ import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiSsid;
 import android.net.wifi.util.ScanResultUtil;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -420,8 +421,8 @@ public class WifiNetworkSelector {
 
         int adminMinimumSecurityLevel = 0;
         boolean adminSsidRestrictionSet = false;
-        Set<String> adminSsidAllowlist = new ArraySet<>();
-        Set<String> admindSsidDenylist = new ArraySet<>();
+        Set<WifiSsid> adminSsidAllowlist = new ArraySet<>();
+        Set<WifiSsid> admindSsidDenylist = new ArraySet<>();
 
         int numBssidFiltered = 0;
 
@@ -495,7 +496,7 @@ public class WifiNetworkSelector {
 
             // Skip network that does not meet the admin set SSID restriction
             if (adminSsidRestrictionSet) {
-                String ssid = scanResult.getWifiSsid().getUtf8Text().toString();
+                WifiSsid ssid = scanResult.getWifiSsid();
                 // Allowlist policy set but network is not present in the list
                 if (!adminSsidAllowlist.isEmpty() && !adminSsidAllowlist.contains(ssid)) {
                     adminRestrictedSsid.append(scanId).append(" / ");

@@ -23,6 +23,7 @@ import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGI
 import android.annotation.Nullable;
 import android.app.AlertDialog;
 import android.app.BroadcastOptions;
+import android.content.AttributionSource;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -84,6 +85,7 @@ import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
+import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -437,6 +439,14 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
     }
 
+    /**
+     * Proxy for the final native call of the parent class. Enables mocking of
+     * the function.
+     */
+    public int getMockableCallingUid() {
+        return Binder.getCallingUid();
+    }
+
     private void updateWorkSourceByUid(int uid, boolean active) {
         if (uid == -1) return;
         if (active == mActiveClients.containsKey(uid)) return;
@@ -547,23 +557,25 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     }
 
     private class DeathHandlerData {
-        DeathHandlerData(int uid, DeathRecipient dr, Messenger m, WorkSource ws) {
+        DeathHandlerData(int uid, DeathRecipient dr, Messenger m, WorkSource ws, int displayId) {
             mUid = uid;
             mDeathRecipient = dr;
             mMessenger = m;
             mWorkSource = ws;
+            mDisplayId = displayId;
         }
 
         @Override
         public String toString() {
-            return "deathRecipient=" + mDeathRecipient + ", messenger=" + mMessenger
-                    + ", worksource=" + mWorkSource;
+            return "mUid=" + mUid + ", deathRecipient=" + mDeathRecipient + ", messenger="
+                    + mMessenger + ", worksource=" + mWorkSource + ", displayId=" + mDisplayId;
         }
 
         final int mUid;
         final DeathRecipient mDeathRecipient;
         final Messenger mMessenger;
         final WorkSource mWorkSource;
+        final int mDisplayId;
     }
     private Object mLock = new Object();
     private final Map<IBinder, DeathHandlerData> mDeathDataByBinder = new ConcurrentHashMap<>();
@@ -731,9 +743,58 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
      * an AsyncChannel communication with WifiP2pService
      */
     @Override
-    public Messenger getMessenger(final IBinder binder, final String packageName) {
+    public Messenger getMessenger(final IBinder binder, final String packageName, Bundle extras) {
         enforceAccessPermission();
         enforceChangePermission();
+
+        int callerUid = getMockableCallingUid();
+        int uidToUse = callerUid;
+        String packageNameToUse = packageName;
+
+        // if we're being called from the SYSTEM_UID then allow usage of the AttributionSource to
+        // reassign the WifiConfiguration to another app (reassignment == creatorUid)
+        if (SdkLevel.isAtLeastS() && callerUid == Process.SYSTEM_UID) {
+            if (extras == null) {
+                throw new SecurityException("extras bundle is null");
+            }
+            AttributionSource as = extras.getParcelable(
+                    WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE);
+            if (as == null) {
+                throw new SecurityException(
+                        "WifiP2pManager getMessenger attributionSource is null");
+            }
+
+            if (!as.checkCallingUid()) {
+                throw new SecurityException("WifiP2pManager getMessenger invalid (checkCallingUid "
+                        + "fails) attribution source=" + as);
+            }
+
+            // an attribution chain is either of size 1: unregistered (valid by definition) or
+            // size >1: in which case all are validated.
+            if (as.getNext() != null) {
+                AttributionSource asIt = as;
+                AttributionSource asLast = as;
+                do {
+                    if (!asIt.isTrusted(mContext)) {
+                        throw new SecurityException("WifiP2pManager getMessenger invalid "
+                                + "(isTrusted fails) attribution source=" + asIt);
+                    }
+                    asIt = asIt.getNext();
+                    if (asIt != null) asLast = asIt;
+                } while (asIt != null);
+
+                // use the last AttributionSource in the chain - i.e. the original caller
+                uidToUse = asLast.getUid();
+                packageNameToUse = asLast.getPackageName();
+            }
+        }
+
+        // get the DisplayId of the caller (if available)
+        int displayId = Display.DEFAULT_DISPLAY;
+        if (mWifiPermissionsUtil.isSystem(packageName, callerUid)) {
+            displayId = extras.getInt(WifiP2pManager.EXTRA_PARAM_KEY_DISPLAY_ID,
+                    Display.DEFAULT_DISPLAY);
+        }
 
         synchronized (mLock) {
             final Messenger messenger = new Messenger(mClientHandler);
@@ -747,13 +808,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 close(binder);
             };
 
-            WorkSource ws = packageName != null
-                    ? new WorkSource(Binder.getCallingUid(), packageName)
-                    : new WorkSource(Binder.getCallingUid());
+            WorkSource ws = packageNameToUse != null
+                    ? new WorkSource(uidToUse, packageNameToUse)
+                    : new WorkSource(uidToUse);
             try {
                 binder.linkToDeath(dr, 0);
-                mDeathDataByBinder.put(binder, new DeathHandlerData(
-                        Binder.getCallingUid(), dr, messenger, ws));
+                mDeathDataByBinder.put(binder,
+                        new DeathHandlerData(callerUid, dr, messenger, ws, displayId));
             } catch (RemoteException e) {
                 Log.e(TAG, "Error on linkToDeath: e=" + e);
                 // fall-through here - won't clean up
@@ -861,6 +922,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         pw.println("mServiceDiscReqId " + mServiceDiscReqId);
         pw.println("mDeathDataByBinder " + mDeathDataByBinder);
         pw.println("mClientInfoList " + mClientInfoList.size());
+        pw.println("mActiveClients " + mActiveClients);
         pw.println();
 
         final IIpClient ipClient = mIpClient;
@@ -4051,6 +4113,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             boolean isPinRequested = false;
             String displayPin = null;
 
+            int displayId = mDeathDataByBinder.values().stream()
+                    .filter(d -> d.mDisplayId != Display.DEFAULT_DISPLAY)
+                    .findAny()
+                    .map((dhd) -> dhd.mDisplayId)
+                    .orElse(Display.DEFAULT_DISPLAY);
             final WpsInfo wps = mSavedPeerConfig.wps;
             switch (wps.setup) {
                 case WpsInfo.KEYPAD:
@@ -4089,6 +4156,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     deviceName,
                     isPinRequested,
                     displayPin,
+                    displayId,
                     callback,
                     new WifiThreadRunner(getHandler()));
         }

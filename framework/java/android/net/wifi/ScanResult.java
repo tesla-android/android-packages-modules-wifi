@@ -1056,8 +1056,14 @@ public final class ScanResult implements Parcelable {
         public InformationElement() {
         }
 
-        /** @hide */
-        public InformationElement(int id, int idExt, byte[] bytes) {
+        /**
+         * Constructs InformationElements from beacon.
+         *
+         * @param id element id
+         * @param idExt element id extension
+         * @param bytes the body of the information element, may contain multiple elements
+         */
+        public InformationElement(int id, int idExt, @NonNull byte[] bytes) {
             this.id = id;
             this.idExt = idExt;
             this.bytes = bytes.clone();

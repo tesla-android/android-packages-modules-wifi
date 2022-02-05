@@ -16,6 +16,8 @@
 
 package com.android.server.wifi.aware;
 
+import static android.Manifest.permission.ACCESS_WIFI_STATE;
+
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.BroadcastReceiver;
@@ -2118,6 +2120,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                         mDataPathConfirmTimeoutMessages.put(ndpId, timeout);
                         timeout.schedule(
                                 SystemClock.elapsedRealtime() + AWARE_WAIT_FOR_DP_CONFIRM_TIMEOUT);
+                        sendAwareResourcesChangedBroadcast();
                     }
 
                     break;
@@ -2380,6 +2383,19 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mContext.sendBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    private void sendAwareResourcesChangedBroadcast() {
+        if (!SdkLevel.isAtLeastT()) {
+            return;
+        }
+        if (VDBG) {
+            Log.v(TAG, "sendAwareStateChangedBroadcast");
+        }
+        final Intent intent = new Intent(WifiAwareManager.ACTION_WIFI_AWARE_RESOURCE_CHANGED);
+        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+        intent.putExtra(WifiAwareManager.EXTRA_AWARE_RESOURCES, getAvailableAwareResources());
+        mContext.sendBroadcastAsUser(intent, UserHandle.ALL, ACCESS_WIFI_STATE);
+    }
+
     /*
      * COMMANDS
      */
@@ -2595,6 +2611,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             mAwareMetrics.recordDiscoverySessionDuration(session.getCreationTime(),
                     session.isPublishSession());
         }
+        sendAwareResourcesChangedBroadcast();
     }
 
     private boolean publishLocal(short transactionId, int clientId, PublishConfig publishConfig,
@@ -2818,6 +2835,8 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                 interfaceName, appInfo, isOutOfBand, mCapabilities, securityConfig);
         if (!success) {
             mDataPathMgr.onRespondToDataPathRequest(ndpId, false, NanStatusType.INTERNAL_FAILURE);
+        } else {
+            sendAwareResourcesChangedBroadcast();
         }
         return success;
     }
@@ -3021,7 +3040,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
             }
             mAwareMetrics.recordDiscoveryStatus(client.getUid(), NanStatusType.SUCCESS,
                     completedCommand.arg1 == COMMAND_TYPE_PUBLISH);
-
+            sendAwareResourcesChangedBroadcast();
         } else if (completedCommand.arg1 == COMMAND_TYPE_UPDATE_PUBLISH
                 || completedCommand.arg1 == COMMAND_TYPE_UPDATE_SUBSCRIBE) {
             int clientId = completedCommand.arg2;
@@ -3123,6 +3142,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
                         || mInstantCommModeClientRequest != getInstantModeFromAllClients()) {
                     reconfigure();
                 }
+                sendAwareResourcesChangedBroadcast();
             }
         } else {
             Log.wtf(TAG, "onSessionConfigFailLocal: unexpected failedCommand=" + failedCommand);
@@ -3378,6 +3398,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         }
         mAwareMetrics.recordDiscoverySessionDuration(data.second.getCreationTime(),
                 data.second.isPublishSession());
+        sendAwareResourcesChangedBroadcast();
     }
 
     private void onMessageReceivedLocal(int pubSubId, int requestorInstanceId, byte[] peerMac,
@@ -3425,6 +3446,7 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         mDataPathMgr.onAwareDownCleanupDataPaths();
         mCurrentDiscoveryInterfaceMac = ALL_ZERO_MAC;
         mDataPathMgr.deleteAllInterfaces();
+        sendAwareResourcesChangedBroadcast();
     }
 
     /*

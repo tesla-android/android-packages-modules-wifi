@@ -48,6 +48,7 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.CloseGuard;
 import android.util.Log;
+import android.view.Display;
 
 import androidx.annotation.RequiresApi;
 
@@ -168,6 +169,14 @@ public class WifiP2pManager {
      */
     public static final String EXTRA_PARAM_KEY_INTERNAL_MESSAGE =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_INTERNAL_MESSAGE";
+
+    /**
+     * Used to communicate the Display ID for multi display devices.
+     * @hide
+     **/
+    public static final String EXTRA_PARAM_KEY_DISPLAY_ID =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_DISPLAY_ID";
+
     /**
      * Broadcast intent action to indicate whether Wi-Fi p2p is enabled or disabled. An
      * extra {@link #EXTRA_WIFI_STATE} provides the state information as int.
@@ -1211,8 +1220,20 @@ public class WifiP2pManager {
      */
     public Channel initialize(Context srcContext, Looper srcLooper, ChannelListener listener) {
         Binder binder = new Binder();
+        Bundle extras = prepareExtrasBundle(srcContext);
+        int displayId = Display.DEFAULT_DISPLAY;
+        try {
+            Display display = srcContext.getDisplay();
+            if (display != null) {
+                displayId = display.getDisplayId();
+            }
+        } catch (UnsupportedOperationException e) {
+            // an acceptable (per API definition) result of getDisplay - implying there's no display
+            // associated with the context
+        }
+        extras.putInt(EXTRA_PARAM_KEY_DISPLAY_ID, displayId);
         Channel channel = initializeChannel(srcContext, srcLooper, listener,
-                getMessenger(binder, srcContext.getOpPackageName()), binder);
+                getMessenger(binder, srcContext.getOpPackageName(), extras), binder);
         return channel;
     }
 
@@ -1227,10 +1248,14 @@ public class WifiP2pManager {
     }
 
     private Bundle prepareExtrasBundle(Channel c) {
+        return prepareExtrasBundle(c.mContext);
+    }
+
+    private Bundle prepareExtrasBundle(Context context) {
         Bundle bundle = new Bundle();
         if (SdkLevel.isAtLeastS()) {
             bundle.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
-                    c.mContext.getAttributionSource());
+                    context.getAttributionSource());
         }
         return bundle;
     }
@@ -2122,26 +2147,13 @@ public class WifiP2pManager {
         }
     }
 
-    private Messenger getMessenger(@NonNull Binder binder, @Nullable String packageName) {
+    private Messenger getMessenger(@NonNull Binder binder, @Nullable String packageName,
+            @NonNull Bundle extras) {
         try {
-            return mService.getMessenger(binder, packageName);
+            return mService.getMessenger(binder, packageName, extras);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
-    }
-
-    /**
-     * Get a reference to WifiP2pService handler. This is used to establish
-     * an AsyncChannel communication with WifiService
-     *
-     * @param binder A binder for the service to associate with this client.
-     *
-     * @return Messenger pointing to the WifiP2pService handler
-     * @hide
-     */
-    public Messenger getMessenger(Binder binder) {
-        // No way to determine package name in this case.
-        return getMessenger(binder, null);
     }
 
     /**
