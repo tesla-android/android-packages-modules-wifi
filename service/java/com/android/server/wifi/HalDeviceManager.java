@@ -2204,7 +2204,7 @@ public class HalDeviceManager {
     private static @RequestorWsPriority int getRequestorWsPriority(WorkSourceHelper ws) {
         if (ws.hasAnyPrivilegedAppRequest()) return PRIORITY_PRIVILEGED;
         if (ws.hasAnySystemAppRequest()) return PRIORITY_SYSTEM;
-        if (ws.hasAnyForegroundAppRequest()) return PRIORITY_FG_APP;
+        if (ws.hasAnyForegroundAppRequest(/* allowOverlayBypass */ true)) return PRIORITY_FG_APP;
         if (ws.hasAnyForegroundServiceRequest()) return PRIORITY_FG_SERVICE;
         if (ws.hasAnyInternalRequest()) return PRIORITY_INTERNAL;
         return PRIORITY_BG;

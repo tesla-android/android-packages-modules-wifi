@@ -1065,7 +1065,8 @@ public class WifiInjector {
      */
     public WorkSourceHelper makeWsHelper(@NonNull WorkSource ws) {
         return new WorkSourceHelper(ws, mWifiPermissionsUtil,
-                mContext.getSystemService(ActivityManager.class), mContext.getPackageManager());
+                mContext.getSystemService(ActivityManager.class), mContext.getPackageManager(),
+                mContext.getResources());
     }
 
     public AdaptiveConnectivityEnabledSettingObserver
