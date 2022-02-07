@@ -20,6 +20,7 @@ import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_P2P_DEVICE_NA
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_P2P_PENDING_FACTORY_RESET;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.AlertDialog;
 import android.app.BroadcastOptions;
@@ -61,6 +62,7 @@ import android.net.wifi.p2p.WifiP2pGroupList;
 import android.net.wifi.p2p.WifiP2pGroupList.GroupDeleteListener;
 import android.net.wifi.p2p.WifiP2pInfo;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.net.wifi.p2p.WifiP2pManager.ExternalApproverRequestListener;
 import android.net.wifi.p2p.WifiP2pProvDiscEvent;
 import android.net.wifi.p2p.WifiP2pWfdInfo;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
@@ -110,6 +112,7 @@ import com.android.server.wifi.WifiLog;
 import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.WifiThreadRunner;
 import com.android.server.wifi.coex.CoexManager;
+import com.android.server.wifi.p2p.ExternalApproverManager.ApproverEntry;;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.StringUtil;
@@ -345,6 +348,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     // clients(application) channel list
     private Map<IBinder, Messenger> mClientChannelList = new HashMap<IBinder, Messenger>();
 
+    // clients(application) approver manager
+    private ExternalApproverManager mExternalApproverManager = new ExternalApproverManager();
+
     // The empty device address set by wpa_supplicant.
     private static final String EMPTY_DEVICE_ADDRESS = "00:00:00:00:00:00";
 
@@ -518,6 +524,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.UPDATE_CHANNEL_INFO:
                 case WifiP2pManager.REQUEST_DEVICE_INFO:
                 case WifiP2pManager.REMOVE_CLIENT:
+                case WifiP2pManager.ADD_EXTERNAL_APPROVER:
+                case WifiP2pManager.REMOVE_EXTERNAL_APPROVER:
+                case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
                     mP2pStateMachine.sendMessage(Message.obtain(msg));
                     break;
                 default:
@@ -1365,6 +1374,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             mVerboseLoggingEnabled = verboseEnabled;
             mWifiNative.enableVerboseLogging(isVerboseLoggingEnabled(), mVerboseLoggingEnabled);
             mWifiMonitor.enableVerboseLogging(isVerboseLoggingEnabled());
+            mExternalApproverManager.enableVerboseLogging(isVerboseLoggingEnabled());
         }
 
         public void registerForWifiMonitorEvents() {
@@ -1452,6 +1462,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.REQUEST_GROUP_INFO:
                 case WifiP2pManager.REQUEST_DEVICE_INFO:
                 case WifiP2pManager.REQUEST_PEERS:
+                // These commands configure the framework behavior.
+                case WifiP2pManager.ADD_EXTERNAL_APPROVER:
+                case WifiP2pManager.REMOVE_EXTERNAL_APPROVER:
+                case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
                 // These commands could be cached and executed on activating P2P.
                 case WifiP2pManager.SET_DEVICE_NAME:
                     return false;
@@ -1709,6 +1723,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         replyToMessage(message, WifiP2pManager.REPORT_NFC_HANDOVER_FAILED,
                                 WifiP2pManager.BUSY);
                         break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        replyToMessage(message, WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                WifiP2pManager.BUSY);
+                        break;
                     case WifiP2pMonitor.P2P_INVITATION_RESULT_EVENT:
                     case WifiP2pMonitor.SUP_CONNECTION_EVENT:
                     case WifiP2pMonitor.SUP_DISCONNECTION_EVENT:
@@ -1795,7 +1813,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.RESPONSE_ONGOING_PEER_CONFIG, null);
                         }
                         break;
-                    case WifiP2pManager.UPDATE_CHANNEL_INFO:
+                    case WifiP2pManager.UPDATE_CHANNEL_INFO: {
                         if (!(message.obj instanceof Bundle)) {
                             break;
                         }
@@ -1816,6 +1834,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             clientInfo.mFeatureId = featureId;
                         }
                         break;
+                    }
                     case WifiP2pManager.REQUEST_DEVICE_INFO:
                     {
                         String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
@@ -1846,6 +1865,56 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case WifiP2pManager.REMOVE_CLIENT:
                         replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_SUCCEEDED);
                         break;
+                    case WifiP2pManager.ADD_EXTERNAL_APPROVER: {
+                        Bundle extras = (Bundle) message.obj;
+                        MacAddress devAddr = extras.getParcelable(
+                                WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS);
+                        IBinder binder = extras.getBinder(WifiP2pManager.CALLING_BINDER);
+                        if (!checkExternalApproverCaller(message, binder, devAddr)) {
+                            replyToMessage(message, WifiP2pManager.EXTERNAL_APPROVER_DETACH,
+                                    ExternalApproverRequestListener.APPROVER_DETACH_REASON_FAILURE,
+                                    devAddr);
+                            break;
+                        }
+                        ApproverEntry entry = mExternalApproverManager.put(
+                                binder, devAddr, message);
+                        // A non-null entry indicates that the device address was added before.
+                        // So inform the approver about detach.
+                        if (null != entry) {
+                            logd("Replace an existing approver " + entry);
+                            replyToMessage(entry.getMessage(),
+                                    WifiP2pManager.EXTERNAL_APPROVER_DETACH,
+                                    ExternalApproverRequestListener.APPROVER_DETACH_REASON_REPLACE,
+                                    devAddr);
+                            break;
+                        }
+                        logd("Add the approver " + mExternalApproverManager.get(devAddr));
+                        replyToMessage(message, WifiP2pManager.EXTERNAL_APPROVER_ATTACH, devAddr);
+                        break;
+                    }
+                    case WifiP2pManager.REMOVE_EXTERNAL_APPROVER: {
+                        Bundle extras = (Bundle) message.obj;
+                        MacAddress devAddr = extras.getParcelable(
+                                WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS);
+                        IBinder binder = extras.getBinder(WifiP2pManager.CALLING_BINDER);
+                        if (!checkExternalApproverCaller(message, binder, devAddr)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.REMOVE_EXTERNAL_APPROVER_FAILED);
+                            break;
+                        }
+                        ApproverEntry entry = mExternalApproverManager.remove(
+                                binder, devAddr);
+                        if (null != entry) {
+                            logd("Remove the approver " + entry);
+                            replyToMessage(entry.getMessage(),
+                                    WifiP2pManager.EXTERNAL_APPROVER_DETACH,
+                                    ExternalApproverRequestListener.APPROVER_DETACH_REASON_REMOVE,
+                                    devAddr);
+                            break;
+                        }
+                        replyToMessage(message, WifiP2pManager.REMOVE_EXTERNAL_APPROVER_SUCCEEDED);
+                        break;
+                    }
                     default:
                         loge("Unhandled message " + message);
                         return NOT_HANDLED;
@@ -1947,6 +2016,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     case WifiP2pManager.REMOVE_CLIENT:
                         replyToMessage(message, WifiP2pManager.REMOVE_CLIENT_FAILED,
+                                WifiP2pManager.P2P_UNSUPPORTED);
+                        break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        replyToMessage(message, WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                 WifiP2pManager.P2P_UNSUPPORTED);
                         break;
 
@@ -2057,6 +2130,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         if (clientInfo != null) {
                             logd("Remove client - " + clientInfo.mPackageName);
                         }
+                        detachExternalApproverFromClient(b);
                         break;
                     default:
                         // only handle commands from clients and only commands
@@ -2140,6 +2214,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         if (!mWifiNative.replaceRequestorWs(createMergedRequestorWs())) {
                             Log.e(TAG, "Failed to replace requestorWs");
                         }
+                        detachExternalApproverFromClient(b);
                         break;
                     case WifiP2pManager.SET_WFD_INFO:
                     {
@@ -2968,7 +3043,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 if (isVerboseLoggingEnabled()) logd(getName());
                 if (mSavedPeerConfig.wps.setup == WpsInfo.PBC
                             || TextUtils.isEmpty(mSavedPeerConfig.wps.pin)) {
-                    notifyInvitationReceived();
+                    notifyInvitationReceived(
+                            WifiP2pManager.ExternalApproverRequestListener
+                                    .REQUEST_TYPE_NEGOTIATION);
                 }
             }
 
@@ -2998,6 +3075,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mWifiNative.p2pConnect(mSavedPeerConfig, FORM_GROUP);
                         transitionTo(mGroupNegotiationState);
                         break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT: {
+                        if (!handleSetConnectionResult(message,
+                                WifiP2pManager.ExternalApproverRequestListener
+                                        .REQUEST_TYPE_NEGOTIATION)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        replyToMessage(message,
+                                WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
+                        break;
+                    }
                     default:
                         return NOT_HANDLED;
                 }
@@ -3014,7 +3103,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             @Override
             public void enter() {
                 if (isVerboseLoggingEnabled()) logd(getName());
-                notifyInvitationReceived();
+                notifyInvitationReceived(
+                        WifiP2pManager.ExternalApproverRequestListener.REQUEST_TYPE_INVITATION);
             }
 
             @Override
@@ -3038,6 +3128,17 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             logd("User rejected invitation " + mSavedPeerConfig);
                         }
                         transitionTo(mInactiveState);
+                        break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        if (!handleSetConnectionResult(message,
+                                WifiP2pManager.ExternalApproverRequestListener
+                                        .REQUEST_TYPE_INVITATION)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        replyToMessage(message,
+                                WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
                         break;
                     default:
                         return NOT_HANDLED;
@@ -3313,6 +3414,16 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             deferMessage(message);
                             break;
                         }
+                        break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        if (!handleSetConnectionResultForShowPin(message)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        replyToMessage(message,
+                                WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
+                        break;
                     default:
                         return NOT_HANDLED;
                 }
@@ -3774,6 +3885,15 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         break;
                     }
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        if (!handleSetConnectionResultForShowPin(message)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        replyToMessage(message,
+                                WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
+                        break;
                     default:
                         return NOT_HANDLED;
                 }
@@ -3803,7 +3923,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             @Override
             public void enter() {
                 if (isVerboseLoggingEnabled()) logd(getName());
-                notifyInvitationReceived();
+                notifyInvitationReceived(
+                        WifiP2pManager.ExternalApproverRequestListener.REQUEST_TYPE_JOIN);
             }
 
             @Override
@@ -3829,6 +3950,16 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     case PEER_CONNECTION_USER_REJECT:
                         if (isVerboseLoggingEnabled()) logd("User rejected incoming request");
                         transitionTo(mGroupCreatedState);
+                        break;
+                    case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                        if (!handleSetConnectionResult(message,
+                                WifiP2pManager.ExternalApproverRequestListener.REQUEST_TYPE_JOIN)) {
+                            replyToMessage(message,
+                                    WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                    WifiP2pManager.ERROR);
+                        }
+                        replyToMessage(message,
+                                WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
                         break;
                     default:
                         return NOT_HANDLED;
@@ -4062,6 +4193,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void notifyInvitationSent(String pin, String peerAddress) {
+            ApproverEntry entry = mExternalApproverManager.get(MacAddress.fromString(peerAddress));
+            if (null != entry) {
+                logd("Received invitation - Send WPS PIN event to the approver " + entry);
+                Bundle extras = new Bundle();
+                extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS,
+                        entry.getAddress());
+                extras.putString(WifiP2pManager.EXTRA_PARAM_KEY_WPS_PIN, pin);
+                replyToMessage(entry.getMessage(), WifiP2pManager.EXTERNAL_APPROVER_PIN_GENERATED,
+                        extras);
+                return;
+            }
+
             Resources r = mContext.getResources();
 
             final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
@@ -4084,6 +4227,20 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         }
 
         private void notifyP2pProvDiscShowPinRequest(String pin, String peerAddress) {
+            ExternalApproverManager.ApproverEntry entry = mExternalApproverManager.get(
+                    MacAddress.fromString(peerAddress));
+            if (null != entry) {
+                logd("Received Provision discovery request - Send WPS PIN event to the approver "
+                        + entry);
+                Bundle extras = new Bundle();
+                extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS,
+                        entry.getAddress());
+                extras.putString(WifiP2pManager.EXTRA_PARAM_KEY_WPS_PIN, pin);
+                replyToMessage(entry.getMessage(), WifiP2pManager.EXTERNAL_APPROVER_PIN_GENERATED,
+                        extras);
+                return;
+            }
+
             Resources r = mContext.getResources();
             final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
                     .inflate(R.layout.wifi_p2p_dialog, null);
@@ -4108,7 +4265,23 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             dialog.show();
         }
 
-        private void notifyInvitationReceived() {
+        private void notifyInvitationReceived(
+                @WifiP2pManager.ExternalApproverRequestListener.RequestType int requestType) {
+            ApproverEntry entry = mExternalApproverManager.get(
+                    MacAddress.fromString(mSavedPeerConfig.deviceAddress));
+            if (null != entry) {
+                logd("Received Invitation request - Send request " + requestType + " from "
+                        + mSavedPeerConfig + " to the approver " + entry);
+                Bundle extras = new Bundle();
+                extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_DEVICE,
+                        mPeers.get(mSavedPeerConfig.deviceAddress));
+                extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_CONFIG, mSavedPeerConfig);
+                replyToMessage(entry.getMessage(),
+                        WifiP2pManager.EXTERNAL_APPROVER_CONNECTION_REQUESTED,
+                        requestType, extras);
+                return;
+            }
+
             String deviceName = getDeviceName(mSavedPeerConfig.deviceAddress);
             boolean isPinRequested = false;
             String displayPin = null;
@@ -4391,6 +4564,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             String pin = mWifiNative.p2pConnect(config, action);
             try {
                 Integer.parseInt(pin);
+                mSavedPeerConfig.wps.pin = pin;
                 notifyInvitationSent(pin, config.deviceAddress);
             } catch (NumberFormatException ignore) {
                 // do nothing if p2pConnect did not return a pin
@@ -4827,6 +5001,15 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             if (msg.replyTo == null) return;
             Message dstMsg = obtainMessage(msg);
             dstMsg.what = what;
+            dstMsg.obj = obj;
+            mReplyChannel.replyToMessage(msg, dstMsg);
+        }
+
+        private void replyToMessage(Message msg, int what, int arg1, Object obj) {
+            if (msg.replyTo == null) return;
+            Message dstMsg = obtainMessage(msg);
+            dstMsg.what = what;
+            dstMsg.arg1 = arg1;
             dstMsg.obj = obj;
             mReplyChannel.replyToMessage(msg, dstMsg);
         }
@@ -5270,6 +5453,123 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 Log.e(TAG, "Cannot set operate channel.");
                 return false;
             }
+            return true;
+        }
+
+        private boolean checkExternalApproverCaller(Message message,
+                IBinder binder, MacAddress devAddr) {
+            Bundle extras = (Bundle) message.obj;
+            if (!mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(message.sendingUid)) {
+                loge("Permission violation - no MANAGE_WIFI_AUTO_JOIN,"
+                        + " permission, uid = " + message.sendingUid);
+                return false;
+            }
+            if (null == binder) {
+                loge("No valid binder for this approver.");
+                return false;
+            }
+            if (null == devAddr) {
+                loge("No device address for this approver.");
+                return false;
+            }
+            return true;
+        }
+
+        private void detachExternalApproverFromClient(IBinder binder) {
+            if (null == binder) return;
+
+            logd("Detach approvers for " + binder);
+            List<ApproverEntry> entries = mExternalApproverManager.get(binder);
+            entries.forEach(e -> {
+                logd("Detach the approver " + e);
+                replyToMessage(
+                        e.getMessage(), WifiP2pManager.EXTERNAL_APPROVER_DETACH,
+                        ExternalApproverRequestListener.APPROVER_DETACH_REASON_CLOSE,
+                        e.getAddress());
+            });
+            mExternalApproverManager.removeAll(binder);
+        }
+
+        private void detachExternalApproverFromPeer() {
+            if (TextUtils.isEmpty(mSavedPeerConfig.deviceAddress)) return;
+
+            ApproverEntry entry = mExternalApproverManager.remove(
+                    MacAddress.fromString(mSavedPeerConfig.deviceAddress));
+            if (null == entry) return;
+
+            logd("Detach the approver " + entry);
+            replyToMessage(entry.getMessage(), WifiP2pManager.EXTERNAL_APPROVER_DETACH,
+                    ExternalApproverRequestListener.APPROVER_DETACH_REASON_REMOVE,
+                    entry.getAddress());
+        }
+
+        private boolean handleSetConnectionResultCommon(@NonNull Message message) {
+            Bundle extras = (Bundle) message.obj;
+            MacAddress devAddr = extras.getParcelable(
+                    WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS);
+            IBinder binder = extras.getBinder(WifiP2pManager.CALLING_BINDER);
+            if (!checkExternalApproverCaller(message, binder, devAddr)) return false;
+
+            if (!devAddr.equals(MacAddress.fromString(mSavedPeerConfig.deviceAddress))) {
+                logd("Saved peer address is different from " + devAddr);
+                return false;
+            }
+
+            ApproverEntry entry = mExternalApproverManager.get(binder, devAddr);
+            if (null == entry) return false;
+            if (!entry.getKey().equals(binder)) {
+                loge("Ignore connection result from a client"
+                        + " which is different from the existing approver.");
+                return false;
+            }
+            return true;
+        }
+
+        private boolean handleSetConnectionResult(@NonNull Message message,
+                @WifiP2pManager.ExternalApproverRequestListener.RequestType int requestType) {
+            if (!handleSetConnectionResultCommon(message)) return false;
+
+            logd("handle connection result from the approver, result= " + message.arg1);
+            if (WifiP2pManager.CONNECTION_REQUEST_ACCEPT == message.arg1) {
+                if (WifiP2pManager.ExternalApproverRequestListener.REQUEST_TYPE_NEGOTIATION
+                        == requestType
+                        && WpsInfo.KEYPAD == mSavedPeerConfig.wps.setup) {
+                    sendMessage(PEER_CONNECTION_USER_CONFIRM);
+                } else {
+                    sendMessage(PEER_CONNECTION_USER_ACCEPT);
+                }
+            } else if (WifiP2pManager.CONNECTION_REQUEST_REJECT == message.arg1) {
+                sendMessage(PEER_CONNECTION_USER_REJECT);
+            } else if (WifiP2pManager.CONNECTION_REQUEST_DEFER_TO_SERVICE == message.arg1) {
+                notifyInvitationReceived(requestType);
+            } else if (WifiP2pManager.CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE
+                            == message.arg1
+                    && WifiP2pManager.ExternalApproverRequestListener.REQUEST_TYPE_NEGOTIATION
+                            == requestType
+                    && WpsInfo.KEYPAD == mSavedPeerConfig.wps.setup) {
+                notifyP2pProvDiscShowPinRequest(mSavedPeerConfig.wps.pin,
+                        mSavedPeerConfig.deviceAddress);
+            } else {
+                Log.w(TAG, "Invalid connection result: " + message.arg1
+                        + ", config: " + mSavedPeerConfig);
+                return false;
+            }
+            detachExternalApproverFromPeer();
+            return true;
+        }
+
+        private boolean handleSetConnectionResultForShowPin(@NonNull Message message) {
+            if (!handleSetConnectionResultCommon(message)) return false;
+
+            logd("handle connection result for pin from the approver, result= " + message.arg1);
+            if (WifiP2pManager.CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE == message.arg1) {
+                notifyInvitationSent(mSavedPeerConfig.wps.pin,
+                        mSavedPeerConfig.deviceAddress);
+            } else {
+                Log.w(TAG, "Invalid connection result: " + message.arg1);
+                return false;
+            }
+            detachExternalApproverFromPeer();
             return true;
         }
     }
