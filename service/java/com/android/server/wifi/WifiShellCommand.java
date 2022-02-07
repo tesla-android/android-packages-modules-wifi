@@ -1313,6 +1313,9 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         } else if (TextUtils.equals(type, "owe_transition")) {
             configBuilder.setPassphrase(null,
                     SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
+        } else if (TextUtils.equals(type, "owe")) {
+            configBuilder.setPassphrase(null,
+                    SoftApConfiguration.SECURITY_TYPE_WPA3_OWE);
         } else {
             throw new IllegalArgumentException("Unknown network type " + type);
         }
@@ -1867,16 +1870,16 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("  reset-connected-score");
         pw.println("    Turns on the default connected scorer.");
         pw.println("    Note: Will clear any external scorer set.");
-        pw.println("  start-softap <ssid> (open|wpa2|wpa3|wpa3_transition|owe_transition) "
+        pw.println("  start-softap <ssid> (open|wpa2|wpa3|wpa3_transition|owe|owe_transition) "
                 + "<passphrase> [-b 2|5|6|any]");
         pw.println("    Start softap with provided params");
         pw.println("    Note that the shell command doesn't activate internet tethering. In some "
                 + "devices, internet sharing is possible when Wi-Fi STA is also enabled and is"
                 + "associated to another AP with internet access.");
         pw.println("    <ssid> - SSID of the network");
-        pw.println("    open|wpa2|wpa3|wpa3_transition|owe_transition - Security type of the "
+        pw.println("    open|wpa2|wpa3|wpa3_transition|owe|owe_transition - Security type of the "
                 + "network.");
-        pw.println("        - Use 'open', 'owe_transition' for networks with no passphrase");
+        pw.println("        - Use 'open', 'owe', 'owe_transition' for networks with no passphrase");
         pw.println("        - Use 'wpa2', 'wpa3', 'wpa3_transition' for networks with passphrase");
         pw.println("    -b 2|5|6|any|bridged - select the preferred band.");
         pw.println("        - Use '2' to select 2.4GHz band as the preferred band");
@@ -2043,13 +2046,13 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -h - Enable scanning for hidden networks.");
         pw.println("  set-passpoint-enabled enabled|disabled");
         pw.println("    Sets whether Passpoint should be enabled or disabled");
-        pw.println("  start-lohs <ssid> (open|wpa2|wpa3|wpa3_transition|owe_transition) "
+        pw.println("  start-lohs <ssid> (open|wpa2|wpa3|wpa3_transition|owe|owe_transition) "
                 + "<passphrase> [-b 2|5|6|any]");
         pw.println("    Start local only softap (hotspot) with provided params");
         pw.println("    <ssid> - SSID of the network");
-        pw.println("    open|wpa2|wpa3|wpa3_transition|owe_transition - Security type of the "
+        pw.println("    open|wpa2|wpa3|wpa3_transition|owe|owe_transition - Security type of the "
                 + "network.");
-        pw.println("        - Use 'open', 'owe_transition' for networks with no passphrase");
+        pw.println("        - Use 'open', 'owe', 'owe_transition' for networks with no passphrase");
         pw.println("        - Use 'wpa2', 'wpa3', 'wpa3_transition' for networks with passphrase");
         pw.println("    -b 2|5|6|any|bridged - select the preferred band.");
         pw.println("        - Use '2' to select 2.4GHz band as the preferred band");
