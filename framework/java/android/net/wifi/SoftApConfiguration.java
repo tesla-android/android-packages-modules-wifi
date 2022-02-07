@@ -46,6 +46,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Configuration for a soft access point (a.k.a. Soft AP, SAP, Hotspot).
@@ -220,6 +223,39 @@ public final class SoftApConfiguration implements Parcelable {
     private final SparseIntArray mChannels;
 
     /**
+     * The set of allowed channels in 2.4GHz band to select from using ACS (Automatic Channel
+     * Selection) algorithm.
+     *
+     * Requires the driver to support {@link SoftApCapability#SOFTAP_FEATURE_ACS_OFFLOAD}.
+     * Otherwise, this set will be ignored.
+     *
+     * If the set is empty, then all channels in 2.4GHz band are allowed.
+     */
+    private final @NonNull Set<Integer> mAllowedAcsChannels2g;
+
+    /**
+     * The set of allowed channels in 5GHz band to select from using ACS (Automatic Channel
+     * Selection) algorithm.
+     *
+     * Requires the driver to support {@link SoftApCapability#SOFTAP_FEATURE_ACS_OFFLOAD}.
+     * Otherwise, this set will be ignored.
+     *
+     * If the set is empty, then all channels in 5GHz are allowed.
+     */
+    private final @NonNull Set<Integer> mAllowedAcsChannels5g;
+
+    /**
+     * The set of allowed channels in 6GHz band to select from using ACS (Automatic Channel
+     * Selection) algorithm.
+     *
+     * Requires the driver to support {@link SoftApCapability#SOFTAP_FEATURE_ACS_OFFLOAD}.
+     * Otherwise, this set will be ignored.
+     *
+     * If the set is empty, then all channels in 6GHz are allowed.
+     */
+    private final @NonNull Set<Integer> mAllowedAcsChannels6g;
+
+    /**
      * The maximim allowed number of clients that can associate to the AP.
      */
     private final int mMaxNumberOfClients;
@@ -380,7 +416,9 @@ public final class SoftApConfiguration implements Parcelable {
             boolean ieee80211axEnabled, boolean ieee80211beEnabled, boolean isUserConfiguration,
             long bridgedModeOpportunisticShutdownTimeoutMillis,
             @NonNull List<ScanResult.InformationElement> vendorElements,
-            @Nullable MacAddress persistentRandomizedMacAddress) {
+            @Nullable MacAddress persistentRandomizedMacAddress,
+            @NonNull Set<Integer> allowedAcsChannels24g, @NonNull Set<Integer> allowedAcsChannels5g,
+            @NonNull Set<Integer> allowedAcsChannels6g) {
         mWifiSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -407,6 +445,9 @@ public final class SoftApConfiguration implements Parcelable {
                 bridgedModeOpportunisticShutdownTimeoutMillis;
         mVendorElements = new ArrayList<>(vendorElements);
         mPersistentRandomizedMacAddress = persistentRandomizedMacAddress;
+        mAllowedAcsChannels2g = new HashSet<>(allowedAcsChannels24g);
+        mAllowedAcsChannels5g = new HashSet<>(allowedAcsChannels5g);
+        mAllowedAcsChannels6g = new HashSet<>(allowedAcsChannels6g);
     }
 
     @Override
@@ -440,7 +481,10 @@ public final class SoftApConfiguration implements Parcelable {
                         == other.mBridgedModeOpportunisticShutdownTimeoutMillis
                 && Objects.equals(mVendorElements, other.mVendorElements)
                 && Objects.equals(mPersistentRandomizedMacAddress,
-                        other.mPersistentRandomizedMacAddress);
+                        other.mPersistentRandomizedMacAddress)
+                && Objects.equals(mAllowedAcsChannels2g, other.mAllowedAcsChannels2g)
+                && Objects.equals(mAllowedAcsChannels5g, other.mAllowedAcsChannels5g)
+                && Objects.equals(mAllowedAcsChannels6g, other.mAllowedAcsChannels6g);
     }
 
     @Override
@@ -451,7 +495,8 @@ public final class SoftApConfiguration implements Parcelable {
                 mAllowedClientList, mMacRandomizationSetting,
                 mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled, mIeee80211beEnabled,
                 mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
-                mVendorElements, mPersistentRandomizedMacAddress);
+                mVendorElements, mPersistentRandomizedMacAddress, mAllowedAcsChannels2g,
+                mAllowedAcsChannels5g, mAllowedAcsChannels6g);
     }
 
     @Override
@@ -481,6 +526,9 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n vendorElements = ").append(mVendorElements);
         sbuf.append(" \n mPersistentRandomizedMacAddress = ")
                 .append(mPersistentRandomizedMacAddress);
+        sbuf.append(" \n mAllowedAcsChannels2g = ").append(mAllowedAcsChannels2g);
+        sbuf.append(" \n mAllowedAcsChannels5g = ").append(mAllowedAcsChannels5g);
+        sbuf.append(" \n mAllowedAcsChannels6g = ").append(mAllowedAcsChannels6g);
         return sbuf.toString();
     }
 
@@ -506,6 +554,9 @@ public final class SoftApConfiguration implements Parcelable {
         dest.writeLong(mBridgedModeOpportunisticShutdownTimeoutMillis);
         dest.writeTypedList(mVendorElements);
         dest.writeParcelable(mPersistentRandomizedMacAddress, flags);
+        writeHashSetInt(dest, mAllowedAcsChannels2g);
+        writeHashSetInt(dest, mAllowedAcsChannels5g);
+        writeHashSetInt(dest, mAllowedAcsChannels6g);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -543,6 +594,33 @@ public final class SoftApConfiguration implements Parcelable {
         return sa;
     }
 
+    /* Write HashSet<Integer> into Parcel */
+    private static void writeHashSetInt(@NonNull Parcel dest, @NonNull Set<Integer> set) {
+        if (set.isEmpty()) {
+            dest.writeInt(-1);
+            return;
+        }
+
+        dest.writeInt(set.size());
+        for (int val : set) {
+            dest.writeInt(val);
+        }
+    }
+
+    /* Read HashSet<Integer> from Parcel */
+    @NonNull
+    private static Set<Integer> readHashSetInt(@NonNull Parcel in) {
+        Set<Integer> set = new HashSet<>();
+        int len = in.readInt();
+        if (len < 0) {
+            return set;
+        }
+
+        for (int i = 0; i < len; i++) {
+            set.add(in.readInt());
+        }
+        return set;
+    }
 
     @Override
     public int describeContents() {
@@ -562,7 +640,10 @@ public final class SoftApConfiguration implements Parcelable {
                     in.createTypedArrayList(MacAddress.CREATOR), in.readInt(), in.readBoolean(),
                     in.readBoolean(), in.readBoolean(), in.readBoolean(), in.readLong(),
                     in.createTypedArrayList(ScanResult.InformationElement.CREATOR),
-                    in.readParcelable(MacAddress.class.getClassLoader()));
+                    in.readParcelable(MacAddress.class.getClassLoader()),
+                    readHashSetInt(in),
+                    readHashSetInt(in),
+                    readHashSetInt(in));
         }
 
         @Override
@@ -907,6 +988,38 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns the allowed channels for ACS in a selected band.
+     *
+     * If an empty array is returned, then all channels in that band are allowed
+     * The channels are configured using {@link Builder#setAllowedAcsChannels(int, int[])}
+     *
+     * @param band one of the following band types:
+     * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, {@link #BAND_6GHZ}.
+     *
+     * @return array of the allowed channels for ACS in that band
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @NonNull
+    @SystemApi
+    public int[] getAllowedAcsChannels(@BandType int band) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        switch(band) {
+            case BAND_2GHZ:
+                return mAllowedAcsChannels2g.stream().mapToInt(Integer::intValue).toArray();
+            case BAND_5GHZ:
+                return mAllowedAcsChannels5g.stream().mapToInt(Integer::intValue).toArray();
+            case BAND_6GHZ:
+                return mAllowedAcsChannels6g.stream().mapToInt(Integer::intValue).toArray();
+            default:
+                throw new IllegalArgumentException("getAllowedAcsChannels: Invalid band: " + band);
+        }
+    }
+
+    /**
      * Returns whether or not the {@link SoftApConfiguration} was configured by the user
      * (as opposed to the default system configuration).
      * <p>
@@ -1061,6 +1174,9 @@ public final class SoftApConfiguration implements Parcelable {
         private long mBridgedModeOpportunisticShutdownTimeoutMillis;
         private List<ScanResult.InformationElement> mVendorElements;
         private MacAddress mPersistentRandomizedMacAddress;
+        private Set<Integer> mAllowedAcsChannels2g;
+        private Set<Integer> mAllowedAcsChannels5g;
+        private Set<Integer> mAllowedAcsChannels6g;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -1091,6 +1207,9 @@ public final class SoftApConfiguration implements Parcelable {
             mBridgedModeOpportunisticShutdownTimeoutMillis = 0;
             mVendorElements = new ArrayList<>();
             mPersistentRandomizedMacAddress = null;
+            mAllowedAcsChannels2g = new HashSet<>();
+            mAllowedAcsChannels5g = new HashSet<>();
+            mAllowedAcsChannels6g = new HashSet<>();
         }
 
         /**
@@ -1121,6 +1240,9 @@ public final class SoftApConfiguration implements Parcelable {
                     other.mBridgedModeOpportunisticShutdownTimeoutMillis;
             mVendorElements = new ArrayList<>(other.mVendorElements);
             mPersistentRandomizedMacAddress = other.mPersistentRandomizedMacAddress;
+            mAllowedAcsChannels2g = new HashSet<>(other.mAllowedAcsChannels2g);
+            mAllowedAcsChannels5g = new HashSet<>(other.mAllowedAcsChannels5g);
+            mAllowedAcsChannels6g = new HashSet<>(other.mAllowedAcsChannels6g);
         }
 
         /**
@@ -1150,7 +1272,8 @@ public final class SoftApConfiguration implements Parcelable {
                     mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled,
                     mIeee80211beEnabled, mIsUserConfiguration,
                     mBridgedModeOpportunisticShutdownTimeoutMillis, mVendorElements,
-                    mPersistentRandomizedMacAddress);
+                    mPersistentRandomizedMacAddress, mAllowedAcsChannels2g, mAllowedAcsChannels5g,
+                    mAllowedAcsChannels6g);
         }
 
         /**
@@ -1640,6 +1763,66 @@ public final class SoftApConfiguration implements Parcelable {
             return this;
         }
 
+        /**
+         * Configures the set of channel numbers in the specified band that are allowed
+         * to be selected by the Automatic Channel Selection (ACS) algorithm.
+         * <p>
+         *
+         * Requires the driver to support {@link SoftApCapability#SOFTAP_FEATURE_ACS_OFFLOAD}.
+         * Otherwise, these sets will be ignored.
+         * <p>
+         *
+         * @param band one of the following band types:
+         * {@link #BAND_2GHZ}, {@link #BAND_5GHZ}, {@link #BAND_6GHZ}.
+         *
+         * @param channels that are allowed to be used by ACS algorithm in this band. If it is
+         * configured to an empty array or not configured, then all channels within that band
+         * will be allowed.
+         * <p>
+         *
+         * @return Builder for chaining.
+         */
+        @NonNull
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+        public Builder setAllowedAcsChannels(@BandType int band, @NonNull int[] channels) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
+
+            if (channels == null) {
+                throw new IllegalArgumentException(
+                        "Passing a null object to setAllowedAcsChannels");
+            }
+
+            if ((band != BAND_2GHZ) && (band != BAND_5GHZ) && (band != BAND_6GHZ)) {
+                throw new IllegalArgumentException(
+                        "Passing an invalid band to setAllowedAcsChannels");
+            }
+
+            for (int channel : channels) {
+                if (!isChannelBandPairValid(channel, band)) {
+                    throw new IllegalArgumentException(
+                            "Invalid channel to setAllowedAcsChannels: band: " + band
+                            + "channel: " + channel);
+                }
+            }
+
+            HashSet<Integer> set = IntStream.of(channels).boxed()
+                    .collect(Collectors.toCollection(HashSet::new));
+            switch(band) {
+                case BAND_2GHZ:
+                    mAllowedAcsChannels2g = set;
+                    break;
+                case BAND_5GHZ:
+                    mAllowedAcsChannels5g = set;
+                    break;
+                case BAND_6GHZ:
+                    mAllowedAcsChannels6g = set;
+                    break;
+            }
+
+            return this;
+        }
 
         /**
          * This method together with {@link setClientControlByUserEnabled(boolean)} control client

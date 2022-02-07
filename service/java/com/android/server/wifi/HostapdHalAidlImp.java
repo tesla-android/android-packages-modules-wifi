@@ -44,7 +44,6 @@ import android.os.IBinder.DeathRecipient;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.ServiceSpecificException;
-import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
@@ -56,6 +55,7 @@ import com.android.wifi.resources.R;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -619,94 +619,90 @@ public class HostapdHalAidlImp implements IHostapdHal {
      * Prepare the acsChannelFreqRangesMhz in ChannelParams.
      */
     private void prepareAcsChannelFreqRangesMhz(ChannelParams channelParams,
-            @BandType int band) {
+            @BandType int band, SoftApConfiguration config) {
         List<FrequencyRange> ranges = new ArrayList<>();
         if ((band & SoftApConfiguration.BAND_2GHZ) != 0) {
-            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_2GHZ));
+            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_2GHZ, config));
         }
         if ((band & SoftApConfiguration.BAND_5GHZ) != 0) {
-            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_5GHZ));
+            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_5GHZ, config));
         }
         if ((band & SoftApConfiguration.BAND_6GHZ) != 0) {
-            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_6GHZ));
+            ranges.addAll(toAcsFreqRanges(SoftApConfiguration.BAND_6GHZ, config));
         }
         channelParams.acsChannelFreqRangesMhz = ranges.toArray(
                 new FrequencyRange[ranges.size()]);
     }
 
     /**
-     * Convert channel list string like '1-6,11' to list of FreqRange
+     * Convert OEM and SoftApConfiguration channel restrictions to a list of FreqRanges
      */
-    private List<FrequencyRange> toAcsFreqRanges(@BandType int band) {
-        List<FrequencyRange> FrequencyRanges = new ArrayList<>();
+    private List<FrequencyRange> toAcsFreqRanges(@BandType int band, SoftApConfiguration config) {
+        List<Integer> allowedChannelList;
+        List<FrequencyRange> frequencyRanges = new ArrayList<>();
 
         if (!ApConfigUtil.isBandValid(band) || ApConfigUtil.isMultiband(band)) {
             Log.e(TAG, "Invalid band : " + band);
-            return FrequencyRanges;
+            return frequencyRanges;
         }
 
-        String channelListStr;
+        String oemConfig;
         switch (band) {
             case SoftApConfiguration.BAND_2GHZ:
-                channelListStr = mContext.getResources().getString(
+                oemConfig = mContext.getResources().getString(
                         R.string.config_wifiSoftap2gChannelList);
-                if (TextUtils.isEmpty(channelListStr)) {
-                    channelListStr = ScanResult.BAND_24_GHZ_FIRST_CH_NUM + "-"
-                            + ScanResult.BAND_24_GHZ_LAST_CH_NUM;
-                }
                 break;
             case SoftApConfiguration.BAND_5GHZ:
-                channelListStr = mContext.getResources().getString(
+                oemConfig = mContext.getResources().getString(
                         R.string.config_wifiSoftap5gChannelList);
-                if (TextUtils.isEmpty(channelListStr)) {
-                    channelListStr = ScanResult.BAND_5_GHZ_FIRST_CH_NUM + "-"
-                            + ScanResult.BAND_5_GHZ_LAST_CH_NUM;
-                }
                 break;
             case SoftApConfiguration.BAND_6GHZ:
-                channelListStr = mContext.getResources().getString(
+                oemConfig = mContext.getResources().getString(
                         R.string.config_wifiSoftap6gChannelList);
-                if (TextUtils.isEmpty(channelListStr)) {
-                    channelListStr = ScanResult.BAND_6_GHZ_FIRST_CH_NUM + "-"
-                            + ScanResult.BAND_6_GHZ_LAST_CH_NUM;
-                }
                 break;
             default:
-                return FrequencyRanges;
+                return frequencyRanges;
         }
 
-        for (String channelRange : channelListStr.split(",")) {
-            FrequencyRange freqRange = new FrequencyRange();
-            try {
-                if (channelRange.contains("-")) {
-                    String[] channels  = channelRange.split("-");
-                    if (channels.length != 2) {
-                        Log.e(TAG, "Unrecognized channel range, length is " + channels.length);
-                        continue;
-                    }
-                    int start = Integer.parseInt(channels[0].trim());
-                    int end = Integer.parseInt(channels[1].trim());
-                    if (start > end) {
-                        Log.e(TAG, "Invalid channel range, from " + start + " to " + end);
-                        continue;
-                    }
-                    freqRange.startMhz =
-                            ApConfigUtil.convertChannelToFrequency(start, band);
-                    freqRange.endMhz = ApConfigUtil.convertChannelToFrequency(end, band);
-                } else if (!TextUtils.isEmpty(channelRange)) {
-                    int channel = Integer.parseInt(channelRange.trim());
-                    freqRange.startMhz =
-                            ApConfigUtil.convertChannelToFrequency(channel, band);
-                    freqRange.endMhz = freqRange.startMhz;
-                }
-            } catch (NumberFormatException e) {
-                // Ignore malformed value
-                Log.e(TAG, "Malformed channel value detected: " + e);
-                continue;
-            }
-            FrequencyRanges.add(freqRange);
+        allowedChannelList = ApConfigUtil.collectAllowedAcsChannels(band, oemConfig,
+                SdkLevel.isAtLeastT()
+                        ? config.getAllowedAcsChannels(band) : new int[] {});
+        if (allowedChannelList.isEmpty()) {
+            Log.e(TAG, "Empty list of allowed channels");
+            return frequencyRanges;
         }
-        return FrequencyRanges;
+        Collections.sort(allowedChannelList);
+
+        // Convert the sorted list to a set of frequency ranges
+        boolean rangeStarted = false;
+        int prevChannel = -1;
+        FrequencyRange freqRange = null;
+        for (int channel : allowedChannelList) {
+            // Continuation of an existing frequency range
+            if (rangeStarted) {
+                if (channel == prevChannel + 1) {
+                    prevChannel = channel;
+                    continue;
+                }
+
+                // End of the existing frequency range
+                freqRange.endMhz = ApConfigUtil.convertChannelToFrequency(prevChannel, band);
+                frequencyRanges.add(freqRange);
+                // We will continue to start a new frequency range
+            }
+
+            // Beginning of a new frequency range
+            freqRange = new FrequencyRange();
+            freqRange.startMhz = ApConfigUtil.convertChannelToFrequency(channel, band);
+            rangeStarted = true;
+            prevChannel = channel;
+        }
+
+        // End the last range
+        freqRange.endMhz = ApConfigUtil.convertChannelToFrequency(prevChannel, band);
+        frequencyRanges.add(freqRange);
+
+        return frequencyRanges;
     }
 
     /**
@@ -873,8 +869,8 @@ public class HostapdHalAidlImp implements IHostapdHal {
             if (channelParamsList[i].enableAcs) {
                 channelParamsList[i].acsShouldExcludeDfs = !mContext.getResources()
                         .getBoolean(R.bool.config_wifiSoftapAcsIncludeDfs);
-                if (ApConfigUtil.isSendFreqRangesNeeded(band, mContext)) {
-                    prepareAcsChannelFreqRangesMhz(channelParamsList[i], band);
+                if (ApConfigUtil.isSendFreqRangesNeeded(band, mContext, config)) {
+                    prepareAcsChannelFreqRangesMhz(channelParamsList[i], band, config);
                 }
             }
             if (channelParamsList[i].acsChannelFreqRangesMhz == null) {
