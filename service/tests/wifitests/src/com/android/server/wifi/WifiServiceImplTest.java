@@ -9750,7 +9750,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 Collections.singletonList(mClientModeManager));
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
-        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("SSID"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
@@ -9779,7 +9780,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 Collections.singletonList(mClientModeManager));
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
-        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_DENYLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text(TEST_SSID))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
@@ -9805,7 +9807,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 Collections.singletonList(mClientModeManager));
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
-        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("SSID"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
@@ -9835,7 +9838,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 Collections.singletonList(mClientModeManager));
         when(mClientModeManager.syncRequestConnectionInfo()).thenReturn(wifiInfo);
 
-        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_DENYLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text(TEST_SSID))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
 
