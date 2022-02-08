@@ -18,6 +18,7 @@ package com.android.server.wifi.p2p;
 
 import android.annotation.NonNull;
 import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pGroupList;
@@ -28,6 +29,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.wifi.WifiGlobals;
 
 import java.util.List;
+import java.util.Set;
 
 public class SupplicantP2pIfaceHal {
     private static final String TAG = "SupplicantP2pIfaceHal";
@@ -1046,6 +1048,23 @@ public class SupplicantP2pIfaceHal {
                 return handleNullHal(methodStr);
             }
             return mP2pIfaceHal.removeClient(peerAddress, isLegacyClient);
+        }
+    }
+
+    /**
+     * Set vendor-specific information elements to wpa_supplicant.
+     *
+     * @param vendorElements The list of vendor-specific information elements.
+     *
+     * @return boolean The value indicating whether operation was successful.
+     */
+    public boolean setVendorElements(Set<ScanResult.InformationElement> vendorElements) {
+        synchronized (mLock) {
+            String methodStr = "setVendorElements";
+            if (mP2pIfaceHal == null) {
+                return handleNullHal(methodStr);
+            }
+            return mP2pIfaceHal.setVendorElements(vendorElements);
         }
     }
 

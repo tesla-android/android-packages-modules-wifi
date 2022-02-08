@@ -133,9 +133,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -351,6 +353,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     // clients(application) approver manager
     private ExternalApproverManager mExternalApproverManager = new ExternalApproverManager();
 
+    // client(application) attribution source list
+    private Map<IBinder, AttributionSource> mClientAttributionSource = new HashMap<>();
+
+    // client(application) vendor-specific information element list
+    private Map<String, HashSet<ScanResult.InformationElement>> mVendorElements =
+            new HashMap<>();
+
     // The empty device address set by wpa_supplicant.
     private static final String EMPTY_DEVICE_ADDRESS = "00:00:00:00:00:00";
 
@@ -527,6 +536,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.ADD_EXTERNAL_APPROVER:
                 case WifiP2pManager.REMOVE_EXTERNAL_APPROVER:
                 case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
+                case WifiP2pManager.SET_VENDOR_ELEMENTS:
                     mP2pStateMachine.sendMessage(Message.obtain(msg));
                     break;
                 default:
@@ -866,6 +876,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             mDeathDataByBinder.remove(binder);
             updateWorkSourceByUid(Binder.getCallingUid(), false);
             mP2pStateMachine.sendMessage(REMOVE_CLIENT_INFO, 0, 0, binder);
+
+            if (SdkLevel.isAtLeastS()) {
+                AttributionSource source = mClientAttributionSource.remove(binder);
+                if (null != source) {
+                    mVendorElements.remove(source.getPackageName());
+                }
+            }
 
             // clean-up if there are no more clients registered
             // TODO: what does the ClientModeImpl client do? It isn't tracked through here!
@@ -1306,6 +1323,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     return "WpsInfo.DISPLAY";
                 case WpsInfo.KEYPAD:
                     return "WpsInfo.KEYPAD";
+                case WifiP2pManager.SET_VENDOR_ELEMENTS:
+                    return "WifiP2pManager.SET_VENDOR_ELEMENTS";
                 default:
                     return "what:" + what;
             }
@@ -1468,6 +1487,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
                 // These commands could be cached and executed on activating P2P.
                 case WifiP2pManager.SET_DEVICE_NAME:
+                case WifiP2pManager.SET_VENDOR_ELEMENTS:
                     return false;
             }
             return true;
@@ -1832,6 +1852,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             ClientInfo clientInfo = getClientInfo(message.replyTo, true);
                             clientInfo.mPackageName = pkgName;
                             clientInfo.mFeatureId = featureId;
+                            if (SdkLevel.isAtLeastS()) {
+                                AttributionSource source = (AttributionSource) bundle.getParcelable(
+                                        WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE);
+                                if (null != source) {
+                                    mClientAttributionSource.put(binder, source);
+                                }
+                            }
                         }
                         break;
                     }
@@ -1913,6 +1940,32 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         replyToMessage(message, WifiP2pManager.REMOVE_EXTERNAL_APPROVER_SUCCEEDED);
+                        break;
+                    }
+                    case WifiP2pManager.SET_VENDOR_ELEMENTS: {
+                        if (!SdkLevel.isAtLeastT()) {
+                            replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED);
+                            break;
+                        }
+                        if (!mWifiPermissionsUtil.checkConfigOverridePermission(
+                                message.sendingUid)) {
+                            replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED);
+                            break;
+                        }
+                        if (!checkNearbyDevicesPermission(message, "SET_VENDOR_ELEMENTS")) {
+                            replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED);
+                            break;
+                        }
+                        Bundle extras = (Bundle) message.obj;
+                        ArrayList<ScanResult.InformationElement> ies =
+                                extras.getParcelableArrayList(
+                                        WifiP2pManager.EXTRA_PARAM_KEY_INFORMATION_ELEMENT_LIST);
+                        String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
+                        if (!updateVendorElements(packageName, ies)) {
+                            replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED);
+                            break;
+                        }
+                        replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_SUCCEEDED);
                         break;
                     }
                     default:
@@ -2020,6 +2073,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     case WifiP2pManager.SET_CONNECTION_REQUEST_RESULT:
                         replyToMessage(message, WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                                WifiP2pManager.P2P_UNSUPPORTED);
+                        break;
+                    case WifiP2pManager.SET_VENDOR_ELEMENTS:
+                        replyToMessage(message, WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED,
                                 WifiP2pManager.P2P_UNSUPPORTED);
                         break;
 
@@ -2240,7 +2297,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         }
                         if (!blocked && mDiscoveryPostponed) {
                             mDiscoveryPostponed = false;
-                            if (mWifiNative.p2pFind(DISCOVER_TIMEOUT_S)) {
+                            if (p2pFind(DISCOVER_TIMEOUT_S)) {
                                 sendP2pDiscoveryChangedBroadcast(true);
                             }
                         }
@@ -2284,7 +2341,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         // do not send service discovery request while normal find operation.
                         clearSupplicantServiceRequest();
                         Log.e(TAG, "-------discover_peers before p2pFind");
-                        if (mWifiNative.p2pFind(freq, DISCOVER_TIMEOUT_S)) {
+                        if (p2pFind(freq, DISCOVER_TIMEOUT_S)) {
                             mWifiP2pMetrics.incrementPeerScans();
                             replyToMessage(message, WifiP2pManager.DISCOVER_PEERS_SUCCEEDED);
                             sendP2pDiscoveryChangedBroadcast(true);
@@ -2295,6 +2352,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         break;
                     }
                     case WifiP2pMonitor.P2P_FIND_STOPPED_EVENT:
+                        mWifiNative.removeVendorElements();
                         sendP2pDiscoveryChangedBroadcast(false);
                         break;
                     case WifiP2pManager.STOP_DISCOVERY:
@@ -2341,7 +2399,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                     WifiP2pManager.NO_SERVICE_REQUESTS);
                             break;
                         }
-                        if (mWifiNative.p2pFind(DISCOVER_TIMEOUT_S)) {
+                        if (p2pFind(DISCOVER_TIMEOUT_S)) {
                             sendP2pDiscoveryChangedBroadcast(true);
                             mWifiP2pMetrics.incrementServiceScans();
                             replyToMessage(message, WifiP2pManager.DISCOVER_SERVICES_SUCCEEDED);
@@ -4109,6 +4167,19 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                     Build.VERSION_CODES.TIRAMISU, uid);
         }
 
+        private boolean checkNearbyDevicesPermission(Message message, String cmd) {
+            if (null == message) return false;
+            if (null == message.obj) return false;
+
+            String packageName = getCallingPkgName(message.sendingUid, message.replyTo);
+            if (packageName == null) {
+                return false;
+            }
+            int uid = message.sendingUid;
+            Bundle extras = (Bundle) message.obj;
+            return checkNearbyDevicesPermission(uid, packageName, extras, cmd);
+        }
+
         private boolean checkNearbyDevicesPermission(int uid, String packageName, Bundle extras,
                 String message) {
             if (extras.getBoolean(WifiP2pManager.EXTRA_PARAM_KEY_INTERNAL_MESSAGE)) {
@@ -5363,6 +5434,62 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 setPendingFactoryReset(false);
             } else {
                 setPendingFactoryReset(true);
+            }
+            return true;
+        }
+
+        private boolean updateVendorElements(
+                String packageName, ArrayList<ScanResult.InformationElement> vendorElements) {
+            if (TextUtils.isEmpty(packageName)) return false;
+            if (null == vendorElements || 0 == vendorElements.size()) {
+                if (isVerboseLoggingEnabled()) logd("Clear vendor elements for " + packageName);
+                mVendorElements.remove(packageName);
+            } else {
+                if (isVerboseLoggingEnabled()) logd("Update vendor elements for " + packageName);
+
+                if (vendorElements.stream()
+                        .anyMatch(ie -> ie.id != ScanResult.InformationElement.EID_VSA)) {
+                    loge("received InformationElement which is not a Vendor Specific IE (VSIE)."
+                            + "VSIEs have an ID = 221.");
+                    return false;
+                }
+
+                mVendorElements.put(packageName,
+                        new HashSet<ScanResult.InformationElement>(vendorElements));
+
+                Set<ScanResult.InformationElement> aggregatedVendorElements = new HashSet<>();
+                mVendorElements.forEach((k, v) -> aggregatedVendorElements.addAll(v));
+                // The total bytes of an IE is EID (1 byte) + length (1 byte) + payload length.
+                int totalBytes = aggregatedVendorElements.stream()
+                        .mapToInt(ie -> (2 + ie.bytes.length)).sum();
+                if (totalBytes > WifiP2pManager.getP2pMaxAllowedVendorElementsLength()) {
+                    mVendorElements.forEach((k, v) -> {
+                        Log.w(TAG, "package=" + k + " VSIE size="
+                                + v.stream().mapToInt(ie -> ie.bytes.length).sum());
+                    });
+                    mVendorElements.remove(packageName);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean p2pFind(int timeout) {
+            return p2pFind(WifiP2pManager.WIFI_P2P_SCAN_FULL, timeout);
+        }
+
+        private boolean p2pFind(int freq, int timeout) {
+            if (SdkLevel.isAtLeastT()) {
+                Set<ScanResult.InformationElement> aggregatedVendorElements = new HashSet<>();
+                mVendorElements.forEach((k, v) -> aggregatedVendorElements.addAll(v));
+                if (!mWifiNative.setVendorElements(aggregatedVendorElements)) {
+                    Log.w(TAG, "cannot set vendor elements to the native service.");
+                    // Don't block p2p find or it might affect regular P2P functinalities.
+                    mWifiNative.removeVendorElements();
+                }
+            }
+            if (!mWifiNative.p2pFind(freq, timeout)) {
+                return false;
             }
             return true;
         }

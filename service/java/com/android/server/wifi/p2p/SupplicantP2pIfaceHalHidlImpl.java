@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -2589,6 +2590,17 @@ public class SupplicantP2pIfaceHalHidlImpl implements ISupplicantP2pIfaceHal {
         return false;
     }
 
+    /**
+     * Set vendor-specific information elements to wpa_supplicant.
+     *
+     * @param vendorElements The list of vendor-specific information elements.
+     *
+     * @return boolean The value indicating whether operation was successful.
+     */
+    public boolean setVendorElements(Set<ScanResult.InformationElement> vendorElements) {
+        Log.d(TAG, "setVendorElements() is not supported.");
+        return false;
+    }
 
     /**
      * Converts the Wps config method string to the equivalent enum value.
