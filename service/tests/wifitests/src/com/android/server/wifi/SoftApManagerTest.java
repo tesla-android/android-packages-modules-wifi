@@ -275,6 +275,7 @@ public class SoftApManagerTest extends WifiBaseTest {
         MockitoAnnotations.initMocks(this);
         mLooper = new TestLooper();
 
+        when(mWifiNative.isItPossibleToCreateBridgedApIface(any())).thenReturn(true);
         when(mWifiNative.isApSetMacAddressSupported(any())).thenReturn(true);
         when(mWifiNative.setApMacAddress(any(), any())).thenReturn(true);
         when(mWifiNative.startSoftAp(eq(TEST_INTERFACE_NAME), any(), anyBoolean(),
@@ -3174,6 +3175,23 @@ public class SoftApManagerTest extends WifiBaseTest {
         // Reset band to 2.4G | 5G to generate expected configuration since it should fallback to
         // single AP mode
         configBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
+        startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, configBuilder.build());
+    }
+
+    @Test
+    public void testFallbackToSingleModeDueToCurrentConcurrencyCombo()
+            throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        Builder configBuilder = new SoftApConfiguration.Builder(
+                generateBridgedModeSoftApConfig(null));
+
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, configBuilder.build(),
+                mTestSoftApCapability);
+        // Reset band to 2.4G | 5G to generate expected configuration since it should fallback to
+        // single AP mode
+        configBuilder.setBand(SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ);
+        when(mWifiNative.isItPossibleToCreateBridgedApIface(any())).thenReturn(false);
         startSoftApAndVerifyEnabled(apConfig, TEST_COUNTRY_CODE, configBuilder.build());
     }
 

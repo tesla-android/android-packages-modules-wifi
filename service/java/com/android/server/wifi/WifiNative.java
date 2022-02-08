@@ -3290,6 +3290,15 @@ public class WifiNative {
     }
 
     /**
+     * Returns whether a new AP iface can be created or not.
+     */
+    public boolean isItPossibleToCreateBridgedApIface(@NonNull WorkSource requestorWs) {
+        synchronized (mLock) {
+            return mWifiVendorHal.isItPossibleToCreateBridgedApIface(requestorWs);
+        }
+    }
+
+    /**
      * Returns whether a new STA iface can be created or not.
      */
     public boolean isItPossibleToCreateStaIface(@NonNull WorkSource requestorWs) {
