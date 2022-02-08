@@ -71,6 +71,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
@@ -183,6 +184,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 /**
  * WifiService handles remote WiFi operation requests by implementing
@@ -1165,7 +1167,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiMetrics.incrementNumWifiToggles(isPrivileged, enable);
         mActiveModeWarden.wifiToggled(new WorkSource(callingUid, packageName));
-        mLastCallerInfoManager.put(LastCallerInfoManager.WIFI_ENABLED, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_WIFI_ENABLED, Process.myTid(),
                 callingUid, callingPid, packageName, enable);
         return true;
     }
@@ -1391,7 +1393,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SOFT_AP, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
@@ -1435,7 +1437,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-        mLastCallerInfoManager.put(LastCallerInfoManager.TETHERED_HOTSPOT, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_TETHERED_HOTSPOT, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
@@ -1480,7 +1482,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mLog.info("stopSoftAp uid=%").c(Binder.getCallingUid()).flush();
 
         stopSoftApInternal(WifiManager.IFACE_IP_MODE_TETHERED);
-        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SOFT_AP, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), "<unknown>", false);
         return true;
     }
@@ -3054,7 +3056,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 .c(Arrays.toString(scanType)).c(uid).flush();
         mWifiThreadRunner.post(() -> mWifiConnectivityManager.setExternalScreenOnScanSchedule(
                 scanSchedule, scanType));
-        mLastCallerInfoManager.put(LastCallerInfoManager.SET_SCAN_SCHEDULE, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SET_SCAN_SCHEDULE, Process.myTid(),
                 uid, Binder.getCallingPid(), "<unknown>",
                 scanSchedule != null);
     }
@@ -3614,7 +3616,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mLog.info("allowAutojoinGlobal=% uid=%").c(choice).c(callingUid).flush();
         mWifiThreadRunner.post(() -> mWifiConnectivityManager.setAutoJoinEnabledExternal(choice));
-        mLastCallerInfoManager.put(LastCallerInfoManager.AUTOJOIN_GLOBAL, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_AUTOJOIN_GLOBAL, Process.myTid(),
                 callingUid, Binder.getCallingPid(), "<unknown>", choice);
     }
 
@@ -5950,6 +5952,42 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiThreadRunner.post(() -> {
             mWifiConnectivityManager.clearExternalPnoScanRequest(uid);
+        });
+    }
+
+    /**
+     * See {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}.
+     */
+    @Override
+    public void getLastCallerInfoForApi(int apiType, @NonNull ILastCallerListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener should not be null");
+        }
+        if (apiType < WifiManager.API_SCANNING_ENABLED || apiType > WifiManager.API_MAX) {
+            throw new IllegalArgumentException("Invalid apiType " + apiType);
+        }
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                && !mWifiPermissionsUtil.checkNetworkStackPermission(uid)
+                && !mWifiPermissionsUtil.checkMainlineNetworkStackPermission(uid)) {
+            throw new SecurityException("Caller has no permission");
+        }
+
+        if (isVerboseLoggingEnabled()) {
+            Log.v(TAG, "getLastCallerInfoForApi " + Binder.getCallingUid());
+        }
+        mWifiThreadRunner.post(() -> {
+            LastCallerInfoManager.LastCallerInfo lastCallerInfo =
+                    mLastCallerInfoManager.get(apiType);
+            try {
+                if (lastCallerInfo == null) {
+                    listener.onResult(null, false);
+                    return;
+                }
+                listener.onResult(lastCallerInfo.getPackageName(), lastCallerInfo.getToggleState());
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
         });
     }
 
