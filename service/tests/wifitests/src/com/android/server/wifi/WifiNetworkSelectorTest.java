@@ -769,7 +769,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         String[] caps = {"[WPA2-PSK][ESS]"};
         int[] levels = {mThresholdQualifiedRssi5G + 8};
         int[] securities = {SECURITY_PSK};
-        WifiSsidPolicy policy = WifiSsidPolicy.createAllowlistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_ALLOWLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("test2"),
                         WifiSsid.fromUtf8Text("test3"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);
@@ -805,7 +806,8 @@ public class WifiNetworkSelectorTest extends WifiBaseTest {
         String[] caps = {"[WPA2-PSK][ESS]"};
         int[] levels = {mThresholdQualifiedRssi5G + 8};
         int[] securities = {SECURITY_PSK};
-        WifiSsidPolicy policy = WifiSsidPolicy.createDenylistPolicy(
+        WifiSsidPolicy policy = new WifiSsidPolicy(
+                WifiSsidPolicy.WIFI_SSID_POLICY_TYPE_DENYLIST,
                 new ArraySet<>(Arrays.asList(WifiSsid.fromUtf8Text("test1"),
                         WifiSsid.fromUtf8Text("test2"))));
         when(mDevicePolicyManager.getWifiSsidPolicy()).thenReturn(policy);

@@ -164,6 +164,12 @@ public class WifiP2pManager {
     public static final String EXTRA_PARAM_KEY_SERVICE_INFO =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_SERVICE_INFO";
     /**
+     * Extra for transporting a peer MAC address.
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_PEER_ADDRESS =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_PEER_ADDRESS";
+    /**
      * Extra used to indicate that a message is sent from Wifi internally
      * @hide
      */
@@ -177,6 +183,18 @@ public class WifiP2pManager {
     public static final String EXTRA_PARAM_KEY_DISPLAY_ID =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_DISPLAY_ID";
 
+    /**
+     * Extra for transporting a WifiP2pDevice.
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_DEVICE =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_DEVICE";
+    /**
+     * Extra for transporting a WPS PIN.
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_WPS_PIN =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_WPS_PIN";
     /**
      * Broadcast intent action to indicate whether Wi-Fi p2p is enabled or disabled. An
      * extra {@link #EXTRA_WIFI_STATE} provides the state information as int.
@@ -655,6 +673,31 @@ public class WifiP2pManager {
     /** @hide */
     public static final int REMOVE_CLIENT_SUCCEEDED                 = BASE + 101;
 
+    /** @hide */
+    public static final int ADD_EXTERNAL_APPROVER                   = BASE + 102;
+    /** @hide */
+    public static final int EXTERNAL_APPROVER_ATTACH                = BASE + 103;
+    /** @hide */
+    public static final int EXTERNAL_APPROVER_DETACH                = BASE + 104;
+    /** @hide */
+    public static final int EXTERNAL_APPROVER_CONNECTION_REQUESTED  = BASE + 105;
+    /** @hide */
+    public static final int EXTERNAL_APPROVER_PIN_GENERATED         = BASE + 106;
+
+    /** @hide */
+    public static final int REMOVE_EXTERNAL_APPROVER                = BASE + 107;
+    /** @hide */
+    public static final int REMOVE_EXTERNAL_APPROVER_FAILED         = BASE + 108;
+    /** @hide */
+    public static final int REMOVE_EXTERNAL_APPROVER_SUCCEEDED      = BASE + 109;
+
+    /** @hide */
+    public static final int SET_CONNECTION_REQUEST_RESULT           = BASE + 110;
+    /** @hide */
+    public static final int SET_CONNECTION_REQUEST_RESULT_FAILED    = BASE + 111;
+    /** @hide */
+    public static final int SET_CONNECTION_REQUEST_RESULT_SUCCEEDED = BASE + 112;
+
     /**
      * Create a new WifiP2pManager instance. Applications use
      * {@link android.content.Context#getSystemService Context.getSystemService()} to retrieve
@@ -909,6 +952,129 @@ public class WifiP2pManager {
     }
 
     /**
+     * Interface for callback invocation when an incoming request is received.
+     *
+     * This callback is registered by
+     * {@link #addExternalApprover(Channel, MacAddress, ExternalApproverRequestListener)}.
+     *
+     * @hide
+     */
+    @SystemApi
+    public interface ExternalApproverRequestListener {
+        /**
+         * This device received a negotiation request from another peer.
+         *
+         * Used in {@link #onConnectionRequested(int, WifiP2pConfig, WifiP2pDevice)}.
+         */
+        int REQUEST_TYPE_NEGOTIATION = 0;
+        /**
+         * This device received an invitation request from GO to join the group.
+         *
+         * Used in {@link #onConnectionRequested(int, WifiP2pConfig, WifiP2pDevice)}.
+         */
+        int REQUEST_TYPE_INVITATION = 1;
+        /**
+         * This GO device received a request from a peer to join the group.
+         *
+         * Used in {@link #onConnectionRequested(int, WifiP2pConfig, WifiP2pDevice)}.
+         */
+        int REQUEST_TYPE_JOIN = 2;
+        /** @hide */
+        @IntDef(prefix = {"REQUEST_TYPE__"}, value = {
+            REQUEST_TYPE_NEGOTIATION,
+            REQUEST_TYPE_INVITATION,
+            REQUEST_TYPE_JOIN})
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface RequestType {
+        }
+
+        /**
+         * Detached by a call to
+         * {@link #removeExternalApprover(Channel, MacAddress, ActionListener)}.
+         *
+         * Used in {@link #onDetached(MacAddress, int)}.
+         */
+        int APPROVER_DETACH_REASON_REMOVE = 0;
+        /**
+         * Detached due to a framework failure.
+         *
+         * Used in {@link #onDetached(MacAddress, int)}.
+         */
+        int APPROVER_DETACH_REASON_FAILURE = 1;
+        /**
+         * Detached when a new approver replaces an old one.
+         *
+         * Used in {@link #onDetached(MacAddress, int)}.
+         */
+        int APPROVER_DETACH_REASON_REPLACE = 2;
+        /**
+         * Detached since the {@link WifiP2pManager} channel was closed, e.g.
+         * by using {@link WifiP2pManager#close()} method.
+         *
+         * Used in {@link #onDetached(MacAddress, int)}.
+         */
+        int APPROVER_DETACH_REASON_CLOSE = 3;
+        /** @hide */
+        @IntDef(prefix = {"APPROVER_DETACH_REASON_"}, value = {
+            APPROVER_DETACH_REASON_REMOVE,
+            APPROVER_DETACH_REASON_FAILURE,
+            APPROVER_DETACH_REASON_REPLACE,
+            APPROVER_DETACH_REASON_CLOSE})
+        @Retention(RetentionPolicy.SOURCE)
+        public @interface ApproverDetachReason {
+        }
+
+        /**
+         * Called when an approver registration via
+         * {@link #addExternalApprover(Channel, MacAddress, ExternalApproverRequestListener)}
+         * is successful.
+         *
+         * @param deviceAddress is the peer MAC address used in the registration.
+         */
+        void onAttached(@NonNull MacAddress deviceAddress);
+        /**
+         * Called when an approver registration via
+         * {@link #addExternalApprover(Channel, MacAddress, ExternalApproverRequestListener)}
+         * has failed.
+         *
+         * @param deviceAddress is the peer MAC address used in the registration.
+         * @param reason is the failure reason.
+         */
+        void onDetached(@NonNull MacAddress deviceAddress, @ApproverDetachReason int reason);
+        /**
+         * Called when there is an incoming connection request
+         * which matches a peer (identified by its {@link MacAddress}) registered by the external
+         * approver through
+         * {@link #addExternalApprover(Channel, MacAddress, ExternalApproverRequestListener)}.
+         * The external approver is expected to follow up with a connection decision using the
+         * {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)} with
+         * {@link #CONNECTION_REQUEST_ACCEPT}, {@link #CONNECTION_REQUEST_REJECT}, or
+         * {@link #CONNECTION_REQUEST_DEFER_TO_SERVICE}.
+         *
+         * @param requestType is one of {@link #REQUEST_TYPE_NEGOTIATION},
+         *        {@link #REQUEST_TYPE_INVITATION}, and {@link #REQUEST_TYPE_JOIN}.
+         * @param config is the peer configuration.
+         * @param device is the peer information.
+         */
+        void onConnectionRequested(
+                @RequestType int requestType, @NonNull WifiP2pConfig config,
+                @NonNull WifiP2pDevice device);
+        /**
+         * Called when a PIN is generated by the WiFi service.
+         *
+         * The external approver can display the PIN, exchange the PIN via Out-Of-Band way
+         * or ask the wifi service to show the PIN as usual using the
+         * {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}
+         * with {@link #CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE}.
+         *
+         * @param deviceAddress is the peer MAC address used in the registration.
+         * @param pin is the WPS PIN.
+         */
+        void onPinGenerated(@NonNull MacAddress deviceAddress, @NonNull String pin);
+    }
+
+
+    /**
      * A channel that connects the application to the Wifi p2p framework.
      * Most p2p operations require a Channel as an argument. An instance of Channel is obtained
      * by doing a call on {@link #initialize}
@@ -938,6 +1104,14 @@ public class WifiP2pManager {
         private int mListenerKey = 0;
 
         private final CloseGuard mCloseGuard = new CloseGuard();
+
+        /**
+         * Return the binder object.
+         * @hide
+         */
+        public @NonNull Binder getBinder() {
+            return mBinder;
+        }
 
         /**
          * Close the current P2P connection and indicate to the P2P service that connections
@@ -986,7 +1160,19 @@ public class WifiP2pManager {
 
             @Override
             public void handleMessage(Message message) {
-                Object listener = getListener(message.arg2);
+                Object listener = null;
+                // The listener for an external approver should be
+                // removed after detaching from the service.
+                switch (message.what) {
+                    case EXTERNAL_APPROVER_ATTACH:
+                    case EXTERNAL_APPROVER_CONNECTION_REQUESTED:
+                    case EXTERNAL_APPROVER_PIN_GENERATED:
+                        listener = getListener(message.arg2);
+                        break;
+                    default:
+                        listener = removeListener(message.arg2);
+                        break;
+                }
                 switch (message.what) {
                     case AsyncChannel.CMD_CHANNEL_DISCONNECTED:
                         if (mChannelListener != null) {
@@ -1019,6 +1205,8 @@ public class WifiP2pManager {
                     case FACTORY_RESET_FAILED:
                     case SET_ONGOING_PEER_CONFIG_FAILED:
                     case REMOVE_CLIENT_FAILED:
+                    case REMOVE_EXTERNAL_APPROVER_FAILED:
+                    case SET_CONNECTION_REQUEST_RESULT_FAILED:
                         if (listener != null) {
                             ((ActionListener) listener).onFailure(message.arg1);
                         }
@@ -1048,6 +1236,8 @@ public class WifiP2pManager {
                     case FACTORY_RESET_SUCCEEDED:
                     case SET_ONGOING_PEER_CONFIG_SUCCEEDED:
                     case REMOVE_CLIENT_SUCCEEDED:
+                    case REMOVE_EXTERNAL_APPROVER_SUCCEEDED:
+                    case SET_CONNECTION_REQUEST_RESULT_SUCCEEDED:
                         if (listener != null) {
                             ((ActionListener) listener).onSuccess();
                         }
@@ -1122,6 +1312,38 @@ public class WifiP2pManager {
                                     .onDeviceInfoAvailable((WifiP2pDevice) message.obj);
                         }
                         break;
+                    case EXTERNAL_APPROVER_ATTACH:
+                        if (listener != null) {
+                            ((ExternalApproverRequestListener) listener)
+                                    .onAttached((MacAddress) message.obj);
+                        }
+                        break;
+                    case EXTERNAL_APPROVER_DETACH:
+                        if (listener != null) {
+                            ((ExternalApproverRequestListener) listener)
+                                    .onDetached((MacAddress) message.obj, message.arg1);
+                        }
+                        break;
+                    case EXTERNAL_APPROVER_CONNECTION_REQUESTED:
+                        if (listener != null) {
+                            int requestType = message.arg1;
+                            Bundle bundle = (Bundle) message.obj;
+                            WifiP2pDevice device = bundle.getParcelable(EXTRA_PARAM_KEY_DEVICE);
+                            WifiP2pConfig config = bundle.getParcelable(EXTRA_PARAM_KEY_CONFIG);
+                            ((ExternalApproverRequestListener) listener)
+                                    .onConnectionRequested(requestType, config, device);
+                        }
+                        break;
+                    case EXTERNAL_APPROVER_PIN_GENERATED:
+                        if (listener != null) {
+                            Bundle bundle = (Bundle) message.obj;
+                            MacAddress deviceAddress = bundle.getParcelable(
+                                    EXTRA_PARAM_KEY_PEER_ADDRESS);
+                            String pin = bundle.getString(EXTRA_PARAM_KEY_WPS_PIN);
+                            ((ExternalApproverRequestListener) listener)
+                                    .onPinGenerated(deviceAddress, pin);
+                        }
+                        break;
                     default:
                         Log.d(TAG, "Ignored " + message);
                         break;
@@ -1183,6 +1405,13 @@ public class WifiP2pManager {
         }
 
         private Object getListener(int key) {
+            if (key == INVALID_LISTENER_KEY) return null;
+            synchronized (mListenerMapLock) {
+                return mListenerMap.get(key);
+            }
+        }
+
+        private Object removeListener(int key) {
             if (key == INVALID_LISTENER_KEY) return null;
             synchronized (mListenerMapLock) {
                 return mListenerMap.remove(key);
@@ -1248,7 +1477,9 @@ public class WifiP2pManager {
     }
 
     private Bundle prepareExtrasBundle(Channel c) {
-        return prepareExtrasBundle(c.mContext);
+        Bundle b = prepareExtrasBundle(c.mContext);
+        b.putBinder(CALLING_BINDER, c.getBinder());
+        return b;
     }
 
     private Bundle prepareExtrasBundle(Context context) {
@@ -2123,6 +2354,48 @@ public class WifiP2pManager {
     public static final int MIRACAST_SINK     = 2;
 
     /**
+     * Accept the incoming request.
+     *
+     * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int CONNECTION_REQUEST_ACCEPT = 0;
+    /**
+     * Reject the incoming request.
+     *
+     * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int CONNECTION_REQUEST_REJECT = 1;
+    /**
+     * Defer the decision back to the Wi-Fi service (which will display a dialog to the user).
+     *
+     * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int CONNECTION_REQUEST_DEFER_TO_SERVICE = 2;
+    /**
+     * Defer the PIN display to the Wi-Fi service (which will display a dialog to the user).
+     *
+     * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE = 3;
+    /** @hide */
+    @IntDef(prefix = {"CONNECTION_REQUEST_"}, value = {
+        CONNECTION_REQUEST_ACCEPT,
+        CONNECTION_REQUEST_REJECT,
+        CONNECTION_REQUEST_DEFER_TO_SERVICE,
+        CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ConnectionRequestResponse {
+    }
+
+    /**
      * This is used to provide information to drivers to optimize performance depending
      * on the current mode of operation.
      * {@link #MIRACAST_DISABLED} - disabled
@@ -2366,7 +2639,91 @@ public class WifiP2pManager {
     public void requestDeviceInfo(@NonNull Channel c, @NonNull DeviceInfoListener listener) {
         checkChannel(c);
         if (listener == null) throw new IllegalArgumentException("This listener cannot be null.");
+
         Bundle extras = prepareExtrasBundle(c);
         c.mAsyncChannel.sendMessage(REQUEST_DEVICE_INFO, 0, c.putListener(listener), extras);
+    }
+
+    /**
+     * Set the external approver for a specific peer.
+     *
+     * This API associates a specific peer with an approver. When an incoming request is received
+     * from a peer, an authorization request is routed to the attached approver. The approver then
+     * calls {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)} to send
+     * the result to the WiFi service. A specific peer (identified by its {@code MacAddress}) can
+     * only be attached to a single approver. The previous approver will be detached once a new
+     * approver is attached. The approver will also be detached automatically when the channel is
+     * closed.
+     * <p>
+     * When an approver is attached, {@link ExternalApproverRequestListener#onAttached(MacAddress)}
+     * is called. When an approver is detached,
+     * {@link ExternalApproverRequestListener#onDetached(MacAddress, int)} is called.
+     * When an incoming request is received,
+     * {@link ExternalApproverRequestListener#onConnectionRequested(int, WifiP2pConfig, WifiP2pDevice)}
+     * is called. When a WPS PIN is generated,
+     * {@link ExternalApproverRequestListener#onPinGenerated(MacAddress, String)} is called.
+     *
+     * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
+     * @param deviceAddress the peer which is bound to the external approver.
+     * @param listener for callback when the framework needs to notify the external approver.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    public void addExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
+            @NonNull ExternalApproverRequestListener listener) {
+        checkChannel(c);
+        if (listener == null) throw new IllegalArgumentException("This listener cannot be null.");
+        if (null == deviceAddress) {
+            throw new IllegalArgumentException("deviceAddress cannot be empty");
+        }
+
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_PEER_ADDRESS, deviceAddress);
+        c.mAsyncChannel.sendMessage(ADD_EXTERNAL_APPROVER, 0, c.putListener(listener), extras);
+    }
+
+    /**
+     * Remove the external approver for a specific peer.
+     *
+     * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
+     * @param deviceAddress the peer which is bound to the external approver.
+     * @param listener for callback on success or failure.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    public void removeExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
+            @Nullable ActionListener listener) {
+        checkChannel(c);
+        if (null == deviceAddress) {
+            throw new IllegalArgumentException("deviceAddress cannot be empty");
+        }
+
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_PEER_ADDRESS, deviceAddress);
+        c.mAsyncChannel.sendMessage(REMOVE_EXTERNAL_APPROVER, 0, c.putListener(listener), extras);
+    }
+
+    /**
+     * Set the result for the incoming request from a specific peer.
+     *
+     * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
+     * @param listener for callback on success or failure.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    public void setConnectionRequestResult(@NonNull Channel c, @NonNull MacAddress deviceAddress,
+            @ConnectionRequestResponse int result, @Nullable ActionListener listener) {
+        checkChannel(c);
+        if (null == deviceAddress) {
+            throw new IllegalArgumentException("deviceAddress cannot be empty");
+        }
+
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelable(EXTRA_PARAM_KEY_PEER_ADDRESS, deviceAddress);
+        c.mAsyncChannel.sendMessage(SET_CONNECTION_REQUEST_RESULT,
+                result, c.putListener(listener), extras);
     }
 }
