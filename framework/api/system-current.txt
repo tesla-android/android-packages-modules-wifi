@@ -394,7 +394,6 @@ package android.net.wifi {
     method @Deprecated public boolean isNoInternetAccessExpected();
     method @Deprecated public void setBssidAllowlist(@Nullable java.util.List<android.net.MacAddress>);
     method @Deprecated public void setDeletionPriority(int) throws java.lang.IllegalArgumentException;
-    method @Deprecated public void setIpConfiguration(@Nullable android.net.IpConfiguration);
     method @Deprecated public void setNetworkSelectionStatus(@NonNull android.net.wifi.WifiConfiguration.NetworkSelectionStatus);
     field @Deprecated public static final int INVALID_NETWORK_ID = -1; // 0xffffffff
     field @Deprecated public static final int METERED_OVERRIDE_METERED = 1; // 0x1

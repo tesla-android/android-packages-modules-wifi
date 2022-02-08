@@ -126,6 +126,7 @@ package android.net.wifi {
     method @Deprecated @NonNull public android.net.MacAddress getRandomizedMacAddress();
     method @Deprecated public boolean isPasspoint();
     method @Deprecated public void setHttpProxy(android.net.ProxyInfo);
+    method @Deprecated public void setIpConfiguration(@Nullable android.net.IpConfiguration);
     method @Deprecated public void setMacRandomizationSetting(int);
     method @Deprecated public void setSecurityParams(int);
     method public void writeToParcel(android.os.Parcel, int);
