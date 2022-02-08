@@ -841,7 +841,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.saveNetwork(
                 new NetworkUpdateResult(TEST_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
     }
@@ -899,7 +899,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(config.networkId),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
     }
@@ -1857,7 +1857,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(FRAMEWORK_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -1882,7 +1882,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(FRAMEWORK_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                callingUid);
+                callingUid, OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -1907,7 +1907,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(FRAMEWORK_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -1939,7 +1939,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 networkUpdateResult,
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -1969,7 +1969,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(FRAMEWORK_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -1999,7 +1999,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(FRAMEWORK_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -2111,7 +2111,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(TEST_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Process.SYSTEM_UID);
+                Process.SYSTEM_UID, OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
 
@@ -2128,7 +2128,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(networkId),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
     }
@@ -7268,7 +7268,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(config.networkId),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onFailure(WifiManager.ActionListener.FAILURE_INTERNAL_ERROR);
         verify(mWifiConfigManager, never())
@@ -7349,7 +7349,7 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new NetworkUpdateResult(
                         updatedConfig.networkId, false, false, true, false),
                 new ActionListenerWrapper(connectActionListener),
-                Binder.getCallingUid());
+                Binder.getCallingUid(), OP_PACKAGE_NAME);
         mLooper.dispatchAll();
 
         verify(mWifiConfigManager).updateLinkedNetworks(connectedConfig.networkId);
@@ -7659,7 +7659,7 @@ public class ClientModeImplTest extends WifiBaseTest {
         mCmi.connectNetwork(
                 new NetworkUpdateResult(TEST_NETWORK_ID),
                 new ActionListenerWrapper(connectActionListener),
-                Process.SYSTEM_UID);
+                Process.SYSTEM_UID, OP_PACKAGE_NAME);
         mLooper.dispatchAll();
         verify(connectActionListener).onSuccess();
         if (shouldBeUpdated) {
