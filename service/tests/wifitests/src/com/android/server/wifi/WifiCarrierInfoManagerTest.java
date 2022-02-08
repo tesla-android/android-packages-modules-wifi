@@ -594,7 +594,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         MockitoSession session = ExtendedMockito.mockitoSession().mockStatic(
                 Cipher.class).startMocking();
         try {
-            when(Cipher.getInstance(anyString())).thenReturn(cipher);
+            lenient().when(Cipher.getInstance(anyString())).thenReturn(cipher);
             when(cipher.doFinal(any(byte[].class))).thenReturn(permanentIdentity.getBytes());
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
@@ -628,7 +628,7 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
         MockitoSession session = ExtendedMockito.mockitoSession().mockStatic(
                 Cipher.class).startMocking();
         try {
-            when(Cipher.getInstance(anyString())).thenReturn(cipher);
+            lenient().when(Cipher.getInstance(anyString())).thenReturn(cipher);
             when(cipher.doFinal(any(byte[].class))).thenThrow(BadPaddingException.class);
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
