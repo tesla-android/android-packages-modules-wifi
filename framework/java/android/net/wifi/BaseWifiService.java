@@ -863,6 +863,11 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public String[] getOemPrivilegedAdmins() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void replyToP2pInvitationReceivedDialog(
             int dialogId, boolean accepted, @Nullable String optionalPin) {
         throw new UnsupportedOperationException();

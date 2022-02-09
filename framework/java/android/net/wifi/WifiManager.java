@@ -9299,6 +9299,21 @@ public class WifiManager {
     public static final String EXTRA_P2P_DISPLAY_ID = "android.net.wifi.extra.P2P_DISPLAY_ID";
 
     /**
+     * Returns a set of packages that aren't DO or PO but should be able to manage WiFi networks.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(android.Manifest.permission.NETWORK_SETTINGS)
+    @NonNull
+    public Set<String> getOemPrivilegedAdmins() {
+        try {
+            return new ArraySet<>(mService.getOemPrivilegedAdmins());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Method for WifiDialog to notify the framework of a reply to a P2P Invitation Received dialog.
      * @param dialogId id of the replying dialog.
      * @param accepted Whether the invitation was accepted.

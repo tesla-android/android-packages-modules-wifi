@@ -379,6 +379,8 @@ interface IWifiManager
 
     void validateCurrentWifiMeetsAdminRequirements();
 
+    String[] getOemPrivilegedAdmins();
+
     void replyToP2pInvitationReceivedDialog(int dialogId, boolean accepted, String optionalPin);
 
     void addCustomDhcpOptions(in WifiSsid ssid, in byte[] oui, in List<DhcpOption> options);
