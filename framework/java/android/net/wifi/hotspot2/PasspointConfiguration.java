@@ -258,12 +258,19 @@ public final class PasspointConfiguration implements Parcelable {
      * Use Long.MIN_VALUE to indicate unset value.
      */
     private long mSubscriptionExpirationTimeMillis = Long.MIN_VALUE;
+
     /**
-     * @hide
+     * Utility method to set the time this subscription will expire. The framework will not attempt
+     * to auto-connect to networks using expired subscriptions.
+     * @param subscriptionExpirationTimeInMillis The expiration time in the format of number of
+     *                                           milliseconds since January 1, 1970, 00:00:00 GMT,
+     *                                           or {@link Long#MIN_VALUE} to unset.
      */
-    public void setSubscriptionExpirationTimeInMillis(long subscriptionExpirationTimeInMillis) {
+    public void setSubscriptionExpirationTimeInMillis(@CurrentTimeMillisLong
+            long subscriptionExpirationTimeInMillis) {
         mSubscriptionExpirationTimeMillis = subscriptionExpirationTimeInMillis;
     }
+
     /**
      *  Utility method to get the time this subscription will expire. It is in the format of number
      *  of milliseconds since January 1, 1970, 00:00:00 GMT.
