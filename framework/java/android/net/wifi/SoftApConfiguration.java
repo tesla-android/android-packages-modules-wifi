@@ -276,6 +276,21 @@ public final class SoftApConfiguration implements Parcelable {
     private final @NonNull Set<Integer> mAllowedAcsChannels6g;
 
     /**
+     * The maximum channel bandwidth for SoftAp operation
+     *
+     * Default value is SoftApInfo#CHANNEL_WIDTH_AUTO which means the channel bandwidth
+     * is to be selected by the chip based on device capabilities.
+     * <p>
+     *
+     * Valid values: {@link SoftApInfo#CHANNEL_WIDTH_AUTO},
+     * {@link SoftApInfo#CHANNEL_WIDTH_20MHZ}, {@link SoftApInfo#CHANNEL_WIDTH_40MHZ},
+     * {@link SoftApInfo#CHANNEL_WIDTH_80MHZ}, {@link SoftApInfo#CHANNEL_WIDTH_160MHZ},
+     * {@link SoftApInfo#CHANNEL_WIDTH_320MHZ}
+     *
+     */
+    private final @WifiAnnotations.Bandwidth int mMaxChannelBandwidth;
+
+    /**
      * The maximim allowed number of clients that can associate to the AP.
      */
     private final int mMaxNumberOfClients;
@@ -446,7 +461,8 @@ public final class SoftApConfiguration implements Parcelable {
             @NonNull List<ScanResult.InformationElement> vendorElements,
             @Nullable MacAddress persistentRandomizedMacAddress,
             @NonNull Set<Integer> allowedAcsChannels24g, @NonNull Set<Integer> allowedAcsChannels5g,
-            @NonNull Set<Integer> allowedAcsChannels6g) {
+            @NonNull Set<Integer> allowedAcsChannels6g,
+            @WifiAnnotations.Bandwidth int maxChannelBandwidth) {
         mWifiSsid = ssid;
         mBssid = bssid;
         mPassphrase = passphrase;
@@ -476,6 +492,7 @@ public final class SoftApConfiguration implements Parcelable {
         mAllowedAcsChannels2g = new HashSet<>(allowedAcsChannels24g);
         mAllowedAcsChannels5g = new HashSet<>(allowedAcsChannels5g);
         mAllowedAcsChannels6g = new HashSet<>(allowedAcsChannels6g);
+        mMaxChannelBandwidth = maxChannelBandwidth;
     }
 
     @Override
@@ -512,7 +529,8 @@ public final class SoftApConfiguration implements Parcelable {
                         other.mPersistentRandomizedMacAddress)
                 && Objects.equals(mAllowedAcsChannels2g, other.mAllowedAcsChannels2g)
                 && Objects.equals(mAllowedAcsChannels5g, other.mAllowedAcsChannels5g)
-                && Objects.equals(mAllowedAcsChannels6g, other.mAllowedAcsChannels6g);
+                && Objects.equals(mAllowedAcsChannels6g, other.mAllowedAcsChannels6g)
+                && mMaxChannelBandwidth == other.mMaxChannelBandwidth;
     }
 
     @Override
@@ -524,7 +542,7 @@ public final class SoftApConfiguration implements Parcelable {
                 mBridgedModeOpportunisticShutdownEnabled, mIeee80211axEnabled, mIeee80211beEnabled,
                 mIsUserConfiguration, mBridgedModeOpportunisticShutdownTimeoutMillis,
                 mVendorElements, mPersistentRandomizedMacAddress, mAllowedAcsChannels2g,
-                mAllowedAcsChannels5g, mAllowedAcsChannels6g);
+                mAllowedAcsChannels5g, mAllowedAcsChannels6g, mMaxChannelBandwidth);
     }
 
     @Override
@@ -557,6 +575,7 @@ public final class SoftApConfiguration implements Parcelable {
         sbuf.append(" \n mAllowedAcsChannels2g = ").append(mAllowedAcsChannels2g);
         sbuf.append(" \n mAllowedAcsChannels5g = ").append(mAllowedAcsChannels5g);
         sbuf.append(" \n mAllowedAcsChannels6g = ").append(mAllowedAcsChannels6g);
+        sbuf.append(" \n mMaxChannelBandwidth = ").append(mMaxChannelBandwidth);
         return sbuf.toString();
     }
 
@@ -585,6 +604,7 @@ public final class SoftApConfiguration implements Parcelable {
         writeHashSetInt(dest, mAllowedAcsChannels2g);
         writeHashSetInt(dest, mAllowedAcsChannels5g);
         writeHashSetInt(dest, mAllowedAcsChannels6g);
+        dest.writeInt(mMaxChannelBandwidth);
     }
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
@@ -603,7 +623,6 @@ public final class SoftApConfiguration implements Parcelable {
             i++;
         }
     }
-
 
     /* Reference from frameworks/base/core/java/android/os/Parcel.java */
     @NonNull
@@ -671,7 +690,8 @@ public final class SoftApConfiguration implements Parcelable {
                     in.readParcelable(MacAddress.class.getClassLoader()),
                     readHashSetInt(in),
                     readHashSetInt(in),
-                    readHashSetInt(in));
+                    readHashSetInt(in),
+                    in.readInt());
         }
 
         @Override
@@ -1054,6 +1074,22 @@ public final class SoftApConfiguration implements Parcelable {
     }
 
     /**
+     * Returns configured maximum channel bandwidth for the SoftAp connection.
+     *
+     * If not configured, it will return {@link SoftApInfo#CHANNEL_WIDTH_AUTO}
+     *
+     * @hide
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @SystemApi
+    public @WifiAnnotations.Bandwidth int getMaxChannelBandwidth() {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        return mMaxChannelBandwidth;
+    }
+
+    /**
      * Returns whether or not the {@link SoftApConfiguration} was configured by the user
      * (as opposed to the default system configuration).
      * <p>
@@ -1211,6 +1247,7 @@ public final class SoftApConfiguration implements Parcelable {
         private Set<Integer> mAllowedAcsChannels2g;
         private Set<Integer> mAllowedAcsChannels5g;
         private Set<Integer> mAllowedAcsChannels6g;
+        private @WifiAnnotations.Bandwidth int mMaxChannelBandwidth;
 
         /**
          * Constructs a Builder with default values (see {@link Builder}).
@@ -1244,6 +1281,7 @@ public final class SoftApConfiguration implements Parcelable {
             mAllowedAcsChannels2g = new HashSet<>();
             mAllowedAcsChannels5g = new HashSet<>();
             mAllowedAcsChannels6g = new HashSet<>();
+            mMaxChannelBandwidth = SoftApInfo.CHANNEL_WIDTH_AUTO;
         }
 
         /**
@@ -1277,6 +1315,7 @@ public final class SoftApConfiguration implements Parcelable {
             mAllowedAcsChannels2g = new HashSet<>(other.mAllowedAcsChannels2g);
             mAllowedAcsChannels5g = new HashSet<>(other.mAllowedAcsChannels5g);
             mAllowedAcsChannels6g = new HashSet<>(other.mAllowedAcsChannels6g);
+            mMaxChannelBandwidth = other.mMaxChannelBandwidth;
         }
 
         /**
@@ -1312,7 +1351,7 @@ public final class SoftApConfiguration implements Parcelable {
                     mIeee80211beEnabled, mIsUserConfiguration,
                     mBridgedModeOpportunisticShutdownTimeoutMillis, mVendorElements,
                     mPersistentRandomizedMacAddress, mAllowedAcsChannels2g, mAllowedAcsChannels5g,
-                    mAllowedAcsChannels6g);
+                    mAllowedAcsChannels6g, mMaxChannelBandwidth);
         }
 
         /**
@@ -1461,7 +1500,7 @@ public final class SoftApConfiguration implements Parcelable {
          * @return Builder for chaining.
          * @throws IllegalArgumentException when the passphrase length is invalid and
          *         {@code securityType} is any of the following:
-         *         {@link ##SECURITY_TYPE_WPA2_PSK} or {@link #SECURITY_TYPE_WPA3_SAE_TRANSITION}
+         *         {@link #SECURITY_TYPE_WPA2_PSK} or {@link #SECURITY_TYPE_WPA3_SAE_TRANSITION}
          *         or {@link #SECURITY_TYPE_WPA3_SAE},
          *         or non-null passphrase and {@code securityType} is
          *         {@link #SECURITY_TYPE_OPEN} or {@link #SECURITY_TYPE_WPA3_OWE_TRANSITION} or
@@ -1875,6 +1914,44 @@ public final class SoftApConfiguration implements Parcelable {
                     break;
             }
 
+            return this;
+        }
+
+        /**
+         * Sets maximum channel bandwidth for the SoftAp Connection
+         *
+         * If not set, the SoftAp connection will seek the maximum channel bandwidth achievable on
+         * the device. However, in some cases the caller will need to put a cap on the channel
+         * bandwidth through this API.
+         *
+         * @param maxChannelBandwidth one of {@link SoftApInfo#CHANNEL_WIDTH_AUTO},
+         * {@link SoftApInfo#CHANNEL_WIDTH_20MHZ}, {@link SoftApInfo#CHANNEL_WIDTH_40MHZ},
+         * {@link SoftApInfo#CHANNEL_WIDTH_80MHZ}, {@link SoftApInfo#CHANNEL_WIDTH_160MHZ},
+         * or {@link SoftApInfo#CHANNEL_WIDTH_320MHZ}
+         *
+         * @return builder for chaining
+         */
+        @NonNull
+        @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+        public Builder setMaxChannelBandwidth(@WifiAnnotations.Bandwidth int maxChannelBandwidth) {
+            if (!SdkLevel.isAtLeastT()) {
+                throw new UnsupportedOperationException();
+            }
+
+            switch (maxChannelBandwidth) {
+                case SoftApInfo.CHANNEL_WIDTH_AUTO:
+                case SoftApInfo.CHANNEL_WIDTH_20MHZ:
+                case SoftApInfo.CHANNEL_WIDTH_40MHZ:
+                case SoftApInfo.CHANNEL_WIDTH_80MHZ:
+                case SoftApInfo.CHANNEL_WIDTH_160MHZ:
+                case SoftApInfo.CHANNEL_WIDTH_320MHZ:
+                    mMaxChannelBandwidth = maxChannelBandwidth;
+                    break;
+                default:
+                    throw new IllegalArgumentException(
+                            "Invalid channel bandwidth value("
+                            + maxChannelBandwidth + ")  configured");
+            }
             return this;
         }
 
