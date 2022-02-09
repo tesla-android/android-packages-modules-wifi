@@ -2323,7 +2323,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
         }
 
-        getWifiLinkLayerStats();
+        if (isConnected()) {
+            getWifiLinkLayerStats();
+        }
         mOnTimeScreenStateChange = mOnTime;
         mLastScreenStateChangeTimeStamp = mLastLinkLayerStatsUpdate;
 

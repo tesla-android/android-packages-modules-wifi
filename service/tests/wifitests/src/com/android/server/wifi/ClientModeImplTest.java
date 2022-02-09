@@ -6284,16 +6284,23 @@ public class ClientModeImplTest extends WifiBaseTest {
      */
     @Test
     public void testWifiScoreReportDump() throws Exception {
+        InOrder inOrder = inOrder(mWifiNative, mWifiScoreReport);
+        inOrder.verify(mWifiNative, never()).getWifiLinkLayerStats(any());
         connect();
 
-        mLooper.startAutoDispatch();
         mCmi.dump(new FileDescriptor(), new PrintWriter(new StringWriter()), null);
-        mLooper.stopAutoDispatchAndIgnoreExceptions();
+        mLooper.dispatchAll();
 
-        InOrder inOrder = inOrder(mWifiNative, mWifiScoreReport);
-
-        inOrder.verify(mWifiNative).getWifiLinkLayerStats(any());
+        inOrder.verify(mWifiNative, atLeastOnce()).getWifiLinkLayerStats(any());
         inOrder.verify(mWifiScoreReport).dump(any(), any(), any());
+    }
+
+    @Test
+    public void testHandleScreenChangedDontUpdateLinkLayerStatsWhenDisconnected() {
+        setScreenState(true);
+        setScreenState(false);
+        setScreenState(true);
+        verify(mWifiNative, never()).getWifiLinkLayerStats(any());
     }
 
     @Test
