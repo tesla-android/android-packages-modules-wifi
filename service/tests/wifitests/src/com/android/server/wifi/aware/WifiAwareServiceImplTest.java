@@ -19,7 +19,6 @@ package com.android.server.wifi.aware;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_VERBOSE_LOGGING_ENABLED;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -222,13 +221,11 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
         ConfigRequest configRequest = new ConfigRequest.Builder().setMasterPreference(55).build();
         String callingPackage = "com.google.somePackage";
         String callingFeatureId = "com.google.someFeature";
-        assertFalse(mDut.isDeviceAttached());
         mDut.connect(mBinderMock, callingPackage, callingFeatureId, mCallbackMock,
                 configRequest, false, mExtras);
 
         verify(mAwareStateManagerMock).connect(anyInt(), anyInt(), anyInt(), eq(callingPackage),
                 eq(callingFeatureId), eq(mCallbackMock), eq(configRequest), eq(false));
-        assertTrue(mDut.isDeviceAttached());
     }
 
     /**
@@ -239,12 +236,10 @@ public class WifiAwareServiceImplTest extends WifiBaseTest {
     @Test
     public void testDisconnect() throws Exception {
         int clientId = doConnect();
-        assertTrue(mDut.isDeviceAttached());
         mDut.disconnect(clientId, mBinderMock);
 
         verify(mAwareStateManagerMock).disconnect(clientId);
         validateInternalStateCleanedUp(clientId);
-        assertFalse(mDut.isDeviceAttached());
     }
 
     /**
