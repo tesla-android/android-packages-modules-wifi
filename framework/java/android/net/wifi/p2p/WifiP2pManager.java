@@ -2743,7 +2743,7 @@ public class WifiP2pManager {
      * Set/Clear vendor specific information elements (VSIEs) to be published during
      * Wi-Fi Direct (P2P) discovery.
      *
-     * Once {@link #close()} is called, the vendor information elements will be cleared from
+     * Once {@link Channel#close()} is called, the vendor information elements will be cleared from
      * framework. The information element format is defined in the IEEE 802.11-2016 spec
      * Table 9-77.
      * <p>
@@ -2758,10 +2758,7 @@ public class WifiP2pManager {
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param vendorElements application information as vendor-specific information elements.
      * @param listener for callback when network info is available.
-     *
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(allOf = {
             android.Manifest.permission.NEARBY_WIFI_DEVICES,
             android.Manifest.permission.OVERRIDE_WIFI_CONFIG
@@ -2800,13 +2797,11 @@ public class WifiP2pManager {
 
     /**
      * Return the maximum total length (in bytes) of all Vendor specific information
-     * elements (VSIEs) which can be set using the
-     * {@link #setVendorElements(Channel, List<ScanResult.InformationElement>, ActionListener)}.
+     * elements (VSIEs).
+     *
      * The length is calculated adding the payload length + 2 bytes for each VSIE
      * (2 bytes: 1 byte for type and 1 byte for length).
-     * @hide
      */
-    @SystemApi
     public static int getP2pMaxAllowedVendorElementsLength() {
         return WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH;
     }

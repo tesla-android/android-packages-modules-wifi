@@ -18,7 +18,6 @@ package android.net.wifi.p2p;
 
 import android.annotation.NonNull;
 import android.annotation.Nullable;
-import android.annotation.SystemApi;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.net.wifi.ScanResult;
 import android.os.Build;
@@ -355,9 +354,7 @@ public class WifiP2pDevice implements Parcelable {
      * @return the list of vendor-specific information elements
      *         The information element format is defined in the IEEE 802.11-2016 spec
      *         Table 9-77.
-     * @hide
      */
-    @SystemApi
     @NonNull public List<ScanResult.InformationElement> getVendorElements() {
         if (mVendorElements == null) return Collections.emptyList();
         return new ArrayList<>(mVendorElements);
