@@ -53,6 +53,10 @@ public class WorkSourceHelper {
         mPackageManager = packageManager;
     }
 
+    public WorkSource getWorkSource() {
+        return mWorkSource;
+    }
+
     @Override
     public String toString() {
         return mWorkSource.toString();
