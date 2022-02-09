@@ -127,6 +127,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
@@ -761,7 +762,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         inorder.verify(mWifiMetrics).logUserActionEvent(eq(UserActionEvent.EVENT_TOGGLE_WIFI_OFF),
                 anyInt());
         inorder.verify(mWifiMetrics).incrementNumWifiToggles(eq(true), eq(false));
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.WIFI_ENABLED), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_WIFI_ENABLED), anyInt(),
                 anyInt(), anyInt(), anyString(), eq(false));
     }
 
@@ -1758,7 +1759,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         WifiConfigurationTestUtil.assertConfigurationEqualForSoftAp(
                 config,
                 mSoftApModeConfigCaptor.getValue().getSoftApConfiguration().toWifiConfiguration());
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SOFT_AP), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_SOFT_AP), anyInt(),
                 anyInt(), anyInt(), anyString(), eq(true));
     }
 
@@ -1834,7 +1835,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mActiveModeWarden).startSoftAp(mSoftApModeConfigCaptor.capture(),
                 eq(new WorkSource(Binder.getCallingUid(), TEST_PACKAGE_NAME)));
         assertNull(mSoftApModeConfigCaptor.getValue().getSoftApConfiguration());
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.TETHERED_HOTSPOT), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_TETHERED_HOTSPOT), anyInt(),
                 anyInt(), anyInt(), anyString(), eq(true));
     }
 
@@ -2422,7 +2423,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         boolean result = mWifiServiceImpl.stopSoftAp();
         assertTrue(result);
         verify(mActiveModeWarden).stopSoftAp(WifiManager.IFACE_IP_MODE_TETHERED);
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SOFT_AP), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_SOFT_AP), anyInt(),
                 anyInt(), anyInt(), anyString(), eq(false));
     }
 
@@ -9151,13 +9152,13 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
         verify(mWifiConnectivityManager).setExternalScreenOnScanSchedule(
                 expectedSchedule, expectedType);
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SET_SCAN_SCHEDULE), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_SET_SCAN_SCHEDULE), anyInt(),
                 anyInt(), anyInt(), any(), eq(true));
 
         mWifiServiceImpl.setScreenOnScanSchedule(null, null);
         mLooper.dispatchAll();
         verify(mWifiConnectivityManager).setExternalScreenOnScanSchedule(null, null);
-        verify(mLastCallerInfoManager).put(eq(LastCallerInfoManager.SET_SCAN_SCHEDULE), anyInt(),
+        verify(mLastCallerInfoManager).put(eq(WifiManager.API_SET_SCAN_SCHEDULE), anyInt(),
                 anyInt(), anyInt(), any(), eq(false));
     }
 
@@ -9220,6 +9221,44 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mWifiServiceImpl.clearExternalPnoScanRequest();
         mLooper.dispatchAll();
         verify(mWifiConnectivityManager).clearExternalPnoScanRequest(anyInt());
+    }
+
+    @Test
+    public void testGetLastCallerInfoForApi_Exceptions() {
+        // good inputs should result in no exceptions.
+        ILastCallerListener listener = mock(ILastCallerListener.class);
+        // null listener ==> IllegalArgumentException
+        assertThrows(IllegalArgumentException.class,
+                () -> mWifiServiceImpl.getLastCallerInfoForApi(
+                        WifiManager.API_WIFI_ENABLED, null));
+
+        // invalid ApiType ==> IllegalArgumentException
+        assertThrows(IllegalArgumentException.class,
+                () -> mWifiServiceImpl.getLastCallerInfoForApi(WifiManager.API_MAX + 1, listener));
+
+        // No permission ==> SecurityException
+        assertThrows(SecurityException.class,
+                () -> mWifiServiceImpl.getLastCallerInfoForApi(
+                        WifiManager.API_WIFI_ENABLED, listener));
+    }
+
+    @Test
+    public void testGetLastCallerInfoForApi_GoodCase() throws RemoteException {
+        when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
+        ILastCallerListener listener = mock(ILastCallerListener.class);
+        LastCallerInfoManager.LastCallerInfo expected =
+                new LastCallerInfoManager.LastCallerInfo(0, 1, 2, TEST_PACKAGE_NAME, true);
+        when(mLastCallerInfoManager.get(WifiManager.API_WIFI_ENABLED)).thenReturn(expected);
+
+        InOrder inOrder = inOrder(listener);
+        mWifiServiceImpl.getLastCallerInfoForApi(WifiManager.API_WIFI_ENABLED, listener);
+        mLooper.dispatchAll();
+        inOrder.verify(listener).onResult(TEST_PACKAGE_NAME, true);
+
+        // Verify null is returned as packageName if there's no information about this ApiType.
+        mWifiServiceImpl.getLastCallerInfoForApi(WifiManager.API_SOFT_AP, listener);
+        mLooper.dispatchAll();
+        inOrder.verify(listener).onResult(null, false);
     }
 
     /**

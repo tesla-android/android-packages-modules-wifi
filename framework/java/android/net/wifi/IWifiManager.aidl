@@ -27,6 +27,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
@@ -322,6 +323,8 @@ interface IWifiManager
     void setExternalPnoScanRequest(in IBinder binder, in IPnoScanResultsCallback callback, in List<WifiSsid> ssids, in int[] frequencies, String packageName, String featureId);
 
     void clearExternalPnoScanRequest();
+
+    void getLastCallerInfoForApi(int api, in ILastCallerListener listener);
 
     /**
      * Return the Map of {@link WifiNetworkSuggestion} and the list of <ScanResult>

@@ -96,6 +96,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
 
 /**
  * This class provides the primary API for managing all aspects of Wi-Fi
@@ -401,6 +402,72 @@ public class WifiManager {
     /** @hide */
     @SystemApi
     public static final int PASSPOINT_ROAMING_NETWORK = 1;
+
+    /** @hide */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(value = {
+            API_SCANNING_ENABLED,
+            API_WIFI_ENABLED,
+            API_SOFT_AP,
+            API_TETHERED_HOTSPOT,
+            API_AUTOJOIN_GLOBAL,
+            API_SET_SCAN_SCHEDULE})
+    public @interface ApiType {}
+
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiScanner#setScanningEnabled(boolean)}
+     * @hide
+     */
+    @SystemApi
+    public static final int API_SCANNING_ENABLED = 1;
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiManager#setWifiEnabled(boolean)} .
+     * @hide
+     */
+    @SystemApi
+    public static final int API_WIFI_ENABLED = 2;
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiManager#startSoftAp(WifiConfiguration)} and
+     * {@link WifiManager#stopSoftAp()}.
+     * @hide
+     */
+    @SystemApi
+    public static final int API_SOFT_AP = 3;
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiManager#startTetheredHotspot(SoftApConfiguration)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int API_TETHERED_HOTSPOT = 4;
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiManager#allowAutojoinGlobal(boolean)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int API_AUTOJOIN_GLOBAL = 5;
+    /**
+     * A constant used in
+     * {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}
+     * Tracks usage of {@link WifiManager#setScreenOnScanSchedule(List)}.
+     * @hide
+     */
+    @SystemApi
+    public static final int API_SET_SCAN_SCHEDULE = 6;
+    /**
+     * Used internally to keep track of boundary.
+     * @hide
+     */
+    public static final int API_MAX = 6;
 
     /**
      * Broadcast intent action indicating that a Passpoint provider icon has been received.
@@ -8560,6 +8627,48 @@ public class WifiManager {
     public void clearExternalPnoScanRequest() {
         try {
             mService.clearExternalPnoScanRequest();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Returns information about the last caller of an API.
+     *
+     * @param apiType The type of API to request information for the last caller.
+     * @param executor The executor on which callback will be invoked.
+     * @param resultsCallback An asynchronous callback that will return 2 arguments.
+     *                        {@code String} the name of the package that performed the last API
+     *                        call. {@code Boolean} the value associated with the last API call.
+     *
+     * @throws SecurityException if the caller does not have permission.
+     * @throws IllegalArgumentException if the caller provided invalid inputs.
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(anyOf = {
+            android.Manifest.permission.NETWORK_SETTINGS,
+            android.Manifest.permission.NETWORK_STACK,
+            NetworkStack.PERMISSION_MAINLINE_NETWORK_STACK})
+    public void getLastCallerInfoForApi(@ApiType int apiType, @NonNull Executor executor,
+            @NonNull BiConsumer<String, Boolean> resultsCallback) {
+        if (executor == null) {
+            throw new IllegalArgumentException("executor can't be null");
+        }
+        if (resultsCallback == null) {
+            throw new IllegalArgumentException("resultsCallback can't be null");
+        }
+        try {
+            mService.getLastCallerInfoForApi(apiType,
+                    new ILastCallerListener.Stub() {
+                        @Override
+                        public void onResult(String packageName, boolean enabled) {
+                            Binder.clearCallingIdentity();
+                            executor.execute(() -> {
+                                resultsCallback.accept(packageName, enabled);
+                            });
+                        }
+                    });
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
