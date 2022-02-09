@@ -198,12 +198,6 @@ public class WifiServiceImpl extends BaseWifiService {
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
     @VisibleForTesting
     static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 24 * 60 * 60 * 1000;
-    // verbose logging controlled by user
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
-    // verbose logging on by default for userdebug
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
-    // verbose logging on by default for all builds -->
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
 
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
@@ -4715,25 +4709,8 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     private boolean isVerboseLoggingEnabled() {
-        final int alwaysOnLevel = mContext.getResources()
-                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
-        switch (alwaysOnLevel) {
-            // If the overlay setting enabled for all builds
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL:
-                return true;
-            //If the overlay setting enabled for userdebug builds only
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG:
-                // If it is a userdebug build
-                if (mBuildProperties.isUserdebugBuild()) return true;
-                break;
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE:
-                // nothing
-                break;
-            default:
-                Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
-                break;
-        }
-        return WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
+        return mFrameworkFacade.isVerboseLoggingAlwaysOn(mContext, mBuildProperties)
+                ? true : WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
     }
 
     private void enableVerboseLoggingInternal(int verbose) {
