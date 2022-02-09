@@ -353,6 +353,38 @@ public class SoftApConfigurationTest {
                         SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION));
     }
 
+    @Test
+    public void testWpa3Owe() {
+        assumeTrue(SdkLevel.isAtLeastT());
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setPassphrase(null,
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_OWE)
+                .setChannel(149, SoftApConfiguration.BAND_5GHZ)
+                .setHiddenSsid(false)
+                .build();
+        assertThat(original.getSecurityType()).isEqualTo(
+                SoftApConfiguration.SECURITY_TYPE_WPA3_OWE);
+        assertThat(original.getPassphrase()).isEqualTo(null);
+        assertThat(original.getBand()).isEqualTo(SoftApConfiguration.BAND_5GHZ);
+        assertThat(original.getChannel()).isEqualTo(149);
+        assertThat(original.isHiddenSsid()).isEqualTo(false);
+
+        SoftApConfiguration unparceled = parcelUnparcel(original);
+        assertThat(unparceled).isNotSameInstanceAs(original);
+        assertThat(unparceled).isEqualTo(original);
+        assertThat(unparceled.hashCode()).isEqualTo(original.hashCode());
+
+        SoftApConfiguration copy = new SoftApConfiguration.Builder(original).build();
+        assertThat(copy).isNotSameInstanceAs(original);
+        assertThat(copy).isEqualTo(original);
+        assertThat(copy.hashCode()).isEqualTo(original.hashCode());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder().setPassphrase(
+                        "something or other",
+                        SoftApConfiguration.SECURITY_TYPE_WPA3_OWE));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidBroadcastBssid() {
         SoftApConfiguration original = new SoftApConfiguration.Builder()

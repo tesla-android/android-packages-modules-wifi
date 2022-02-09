@@ -581,7 +581,10 @@ public class HostapdHalAidlImp implements IHostapdHal {
                 encryptionType = EncryptionType.WPA3_SAE;
                 break;
             case SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION:
-                encryptionType = EncryptionType.OWE_TRANSITION;
+                encryptionType = EncryptionType.WPA3_OWE_TRANSITION;
+                break;
+            case SoftApConfiguration.SECURITY_TYPE_WPA3_OWE:
+                encryptionType = EncryptionType.WPA3_OWE;
                 break;
             default:
                 // We really shouldn't default to None, but this was how NetworkManagementService
