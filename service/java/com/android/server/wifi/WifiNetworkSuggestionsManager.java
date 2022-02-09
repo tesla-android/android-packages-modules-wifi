@@ -1944,14 +1944,17 @@ public class WifiNetworkSuggestionsManager {
     /**
      * Get hidden network from active network suggestions.
      * Todo(): Now limit by a fixed number, maybe we can try rotation?
-     * @return set of WifiConfigurations
+     * @param autoJoinOnly retrieve hidden network autojoin enabled only.
+     * @return list of HiddenNetwork
      */
-    public List<WifiScanner.ScanSettings.HiddenNetwork> retrieveHiddenNetworkList() {
+    public List<WifiScanner.ScanSettings.HiddenNetwork> retrieveHiddenNetworkList(
+            boolean autoJoinOnly) {
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks = new ArrayList<>();
         for (PerAppInfo appInfo : mActiveNetworkSuggestionsPerApp.values()) {
             if (!appInfo.hasUserApproved) continue;
             for (ExtendedWifiNetworkSuggestion ewns : appInfo.extNetworkSuggestions.values()) {
                 if (!ewns.wns.wifiConfiguration.hiddenSSID) continue;
+                if (autoJoinOnly && !ewns.isAutojoinEnabled) continue;
                 hiddenNetworks.add(
                         new WifiScanner.ScanSettings.HiddenNetwork(
                                 ewns.wns.wifiConfiguration.SSID));

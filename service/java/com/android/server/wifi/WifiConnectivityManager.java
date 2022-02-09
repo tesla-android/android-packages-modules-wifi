@@ -2016,9 +2016,10 @@ public class WifiConnectivityManager {
         settings.numBssidsPerScan = 0;
         settings.hiddenNetworks.clear();
         // retrieve the list of hidden network SSIDs from saved network to scan for
-        settings.hiddenNetworks.addAll(mConfigManager.retrieveHiddenNetworkList());
+        settings.hiddenNetworks.addAll(mConfigManager.retrieveHiddenNetworkList(true));
         // retrieve the list of hidden network SSIDs from Network suggestion to scan for
-        settings.hiddenNetworks.addAll(mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList());
+        settings.hiddenNetworks.addAll(
+                mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList(true));
 
         SingleScanListener singleScanListener =
                 new SingleScanListener(isFullBandScan);

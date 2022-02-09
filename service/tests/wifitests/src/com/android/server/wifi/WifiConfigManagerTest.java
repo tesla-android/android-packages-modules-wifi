@@ -4289,6 +4289,7 @@ public class WifiConfigManagerTest extends WifiBaseTest {
         WifiConfiguration network1 = WifiConfigurationTestUtil.createWepHiddenNetwork();
         WifiConfiguration network2 = WifiConfigurationTestUtil.createPskHiddenNetwork();
         WifiConfiguration network3 = WifiConfigurationTestUtil.createOpenHiddenNetwork();
+        network3.allowAutojoin = false;
         verifyAddNetworkToWifiConfigManager(network1);
         verifyAddNetworkToWifiConfigManager(network2);
         verifyAddNetworkToWifiConfigManager(network3);
@@ -4303,11 +4304,16 @@ public class WifiConfigManagerTest extends WifiBaseTest {
 
         // Retrieve the hidden network list & verify the order of the networks returned.
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks =
-                mWifiConfigManager.retrieveHiddenNetworkList();
+                mWifiConfigManager.retrieveHiddenNetworkList(false);
         assertEquals(3, hiddenNetworks.size());
         assertEquals(network3.SSID, hiddenNetworks.get(0).ssid);
         assertEquals(network2.SSID, hiddenNetworks.get(1).ssid);
         assertEquals(network1.SSID, hiddenNetworks.get(2).ssid);
+
+        hiddenNetworks = mWifiConfigManager.retrieveHiddenNetworkList(true);
+        assertEquals(2, hiddenNetworks.size());
+        assertEquals(network2.SSID, hiddenNetworks.get(0).ssid);
+        assertEquals(network1.SSID, hiddenNetworks.get(1).ssid);
     }
 
     /**
