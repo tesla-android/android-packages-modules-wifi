@@ -50,7 +50,6 @@ import android.hardware.wifi.supplicant.IfaceInfo;
 import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.KeyMgmtMask;
 import android.hardware.wifi.supplicant.LegacyMode;
-import android.hardware.wifi.supplicant.MloLinksInfo;
 import android.hardware.wifi.supplicant.RxFilterType;
 import android.hardware.wifi.supplicant.WifiTechnology;
 import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
@@ -2665,45 +2664,6 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
                 handleServiceSpecificException(e, methodStr);
             }
             return capOut;
-        }
-    }
-
-    /**
-     * Returns connection MLO links info
-     *
-     * @param ifaceName Name of the interface.
-     * @return connection MLO links info
-     */
-    public WifiNative.ConnectionMloLinksInfo getConnectionMloLinksInfo(@NonNull String ifaceName) {
-        synchronized (mLock) {
-            final String methodStr = "getConnectionMloLinksInfo";
-            ISupplicantStaIface iface = checkStaIfaceAndLogFailure(ifaceName, methodStr);
-            if (iface == null) {
-                return null;
-            }
-            try {
-                MloLinksInfo halInfo = iface.getConnectionMloLinksInfo();
-                if (halInfo == null) {
-                    return null;
-                }
-
-                WifiNative.ConnectionMloLinksInfo nativeInfo =
-                        new WifiNative.ConnectionMloLinksInfo();
-
-                nativeInfo.links = new WifiNative.ConnectionMloLink[halInfo.links.length];
-
-                for (int i = 0; i < halInfo.links.length; i++) {
-                    nativeInfo.links[i].linkId = halInfo.links[i].linkId;
-                    nativeInfo.links[i].staMacAddress = MacAddress.fromBytes(
-                            halInfo.links[i].staLinkMacAddress);
-                }
-                return nativeInfo;
-            } catch (RemoteException e) {
-                handleRemoteException(e, methodStr);
-            } catch (ServiceSpecificException e) {
-                handleServiceSpecificException(e, methodStr);
-            }
-            return null;
         }
     }
 
