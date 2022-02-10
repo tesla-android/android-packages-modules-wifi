@@ -28,6 +28,7 @@ import android.compat.annotation.UnsupportedAppUsage;
 import android.content.Context;
 import android.net.MacAddress;
 import android.net.NetworkInfo;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
@@ -59,6 +60,7 @@ import com.android.modules.utils.build.SdkLevel;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.Reference;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -195,6 +197,14 @@ public class WifiP2pManager {
      */
     public static final String EXTRA_PARAM_KEY_WPS_PIN =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_WPS_PIN";
+
+    /**
+     * Extra for transporting vendor-specific information element list
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_INFORMATION_ELEMENT_LIST =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_INFORMATION_ELEMENT_LIST";
+
     /**
      * Broadcast intent action to indicate whether Wi-Fi p2p is enabled or disabled. An
      * extra {@link #EXTRA_WIFI_STATE} provides the state information as int.
@@ -438,6 +448,12 @@ public class WifiP2pManager {
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiP2pScanType {
     }
+
+    /**
+     * Maximum length in bytes of all vendor specific information elements (IEs) allowed to
+     * set during Wi-Fi Direct (P2P) discovery.
+     */
+    private static final int WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH = 512;
 
     IWifiP2pManager mService;
 
@@ -697,6 +713,13 @@ public class WifiP2pManager {
     public static final int SET_CONNECTION_REQUEST_RESULT_FAILED    = BASE + 111;
     /** @hide */
     public static final int SET_CONNECTION_REQUEST_RESULT_SUCCEEDED = BASE + 112;
+
+    /** @hide */
+    public static final int SET_VENDOR_ELEMENTS                       = BASE + 113;
+    /** @hide */
+    public static final int SET_VENDOR_ELEMENTS_FAILED                = BASE + 114;
+    /** @hide */
+    public static final int SET_VENDOR_ELEMENTS_SUCCEEDED             = BASE + 115;
 
     /**
      * Create a new WifiP2pManager instance. Applications use
@@ -1207,6 +1230,7 @@ public class WifiP2pManager {
                     case REMOVE_CLIENT_FAILED:
                     case REMOVE_EXTERNAL_APPROVER_FAILED:
                     case SET_CONNECTION_REQUEST_RESULT_FAILED:
+                    case SET_VENDOR_ELEMENTS_FAILED:
                         if (listener != null) {
                             ((ActionListener) listener).onFailure(message.arg1);
                         }
@@ -1238,6 +1262,7 @@ public class WifiP2pManager {
                     case REMOVE_CLIENT_SUCCEEDED:
                     case REMOVE_EXTERNAL_APPROVER_SUCCEEDED:
                     case SET_CONNECTION_REQUEST_RESULT_SUCCEEDED:
+                    case SET_VENDOR_ELEMENTS_SUCCEEDED:
                         if (listener != null) {
                             ((ActionListener) listener).onSuccess();
                         }
@@ -1502,6 +1527,10 @@ public class WifiP2pManager {
             bundle.putString(CALLING_PACKAGE, c.mContext.getOpPackageName());
             bundle.putString(CALLING_FEATURE_ID, c.mContext.getAttributionTag());
             bundle.putBinder(CALLING_BINDER, binder);
+            if (SdkLevel.isAtLeastT()) {
+                bundle.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                        c.mContext.getAttributionSource());
+            }
             c.mAsyncChannel.sendMessage(UPDATE_CHANNEL_INFO, 0,
                     c.putListener(null), bundle);
             return c;
@@ -2725,5 +2754,77 @@ public class WifiP2pManager {
         extras.putParcelable(EXTRA_PARAM_KEY_PEER_ADDRESS, deviceAddress);
         c.mAsyncChannel.sendMessage(SET_CONNECTION_REQUEST_RESULT,
                 result, c.putListener(listener), extras);
+    }
+
+    /**
+     * Set/Clear vendor specific information elements (VSIEs) to be published during
+     * Wi-Fi Direct (P2P) discovery.
+     *
+     * Once {@link #close()} is called, the vendor information elements will be cleared from
+     * framework. The information element format is defined in the IEEE 802.11-2016 spec
+     * Table 9-77.
+     * <p>
+     * To clear the previously set vendor elements, call this API with an empty List.
+     * <p>
+     * The maximum accumulated length of all VSIEs must be before the limit specified by
+     * {@link #getP2pMaxAllowedVendorElementsLength()}.
+     * <p>
+     * To publish vendor elements, this API should be called before peer discovery API, ex.
+     * {@link #discoverPeers(Channel, ActionListener)}.
+     *
+     * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
+     * @param vendorElements application information as vendor-specific information elements.
+     * @param listener for callback when network info is available.
+     *
+     * @hide
+     */
+    @SystemApi
+    @RequiresPermission(allOf = {
+            android.Manifest.permission.NEARBY_WIFI_DEVICES,
+            android.Manifest.permission.OVERRIDE_WIFI_CONFIG
+            })
+    public void setVendorElements(@NonNull Channel c,
+            @NonNull List<ScanResult.InformationElement> vendorElements,
+            @Nullable ActionListener listener) {
+        if (!SdkLevel.isAtLeastT()) {
+            throw new UnsupportedOperationException();
+        }
+        checkChannel(c);
+        int totalBytes = 0;
+        for (ScanResult.InformationElement e : vendorElements) {
+            if (e.id != ScanResult.InformationElement.EID_VSA) {
+                throw new IllegalArgumentException("received InformationElement which is not "
+                        + "a Vendor Specific IE (VSIE). VSIEs have an ID = 221.");
+            }
+            // Length field is 1 byte.
+            if (e.bytes == null || e.bytes.length > 0xff) {
+                throw new IllegalArgumentException("received InformationElement whose payload "
+                        + "size is 0 or greater than 255.");
+            }
+            // The total bytes of an IE is EID (1 byte) + length (1 byte) + payload length.
+            totalBytes += 2 + e.bytes.length;
+            if (totalBytes > WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH) {
+                throw new IllegalArgumentException("received InformationElement whose total "
+                        + "size is greater than " + WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH + ".");
+            }
+        }
+        Bundle extras = prepareExtrasBundle(c);
+        extras.putParcelableArrayList(EXTRA_PARAM_KEY_INFORMATION_ELEMENT_LIST,
+                new ArrayList<>(vendorElements));
+        c.mAsyncChannel.sendMessage(SET_VENDOR_ELEMENTS, 0,
+                c.putListener(listener), extras);
+    }
+
+    /**
+     * Return the maximum total length (in bytes) of all Vendor specific information
+     * elements (VSIEs) which can be set using the
+     * {@link #setVendorElements(Channel, List<ScanResult.InformationElement>, ActionListener)}.
+     * The length is calculated adding the payload length + 2 bytes for each VSIE
+     * (2 bytes: 1 byte for type and 1 byte for length).
+     * @hide
+     */
+    @SystemApi
+    public static int getP2pMaxAllowedVendorElementsLength() {
+        return WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH;
     }
 }

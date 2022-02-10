@@ -937,6 +937,11 @@ public class SoftApManager implements ActiveModeManager {
                                 }
                                 newSingleApBand |= availableBand;
                             }
+                            // Fall back to Single AP if the current concurrency combination can't
+                            // support a Bridged AP.
+                            if (!mWifiNative.isItPossibleToCreateBridgedApIface(mRequestorWs)) {
+                                isFallbackToSingleAp = true;
+                            }
                             if (isFallbackToSingleAp) {
                                 newSingleApBand = ApConfigUtil.append24GToBandIf24GSupported(
                                         newSingleApBand, mContext);

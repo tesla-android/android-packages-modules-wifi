@@ -18,6 +18,7 @@ package com.android.server.wifi;
 import static android.net.wifi.CoexUnsafeChannel.POWER_CAP_NONE;
 
 import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP_BRIDGE;
 import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_STA;
 
 import android.annotation.NonNull;
@@ -3410,9 +3411,9 @@ public class WifiVendorHal {
      */
     public boolean isStaApConcurrencySupported() {
         synchronized (sLock) {
-            return mHalDeviceManager.canSupportIfaceCombo(new SparseArray<Integer>() {{
-                    put(IfaceType.STA, 1);
-                    put(IfaceType.AP, 1);
+            return mHalDeviceManager.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                    put(HDM_CREATE_IFACE_STA, 1);
+                    put(HDM_CREATE_IFACE_AP, 1);
                 }});
         }
     }
@@ -3422,8 +3423,8 @@ public class WifiVendorHal {
      */
     public boolean isStaStaConcurrencySupported() {
         synchronized (sLock) {
-            return mHalDeviceManager.canSupportIfaceCombo(new SparseArray<Integer>() {{
-                    put(IfaceType.STA, 2);
+            return mHalDeviceManager.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                    put(HDM_CREATE_IFACE_STA, 2);
                 }});
         }
     }
@@ -3434,6 +3435,16 @@ public class WifiVendorHal {
     public boolean isItPossibleToCreateApIface(@NonNull WorkSource requestorWs) {
         synchronized (sLock) {
             return mHalDeviceManager.isItPossibleToCreateIface(HDM_CREATE_IFACE_AP, requestorWs);
+        }
+    }
+
+    /**
+     * Returns whether a new AP iface can be created or not.
+     */
+    public boolean isItPossibleToCreateBridgedApIface(@NonNull WorkSource requestorWs) {
+        synchronized (sLock) {
+            return mHalDeviceManager.isItPossibleToCreateIface(
+                    HDM_CREATE_IFACE_AP_BRIDGE, requestorWs);
         }
     }
 

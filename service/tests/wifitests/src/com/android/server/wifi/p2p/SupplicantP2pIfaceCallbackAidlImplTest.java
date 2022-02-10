@@ -32,6 +32,7 @@ import android.hardware.wifi.supplicant.P2pProvDiscStatusCode;
 import android.hardware.wifi.supplicant.P2pStatusCode;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
 import android.hardware.wifi.supplicant.WpsDevPasswordId;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -50,6 +51,8 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockitoAnnotations;
 
+import java.util.ArrayList;
+import java.util.Arrays;;
 import java.util.HashSet;
 import java.util.List;
 
@@ -73,6 +76,12 @@ public class SupplicantP2pIfaceCallbackAidlImplTest extends WifiBaseTest {
     private static final byte[] DEVICE_ADDRESS = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
     private static final int TEST_NETWORK_ID = 9;
     private static final int TEST_GROUP_FREQUENCY = 5400;
+    private byte[] mTestPrimaryDeviceTypeBytes = { 0x00, 0x01, 0x02, -1, 0x04, 0x05, 0x06, 0x07 };
+    private String mTestPrimaryDeviceTypeString = "1-02FF0405-1543";
+    private String mTestDeviceName = "test device name";
+    private short mTestConfigMethods = 0x1234;
+    private byte mTestCapabilities = 123;
+    private int mTestGroupCapabilities = 456;
 
     private class SupplicantP2pIfaceCallbackImplSpy extends SupplicantP2pIfaceCallbackAidlImpl {
         SupplicantP2pIfaceCallbackImplSpy(String iface, WifiP2pMonitor monitor) {
@@ -626,6 +635,110 @@ public class SupplicantP2pIfaceCallbackAidlImplTest extends WifiBaseTest {
         verify(mMonitor).broadcastP2pApStaDisconnected(eq(mIface), p2pDeviceCaptor.capture());
         assertEquals(mDeviceAddress2String, p2pDeviceCaptor.getValue().deviceAddress);
     }
+
+    /**
+     * Test the sunny case of onDeviceFoundWithVendorElements.
+     */
+    @Test
+    public void testOnDeviceFoundWithVendorElements() throws Exception {
+        byte[] testVsieBytes = {
+                (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3, 0x0,
+                (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3, 0x1};
+        ArrayList<ScanResult.InformationElement> expectedVsieList = new ArrayList<>();
+        expectedVsieList.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0, new byte[]{0x1, 0x2, 0x3, 0x0}));
+        expectedVsieList.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0, new byte[]{0x1, 0x2, 0x3, 0x1}));
+        mDut.onDeviceFoundWithVendorElements(
+                mDeviceAddress1Bytes, mDeviceAddress2Bytes,
+                mTestPrimaryDeviceTypeBytes,
+                mTestDeviceName, mTestConfigMethods,
+                mTestCapabilities, mTestGroupCapabilities,
+                mDeviceInfoBytes, null, testVsieBytes);
+        ArgumentCaptor<WifiP2pDevice> p2pDeviceCaptor =
+                ArgumentCaptor.forClass(WifiP2pDevice.class);
+        verify(mMonitor).broadcastP2pDeviceFound(eq(mIface), p2pDeviceCaptor.capture());
+
+        assertInformationElementListEquals(
+                expectedVsieList, p2pDeviceCaptor.getValue().getVendorElements());
+    }
+
+    /**
+     * Test onDeviceFoundWithVendorElements with non-vendor specific information elements.
+     */
+    @Test
+    public void testOnDeviceFoundWithVendorElementsWithNonVsie() throws Exception {
+        byte[] testVsieBytes = {
+                ScanResult.InformationElement.EID_SSID, 4, 0x1, 0x2, 0x3, 0x0,
+                (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3, 0x1};
+        // The first non-vendor specific ie is omitted.
+        ArrayList<ScanResult.InformationElement> expectedVsieList = new ArrayList<>();
+        expectedVsieList.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0, new byte[]{0x1, 0x2, 0x3, 0x1}));
+
+        mDut.onDeviceFoundWithVendorElements(
+                mDeviceAddress1Bytes, mDeviceAddress2Bytes,
+                mTestPrimaryDeviceTypeBytes,
+                mTestDeviceName, mTestConfigMethods,
+                mTestCapabilities, mTestGroupCapabilities,
+                mDeviceInfoBytes, null, testVsieBytes);
+        ArgumentCaptor<WifiP2pDevice> p2pDeviceCaptor =
+                ArgumentCaptor.forClass(WifiP2pDevice.class);
+        verify(mMonitor).broadcastP2pDeviceFound(eq(mIface), p2pDeviceCaptor.capture());
+
+        assertInformationElementListEquals(
+                expectedVsieList, p2pDeviceCaptor.getValue().getVendorElements());
+    }
+
+    /**
+     * Test onDeviceFoundWithVendorElements with malformed specific information elements.
+     */
+    @Test
+    public void testOnDeviceFoundWithVendorElementsWithMalformedVsie() throws Exception {
+        byte[] testVsieBytes = {
+                (byte) (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3, 0x0,
+                (byte) (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3, 0x1,
+                (byte) (byte) ScanResult.InformationElement.EID_VSA, 4, 0x1, 0x2, 0x3};
+        // The last one is omitted.
+        ArrayList<ScanResult.InformationElement> expectedVsieList = new ArrayList<>();
+        expectedVsieList.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0, new byte[]{0x1, 0x2, 0x3, 0x0}));
+        expectedVsieList.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0, new byte[]{0x1, 0x2, 0x3, 0x1}));
+
+        mDut.onDeviceFoundWithVendorElements(
+                mDeviceAddress1Bytes, mDeviceAddress2Bytes,
+                mTestPrimaryDeviceTypeBytes,
+                mTestDeviceName, mTestConfigMethods,
+                mTestCapabilities, mTestGroupCapabilities,
+                mDeviceInfoBytes, null, testVsieBytes);
+        ArgumentCaptor<WifiP2pDevice> p2pDeviceCaptor =
+                ArgumentCaptor.forClass(WifiP2pDevice.class);
+        verify(mMonitor).broadcastP2pDeviceFound(eq(mIface), p2pDeviceCaptor.capture());
+
+        assertInformationElementListEquals(
+                expectedVsieList, p2pDeviceCaptor.getValue().getVendorElements());
+    }
+
+    /**
+     * Helper function for comparing InformationElement lists.
+     *
+     * InformationElement equals() is implemented in S. List equals() cannot
+     * work in preS.
+     */
+    private void assertInformationElementListEquals(List<ScanResult.InformationElement> a,
+            List<ScanResult.InformationElement> b) {
+        assertNotNull(a);
+        assertNotNull(b);
+        assertEquals(a.size(), b.size());
+
+        for (int i = 0; i < a.size(); i++) {
+            assertEquals(a.get(i).id, b.get(i).id);
+            assertEquals(a.get(i).idExt, b.get(i).idExt);
+            assertTrue(Arrays.equals(a.get(i).bytes, b.get(i).bytes));
+        }
+    }
+
     /**
      * Converts hex string to byte array.
      *

@@ -18,12 +18,14 @@ package com.android.server.wifi.p2p;
 
 import android.annotation.NonNull;
 import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pGroup;
 import android.net.wifi.p2p.WifiP2pGroupList;
 import android.net.wifi.p2p.nsd.WifiP2pServiceInfo;
 
 import java.util.List;
+import java.util.Set;
 
 /** Abstraction of Supplicant P2P Iface HAL interface */
 interface ISupplicantP2pIfaceHal {
@@ -538,4 +540,13 @@ interface ISupplicantP2pIfaceHal {
      * @return true if success
      */
     boolean removeClient(String peerAddress, boolean isLegacyClient);
+
+    /**
+     * Set vendor-specific information elements to wpa_supplicant.
+     *
+     * @param vendorElements vendor-specific information elements.
+     *
+     * @return boolean value indicating whether operation was successful.
+     */
+    boolean setVendorElements(Set<ScanResult.InformationElement> vendorElements);
 }

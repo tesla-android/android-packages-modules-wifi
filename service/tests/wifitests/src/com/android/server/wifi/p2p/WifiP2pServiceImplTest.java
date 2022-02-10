@@ -72,6 +72,7 @@ import android.net.MacAddress;
 import android.net.NetworkInfo;
 import android.net.TetheringManager;
 import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -136,6 +137,7 @@ import java.net.NetworkInterface;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -190,6 +192,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private ArgumentCaptor<Message> mMessageCaptor = ArgumentCaptor.forClass(Message.class);
     private MockitoSession mStaticMockSession = null;
     private Bundle mAttribution = new Bundle();
+    private AttributionSource mAttributionSource;
 
     @Mock Bundle mBundle;
     @Mock Context mContext;
@@ -273,6 +276,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mTestThisDevice.deviceName = thisDeviceName;
         mTestThisDevice.deviceAddress = thisDeviceMac;
         mTestThisDevice.primaryDeviceType = "10-0050F204-5";
+
+        mAttributionSource = new AttributionSource(1000, TEST_PACKAGE_NAME, null);
     }
 
     /**
@@ -682,6 +687,27 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Send SetVendorElements API msg.
+     *
+     * @param replyMessenger For checking replied message.
+     * @param ies The list of information elements.
+     */
+    private void sendSetVendorElementsMsg(Messenger replyMessenger,
+            ArrayList<ScanResult.InformationElement> ies) throws Exception {
+        Message msg = Message.obtain();
+        Bundle extras = new Bundle();
+        extras.putParcelable(WifiManager.EXTRA_PARAM_KEY_ATTRIBUTION_SOURCE,
+                mContext.getAttributionSource());
+        extras.putParcelableArrayList(WifiP2pManager.EXTRA_PARAM_KEY_INFORMATION_ELEMENT_LIST,
+                ies);
+        msg.what = WifiP2pManager.SET_VENDOR_ELEMENTS;
+        msg.obj = extras;
+        msg.replyTo = replyMessenger;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    /**
      * Send simple API msg.
      *
      * Mock the API msg without arguments.
@@ -934,6 +960,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getSystemService(WifiManager.class)).thenReturn(mWifiManager);
+        when(mContext.getAttributionSource()).thenReturn(mAttributionSource);
         when(mWifiManager.getConnectionInfo()).thenReturn(mWifiInfo);
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_DEVICE_NAME))).thenReturn(thisDeviceName);
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_PENDING_FACTORY_RESET))).thenReturn(false);
@@ -994,6 +1021,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
                 return true;
             }
         }).when(mWifiNative).removeP2pNetwork(anyInt());
+        when(mWifiNative.setVendorElements(any())).thenReturn(true);
         when(mWifiSettingsConfigStore.get(eq(WIFI_VERBOSE_LOGGING_ENABLED))).thenReturn(true);
 
         doAnswer(new AnswerWithArguments() {
@@ -1749,13 +1777,13 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         setTargetSdkGreaterThanT();
         when(mWifiNative.p2pServDiscReq(anyString(), anyString()))
                 .thenReturn("mServiceDiscReqId");
-        when(mWifiNative.p2pFind(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pFind(anyInt(), anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendAddServiceRequestMsg(mClientMessenger);
         sendDiscoverServiceMsg(mClientMessenger);
         verify(mWifiNative).p2pServDiscReq(anyString(), anyString());
-        verify(mWifiNative, atLeastOnce()).p2pFind(anyInt());
+        verify(mWifiNative, atLeastOnce()).p2pFind(anyInt(), anyInt());
         if (SdkLevel.isAtLeastT()) {
             verify(mWifiPermissionsUtil, atLeastOnce()).checkNearbyDevicesPermission(
                     any(), eq(true), any());
@@ -1801,13 +1829,13 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         setTargetSdkGreaterThanT();
         when(mWifiNative.p2pServDiscReq(anyString(), anyString()))
                 .thenReturn("mServiceDiscReqId");
-        when(mWifiNative.p2pFind(anyInt())).thenReturn(false);
+        when(mWifiNative.p2pFind(anyInt(), anyInt())).thenReturn(false);
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendAddServiceRequestMsg(mClientMessenger);
         sendDiscoverServiceMsg(mClientMessenger);
         verify(mWifiNative).p2pServDiscReq(anyString(), anyString());
-        verify(mWifiNative).p2pFind(anyInt());
+        verify(mWifiNative).p2pFind(anyInt(), anyInt());
         if (SdkLevel.isAtLeastT()) {
             verify(mWifiPermissionsUtil, atLeastOnce()).checkNearbyDevicesPermission(
                     any(), eq(true), any());
@@ -2270,7 +2298,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         setTargetSdkGreaterThanT();
         when(mWifiNative.p2pServDiscReq(anyString(), anyString()))
                 .thenReturn("mServiceDiscReqId");
-        when(mWifiNative.p2pFind(anyInt())).thenReturn(true);
+        when(mWifiNative.p2pFind(anyInt(), anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendAddServiceRequestMsg(mClientMessenger);
@@ -5412,5 +5440,98 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         sendNegotiationRequestEvent(config);
         verify(mWifiDialogManager).launchP2pInvitationReceivedDialog(anyString(), anyBoolean(),
                 any(), eq(Display.DEFAULT_DISPLAY), any(), any());
+    }
+
+    private void verifySetVendorElement(boolean isP2pActivated, boolean shouldSucceed,
+            boolean hasPermission, boolean shouldSetToNative) throws Exception {
+
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                .thenReturn(hasPermission);
+        when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt()))
+                .thenReturn(hasPermission);
+
+        simulateWifiStateChange(true);
+        simulateLocationModeChange(true);
+        checkIsP2pInitWhenClientConnected(isP2pActivated, mClient1,
+                new WorkSource(mClient1.getCallingUid(), TEST_PACKAGE_NAME));
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
+
+        ArrayList<ScanResult.InformationElement> ies = new ArrayList<>();
+        ies.add(new ScanResult.InformationElement(
+                ScanResult.InformationElement.EID_VSA, 0,
+                        new byte[]{(byte) 0xa, (byte) 0xb}));
+        HashSet<ScanResult.InformationElement> expectedIes = new HashSet<>();
+        expectedIes.add(ies.get(0));
+
+        sendSetVendorElementsMsg(mClientMessenger, ies);
+
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        if (shouldSucceed) {
+            assertEquals(WifiP2pManager.SET_VENDOR_ELEMENTS_SUCCEEDED, message.what);
+        } else {
+            assertEquals(WifiP2pManager.SET_VENDOR_ELEMENTS_FAILED, message.what);
+        }
+
+        // Launch a peer discovery to set cached VSIEs to the native service.
+        sendDiscoverPeersMsg(mClientMessenger);
+        if (shouldSetToNative) {
+            if (shouldSucceed) {
+                verify(mWifiNative).setVendorElements(eq(expectedIes));
+            } else {
+                // If failed to set vendor elements, there is no entry in the list.
+                verify(mWifiNative).setVendorElements(eq(
+                        new HashSet<ScanResult.InformationElement>()));
+            }
+        } else {
+            verify(mWifiNative, never()).setVendorElements(any());
+        }
+    }
+    /**
+     * Verify sunny scenario for setVendorElements when P2P is not in EnabledState.
+     */
+    @Test
+    public void testSetVendorElementsSuccessForIdleShutdown() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        boolean isP2pActivated = false, shouldSucceed = true;
+        boolean hasPermission = true, shouldSetToNative = true;
+        verifySetVendorElement(isP2pActivated, shouldSucceed,
+                hasPermission, shouldSetToNative);
+    }
+
+    /**
+     * Verify sunny scenario for setVendorElements when P2P is in EnabledState.
+     */
+    @Test
+    public void testSetVendorElementsSuccessForActiveP2p() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        boolean isP2pActivated = true, shouldSucceed = true;
+        boolean hasPermission = true, shouldSetToNative = true;
+        verifySetVendorElement(isP2pActivated, shouldSucceed,
+                hasPermission, shouldSetToNative);
+    }
+
+    /**
+     * Verify failure scenario for setVendorElements on preT.
+     */
+    @Test
+    public void testSetVendorElementsFailureOnPreT() throws Exception {
+        assumeFalse(SdkLevel.isAtLeastT());
+        boolean isP2pActivated = false, shouldSucceed = false;
+        boolean hasPermission = true, shouldSetToNative = false;
+        verifySetVendorElement(isP2pActivated, shouldSucceed,
+                hasPermission, shouldSetToNative);
+    }
+
+    /**
+     * Verify failure scenario for setVendorElements when no NEARBY permission.
+     */
+    @Test
+    public void testSetVendorElementsFailureWithoutNearbyPermission() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+        boolean isP2pActivated = false, shouldSucceed = false;
+        boolean hasPermission = false, shouldSetToNative = true;
+        verifySetVendorElement(isP2pActivated, shouldSucceed,
+                hasPermission, shouldSetToNative);
     }
 }

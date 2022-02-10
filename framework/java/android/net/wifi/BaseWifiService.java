@@ -749,6 +749,11 @@ public class BaseWifiService extends IWifiManager.Stub {
     }
 
     @Override
+    public void getLastCallerInfoForApi(int apiType, @NonNull ILastCallerListener listener) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean setWifiConnectedNetworkScorer(IBinder binder,
             IWifiConnectedNetworkScorer scorer) {
         throw new UnsupportedOperationException();
@@ -854,6 +859,11 @@ public class BaseWifiService extends IWifiManager.Stub {
 
     @Override
     public void validateCurrentWifiMeetsAdminRequirements() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String[] getOemPrivilegedAdmins() {
         throw new UnsupportedOperationException();
     }
 

@@ -598,8 +598,9 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(cipher.doFinal(any(byte[].class))).thenReturn(permanentIdentity.getBytes());
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
-            ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
-                    TelephonyManager.KEY_TYPE_WLAN, null, key, null, 1);
+            ImsiEncryptionInfo info = mock(ImsiEncryptionInfo.class);
+            when(info.getPublicKey()).thenReturn(key);
+            when(info.getKeyIdentifier()).thenReturn(null);
             when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(
                     eq(TelephonyManager.KEY_TYPE_WLAN)))
                     .thenReturn(info);
@@ -632,8 +633,8 @@ public class WifiCarrierInfoManagerTest extends WifiBaseTest {
             when(cipher.doFinal(any(byte[].class))).thenThrow(BadPaddingException.class);
             when(mDataTelephonyManager.getSubscriberId()).thenReturn(imsi);
             when(mDataTelephonyManager.getSimOperator()).thenReturn("321456");
-            ImsiEncryptionInfo info = new ImsiEncryptionInfo("321", "456",
-                    TelephonyManager.KEY_TYPE_WLAN, keyIdentifier, (PublicKey) null, null, 1);
+            ImsiEncryptionInfo info = mock(ImsiEncryptionInfo.class);
+            when(info.getPublicKey()).thenReturn(null);
             when(mDataTelephonyManager.getCarrierInfoForImsiEncryption(
                     eq(TelephonyManager.KEY_TYPE_WLAN)))
                     .thenReturn(info);

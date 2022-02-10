@@ -3479,11 +3479,10 @@ public class WifiConfiguration implements Parcelable {
 
     /**
      * Set the {@link IpConfiguration} for this network.
-     * @param ipConfiguration the {@link IpConfiguration} to set, or null to use the default
-     *                        constructor {@link IpConfiguration#IpConfiguration()}.
-     * @hide
+     *
+     * @param ipConfiguration a {@link IpConfiguration} to use for this Wi-Fi configuration, or
+     *                        {@code null} to use the default configuration.
      */
-    @SystemApi
     public void setIpConfiguration(@Nullable IpConfiguration ipConfiguration) {
         if (ipConfiguration == null) ipConfiguration = new IpConfiguration();
         mIpConfiguration = ipConfiguration;
