@@ -47,7 +47,6 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.android.server.wifi.util.WifiAsyncChannel;
-import com.android.wifi.resources.R;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -404,14 +403,12 @@ public class FrameworkFacade {
 
     /**
      * Check if the verbose always on is enabled
-     * @param context Application context
+     * @param alwaysOnLevel verbose logging always on level
      * @param buildProperties build property of current build
      * @return true if verbose always on is enabled on current build
      */
-    public boolean isVerboseLoggingAlwaysOn(@NonNull Context context,
+    public boolean isVerboseLoggingAlwaysOn(int alwaysOnLevel,
             @NonNull BuildProperties buildProperties) {
-        final int alwaysOnLevel = context.getResources()
-                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
         switch (alwaysOnLevel) {
             // If the overlay setting enabled for all builds
             case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL:
