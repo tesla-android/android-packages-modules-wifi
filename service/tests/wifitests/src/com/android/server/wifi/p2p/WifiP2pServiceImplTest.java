@@ -5444,9 +5444,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
     private void verifySetVendorElement(boolean isP2pActivated, boolean shouldSucceed,
             boolean hasPermission, boolean shouldSetToNative) throws Exception {
-
-        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
-                .thenReturn(hasPermission);
+        if (SdkLevel.isAtLeastS()) {
+            when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                    .thenReturn(hasPermission);
+        }
         when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt()))
                 .thenReturn(hasPermission);
 
