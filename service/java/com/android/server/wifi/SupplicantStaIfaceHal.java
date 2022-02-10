@@ -1737,6 +1737,23 @@ public class SupplicantStaIfaceHal {
     }
 
     /**
+     * Returns connection MLO links info
+     *
+     * @param ifaceName Name of the interface.
+     * @return connection MLO links info
+     */
+    public WifiNative.ConnectionMloLinksInfo getConnectionMloLinksInfo(@NonNull String ifaceName) {
+        synchronized (mLock) {
+            String methodStr = "getConnectionMloLinksInfo";
+            if (mStaIfaceHal == null) {
+                handleNullHal(methodStr);
+                return null;
+            }
+            return mStaIfaceHal.getConnectionMloLinksInfo(ifaceName);
+        }
+    }
+
+    /**
      * Adds a DPP peer URI to the URI list.
      *
      * Returns an ID to be used later to refer to this URI (>0).
