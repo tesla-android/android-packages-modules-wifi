@@ -1145,6 +1145,7 @@ public class WifiConfigManager {
             }
         }
 
+        internalConfig.allowAutojoin = externalConfig.allowAutojoin;
         // Copy over the |WifiEnterpriseConfig| parameters if set.
         if (externalConfig.enterpriseConfig != null) {
             internalConfig.enterpriseConfig.copyFromExternal(
@@ -2762,9 +2763,11 @@ public class WifiConfigManager {
      * So, re-sort the network list based on the frequency of connection to those networks
      * and whether it was last seen in the scan results.
      *
-     * @return list of networks in the order of priority.
+     * @param autoJoinOnly retrieve hidden network autojoin enabled only.
+     * @return list of hidden networks in the order of priority.
      */
-    public List<WifiScanner.ScanSettings.HiddenNetwork> retrieveHiddenNetworkList() {
+    public List<WifiScanner.ScanSettings.HiddenNetwork> retrieveHiddenNetworkList(
+            boolean autoJoinOnly) {
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenList = new ArrayList<>();
         List<WifiConfiguration> networks = getConfiguredNetworks();
         // Remove any non hidden networks.
@@ -2772,7 +2775,9 @@ public class WifiConfigManager {
         networks.sort(mScanListComparator);
         // The most frequently connected network has the highest priority now.
         for (WifiConfiguration config : networks) {
-            hiddenList.add(new WifiScanner.ScanSettings.HiddenNetwork(config.SSID));
+            if (!autoJoinOnly || config.allowAutojoin) {
+                hiddenList.add(new WifiScanner.ScanSettings.HiddenNetwork(config.SSID));
+            }
         }
         return hiddenList;
     }
