@@ -792,7 +792,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public void setAffiliatedMloLinks(@NonNull List<MloLink> links) {
-        if (!SdkLevel.isAtLeastT()) return;
         mAffiliatedMloLinks = new ArrayList<MloLink>(links);
         Collections.sort(mAffiliatedMloLinks, new Comparator<MloLink>() {
             @Override
@@ -813,7 +812,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public boolean updateMloLinkStaAddress(int linkId, MacAddress macAddress) {
-        if (!SdkLevel.isAtLeastT()) return false;
         for (MloLink link : mAffiliatedMloLinks) {
             if (link.getLinkId() == linkId) {
                 link.setStaMacAddress(macAddress);
@@ -834,7 +832,6 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * @hide
      */
     public boolean updateMloLinkState(int linkId, int state) {
-        if (!SdkLevel.isAtLeastT()) return false;
         if (!MloLink.isValidState(state)) {
             return false;
         }
@@ -1469,16 +1466,14 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 .append(mProviderFriendlyName == null ? none : mProviderFriendlyName)
                 .append(", Requesting package name: ")
                 .append(mRequestingPackageName == null ? none : mRequestingPackageName)
-                .append(mNetworkKey == null ? none : mNetworkKey);
-        if (SdkLevel.isAtLeastT()) {
-            sb.append("MLO Information: ")
-                    .append(", AP MLD Address: ").append(
-                            mApMldMacAddress == null ? none : mApMldMacAddress.toString())
-                    .append(", AP MLO Link Id: ").append(
-                            mApMldMacAddress == null ? none : mApMloLinkId)
-                    .append(", AP MLO Affiliated links: ").append(
-                            mApMldMacAddress == null ? none : mAffiliatedMloLinks);
-        }
+                .append(mNetworkKey == null ? none : mNetworkKey)
+                .append("MLO Information: ")
+                .append(", AP MLD Address: ").append(
+                        mApMldMacAddress == null ? none : mApMldMacAddress.toString())
+                .append(", AP MLO Link Id: ").append(
+                        mApMldMacAddress == null ? none : mApMloLinkId)
+                .append(", AP MLO Affiliated links: ").append(
+                        mApMldMacAddress == null ? none : mAffiliatedMloLinks);
 
         return sb.toString();
     }
@@ -1555,11 +1550,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
         dest.writeInt(mSecurityType);
         dest.writeInt(mRestricted ? 1 : 0);
         dest.writeString(mNetworkKey);
-        if (SdkLevel.isAtLeastT()) {
-            dest.writeParcelable(mApMldMacAddress, flags);
-            dest.writeInt(mApMloLinkId);
-            dest.writeTypedList(mAffiliatedMloLinks);
-        }
+        dest.writeParcelable(mApMldMacAddress, flags);
+        dest.writeInt(mApMloLinkId);
+        dest.writeTypedList(mAffiliatedMloLinks);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -1619,11 +1612,9 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 info.mRestricted = in.readInt() != 0;
                 info.mNetworkKey = in.readString();
 
-                if (SdkLevel.isAtLeastT()) {
-                    info.mApMldMacAddress = in.readParcelable(MacAddress.class.getClassLoader());
-                    info.mApMloLinkId = in.readInt();
-                    in.readTypedList(info.mAffiliatedMloLinks, MloLink.CREATOR);
-                }
+                info.mApMldMacAddress = in.readParcelable(MacAddress.class.getClassLoader());
+                info.mApMloLinkId = in.readInt();
+                in.readTypedList(info.mAffiliatedMloLinks, MloLink.CREATOR);
                 return info;
             }
 

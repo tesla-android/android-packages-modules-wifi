@@ -24,11 +24,8 @@ import android.annotation.IntDef;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.net.MacAddress;
-import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
-
-import androidx.annotation.RequiresApi;
 
 import com.android.modules.utils.build.SdkLevel;
 
@@ -40,7 +37,6 @@ import java.util.Objects;
  * Data structure class representing a Wi-Fi Multi-Link Operation (MLO) link
  * This is only used by 802.11be capable devices
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 public final class MloLink implements Parcelable {
 
     /**
@@ -97,7 +93,7 @@ public final class MloLink implements Parcelable {
         mLinkId = 0;
     }
 
-    /** Returns the Wi-Fi band of this link as one of {@link WifiAnnotations.WifiBandBasic} */
+    /** Returns the Wi-Fi band of this link as one of {@code WifiScanner.WIFI_BAND_*} */
     public @WifiAnnotations.WifiBandBasic int getBand() {
         return mBand;
     }
