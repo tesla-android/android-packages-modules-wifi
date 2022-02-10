@@ -590,14 +590,6 @@ interface ISupplicantStaIfaceHal {
     WifiNative.ConnectionCapabilities getConnectionCapabilities(@NonNull String ifaceName);
 
     /**
-     * Returns connection MLO links info
-     *
-     * @param ifaceName Name of the interface.
-     * @return connection MLO links info
-     */
-    WifiNative.ConnectionMloLinksInfo getConnectionMloLinksInfo(@NonNull String ifaceName);
-
-    /**
      * Adds a DPP peer URI to the URI list.
      *
      * Returns an ID to be used later to refer to this URI (>0).

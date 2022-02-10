@@ -71,7 +71,6 @@ import android.net.shared.ProvisioningConfiguration.ScanResultInfo;
 import android.net.vcn.VcnManager;
 import android.net.vcn.VcnNetworkPolicyResult;
 import android.net.wifi.IWifiConnectedNetworkScorer;
-import android.net.wifi.MloLink;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.SupplicantState;
@@ -2671,17 +2670,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         return Arrays.asList(matchingScanResult.informationElements);
     }
 
-    private void setMultiLinkInfo(@Nullable String bssid) {
-        if (bssid == null) return;
-        ScanResult matchingScanResult = mScanRequestProxy.getScanResult(bssid);
-        if (matchingScanResult == null) return;
-        if (matchingScanResult.getApMldMacAddress() != null) {
-            mWifiInfo.setApMldMacAddress(matchingScanResult.getApMldMacAddress());
-            mWifiInfo.setApMloLinkId(matchingScanResult.getApMloLinkId());
-            mWifiInfo.setAffiliatedMloLinks(matchingScanResult.getAffiliatedMloLinks());
-        }
-    }
-
     private SupplicantState handleSupplicantStateChange(StateChangeResult stateChangeResult) {
         SupplicantState state = stateChangeResult.state;
         mWifiScoreCard.noteSupplicantStateChanging(mWifiInfo, state);
@@ -2695,7 +2683,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setNetworkId(stateChangeResult.networkId);
             mWifiInfo.setBSSID(stateChangeResult.bssid);
             mWifiInfo.setSSID(stateChangeResult.wifiSsid);
-            setMultiLinkInfo(stateChangeResult.bssid);
             if (state == SupplicantState.ASSOCIATED) {
                 updateWifiInfoLinkParamsAfterAssociation();
             }
@@ -2708,7 +2695,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mWifiInfo.setWifiStandard(ScanResult.WIFI_STANDARD_UNKNOWN);
             mWifiInfo.setInformationElements(null);
             mWifiInfo.clearCurrentSecurityType();
-            mWifiInfo.resetMultiLinkInfo();
         }
         updateLayer2Information();
         // SSID might have been updated, so call updateCapabilities
@@ -2776,18 +2762,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mWifiInfo.setMaxSupportedRxLinkSpeedMbps(maxRxLinkSpeedMbps);
         mWifiMetrics.setConnectionMaxSupportedLinkSpeedMbps(mInterfaceName,
                 maxTxLinkSpeedMbps, maxRxLinkSpeedMbps);
-        if (mLastConnectionCapabilities.wifiStandard == ScanResult.WIFI_STANDARD_11BE) {
-            WifiNative.ConnectionMloLinksInfo info =
-                    mWifiNative.getConnectionMloLinksInfo(mInterfaceName);
-            if (info != null) {
-                for (int i = 0; i < info.links.length; i++) {
-                    mWifiInfo.updateMloLinkStaAddress(info.links[i].linkId,
-                            info.links[i].staMacAddress);
-                    mWifiInfo.updateMloLinkState(
-                            info.links[i].linkId, MloLink.MLO_LINK_STATE_ACTIVE);
-                }
-            }
-        }
         if (mVerboseLoggingEnabled) {
             StringBuilder sb = new StringBuilder();
             logd(sb.append("WifiStandard: ").append(mLastConnectionCapabilities.wifiStandard)
