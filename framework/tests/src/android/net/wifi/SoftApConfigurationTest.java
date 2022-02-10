@@ -117,7 +117,7 @@ public class SoftApConfigurationTest {
                     .isEqualTo(true);
             if (SdkLevel.isAtLeastT()) {
                 assertThat(original.getBridgedModeOpportunisticShutdownTimeoutMillis())
-                        .isEqualTo(0);
+                        .isEqualTo(SoftApConfiguration.DEFAULT_TIMEOUT);
                 assertThat(original.getMacRandomizationSetting())
                         .isEqualTo(SoftApConfiguration.RANDOMIZATION_NON_PERSISTENT);
                 assertThat(original.getVendorElements().size()).isEqualTo(0);
@@ -442,7 +442,21 @@ public class SoftApConfigurationTest {
     @Test(expected = IllegalArgumentException.class)
     public void testInvalieShutdownTimeoutMillis() {
         SoftApConfiguration original = new SoftApConfiguration.Builder()
-                .setShutdownTimeoutMillis(-1)
+                .setShutdownTimeoutMillis(-2)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testZeroIsInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setBridgedModeOpportunisticShutdownTimeoutMillis(0)
+                .build();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        SoftApConfiguration original = new SoftApConfiguration.Builder()
+                .setBridgedModeOpportunisticShutdownTimeoutMillis(-2)
                 .build();
     }
 
@@ -787,5 +801,29 @@ public class SoftApConfigurationTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new SoftApConfiguration.Builder()
                         .setAllowedAcsChannels(SoftApConfiguration.BAND_6GHZ, channels6g));
+    }
+
+    @Test
+    public void testMaxChannelBandwidth() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        SoftApConfiguration config = new SoftApConfiguration.Builder()
+                .build();
+        assertEquals(SoftApInfo.CHANNEL_WIDTH_AUTO, config.getMaxChannelBandwidth());
+
+        config = new SoftApConfiguration.Builder()
+                .setMaxChannelBandwidth(SoftApInfo.CHANNEL_WIDTH_20MHZ)
+                .build();
+        assertEquals(SoftApInfo.CHANNEL_WIDTH_20MHZ, config.getMaxChannelBandwidth());
+
+        config = new SoftApConfiguration.Builder()
+                .setMaxChannelBandwidth(SoftApInfo.CHANNEL_WIDTH_AUTO)
+                .build();
+        assertEquals(SoftApInfo.CHANNEL_WIDTH_AUTO, config.getMaxChannelBandwidth());
+
+        // Invalid value
+        assertThrows(IllegalArgumentException.class,
+                () -> new SoftApConfiguration.Builder()
+                        .setMaxChannelBandwidth(SoftApInfo.CHANNEL_WIDTH_80MHZ_PLUS_MHZ));
     }
 }

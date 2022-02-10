@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.AdditionalMatchers.aryEq;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyByte;
@@ -44,9 +45,11 @@ import android.hardware.wifi.supplicant.ISupplicantP2pNetwork;
 import android.hardware.wifi.supplicant.IfaceInfo;
 import android.hardware.wifi.supplicant.MacAddress;
 import android.hardware.wifi.supplicant.MiracastMode;
+import android.hardware.wifi.supplicant.P2pFrameTypeMask;
 import android.hardware.wifi.supplicant.SupplicantStatusCode;
 import android.hardware.wifi.supplicant.WpsProvisionMethod;
 import android.net.wifi.CoexUnsafeChannel;
+import android.net.wifi.ScanResult;
 import android.net.wifi.WpsInfo;
 import android.net.wifi.p2p.WifiP2pConfig;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -2453,6 +2456,67 @@ public class SupplicantP2pIfaceHalAidlImplTest extends WifiBaseTest {
 
         assertFalse(mDut.removeClient(mPeerMacAddress, true));
         verify(mISupplicantP2pIfaceMock).removeClient(eq(mPeerMacAddressBytes), eq(true));
+    }
+
+    /**
+     * Sunny day scenario for setVendorElements()
+     */
+    @Test
+    public void testSetVendorElementsSuccess() throws Exception {
+        doNothing().when(mISupplicantP2pIfaceMock).setVendorElements(anyInt(), any());
+        executeAndValidateInitializationSequence(false, false);
+        Set<ScanResult.InformationElement> ies =  new HashSet<>();
+        ies.add(new ScanResult.InformationElement(221, 0, new byte[]{(byte) 0xb}));
+        byte[] iesBytes = new byte[] {(byte) 221, (byte) 1, (byte) 0xb};
+
+        assertTrue(mDut.setVendorElements(ies));
+        verify(mISupplicantP2pIfaceMock).setVendorElements(
+                eq(P2pFrameTypeMask.P2P_FRAME_PROBE_RESP_P2P),
+                aryEq(iesBytes));
+    }
+
+    /**
+     * Sunny day scenario for setVendorElements() when VSIEs list is empty.
+     */
+    @Test
+    public void testSetVendorElementsSuccessWithEmptyVsieList() throws Exception {
+        doNothing().when(mISupplicantP2pIfaceMock).setVendorElements(anyInt(), any());
+        executeAndValidateInitializationSequence(false, false);
+        Set<ScanResult.InformationElement> ies =  new HashSet<>();
+        byte[] iesBytes = new byte[0];
+
+        assertTrue(mDut.setVendorElements(ies));
+        verify(mISupplicantP2pIfaceMock).setVendorElements(
+                eq(P2pFrameTypeMask.P2P_FRAME_PROBE_RESP_P2P),
+                aryEq(iesBytes));
+    }
+
+    /**
+     * Failure scenario for setVendorElements() when VSIE list is null.
+     */
+    @Test
+    public void testSetVendorElementsFailureWithNullVsieList() throws Exception {
+        doNothing().when(mISupplicantP2pIfaceMock).setVendorElements(anyInt(), any());
+        executeAndValidateInitializationSequence(false, false);
+        assertFalse(mDut.setVendorElements(null));
+        verify(mISupplicantP2pIfaceMock, never()).setVendorElements(anyInt(), any());
+    }
+
+    /**
+     * Failure scenario for setVendorElements() when RemoteException is thrown.
+     */
+    @Test
+    public void testSetVendorElementsFailureWithRemoteException() throws Exception {
+        doThrow(new RemoteException()).when(mISupplicantP2pIfaceMock)
+                .setVendorElements(anyInt(), any(byte[].class));
+
+        executeAndValidateInitializationSequence(false, false);
+        Set<ScanResult.InformationElement> ies =  new HashSet<>();
+
+        assertFalse(mDut.setVendorElements(ies));
+        verify(mISupplicantP2pIfaceMock).setVendorElements(
+                eq(P2pFrameTypeMask.P2P_FRAME_PROBE_RESP_P2P),
+                aryEq(new byte[0]));
     }
 
     /**

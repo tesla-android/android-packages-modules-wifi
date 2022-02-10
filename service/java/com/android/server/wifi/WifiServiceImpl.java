@@ -71,6 +71,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
 import android.net.wifi.IOnWifiActivityEnergyInfoListener;
@@ -183,6 +184,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 /**
  * WifiService handles remote WiFi operation requests by implementing
@@ -196,12 +198,6 @@ public class WifiServiceImpl extends BaseWifiService {
     private static final int RUN_WITH_SCISSORS_TIMEOUT_MILLIS = 4000;
     @VisibleForTesting
     static final int AUTO_DISABLE_SHOW_KEY_COUNTDOWN_MILLIS = 24 * 60 * 60 * 1000;
-    // verbose logging controlled by user
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE = 0;
-    // verbose logging on by default for userdebug
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG = 1;
-    // verbose logging on by default for all builds -->
-    private static final int VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL = 2;
 
     private final ActiveModeWarden mActiveModeWarden;
     private final ScanRequestProxy mScanRequestProxy;
@@ -1165,7 +1161,7 @@ public class WifiServiceImpl extends BaseWifiService {
         }
         mWifiMetrics.incrementNumWifiToggles(isPrivileged, enable);
         mActiveModeWarden.wifiToggled(new WorkSource(callingUid, packageName));
-        mLastCallerInfoManager.put(LastCallerInfoManager.WIFI_ENABLED, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_WIFI_ENABLED, Process.myTid(),
                 callingUid, callingPid, packageName, enable);
         return true;
     }
@@ -1391,7 +1387,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SOFT_AP, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
@@ -1435,7 +1431,7 @@ public class WifiServiceImpl extends BaseWifiService {
             mTetheredSoftApTracker.setFailedWhileEnabling();
             return false;
         }
-        mLastCallerInfoManager.put(LastCallerInfoManager.TETHERED_HOTSPOT, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_TETHERED_HOTSPOT, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), packageName, true);
         return true;
     }
@@ -1480,7 +1476,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mLog.info("stopSoftAp uid=%").c(Binder.getCallingUid()).flush();
 
         stopSoftApInternal(WifiManager.IFACE_IP_MODE_TETHERED);
-        mLastCallerInfoManager.put(LastCallerInfoManager.SOFT_AP, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SOFT_AP, Process.myTid(),
                 Binder.getCallingUid(), Binder.getCallingPid(), "<unknown>", false);
         return true;
     }
@@ -3054,7 +3050,7 @@ public class WifiServiceImpl extends BaseWifiService {
                 .c(Arrays.toString(scanType)).c(uid).flush();
         mWifiThreadRunner.post(() -> mWifiConnectivityManager.setExternalScreenOnScanSchedule(
                 scanSchedule, scanType));
-        mLastCallerInfoManager.put(LastCallerInfoManager.SET_SCAN_SCHEDULE, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_SET_SCAN_SCHEDULE, Process.myTid(),
                 uid, Binder.getCallingPid(), "<unknown>",
                 scanSchedule != null);
     }
@@ -3608,13 +3604,14 @@ public class WifiServiceImpl extends BaseWifiService {
     public void allowAutojoinGlobal(boolean choice) {
         int callingUid = Binder.getCallingUid();
         if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(callingUid)
-                && !mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(callingUid)) {
+                && !mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(callingUid)
+                && !isDeviceOrProfileOwner(callingUid, mContext.getOpPackageName())) {
             throw new SecurityException("Uid " + callingUid
                     + " is not allowed to set wifi global autojoin");
         }
         mLog.info("allowAutojoinGlobal=% uid=%").c(choice).c(callingUid).flush();
         mWifiThreadRunner.post(() -> mWifiConnectivityManager.setAutoJoinEnabledExternal(choice));
-        mLastCallerInfoManager.put(LastCallerInfoManager.AUTOJOIN_GLOBAL, Process.myTid(),
+        mLastCallerInfoManager.put(WifiManager.API_AUTOJOIN_GLOBAL, Process.myTid(),
                 callingUid, Binder.getCallingPid(), "<unknown>", choice);
     }
 
@@ -4712,25 +4709,8 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     private boolean isVerboseLoggingEnabled() {
-        final int alwaysOnLevel = mContext.getResources()
-                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
-        switch (alwaysOnLevel) {
-            // If the overlay setting enabled for all builds
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_ALL:
-                return true;
-            //If the overlay setting enabled for userdebug builds only
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_USERDEBUG:
-                // If it is a userdebug build
-                if (mBuildProperties.isUserdebugBuild()) return true;
-                break;
-            case VERBOSE_LOGGING_ALWAYS_ON_LEVEL_NONE:
-                // nothing
-                break;
-            default:
-                Log.e(TAG, "Unrecognized config_wifiVerboseLoggingAlwaysOnLevel " + alwaysOnLevel);
-                break;
-        }
-        return WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
+        return mFrameworkFacade.isVerboseLoggingAlwaysOn(mContext, mBuildProperties)
+                ? true : WifiManager.VERBOSE_LOGGING_LEVEL_DISABLED != mVerboseLoggingLevel;
     }
 
     private void enableVerboseLoggingInternal(int verbose) {
@@ -5954,6 +5934,42 @@ public class WifiServiceImpl extends BaseWifiService {
     }
 
     /**
+     * See {@link WifiManager#getLastCallerInfoForApi(int, Executor, BiConsumer)}.
+     */
+    @Override
+    public void getLastCallerInfoForApi(int apiType, @NonNull ILastCallerListener listener) {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener should not be null");
+        }
+        if (apiType < WifiManager.API_SCANNING_ENABLED || apiType > WifiManager.API_MAX) {
+            throw new IllegalArgumentException("Invalid apiType " + apiType);
+        }
+        int uid = Binder.getCallingUid();
+        if (!mWifiPermissionsUtil.checkNetworkSettingsPermission(uid)
+                && !mWifiPermissionsUtil.checkNetworkStackPermission(uid)
+                && !mWifiPermissionsUtil.checkMainlineNetworkStackPermission(uid)) {
+            throw new SecurityException("Caller has no permission");
+        }
+
+        if (isVerboseLoggingEnabled()) {
+            Log.v(TAG, "getLastCallerInfoForApi " + Binder.getCallingUid());
+        }
+        mWifiThreadRunner.post(() -> {
+            LastCallerInfoManager.LastCallerInfo lastCallerInfo =
+                    mLastCallerInfoManager.get(apiType);
+            try {
+                if (lastCallerInfo == null) {
+                    listener.onResult(null, false);
+                    return;
+                }
+                listener.onResult(lastCallerInfo.getPackageName(), lastCallerInfo.getToggleState());
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
+        });
+    }
+
+    /**
      * See {@link android.net.wifi.WifiManager#setWifiConnectedNetworkScorer(Executor,
      * WifiManager.WifiConnectedNetworkScorer)}
      *
@@ -6436,5 +6452,14 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceAnyPermissionOf(android.Manifest.permission.NETWORK_SETTINGS,
                 android.Manifest.permission.OVERRIDE_WIFI_CONFIG);
         mWifiThreadRunner.post(() -> mWifiConfigManager.removeCustomDhcpOptions(ssid, oui));
+    }
+
+    /**
+     * See {@link android.net.wifi.WifiManager#getOemPrivilegedAdmins
+     */
+    @Override
+    public String[] getOemPrivilegedAdmins() {
+        return mContext.getResources()
+                .getStringArray(R.array.config_oemPrivilegedWifiAdminPackages);
     }
 }

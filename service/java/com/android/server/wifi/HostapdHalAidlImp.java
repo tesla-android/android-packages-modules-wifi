@@ -19,7 +19,7 @@ import android.annotation.NonNull;
 import android.content.Context;
 import android.hardware.wifi.hostapd.ApInfo;
 import android.hardware.wifi.hostapd.BandMask;
-import android.hardware.wifi.hostapd.Bandwidth;
+import android.hardware.wifi.hostapd.ChannelBandwidth;
 import android.hardware.wifi.hostapd.ChannelParams;
 import android.hardware.wifi.hostapd.ClientInfo;
 import android.hardware.wifi.hostapd.DebugLevel;
@@ -37,6 +37,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.SoftApConfiguration.BandType;
 import android.net.wifi.SoftApInfo;
+import android.net.wifi.WifiAnnotations;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.IBinder;
@@ -390,7 +391,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
             try {
                 if (mSoftApEventCallback != null) {
                     mSoftApEventCallback.onInfoChanged(info.apIfaceInstance, info.freqMhz,
-                            mapHalBandwidthToSoftApInfo(info.bandwidth),
+                            mapHalChannelBandwidthToSoftApInfo(info.channelBandwidth),
                             mapHalGenerationToWifiStandard(info.generation),
                             MacAddress.fromBytes(info.apIfaceInstanceMacAddress));
                 }
@@ -715,32 +716,70 @@ public class HostapdHalAidlImp implements IHostapdHal {
      * @return The channel bandwidth in the SoftApinfo.
      */
     @VisibleForTesting
-    public int mapHalBandwidthToSoftApInfo(int bandwidth) {
-        switch (bandwidth) {
-            case Bandwidth.BANDWIDTH_20_NOHT:
+    public int mapHalChannelBandwidthToSoftApInfo(int channelBandwidth) {
+        switch (channelBandwidth) {
+            case ChannelBandwidth.BANDWIDTH_20_NOHT:
                 return SoftApInfo.CHANNEL_WIDTH_20MHZ_NOHT;
-            case Bandwidth.BANDWIDTH_20:
+            case ChannelBandwidth.BANDWIDTH_20:
                 return SoftApInfo.CHANNEL_WIDTH_20MHZ;
-            case Bandwidth.BANDWIDTH_40:
+            case ChannelBandwidth.BANDWIDTH_40:
                 return SoftApInfo.CHANNEL_WIDTH_40MHZ;
-            case Bandwidth.BANDWIDTH_80:
+            case ChannelBandwidth.BANDWIDTH_80:
                 return SoftApInfo.CHANNEL_WIDTH_80MHZ;
-            case Bandwidth.BANDWIDTH_80P80:
+            case ChannelBandwidth.BANDWIDTH_80P80:
                 return SoftApInfo.CHANNEL_WIDTH_80MHZ_PLUS_MHZ;
-            case Bandwidth.BANDWIDTH_160:
+            case ChannelBandwidth.BANDWIDTH_160:
                 return SoftApInfo.CHANNEL_WIDTH_160MHZ;
-            case Bandwidth.BANDWIDTH_320:
+            case ChannelBandwidth.BANDWIDTH_320:
                 return SoftApInfo.CHANNEL_WIDTH_320MHZ;
-            case Bandwidth.BANDWIDTH_2160:
+            case ChannelBandwidth.BANDWIDTH_2160:
                 return SoftApInfo.CHANNEL_WIDTH_2160MHZ;
-            case Bandwidth.BANDWIDTH_4320:
+            case ChannelBandwidth.BANDWIDTH_4320:
                 return SoftApInfo.CHANNEL_WIDTH_4320MHZ;
-            case Bandwidth.BANDWIDTH_6480:
+            case ChannelBandwidth.BANDWIDTH_6480:
                 return SoftApInfo.CHANNEL_WIDTH_6480MHZ;
-            case Bandwidth.BANDWIDTH_8640:
+            case ChannelBandwidth.BANDWIDTH_8640:
                 return SoftApInfo.CHANNEL_WIDTH_8640MHZ;
             default:
                 return SoftApInfo.CHANNEL_WIDTH_INVALID;
+        }
+    }
+
+    /**
+     * Map SoftApInfo bandwidth to hal.
+     *
+     * @param channelBandwidth The channel bandwidth as defined in SoftApInfo
+     * @return The channel bandwidth as defined in hal
+     */
+    @VisibleForTesting
+    public int mapSoftApInfoBandwidthToHal(@WifiAnnotations.Bandwidth int channelBandwidth) {
+        switch (channelBandwidth) {
+            case SoftApInfo.CHANNEL_WIDTH_AUTO:
+                return ChannelBandwidth.BANDWIDTH_AUTO;
+            case SoftApInfo.CHANNEL_WIDTH_20MHZ_NOHT:
+                return ChannelBandwidth.BANDWIDTH_20_NOHT;
+            case SoftApInfo.CHANNEL_WIDTH_20MHZ:
+                return ChannelBandwidth.BANDWIDTH_20;
+            case SoftApInfo.CHANNEL_WIDTH_40MHZ:
+                return ChannelBandwidth.BANDWIDTH_40;
+            case SoftApInfo.CHANNEL_WIDTH_80MHZ:
+                return ChannelBandwidth.BANDWIDTH_80;
+            case SoftApInfo.CHANNEL_WIDTH_80MHZ_PLUS_MHZ:
+                return ChannelBandwidth.BANDWIDTH_80P80;
+            case SoftApInfo.CHANNEL_WIDTH_160MHZ:
+                return ChannelBandwidth.BANDWIDTH_160;
+            case SoftApInfo.CHANNEL_WIDTH_320MHZ:
+                return ChannelBandwidth.BANDWIDTH_320;
+            case SoftApInfo.CHANNEL_WIDTH_2160MHZ:
+                return ChannelBandwidth.BANDWIDTH_2160;
+            case SoftApInfo.CHANNEL_WIDTH_4320MHZ:
+                return ChannelBandwidth.BANDWIDTH_4320;
+            case SoftApInfo.CHANNEL_WIDTH_6480MHZ:
+                return ChannelBandwidth.BANDWIDTH_6480;
+            case SoftApInfo.CHANNEL_WIDTH_8640MHZ:
+                return ChannelBandwidth.BANDWIDTH_8640;
+            default:
+                return ChannelBandwidth.BANDWIDTH_INVALID;
         }
     }
 
@@ -840,6 +879,13 @@ public class HostapdHalAidlImp implements IHostapdHal {
         hwModeParams.enable80211BE = ApConfigUtil.isIeee80211beSupported(mContext);
         //Update 80211be support with the configuration.
         hwModeParams.enable80211BE &= config.isIeee80211beEnabledInternal();
+
+        if (SdkLevel.isAtLeastT()) {
+            hwModeParams.maximumChannelBandwidth =
+                    mapSoftApInfoBandwidthToHal(config.getMaxChannelBandwidth());
+        } else {
+            hwModeParams.maximumChannelBandwidth = ChannelBandwidth.BANDWIDTH_AUTO;
+        }
         return hwModeParams;
     }
 

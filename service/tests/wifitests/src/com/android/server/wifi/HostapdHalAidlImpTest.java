@@ -37,7 +37,7 @@ import android.app.test.MockAnswerUtil;
 import android.content.Context;
 import android.hardware.wifi.hostapd.ApInfo;
 import android.hardware.wifi.hostapd.BandMask;
-import android.hardware.wifi.hostapd.Bandwidth;
+import android.hardware.wifi.hostapd.ChannelBandwidth;
 import android.hardware.wifi.hostapd.ClientInfo;
 import android.hardware.wifi.hostapd.DebugLevel;
 import android.hardware.wifi.hostapd.EncryptionType;
@@ -90,7 +90,7 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
     private static final String TEST_AP_INSTANCE_2 = "instance-wlan1";
     private static final int TEST_FREQ_24G = 2412;
     private static final int TEST_FREQ_5G = 5745;
-    private static final int TEST_BANDWIDTH = Bandwidth.BANDWIDTH_20;
+    private static final int TEST_BANDWIDTH = ChannelBandwidth.BANDWIDTH_20;
     private static final int TEST_GENERATION = Generation.WIFI_STANDARD_11N;
 
     private final int mBand256G = SoftApConfiguration.BAND_2GHZ | SoftApConfiguration.BAND_5GHZ
@@ -147,13 +147,13 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
         apInfo.ifaceName = IFACE_NAME;
         apInfo.apIfaceInstance = TEST_AP_INSTANCE;
         apInfo.freqMhz = TEST_FREQ_24G;
-        apInfo.bandwidth = TEST_BANDWIDTH;
+        apInfo.channelBandwidth = TEST_BANDWIDTH;
         apInfo.generation = TEST_GENERATION;
         apInfo.apIfaceInstanceMacAddress = MacAddress.fromString(TEST_CLIENT_MAC).toByteArray();
         if (numOfApInfo == 1) {
             mockHostapdCallback.onApInstanceInfoChanged(apInfo);
             verify(mockSoftApHalCallback).onInfoChanged(eq(TEST_AP_INSTANCE), eq(TEST_FREQ_24G),
-                    eq(mHostapdHal.mapHalBandwidthToSoftApInfo(TEST_BANDWIDTH)),
+                    eq(mHostapdHal.mapHalChannelBandwidthToSoftApInfo(TEST_BANDWIDTH)),
                     eq(mHostapdHal.mapHalGenerationToWifiStandard(TEST_GENERATION)),
                     eq(MacAddress.fromString(TEST_CLIENT_MAC)));
         } else if (numOfApInfo == 2) {
@@ -161,7 +161,7 @@ public class HostapdHalAidlImpTest extends WifiBaseTest {
             apInfo.freqMhz = TEST_FREQ_5G;
             mockHostapdCallback.onApInstanceInfoChanged(apInfo);
             verify(mockSoftApHalCallback).onInfoChanged(eq(TEST_AP_INSTANCE_2), eq(TEST_FREQ_5G),
-                    eq(mHostapdHal.mapHalBandwidthToSoftApInfo(TEST_BANDWIDTH)),
+                    eq(mHostapdHal.mapHalChannelBandwidthToSoftApInfo(TEST_BANDWIDTH)),
                     eq(mHostapdHal.mapHalGenerationToWifiStandard(TEST_GENERATION)),
                     eq(MacAddress.fromString(TEST_CLIENT_MAC)));
         }
