@@ -382,6 +382,10 @@ package android.net.wifi {
     method @Deprecated public int getAuthType();
     method @Deprecated @Nullable public java.util.List<android.net.MacAddress> getBssidAllowlist();
     method @Deprecated public int getDeletionPriority();
+    method @Deprecated @NonNull public byte[] getDppCSignKey();
+    method @Deprecated @NonNull public byte[] getDppConnector();
+    method @Deprecated @NonNull public byte[] getDppNetAccessKey();
+    method @Deprecated @NonNull public byte[] getDppPrivateEcKey();
     method @Deprecated @NonNull public android.net.IpConfiguration getIpConfiguration();
     method @Deprecated @NonNull public android.net.wifi.WifiConfiguration.NetworkSelectionStatus getNetworkSelectionStatus();
     method @Deprecated @NonNull public String getPrintableSsid();

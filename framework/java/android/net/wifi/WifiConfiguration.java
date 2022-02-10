@@ -137,7 +137,8 @@ public class WifiConfiguration implements Parcelable {
                 WAPI_PSK,
                 WAPI_CERT,
                 FILS_SHA256,
-                FILS_SHA384})
+                FILS_SHA384,
+                DPP})
         public @interface KeyMgmtScheme {}
 
         /** WPA is not used; plaintext or static WEP could be used. */
@@ -229,12 +230,20 @@ public class WifiConfiguration implements Parcelable {
          */
         public static final int FILS_SHA384 = 16;
 
+        /**
+         * Easy Connect - AKA Device Provisioning Protocol (DPP)
+         * For more details, visit <a href="https://www.wi-fi.org/">https://www.wi-fi.org/</a> and
+         * search for "Easy Connect" or "Device Provisioning Protocol specification".
+         * @hide
+         */
+        public static final int DPP = 17;
+
         public static final String varName = "key_mgmt";
 
         public static final String[] strings = { "NONE", "WPA_PSK", "WPA_EAP",
                 "IEEE8021X", "WPA2_PSK", "OSEN", "FT_PSK", "FT_EAP",
                 "SAE", "OWE", "SUITE_B_192", "WPA_PSK_SHA256", "WPA_EAP_SHA256",
-                "WAPI_PSK", "WAPI_CERT", "FILS_SHA256", "FILS_SHA384" };
+                "WAPI_PSK", "WAPI_CERT", "FILS_SHA256", "FILS_SHA384", "DPP" };
     }
 
     /**
@@ -523,11 +532,14 @@ public class WifiConfiguration implements Parcelable {
      */
     public static final int SECURITY_TYPE_PASSPOINT_R3 = 12;
 
+    /** Security type for Easy Connect (DPP) network */
+    public static final int SECURITY_TYPE_DPP = 13;
+
     /**
      * This is used for the boundary check and should be the same as the last type.
      * @hide
      */
-    public static final int SECURITY_TYPE_NUM = SECURITY_TYPE_PASSPOINT_R3;
+    public static final int SECURITY_TYPE_NUM = SECURITY_TYPE_DPP;
 
     /**
      * Security types we support.
@@ -548,6 +560,7 @@ public class WifiConfiguration implements Parcelable {
             SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
             SECURITY_TYPE_PASSPOINT_R1_R2,
             SECURITY_TYPE_PASSPOINT_R3,
+            SECURITY_TYPE_DPP,
     })
     public @interface SecurityType {}
 
@@ -556,7 +569,7 @@ public class WifiConfiguration implements Parcelable {
         "wpa3-sae", "wpa3 enterprise 192-bit", "owe",
         "wapi-psk", "wapi-cert", "wpa3 enterprise",
         "wpa3 enterprise 192-bit", "passpoint r1/r2",
-        "passpoint r3"};
+        "passpoint r3", "dpp"};
 
     private List<SecurityParams> mSecurityParamsList = new ArrayList<>();
 
@@ -582,6 +595,7 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_WAPI_CERT},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_DPP},
      */
     public void setSecurityParams(@SecurityType int securityType) {
         // Clear existing data.
@@ -650,6 +664,7 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_WAPI_CERT},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_DPP},
      *
      * @hide
      */
@@ -720,6 +735,8 @@ public class WifiConfiguration implements Parcelable {
             setSecurityParams(SECURITY_TYPE_WAPI_PSK);
         } else if (allowedKeyManagement.get(KeyMgmt.SUITE_B_192)) {
             setSecurityParams(SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT);
+        } else if (allowedKeyManagement.get(KeyMgmt.DPP)) {
+            setSecurityParams(SECURITY_TYPE_DPP);
         } else if (allowedKeyManagement.get(KeyMgmt.OWE)) {
             setSecurityParams(SECURITY_TYPE_OWE);
         } else if (allowedKeyManagement.get(KeyMgmt.SAE)) {
@@ -762,6 +779,7 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_WAPI_CERT},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_DPP},
      *
      * @hide
      */
@@ -811,6 +829,7 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_WAPI_CERT},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_DPP},
      *
      * @return the copy of specific security params if found; otherwise null.
      * @hide
@@ -837,6 +856,7 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_WAPI_CERT},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
+     * {@link #SECURITY_TYPE_DPP},
      *
      * @return true if there is a security params matches the type.
      * @hide
@@ -1832,6 +1852,116 @@ public class WifiConfiguration implements Parcelable {
             return;
         }
         mRandomizedMacAddress = mac;
+    }
+
+    /**
+     * This network supports DPP AKM and the device is configured to
+     * onboard peer enrollee devices with {@link #SECURITY_TYPE_DPP}
+     * @hide
+     */
+    private boolean mIsDppConfigurator;
+
+    /**
+     * Private elliptic curve key used by DPP Configurator to generate other DPP Keys
+     * for DPP-AKM based network configuration.
+     * @hide
+     */
+    private byte[] mDppPrivateEcKey;
+
+    /**
+     * Signed DPP connector. The connector is used by a pair of Enrollee devices to establish
+     * a security association using the DPP Introduction Protocol.
+     * @hide
+     */
+    private byte[] mDppConnector;
+
+    /**
+     * The public signing key of the DPP configurator.
+     * @hide
+     */
+    private byte[] mDppCSignKey;
+
+    /**
+     * DPP network access key (own private key)
+     * @hide
+     */
+    private byte[] mDppNetAccessKey;
+
+    /**
+     * Set DPP Connection keys which are used for network access.
+     * This is required for SECURITY_TYPE_DPP network connection.
+     * @hide
+     */
+    public void setDppConnectionKeys(byte[] connector, byte[] cSignKey, byte[] netAccessKey) {
+        if (connector == null || cSignKey == null || netAccessKey == null) {
+            Log.e(TAG, "One of DPP key is null");
+            return;
+        }
+        mDppConnector = connector.clone();
+        mDppCSignKey = cSignKey.clone();
+        mDppNetAccessKey = netAccessKey.clone();
+    }
+
+    /**
+     * Allow this profile as configurable DPP profile.
+     * This is required to allow SECURITY_TYPE_DPP profile to be eligible for Configuration
+     * of DPP-Enrollees.
+     * @hide
+     */
+    public void setDppConfigurator(byte[] ecKey) {
+        if (ecKey != null) {
+            mDppPrivateEcKey = ecKey.clone();
+            mIsDppConfigurator = true;
+        }
+    }
+
+    /**
+     * To check if this WifiConfiguration supports configuring a peer Enrollee device with
+     * SECURITY_TYPE_DPP
+     */
+    public boolean isDppConfigurator() {
+        return mIsDppConfigurator;
+    }
+
+    /**
+     * Get private elliptic curve key used by DPP Configurator to generate other DPP Keys
+     * for DPP-AKM based network configuration.
+     * @hide
+     */
+    @SystemApi
+    @NonNull public byte[] getDppPrivateEcKey() {
+        return mDppPrivateEcKey.clone();
+    }
+
+    /**
+     * Get DPP signed connector. The connector is used by a pair of Enrollee devices to establish
+     * a security association using the DPP Introduction Protocol.
+     * @hide
+     */
+    @SystemApi
+    @NonNull public byte[] getDppConnector() {
+        return mDppConnector.clone();
+    }
+
+    /**
+     * Get public signing key of the DPP configurator. This key is used by provisioned devices
+     * to verify Connectors of other devices are signed by the same Configurator. The configurator
+     * derives and sets the C-sign-key in each DPP Configuration object.
+     *
+     * @hide
+     */
+    @SystemApi
+    @NonNull public byte[] getDppCSignKey() {
+        return mDppCSignKey.clone();
+    }
+
+    /**
+     * Get DPP network access key. Own private key used to generate common secret, PMK.
+     * @hide
+     */
+    @SystemApi
+    @NonNull public byte[] getDppNetAccessKey() {
+        return mDppNetAccessKey.clone();
     }
 
     /** @hide
@@ -2981,6 +3111,11 @@ public class WifiConfiguration implements Parcelable {
         numRebootsSinceLastUse = 0;
         restricted = false;
         mBssidAllowlist = null;
+        mIsDppConfigurator = false;
+        mDppPrivateEcKey = new byte[0];
+        mDppConnector = new byte[0];
+        mDppCSignKey = new byte[0];
+        mDppNetAccessKey = new byte[0];
     }
 
     /**
@@ -3415,6 +3550,8 @@ public class WifiConfiguration implements Parcelable {
             return KeyMgmt.WAPI_PSK;
         } else if (allowedKeyManagement.get(KeyMgmt.WAPI_CERT)) {
             return KeyMgmt.WAPI_CERT;
+        } else if (allowedKeyManagement.get(KeyMgmt.DPP)) {
+            return KeyMgmt.DPP;
         }
         return KeyMgmt.NONE;
     }
@@ -3712,6 +3849,11 @@ public class WifiConfiguration implements Parcelable {
             } else {
                 mBssidAllowlist = null;
             }
+            mIsDppConfigurator = source.mIsDppConfigurator;
+            mDppPrivateEcKey = source.mDppPrivateEcKey.clone();
+            mDppConnector = source.mDppConnector.clone();
+            mDppCSignKey = source.mDppCSignKey.clone();
+            mDppNetAccessKey = source.mDppNetAccessKey.clone();
         }
     }
 
@@ -3799,6 +3941,11 @@ public class WifiConfiguration implements Parcelable {
         dest.writeBoolean(restricted);
         dest.writeParcelable(mSubscriptionGroup, flags);
         dest.writeList(mBssidAllowlist);
+        dest.writeInt(mIsDppConfigurator ? 1 : 0);
+        dest.writeByteArray(mDppPrivateEcKey);
+        dest.writeByteArray(mDppConnector);
+        dest.writeByteArray(mDppCSignKey);
+        dest.writeByteArray(mDppNetAccessKey);
     }
 
     /** Implement the Parcelable interface {@hide} */
@@ -3888,6 +4035,11 @@ public class WifiConfiguration implements Parcelable {
                 config.restricted = in.readBoolean();
                 config.mSubscriptionGroup = in.readParcelable(null);
                 config.mBssidAllowlist = in.readArrayList(MacAddress.class.getClassLoader());
+                config.mIsDppConfigurator = in.readInt() != 0;
+                config.mDppPrivateEcKey = in.createByteArray();
+                config.mDppConnector = in.createByteArray();
+                config.mDppCSignKey = in.createByteArray();
+                config.mDppNetAccessKey = in.createByteArray();
                 return config;
             }
 
@@ -3995,6 +4147,8 @@ public class WifiConfiguration implements Parcelable {
             key = KeyMgmt.strings[KeyMgmt.WAPI_CERT];
         } else if (allowedKeyManagement.get(KeyMgmt.OSEN)) {
             key = KeyMgmt.strings[KeyMgmt.OSEN];
+        } else if (allowedKeyManagement.get(KeyMgmt.DPP)) {
+            key = KeyMgmt.strings[KeyMgmt.DPP];
         } else {
             key = KeyMgmt.strings[KeyMgmt.NONE];
         }
@@ -4016,7 +4170,8 @@ public class WifiConfiguration implements Parcelable {
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE},
      * {@link #SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT},
      * {@link #SECURITY_TYPE_PASSPOINT_R1_R2},
-     * or {@link #SECURITY_TYPE_PASSPOINT_R3}.
+     * {@link #SECURITY_TYPE_PASSPOINT_R3},
+     * or {@link #SECURITY_TYPE_DPP}.
      * @return the name of the given type.
      * @hide
      */
