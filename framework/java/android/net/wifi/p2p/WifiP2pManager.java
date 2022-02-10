@@ -979,10 +979,7 @@ public class WifiP2pManager {
      *
      * This callback is registered by
      * {@link #addExternalApprover(Channel, MacAddress, ExternalApproverRequestListener)}.
-     *
-     * @hide
      */
-    @SystemApi
     public interface ExternalApproverRequestListener {
         /**
          * This device received a negotiation request from another peer.
@@ -1032,7 +1029,7 @@ public class WifiP2pManager {
         int APPROVER_DETACH_REASON_REPLACE = 2;
         /**
          * Detached since the {@link WifiP2pManager} channel was closed, e.g.
-         * by using {@link WifiP2pManager#close()} method.
+         * by using {@link Channel#close()} method.
          *
          * Used in {@link #onDetached(MacAddress, int)}.
          */
@@ -2386,33 +2383,25 @@ public class WifiP2pManager {
      * Accept the incoming request.
      *
      * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
-     * @hide
      */
-    @SystemApi
     public static final int CONNECTION_REQUEST_ACCEPT = 0;
     /**
      * Reject the incoming request.
      *
      * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
-     * @hide
      */
-    @SystemApi
     public static final int CONNECTION_REQUEST_REJECT = 1;
     /**
      * Defer the decision back to the Wi-Fi service (which will display a dialog to the user).
      *
      * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
-     * @hide
      */
-    @SystemApi
     public static final int CONNECTION_REQUEST_DEFER_TO_SERVICE = 2;
     /**
      * Defer the PIN display to the Wi-Fi service (which will display a dialog to the user).
      *
      * Used in {@link #setConnectionRequestResult(Channel, MacAddress, int, ActionListener)}.
-     * @hide
      */
-    @SystemApi
     public static final int CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE = 3;
     /** @hide */
     @IntDef(prefix = {"CONNECTION_REQUEST_"}, value = {
@@ -2695,9 +2684,7 @@ public class WifiP2pManager {
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param deviceAddress the peer which is bound to the external approver.
      * @param listener for callback when the framework needs to notify the external approver.
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
     public void addExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @NonNull ExternalApproverRequestListener listener) {
@@ -2718,9 +2705,7 @@ public class WifiP2pManager {
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param deviceAddress the peer which is bound to the external approver.
      * @param listener for callback on success or failure.
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
     public void removeExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @Nullable ActionListener listener) {
@@ -2739,9 +2724,7 @@ public class WifiP2pManager {
      *
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param listener for callback on success or failure.
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
     public void setConnectionRequestResult(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @ConnectionRequestResponse int result, @Nullable ActionListener listener) {
@@ -2760,7 +2743,7 @@ public class WifiP2pManager {
      * Set/Clear vendor specific information elements (VSIEs) to be published during
      * Wi-Fi Direct (P2P) discovery.
      *
-     * Once {@link #close()} is called, the vendor information elements will be cleared from
+     * Once {@link Channel#close()} is called, the vendor information elements will be cleared from
      * framework. The information element format is defined in the IEEE 802.11-2016 spec
      * Table 9-77.
      * <p>
@@ -2775,10 +2758,7 @@ public class WifiP2pManager {
      * @param c is the channel created at {@link #initialize(Context, Looper, ChannelListener)}.
      * @param vendorElements application information as vendor-specific information elements.
      * @param listener for callback when network info is available.
-     *
-     * @hide
      */
-    @SystemApi
     @RequiresPermission(allOf = {
             android.Manifest.permission.NEARBY_WIFI_DEVICES,
             android.Manifest.permission.OVERRIDE_WIFI_CONFIG
@@ -2817,13 +2797,11 @@ public class WifiP2pManager {
 
     /**
      * Return the maximum total length (in bytes) of all Vendor specific information
-     * elements (VSIEs) which can be set using the
-     * {@link #setVendorElements(Channel, List<ScanResult.InformationElement>, ActionListener)}.
+     * elements (VSIEs).
+     *
      * The length is calculated adding the payload length + 2 bytes for each VSIE
      * (2 bytes: 1 byte for type and 1 byte for length).
-     * @hide
      */
-    @SystemApi
     public static int getP2pMaxAllowedVendorElementsLength() {
         return WIFI_P2P_VENDOR_ELEMENTS_MAXIMUM_LENGTH;
     }
