@@ -18,12 +18,31 @@ package android.net.wifi {
     field public static final int EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = -13; // 0xfffffff3
   }
 
+  public final class MloLink implements android.os.Parcelable {
+    ctor public MloLink();
+    method public int describeContents();
+    method public int getBand();
+    method public int getChannel();
+    method public int getLinkId();
+    method @Nullable public android.net.MacAddress getStaMacAddress();
+    method public int getState();
+    method public void writeToParcel(android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.MloLink> CREATOR;
+    field public static final int MLO_LINK_STATE_ACTIVE = 3; // 0x3
+    field public static final int MLO_LINK_STATE_IDLE = 2; // 0x2
+    field public static final int MLO_LINK_STATE_INVALID = 0; // 0x0
+    field public static final int MLO_LINK_STATE_UNASSOCIATED = 1; // 0x1
+  }
+
   public final class ScanResult implements android.os.Parcelable {
     ctor public ScanResult(@NonNull android.net.wifi.ScanResult);
     ctor public ScanResult();
     method public static int convertChannelToFrequencyMhzIfSupported(int, int);
     method public static int convertFrequencyMhzToChannelIfSupported(int);
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.MloLink> getAffiliatedMloLinks();
+    method @Nullable public android.net.MacAddress getApMldMacAddress();
+    method public int getApMloLinkId();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @NonNull public int[] getSecurityTypes();
     method @Nullable public android.net.wifi.WifiSsid getWifiSsid();
@@ -312,6 +331,9 @@ package android.net.wifi {
 
   public class WifiInfo implements android.os.Parcelable android.net.TransportInfo {
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.MloLink> getAffiliatedMloLinks();
+    method @Nullable public android.net.MacAddress getApMldMacAddress();
+    method public int getApMloLinkId();
     method public String getBSSID();
     method public int getCurrentSecurityType();
     method public static android.net.NetworkInfo.DetailedState getDetailedStateOf(android.net.wifi.SupplicantState);
