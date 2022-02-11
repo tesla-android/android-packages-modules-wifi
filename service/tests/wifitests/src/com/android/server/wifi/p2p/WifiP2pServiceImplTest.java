@@ -192,7 +192,6 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     private ArgumentCaptor<Message> mMessageCaptor = ArgumentCaptor.forClass(Message.class);
     private MockitoSession mStaticMockSession = null;
     private Bundle mAttribution = new Bundle();
-    private AttributionSource mAttributionSource;
 
     @Mock Bundle mBundle;
     @Mock Context mContext;
@@ -276,8 +275,6 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mTestThisDevice.deviceName = thisDeviceName;
         mTestThisDevice.deviceAddress = thisDeviceMac;
         mTestThisDevice.primaryDeviceType = "10-0050F204-5";
-
-        mAttributionSource = new AttributionSource(1000, TEST_PACKAGE_NAME, null);
     }
 
     /**
@@ -960,7 +957,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getSystemService(WifiManager.class)).thenReturn(mWifiManager);
-        when(mContext.getAttributionSource()).thenReturn(mAttributionSource);
+        if (SdkLevel.isAtLeastS()) {
+            when(mContext.getAttributionSource()).thenReturn(
+                    new AttributionSource(1000, TEST_PACKAGE_NAME, null));
+        }
         when(mWifiManager.getConnectionInfo()).thenReturn(mWifiInfo);
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_DEVICE_NAME))).thenReturn(thisDeviceName);
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_PENDING_FACTORY_RESET))).thenReturn(false);
@@ -5444,9 +5444,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
     private void verifySetVendorElement(boolean isP2pActivated, boolean shouldSucceed,
             boolean hasPermission, boolean shouldSetToNative) throws Exception {
-
-        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
-                .thenReturn(hasPermission);
+        if (SdkLevel.isAtLeastS()) {
+            when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                    .thenReturn(hasPermission);
+        }
         when(mWifiPermissionsUtil.checkConfigOverridePermission(anyInt()))
                 .thenReturn(hasPermission);
 

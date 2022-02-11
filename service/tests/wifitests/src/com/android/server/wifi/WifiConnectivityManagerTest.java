@@ -157,7 +157,7 @@ public class WifiConnectivityManagerTest extends WifiBaseTest {
         mLooper = new TestLooper(mClock::getElapsedSinceBootMillis);
         mTestHandler = new TestHandler(mLooper.getLooper());
         when(mContext.getSystemService(WifiScanner.class)).thenReturn(mWifiScanner);
-        when(mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList())
+        when(mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList(anyBoolean()))
                 .thenReturn(new ArrayList<>());
         when(mWifiNetworkSuggestionsManager.getAllApprovedNetworkSuggestions())
                 .thenReturn(new HashSet<>());

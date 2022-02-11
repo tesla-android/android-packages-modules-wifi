@@ -448,6 +448,7 @@ public class SoftApConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testZeroIsInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        assumeTrue(SdkLevel.isAtLeastT());
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setBridgedModeOpportunisticShutdownTimeoutMillis(0)
                 .build();
@@ -455,6 +456,7 @@ public class SoftApConfigurationTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidBridgedModeOpportunisticShutdownTimeoutMillis() {
+        assumeTrue(SdkLevel.isAtLeastT());
         SoftApConfiguration original = new SoftApConfiguration.Builder()
                 .setBridgedModeOpportunisticShutdownTimeoutMillis(-2)
                 .build();
