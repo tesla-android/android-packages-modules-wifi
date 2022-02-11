@@ -1097,6 +1097,7 @@ package android.net.wifi.p2p {
     ctor public WifiP2pDevice();
     ctor public WifiP2pDevice(android.net.wifi.p2p.WifiP2pDevice);
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getVendorElements();
     method @Nullable public android.net.wifi.p2p.WifiP2pWfdInfo getWfdInfo();
     method public boolean isGroupOwner();
     method public boolean isServiceDiscoveryCapable();
@@ -1158,6 +1159,7 @@ package android.net.wifi.p2p {
   }
 
   public class WifiP2pManager {
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN) public void addExternalApprover(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.MacAddress, @NonNull android.net.wifi.p2p.WifiP2pManager.ExternalApproverRequestListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void addLocalService(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceInfo, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void addServiceRequest(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceRequest, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void cancelConnect(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
@@ -1170,8 +1172,10 @@ package android.net.wifi.p2p {
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void discoverPeersOnSocialChannels(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void discoverPeersOnSpecificFrequency(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, int, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void discoverServices(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
+    method public static int getP2pMaxAllowedVendorElementsLength();
     method public android.net.wifi.p2p.WifiP2pManager.Channel initialize(android.content.Context, android.os.Looper, android.net.wifi.p2p.WifiP2pManager.ChannelListener);
     method public void removeClient(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.MacAddress, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN) public void removeExternalApprover(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.MacAddress, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeGroup(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeLocalService(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceInfo, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void removeServiceRequest(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.nsd.WifiP2pServiceRequest, android.net.wifi.p2p.WifiP2pManager.ActionListener);
@@ -1182,13 +1186,19 @@ package android.net.wifi.p2p {
     method public void requestNetworkInfo(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.wifi.p2p.WifiP2pManager.NetworkInfoListener);
     method public void requestP2pState(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.wifi.p2p.WifiP2pManager.P2pStateListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void requestPeers(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.PeerListListener);
+    method @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN) public void setConnectionRequestResult(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull android.net.MacAddress, int, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void setDnsSdResponseListeners(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.DnsSdServiceResponseListener, android.net.wifi.p2p.WifiP2pManager.DnsSdTxtRecordListener);
     method public void setServiceResponseListener(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ServiceResponseListener);
     method public void setUpnpServiceResponseListener(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.UpnpServiceResponseListener);
+    method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.OVERRIDE_WIFI_CONFIG}) public void setVendorElements(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @NonNull java.util.List<android.net.wifi.ScanResult.InformationElement>, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method @RequiresPermission(allOf={android.Manifest.permission.NEARBY_WIFI_DEVICES, android.Manifest.permission.ACCESS_FINE_LOCATION}, conditional=true) public void startListening(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void stopListening(@NonNull android.net.wifi.p2p.WifiP2pManager.Channel, @Nullable android.net.wifi.p2p.WifiP2pManager.ActionListener);
     method public void stopPeerDiscovery(android.net.wifi.p2p.WifiP2pManager.Channel, android.net.wifi.p2p.WifiP2pManager.ActionListener);
     field public static final int BUSY = 2; // 0x2
+    field public static final int CONNECTION_REQUEST_ACCEPT = 0; // 0x0
+    field public static final int CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE = 3; // 0x3
+    field public static final int CONNECTION_REQUEST_DEFER_TO_SERVICE = 2; // 0x2
+    field public static final int CONNECTION_REQUEST_REJECT = 1; // 0x1
     field public static final int ERROR = 0; // 0x0
     field public static final String EXTRA_DISCOVERY_STATE = "discoveryState";
     field public static final String EXTRA_NETWORK_INFO = "networkInfo";
@@ -1241,6 +1251,20 @@ package android.net.wifi.p2p {
 
   public static interface WifiP2pManager.DnsSdTxtRecordListener {
     method public void onDnsSdTxtRecordAvailable(String, java.util.Map<java.lang.String,java.lang.String>, android.net.wifi.p2p.WifiP2pDevice);
+  }
+
+  public static interface WifiP2pManager.ExternalApproverRequestListener {
+    method public void onAttached(@NonNull android.net.MacAddress);
+    method public void onConnectionRequested(int, @NonNull android.net.wifi.p2p.WifiP2pConfig, @NonNull android.net.wifi.p2p.WifiP2pDevice);
+    method public void onDetached(@NonNull android.net.MacAddress, int);
+    method public void onPinGenerated(@NonNull android.net.MacAddress, @NonNull String);
+    field public static final int APPROVER_DETACH_REASON_CLOSE = 3; // 0x3
+    field public static final int APPROVER_DETACH_REASON_FAILURE = 1; // 0x1
+    field public static final int APPROVER_DETACH_REASON_REMOVE = 0; // 0x0
+    field public static final int APPROVER_DETACH_REASON_REPLACE = 2; // 0x2
+    field public static final int REQUEST_TYPE_INVITATION = 1; // 0x1
+    field public static final int REQUEST_TYPE_JOIN = 2; // 0x2
+    field public static final int REQUEST_TYPE_NEGOTIATION = 0; // 0x0
   }
 
   public static interface WifiP2pManager.GroupInfoListener {

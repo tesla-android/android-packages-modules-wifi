@@ -488,10 +488,11 @@ public class ScanRequestProxy {
         if (mScanningForHiddenNetworksEnabled) {
             settings.hiddenNetworks.clear();
             // retrieve the list of hidden network SSIDs from saved network to scan for, if enabled.
-            settings.hiddenNetworks.addAll(mWifiConfigManager.retrieveHiddenNetworkList());
+            settings.hiddenNetworks.addAll(mWifiConfigManager.retrieveHiddenNetworkList(false));
             // retrieve the list of hidden network SSIDs from Network suggestion to scan for.
             settings.hiddenNetworks.addAll(
-                    mWifiInjector.getWifiNetworkSuggestionsManager().retrieveHiddenNetworkList());
+                    mWifiInjector.getWifiNetworkSuggestionsManager()
+                    .retrieveHiddenNetworkList(false));
         }
         mWifiScanner.startScan(settings, new HandlerExecutor(mHandler),
                 new ScanRequestProxyScanListener(), workSource);

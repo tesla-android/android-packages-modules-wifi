@@ -118,8 +118,10 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
 
     private static final String TEST_PACKAGE_1 = "com.test12345";
     private static final String TEST_PACKAGE_2 = "com.test54321";
+    private static final String TEST_PACKAGE_3 = "com.test54321";
     private static final String TEST_APP_NAME_1 = "test12345";
     private static final String TEST_APP_NAME_2 = "test54321";
+    private static final String TEST_APP_NAME_3 = "test66666";
     private static final String TEST_FEATURE = "testFeature";
     private static final String TEST_BSSID = "00:11:22:33:44:55";
     private static final String TEST_FQDN = "FQDN";
@@ -128,6 +130,7 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
     private static final String TEST_CARRIER_NAME = "test_carrier";
     private static final int TEST_UID_1 = 5667;
     private static final int TEST_UID_2 = 4537;
+    private static final int TEST_UID_3 = 7837;
     private static final int VALID_CARRIER_ID = 100;
     private static final int TEST_SUBID = 1;
     private static final int TEST_NETWORK_ID = 110;
@@ -2915,6 +2918,9 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
         WifiNetworkSuggestion hiddenNetworkSuggestion2 = createWifiNetworkSuggestion(
                 WifiConfigurationTestUtil.createPskHiddenNetwork(), null, true, false, true, true,
                 DEFAULT_PRIORITY_GROUP);
+        WifiNetworkSuggestion hiddenNetworkSuggestion3 = createWifiNetworkSuggestion(
+                WifiConfigurationTestUtil.createPskHiddenNetwork(), null, true, false, true, false,
+                DEFAULT_PRIORITY_GROUP);
         List<WifiNetworkSuggestion> networkSuggestionList1 =
                 new ArrayList<WifiNetworkSuggestion>() {{
                     add(networkSuggestion);
@@ -2924,17 +2930,28 @@ public class WifiNetworkSuggestionsManagerTest extends WifiBaseTest {
                 new ArrayList<WifiNetworkSuggestion>() {{
                     add(hiddenNetworkSuggestion2);
                 }};
+        List<WifiNetworkSuggestion> networkSuggestionList3 =
+                new ArrayList<WifiNetworkSuggestion>() {{
+                    add(hiddenNetworkSuggestion3);
+                }};
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiNetworkSuggestionsManager.add(networkSuggestionList1, TEST_UID_1,
                         TEST_PACKAGE_1, TEST_FEATURE));
         assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
                 mWifiNetworkSuggestionsManager.add(networkSuggestionList2, TEST_UID_2,
                         TEST_PACKAGE_2, TEST_FEATURE));
+        assertEquals(WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS,
+                mWifiNetworkSuggestionsManager.add(networkSuggestionList3, TEST_UID_3,
+                        TEST_PACKAGE_3, TEST_FEATURE));
         mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(true, TEST_UID_1, TEST_PACKAGE_1);
         mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(false, TEST_UID_2, TEST_PACKAGE_2);
+        mWifiNetworkSuggestionsManager.setHasUserApprovedForApp(true, TEST_UID_3, TEST_PACKAGE_3);
         List<WifiScanner.ScanSettings.HiddenNetwork> hiddenNetworks =
-                mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList();
-        assertEquals(1, hiddenNetworks.size());
+                mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList(true /* autoJoinOnly */);
+        assertEquals(2, hiddenNetworks.size());
+        hiddenNetworks =
+                mWifiNetworkSuggestionsManager.retrieveHiddenNetworkList(false /* autoJoinOnly */);
+        assertEquals(3, hiddenNetworks.size());
         assertEquals(hiddenNetworkSuggestion1.wifiConfiguration.SSID, hiddenNetworks.get(0).ssid);
     }
 
