@@ -4924,6 +4924,8 @@ public class WifiServiceImpl extends BaseWifiService {
                 mWifiThreadRunner.post(new NetworkUpdater(mCallingUid, mConfigurations,
                         nextStartIdx, mBatchNum));
             }
+            Log.d(TAG, "Restored backup data index " + nextStartIdx + " of total "
+                    + mConfigurations.size() + " configs ");
         }
     }
 
@@ -4935,7 +4937,7 @@ public class WifiServiceImpl extends BaseWifiService {
     @VisibleForTesting
     void restoreNetworks(List<WifiConfiguration> configurations) {
         if (configurations == null) {
-            Log.e(TAG, "Backup data parse failed");
+            Log.w(TAG, "No wifi configuration to restore.");
             return;
         }
         int callingUid = Binder.getCallingUid();
@@ -4956,10 +4958,7 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceNetworkSettingsPermission();
         mLog.info("restoreBackupData uid=%").c(Binder.getCallingUid()).flush();
         Log.d(TAG, "Restoring backup data");
-        List<WifiConfiguration> wifiConfigurations =
-                mWifiBackupRestore.retrieveConfigurationsFromBackupData(data);
-        restoreNetworks(wifiConfigurations);
-        Log.d(TAG, "Restored backup data for " + wifiConfigurations.size() + " configs ");
+        restoreNetworks(mWifiBackupRestore.retrieveConfigurationsFromBackupData(data));
     }
 
     /**
@@ -5012,11 +5011,8 @@ public class WifiServiceImpl extends BaseWifiService {
         enforceNetworkSettingsPermission();
         mLog.trace("restoreSupplicantBackupData uid=%").c(Binder.getCallingUid()).flush();
         Log.d(TAG, "Restoring supplicant backup data");
-        List<WifiConfiguration> wifiConfigurations =
-                mWifiBackupRestore.retrieveConfigurationsFromSupplicantBackupData(
-                        supplicantData, ipConfigData);
-        restoreNetworks(wifiConfigurations);
-        Log.d(TAG, "Restored supplicant backup data");
+        restoreNetworks(mWifiBackupRestore.retrieveConfigurationsFromSupplicantBackupData(
+                supplicantData, ipConfigData));
     }
 
     /**
