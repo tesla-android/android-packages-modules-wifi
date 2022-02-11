@@ -1712,7 +1712,9 @@ public class WifiManager {
 
     /**
      * To be used with setScreenOnScanSchedule.
+     * @hide
      */
+    @SystemApi
     public static class ScreenOnScanSchedule {
         private final int mScanTimeMs;
         private final int mScanType;

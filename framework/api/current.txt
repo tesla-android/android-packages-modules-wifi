@@ -560,10 +560,6 @@ package android.net.wifi {
     method public abstract void onScanResultsAvailable();
   }
 
-  public static class WifiManager.ScreenOnScanSchedule {
-    ctor public WifiManager.ScreenOnScanSchedule(int, int);
-  }
-
   public abstract static class WifiManager.SubsystemRestartTrackingCallback {
     ctor public WifiManager.SubsystemRestartTrackingCallback();
     method public abstract void onSubsystemRestarted();
