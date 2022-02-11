@@ -1375,7 +1375,8 @@ public class WifiNativeTest extends WifiBaseTest {
     @Test
     public void testNotifyWifiCondCountryCodeChanged() throws Exception {
         assumeTrue(SdkLevel.isAtLeastT());
-        mWifiNative.countryCodeChanged("US");
-        verify(mWificondControl).notifyCountryCodeChanged();
+        String testCountryCode = "US";
+        mWifiNative.countryCodeChanged(testCountryCode);
+        verify(mWificondControl).notifyCountryCodeChanged(testCountryCode);
     }
 }

@@ -4163,8 +4163,11 @@ public class WifiNative {
      */
     public void countryCodeChanged(String countryCode) {
         if (SdkLevel.isAtLeastT()) {
-            if (!mWifiCondManager.notifyCountryCodeChanged()) {
-                Log.e(TAG, "Fail to notify wificond country code changed to " + countryCode);
+            try {
+                mWifiCondManager.notifyCountryCodeChanged(countryCode);
+            } catch (RuntimeException re) {
+                Log.e(TAG, "Fail to notify wificond country code changed to " + countryCode
+                        + "because exception happened:" + re);
             }
         }
     }
