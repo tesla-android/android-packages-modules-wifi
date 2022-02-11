@@ -27,6 +27,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.IInterfaceCreationInfoCallback;
 import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
@@ -386,4 +387,6 @@ interface IWifiManager
     void addCustomDhcpOptions(in WifiSsid ssid, in byte[] oui, in List<DhcpOption> options);
 
     void removeCustomDhcpOptions(in WifiSsid ssid, in byte[] oui);
+
+    void reportImpactToCreateIfaceRequest(String packageName, int interfaceType, boolean queryForNewInterface, in IInterfaceCreationInfoCallback callback);
 }
