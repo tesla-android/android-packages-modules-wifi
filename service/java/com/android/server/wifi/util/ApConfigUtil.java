@@ -975,6 +975,18 @@ public class ApConfigUtil {
                 R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported);
     }
 
+
+    /**
+     * Helper function to get whether or not restart Soft AP required when country code changed.
+     *
+     * @param context the caller context used to get value from resource file.
+     * @return true if supported, false otherwise.
+     */
+    public static boolean isSoftApRestartRequiredWhenCountryCodeChanged(@NonNull Context context) {
+        return context.getResources().getBoolean(
+                R.bool.config_wifiForcedSoftApRestartWhenCountryCodeChanged);
+    }
+
     /**
      * Helper function to get OWE-Transition is support or not.
      *
