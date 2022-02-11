@@ -114,7 +114,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.os.WorkSource;
 import android.os.connectivity.WifiActivityEnergyInfo;
 import android.os.test.TestLooper;
 import android.util.ArraySet;
@@ -3766,11 +3765,10 @@ public class WifiManagerTest {
         final String packageName2 = "TestPackage2";
         final int[] interfaces =
                 {WifiManager.WIFI_INTERFACE_TYPE_AP, WifiManager.WIFI_INTERFACE_TYPE_AWARE};
-        final WorkSource wsCompound = new WorkSource(TEST_UID, packageName1);
-        wsCompound.add(new WorkSource(TEST_UID, packageName2));
-        final WorkSource[] worksources = {new WorkSource(TEST_UID, TEST_PACKAGE_NAME), wsCompound};
+        final String[] packagesForInterfaces =
+                {TEST_PACKAGE_NAME, packageName1 + "," + packageName2};
         final List<Pair<Integer, String[]>> interfacePairs = List.of(
-                Pair.create(interfaces[0], new String[]{worksources[0].getPackageName(0)}),
+                Pair.create(interfaces[0], new String[]{TEST_PACKAGE_NAME}),
                 Pair.create(interfaces[1], new String[]{packageName1, packageName2}));
         when(mContext.getOpPackageName()).thenReturn(TEST_PACKAGE_NAME);
         BiConsumer<Boolean, List<Pair<Integer, String[]>>> resultCallback = mock(
@@ -3784,7 +3782,7 @@ public class WifiManagerTest {
                 new SynchronousExecutor(), resultCallback);
         verify(mWifiService).reportImpactToCreateIfaceRequest(eq(TEST_PACKAGE_NAME),
                 eq(interfaceToCreate), eq(queryForNewInterface), cbCaptor.capture());
-        cbCaptor.getValue().onResults(canCreate, interfaces, worksources);
+        cbCaptor.getValue().onResults(canCreate, interfaces, packagesForInterfaces);
         verify(resultCallback).accept(eq(canCreate), resultCaptor.capture());
         assertEquals(interfacePairs.size(), resultCaptor.getValue().size());
         for (int i = 0; i < interfacePairs.size(); ++i) {

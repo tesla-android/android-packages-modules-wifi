@@ -9479,20 +9479,20 @@ public class WifiManager {
                     queryForNewInterface, new IInterfaceCreationInfoCallback.Stub() {
                         @Override
                         public void onResults(boolean canCreate, int[] interfacesToDelete,
-                                WorkSource[] worksourcesForInterfaces) {
+                                String[] packagesForInterfaces) {
                             Binder.clearCallingIdentity();
-                            if (interfacesToDelete == null && worksourcesForInterfaces != null
-                                    || interfacesToDelete != null
-                                    && worksourcesForInterfaces == null || (canCreate && (
+                            if ((interfacesToDelete == null && packagesForInterfaces != null)
+                                    || (interfacesToDelete != null
+                                    && packagesForInterfaces == null) || (canCreate && (
                                     interfacesToDelete == null || interfacesToDelete.length
-                                            != worksourcesForInterfaces.length))) {
+                                            != packagesForInterfaces.length))) {
                                 Log.e(TAG,
                                         "reportImpactToCreateIfaceRequest: Invalid callback "
                                                 + "parameters - canCreate="
                                                 + canCreate + ", interfacesToDelete="
                                                 + Arrays.toString(interfacesToDelete)
                                                 + ", worksourcesForInterfaces="
-                                                + Arrays.toString(worksourcesForInterfaces));
+                                                + Arrays.toString(packagesForInterfaces));
                                 return;
                             }
 
@@ -9501,12 +9501,8 @@ public class WifiManager {
                                             : Collections.emptyList();
                             if (canCreate) {
                                 for (int i = 0; i < interfacesToDelete.length; ++i) {
-                                    String[] packages =
-                                            new String[worksourcesForInterfaces[i].size()];
-                                    for (int j = 0; j < packages.length; ++j) {
-                                        packages[j] = worksourcesForInterfaces[i].getPackageName(j);
-                                    }
-                                    finalList.add(Pair.create(interfacesToDelete[i], packages));
+                                    finalList.add(Pair.create(interfacesToDelete[i],
+                                            packagesForInterfaces[i].split(",")));
                                 }
                             }
                             executor.execute(() -> resultCallback.accept(canCreate, finalList));

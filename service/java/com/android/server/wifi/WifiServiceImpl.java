@@ -6527,14 +6527,19 @@ public class WifiServiceImpl extends BaseWifiService {
                     callback.onResults(false, null, null);
                 } else {
                     int[] interfaces = new int[details.size()];
-                    WorkSource[] worksources = new WorkSource[details.size()];
+                    String[] packagesForInterfaces = new String[details.size()];
                     int i = 0;
                     for (Pair<Integer, WorkSource> detail: details) {
                         interfaces[i] = hdmIfaceToWifiIfaceMap.get(detail.first);
-                        worksources[i] = detail.second;
+                        StringBuilder packages = new StringBuilder();
+                        for (int j = 0; j < detail.second.size(); ++j) {
+                            if (j != 0) packages.append(",");
+                            packages.append(detail.second.getPackageName(j));
+                        }
+                        packagesForInterfaces[i] = packages.toString();
                         ++i;
                     }
-                    callback.onResults(true, interfaces, worksources);
+                    callback.onResults(true, interfaces, packagesForInterfaces);
                 }
             } catch (RemoteException e) {
                 Log.e(TAG,
