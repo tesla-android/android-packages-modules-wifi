@@ -199,6 +199,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     @Nullable private CoexManager mCoexManager;
     private WifiGlobals mWifiGlobals;
     private UserManager mUserManager;
+    private final int mVerboseAlwaysOnLevel;
 
     private static final Boolean JOIN_GROUP = true;
     private static final Boolean FORM_GROUP = false;
@@ -614,6 +615,8 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         mClientHandler = new ClientHandler(TAG, wifiP2pThread.getLooper());
         mP2pStateMachine = new P2pStateMachine(TAG, wifiP2pThread.getLooper(), mP2pSupported);
         mP2pStateMachine.start();
+        mVerboseAlwaysOnLevel = context.getResources()
+                .getInteger(R.integer.config_wifiVerboseLoggingAlwaysOnLevel);
     }
 
     /**
@@ -624,7 +627,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
     }
 
     private boolean isVerboseLoggingEnabled() {
-        return mFrameworkFacade.isVerboseLoggingAlwaysOn(mContext, mBuildProperties)
+        return mFrameworkFacade.isVerboseLoggingAlwaysOn(mVerboseAlwaysOnLevel, mBuildProperties)
                 ? true : mVerboseLoggingEnabled;
     }
 
