@@ -539,7 +539,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     },
                     new IntentFilter(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED),
                     null,
-                    new Handler(mWifiHandlerThread.getLooper()));
+                    new Handler(mWifiHandlerThread.getLooper()),
+                    Context.RECEIVER_NOT_EXPORTED);
 
             mContext.registerReceiver(
                     new BroadcastReceiver() {
@@ -555,7 +556,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     },
                     new IntentFilter(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED),
                     null,
-                    new Handler(mWifiHandlerThread.getLooper()));
+                    new Handler(mWifiHandlerThread.getLooper()),
+                    Context.RECEIVER_NOT_EXPORTED);
 
             mContext.registerReceiver(
                     new BroadcastReceiver() {
@@ -588,7 +590,8 @@ public class WifiServiceImpl extends BaseWifiService {
                     },
                     new IntentFilter(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED),
                     null,
-                    new Handler(mWifiHandlerThread.getLooper()));
+                    new Handler(mWifiHandlerThread.getLooper()),
+                    Context.RECEIVER_NOT_EXPORTED);
 
             mContext.registerReceiver(
                     new BroadcastReceiver() {

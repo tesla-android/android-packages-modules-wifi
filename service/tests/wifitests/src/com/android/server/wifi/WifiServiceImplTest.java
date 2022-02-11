@@ -5618,7 +5618,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 (IntentFilter) argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5639,7 +5640,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 (IntentFilter) argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5662,7 +5664,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_ABSENT);
@@ -5690,7 +5693,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_LOADED);
@@ -8301,7 +8305,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
         sendCountryCodeChangedBroadcast("US");
         verify(mWifiCountryCode).setTelephonyCountryCodeAndUpdate(any());
     }
