@@ -182,6 +182,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
      * and PMF must be set to Required.
      */
     public static final int SECURITY_TYPE_PASSPOINT_R3 = 12;
+    /** Security type for Easy Connect (DPP) network */
+    public static final int SECURITY_TYPE_DPP = 13;
 
     /**
      * Unknown security type that cannot be converted to
@@ -209,6 +211,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT,
             SECURITY_TYPE_PASSPOINT_R1_R2,
             SECURITY_TYPE_PASSPOINT_R3,
+            SECURITY_TYPE_DPP,
     })
     public @interface SecurityType {}
 
@@ -1902,6 +1905,8 @@ public class WifiInfo implements TransportInfo, Parcelable {
                 return SECURITY_TYPE_PASSPOINT_R1_R2;
             case WifiConfiguration.SECURITY_TYPE_PASSPOINT_R3:
                 return SECURITY_TYPE_PASSPOINT_R3;
+            case WifiConfiguration.SECURITY_TYPE_DPP:
+                return SECURITY_TYPE_DPP;
             default:
                 return SECURITY_TYPE_UNKNOWN;
         }

@@ -336,9 +336,14 @@ public final class ScanResult implements Parcelable {
     public static final int KEY_MGMT_FILS_SHA384 = 16;
     /**
      * @hide
+     * Security key management scheme: DPP.
+     */
+    public static final int KEY_MGMT_DPP = 17;
+    /**
+     * @hide
      * Security key management scheme: any unknown AKM.
      */
-    public static final int KEY_MGMT_UNKNOWN = 17;
+    public static final int KEY_MGMT_UNKNOWN = 18;
     /**
      * @hide
      * No cipher suite.
