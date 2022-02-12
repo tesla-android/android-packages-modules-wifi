@@ -127,6 +127,7 @@ import android.net.wifi.CoexUnsafeChannel;
 import android.net.wifi.IActionListener;
 import android.net.wifi.ICoexCallback;
 import android.net.wifi.IDppCallback;
+import android.net.wifi.IInterfaceCreationInfoCallback;
 import android.net.wifi.ILastCallerListener;
 import android.net.wifi.ILocalOnlyHotspotCallback;
 import android.net.wifi.INetworkRequestMatchCallback;
@@ -185,6 +186,7 @@ import android.telephony.PhoneStateListener;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.ArraySet;
+import android.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
@@ -407,6 +409,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Mock IOnWifiDriverCountryCodeChangedListener mIOnWifiDriverCountryCodeChangedListener;
     @Mock WifiShellCommand mWifiShellCommand;
     @Mock DevicePolicyManager mDevicePolicyManager;
+    @Mock HalDeviceManager mHalDeviceManager;
 
     @Captor ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -557,6 +560,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getLastCallerInfoManager()).thenReturn(mLastCallerInfoManager);
         when(mUserManager.getUserRestrictions()).thenReturn(mBundle);
         when(mContext.getSystemService(DevicePolicyManager.class)).thenReturn(mDevicePolicyManager);
+        when(mWifiInjector.getHalDeviceManager()).thenReturn(mHalDeviceManager);
 
         doAnswer(new AnswerWithArguments() {
             public void answer(Runnable onStoppedListener) throws Throwable {
@@ -5614,7 +5618,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 (IntentFilter) argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5635,7 +5640,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 (IntentFilter) argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         int userHandle = TEST_USER_HANDLE;
         // Send the broadcast
@@ -5658,7 +5664,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_CARD_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_ABSENT);
@@ -5686,7 +5693,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
 
         Intent intent = new Intent(TelephonyManager.ACTION_SIM_APPLICATION_STATE_CHANGED);
         intent.putExtra(TelephonyManager.EXTRA_SIM_STATE, TelephonyManager.SIM_STATE_LOADED);
@@ -8297,7 +8305,8 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 argThat((IntentFilter filter) ->
                         filter.hasAction(TelephonyManager.ACTION_NETWORK_COUNTRY_CHANGED)),
                 isNull(),
-                any(Handler.class));
+                any(Handler.class),
+                eq(Context.RECEIVER_NOT_EXPORTED));
         sendCountryCodeChangedBroadcast("US");
         verify(mWifiCountryCode).setTelephonyCountryCodeAndUpdate(any());
     }
@@ -9931,5 +9940,98 @@ public class WifiServiceImplTest extends WifiBaseTest {
         mLooper.dispatchAll();
 
         verify(mClientModeManager).disconnect();
+    }
+
+    @Test
+    public void testIsItPossibleToCreateInterfaceInvalidConditions() {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(anyInt())).thenReturn(true);
+        IInterfaceCreationInfoCallback.Stub mockCallback = mock(
+                IInterfaceCreationInfoCallback.Stub.class);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(null,
+                        WifiManager.WIFI_INTERFACE_TYPE_AP, true, mockCallback));
+        assertThrows(IllegalArgumentException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                        WifiManager.WIFI_INTERFACE_TYPE_AP, true, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                        /* clearly invalid value */ 100, true, mockCallback));
+
+        mWifiServiceImpl = spy(mWifiServiceImpl);
+        when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(TEST_UID);
+        doThrow(new SecurityException()).when(mWifiPermissionsUtil).checkPackage(TEST_UID,
+                TEST_PACKAGE_NAME);
+        assertThrows(SecurityException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                        WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
+
+        when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(anyInt())).thenReturn(false);
+        assertThrows(SecurityException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                        WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
+
+        when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(anyInt())).thenReturn(true);
+        doThrow(new SecurityException()).when(mContext)
+                .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
+                        eq("WifiService"));
+        assertThrows(SecurityException.class,
+                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                        WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
+    }
+
+    @Test
+    public void testIsItPossibleToCreateInterface() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastT());
+
+        IInterfaceCreationInfoCallback.Stub mockCallback = mock(
+                IInterfaceCreationInfoCallback.Stub.class);
+        final int interfaceToCreate = WifiManager.WIFI_INTERFACE_TYPE_AWARE;
+        final int interfaceToCreateInternal = HalDeviceManager.HDM_CREATE_IFACE_NAN;
+        mWifiServiceImpl = spy(mWifiServiceImpl);
+        when(mWifiServiceImpl.getMockableCallingUid()).thenReturn(TEST_UID);
+        when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(TEST_UID)).thenReturn(true);
+        final WorkSource ws = new WorkSource(TEST_UID, TEST_PACKAGE_NAME);
+        final WorkSource wsOther = new WorkSource(OTHER_TEST_UID, TEST_PACKAGE_NAME_OTHER);
+
+        ArgumentCaptor<Boolean> boolCaptor = ArgumentCaptor.forClass(Boolean.class);
+        ArgumentCaptor<int[]> intArrayCaptor = ArgumentCaptor.forClass(int[].class);
+        ArgumentCaptor<WorkSource[]> wsArrayCaptor = ArgumentCaptor.forClass(WorkSource[].class);
+
+        // 3 results: failure, success with no side effects, success with side effects
+        when(mHalDeviceManager.reportImpactToCreateIface(interfaceToCreateInternal, true, ws))
+                .thenReturn(null)
+                .thenReturn(Collections.emptyList())
+                .thenReturn(List.of(Pair.create(HalDeviceManager.HDM_CREATE_IFACE_P2P, wsOther)));
+        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
+                true, mockCallback);
+        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
+                true, mockCallback);
+        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
+                true, mockCallback);
+        mLooper.dispatchAll();
+        verify(mHalDeviceManager, times(3)).reportImpactToCreateIface(
+                interfaceToCreateInternal, true, ws);
+        verify(mockCallback, times(3)).onResults(boolCaptor.capture(), intArrayCaptor.capture(),
+                wsArrayCaptor.capture());
+
+        // result 0: failure
+        assertFalse(boolCaptor.getAllValues().get(0));
+        assertNull(intArrayCaptor.getAllValues().get(0));
+        assertNull(wsArrayCaptor.getAllValues().get(0));
+
+        // result 1: success with no side effects
+        assertTrue(boolCaptor.getAllValues().get(1));
+        assertEquals(0, intArrayCaptor.getAllValues().get(1).length);
+        assertEquals(0, wsArrayCaptor.getAllValues().get(1).length);
+
+        // result 2: success with no side effects
+        assertTrue(boolCaptor.getAllValues().get(2));
+        assertEquals(1, intArrayCaptor.getAllValues().get(2).length);
+        assertEquals(WifiManager.WIFI_INTERFACE_TYPE_DIRECT,
+                intArrayCaptor.getAllValues().get(2)[0]);
+        assertEquals(wsOther, wsArrayCaptor.getAllValues().get(2)[0]);
     }
 }

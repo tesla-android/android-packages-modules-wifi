@@ -3400,6 +3400,39 @@ public class WifiNative {
     }
 
     /**
+     * Class to represent a connection MLO Link
+     */
+    public static class ConnectionMloLink {
+        public int linkId;
+        public MacAddress staMacAddress;
+
+        ConnectionMloLink() {
+            // Nothing for now
+        };
+    }
+
+    /**
+     * Class to represent the MLO links info for a connection that is collected after association
+     */
+    public static class ConnectionMloLinksInfo {
+        public ConnectionMloLink[] links;
+
+        ConnectionMloLinksInfo() {
+            // Nothing for now
+        }
+    }
+
+    /**
+     * Returns connection MLO Links Info.
+     *
+     * @param ifaceName Name of the interface.
+     * @return connection MLO Links Info
+     */
+    public ConnectionMloLinksInfo getConnectionMloLinksInfo(@NonNull String ifaceName) {
+        return mSupplicantStaIfaceHal.getConnectionMloLinksInfo(ifaceName);
+    }
+
+    /**
      * Get the APF (Android Packet Filter) capabilities of the device
      * @param ifaceName Name of the interface.
      */
@@ -4163,8 +4196,11 @@ public class WifiNative {
      */
     public void countryCodeChanged(String countryCode) {
         if (SdkLevel.isAtLeastT()) {
-            if (!mWifiCondManager.notifyCountryCodeChanged()) {
-                Log.e(TAG, "Fail to notify wificond country code changed to " + countryCode);
+            try {
+                mWifiCondManager.notifyCountryCodeChanged(countryCode);
+            } catch (RuntimeException re) {
+                Log.e(TAG, "Fail to notify wificond country code changed to " + countryCode
+                        + "because exception happened:" + re);
             }
         }
     }

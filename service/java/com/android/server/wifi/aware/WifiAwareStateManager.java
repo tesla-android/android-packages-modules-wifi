@@ -602,6 +602,13 @@ public class WifiAwareStateManager implements WifiAwareShellCommand.DelegatedShe
         return mCharacteristics;
     }
 
+    /**
+     * Check if there is any active attach session
+     */
+    public boolean isDeviceAttached() {
+        return mClients != null && mClients.size() > 0;
+    }
+
     /*
      * Cross-service API: synchronized but independent of state machine
      */

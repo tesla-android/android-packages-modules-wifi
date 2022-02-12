@@ -28,6 +28,11 @@ import static android.net.wifi.WifiManager.LocalOnlyHotspotCallback.REQUEST_REGI
 import static android.net.wifi.WifiManager.WIFI_STATE_DISABLED;
 import static android.net.wifi.WifiManager.WIFI_STATE_ENABLED;
 
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP_BRIDGE;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_NAN;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_P2P;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_STA;
 import static com.android.server.wifi.SelfRecovery.REASON_API_CALL;
 
 import android.content.BroadcastReceiver;
@@ -68,6 +73,7 @@ import android.os.PatternMatcher;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.os.WorkSource;
 import android.telephony.Annotation;
 import android.telephony.PhysicalChannelConfig;
 import android.telephony.SubscriptionManager;
@@ -75,6 +81,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
+import android.util.SparseArray;
 import android.view.Display;
 
 import androidx.annotation.NonNull;
@@ -177,6 +184,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     private int mSapState = WifiManager.WIFI_STATE_UNKNOWN;
     private final ScanRequestProxy mScanRequestProxy;
     private final @NonNull WifiDialogManager mWifiDialogManager;
+    private final HalDeviceManager mHalDeviceManager;
 
     private class SoftApCallbackProxy extends ISoftApCallback.Stub {
         private final PrintWriter mPrintWriter;
@@ -286,6 +294,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         mWifiApConfigStore = wifiInjector.getWifiApConfigStore();
         mScanRequestProxy = wifiInjector.getScanRequestProxy();
         mWifiDialogManager = wifiInjector.getWifiDialogManager();
+        mHalDeviceManager = wifiInjector.getHalDeviceManager();
     }
 
     @Override
@@ -1208,6 +1217,72 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         pw.println(msg);
                     }
                     return 0;
+                case "query-interface":
+                    String uidArg = getNextArgRequired();
+                    int uid = 0;
+                    try {
+                        uid = Integer.parseInt(uidArg);
+                    } catch (NumberFormatException e) {
+                        pw.println(
+                                "Invalid UID specified, can't convert to an integer - " + uidArg);
+                        return -1;
+                    }
+                    String packageName = getNextArgRequired();
+
+                    String interfaceTypeArg = getNextArgRequired();
+                    int interfaceType;
+                    switch (interfaceTypeArg) {
+                        case "STA":
+                            interfaceType = HDM_CREATE_IFACE_STA;
+                            break;
+                        case "AP":
+                            interfaceType = HDM_CREATE_IFACE_AP;
+                            break;
+                        case "AWARE":
+                            interfaceType = HDM_CREATE_IFACE_NAN;
+                            break;
+                        case "DIRECT":
+                            interfaceType = HDM_CREATE_IFACE_P2P;
+                            break;
+                        default:
+                            pw.println("Invalid interface type - expected STA|AP|AWARE|DIRECT: "
+                                    + interfaceTypeArg);
+                            return -1;
+                    }
+                    boolean queryForNewInterface = false;
+                    String optArg = getNextArg();
+                    if (optArg != null) {
+                        if (TextUtils.equals("-new", optArg)) {
+                            queryForNewInterface = true;
+                        } else {
+                            pw.println("Unknown extra arg --- " + optArg);
+                            return -1;
+                        }
+                    }
+                    List<Pair<Integer, WorkSource>> details =
+                            mHalDeviceManager.reportImpactToCreateIface(interfaceType,
+                                    queryForNewInterface, new WorkSource(uid, packageName));
+                    final SparseArray<String> ifaceMap = new SparseArray<String>() {{
+                            put(HDM_CREATE_IFACE_STA, "STA");
+                            put(HDM_CREATE_IFACE_AP, "AP");
+                            put(HDM_CREATE_IFACE_AP_BRIDGE, "AP");
+                            put(HDM_CREATE_IFACE_P2P, "DIRECT");
+                            put(HDM_CREATE_IFACE_NAN, "AWARE");
+                        }};
+                    if (details == null) {
+                        pw.println("Can't create interface: " + interfaceTypeArg);
+                    } else if (details.size() == 0) {
+                        pw.println("Interface " + interfaceTypeArg
+                                + " can be created without destroying any other interfaces");
+                    } else {
+                        pw.println("Interface " + interfaceTypeArg
+                                + " can be created. Following interfaces will be destroyed:");
+                        for (Pair<Integer, WorkSource> detail: details) {
+                            pw.println("    Type=" + ifaceMap.get(detail.first) + ", WS="
+                                    + detail.second);
+                        }
+                    }
+                    return 0;
                 default:
                     return handleDefaultCommands(cmd);
             }
@@ -1909,6 +1984,11 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    -p - Show PIN input");
         pw.println("    -d - Display PIN <pin>");
         pw.println("    -i - Display ID");
+        pw.println("  query-interface <uid> <package_name> STA|AP|AWARE|DIRECT [-new]");
+        pw.println(
+                "    Query whether the specified could be created for the specified UID and "
+                        + "package name, and if so - what other interfaces would be destroyed");
+        pw.println("    -new - query for a new interfaces (otherwise an existing interface is ok");
     }
 
     private void onHelpPrivileged(PrintWriter pw) {

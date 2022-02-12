@@ -260,13 +260,15 @@ public class ActiveModeWardenTest extends WifiBaseTest {
         verify(mContext).registerReceiver(
                 bcastRxCaptor.capture(),
                 argThat(filter ->
-                        filter.hasAction(TelephonyManager.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED)),
+                eq(Context.RECEIVER_NOT_EXPORTED));
         mEmergencyCallbackModeChangedBr = bcastRxCaptor.getValue();
 
         verify(mContext).registerReceiver(
                 bcastRxCaptor.capture(),
                 argThat(filter ->
-                        filter.hasAction(TelephonyManager.ACTION_EMERGENCY_CALL_STATE_CHANGED)));
+                        filter.hasAction(TelephonyManager.ACTION_EMERGENCY_CALL_STATE_CHANGED)),
+                eq(Context.RECEIVER_NOT_EXPORTED));
         mEmergencyCallStateChangedBr = bcastRxCaptor.getValue();
     }
 

@@ -765,6 +765,10 @@ package android.net.wifi {
     method public void triggerUpdateOfWifiUsabilityStats(int);
   }
 
+  public static class WifiManager.ScreenOnScanSchedule {
+    ctor public WifiManager.ScreenOnScanSchedule(int, int);
+  }
+
   public static interface WifiManager.SoftApCallback {
     method public default void onBlockedClientConnecting(@NonNull android.net.wifi.WifiClient, int);
     method public default void onCapabilityChanged(@NonNull android.net.wifi.SoftApCapability);

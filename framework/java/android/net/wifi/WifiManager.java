@@ -1779,7 +1779,9 @@ public class WifiManager {
 
     /**
      * To be used with setScreenOnScanSchedule.
+     * @hide
      */
+    @SystemApi
     public static class ScreenOnScanSchedule {
         private final int mScanTimeMs;
         private final int mScanType;
@@ -9392,6 +9394,124 @@ public class WifiManager {
         }
         try {
             mService.removeCustomDhcpOptions(ssid, oui);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Wi-Fi interface of type STA.
+     */
+    public static final int WIFI_INTERFACE_TYPE_STA = 0;
+
+    /**
+     * Wi-Fi interface of type AP.
+     */
+    public static final int WIFI_INTERFACE_TYPE_AP = 1;
+
+    /**
+     * Wi-Fi interface of type Wi-Fi Aware (aka NAN).
+     */
+    public static final int WIFI_INTERFACE_TYPE_AWARE = 2;
+
+    /**
+     * Wi-Fi interface of type Wi-Fi Direct (aka P2P).
+     */
+    public static final int WIFI_INTERFACE_TYPE_DIRECT = 3;
+
+    /** @hide */
+    @IntDef(prefix = { "WIFI_INTERFACE_TYPE_" }, value = {
+            WIFI_INTERFACE_TYPE_STA,
+            WIFI_INTERFACE_TYPE_AP,
+            WIFI_INTERFACE_TYPE_AWARE,
+            WIFI_INTERFACE_TYPE_DIRECT,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface WifiInterfaceType {}
+
+    /**
+     * Queries the framework to determine whether the specified interface can be created, and if
+     * so - what other interfaces would be torn down by the framework to allow this creation if
+     * it were requested. The result is returned via the specified {@link BiConsumer} callback
+     * which returns two arguments:
+     * <li>First argument: a {@code boolean} - indicating whether or not the interface can be
+     * created.</li>
+     * <li>Second argument: a {@code List<Pair<Integer, String[]>>} - if the interface can be
+     * created (first argument is {@code true} then this is the list of interface types which
+     * will be removed and the packages which requested them. Possibly an empty list. If the
+     * first argument is {@code false}, then an empty list will be returned here.</li>
+     * <p>
+     * Interfaces, input and output, are specified using the {@code WIFI_INTERFACE_*} constants:
+     * {@link #WIFI_INTERFACE_TYPE_STA}, {@link #WIFI_INTERFACE_TYPE_AP},
+     * {@link #WIFI_INTERFACE_TYPE_AWARE}, or {@link #WIFI_INTERFACE_TYPE_DIRECT}.
+     * <p>
+     * This method does not actually create the interface. That operation is handled by the
+     * framework when a particular service method is called. E.g. a Wi-Fi Direct interface may be
+     * created when various methods of {@link android.net.wifi.p2p.WifiP2pManager} are called,
+     * similarly for Wi-Fi Aware and {@link android.net.wifi.aware.WifiAwareManager}.
+     * <p>
+     * Note: the information returned via this method is the current snapshot of the system. It may
+     * change due to actions of the framework or other apps.
+     *
+     * @param interfaceType The interface type whose possible creation is being queried.
+     * @param queryForNewInterface Indicates that the query is for a new interface of the specified
+     *                             type - an existing interface won't meet the query. Some
+     *                             operations (such as Wi-Fi Direct and Wi-Fi Aware are a shared
+     *                             resource and so may not need a new interface).
+     * @param executor An {@link Executor} on which to return the result.
+     * @param resultCallback The asynchronous callback which will return two argument: a
+     * {@code boolean} (whether or not the interface can be created), and a
+     * {@code List<Pair<Integer, String[]>>} (a list of interfaces which will be destroyed when
+     *                      the interface is created and the packages which requested them and
+     *                      thus may be impacted).
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @RequiresPermission(allOf = {android.Manifest.permission.MANAGE_WIFI_INTERFACES,
+            ACCESS_WIFI_STATE})
+    public void reportImpactToCreateIfaceRequest(@WifiInterfaceType int interfaceType,
+            boolean queryForNewInterface,
+            @NonNull @CallbackExecutor Executor executor,
+            @NonNull BiConsumer<Boolean, List<Pair<Integer, String[]>>> resultCallback) {
+        if (executor == null) throw new IllegalArgumentException("Null executor");
+        if (resultCallback == null) throw new IllegalArgumentException("Null resultCallback");
+        try {
+            mService.reportImpactToCreateIfaceRequest(mContext.getOpPackageName(), interfaceType,
+                    queryForNewInterface, new IInterfaceCreationInfoCallback.Stub() {
+                        @Override
+                        public void onResults(boolean canCreate, int[] interfacesToDelete,
+                                WorkSource[] worksourcesForInterfaces) {
+                            Binder.clearCallingIdentity();
+                            if (interfacesToDelete == null && worksourcesForInterfaces != null
+                                    || interfacesToDelete != null
+                                    && worksourcesForInterfaces == null || (canCreate && (
+                                    interfacesToDelete == null || interfacesToDelete.length
+                                            != worksourcesForInterfaces.length))) {
+                                Log.e(TAG,
+                                        "reportImpactToCreateIfaceRequest: Invalid callback "
+                                                + "parameters - canCreate="
+                                                + canCreate + ", interfacesToDelete="
+                                                + Arrays.toString(interfacesToDelete)
+                                                + ", worksourcesForInterfaces="
+                                                + Arrays.toString(worksourcesForInterfaces));
+                                return;
+                            }
+
+                            final List<Pair<Integer, String[]>> finalList =
+                                    (canCreate && interfacesToDelete.length > 0) ? new ArrayList<>()
+                                            : Collections.emptyList();
+                            if (canCreate) {
+                                for (int i = 0; i < interfacesToDelete.length; ++i) {
+                                    String[] packages =
+                                            new String[worksourcesForInterfaces[i].size()];
+                                    for (int j = 0; j < packages.length; ++j) {
+                                        packages[j] = worksourcesForInterfaces[i].getPackageName(j);
+                                    }
+                                    finalList.add(Pair.create(interfacesToDelete[i], packages));
+                                }
+                            }
+                            executor.execute(() -> resultCallback.accept(canCreate, finalList));
+                        }
+                    });
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
