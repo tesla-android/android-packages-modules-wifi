@@ -2702,7 +2702,11 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
                 handleRemoteException(e, methodStr);
             } catch (ServiceSpecificException e) {
                 handleServiceSpecificException(e, methodStr);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Invalid STA Mac Address received from HAL");
+                return null;
             }
+
             return null;
         }
     }

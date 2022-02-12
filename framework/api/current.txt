@@ -26,8 +26,9 @@ package android.net.wifi {
     method public int getLinkId();
     method @Nullable public android.net.MacAddress getStaMacAddress();
     method public int getState();
-    method public void writeToParcel(android.os.Parcel, int);
+    method public void writeToParcel(@NonNull android.os.Parcel, int);
     field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.MloLink> CREATOR;
+    field public static final int INVALID_MLO_LINK_ID = -1; // 0xffffffff
     field public static final int MLO_LINK_STATE_ACTIVE = 3; // 0x3
     field public static final int MLO_LINK_STATE_IDLE = 2; // 0x2
     field public static final int MLO_LINK_STATE_INVALID = 0; // 0x0

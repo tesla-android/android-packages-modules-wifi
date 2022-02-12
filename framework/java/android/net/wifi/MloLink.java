@@ -40,23 +40,43 @@ import java.util.Objects;
 public final class MloLink implements Parcelable {
 
     /**
-     * MLO link states
+     * Invalid link id. Used in {link #getLinkId()}
      */
+    public static final int INVALID_MLO_LINK_ID = -1;
+
     /**
-     * Invalid link state
+     * Lower limit for MLO link id
+     * As described in IEEE 802.11be Specification, section 9.4.2.295b.2.
+     *
+     * @hide
+     */
+    public static final int MIN_MLO_LINK_ID = 0;
+
+    /**
+     * Upper limit for MLO link id
+     * As described in IEEE 802.11be Specification, section 9.4.2.295b.2.
+     *
+     * @hide
+     */
+    public static final int MAX_MLO_LINK_ID = 15;
+
+    /**
+     * MLO link state: Invalid link state. Used in {link #getState()}
      */
     public static final int MLO_LINK_STATE_INVALID = 0;
     /**
-     * Link is hot associated with the access point
+     * MLO link state: Link is not associated with the access point. Used in {link #getState()}
      */
     public static final int MLO_LINK_STATE_UNASSOCIATED = 1;
     /**
-     * Link is associated to the access point but not mapped to any traffic stream
+     * MLO link state: Link is associated to the access point but not mapped to any traffic stream.
+     * Used in {link #getState()}
      */
     public static final int MLO_LINK_STATE_IDLE = 2;
     /**
-     * Link is associated to the access point and mapped to at least one traffic stream.
-     * Note that link could be in that state but in power save mode.
+     * MLO link state: Link is associated to the access point and mapped to at least one traffic
+     * stream. {link #getState()}
+     * Note that an MLO link could be in that state but in power save mode.
      */
     public static final int MLO_LINK_STATE_ACTIVE = 3;
 
@@ -79,21 +99,24 @@ public final class MloLink implements Parcelable {
 
     /**
      * Constructor for a MloLInk.
-     * @param band One of {@link WifiAnnotations.WifiBandBasic}
-     * @param channel Channel number
      */
     public MloLink() {
         if (!SdkLevel.isAtLeastT()) {
             throw new UnsupportedOperationException();
         }
-        mBand = ScanResult.UNSPECIFIED;
+        mBand = WifiScanner.WIFI_BAND_UNSPECIFIED;
         mChannel = 0;
         mState = MLO_LINK_STATE_UNASSOCIATED;
         mStaMacAddress = null;
-        mLinkId = 0;
+        mLinkId = INVALID_MLO_LINK_ID;
     }
 
-    /** Returns the Wi-Fi band of this link as one of {@code WifiScanner.WIFI_BAND_*} */
+    /** Returns the Wi-Fi band of this link as one of:
+     *      {@link WifiScanner#WIFI_BAND_UNSPECIFIED},
+     *      {@link WifiScanner#WIFI_BAND_24_GHZ},
+     *      {@link WifiScanner#WIFI_BAND_5_GHZ},
+     *      {@link WifiScanner#WIFI_BAND_6_GHZ}
+     */
     public @WifiAnnotations.WifiBandBasic int getBand() {
         return mBand;
     }
@@ -103,12 +126,22 @@ public final class MloLink implements Parcelable {
         return mChannel;
     }
 
-    /** Returns the link id of this link. */
+    /**
+     * Returns the link id of this link.
+     * Valid values are 0-15, as described in IEEE 802.11be Specification, section 9.4.2.295b.2.
+     *
+     * @return {@link #INVALID_MLO_LINK_ID} or a valid value (0-15).
+     */
     public int getLinkId() {
         return mLinkId;
     }
 
-    /** Returns the state of this link. */
+    /** Returns the state of this link as one of:
+     *     {@link #MLO_LINK_STATE_INVALID}
+     *     {@link #MLO_LINK_STATE_UNASSOCIATED}
+     *     {@link #MLO_LINK_STATE_IDLE}
+     *     {@link #MLO_LINK_STATE_ACTIVE}
+     */
     public @MloLinkState int getState() {
         return mState;
     }
@@ -119,7 +152,7 @@ public final class MloLink implements Parcelable {
     }
 
     /**
-     * sets the channel number of this link
+     * Sets the channel number of this link.
      *
      * @hide
      */
@@ -128,7 +161,7 @@ public final class MloLink implements Parcelable {
     }
 
     /**
-     * sets the band for this link
+     * Sets the band for this link
      *
      * @hide
      */
@@ -137,7 +170,7 @@ public final class MloLink implements Parcelable {
     }
 
     /**
-     * sets the linkId of this link
+     * Sets the linkId of this link
      *
      * @hide
      */
@@ -146,7 +179,7 @@ public final class MloLink implements Parcelable {
     }
 
     /**
-     * sets the state of this link
+     * Sets the state of this link
      *
      * @hide
      */
@@ -231,15 +264,15 @@ public final class MloLink implements Parcelable {
         return sb.toString();
     }
 
-    /** Implement the Parcelable interface {@hide} */
+    /** Implement the Parcelable interface */
     @Override
     public int describeContents() {
         return 0;
     }
 
-    /** Implement the Parcelable interface {@hide} */
+    /** Implement the Parcelable interface */
     @Override
-    public void writeToParcel(Parcel dest, int flags) {
+    public void writeToParcel(@NonNull Parcel dest, int flags) {
         dest.writeInt(mBand);
         dest.writeInt(mChannel);
         dest.writeInt(mLinkId);
