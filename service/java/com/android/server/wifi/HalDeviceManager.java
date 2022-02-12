@@ -62,6 +62,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -651,8 +652,8 @@ public class HalDeviceManager {
             Log.d(TAG, "isItPossibleToCreateIface: createIfaceType=" + createIfaceType
                     + ", requiredChipCapabilities=" + requiredChipCapabilities);
         }
-        return reportImpactToCreateIface(createIfaceType, requiredChipCapabilities, requestorWs)
-                != null;
+        return reportImpactToCreateIface(createIfaceType, true, requiredChipCapabilities,
+                requestorWs) != null;
     }
 
     /**
@@ -680,6 +681,9 @@ public class HalDeviceManager {
      * - otherwise: a list of interfaces to be destroyed
      *
      * @param createIfaceType Type of iface requested.
+     * @param queryForNewInterface True: request another interface of the specified type, False: if
+     *                             there's already an interface of the specified type then no need
+     *                             for further operation.
      * @param requiredChipCapabilities The bitmask of Capabilities which are required.
      *                                 See IWifiChip.hal for documentation.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
@@ -688,8 +692,8 @@ public class HalDeviceManager {
      * interface type is described using @HdmIfaceTypeForCreation.
      */
     public List<Pair<Integer, WorkSource>> reportImpactToCreateIface(
-            @HdmIfaceTypeForCreation int createIfaceType, long requiredChipCapabilities,
-            WorkSource requestorWs) {
+            @HdmIfaceTypeForCreation int createIfaceType, boolean queryForNewInterface,
+            long requiredChipCapabilities, WorkSource requestorWs) {
         if (VDBG) {
             Log.d(TAG, "reportImpactToCreateIface: ifaceType=" + createIfaceType
                     + ", requiredChipCapabilities=" + requiredChipCapabilities
@@ -709,6 +713,15 @@ public class HalDeviceManager {
                 Log.e(TAG, "createIface: local cache is invalid!");
                 stopWifi(); // major error: shutting down
                 return null;
+            }
+
+            if (!queryForNewInterface) {
+                int targetHalIfaceType = HAL_IFACE_MAP.get(createIfaceType);
+                for (WifiChipInfo chipInfo: chipInfos) {
+                    if (chipInfo.ifaces[targetHalIfaceType].length != 0) {
+                        return Collections.emptyList(); // approve w/o deleting any interfaces
+                    }
+                }
             }
 
             creationData = getBestIfaceCreationProposal(chipInfos, createIfaceType,
@@ -751,16 +764,21 @@ public class HalDeviceManager {
     }
 
     /**
-     * See {@link #reportImpactToCreateIface(int, long, WorkSource)}.
+     * See {@link #reportImpactToCreateIface(int, boolean, long, WorkSource)}.
      *
      * @param ifaceType Type of iface requested.
+     * @param queryForNewInterface True: request another interface of the specified type, False: if
+     *                             there's already an interface of the specified type then no need
+     *                             for further operation.
      * @param requestorWs Requestor worksource. This will be used to determine priority of this
      *                    interface using rules based on the requestor app's context.
      * @return the list of interfaces that would have to be destroyed and their worksource.
      */
     public List<Pair<Integer, WorkSource>> reportImpactToCreateIface(
-            @HdmIfaceTypeForCreation int ifaceType, WorkSource requestorWs) {
-        return reportImpactToCreateIface(ifaceType, CHIP_CAPABILITY_ANY, requestorWs);
+            @HdmIfaceTypeForCreation int ifaceType, boolean queryForNewInterface,
+            WorkSource requestorWs) {
+        return reportImpactToCreateIface(ifaceType, queryForNewInterface, CHIP_CAPABILITY_ANY,
+                requestorWs);
     }
 
     // internal state

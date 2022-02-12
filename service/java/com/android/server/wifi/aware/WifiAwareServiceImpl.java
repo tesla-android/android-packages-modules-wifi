@@ -173,7 +173,7 @@ public class WifiAwareServiceImpl extends IWifiAwareManager.Stub {
     @Override
     public boolean isDeviceAttached() {
         enforceAccessPermission();
-        return mDeathRecipientsByClientId.size() != 0;
+        return mStateManager.isDeviceAttached();
     }
 
     @Override

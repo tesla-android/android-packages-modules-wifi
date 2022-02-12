@@ -18,12 +18,31 @@ package android.net.wifi {
     field public static final int EASY_CONNECT_EVENT_FAILURE_URI_GENERATION = -13; // 0xfffffff3
   }
 
+  public final class MloLink implements android.os.Parcelable {
+    ctor public MloLink();
+    method public int describeContents();
+    method public int getBand();
+    method public int getChannel();
+    method public int getLinkId();
+    method @Nullable public android.net.MacAddress getStaMacAddress();
+    method public int getState();
+    method public void writeToParcel(android.os.Parcel, int);
+    field @NonNull public static final android.os.Parcelable.Creator<android.net.wifi.MloLink> CREATOR;
+    field public static final int MLO_LINK_STATE_ACTIVE = 3; // 0x3
+    field public static final int MLO_LINK_STATE_IDLE = 2; // 0x2
+    field public static final int MLO_LINK_STATE_INVALID = 0; // 0x0
+    field public static final int MLO_LINK_STATE_UNASSOCIATED = 1; // 0x1
+  }
+
   public final class ScanResult implements android.os.Parcelable {
     ctor public ScanResult(@NonNull android.net.wifi.ScanResult);
     ctor public ScanResult();
     method public static int convertChannelToFrequencyMhzIfSupported(int, int);
     method public static int convertFrequencyMhzToChannelIfSupported(int);
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.MloLink> getAffiliatedMloLinks();
+    method @Nullable public android.net.MacAddress getApMldMacAddress();
+    method public int getApMloLinkId();
     method @NonNull public java.util.List<android.net.wifi.ScanResult.InformationElement> getInformationElements();
     method @NonNull public int[] getSecurityTypes();
     method @Nullable public android.net.wifi.WifiSsid getWifiSsid();
@@ -312,6 +331,9 @@ package android.net.wifi {
 
   public class WifiInfo implements android.os.Parcelable android.net.TransportInfo {
     method public int describeContents();
+    method @NonNull public java.util.List<android.net.wifi.MloLink> getAffiliatedMloLinks();
+    method @Nullable public android.net.MacAddress getApMldMacAddress();
+    method public int getApMloLinkId();
     method public String getBSSID();
     method public int getCurrentSecurityType();
     method public static android.net.NetworkInfo.DetailedState getDetailedStateOf(android.net.wifi.SupplicantState);
@@ -441,6 +463,7 @@ package android.net.wifi {
     method @Deprecated public void removePasspointConfiguration(String);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void removeSuggestionConnectionStatusListener(@NonNull android.net.wifi.WifiManager.SuggestionConnectionStatusListener);
     method @RequiresPermission(android.Manifest.permission.ACCESS_WIFI_STATE) public void removeSuggestionUserApprovalStatusListener(@NonNull android.net.wifi.WifiManager.SuggestionUserApprovalStatusListener);
+    method @RequiresPermission(allOf={android.Manifest.permission.MANAGE_WIFI_INTERFACES, android.Manifest.permission.ACCESS_WIFI_STATE}) public void reportImpactToCreateIfaceRequest(int, boolean, @NonNull java.util.concurrent.Executor, @NonNull java.util.function.BiConsumer<java.lang.Boolean,java.util.List<android.util.Pair<java.lang.Integer,java.lang.String[]>>>);
     method @Deprecated public boolean saveConfiguration();
     method public void setTdlsEnabled(java.net.InetAddress, boolean);
     method public void setTdlsEnabledWithMacAddress(String, boolean);
@@ -495,6 +518,10 @@ package android.net.wifi {
     field @Deprecated public static final String SUPPLICANT_CONNECTION_CHANGE_ACTION = "android.net.wifi.supplicant.CONNECTION_CHANGE";
     field @Deprecated public static final String SUPPLICANT_STATE_CHANGED_ACTION = "android.net.wifi.supplicant.STATE_CHANGE";
     field public static final String UNKNOWN_SSID = "<unknown ssid>";
+    field public static final int WIFI_INTERFACE_TYPE_AP = 1; // 0x1
+    field public static final int WIFI_INTERFACE_TYPE_AWARE = 2; // 0x2
+    field public static final int WIFI_INTERFACE_TYPE_DIRECT = 3; // 0x3
+    field public static final int WIFI_INTERFACE_TYPE_STA = 0; // 0x0
     field @Deprecated public static final int WIFI_MODE_FULL = 1; // 0x1
     field public static final int WIFI_MODE_FULL_HIGH_PERF = 3; // 0x3
     field public static final int WIFI_MODE_FULL_LOW_LATENCY = 4; // 0x4
@@ -562,10 +589,6 @@ package android.net.wifi {
   public abstract static class WifiManager.ScanResultsCallback {
     ctor public WifiManager.ScanResultsCallback();
     method public abstract void onScanResultsAvailable();
-  }
-
-  public static class WifiManager.ScreenOnScanSchedule {
-    ctor public WifiManager.ScreenOnScanSchedule(int, int);
   }
 
   public abstract static class WifiManager.SubsystemRestartTrackingCallback {

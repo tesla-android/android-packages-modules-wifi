@@ -793,4 +793,7 @@
     <!-- Indicate the time in milliseconds to wait before auto-cancelling a P2P invitation received
          dialog that the user has not responded to. A value of 0 indicates no timeout. -->
     <integer translatable="false" name="config_p2pInvitationReceivedDialogTimeoutMs">0</integer>
+
+    <!-- Indicates whether or not the Soft AP needs to be restarted when country code changed -->
+    <bool translatable="false" name="config_wifiForcedSoftApRestartWhenCountryCodeChanged">true</bool>
 </resources>

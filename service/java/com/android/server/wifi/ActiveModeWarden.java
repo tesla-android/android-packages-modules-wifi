@@ -546,7 +546,8 @@ public class ActiveModeWarden {
                         intent.getBooleanExtra(TelephonyManager.EXTRA_PHONE_IN_ECM_STATE, false);
                 emergencyCallbackModeChanged(emergencyMode);
             }
-        }, new IntentFilter(TelephonyManager.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED));
+        }, new IntentFilter(TelephonyManager.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED),
+                Context.RECEIVER_NOT_EXPORTED);
         boolean trackEmergencyCallState = mContext.getResources().getBoolean(
                 R.bool.config_wifi_turn_off_during_emergency_call);
         if (trackEmergencyCallState) {
@@ -557,7 +558,8 @@ public class ActiveModeWarden {
                             TelephonyManager.EXTRA_PHONE_IN_EMERGENCY_CALL, false);
                     emergencyCallStateChanged(inCall);
                 }
-            }, new IntentFilter(TelephonyManager.ACTION_EMERGENCY_CALL_STATE_CHANGED));
+            }, new IntentFilter(TelephonyManager.ACTION_EMERGENCY_CALL_STATE_CHANGED),
+                    Context.RECEIVER_NOT_EXPORTED);
         }
 
         mWifiController.start();

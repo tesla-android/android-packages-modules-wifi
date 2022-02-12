@@ -3278,6 +3278,16 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
         return capOut;
     }
 
+    /**
+     * Returns connection MLO links info
+     *
+     * @param ifaceName Name of the interface.
+     * @return null since this method is not supported on Hidl
+     */
+    public WifiNative.ConnectionMloLinksInfo getConnectionMloLinksInfo(@NonNull String ifaceName) {
+        return null;
+    }
+
     private WifiNative.ConnectionCapabilities getConnectionCapabilities_1_3(
             @NonNull ISupplicantStaIface iface) {
         final String methodStr = "getConnectionCapabilities_1_3";
