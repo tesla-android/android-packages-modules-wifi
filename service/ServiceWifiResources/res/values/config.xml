@@ -796,4 +796,13 @@
 
     <!-- Indicates whether or not the Soft AP needs to be restarted when country code changed -->
     <bool translatable="false" name="config_wifiForcedSoftApRestartWhenCountryCodeChanged">true</bool>
+
+    <!-- list of package names that HalDeviceManager (interface priority decision maker) will
+         treat as foreground, even if they are in the background. -->
+    <string-array translatable="false" name="config_wifiInterfacePriorityTreatAsForegroundList">
+        <!-- Below is a sample configuration for this list:
+        <item>com.company1.example.test.name1</item>
+        <item>com.company2.example.test.name2</item>
+        -->
+    </string-array>
 </resources>
