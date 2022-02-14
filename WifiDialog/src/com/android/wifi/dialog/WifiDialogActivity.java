@@ -26,10 +26,15 @@ import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.hardware.display.DisplayManager;
+import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.net.wifi.WifiContext;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Process;
+import android.os.Vibrator;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
@@ -49,6 +54,7 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Main Activity of the WifiDialog application. All dialogs should be created and managed from here.
@@ -62,6 +68,7 @@ public class WifiDialogActivity extends Activity  {
     private boolean mIsVerboseLoggingEnabled;
     private int mGravity = Gravity.NO_GRAVITY;
 
+    private @NonNull Set<Intent> mSavedStateIntents = new ArraySet<>();
     private @NonNull SparseArray<Intent> mLaunchIntentsPerId = new SparseArray<>();
     private @NonNull SparseArray<Dialog> mActiveDialogsPerId = new SparseArray<>();
 
@@ -110,6 +117,12 @@ public class WifiDialogActivity extends Activity  {
                 name, "integer", getWifiContext().getWifiOverlayApkPkgName());
     }
 
+    private int getBooleanId(@NonNull String name) {
+        Resources res = getResources();
+        return res.getIdentifier(
+                name, "bool", getWifiContext().getWifiOverlayApkPkgName());
+    }
+
     private int getLayoutId(@NonNull String name) {
         Resources res = getResources();
         return res.getIdentifier(
@@ -144,7 +157,10 @@ public class WifiDialogActivity extends Activity  {
             if (mIsVerboseLoggingEnabled) {
                 Log.v(TAG, "Restoring WifiDialog saved state.");
             }
-            receivedIntents.addAll(savedInstanceState.getParcelableArrayList(KEY_DIALOG_INTENTS));
+            List<Intent> savedStateIntents =
+                    savedInstanceState.getParcelableArrayList(KEY_DIALOG_INTENTS);
+            mSavedStateIntents.addAll(savedStateIntents);
+            receivedIntents.addAll(savedStateIntents);
         } else {
             receivedIntents.add(getIntent());
         }
@@ -298,6 +314,27 @@ public class WifiDialogActivity extends Activity  {
         dialog.show();
         if (mIsVerboseLoggingEnabled) {
             Log.v(TAG, "Showing dialog " + dialogId);
+        }
+        // Play a notification sound/vibration if the dialog just came in (i.e. not read from the
+        // saved instance state after a configuration change), and the overlays specify a
+        // sound/vibration for the specific dialog type.
+        if (!mSavedStateIntents.contains(intent)
+                && dialogType == WifiManager.DIALOG_TYPE_P2P_INVITATION_RECEIVED
+                && getResources().getBoolean(
+                        getBooleanId("config_p2pInvitationReceivedDialogNotificationSound"))) {
+            Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            Ringtone r = RingtoneManager.getRingtone(this, notification);
+            r.play();
+            if (mIsVerboseLoggingEnabled) {
+                Log.v(TAG, "Played notification sound for " + " dialogId=" + dialogId);
+            }
+            if (getSystemService(AudioManager.class).getRingerMode()
+                    == AudioManager.RINGER_MODE_VIBRATE) {
+                getSystemService(Vibrator.class).vibrate(1_000);
+                if (mIsVerboseLoggingEnabled) {
+                    Log.v(TAG, "Vibrated for " + " dialogId=" + dialogId);
+                }
+            }
         }
         return true;
     }
