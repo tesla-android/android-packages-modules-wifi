@@ -174,6 +174,12 @@ public class WifiP2pManager {
     public static final String EXTRA_PARAM_KEY_SERVICE_INFO =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_SERVICE_INFO";
     /**
+     * Extra for transporting a peer discovery frequency.
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ";
+    /**
      * Extra for transporting a peer MAC address.
      * @hide
      */
@@ -447,15 +453,29 @@ public class WifiP2pManager {
      * Run P2P scan only on social channels.
      * @hide
      */
-    public static final int WIFI_P2P_SCAN_SOCIAL = -1;
+    public static final int WIFI_P2P_SCAN_SOCIAL = 1;
+
+    /**
+     * Run P2P scan only on a specific channel.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_SINGLE_FREQ = 2;
 
     /** @hide */
     @IntDef(prefix = {"WIFI_P2P_SCAN_"}, value = {
             WIFI_P2P_SCAN_FULL,
-            WIFI_P2P_SCAN_SOCIAL})
+            WIFI_P2P_SCAN_SOCIAL,
+            WIFI_P2P_SCAN_SINGLE_FREQ})
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiP2pScanType {
     }
+
+    /**
+     * No channel specified for discover Peers APIs. Let lower layer decide the frequencies to scan
+     * based on the WifiP2pScanType.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_FREQ_UNSPECIFIED = 0;
 
     /**
      * Maximum length in bytes of all vendor specific information elements (IEs) allowed to
@@ -1580,7 +1600,6 @@ public class WifiP2pManager {
     public void discoverPeers(Channel channel, ActionListener listener) {
         checkChannel(channel);
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
         channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_FULL,
                 channel.putListener(listener), extras);
     }
@@ -1626,7 +1645,6 @@ public class WifiP2pManager {
         }
         checkChannel(channel);
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
         channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_SOCIAL,
                 channel.putListener(listener), extras);
     }
@@ -1676,9 +1694,9 @@ public class WifiP2pManager {
             throw new IllegalArgumentException("This frequency must be a positive value.");
         }
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
-        channel.mAsyncChannel.sendMessage(
-                DISCOVER_PEERS, frequencyMhz, channel.putListener(listener), extras);
+        extras.putInt(EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ, frequencyMhz);
+        channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_SINGLE_FREQ,
+                channel.putListener(listener), extras);
     }
 
     /**
