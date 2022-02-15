@@ -25,5 +25,5 @@ import android.os.WorkSource;
  */
 oneway interface IInterfaceCreationInfoCallback
 {
-   void onResults(in boolean canCreate, in int[] interfacesToDelete, in WorkSource[] worksourcesForInterfaces);
+   void onResults(in boolean canCreate, in int[] interfacesToDelete, in String[] packagesForInterfaces);
 }

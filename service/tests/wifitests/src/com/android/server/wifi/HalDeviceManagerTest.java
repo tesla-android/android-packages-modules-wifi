@@ -811,7 +811,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // Now replace the requestorWs (fg app now) for the STA iface.
         when(mWorkSourceHelper2.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper2.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper2.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertTrue(mDut.replaceRequestorWs(staIface, TEST_WORKSOURCE_2));
 
         // get AP interface again from a system app: should succeed now
@@ -1508,11 +1508,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create AP interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_AP, TEST_WORKSOURCE_1));
 
         // New system app not allowed to create AP interface.
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_AP, TEST_WORKSOURCE_1));
 
@@ -1523,11 +1523,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app allowed to create NAN interface (since there is no need to delete any interfaces).
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_NAN, TEST_WORKSOURCE_1));
 
         // BG app allowed to create P2P interface (since there is no need to delete any interfaces).
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_P2P, TEST_WORKSOURCE_1));
     }
 
@@ -1561,11 +1561,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // Allow to create NAN interface (since there is no need to delete any interfaces).
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_NAN, TEST_WORKSOURCE_1));
 
         // Allow to create P2P interface (since there is no need to delete any interfaces).
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_P2P, TEST_WORKSOURCE_1));
     }
 
@@ -1972,11 +1972,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create STA interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
         // New system app not allowed to create STA interface.
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
@@ -1987,11 +1987,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app allowed to create NAN interface (since there is no need to delete any interfaces).
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_NAN, TEST_WORKSOURCE_1));
 
         // BG app allowed to create P2P interface (since there is no need to delete any interfaces).
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         assertTrue(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_P2P, TEST_WORKSOURCE_1));
     }
 
@@ -2175,7 +2175,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // request STA2 (foreground app): should fail
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         staDetails = mDut.reportImpactToCreateIface(HDM_CREATE_IFACE_STA, false, TEST_WORKSOURCE_1);
         assertNotNull("should not fail when asking for same STA", staDetails);
         assertEquals(0, staDetails.size());
@@ -2300,11 +2300,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create STA interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
         // New system app not allowed to create STA interface.
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
@@ -2315,7 +2315,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create NAN interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_NAN, TEST_WORKSOURCE_1));
 
         // Privileged app allowed to create P2P interface.
@@ -2483,7 +2483,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // request STA2 (foreground app): should fail
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         staDetails = mDut.reportImpactToCreateIface(HDM_CREATE_IFACE_STA, false, TEST_WORKSOURCE_1);
         assertNotNull("should not fail when asking for same STA", staDetails);
         assertEquals(0, staDetails.size());
@@ -2821,11 +2821,11 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create STA interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
         // New system app not allowed to create STA interface.
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(false);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(false);
         when(mWorkSourceHelper1.hasAnySystemAppRequest()).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_STA, TEST_WORKSOURCE_1));
 
@@ -2836,7 +2836,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         // FG app not allowed to create NAN interface.
         when(mWorkSourceHelper1.hasAnyPrivilegedAppRequest()).thenReturn(false);
-        when(mWorkSourceHelper1.hasAnyForegroundAppRequest()).thenReturn(true);
+        when(mWorkSourceHelper1.hasAnyForegroundAppRequest(true)).thenReturn(true);
         assertFalse(mDut.isItPossibleToCreateIface(HDM_CREATE_IFACE_NAN, TEST_WORKSOURCE_1));
 
         // Privileged app allowed to create P2P interface.

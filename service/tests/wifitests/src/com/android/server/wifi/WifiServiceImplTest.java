@@ -9995,10 +9995,11 @@ public class WifiServiceImplTest extends WifiBaseTest {
         when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(TEST_UID)).thenReturn(true);
         final WorkSource ws = new WorkSource(TEST_UID, TEST_PACKAGE_NAME);
         final WorkSource wsOther = new WorkSource(OTHER_TEST_UID, TEST_PACKAGE_NAME_OTHER);
+        final String[] packagesOther = {TEST_PACKAGE_NAME_OTHER};
 
         ArgumentCaptor<Boolean> boolCaptor = ArgumentCaptor.forClass(Boolean.class);
         ArgumentCaptor<int[]> intArrayCaptor = ArgumentCaptor.forClass(int[].class);
-        ArgumentCaptor<WorkSource[]> wsArrayCaptor = ArgumentCaptor.forClass(WorkSource[].class);
+        ArgumentCaptor<String[]> stringArrayCaptor = ArgumentCaptor.forClass(String[].class);
 
         // 3 results: failure, success with no side effects, success with side effects
         when(mHalDeviceManager.reportImpactToCreateIface(interfaceToCreateInternal, true, ws))
@@ -10015,23 +10016,23 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mHalDeviceManager, times(3)).reportImpactToCreateIface(
                 interfaceToCreateInternal, true, ws);
         verify(mockCallback, times(3)).onResults(boolCaptor.capture(), intArrayCaptor.capture(),
-                wsArrayCaptor.capture());
+                stringArrayCaptor.capture());
 
         // result 0: failure
         assertFalse(boolCaptor.getAllValues().get(0));
         assertNull(intArrayCaptor.getAllValues().get(0));
-        assertNull(wsArrayCaptor.getAllValues().get(0));
+        assertNull(stringArrayCaptor.getAllValues().get(0));
 
         // result 1: success with no side effects
         assertTrue(boolCaptor.getAllValues().get(1));
         assertEquals(0, intArrayCaptor.getAllValues().get(1).length);
-        assertEquals(0, wsArrayCaptor.getAllValues().get(1).length);
+        assertEquals(0, stringArrayCaptor.getAllValues().get(1).length);
 
         // result 2: success with no side effects
         assertTrue(boolCaptor.getAllValues().get(2));
         assertEquals(1, intArrayCaptor.getAllValues().get(2).length);
         assertEquals(WifiManager.WIFI_INTERFACE_TYPE_DIRECT,
                 intArrayCaptor.getAllValues().get(2)[0]);
-        assertEquals(wsOther, wsArrayCaptor.getAllValues().get(2)[0]);
+        assertArrayEquals(packagesOther, stringArrayCaptor.getAllValues().get(2));
     }
 }

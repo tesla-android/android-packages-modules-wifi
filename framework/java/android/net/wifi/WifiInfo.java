@@ -67,7 +67,7 @@ import java.util.Objects;
  * the same permissions as {@link WifiManager#getScanResults}. If such access is not allowed,
  * {@link #getSSID} will return {@link WifiManager#UNKNOWN_SSID} and
  * {@link #getBSSID} will return {@code "02:00:00:00:00:00"}.
- * {@link #getApMldMacAddress()} will return {@code "02:00:00:00:00:00"}.
+ * {@link #getApMldMacAddress()} will return null.
  * {@link #getNetworkId()} will return {@code -1}.
  * {@link #getPasspointFqdn()} will return null.
  * {@link #getPasspointProviderFriendlyName()} will return null.
@@ -119,7 +119,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     private int mSecurityType;
 
     /**
-     * the Multi-Link Device (MLD) MAC Address for the connected access point.
+     * The Multi-Link Device (MLD) MAC Address for the connected access point.
      * Only applicable for Wi-Fi 7 access points, null otherwise.
      * This will be set even if the STA is non-MLD
      */
@@ -577,7 +577,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
             mBSSID = shouldRedactLocationSensitiveFields(redactions)
                     ? DEFAULT_MAC_ADDRESS : source.mBSSID;
             mApMldMacAddress = shouldRedactLocationSensitiveFields(redactions)
-                    ? MacAddress.fromString(DEFAULT_MAC_ADDRESS) : source.mApMldMacAddress;
+                    ? null : source.mApMldMacAddress;
             mApMloLinkId = source.mApMloLinkId;
             mAffiliatedMloLinks = source.mAffiliatedMloLinks;
             mWifiSsid = shouldRedactLocationSensitiveFields(redactions)
@@ -671,7 +671,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         }
 
         /**
-         * sets the access point Multi-Link Operation (MLO) link-id
+         * Set the access point Multi-Link Operation (MLO) link-id.
          * @see WifiInfo#getApMloLinkId()
          * @hide
          */
@@ -681,7 +681,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
         }
 
         /**
-         * sets the Multi-Link Operation (MLO) affiliated Links.
+         * Set the Multi-Link Operation (MLO) affiliated Links.
          * Only applicable for Wi-Fi 7 access points.
          * @see WifiInfo#getAffiliatedMloLinks()
          * @hide
@@ -773,7 +773,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * sets the access point Multi-Link Device (MLD) MAC Address.
+     * Set the access point Multi-Link Device (MLD) MAC Address.
      * @hide
      */
     public void setApMldMacAddress(@Nullable MacAddress address) {
@@ -781,7 +781,7 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * sets the access point Multi-Link Operation (MLO) link-id
+     * Set the access point Multi-Link Operation (MLO) link-id
      * @hide
      */
     public void setApMloLinkId(int linkId) {
@@ -789,26 +789,20 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * sets the Multi-Link Operation (MLO) affiliated Links.
+     * Set the Multi-Link Operation (MLO) affiliated Links.
      * Only applicable for Wi-Fi 7 access points.
      *
      * @hide
      */
     public void setAffiliatedMloLinks(@NonNull List<MloLink> links) {
         mAffiliatedMloLinks = new ArrayList<MloLink>(links);
-        Collections.sort(mAffiliatedMloLinks, new Comparator<MloLink>() {
-            @Override
-            public int compare(MloLink lhs, MloLink rhs) {
-                return lhs.getLinkId() -  rhs.getLinkId();
-            }
-        });
     }
 
     /**
      * Update the MLO link STA MAC Address
      *
-     * @param linkId
-     * @param macAddress
+     * @param linkId for the link to be updated.
+     * @param macAddress value to be set in the link.
      *
      * @return true on success, false on failure
      *
@@ -827,14 +821,14 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Update the MLO link State
      *
-     * @param linkId
-     * @param state
+     * @param linkId for the link to be updated.
+     * @param state value to be set in the link as one of {@link MloLink.MloLinkState}
      *
      * @return true on success, false on failure
      *
      * @hide
      */
-    public boolean updateMloLinkState(int linkId, int state) {
+    public boolean updateMloLinkState(int linkId, @MloLink.MloLinkState int state) {
         if (!MloLink.isValidState(state)) {
             return false;
         }
@@ -866,11 +860,11 @@ public class WifiInfo implements TransportInfo, Parcelable {
     /**
      * Return the Multi-Link Device (MLD) MAC Address for the connected access point.
      * <p>
-     * The MLD MAC Address may be
-     * <lt>{@code null}, if there is no network currently connected or if the connected access
-     * point is not an MLD access point (i.e. not Wi-Fi 7).</lt>
-     * <lt>{@code "02:00:00:00:00:00"}, if the caller has insufficient permissions to access the
-     * access point MLD MAC Address.<lt>
+     * The returned MLD MAC Address will be {@code null} in the following cases:
+     * <lt>There is no network currently connected</lt>
+     * <lt>The connected access point is not an MLD access point,
+     * i.e. {@link #getWifiStandard()} returns {@link ScanResult#WIFI_STANDARD_11BE}.</lt>
+     * <lt>The caller has insufficient permissions to access the access point MLD MAC Address.<lt>
      * </p>
      *
      * @return the MLD Mac address
@@ -881,15 +875,23 @@ public class WifiInfo implements TransportInfo, Parcelable {
     }
 
     /**
-     * return the access point Multi-Link Operation (MLO) link-id.
+     * Return the access point Multi-Link Operation (MLO) link-id for Wi-Fi 7 access points.
+     * i.e. {@link #getWifiStandard()} returns {@link ScanResult#WIFI_STANDARD_11BE},
+     * otherwise return {@link MloLink#INVALID_MLO_LINK_ID}.
+     *
+     * Valid values are 0-15 as described in IEEE 802.11be Specification, section 9.4.2.295b.2.
+     *
+     * @return {@link MloLink#INVALID_MLO_LINK_ID} or a valid value (0-15).
      */
     public int getApMloLinkId() {
         return mApMloLinkId;
     }
 
     /**
-     * return the Multi-Link Operation (MLO) affiliated Links.
-     * Only applicable for Wi-Fi 7 access points.
+     * Return the Multi-Link Operation (MLO) affiliated Links for Wi-Fi 7 access points.
+     * i.e. when {@link #getWifiStandard()} returns {@link ScanResult#WIFI_STANDARD_11BE}.
+     *
+     * @return List of affiliated MLO links, or an empty list if access point is not Wi-Fi 7
      */
     @NonNull
     public List<MloLink> getAffiliatedMloLinks() {
@@ -1711,6 +1713,18 @@ public class WifiInfo implements TransportInfo, Parcelable {
         return mIsPrimary == IS_PRIMARY_TRUE;
     }
 
+    private List<MloLink> getSortedMloLinkList(List<MloLink> list) {
+        List<MloLink> newList = new ArrayList<MloLink>(list);
+        Collections.sort(newList, new Comparator<MloLink>() {
+            @Override
+            public int compare(MloLink lhs, MloLink rhs) {
+                return lhs.getLinkId() -  rhs.getLinkId();
+            }
+        });
+
+        return newList;
+    }
+
     @Override
     public boolean equals(Object that) {
         if (this == that) return true;
@@ -1721,11 +1735,17 @@ public class WifiInfo implements TransportInfo, Parcelable {
         if (!(that instanceof WifiInfo)) return false;
 
         WifiInfo thatWifiInfo = (WifiInfo) that;
+
+        // compare the MLO affiliated links irrespective of the order
+        if (!Objects.equals(getSortedMloLinkList(mAffiliatedMloLinks),
+                  getSortedMloLinkList(thatWifiInfo.mAffiliatedMloLinks))) {
+            return false;
+        }
+
         return Objects.equals(mWifiSsid, thatWifiInfo.mWifiSsid)
                 && Objects.equals(mBSSID, thatWifiInfo.mBSSID)
                 && Objects.equals(mApMldMacAddress, thatWifiInfo.mApMldMacAddress)
-                && Objects.equals(mApMloLinkId, thatWifiInfo.mApMloLinkId)
-                && Objects.equals(mAffiliatedMloLinks, thatWifiInfo.mAffiliatedMloLinks)
+                && mApMloLinkId == thatWifiInfo.mApMloLinkId
                 && Objects.equals(mNetworkId, thatWifiInfo.mNetworkId)
                 && Objects.equals(mRssi, thatWifiInfo.mRssi)
                 && Objects.equals(mSupplicantState, thatWifiInfo.mSupplicantState)
