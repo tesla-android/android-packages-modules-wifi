@@ -221,7 +221,9 @@
           <item type="bool" name="config_wifiSoftapOweTransitionSupported" />
           <item type="integer" name="config_wifiDialogGravity" />
           <item type="integer" name="config_p2pInvitationReceivedDialogTimeoutMs"/>
+          <item type="bool" name="config_p2pInvitationReceivedDialogNotificationSound"/>
           <item type="bool" name="config_wifiForcedSoftApRestartWhenCountryCodeChanged" />
+          <item type="array" name="config_wifiInterfacePriorityTreatAsForegroundList"/>
           <!-- Params from config.xml that can be overlayed -->
 
           <!-- Params from strings.xml that can be overlayed -->

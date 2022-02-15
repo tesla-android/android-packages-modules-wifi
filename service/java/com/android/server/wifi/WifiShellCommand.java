@@ -136,8 +136,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     // However, these do perform permission checks in the corresponding WifiService methods.
     private static final String[] NON_PRIVILEGED_COMMANDS = {
             "add-suggestion",
-            "add-network",
-            "connect-network",
             "forget-network",
             "get-country-code",
             "help",
@@ -1828,44 +1826,6 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         pw.println("    Start a new scan");
         pw.println("  list-networks");
         pw.println("    Lists the saved networks");
-        pw.println("  connect-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
-                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
-        pw.println("    Connect to a network with provided params and add to saved networks list");
-        pw.println("    <ssid> - SSID of the network");
-        pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
-        pw.println("        - Use 'open' or 'owe' for networks with no passphrase");
-        pw.println("           - 'open' - Open networks (Most prevalent)");
-        pw.println("           - 'owe' - Enhanced open networks");
-        pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
-        pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
-        pw.println("           - 'wpa3' - WPA-3 PSK networks");
-        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
-        pw.println("    -m - Mark the network metered.");
-        pw.println("    -d - Mark the network autojoin disabled.");
-        pw.println("    -h - Mark the network hidden.");
-        pw.println("    -p - Mark the network private (not shared).");
-        pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
-                + " network");
-        pw.println("  add-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
-                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
-        pw.println("    Add/update saved network with provided params");
-        pw.println("    <ssid> - SSID of the network");
-        pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
-        pw.println("        - Use 'open' or 'owe' for networks with no passphrase");
-        pw.println("           - 'open' - Open networks (Most prevalent)");
-        pw.println("           - 'owe' - Enhanced open networks");
-        pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
-        pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
-        pw.println("           - 'wpa3' - WPA-3 PSK networks");
-        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
-        pw.println("    -m - Mark the network metered.");
-        pw.println("    -d - Mark the network autojoin disabled.");
-        pw.println("    -h - Mark the network hidden.");
-        pw.println("    -p - Mark the network private (not shared).");
-        pw.println("    -b <bssid> - Set specific BSSID.");
-        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
-                + " network");
         pw.println("  forget-network <networkId>");
         pw.println("    Remove the network mentioned by <networkId>");
         pw.println("        - Use list-networks to retrieve <networkId> for the network");
@@ -1992,6 +1952,44 @@ public class WifiShellCommand extends BasicShellCommandHandler {
     }
 
     private void onHelpPrivileged(PrintWriter pw) {
+        pw.println("  connect-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
+                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
+        pw.println("    Connect to a network with provided params and add to saved networks list");
+        pw.println("    <ssid> - SSID of the network");
+        pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
+        pw.println("        - Use 'open' or 'owe' for networks with no passphrase");
+        pw.println("           - 'open' - Open networks (Most prevalent)");
+        pw.println("           - 'owe' - Enhanced open networks");
+        pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
+        pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
+        pw.println("           - 'wpa3' - WPA-3 PSK networks");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
+        pw.println("    -m - Mark the network metered.");
+        pw.println("    -d - Mark the network autojoin disabled.");
+        pw.println("    -h - Mark the network hidden.");
+        pw.println("    -p - Mark the network private (not shared).");
+        pw.println("    -b <bssid> - Set specific BSSID.");
+        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
+                + " network");
+        pw.println("  add-network <ssid> open|owe|wpa2|wpa3 [<passphrase>] [-x] [-m] [-d] "
+                + "[-b <bssid>] [-r auto|none|persistent|non_persistent]");
+        pw.println("    Add/update saved network with provided params");
+        pw.println("    <ssid> - SSID of the network");
+        pw.println("    open|owe|wpa2|wpa3 - Security type of the network.");
+        pw.println("        - Use 'open' or 'owe' for networks with no passphrase");
+        pw.println("           - 'open' - Open networks (Most prevalent)");
+        pw.println("           - 'owe' - Enhanced open networks");
+        pw.println("        - Use 'wpa2' or 'wpa3' for networks with passphrase");
+        pw.println("           - 'wpa2' - WPA-2 PSK networks (Most prevalent)");
+        pw.println("           - 'wpa3' - WPA-3 PSK networks");
+        pw.println("    -x - Specifies the SSID as hex digits instead of plain text");
+        pw.println("    -m - Mark the network metered.");
+        pw.println("    -d - Mark the network autojoin disabled.");
+        pw.println("    -h - Mark the network hidden.");
+        pw.println("    -p - Mark the network private (not shared).");
+        pw.println("    -b <bssid> - Set specific BSSID.");
+        pw.println("    -r auto|none|persistent|non_persistent - MAC randomization scheme for the"
+                + " network");
         pw.println("  set-ipreach-disconnect enabled|disabled");
         pw.println("    Sets whether CMD_IP_REACHABILITY_LOST events should trigger disconnects.");
         pw.println("  get-ipreach-disconnect");
