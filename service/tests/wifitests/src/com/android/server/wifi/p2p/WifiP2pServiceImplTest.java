@@ -705,6 +705,78 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Send AddExternalApprover API msg.
+     *
+     * @param replyMessenger For checking replied message.
+     * @param devAddr the peer address.
+     * @param binder the application binder.
+     */
+    private void sendAddExternalApproverMsg(Messenger replyMessenger,
+            MacAddress devAddr, Binder binder) throws Exception {
+        Message msg = Message.obtain();
+        Bundle extras = new Bundle();
+        if (null != devAddr) {
+            extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS, devAddr);
+        }
+        if (null != binder) {
+            extras.putBinder(WifiP2pManager.CALLING_BINDER, binder);
+        }
+        msg.what = WifiP2pManager.ADD_EXTERNAL_APPROVER;
+        msg.obj = extras;
+        msg.replyTo = replyMessenger;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    /**
+     * Send RemoveExternalApprover API msg.
+     *
+     * @param replyMessenger For checking replied message.
+     * @param devAddr the peer address.
+     */
+    private void sendRemoveExternalApproverMsg(Messenger replyMessenger,
+            MacAddress devAddr, Binder binder) throws Exception {
+        Message msg = Message.obtain();
+        Bundle extras = new Bundle();
+        if (null != devAddr) {
+            extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS, devAddr);
+        }
+        if (null != binder) {
+            extras.putBinder(WifiP2pManager.CALLING_BINDER, binder);
+        }
+        msg.what = WifiP2pManager.REMOVE_EXTERNAL_APPROVER;
+        msg.obj = extras;
+        msg.replyTo = replyMessenger;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    /**
+     * Send SetConnectionRequestResult API msg.
+     *
+     * @param replyMessenger For checking replied message.
+     * @param devAddr the peer address.
+     * @param result the decision for the incoming request.
+     */
+    private void sendSetConnectionRequestResultMsg(Messenger replyMessenger,
+            MacAddress devAddr, int result, Binder binder) throws Exception {
+        Message msg = Message.obtain();
+        Bundle extras = new Bundle();
+        if (null != devAddr) {
+            extras.putParcelable(WifiP2pManager.EXTRA_PARAM_KEY_PEER_ADDRESS, devAddr);
+        }
+        if (null != binder) {
+            extras.putBinder(WifiP2pManager.CALLING_BINDER, binder);
+        }
+        msg.what = WifiP2pManager.SET_CONNECTION_REQUEST_RESULT;
+        msg.obj = extras;
+        msg.arg1 = result;
+        msg.replyTo = replyMessenger;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    /**
      * Send simple API msg.
      *
      * Mock the API msg without arguments.
@@ -5534,5 +5606,168 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         boolean hasPermission = false, shouldSetToNative = true;
         verifySetVendorElement(isP2pActivated, shouldSucceed,
                 hasPermission, shouldSetToNative);
+    }
+
+    private void verifyAddExternalApprover(boolean hasPermission,
+            boolean shouldSucceed) throws Exception {
+        verifyAddExternalApprover(new Binder(), hasPermission, shouldSucceed);
+    }
+
+    private void verifyAddExternalApprover(Binder binder, boolean hasPermission,
+            boolean shouldSucceed) throws Exception {
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt()))
+                .thenReturn(hasPermission);
+        MacAddress devAddr = MacAddress.fromString(
+                mTestWifiP2pDevice.deviceAddress);
+
+        sendAddExternalApproverMsg(mClientMessenger, devAddr, binder);
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        if (shouldSucceed) {
+            assertEquals(WifiP2pManager.EXTERNAL_APPROVER_ATTACH, message.what);
+        } else {
+            assertEquals(WifiP2pManager.EXTERNAL_APPROVER_DETACH, message.what);
+        }
+    }
+
+    /**
+     * Verify sunny scenario for addExternalApprover.
+     */
+    @Test
+    public void testAddExternalApproverSuccess() throws Exception {
+        boolean hasPermission = true, shouldSucceed = true;
+        verifyAddExternalApprover(hasPermission, shouldSucceed);
+    }
+
+    /**
+     * Verify failure scenario for addExternalApprover when
+     * the caller has no proper permission.
+     */
+    @Test
+    public void testAddExternalApproverFailureWithoutPermission() throws Exception {
+        boolean hasPermission = false, shouldSucceed = false;
+        verifyAddExternalApprover(hasPermission, shouldSucceed);
+    }
+
+    private void verifyRemoveExternalApprover(boolean hasPermission,
+            boolean shouldSucceed) throws Exception {
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt()))
+                .thenReturn(hasPermission);
+        MacAddress devAddr = MacAddress.fromString(
+                mTestWifiP2pDevice.deviceAddress);
+        Binder binder = new Binder();
+
+        sendRemoveExternalApproverMsg(mClientMessenger, devAddr, binder);
+        verify(mClientHandler).sendMessage(mMessageCaptor.capture());
+        Message message = mMessageCaptor.getValue();
+        if (shouldSucceed) {
+            assertEquals(WifiP2pManager.REMOVE_EXTERNAL_APPROVER_SUCCEEDED, message.what);
+        } else {
+            assertEquals(WifiP2pManager.REMOVE_EXTERNAL_APPROVER_FAILED, message.what);
+        }
+    }
+
+
+    /**
+     * Verify sunny scenario for removeExternalApprover.
+     */
+    @Test
+    public void testRemoveExternalApproverSuccess() throws Exception {
+        boolean hasPermission = true, shouldSucceed = true;
+        verifyRemoveExternalApprover(hasPermission, shouldSucceed);
+    }
+
+    /**
+     * Verify failure scenario for removeExternalApprover when
+     * the caller has no proper permission.
+     */
+    @Test
+    public void testRemoveExternalApproverFailureWithoutPermission() throws Exception {
+        boolean hasPermission = false, shouldSucceed = false;
+        verifyRemoveExternalApprover(hasPermission, shouldSucceed);
+    }
+
+    private void verifySetConnectionRequestResult(boolean hasApprover,
+            boolean hasPermission,
+            boolean shouldSucceed) throws Exception {
+        Binder binder = new Binder();
+
+        forceP2pEnabled(mClient1);
+        mockPeersList();
+        sendDeviceFoundEventMsg(mTestWifiP2pDevice);
+
+        if (hasApprover) {
+            verifyAddExternalApprover(binder, true, true);
+        }
+
+        // Enter UserAuthorizingNegotiationRequestState
+        WifiP2pConfig config = new WifiP2pConfig();
+        config.deviceAddress = mTestWifiP2pDevice.deviceAddress;
+        config.wps = new WpsInfo();
+        config.wps.setup = WpsInfo.PBC;
+
+        Message msg = Message.obtain();
+        msg.what = WifiP2pMonitor.P2P_GO_NEGOTIATION_REQUEST_EVENT;
+        msg.obj = config;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+
+        when(mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(anyInt()))
+                .thenReturn(hasPermission);
+        sendSetConnectionRequestResultMsg(mClientMessenger,
+                MacAddress.fromString(mTestWifiP2pDevice.deviceAddress),
+                WifiP2pManager.CONNECTION_REQUEST_ACCEPT,
+                binder);
+        if (shouldSucceed) {
+            // There are 4 replies:
+            // * EXTERNAL_APPROVER_ATTACH
+            // * EXTERNAL_APPROVER_CONNECTION_REQUESTED
+            // * EXTERNAL_APPROVER_DETACH
+            // * SET_CONNECTION_REQUEST_RESULT_SUCCEEDED
+            ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+            verify(mClientHandler, times(4)).sendMessage(messageCaptor.capture());
+            List<Message> messages = messageCaptor.getAllValues();
+            assertEquals(WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED,
+                    messages.get(3).what);
+        } else {
+            int expectedMessageCount = hasApprover ? 3 : 1;
+            // There are 2 additional replies if having a approver.
+            // * (With an approver) EXTERNAL_APPROVER_ATTACH
+            // * (With an approver) EXTERNAL_APPROVER_CONNECTION_REQUESTED
+            // * SET_CONNECTION_REQUEST_RESULT_FAILED
+            ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+            verify(mClientHandler, times(expectedMessageCount)).sendMessage(
+                    messageCaptor.capture());
+            List<Message> messages = messageCaptor.getAllValues();
+            assertEquals(WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
+                    messages.get(expectedMessageCount - 1).what);
+        }
+    }
+
+    /**
+     * Verify sunny scenario for setConnectionRequestResult.
+     */
+    @Test
+    public void testSetConnectionRequestResultSuccess() throws Exception {
+        boolean hasApprover = true, hasPermission = true, shouldSucceed = true;
+        verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed);
+    }
+
+    /**
+     * Verify the failure scenario for setConnectionRequestResult without permissions.
+     */
+    @Test
+    public void testSetConnectionRequestResultFailureWithoutPermission() throws Exception {
+        boolean hasApprover = true, hasPermission = false, shouldSucceed = false;
+        verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed);
+    }
+
+    /**
+     * Verify the failure scenario for setConnectionRequestResult without a registered approver.
+     */
+    @Test
+    public void testSetConnectionRequestResultFailureWithoutApprover() throws Exception {
+        boolean hasApprover = false, hasPermission = true, shouldSucceed = false;
+        verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed);
     }
 }
