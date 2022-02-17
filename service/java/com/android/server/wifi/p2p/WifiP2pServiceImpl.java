@@ -3146,6 +3146,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message,
                                     WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                     WifiP2pManager.ERROR);
+                            break;
                         }
                         replyToMessage(message,
                                 WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
@@ -3200,6 +3201,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message,
                                     WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                     WifiP2pManager.ERROR);
+                            break;
                         }
                         replyToMessage(message,
                                 WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
@@ -3484,6 +3486,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message,
                                     WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                     WifiP2pManager.ERROR);
+                            break;
                         }
                         replyToMessage(message,
                                 WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
@@ -3954,6 +3957,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message,
                                     WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                     WifiP2pManager.ERROR);
+                            break;
                         }
                         replyToMessage(message,
                                 WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
@@ -4021,6 +4025,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             replyToMessage(message,
                                     WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_FAILED,
                                     WifiP2pManager.ERROR);
+                            break;
                         }
                         replyToMessage(message,
                                 WifiP2pManager.SET_CONNECTION_REQUEST_RESULT_SUCCEEDED);
