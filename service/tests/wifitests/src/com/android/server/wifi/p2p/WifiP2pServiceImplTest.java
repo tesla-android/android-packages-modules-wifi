@@ -107,6 +107,7 @@ import android.view.Display;
 import androidx.test.filters.SmallTest;
 
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.Clock;
 import com.android.server.wifi.FakeWifiLog;
 import com.android.server.wifi.FrameworkFacade;
 import com.android.server.wifi.WifiBaseTest;
@@ -220,6 +221,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Mock WifiGlobals mWifiGlobals;
     @Mock AlarmManager mAlarmManager;
     @Mock WifiDialogManager mWifiDialogManager;
+    @Mock Clock mClock;
     CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
@@ -1058,6 +1060,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiInjector.getWifiGlobals()).thenReturn(mWifiGlobals);
         when(mWifiInjector.makeBroadcastOptions()).thenReturn(mBroadcastOptions);
         when(mWifiInjector.getWifiDialogManager()).thenReturn(mWifiDialogManager);
+        when(mWifiInjector.getClock()).thenReturn(mClock);
         // enable all permissions, disable specific permissions in tests
         when(mWifiPermissionsUtil.checkNetworkSettingsPermission(anyInt())).thenReturn(true);
         when(mWifiPermissionsUtil.checkNetworkStackPermission(anyInt())).thenReturn(true);
@@ -1156,13 +1159,20 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     }
 
     /**
+     * Send P2P statemachine internal message.
+     */
+    private void sendP2pStateMachineMessage(int what) throws Exception {
+        Message msg = Message.obtain();
+        msg.what = what;
+        mP2pStateMachineMessenger.send(Message.obtain(msg));
+        mLooper.dispatchAll();
+    }
+
+    /**
      * Mock enter Disabled state.
      */
     private void mockEnterDisabledState() throws Exception {
-        Message msg = Message.obtain();
-        msg.what = WifiP2pMonitor.SUP_DISCONNECTION_EVENT;
-        mP2pStateMachineMessenger.send(Message.obtain(msg));
-        mLooper.dispatchAll();
+        sendP2pStateMachineMessage(WifiP2pMonitor.SUP_DISCONNECTION_EVENT);
     }
 
     /**
@@ -2978,7 +2988,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         assertEquals(thisDeviceName, wifiP2pDevice.deviceName);
     }
 
-    private void verifyCustomizeDefaultDeviceName(String expectedName, boolean isRandomPostfix)
+    private String verifyCustomizeDefaultDeviceName(String expectedName, boolean isRandomPostfix)
             throws Exception {
         forceP2pEnabled(mClient1);
         when(mWifiPermissionsUtil.checkLocalMacAddressPermission(anyInt())).thenReturn(true);
@@ -2995,6 +3005,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         } else {
             assertEquals(expectedName, wifiP2pDevice.deviceName);
         }
+        return wifiP2pDevice.deviceName;
     }
 
     private void setupDefaultDeviceNameCustomization(
@@ -3100,6 +3111,37 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         setupDefaultDeviceNameCustomization("Niceboat-", -1);
         when(mWifiSettingsConfigStore.get(eq(WIFI_P2P_DEVICE_NAME))).thenReturn("");
         verifyCustomizeDefaultDeviceName("Niceboat-", true);
+    }
+
+    /** Verify that the default device name is preserved in a period. */
+    @Test
+    public void testCustomizeDefaultDeviceNameIsPreserved() throws Exception {
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(0L);
+
+        setupDefaultDeviceNameCustomization("Niceboat-", 4);
+        String defaultDeviceName = verifyCustomizeDefaultDeviceName("Niceboat-", true);
+
+        // re-init P2P, and the default name should be the same.
+        mockEnterDisabledState();
+        sendP2pStateMachineMessage(WifiP2pServiceImpl.ENABLE_P2P);
+        ArgumentCaptor<Message> msgCaptor = ArgumentCaptor.forClass(Message.class);
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_DEVICE_INFO);
+        verify(mClientHandler, times(2)).sendMessage(msgCaptor.capture());
+        assertEquals(WifiP2pManager.RESPONSE_DEVICE_INFO, msgCaptor.getValue().what);
+        WifiP2pDevice wifiP2pDevice = (WifiP2pDevice) msgCaptor.getAllValues().get(1).obj;
+        assertEquals(defaultDeviceName, wifiP2pDevice.deviceName);
+
+        // After the default name expires, the default name should be changed.
+        when(mClock.getElapsedSinceBootMillis()).thenReturn(
+                WifiP2pServiceImpl.DEFAULT_DEVICE_NAME_LIFE_TIME_MILLIS);
+        mockEnterDisabledState();
+        sendP2pStateMachineMessage(WifiP2pServiceImpl.ENABLE_P2P);
+        msgCaptor = ArgumentCaptor.forClass(Message.class);
+        sendSimpleMsg(mClientMessenger, WifiP2pManager.REQUEST_DEVICE_INFO);
+        verify(mClientHandler, times(3)).sendMessage(msgCaptor.capture());
+        assertEquals(WifiP2pManager.RESPONSE_DEVICE_INFO, msgCaptor.getValue().what);
+        wifiP2pDevice = (WifiP2pDevice) msgCaptor.getAllValues().get(2).obj;
+        assertNotEquals(defaultDeviceName, wifiP2pDevice.deviceName);
     }
 
     /**
