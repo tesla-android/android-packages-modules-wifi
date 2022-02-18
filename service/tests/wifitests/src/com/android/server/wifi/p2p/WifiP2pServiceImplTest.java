@@ -56,6 +56,7 @@ import static org.mockito.Mockito.when;
 
 import android.annotation.Nullable;
 import android.app.AlarmManager;
+import android.app.AlertDialog;
 import android.app.BroadcastOptions;
 import android.app.test.MockAnswerUtil.AnswerWithArguments;
 import android.content.AttributionSource;
@@ -103,6 +104,11 @@ import android.os.WorkSource;
 import android.os.test.TestLooper;
 import android.provider.Settings;
 import android.view.Display;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.widget.TextView;
 
 import androidx.test.filters.SmallTest;
 
@@ -222,6 +228,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     @Mock AlarmManager mAlarmManager;
     @Mock WifiDialogManager mWifiDialogManager;
     @Mock Clock mClock;
+    @Mock LayoutInflater mLayoutInflater;
+    @Mock View mView;
+    @Mock AlertDialog.Builder mAlertDialogBuilder;
+    @Mock AlertDialog mAlertDialog;
     CoexManager.CoexListener mCoexListener;
 
     private void generatorTestData() {
@@ -1028,6 +1038,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
 
         when(mContext.getSystemService(Context.ALARM_SERVICE))
                 .thenReturn(mAlarmManager);
+        when(mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE))
+                .thenReturn(mLayoutInflater);
         when(mContext.getPackageManager()).thenReturn(mPackageManager);
         when(mContext.getResources()).thenReturn(mResources);
         when(mContext.getSystemService(WifiManager.class)).thenReturn(mWifiManager);
@@ -1078,6 +1090,12 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiNative.setupInterface(any(), any(), any())).thenReturn(IFACE_NAME_P2P);
         when(mWifiNative.p2pGetDeviceAddress()).thenReturn(thisDeviceMac);
         when(mUserManager.getUserRestrictions()).thenReturn(mBundle);
+        when(mFrameworkFacade.makeAlertDialogBuilder(any())).thenReturn(mAlertDialogBuilder);
+        when(mAlertDialogBuilder.setTitle(any())).thenReturn(mAlertDialogBuilder);
+        when(mAlertDialogBuilder.setView(any())).thenReturn(mAlertDialogBuilder);
+        when(mAlertDialogBuilder.setPositiveButton(any(), any())).thenReturn(mAlertDialogBuilder);
+        when(mAlertDialogBuilder.create()).thenReturn(mAlertDialog);
+        when(mAlertDialog.getWindow()).thenReturn(mock(Window.class));
         if (SdkLevel.isAtLeastT()) {
             when(mBundle.getBoolean(UserManager.DISALLOW_WIFI_DIRECT)).thenReturn(false);
         }
@@ -1142,6 +1160,12 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
                 .startMocking();
         lenient().when(NetworkInterface.getByName(eq(IFACE_NAME_P2P)))
                 .thenReturn(mP2pNetworkInterface);
+        when(mLayoutInflater.cloneInContext(any())).thenReturn(mLayoutInflater);
+        when(mLayoutInflater.inflate(anyInt(), any())).thenReturn(mView);
+        when(mLayoutInflater.inflate(anyInt(), any(), anyBoolean())).thenReturn(mView);
+        when(mView.findViewById(eq(R.id.name))).thenReturn(mock(TextView.class));
+        when(mView.findViewById(eq(R.id.value))).thenReturn(mock(TextView.class));
+        when(mView.findViewById(eq(R.id.info))).thenReturn(mock(ViewGroup.class));
         ArrayList<InetAddress> p2pInetAddresses = new ArrayList<>();
         p2pInetAddresses.add(InetAddresses.parseNumericAddress(P2P_GO_IP));
         when(mP2pNetworkInterface.getInetAddresses())
@@ -5729,9 +5753,16 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         verifyRemoveExternalApprover(hasPermission, shouldSucceed);
     }
 
+
     private void verifySetConnectionRequestResult(boolean hasApprover,
-            boolean hasPermission,
-            boolean shouldSucceed) throws Exception {
+            boolean hasPermission, boolean shouldSucceed) throws Exception {
+        verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed,
+                WpsInfo.PBC, WifiP2pManager.CONNECTION_REQUEST_ACCEPT);
+    }
+
+    private void verifySetConnectionRequestResult(boolean hasApprover,
+            boolean hasPermission, boolean shouldSucceed,
+            int wpsType, int result) throws Exception {
         Binder binder = new Binder();
 
         forceP2pEnabled(mClient1);
@@ -5746,7 +5777,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         WifiP2pConfig config = new WifiP2pConfig();
         config.deviceAddress = mTestWifiP2pDevice.deviceAddress;
         config.wps = new WpsInfo();
-        config.wps.setup = WpsInfo.PBC;
+        config.wps.setup = wpsType;
 
         Message msg = Message.obtain();
         msg.what = WifiP2pMonitor.P2P_GO_NEGOTIATION_REQUEST_EVENT;
@@ -5758,8 +5789,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
                 .thenReturn(hasPermission);
         sendSetConnectionRequestResultMsg(mClientMessenger,
                 MacAddress.fromString(mTestWifiP2pDevice.deviceAddress),
-                WifiP2pManager.CONNECTION_REQUEST_ACCEPT,
-                binder);
+                result, binder);
         if (shouldSucceed) {
             // There are 4 replies:
             // * EXTERNAL_APPROVER_ATTACH
@@ -5811,5 +5841,15 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
     public void testSetConnectionRequestResultFailureWithoutApprover() throws Exception {
         boolean hasApprover = false, hasPermission = true, shouldSucceed = false;
         verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed);
+    }
+
+    /**
+     * Verify that deferring pin to the framework works normally.
+     */
+    @Test
+    public void testSetConnectionRequestResultDeferPinToFramework() throws Exception {
+        boolean hasApprover = true, hasPermission = true, shouldSucceed = true;
+        verifySetConnectionRequestResult(hasApprover, hasPermission, shouldSucceed,
+                WpsInfo.KEYPAD, WifiP2pManager.CONNECTION_REQUEST_DEFER_SHOW_PIN_TO_SERVICE);
     }
 }
