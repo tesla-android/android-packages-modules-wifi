@@ -2571,7 +2571,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (isVerboseLoggingEnabled()) logd(getName() + " start listen mode");
-                        mWifiNative.p2pFlush();
+                        mWifiNative.p2pStopFind();
                         if (mWifiNative.p2pExtListen(true, 500, 500)) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_SUCCEEDED);
                         } else {
@@ -2585,7 +2585,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         } else {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
                         }
-                        mWifiNative.p2pFlush();
+                        mWifiNative.p2pStopFind();
                         break;
                     case WifiP2pManager.SET_CHANNEL:
                         if (!checkNetworkSettingsOrNetworkStackOrOverrideWifiConfigPermission(
@@ -2965,7 +2965,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             break;
                         }
                         if (isVerboseLoggingEnabled()) logd(getName() + " start listen mode");
-                        mWifiNative.p2pFlush();
+                        mWifiNative.p2pStopFind();
                         if (mWifiNative.p2pExtListen(true, 500, 500)) {
                             replyToMessage(message, WifiP2pManager.START_LISTEN_SUCCEEDED);
                         } else {
@@ -2979,7 +2979,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         } else {
                             replyToMessage(message, WifiP2pManager.STOP_LISTEN_FAILED);
                         }
-                        mWifiNative.p2pFlush();
+                        mWifiNative.p2pStopFind();
                         break;
                     case WifiP2pManager.SET_CHANNEL:
                         if (!checkNetworkSettingsOrNetworkStackOrOverrideWifiConfigPermission(

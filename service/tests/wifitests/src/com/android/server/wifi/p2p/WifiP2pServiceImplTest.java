@@ -2219,6 +2219,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_FAILED));
         // p2pFlush should be invoked once in forceP2pEnabled.
         verify(mWifiNative).p2pFlush();
+        verify(mWifiNative, never()).p2pStopFind();
         verify(mWifiNative, never()).p2pExtListen(anyBoolean(), anyInt(), anyInt());
     }
 
@@ -2232,8 +2233,9 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.START_LISTEN);
-        // p2pFlush would be invoked in forceP2pEnabled and startListen both.
-        verify(mWifiNative, times(2)).p2pFlush();
+        // p2pFlush should be invoked once in forceP2pEnabled.
+        verify(mWifiNative).p2pFlush();
+        verify(mWifiNative).p2pStopFind();
         verify(mWifiNative).p2pExtListen(eq(true), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_FAILED));
         if (SdkLevel.isAtLeastT()) {
@@ -2257,8 +2259,9 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         forceP2pEnabled(mClient1);
         sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.START_LISTEN);
-        // p2pFlush would be invoked in forceP2pEnabled and startListen both.
-        verify(mWifiNative, times(2)).p2pFlush();
+        // p2pFlush should be invoked once in forceP2pEnabled.
+        verify(mWifiNative).p2pFlush();
+        verify(mWifiNative).p2pStopFind();
         verify(mWifiNative).p2pExtListen(eq(true), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.START_LISTEN_SUCCEEDED));
         if (SdkLevel.isAtLeastT()) {
@@ -2280,6 +2283,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiNative.p2pExtListen(eq(false), anyInt(), anyInt())).thenReturn(false);
         forceP2pEnabled(mClient1);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.STOP_LISTEN);
+        verify(mWifiNative).p2pStopFind();
         verify(mWifiNative).p2pExtListen(eq(false), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.STOP_LISTEN_FAILED));
     }
@@ -2292,6 +2296,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         when(mWifiNative.p2pExtListen(eq(false), anyInt(), anyInt())).thenReturn(true);
         forceP2pEnabled(mClient1);
         sendSimpleMsg(mClientMessenger, WifiP2pManager.STOP_LISTEN);
+        verify(mWifiNative).p2pStopFind();
         verify(mWifiNative).p2pExtListen(eq(false), anyInt(), anyInt());
         assertTrue(mClientHandler.hasMessages(WifiP2pManager.STOP_LISTEN_SUCCEEDED));
     }
