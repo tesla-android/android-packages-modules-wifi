@@ -10124,13 +10124,13 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 IInterfaceCreationInfoCallback.Stub.class);
 
         assertThrows(IllegalArgumentException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(null,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(null,
                         WifiManager.WIFI_INTERFACE_TYPE_AP, true, mockCallback));
         assertThrows(IllegalArgumentException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME,
                         WifiManager.WIFI_INTERFACE_TYPE_AP, true, null));
         assertThrows(IllegalArgumentException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME,
                         /* clearly invalid value */ 100, true, mockCallback));
 
         mWifiServiceImpl = spy(mWifiServiceImpl);
@@ -10138,12 +10138,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
         doThrow(new SecurityException()).when(mWifiPermissionsUtil).checkPackage(TEST_UID,
                 TEST_PACKAGE_NAME);
         assertThrows(SecurityException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME,
                         WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
 
         when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(anyInt())).thenReturn(false);
         assertThrows(SecurityException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME,
                         WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
 
         when(mWifiPermissionsUtil.checkManageWifiInterfacesPermission(anyInt())).thenReturn(true);
@@ -10151,7 +10151,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .enforceCallingOrSelfPermission(eq(ACCESS_WIFI_STATE),
                         eq("WifiService"));
         assertThrows(SecurityException.class,
-                () -> mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME,
+                () -> mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME,
                         WifiManager.WIFI_INTERFACE_TYPE_AP, false, mockCallback));
     }
 
@@ -10179,12 +10179,12 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 .thenReturn(null)
                 .thenReturn(Collections.emptyList())
                 .thenReturn(List.of(Pair.create(HalDeviceManager.HDM_CREATE_IFACE_P2P, wsOther)));
-        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
-                true, mockCallback);
-        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
-                true, mockCallback);
-        mWifiServiceImpl.reportImpactToCreateIfaceRequest(TEST_PACKAGE_NAME, interfaceToCreate,
-                true, mockCallback);
+        mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME, interfaceToCreate, true,
+                mockCallback);
+        mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME, interfaceToCreate, true,
+                mockCallback);
+        mWifiServiceImpl.reportCreateInterfaceImpact(TEST_PACKAGE_NAME, interfaceToCreate, true,
+                mockCallback);
         mLooper.dispatchAll();
         verify(mHalDeviceManager, times(3)).reportImpactToCreateIface(
                 interfaceToCreateInternal, true, ws);
