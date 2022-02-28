@@ -4358,26 +4358,13 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         extras);
                 return;
             }
-
-            Resources r = mContext.getResources();
-
-            final View textEntryView = LayoutInflater.from(mContext).cloneInContext(mContext)
-                    .inflate(R.layout.wifi_p2p_dialog, null);
-
-            ViewGroup group = (ViewGroup) textEntryView.findViewById(R.id.info);
-            addRowToDialog(group, R.string.wifi_p2p_to_message, getDeviceName(peerAddress));
-            addRowToDialog(group, R.string.wifi_p2p_show_pin_message, pin);
-
-            AlertDialog dialog = mFrameworkFacade.makeAlertDialogBuilder(mContext)
-                    .setTitle(r.getString(R.string.wifi_p2p_invitation_sent_title))
-                    .setView(textEntryView)
-                    .setPositiveButton(r.getString(R.string.ok), null)
-                    .create();
-            dialog.setCanceledOnTouchOutside(false);
-            dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
-            dialog.getWindow().addSystemFlags(
-                    WindowManager.LayoutParams.SYSTEM_FLAG_SHOW_FOR_ALL_USERS);
-            dialog.show();
+            WifiDialogManager.DialogHandle dialogHandle = mWifiInjector.getWifiDialogManager()
+                    .createP2pInvitationSentDialog(getDeviceName(peerAddress), pin);
+            if (dialogHandle == null) {
+                loge("Could not create invitation sent dialog!");
+                return;
+            }
+            dialogHandle.launchDialog();
         }
 
         private void notifyP2pProvDiscShowPinRequest(String pin, String peerAddress) {
