@@ -3900,4 +3900,16 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
 
         return currentConfig.getNetworkSelectionStatus().getCandidateSecurityParams();
     }
+
+    /**
+     * Set whether the network-centric QoS policy feature is enabled or not for this interface.
+     *
+     * @param ifaceName name of the interface.
+     * @param isEnabled true if feature is enabled, false otherwise.
+     * @return true without action since this is not a supported feature.
+     */
+    public boolean setNetworkCentricQosPolicyFeatureEnabled(@NonNull String ifaceName,
+            boolean isEnabled) {
+        return false;
+    }
 }

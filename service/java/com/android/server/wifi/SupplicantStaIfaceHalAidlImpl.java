@@ -2969,6 +2969,33 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
     }
 
     /**
+     * Set whether the network-centric QoS policy feature is enabled or not for this interface.
+     *
+     * @param ifaceName name of the interface.
+     * @param isEnabled true if feature is enabled, false otherwise.
+     * @return true if operation is successful, false otherwise.
+     */
+    public boolean setNetworkCentricQosPolicyFeatureEnabled(@NonNull String ifaceName,
+            boolean isEnabled) {
+        synchronized (mLock) {
+            String methodStr = "setNetworkCentricQosPolicyFeatureEnabled";
+            ISupplicantStaIface iface = checkStaIfaceAndLogFailure(ifaceName, methodStr);
+            if (iface == null) {
+                return false;
+            }
+            try {
+                iface.setQosPolicyFeatureEnabled(isEnabled);
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return false;
+        }
+    }
+
+    /**
      * Check if we've roamed to a linked network and make the linked network the current network
      * if we have.
      *

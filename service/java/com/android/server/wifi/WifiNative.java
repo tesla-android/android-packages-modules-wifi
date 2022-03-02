@@ -33,6 +33,7 @@ import android.net.wifi.SoftApConfiguration;
 import android.net.wifi.WifiAnnotations;
 import android.net.wifi.WifiAvailableChannel;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiContext;
 import android.net.wifi.WifiScanner;
 import android.net.wifi.WifiSsid;
 import android.net.wifi.nl80211.DeviceWiphyCapabilities;
@@ -57,6 +58,7 @@ import com.android.server.wifi.util.InformationElementUtil;
 import com.android.server.wifi.util.NativeUtil;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.NetdWrapper.NetdEventObserver;
+import com.android.wifi.resources.R;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -98,6 +100,7 @@ public class WifiNative {
     private final Random mRandom;
     private final BuildProperties mBuildProperties;
     private final WifiInjector mWifiInjector;
+    private final WifiContext mContext;
     private NetdWrapper mNetdWrapper;
     private boolean mVerboseLoggingEnabled = false;
     private boolean mIsEnhancedOpenSupported = false;
@@ -125,6 +128,7 @@ public class WifiNative {
         mRandom = random;
         mBuildProperties = buildProperties;
         mWifiInjector = wifiInjector;
+        mContext = wifiInjector.getContext();
     }
 
     /**
@@ -1210,6 +1214,14 @@ public class WifiNative {
                 mWifiMetrics.incrementNumSetupClientInterfaceFailureDueToSupplicant();
                 return null;
             }
+            if (mContext.getResources().getBoolean(
+                    R.bool.config_wifiNetworkCentricQosPolicyFeatureEnabled)) {
+                if (!mSupplicantStaIfaceHal.setNetworkCentricQosPolicyFeatureEnabled(
+                        iface.name, true)) {
+                    Log.e(TAG, "Failed to set QoS policy feature enabled for iface " + iface.name);
+                    return null;
+                }
+            }
             iface.networkObserver = new NetworkObserverInternal(iface.id);
             if (!registerNetworkObserver(iface.networkObserver)) {
                 Log.e(TAG, "Failed to register network observer on " + iface);
@@ -1442,6 +1454,14 @@ public class WifiNative {
                 teardownInterface(iface.name);
                 mWifiMetrics.incrementNumSetupClientInterfaceFailureDueToSupplicant();
                 return false;
+            }
+            if (mContext.getResources().getBoolean(
+                    R.bool.config_wifiNetworkCentricQosPolicyFeatureEnabled)) {
+                if (!mSupplicantStaIfaceHal.setNetworkCentricQosPolicyFeatureEnabled(
+                        iface.name, true)) {
+                    Log.e(TAG, "Failed to set QoS policy feature enabled for iface " + iface.name);
+                    return false;
+                }
             }
             iface.type = Iface.IFACE_TYPE_STA_FOR_CONNECTIVITY;
             iface.featureSet = getSupportedFeatureSetInternal(iface.name);
