@@ -52,6 +52,7 @@ import android.util.Log;
 import com.android.internal.annotations.Immutable;
 import com.android.internal.util.HexDump;
 import com.android.modules.utils.build.SdkLevel;
+import com.android.server.wifi.SupplicantStaIfaceHal.QosPolicyStatus;
 import com.android.server.wifi.hotspot2.NetworkDetail;
 import com.android.server.wifi.util.FrameParser;
 import com.android.server.wifi.util.InformationElementUtil;
@@ -4246,6 +4247,21 @@ public class WifiNative {
      */
     public SecurityParams getCurrentNetworkSecurityParams(@NonNull String ifaceName) {
         return mSupplicantStaIfaceHal.getCurrentNetworkSecurityParams(ifaceName);
+    }
+
+    /**
+     * Sends a QoS policy response.
+     *
+     * @param ifaceName Name of the interface.
+     * @param qosPolicyRequestId Dialog token to identify the request.
+     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
+     * @param qosPolicyStatusList List of framework QosPolicyStatus objects.
+     * @return true if response is sent successfully, false otherwise.
+     */
+    public boolean sendQosPolicyResponse(String ifaceName, int qosPolicyRequestId,
+            boolean morePolicies, @NonNull List<QosPolicyStatus> qosPolicyStatusList) {
+        return mSupplicantStaIfaceHal.sendQosPolicyResponse(ifaceName, qosPolicyRequestId,
+                morePolicies, qosPolicyStatusList);
     }
 
     /**

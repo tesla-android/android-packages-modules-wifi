@@ -29,6 +29,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -647,6 +648,16 @@ public class SupplicantStaIfaceHal {
                 return "OPEN_SSL_FAILURE";
             default:
                 return "Invalid SupplicantEventCode: " + eventCode;
+        }
+    }
+
+    protected static class QosPolicyStatus {
+        public final int policyId;
+        public final int dscpPolicyStatus;
+
+        public QosPolicyStatus(int id, int status) {
+            policyId = id;
+            dscpPolicyStatus = status;
         }
     }
 
@@ -2047,6 +2058,26 @@ public class SupplicantStaIfaceHal {
             }
             return mStaIfaceHal.getCurrentNetworkSecurityParams(ifaceName);
         }
+    }
+
+    /**
+     * Sends a QoS policy response.
+     *
+     * @param ifaceName Name of the interface.
+     * @param qosPolicyRequestId Dialog token to identify the request.
+     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
+     * @param qosPolicyStatusList List of framework QosPolicyStatus objects.
+     * @return true if response is sent successfully, false otherwise.
+     */
+    public boolean sendQosPolicyResponse(String ifaceName, int qosPolicyRequestId,
+            boolean morePolicies, @NonNull List<QosPolicyStatus> qosPolicyStatusList) {
+        String methodStr = "sendQosPolicyResponse";
+        if (mStaIfaceHal == null) {
+            handleNullHal(methodStr);
+            return false;
+        }
+        return mStaIfaceHal.sendQosPolicyResponse(ifaceName, qosPolicyRequestId,
+                morePolicies, qosPolicyStatusList);
     }
 
     private boolean handleNullHal(String methodStr) {

@@ -51,11 +51,14 @@ import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.KeyMgmtMask;
 import android.hardware.wifi.supplicant.LegacyMode;
 import android.hardware.wifi.supplicant.MloLinksInfo;
+import android.hardware.wifi.supplicant.QosPolicyStatus;
+import android.hardware.wifi.supplicant.QosPolicyStatusCode;
 import android.hardware.wifi.supplicant.RxFilterType;
 import android.hardware.wifi.supplicant.WifiTechnology;
 import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
 import android.net.MacAddress;
+import android.net.NetworkAgent;
 import android.net.wifi.ScanResult;
 import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiAnnotations;
@@ -2637,6 +2640,23 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
         }
     }
 
+    protected byte dscpPolicyToAidlQosPolicyStatusCode(int status) {
+        switch (status) {
+            case NetworkAgent.DSCP_POLICY_STATUS_SUCCESS:
+            case NetworkAgent.DSCP_POLICY_STATUS_DELETED:
+                return QosPolicyStatusCode.QOS_POLICY_SUCCESS;
+            case NetworkAgent.DSCP_POLICY_STATUS_REQUEST_DECLINED:
+                return QosPolicyStatusCode.QOS_POLICY_REQUEST_DECLINED;
+            case NetworkAgent.DSCP_POLICY_STATUS_REQUESTED_CLASSIFIER_NOT_SUPPORTED:
+                return QosPolicyStatusCode.QOS_POLICY_CLASSIFIER_NOT_SUPPORTED;
+            case NetworkAgent.DSCP_POLICY_STATUS_INSUFFICIENT_PROCESSING_RESOURCES:
+                return QosPolicyStatusCode.QOS_POLICY_INSUFFICIENT_RESOURCES;
+            default:
+                Log.e(TAG, "Invalid DSCP policy failure code received: " + status);
+                return QosPolicyStatusCode.QOS_POLICY_REQUEST_DECLINED;
+        }
+    }
+
     /**
      * Returns connection capabilities of the current network
      *
@@ -3140,5 +3160,51 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
         }
 
         return currentConfig.getNetworkSelectionStatus().getCandidateSecurityParams();
+    }
+
+    /**
+     * Sends a QoS policy response.
+     *
+     * @param ifaceName Name of the interface.
+     * @param qosPolicyRequestId Dialog token to identify the request.
+     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
+     * @param qosPolicyStatusList List of framework QosPolicyStatus objects.
+     * @return true if response is sent successfully, false otherwise.
+     */
+    public boolean sendQosPolicyResponse(String ifaceName, int qosPolicyRequestId,
+            boolean morePolicies,
+            @NonNull List<SupplicantStaIfaceHal.QosPolicyStatus> qosPolicyStatusList) {
+        synchronized (mLock) {
+            final String methodStr = "sendQosPolicyResponse";
+            ISupplicantStaIface iface = checkStaIfaceAndLogFailure(ifaceName, methodStr);
+            if (iface == null) {
+                return false;
+            }
+
+            int index = 0;
+            QosPolicyStatus[] halPolicyStatusList = new QosPolicyStatus[qosPolicyStatusList.size()];
+            for (SupplicantStaIfaceHal.QosPolicyStatus frameworkPolicyStatus
+                    : qosPolicyStatusList) {
+                if (frameworkPolicyStatus == null) {
+                    return false;
+                }
+                QosPolicyStatus halPolicyStatus = new QosPolicyStatus();
+                halPolicyStatus.policyId = (byte) frameworkPolicyStatus.policyId;
+                halPolicyStatus.status = dscpPolicyToAidlQosPolicyStatusCode(
+                        frameworkPolicyStatus.dscpPolicyStatus);
+                halPolicyStatusList[index] = halPolicyStatus;
+                index++;
+            }
+
+            try {
+                iface.sendQosPolicyResponse(qosPolicyRequestId, morePolicies, halPolicyStatusList);
+                return true;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return false;
+        }
     }
 }

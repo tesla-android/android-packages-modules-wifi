@@ -3912,4 +3912,20 @@ public class SupplicantStaIfaceHalHidlImpl implements ISupplicantStaIfaceHal {
             boolean isEnabled) {
         return false;
     }
+
+    /**
+     * Sends a QoS policy response.
+     *
+     * @param ifaceName Name of the interface.
+     * @param qosPolicyRequestId Dialog token to identify the request.
+     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
+     * @param qosPolicyStatusList List of framework QosPolicyStatus objects.
+     * @return true if response is sent successfully, false otherwise.
+     */
+    public boolean sendQosPolicyResponse(String ifaceName, int qosPolicyRequestId,
+            boolean morePolicies,
+            @NonNull List<SupplicantStaIfaceHal.QosPolicyStatus> qosPolicyStatusList) {
+        Log.e(TAG, "sendQosPolicyResponse is not supported by the HIDL HAL");
+        return false;
+    }
 }
