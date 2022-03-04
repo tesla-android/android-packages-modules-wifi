@@ -23,11 +23,14 @@ import android.net.wifi.SecurityParams;
 import android.net.wifi.WifiConfiguration;
 import android.os.Handler;
 import android.util.Log;
+import android.util.Range;
 
 import com.android.internal.annotations.VisibleForTesting;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -648,6 +651,96 @@ public class SupplicantStaIfaceHal {
                 return "OPEN_SSL_FAILURE";
             default:
                 return "Invalid SupplicantEventCode: " + eventCode;
+        }
+    }
+
+    protected static final int QOS_POLICY_REQUEST_ADD = 0;
+    protected static final int QOS_POLICY_REQUEST_REMOVE = 1;
+
+    @IntDef(prefix = { "QOS_POLICY_REQUEST_" }, value = {
+            QOS_POLICY_REQUEST_ADD,
+            QOS_POLICY_REQUEST_REMOVE
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    protected @interface QosPolicyRequestType {}
+
+    protected static class QosPolicyRequest {
+        public final byte policyId;
+        public final @QosPolicyRequestType int requestType;
+        public final byte dscp;
+        public final QosPolicyClassifierParams classifierParams;
+
+        public QosPolicyRequest(byte halPolicyId, @QosPolicyRequestType int halRequestType,
+                byte halDscp, @NonNull QosPolicyClassifierParams frameworkClassifierParams) {
+            policyId = halPolicyId;
+            dscp = halDscp;
+            requestType = halRequestType;
+            classifierParams = frameworkClassifierParams;
+        }
+
+        public boolean isAddRequest() {
+            return requestType == QOS_POLICY_REQUEST_ADD;
+        }
+
+        public boolean isRemoveRequest() {
+            return requestType == QOS_POLICY_REQUEST_REMOVE;
+        }
+
+        @Override
+        public String toString() {
+            return "policyId: " + policyId + ", isAddRequest: " + this.isAddRequest()
+                    + ", isRemoveRequest: " + this.isRemoveRequest() + ", dscp: " + dscp
+                    + ", classifierParams: {" + classifierParams + "}";
+        }
+    }
+
+    protected static class QosPolicyClassifierParams {
+        public InetAddress srcIp = null;
+        public InetAddress dstIp = null;
+        public Range dstPortRange = null;
+        public final int srcPort;
+        public final int protocol;
+
+        public final boolean hasSrcIp;
+        public final boolean hasDstIp;
+        public boolean isValid = true;
+
+        public QosPolicyClassifierParams(boolean halHasSrcIp, byte[] halSrcIp, boolean halHasDstIp,
+                byte[] halDstIp, int halSrcPort, @NonNull int[] halDstPortRange,
+                int halProtocol) {
+            srcPort = halSrcPort;
+            protocol = halProtocol;
+
+            hasSrcIp = halHasSrcIp;
+            if (hasSrcIp) {
+                try {
+                    srcIp = InetAddress.getByAddress(halSrcIp);
+                } catch (UnknownHostException e) {
+                    isValid = false;
+                }
+            }
+
+            hasDstIp = halHasDstIp;
+            if (hasDstIp) {
+                try {
+                    dstIp = InetAddress.getByAddress(halDstIp);
+                } catch (UnknownHostException e) {
+                    isValid = false;
+                }
+            }
+
+            if (halDstPortRange[0] > halDstPortRange[1]) {
+                isValid = false;
+            } else {
+                dstPortRange = new Range(halDstPortRange[0], halDstPortRange[1]);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "isValid: " + isValid + ", hasSrcIp: " + hasSrcIp + ", hasDstIp: " + hasDstIp
+                    + ", srcIp: " + srcIp + ", dstIp: " + dstIp + ", dstPortRange: " + dstPortRange
+                    + ", srcPort: " + srcPort + ", protocol: " + protocol;
         }
     }
 

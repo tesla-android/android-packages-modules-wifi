@@ -51,12 +51,17 @@ import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.KeyMgmtMask;
 import android.hardware.wifi.supplicant.LegacyMode;
 import android.hardware.wifi.supplicant.MloLinksInfo;
+import android.hardware.wifi.supplicant.QosPolicyClassifierParams;
+import android.hardware.wifi.supplicant.QosPolicyClassifierParamsMask;
+import android.hardware.wifi.supplicant.QosPolicyData;
+import android.hardware.wifi.supplicant.QosPolicyRequestType;
 import android.hardware.wifi.supplicant.QosPolicyStatus;
 import android.hardware.wifi.supplicant.QosPolicyStatusCode;
 import android.hardware.wifi.supplicant.RxFilterType;
 import android.hardware.wifi.supplicant.WifiTechnology;
 import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
+import android.net.DscpPolicy;
 import android.net.MacAddress;
 import android.net.NetworkAgent;
 import android.net.wifi.ScanResult;
@@ -105,6 +110,9 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
      */
     private static final Pattern WPS_DEVICE_TYPE_PATTERN =
             Pattern.compile("^(\\d{1,2})-([0-9a-fA-F]{8})-(\\d{1,2})$");
+
+    private static final int MIN_PORT_NUM = 0;
+    private static final int MAX_PORT_NUM = 65535;
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
@@ -2655,6 +2663,66 @@ public class SupplicantStaIfaceHalAidlImpl implements ISupplicantStaIfaceHal {
                 Log.e(TAG, "Invalid DSCP policy failure code received: " + status);
                 return QosPolicyStatusCode.QOS_POLICY_REQUEST_DECLINED;
         }
+    }
+
+    protected static int halToFrameworkQosPolicyRequestType(byte requestType) {
+        switch (requestType) {
+            case QosPolicyRequestType.QOS_POLICY_ADD:
+                return SupplicantStaIfaceHal.QOS_POLICY_REQUEST_ADD;
+            case QosPolicyRequestType.QOS_POLICY_REMOVE:
+                return SupplicantStaIfaceHal.QOS_POLICY_REQUEST_REMOVE;
+            default:
+                Log.e(TAG, "Invalid QosPolicyRequestType received: " + requestType);
+                return -1;
+        }
+    }
+
+    private static boolean qosClassifierParamHasValue(int classifierParamMask, int paramBit) {
+        return (classifierParamMask & paramBit) != 0;
+    }
+
+    /**
+     * Convert from a HAL QosPolicyData object to a framework QosPolicy object.
+     */
+    public static SupplicantStaIfaceHal.QosPolicyRequest halToFrameworkQosPolicy(
+            QosPolicyData halQosPolicy) {
+        QosPolicyClassifierParams classifierParams = halQosPolicy.classifierParams;
+        int classifierParamMask = classifierParams.classifierParamMask;
+
+        byte[] srcIp = null;
+        byte[] dstIp = null;
+        int srcPort = DscpPolicy.SOURCE_PORT_ANY;
+        int[] dstPortRange = new int[]{MIN_PORT_NUM, MAX_PORT_NUM};
+        int protocol = DscpPolicy.PROTOCOL_ANY;
+        boolean hasSrcIp = false;
+        boolean hasDstIp = false;
+
+        if (qosClassifierParamHasValue(classifierParamMask, QosPolicyClassifierParamsMask.SRC_IP)) {
+            hasSrcIp = true;
+            srcIp = classifierParams.srcIp;
+        }
+        if (qosClassifierParamHasValue(classifierParamMask, QosPolicyClassifierParamsMask.DST_IP)) {
+            hasDstIp = true;
+            dstIp = classifierParams.dstIp;
+        }
+        if (qosClassifierParamHasValue(classifierParamMask,
+                QosPolicyClassifierParamsMask.SRC_PORT)) {
+            srcPort = classifierParams.srcPort;
+        }
+        if (qosClassifierParamHasValue(classifierParamMask,
+                QosPolicyClassifierParamsMask.DST_PORT_RANGE)) {
+            dstPortRange[0] = classifierParams.dstPortRange.startPort;
+            dstPortRange[1] = classifierParams.dstPortRange.endPort;
+        }
+        if (qosClassifierParamHasValue(classifierParamMask,
+                QosPolicyClassifierParamsMask.PROTOCOL_NEXT_HEADER)) {
+            protocol = classifierParams.protocolNextHdr;
+        }
+
+        return new SupplicantStaIfaceHal.QosPolicyRequest(halQosPolicy.policyId,
+                halToFrameworkQosPolicyRequestType(halQosPolicy.requestType), halQosPolicy.dscp,
+                new SupplicantStaIfaceHal.QosPolicyClassifierParams(
+                        hasSrcIp, srcIp, hasDstIp, dstIp, srcPort, dstPortRange, protocol));
     }
 
     /**
