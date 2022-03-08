@@ -113,6 +113,8 @@ import com.android.server.wifi.WifiSettingsConfigStore;
 import com.android.server.wifi.WifiThreadRunner;
 import com.android.server.wifi.coex.CoexManager;
 import com.android.server.wifi.p2p.ExternalApproverManager.ApproverEntry;
+import com.android.server.wifi.proto.nano.WifiMetricsProto;
+import com.android.server.wifi.proto.nano.WifiMetricsProto.GroupEvent;
 import com.android.server.wifi.proto.nano.WifiMetricsProto.P2pConnectionEvent;
 import com.android.server.wifi.util.NetdWrapper;
 import com.android.server.wifi.util.StringUtil;
@@ -2753,7 +2755,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             if (mWifiNative.p2pGroupAdd(config, true)) {
                                 mWifiP2pMetrics.startConnectionEvent(
                                         P2pConnectionEvent.CONNECTION_FAST,
-                                        config);
+                                        config, WifiMetricsProto.GroupEvent.GROUP_CLIENT);
                                 transitionTo(mGroupNegotiationState);
                             } else {
                                 loge("Cannot join a group with config.");
@@ -2771,12 +2773,12 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                                 if (reinvokePersistentGroup(config, false)) {
                                     mWifiP2pMetrics.startConnectionEvent(
                                             P2pConnectionEvent.CONNECTION_REINVOKE,
-                                            config);
+                                            config, GroupEvent.GROUP_UNKNOWN);
                                     transitionTo(mGroupNegotiationState);
                                 } else {
                                     mWifiP2pMetrics.startConnectionEvent(
                                             P2pConnectionEvent.CONNECTION_FRESH,
-                                            config);
+                                            config, GroupEvent.GROUP_UNKNOWN);
                                     transitionTo(mProvisionDiscoveryState);
                                 }
                             }
@@ -2818,7 +2820,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mJoinExistingGroup = false;
                         mWifiP2pMetrics.startConnectionEvent(
                                 P2pConnectionEvent.CONNECTION_FRESH,
-                                config);
+                                config, GroupEvent.GROUP_UNKNOWN);
                         transitionTo(mUserAuthorizingNegotiationRequestState);
                         break;
                     case WifiP2pMonitor.P2P_INVITATION_RECEIVED_EVENT:
@@ -2868,7 +2870,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         mJoinExistingGroup = true;
                         mWifiP2pMetrics.startConnectionEvent(
                                 P2pConnectionEvent.CONNECTION_FRESH,
-                                config);
+                                config, GroupEvent.GROUP_UNKNOWN);
                         transitionTo(mUserAuthorizingInviteRequestState);
                         break;
                     case WifiP2pMonitor.P2P_PROV_DISC_PBC_REQ_EVENT:
@@ -2933,7 +2935,7 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             if (isConfigValidAsGroup(config)) {
                                 mWifiP2pMetrics.startConnectionEvent(
                                         P2pConnectionEvent.CONNECTION_FAST,
-                                        config);
+                                        config, GroupEvent.GROUP_OWNER);
                                 ret = mWifiNative.p2pGroupAdd(config, false);
                             } else {
                                 ret = false;
@@ -2944,18 +2946,18 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                             if (netId != -1) {
                                 mWifiP2pMetrics.startConnectionEvent(
                                         P2pConnectionEvent.CONNECTION_REINVOKE,
-                                        null);
+                                        null, GroupEvent.GROUP_OWNER);
                                 ret = mWifiNative.p2pGroupAdd(netId);
                             } else {
                                 mWifiP2pMetrics.startConnectionEvent(
                                         P2pConnectionEvent.CONNECTION_LOCAL,
-                                        null);
+                                        null, GroupEvent.GROUP_OWNER);
                                 ret = mWifiNative.p2pGroupAdd(true);
                             }
                         } else {
                             mWifiP2pMetrics.startConnectionEvent(
                                     P2pConnectionEvent.CONNECTION_LOCAL,
-                                    null);
+                                    null, GroupEvent.GROUP_OWNER);
                             ret = mWifiNative.p2pGroupAdd(false);
                         }
 
