@@ -4980,6 +4980,10 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                         + interfaceName, ex);
                 return null;
             }
+            if (null == iface) {
+                Log.w(TAG, "Could not obtain interface " + interfaceName);
+                return null;
+            }
             Enumeration<InetAddress> addrs = iface.getInetAddresses();
             while (addrs.hasMoreElements()) {
                 InetAddress addr = addrs.nextElement();
@@ -5781,8 +5785,9 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         private boolean checkExternalApproverCaller(Message message,
                 IBinder binder, MacAddress devAddr) {
             Bundle extras = (Bundle) message.obj;
-            if (!mWifiPermissionsUtil.checkManageWifiAutoJoinPermission(message.sendingUid)) {
-                loge("Permission violation - no MANAGE_WIFI_AUTO_JOIN,"
+            if (!mWifiPermissionsUtil.checkManageWifiNetworkSelectionPermission(
+                    message.sendingUid)) {
+                loge("Permission violation - no MANAGE_WIFI_NETWORK_SELECTION,"
                         + " permission, uid = " + message.sendingUid);
                 return false;
             }
