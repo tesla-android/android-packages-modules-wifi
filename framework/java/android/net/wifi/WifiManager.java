@@ -19,7 +19,7 @@ package android.net.wifi;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.Manifest.permission.ACCESS_WIFI_STATE;
 import static android.Manifest.permission.CHANGE_WIFI_STATE;
-import static android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN;
+import static android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION;
 import static android.Manifest.permission.NEARBY_WIFI_DEVICES;
 import static android.Manifest.permission.READ_WIFI_CREDENTIAL;
 import static android.Manifest.permission.REQUEST_COMPANION_PROFILE_AUTOMOTIVE_PROJECTION;
@@ -1849,7 +1849,7 @@ public class WifiManager {
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
-            MANAGE_WIFI_AUTO_JOIN
+            MANAGE_WIFI_NETWORK_SELECTION
     })
     @SystemApi
     public void setScreenOnScanSchedule(@Nullable List<ScreenOnScanSchedule> screenOnScanSchedule) {
@@ -1919,7 +1919,7 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
+            android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION}, conditional = true)
     public void setSsidsAllowlist(@NonNull Set<WifiSsid> ssids) {
         if (ssids == null) {
             throw new IllegalArgumentException(TAG + ": ssids can not be null");
@@ -1942,7 +1942,7 @@ public class WifiManager {
     @SystemApi
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
-            android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN}, conditional = true)
+            android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION}, conditional = true)
     public @NonNull Set<WifiSsid> getSsidsAllowlist() {
         try {
             return new ArraySet<WifiSsid>(
@@ -2065,7 +2065,8 @@ public class WifiManager {
      * @throws {@link SecurityException} if the calling app is not a Device Owner (DO),
      *                           Profile Owner (PO), system app, or a privileged app that has one of
      *                           the permissions required by this API.
-     * @throws {@link IllegalArgumentException} if the input configuration is null.
+     * @throws {@link IllegalArgumentException} if the input configuration is null or if the
+     *            security type in input configuration is not supported.
      */
     @RequiresPermission(anyOf = {
             android.Manifest.permission.NETWORK_SETTINGS,
@@ -2076,6 +2077,10 @@ public class WifiManager {
     @NonNull
     public AddNetworkResult addNetworkPrivileged(@NonNull WifiConfiguration config) {
         if (config == null) throw new IllegalArgumentException("config cannot be null");
+        if (config.isSecurityType(WifiInfo.SECURITY_TYPE_DPP)
+                && !isFeatureSupported(WIFI_FEATURE_DPP_AKM)) {
+            throw new IllegalArgumentException("dpp akm is not supported");
+        }
         config.networkId = -1;
         try {
             return mService.addOrUpdateNetworkPrivileged(config, mContext.getOpPackageName());
@@ -3185,6 +3190,12 @@ public class WifiManager {
      * @hide
      */
     public static final long WIFI_FEATURE_ADDITIONAL_STA_MULTI_INTERNET = 0x20000000000000L;
+
+    /**
+     * Support for DPP (Easy-Connect) AKM.
+     * @hide
+     */
+    public static final long WIFI_FEATURE_DPP_AKM = 0x40000000000000L;
 
     private long getSupportedFeatures() {
         try {
@@ -6194,7 +6205,7 @@ public class WifiManager {
      *
      * Available for DO/PO apps.
      * Other apps require {@code android.Manifest.permission#NETWORK_SETTINGS} or
-     * {@code android.Manifest.permission#MANAGE_WIFI_AUTO_JOIN} permission.
+     * {@code android.Manifest.permission#MANAGE_WIFI_NETWORK_SELECTION} permission.
      */
     public void allowAutojoinGlobal(boolean allowAutojoin) {
         try {
@@ -7298,6 +7309,19 @@ public class WifiManager {
      */
     public boolean isTrustOnFirstUseSupported() {
         return isFeatureSupported(WIFI_FEATURE_TRUST_ON_FIRST_USE);
+    }
+
+    /**
+     * Wi-Fi Easy Connect DPP AKM enables provisioning and configuration of Wi-Fi devices without
+     * the need of using the device PSK passphrase.
+     * For more details, visit <a href="https://www.wi-fi.org/">https://www.wi-fi.org/</a> and
+     * search for "Easy Connect" or "Device Provisioning Protocol specification".
+     *
+     * @return true if this device supports Wi-Fi Easy-connect DPP (Device Provisioning Protocol)
+     * AKM, false otherwise.
+     */
+    public boolean isEasyConnectDppAkmSupported() {
+        return isFeatureSupported(WIFI_FEATURE_DPP_AKM);
     }
 
     /**
