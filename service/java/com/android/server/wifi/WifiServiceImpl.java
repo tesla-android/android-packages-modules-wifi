@@ -4882,6 +4882,7 @@ public class WifiServiceImpl extends BaseWifiService {
         mWifiMulticastLockManager.enableVerboseLogging(verboseEnabled);
         mWifiInjector.enableVerboseLogging(verboseEnabled, halVerboseEnabled);
         mWifiInjector.getSarManager().enableVerboseLogging(verboseEnabled);
+        ApConfigUtil.enableVerboseLogging(verboseEnabled);
     }
 
     @Override
