@@ -18,6 +18,9 @@ package com.android.server.wifi;
 
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_AP_BRIDGE;
+import static com.android.server.wifi.HalDeviceManager.HDM_CREATE_IFACE_STA;
 import static com.android.server.wifi.WifiSettingsConfigStore.WIFI_NATIVE_SUPPORTED_FEATURES;
 
 import android.annotation.IntDef;
@@ -47,6 +50,7 @@ import android.os.WorkSource;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
+import android.util.SparseArray;
 
 import com.android.internal.annotations.Immutable;
 import com.android.internal.util.HexDump;
@@ -3291,13 +3295,26 @@ public class WifiNative {
             @WifiAvailableChannel.Filter int filter) {
         return mWifiVendorHal.getUsableChannels(band, mode, filter);
     }
+    /**
+     * Returns whether the device supports the requested
+     * {@link HalDeviceManager.HdmIfaceTypeForCreation} combo.
+     */
+    public boolean canDeviceSupportCreateTypeCombo(SparseArray<Integer> combo) {
+        synchronized (mLock) {
+            return mWifiVendorHal.canDeviceSupportCreateTypeCombo(combo);
+        }
+    }
 
     /**
      * Returns whether STA + AP concurrency is supported or not.
      */
     public boolean isStaApConcurrencySupported() {
         synchronized (mLock) {
-            return mWifiVendorHal.isStaApConcurrencySupported();
+            return mWifiVendorHal.canDeviceSupportCreateTypeCombo(
+                    new SparseArray<Integer>() {{
+                            put(HDM_CREATE_IFACE_STA, 1);
+                            put(HDM_CREATE_IFACE_AP, 1);
+                    }});
         }
     }
 
@@ -3306,7 +3323,10 @@ public class WifiNative {
      */
     public boolean isStaStaConcurrencySupported() {
         synchronized (mLock) {
-            return mWifiVendorHal.isStaStaConcurrencySupported();
+            return mWifiVendorHal.canDeviceSupportCreateTypeCombo(
+                    new SparseArray<Integer>() {{
+                            put(HDM_CREATE_IFACE_STA, 2);
+                    }});
         }
     }
 
@@ -3315,6 +3335,12 @@ public class WifiNative {
      */
     public boolean isItPossibleToCreateApIface(@NonNull WorkSource requestorWs) {
         synchronized (mLock) {
+            if (!isHalStarted()) {
+                return canDeviceSupportCreateTypeCombo(
+                        new SparseArray<Integer>() {{
+                            put(HDM_CREATE_IFACE_AP, 1);
+                        }});
+            }
             return mWifiVendorHal.isItPossibleToCreateApIface(requestorWs);
         }
     }
@@ -3324,6 +3350,12 @@ public class WifiNative {
      */
     public boolean isItPossibleToCreateBridgedApIface(@NonNull WorkSource requestorWs) {
         synchronized (mLock) {
+            if (!isHalStarted()) {
+                return canDeviceSupportCreateTypeCombo(
+                        new SparseArray<Integer>() {{
+                            put(HDM_CREATE_IFACE_AP_BRIDGE, 1);
+                        }});
+            }
             return mWifiVendorHal.isItPossibleToCreateBridgedApIface(requestorWs);
         }
     }
@@ -3333,6 +3365,12 @@ public class WifiNative {
      */
     public boolean isItPossibleToCreateStaIface(@NonNull WorkSource requestorWs) {
         synchronized (mLock) {
+            if (!isHalStarted()) {
+                return canDeviceSupportCreateTypeCombo(
+                        new SparseArray<Integer>() {{
+                            put(HDM_CREATE_IFACE_STA, 1);
+                        }});
+            }
             return mWifiVendorHal.isItPossibleToCreateStaIface(requestorWs);
         }
     }
