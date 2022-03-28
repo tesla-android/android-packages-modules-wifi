@@ -1511,7 +1511,9 @@ public class HalDeviceManager {
                             wifiApIfaceV15.getBridgedInstances((status, instances) -> {
                                 statusOk.value = status.code == WifiStatusCode.SUCCESS;
                                 if (statusOk.value) {
-                                    if (instances != null && !instances.isEmpty()) {
+                                    // Only count bridged APs with more than 1 instance as a bridged
+                                    // AP; 1 instance bridged APs will be counted as single AP.
+                                    if (instances != null && instances.size() > 1) {
                                         apIfaceInfo.createType = HDM_CREATE_IFACE_AP_BRIDGE;
                                         numBridgedAps.value++;
                                     }
