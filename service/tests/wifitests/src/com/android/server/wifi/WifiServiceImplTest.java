@@ -9097,9 +9097,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
                 anyInt(), anyInt())).thenReturn(PackageManager.PERMISSION_GRANTED);
 
         // First set flag to not allow
-        when(mResources.getBoolean(
-                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
-                .thenReturn(false);
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(false);
         when(mWifiConfigManager.addOrUpdateNetwork(any(),  anyInt(), any(), eq(false))).thenReturn(
                 new NetworkUpdateResult(0));
 
@@ -9116,9 +9114,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any(), eq(false));
 
         // Set flag to allow
-        when(mResources.getBoolean(
-                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
-                .thenReturn(true);
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(true);
 
         // Verify operation succeeds
         mLooper.startAutoDispatch();
@@ -9138,9 +9134,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
     @Test
     public void testAddInsecureEnterpirseNetworkWithNoNetworkSettingsPerm() throws Exception {
         // First set flag to not allow
-        when(mResources.getBoolean(
-                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
-                .thenReturn(false);
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(false);
 
         // Create an insecure Enterprise network
         WifiConfiguration config = WifiConfigurationTestUtil.createEapNetwork();
@@ -9155,9 +9149,7 @@ public class WifiServiceImplTest extends WifiBaseTest {
         verify(mWifiConfigManager, never()).addOrUpdateNetwork(any(),  anyInt(), any(), eq(false));
 
         // Set flag to allow
-        when(mResources.getBoolean(
-                R.bool.config_wifiAllowInsecureEnterpriseConfigurationsForSettingsAndSUW))
-                .thenReturn(true);
+        when(mWifiGlobals.isInsecureEnterpriseConfigurationAllowed()).thenReturn(true);
 
         // Verify operation still fails
         mLooper.startAutoDispatch();
