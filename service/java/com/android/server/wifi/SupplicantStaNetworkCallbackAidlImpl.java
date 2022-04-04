@@ -218,4 +218,14 @@ class SupplicantStaNetworkCallbackAidlImpl extends ISupplicantStaNetworkCallback
                     mIfaceName, mFrameworkNetworkId, mSsid, cert);
         }
     }
+
+    @Override
+    public String getInterfaceHash() {
+        return ISupplicantStaNetworkCallback.HASH;
+    }
+
+    @Override
+    public int getInterfaceVersion() {
+        return ISupplicantStaNetworkCallback.VERSION;
+    }
 }
