@@ -531,8 +531,7 @@ public class WifiCarrierInfoManager {
         mIntentFilter.addAction(NOTIFICATION_USER_DISALLOWED_CARRIER_INTENT_ACTION);
         mIntentFilter.addAction(NOTIFICATION_USER_CLICKED_INTENT_ACTION);
 
-        mContext.registerReceiver(mBroadcastReceiver, mIntentFilter, NETWORK_SETTINGS, handler,
-                Context.RECEIVER_NOT_EXPORTED);
+        mContext.registerReceiver(mBroadcastReceiver, mIntentFilter, NETWORK_SETTINGS, handler);
         configStore.registerStoreData(wifiInjector.makeWifiCarrierInfoStoreManagerData(
                 new WifiCarrierInfoStoreManagerDataSource()));
         configStore.registerStoreData(wifiInjector.makeImsiPrivacyProtectionExemptionStoreData(
@@ -553,7 +552,7 @@ public class WifiCarrierInfoManager {
                     mHandler.post(() -> onCarrierConfigChanged(context));
                 }
             }
-        }, filter, Context.RECEIVER_NOT_EXPORTED);
+        }, filter);
 
         frameworkFacade.registerContentObserver(context, CONTENT_URI, false,
                 new ContentObserver(handler) {
