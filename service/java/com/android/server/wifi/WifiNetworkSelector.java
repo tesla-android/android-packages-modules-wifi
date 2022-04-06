@@ -54,6 +54,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -715,12 +716,23 @@ public class WifiNetworkSelector {
         WifiConfiguration originalCandidate = candidate;
         ScanResult scanResultCandidate = candidate.getNetworkSelectionStatus().getCandidate();
 
+        Set<String> seenNetworks = new HashSet<>();
+        seenNetworks.add(candidate.getProfileKey());
+
         while (tempConfig.getNetworkSelectionStatus().getConnectChoice() != null) {
             String key = tempConfig.getNetworkSelectionStatus().getConnectChoice();
             int userSelectedRssi = tempConfig.getNetworkSelectionStatus().getConnectChoiceRssi();
             tempConfig = mWifiConfigManager.getConfiguredNetwork(key);
 
             if (tempConfig != null) {
+                if (seenNetworks.contains(tempConfig.getProfileKey())) {
+                    Log.wtf(TAG, "user connected network is a loop, use candidate:"
+                            + candidate);
+                    mWifiConfigManager.setLegacyUserConnectChoice(candidate,
+                            candidate.getNetworkSelectionStatus().getCandidate().level);
+                    break;
+                }
+                seenNetworks.add(tempConfig.getProfileKey());
                 WifiConfiguration.NetworkSelectionStatus tempStatus =
                         tempConfig.getNetworkSelectionStatus();
                 boolean noInternetButInternetIsExpected = !tempConfig.isNoInternetAccessExpected()
@@ -957,6 +969,7 @@ public class WifiNetworkSelector {
                         NetworkNominator.NOMINATOR_ID_CURRENT,
                         cmmState.wifiInfo.getRssi(),
                         cmmState.wifiInfo.getFrequency(),
+                        ScanResult.CHANNEL_WIDTH_20MHZ, // channel width not available in WifiInfo
                         calculateLastSelectionWeight(currentNetwork.networkId),
                         WifiConfiguration.isMetered(currentNetwork, cmmState.wifiInfo),
                         isFromCarrierOrPrivilegedApp(currentNetwork),
@@ -988,6 +1001,7 @@ public class WifiNetworkSelector {
                                     registeredNominator.getId(),
                                     scanDetail.getScanResult().level,
                                     scanDetail.getScanResult().frequency,
+                                    scanDetail.getScanResult().channelWidth,
                                     calculateLastSelectionWeight(config.networkId),
                                     metered,
                                     isFromCarrierOrPrivilegedApp(config),

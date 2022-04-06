@@ -123,6 +123,10 @@
 
     <!-- A notification is shown when eap failure happens. It should be overridden by carrier-specific overlays. An empty string will result in no notification shown.-->
     <!-- Note: the :::integer::: is a carrier identifier - it is not to be translated! -->
+    <string name="wifi_eap_error_message_code_32756"><xliff:g id="ssid">%1$s</xliff:g> : EAP authentication error 32756</string>
+    <string-array name="wifi_eap_error_message_code_32756_carrier_overrides">
+        <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g></item>
+    </string-array>
     <string name="wifi_eap_error_message_code_32760"><xliff:g id="ssid">%1$s</xliff:g> : EAP authentication error 32760</string>
     <string-array name="wifi_eap_error_message_code_32760_carrier_overrides">
       <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g><xliff:g id="ssid">%1$s</xliff:g> : You can\u2019t connect to Verizon Wi-Fi Access from outside the Verizon coverage area. (Error = 32760)</item>
@@ -155,14 +159,6 @@
     <string-array name="wifi_eap_error_message_code_32767_carrier_overrides">
       <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g><xliff:g id="ssid">%1$s</xliff:g> : There is a problem connecting you to Verizon Wi-Fi Access. Try again later or try from a different location.</item>
     </string-array>
-    <string name="wifi_eap_error_message_code_32768"><xliff:g id="ssid">%1$s</xliff:g> : EAP authentication error 32768</string>
-    <string-array name="wifi_eap_error_message_code_32768_carrier_overrides">
-      <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g></item>
-    </string-array>
-    <string name="wifi_eap_error_message_code_32769"><xliff:g id="ssid">%1$s</xliff:g> : EAP authentication error 32769</string>
-    <string-array name="wifi_eap_error_message_code_32769_carrier_overrides">
-      <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g></item>
-    </string-array>
     <string name="wifi_eap_error_message_code_16384"><xliff:g id="ssid">%1$s</xliff:g> : EAP authentication error 16384</string>
     <string-array name="wifi_eap_error_message_code_16384_carrier_overrides">
       <item><xliff:g id="carrier_id_prefix">:::1839:::</xliff:g><xliff:g id="ssid">%1$s</xliff:g> : There is a problem connecting you to Verizon Wi-Fi Access due to error 16384.</item>
@@ -186,10 +182,15 @@
     <string name="wifi_sim_required_message">To connect to <xliff:g id="ssid">%1$s</xliff:g>, insert a <xliff:g id="carrier_name">%2$s</xliff:g> SIM</string>
 
     <!-- External approver for interface priority calls. -->
-    <string name="wifi_interface_priority_title">App conflict</string>
-    <string name="wifi_interface_priority_message">Application <xliff:g id="app">%1$s</xliff:g> needs to bring up a <xliff:g id="interface">%2$s</xliff:g> interface. This will result in other interfaces being torn down which may impact <xliff:g id="apps">%3$s</xliff:g>.</string>
-    <string name="wifi_interface_priority_approve">Yes, approve</string>
-    <string name="wifi_interface_priority_reject">No, reject</string>
+    <string name="wifi_interface_priority_title"><xliff:g id="app">%1$s</xliff:g> wants to use a networking resource</string>
+    <!-- Note: additional available arguments for customized message (not used in default string):
+          %1$s: application name
+          %2$s: interface name
+     -->
+    <string name="wifi_interface_priority_message">This may cause problems for <xliff:g id="apps">%3$s</xliff:g>.</string>
+    <string name="wifi_interface_priority_message_plural">This may cause problems for these apps: <xliff:g id="apps">%3$s</xliff:g>.</string>
+    <string name="wifi_interface_priority_approve">Allow</string>
+    <string name="wifi_interface_priority_reject">Don\'t allow</string>
 
     <!-- Trust On First Use dialog and notification text. -->
     <string name="wifi_ca_cert_dialog_title">Is this network trusted?</string>

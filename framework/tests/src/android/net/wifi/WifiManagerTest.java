@@ -16,6 +16,8 @@
 
 package android.net.wifi;
 
+import static android.net.wifi.WifiAvailableChannel.FILTER_NAN_INSTANT_MODE;
+import static android.net.wifi.WifiAvailableChannel.OP_MODE_WIFI_AWARE;
 import static android.net.wifi.WifiConfiguration.METERED_OVERRIDE_METERED;
 import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_DISCONNECT;
 import static android.net.wifi.WifiManager.ACTION_REMOVE_SUGGESTION_LINGER;
@@ -43,6 +45,7 @@ import static android.net.wifi.WifiManager.WIFI_FEATURE_ADDITIONAL_STA_RESTRICTE
 import static android.net.wifi.WifiManager.WIFI_FEATURE_AP_STA;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DECORATED_IDENTITY;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP;
+import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_AKM;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_DPP_ENROLLEE_RESPONDER;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_OWE;
 import static android.net.wifi.WifiManager.WIFI_FEATURE_P2P;
@@ -138,6 +141,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 
@@ -1574,6 +1578,85 @@ public class WifiManagerTest {
      * Verify client-provided callback is being called through callback proxy
      */
     @Test
+    public void softApCallbackProxyCallsOnSoftApInfoChangedWhenClientConnected() throws Exception {
+        ArgumentCaptor<ISoftApCallback.Stub> callbackCaptor =
+                ArgumentCaptor.forClass(ISoftApCallback.Stub.class);
+        mWifiManager.registerSoftApCallback(new HandlerExecutor(mHandler), mSoftApCallback);
+        verify(mWifiService).registerSoftApCallback(callbackCaptor.capture());
+        List<WifiClient> clientList;
+        // Verify the register callback in disable state.
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, true);
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onConnectedClientsChanged(new ArrayList<WifiClient>());
+        verify(mSoftApCallback, never()).onConnectedClientsChanged(any(), any());
+        verify(mSoftApCallback).onInfoChanged(new SoftApInfo());
+        verify(mSoftApCallback).onInfoChanged(new ArrayList<SoftApInfo>());
+        // After verify, reset mSoftApCallback for nex test
+        reset(mSoftApCallback);
+
+        // Single AP mode Test
+        // Test info update
+        initTestInfoAndAddToTestMap(1);
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, false);
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onInfoChanged(mTestApInfo1);
+        verify(mSoftApCallback).onInfoChanged(Mockito.argThat((List<SoftApInfo> infos) ->
+                        infos.contains(mTestApInfo1)));
+        verify(mSoftApCallback, never()).onConnectedClientsChanged(any());
+        verify(mSoftApCallback, never()).onConnectedClientsChanged(any(), any());
+        // After verify, reset mSoftApCallback for nex test
+        reset(mSoftApCallback);
+
+        clientList = initWifiClientAndAddToTestMap(TEST_AP_INSTANCES[0], 1, 0);
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, false);
+        mLooper.dispatchAll();
+        // checked NO any infoChanged, includes InfoChanged(SoftApInfo)
+        // and InfoChanged(List<SoftApInfo>)
+        verify(mSoftApCallback, never()).onInfoChanged(any(SoftApInfo.class));
+        verify(mSoftApCallback, never()).onInfoChanged(any(List.class));
+        verify(mSoftApCallback).onConnectedClientsChanged(mTestApInfo1, clientList);
+        verify(mSoftApCallback).onConnectedClientsChanged(clientList);
+        // After verify, reset mSoftApCallback for nex test
+        reset(mSoftApCallback);
+
+        // Test info changed when client connected
+        SoftApInfo changedInfo = new SoftApInfo(mTestSoftApInfoMap.get(TEST_AP_INSTANCES[0]));
+        changedInfo.setFrequency(2422);
+        mTestSoftApInfoMap.put(TEST_AP_INSTANCES[0], changedInfo);
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, false);
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onInfoChanged(changedInfo);
+        verify(mSoftApCallback).onInfoChanged(Mockito.argThat((List<SoftApInfo> infos) ->
+                        infos.contains(changedInfo)));
+        verify(mSoftApCallback).onConnectedClientsChanged(clientList);
+        verify(mSoftApCallback).onConnectedClientsChanged(changedInfo, clientList);
+        // After verify, reset mSoftApCallback for nex test
+        reset(mSoftApCallback);
+
+        // Test Stop, all of infos is empty
+        mTestSoftApInfoMap.clear();
+        callbackCaptor.getValue().onConnectedClientsOrInfoChanged(
+                (Map<String, SoftApInfo>) mTestSoftApInfoMap.clone(),
+                (Map<String, List<WifiClient>>) mTestWifiClientsMap.clone(), false, false);
+        mLooper.dispatchAll();
+        verify(mSoftApCallback).onInfoChanged(new SoftApInfo());
+        verify(mSoftApCallback).onInfoChanged(new ArrayList<SoftApInfo>());
+        verify(mSoftApCallback).onConnectedClientsChanged(any());
+        verify(mSoftApCallback).onConnectedClientsChanged(any(), any());
+    }
+
+    /*
+     * Verify client-provided callback is being called through callback proxy
+     */
+    @Test
     public void softApCallbackProxyCallsOnSoftApInfoChangedInBridgedMode() throws Exception {
         ArgumentCaptor<ISoftApCallback.Stub> callbackCaptor =
                 ArgumentCaptor.forClass(ISoftApCallback.Stub.class);
@@ -2434,6 +2517,19 @@ public class WifiManagerTest {
     }
 
     /**
+     * Test behavior of isEasyConnectDppAkmSupported
+     */
+    @Test
+    public void testIsEasyConnectDppAkmSupported() throws Exception {
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(WIFI_FEATURE_DPP_AKM));
+        assertTrue(mWifiManager.isEasyConnectDppAkmSupported());
+        when(mWifiService.getSupportedFeatures())
+                .thenReturn(new Long(~WIFI_FEATURE_DPP_AKM));
+        assertFalse(mWifiManager.isEasyConnectDppAkmSupported());
+    }
+
+    /**
      * Test behavior of isEasyConnectEnrolleeResponderModeSupported
      */
     @Test
@@ -2833,7 +2929,8 @@ public class WifiManagerTest {
 
         ArgumentCaptor<IActionListener> binderListenerCaptor =
                 ArgumentCaptor.forClass(IActionListener.class);
-        verify(mWifiService).connect(eq(null), eq(TEST_NETWORK_ID), binderListenerCaptor.capture());
+        verify(mWifiService).connect(eq(null), eq(TEST_NETWORK_ID), binderListenerCaptor.capture(),
+                anyString());
         assertNotNull(binderListenerCaptor.getValue());
 
         // Trigger on success.
@@ -2853,7 +2950,7 @@ public class WifiManagerTest {
     @Test
     public void testConnectWithListenerHandleSecurityException() throws Exception {
         doThrow(new SecurityException()).when(mWifiService)
-                .connect(eq(null), anyInt(), any(IActionListener.class));
+                .connect(eq(null), anyInt(), any(IActionListener.class), anyString());
         ActionListener externalListener = mock(ActionListener.class);
         mWifiManager.connect(TEST_NETWORK_ID, externalListener);
 
@@ -2867,7 +2964,7 @@ public class WifiManagerTest {
     @Test
     public void testConnectWithListenerHandleRemoteException() throws Exception {
         doThrow(new RemoteException()).when(mWifiService)
-                .connect(eq(null), anyInt(), any(IActionListener.class));
+                .connect(eq(null), anyInt(), any(IActionListener.class), anyString());
         ActionListener externalListener = mock(ActionListener.class);
         mWifiManager.connect(TEST_NETWORK_ID, externalListener);
 
@@ -2883,7 +2980,8 @@ public class WifiManagerTest {
         WifiConfiguration configuration = new WifiConfiguration();
         mWifiManager.connect(configuration, null);
 
-        verify(mWifiService).connect(configuration, WifiConfiguration.INVALID_NETWORK_ID, null);
+        verify(mWifiService).connect(eq(configuration), eq(WifiConfiguration.INVALID_NETWORK_ID),
+                eq(null), anyString());
     }
 
     /**
@@ -3766,18 +3864,18 @@ public class WifiManagerTest {
                 {WifiManager.WIFI_INTERFACE_TYPE_AP, WifiManager.WIFI_INTERFACE_TYPE_AWARE};
         final String[] packagesForInterfaces =
                 {TEST_PACKAGE_NAME, packageName1 + "," + packageName2};
-        final List<WifiManager.InterfaceCreationImpact> interfacePairs = List.of(
+        final Set<WifiManager.InterfaceCreationImpact> interfacePairs = Set.of(
                 new WifiManager.InterfaceCreationImpact(interfaces[0],
                         new ArraySet<>(new String[]{TEST_PACKAGE_NAME})),
                 new WifiManager.InterfaceCreationImpact(interfaces[1],
                         new ArraySet<>(new String[]{packageName1, packageName2})));
         when(mContext.getOpPackageName()).thenReturn(TEST_PACKAGE_NAME);
-        BiConsumer<Boolean, List<WifiManager.InterfaceCreationImpact>> resultCallback = mock(
+        BiConsumer<Boolean, Set<WifiManager.InterfaceCreationImpact>> resultCallback = mock(
                 BiConsumer.class);
         ArgumentCaptor<IInterfaceCreationInfoCallback.Stub> cbCaptor = ArgumentCaptor.forClass(
                 IInterfaceCreationInfoCallback.Stub.class);
-        ArgumentCaptor<List<WifiManager.InterfaceCreationImpact>> resultCaptor =
-                ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Set<WifiManager.InterfaceCreationImpact>> resultCaptor =
+                ArgumentCaptor.forClass(Set.class);
 
         mWifiManager.reportCreateInterfaceImpact(interfaceToCreate, requireNewInterface,
                 new SynchronousExecutor(), resultCallback);
@@ -3785,12 +3883,17 @@ public class WifiManagerTest {
                 eq(interfaceToCreate), eq(requireNewInterface), cbCaptor.capture());
         cbCaptor.getValue().onResults(canCreate, interfaces, packagesForInterfaces);
         verify(resultCallback).accept(eq(canCreate), resultCaptor.capture());
-        assertEquals(interfacePairs.size(), resultCaptor.getValue().size());
-        for (int i = 0; i < interfacePairs.size(); ++i) {
-            assertEquals(interfacePairs.get(i).getInterfaceType(),
-                    resultCaptor.getValue().get(i).getInterfaceType());
-            assertArrayEquals(interfacePairs.get(i).getPackages().toArray(),
-                    resultCaptor.getValue().get(i).getPackages().toArray());
-        }
+        assertEquals(interfacePairs, resultCaptor.getValue());
+    }
+
+    @Test
+    public void testGetAwareInstantCommunicationChannels() throws RemoteException {
+        when(mWifiService.getUsableChannels(WifiScanner.WIFI_BAND_5_GHZ, OP_MODE_WIFI_AWARE,
+                FILTER_NAN_INSTANT_MODE)).thenReturn(List.of(
+                        new WifiAvailableChannel(5745, OP_MODE_WIFI_AWARE)));
+        List<WifiAvailableChannel> channels = mWifiManager
+                .getAwareDiscoveryChannels(WifiScanner.WIFI_BAND_5_GHZ);
+        assertEquals(1, channels.size());
+        assertEquals(5745, channels.get(0).getFrequencyMhz());
     }
 }

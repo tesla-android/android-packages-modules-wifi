@@ -1147,10 +1147,11 @@ public class ActiveModeWarden {
     }
 
     /**
-     * Method to stop client mode manger.
+     * Method to stop client mode manager.
      */
     private void stopAdditionalClientModeManager(ClientModeManager clientModeManager) {
-        if (clientModeManager.getRole() == ROLE_CLIENT_PRIMARY
+        if (clientModeManager instanceof DefaultClientModeManager
+                || clientModeManager.getRole() == ROLE_CLIENT_PRIMARY
                 || clientModeManager.getRole() == ROLE_CLIENT_SCAN_ONLY) return;
         Log.d(TAG, "Shutting down additional client mode manager: " + clientModeManager);
         clientModeManager.stop();
@@ -1960,22 +1961,6 @@ public class ActiveModeWarden {
                 super.exit();
             }
 
-            private boolean isClientModeManagerConnectedOrConnectingToBssid(
-                    @NonNull ClientModeManager clientModeManager,
-                    @NonNull String ssid, @NonNull String bssid) {
-                WifiConfiguration connectedOrConnectingWifiConfiguration = coalesce(
-                        clientModeManager.getConnectingWifiConfiguration(),
-                        clientModeManager.getConnectedWifiConfiguration());
-                String connectedOrConnectingBssid = coalesce(
-                        clientModeManager.getConnectingBssid(),
-                        clientModeManager.getConnectedBssid());
-                String connectedOrConnectingSsid =
-                        connectedOrConnectingWifiConfiguration == null
-                                ? null : connectedOrConnectingWifiConfiguration.SSID;
-                return Objects.equals(ssid, connectedOrConnectingSsid)
-                        && Objects.equals(bssid, connectedOrConnectingBssid);
-            }
-
             @Nullable
             private ConcreteClientModeManager findAnyClientModeManagerConnectingOrConnectedToBssid(
                     @NonNull String ssid, @Nullable String bssid) {
@@ -1993,6 +1978,9 @@ public class ActiveModeWarden {
             private void handleAdditionalClientModeManagerRequest(
                     @NonNull AdditionalClientModeManagerRequestInfo requestInfo) {
                 ClientModeManager primaryManager = getPrimaryClientModeManager();
+                if (primaryManager instanceof DefaultClientModeManager) {
+                    primaryManager = null;
+                }
                 if (requestInfo.clientRole == ROLE_CLIENT_SECONDARY_TRANSIENT
                         && mDppManager.isSessionInProgress()) {
                     // When MBB is triggered, we could end up switching the primary interface
@@ -2210,5 +2198,25 @@ public class ActiveModeWarden {
 
     private static <T> T coalesce(T a, T  b) {
         return a != null ? a : b;
+    }
+
+    /**
+     * Check if CMM is connecting or connected to target BSSID and SSID
+     */
+    public static boolean isClientModeManagerConnectedOrConnectingToBssid(
+            @NonNull ClientModeManager clientModeManager,
+            @NonNull String ssid, @NonNull String bssid) {
+        WifiConfiguration connectedOrConnectingWifiConfiguration = coalesce(
+                clientModeManager.getConnectingWifiConfiguration(),
+                clientModeManager.getConnectedWifiConfiguration());
+        String connectedOrConnectingBssid = coalesce(
+                clientModeManager.getConnectingBssid(),
+                clientModeManager.getConnectedBssid());
+        String connectedOrConnectingSsid =
+                connectedOrConnectingWifiConfiguration == null
+                        ? null : connectedOrConnectingWifiConfiguration.SSID;
+        Log.v(TAG, connectedOrConnectingBssid + "   " + connectedOrConnectingSsid);
+        return Objects.equals(ssid, connectedOrConnectingSsid)
+                && Objects.equals(bssid, connectedOrConnectingBssid);
     }
 }

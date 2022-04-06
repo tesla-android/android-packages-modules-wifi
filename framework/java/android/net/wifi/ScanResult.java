@@ -416,9 +416,10 @@ public final class ScanResult implements Parcelable {
      * an absolute signal level which can be displayed to a user.
      */
     public int level;
+
     /**
-     * The primary 20 MHz frequency (in MHz) of the channel over which the client is communicating
-     * with the access point.
+     * The center frequency of the primary 20 MHz frequency (in MHz) of the channel over which the
+     * client is communicating with the access point.
      */
     public int frequency;
 
@@ -582,7 +583,7 @@ public final class ScanResult implements Parcelable {
     /**
      * AP Channel bandwidth; one of {@link #CHANNEL_WIDTH_20MHZ}, {@link #CHANNEL_WIDTH_40MHZ},
      * {@link #CHANNEL_WIDTH_80MHZ}, {@link #CHANNEL_WIDTH_160MHZ}, {@link #CHANNEL_WIDTH_320MHZ},
-     * or {@link #CHANNEL_WIDTH_80MHZ_PLUS_MHZ}.
+     * or {@link #CHANNEL_WIDTH_80MHZ_PLUS_MHZ}, or {@link #CHANNEL_WIDTH_320MHZ}
      */
     public @ChannelWidth int channelWidth;
 

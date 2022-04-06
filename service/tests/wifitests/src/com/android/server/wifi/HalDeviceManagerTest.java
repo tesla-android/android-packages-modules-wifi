@@ -65,7 +65,11 @@ import android.hardware.wifi.V1_0.IWifiStaIface;
 import android.hardware.wifi.V1_0.IfaceType;
 import android.hardware.wifi.V1_0.WifiStatus;
 import android.hardware.wifi.V1_0.WifiStatusCode;
+import android.hardware.wifi.V1_5.WifiBand;
 import android.hardware.wifi.V1_6.IfaceConcurrencyType;
+import android.hardware.wifi.V1_6.WifiRadioCombination;
+import android.hardware.wifi.V1_6.WifiRadioCombinationMatrix;
+import android.hardware.wifi.V1_6.WifiRadioConfiguration;
 import android.hidl.manager.V1_0.IServiceNotification;
 import android.hidl.manager.V1_2.IServiceManager;
 import android.net.wifi.WifiContext;
@@ -85,7 +89,10 @@ import com.android.server.wifi.HalDeviceManager.InterfaceDestroyedListener;
 import com.android.server.wifi.util.WorkSourceHelper;
 import com.android.wifi.resources.R;
 
+import com.google.common.collect.ImmutableList;
+
 import org.hamcrest.core.IsNull;
+import org.json.JSONArray;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -126,6 +133,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     @Mock private Resources mResources;
     @Mock private Clock mClock;
     @Mock private WifiInjector mWifiInjector;
+    @Mock private WifiSettingsConfigStore mWifiSettingsConfigStore;
     @Mock private WorkSourceHelper mWorkSourceHelper0;
     @Mock private WorkSourceHelper mWorkSourceHelper1;
     @Mock private WorkSourceHelper mWorkSourceHelper2;
@@ -214,6 +222,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         when(mWorkSourceHelper0.getWorkSource()).thenReturn(TEST_WORKSOURCE_0);
         when(mWorkSourceHelper1.getWorkSource()).thenReturn(TEST_WORKSOURCE_1);
         when(mWorkSourceHelper2.getWorkSource()).thenReturn(TEST_WORKSOURCE_2);
+        when(mWifiInjector.getSettingsConfigStore()).thenReturn(mWifiSettingsConfigStore);
 
         when(mServiceManagerMock.linkToDeath(any(IHwBinder.DeathRecipient.class),
                 anyLong())).thenReturn(true);
@@ -260,6 +269,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testStartStopFlow() throws Exception {
+        TestChipV5 chipMock = new TestChipV5();
+        setupWifiChipV15(chipMock);
+        chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
@@ -299,6 +311,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testMultipleCallbackRegistrations() throws Exception {
+        TestChipV5 chipMock = new TestChipV5();
+        setupWifiChipV15(chipMock);
+        chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
@@ -327,6 +342,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testWifiDeathAndRegistration() throws Exception {
+        TestChipV5 chipMock = new TestChipV5();
+        setupWifiChipV15(chipMock);
+        chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, mWifiMockV15,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
@@ -372,6 +390,9 @@ public class HalDeviceManagerTest extends WifiBaseTest {
      */
     @Test
     public void testWifiFail() throws Exception {
+        TestChipV5 chipMock = new TestChipV5();
+        setupWifiChipV15(chipMock);
+        chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, mWifiMockV15,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
@@ -1408,20 +1429,20 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Validate {@link HalDeviceManager#canSupportCreateTypeCombo(SparseArray)}
+     * Validate {@link HalDeviceManager#canDeviceSupportCreateTypeCombo(SparseArray)}
      */
     @Test
-    public void testCanSupportIfaceComboTestChipV1() throws Exception {
-        final String name = "wlan0";
-
+    public void testCanDeviceSupportCreateTypeComboChipV1() throws Exception {
         TestChipV1 chipMock = new TestChipV1();
         chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
-        // Try to query iface support before starting the HAL. Should return false.
+
+        // Try to query iface support before starting the HAL. Should return false without any
+        // stored static chip info.
         when(mWifiMock.isStarted()).thenReturn(false);
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
             }}
         ));
@@ -1431,50 +1452,114 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         clearInvocations(mWifiMock);
 
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        // Verify that the latest static chip info is saved to store.
+        verify(mWifiSettingsConfigStore).put(eq(WifiSettingsConfigStore.WIFI_STATIC_CHIP_INFO),
+                eq(new JSONArray(TestChipV1.STATIC_CHIP_INFO_JSON_STRING).toString()));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        // AP should now be supported after we read directly from the chip.
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.P2P, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.P2P, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
 
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 2);
             }}
         ));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.P2P, 1);
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
 
-        // Ensure we only fetched chip info once, use the cache after that.
-        verify(mWifiMock, times(1)).getChipIds(any());
+        verifyNoMoreInteractions(mManagerStatusListenerMock);
+    }
+
+    /**
+     * Validate {@link HalDeviceManager#canDeviceSupportCreateTypeCombo(SparseArray)} with stored
+     * static chip info.
+     */
+    @Test
+    public void testCanDeviceSupportCreateTypeComboChipV1WithStoredStaticChipInfo()
+            throws Exception {
+        TestChipV1 chipMock = new TestChipV1();
+        chipMock.initialize();
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
+                mManagerStatusListenerMock);
+        executeAndValidateInitializationSequence();
+
+        // Try to query iface support before starting the HAL. Should return true with the stored
+        // static chip info.
+        when(mWifiMock.isStarted()).thenReturn(false);
+        when(mWifiSettingsConfigStore.get(WifiSettingsConfigStore.WIFI_STATIC_CHIP_INFO))
+                .thenReturn(TestChipV1.STATIC_CHIP_INFO_JSON_STRING);
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.STA, 1);
+            }}
+        ));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.AP, 1);
+            }}
+        ));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.P2P, 1);
+            }}
+        ));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.NAN, 1);
+            }}
+        ));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.STA, 1);
+                put(IfaceConcurrencyType.P2P, 1);
+            }}
+        ));
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.STA, 1);
+                put(IfaceConcurrencyType.NAN, 1);
+            }}
+        ));
+
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.STA, 1);
+                put(IfaceConcurrencyType.AP, 1);
+            }}
+        ));
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.STA, 2);
+            }}
+        ));
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
+                put(IfaceConcurrencyType.P2P, 1);
+                put(IfaceConcurrencyType.NAN, 1);
+            }}
+        ));
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
@@ -1831,20 +1916,21 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Validate {@link HalDeviceManager#canSupportCreateTypeCombo(SparseArray)}
+     * Validate {@link HalDeviceManager#canDeviceSupportCreateTypeCombo(SparseArray)}
      */
     @Test
-    public void testCanSupportIfaceComboTestChipV2() throws Exception {
-        final String name = "wlan0";
-
+    public void testCanDeviceSupportIfaceComboTestChipV2() throws Exception {
         TestChipV2 chipMock = new TestChipV2();
         chipMock.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, chipMock.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
-        // Try to query iface support before starting the HAL. Should return false.
+        // Try to query iface support before starting the HAL. Should return true with the stored
+        // static chip info.
         when(mWifiMock.isStarted()).thenReturn(false);
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        when(mWifiSettingsConfigStore.get(WifiSettingsConfigStore.WIFI_STATIC_CHIP_INFO))
+                .thenReturn(TestChipV2.STATIC_CHIP_INFO_JSON_STRING);
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
             }}
         ));
@@ -1854,76 +1940,73 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         clearInvocations(mWifiMock);
 
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.P2P, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.P2P, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 2);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.P2P, 1);
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.P2P, 1);
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP, 1);
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
 
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.P2P, 1);
                 put(IfaceConcurrencyType.NAN, 1);
             }}
         ));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.AP, 2);
             }}
         ));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {{
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {{
                 put(IfaceConcurrencyType.STA, 2);
                 put(IfaceConcurrencyType.AP, 1);
             }}
         ));
-
-        // Ensure we only fetched chip info once, use the cache after that.
-        verify(mWifiMock, times(1)).getChipIds(any());
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
@@ -3072,18 +3155,21 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     }
 
     /**
-     * Validate {@link HalDeviceManager#canSupportCreateTypeCombo(SparseArray)}
+     * Validate {@link HalDeviceManager#canDeviceSupportCreateTypeCombo(SparseArray)}
      */
     @Test
-    public void testCanSupportIfaceComboTestChipV6() throws Exception {
+    public void testCanDeviceSupportIfaceComboTestChipV6() throws Exception {
         TestChipV6 testChip = new TestChipV6();
         testChip.initialize();
         mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, testChip.chip,
                 mManagerStatusListenerMock);
         executeAndValidateInitializationSequence();
-        // Try to query iface support before starting the HAL. Should return false.
+        // Try to query iface support before starting the HAL. Should return true with the stored
+        // static chip info.
         when(mWifiMock.isStarted()).thenReturn(false);
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        when(mWifiSettingsConfigStore.get(WifiSettingsConfigStore.WIFI_STATIC_CHIP_INFO))
+                .thenReturn(TestChipV6.STATIC_CHIP_INFO_JSON_STRING);
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.STA, 1);
             }
@@ -3094,54 +3180,51 @@ public class HalDeviceManagerTest extends WifiBaseTest {
 
         clearInvocations(mWifiMock);
 
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.STA, 1);
             }
         }));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.AP, 1);
             }
         }));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP, 1);
             }
         }));
-        assertTrue(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertTrue(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP_BRIDGED, 1);
             }
         }));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.AP, 1);
                 put(IfaceConcurrencyType.AP_BRIDGED, 1);
             }
         }));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.STA, 1);
                 put(IfaceConcurrencyType.AP, 1);
                 put(IfaceConcurrencyType.AP_BRIDGED, 1);
             }
         }));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.NAN, 1);
             }
         }));
-        assertFalse(mDut.canSupportCreateTypeCombo(new SparseArray<Integer>() {
+        assertFalse(mDut.canDeviceSupportCreateTypeCombo(new SparseArray<Integer>() {
             {
                 put(IfaceConcurrencyType.P2P, 2);
             }
         }));
-
-        // Ensure we only fetched chip info once, use the cache after that.
-        verify(mWifiMock, times(1)).getChipIds(any());
 
         verifyNoMoreInteractions(mManagerStatusListenerMock);
     }
@@ -3155,6 +3238,109 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         setupWifiChipV15(testChip);
         runCreateSingleXxxInterfaceNoInitMode(testChip, HDM_CREATE_IFACE_AP_BRIDGE, "wlan0",
                 TestChipV6.CHIP_MODE_ID);
+    }
+
+    private IWifiIface setupDbsSupportTest(ChipMockBase testChip, int onlyChipMode,
+            ImmutableList<ArrayList<Integer>> radioCombinationMatrix) throws Exception {
+        WifiRadioCombinationMatrix matrix = new WifiRadioCombinationMatrix();
+        for (ArrayList<Integer> comb: radioCombinationMatrix) {
+            WifiRadioCombination combination = new WifiRadioCombination();
+            for (Integer b: comb) {
+                WifiRadioConfiguration config = new WifiRadioConfiguration();
+                config.bandInfo = b;
+                combination.radioConfigurations.add(config);
+            }
+            matrix.radioCombinations.add(combination);
+        }
+
+        testChip.chipSupportedRadioCombinationsMatrix = matrix;
+
+        testChip.initialize();
+        mInOrder = inOrder(mServiceManagerMock, mWifiMock, mWifiMockV15, testChip.chip,
+                mManagerStatusListenerMock);
+        executeAndValidateInitializationSequence();
+        executeAndValidateStartupSequence();
+
+        InterfaceDestroyedListener staDestroyedListener = mock(
+                InterfaceDestroyedListener.class);
+
+        InterfaceDestroyedListener p2pDestroyedListener = mock(
+                InterfaceDestroyedListener.class);
+
+        // Request STA
+        IWifiIface staIface = validateInterfaceSequence(testChip,
+                false, // chipModeValid
+                -1000, // chipModeId (only used if chipModeValid is true)
+                HDM_CREATE_IFACE_STA, // createIfaceType
+                "wlan0", // ifaceName
+                onlyChipMode, // finalChipMode
+                null, // tearDownList
+                staDestroyedListener, // destroyedListener
+                TEST_WORKSOURCE_0 // requestorWs
+        );
+        collector.checkThat("STA can't be created", staIface, IsNull.notNullValue());
+
+        // Request P2P
+        IWifiIface p2pIface = validateInterfaceSequence(testChip,
+                true, // chipModeValid
+                onlyChipMode, // chipModeId
+                HDM_CREATE_IFACE_P2P, // ifaceTypeToCreate
+                "p2p0", // ifaceName
+                onlyChipMode, // finalChipMode
+                null, // tearDownList
+                p2pDestroyedListener, // destroyedListener
+                TEST_WORKSOURCE_0 // requestorWs
+        );
+        collector.checkThat("P2P can't be created", p2pIface, IsNull.notNullValue());
+        mTestLooper.dispatchAll();
+
+        return staIface;
+    }
+
+    /**
+     * Validate 24GHz/5GHz DBS support.
+     */
+    @Test
+    public void test24g5gDbsSupport() throws Exception {
+        TestChipV6 testChip = new TestChipV6();
+        ImmutableList<ArrayList<Integer>> radioCombinationMatrix = ImmutableList.of(
+                new ArrayList(Arrays.asList(WifiBand.BAND_24GHZ, WifiBand.BAND_5GHZ)));
+        IWifiIface iface = setupDbsSupportTest(testChip, TestChipV6.CHIP_MODE_ID,
+                radioCombinationMatrix);
+
+        assertTrue(mDut.is24g5gDbsSupported(iface));
+        assertFalse(mDut.is5g6gDbsSupported(iface));
+    }
+
+    /**
+     * Validate 5GHz/6GHz DBS support.
+     */
+    @Test
+    public void test5g6gDbsSupport() throws Exception {
+        TestChipV6 testChip = new TestChipV6();
+        ImmutableList<ArrayList<Integer>> radioCombinationMatrix = ImmutableList.of(
+                new ArrayList(Arrays.asList(WifiBand.BAND_5GHZ, WifiBand.BAND_6GHZ)));
+        IWifiIface iface = setupDbsSupportTest(testChip, TestChipV6.CHIP_MODE_ID,
+                radioCombinationMatrix);
+
+        assertFalse(mDut.is24g5gDbsSupported(iface));
+        assertTrue(mDut.is5g6gDbsSupported(iface));
+    }
+
+    /**
+     * Validate 2.4GHz/5GHz DBS and 5GHz/6GHz DBS support.
+     */
+    @Test
+    public void test24g5gAnd5g6gDbsSupport() throws Exception {
+        TestChipV6 testChip = new TestChipV6();
+        ImmutableList<ArrayList<Integer>> radioCombinationMatrix = ImmutableList.of(
+                new ArrayList(Arrays.asList(WifiBand.BAND_24GHZ, WifiBand.BAND_5GHZ)),
+                new ArrayList(Arrays.asList(WifiBand.BAND_5GHZ, WifiBand.BAND_6GHZ)));
+        IWifiIface iface = setupDbsSupportTest(testChip, TestChipV6.CHIP_MODE_ID,
+                radioCombinationMatrix);
+
+        assertTrue(mDut.is24g5gDbsSupported(iface));
+        assertTrue(mDut.is5g6gDbsSupported(iface));
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////
@@ -3912,6 +4098,21 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         }
     }
 
+    private class GetSupportedRadioCombinationsMatrixAnswer
+            extends MockAnswerUtil.AnswerWithArguments {
+        private ChipMockBase mChipMockBase;
+
+        GetSupportedRadioCombinationsMatrixAnswer(ChipMockBase chipMockBase) {
+            mChipMockBase = chipMockBase;
+        }
+
+        public void answer(
+                android.hardware.wifi.V1_6.IWifiChip.getSupportedRadioCombinationsMatrixCallback
+                cb) {
+            cb.onValues(mStatusOk, mChipMockBase.chipSupportedRadioCombinationsMatrix);
+        }
+    }
+
     // chip configuration
 
     private static final int CHIP_MOCK_V1 = 0;
@@ -3930,6 +4131,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
         public int chipModeId = -1000;
         public int chipModeIdValidForRtt = -1; // single chip mode ID where RTT can be created
         public int chipCapabilities = 0;
+        public WifiRadioCombinationMatrix chipSupportedRadioCombinationsMatrix = null;
         public Map<Integer, ArrayList<String>> interfaceNames = new HashMap<>();
         public Map<Integer, Map<String, IWifiIface>> interfacesByName = new HashMap<>();
 
@@ -3988,6 +4190,10 @@ public class HalDeviceManagerTest extends WifiBaseTest {
                     chip).createRttController(any(), any());
 
             doAnswer(new GetBoundIfaceAnswer(true)).when(mRttControllerMock).getBoundIface(any());
+            doAnswer(new GetSupportedRadioCombinationsMatrixAnswer(this))
+                    .when(chip).getSupportedRadioCombinationsMatrix(
+                            any(android.hardware.wifi.V1_6.IWifiChip
+                                    .getSupportedRadioCombinationsMatrixCallback.class));
         }
     }
 
@@ -3997,6 +4203,44 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     private class TestChipV1 extends ChipMockBase {
         static final int STA_CHIP_MODE_ID = 0;
         static final int AP_CHIP_MODE_ID = 1;
+        static final String STATIC_CHIP_INFO_JSON_STRING = "["
+                + "    {"
+                + "        \"chipId\": 10,"
+                + "        \"chipCapabilities\": -1,"
+                + "        \"availableModes\": ["
+                + "            {"
+                + "                \"id\": 0,"
+                + "                \"availableCombinations\": ["
+                + "                    {"
+                + "                        \"limits\": ["
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [0]"
+                + "                            },"
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [3, 4]"
+                + "                            }"
+                + "                        ]"
+                + "                    }"
+                + "                ]"
+                + "            },"
+                + "            {"
+                + "                \"id\": 1,"
+                + "                \"availableCombinations\": ["
+                + "                    {"
+                + "                        \"limits\": ["
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [1]"
+                + "                            }"
+                + "                        ]"
+                + "                    }"
+                + "                ]"
+                + "            }"
+                + "        ]"
+                + "    }"
+                + "]";
 
         void initialize() throws Exception {
             super.initialize();
@@ -4062,6 +4306,35 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     private class TestChipV2 extends ChipMockBase {
         // only mode (different number from any in TestChipV1 so can catch test errors)
         static final int CHIP_MODE_ID = 5;
+        static final String STATIC_CHIP_INFO_JSON_STRING = "["
+                + "    {"
+                + "        \"chipId\": 12,"
+                + "        \"chipCapabilities\": 0,"
+                + "        \"availableModes\": ["
+                + "            {"
+                + "                \"id\": 5,"
+                + "                \"availableCombinations\": ["
+                + "                    {"
+                + "                        \"limits\": ["
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [0]"
+                + "                            },"
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [0, 1]"
+                + "                            },"
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [3, 4]"
+                + "                            }"
+                + "                        ]"
+                + "                    }"
+                + "                ]"
+                + "            }"
+                + "        ]"
+                + "    }"
+                + "]";
 
         void initialize() throws Exception {
             super.initialize();
@@ -4336,10 +4609,36 @@ public class HalDeviceManagerTest extends WifiBaseTest {
     // test chip configuration V6 for Bridged AP:
     // mode:
     //    STA + (AP || AP_BRIDGED)
+    //    STA + (NAN || P2P)
     private class TestChipV6 extends ChipMockBase {
         // only mode (different number from any in other TestChips so can catch test errors)
         static final int CHIP_MODE_ID = 60;
         static final int CHIP_ID = 6;
+        static final String STATIC_CHIP_INFO_JSON_STRING = "["
+                + "    {"
+                + "        \"chipId\": 6,"
+                + "        \"chipCapabilities\": 0,"
+                + "        \"availableModes\": ["
+                + "            {"
+                + "                \"id\": 60,"
+                + "                \"availableCombinations\": ["
+                + "                    {"
+                + "                        \"limits\": ["
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [0]"
+                + "                            },"
+                + "                            {"
+                + "                                \"maxIfaces\": 1,"
+                + "                                \"types\": [1, 2]"
+                + "                            }"
+                + "                        ]"
+                + "                    }"
+                + "                ]"
+                + "            }"
+                + "        ]"
+                + "    }"
+                + "]";
 
         void initialize() throws Exception {
             super.initialize();
@@ -4361,7 +4660,7 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             android.hardware.wifi.V1_6.IWifiChip.ChipConcurrencyCombination ccc;
             android.hardware.wifi.V1_6.IWifiChip.ChipConcurrencyCombinationLimit cccl;
 
-            // Mode 60 (only one): 1xSTA + 1x{AP,AP_BRIDGED}
+            // Mode 60 (only one): 1xSTA + 1x{AP,AP_BRIDGED}, 1xSTA + 1x{P2P,NAN}
             availableModes_1_6 = new ArrayList<>();
             cm = new android.hardware.wifi.V1_6.IWifiChip.ChipMode();
             cm.id = CHIP_MODE_ID;
@@ -4380,6 +4679,22 @@ public class HalDeviceManagerTest extends WifiBaseTest {
             ccc.limits.add(cccl);
 
             cm.availableCombinations.add(ccc);
+
+            ccc = new android.hardware.wifi.V1_6.IWifiChip.ChipConcurrencyCombination();
+
+            cccl = new android.hardware.wifi.V1_6.IWifiChip.ChipConcurrencyCombinationLimit();
+            cccl.maxIfaces = 1;
+            cccl.types.add(IfaceType.STA);
+            ccc.limits.add(cccl);
+
+            cccl = new android.hardware.wifi.V1_6.IWifiChip.ChipConcurrencyCombinationLimit();
+            cccl.maxIfaces = 1;
+            cccl.types.add(IfaceType.P2P);
+            cccl.types.add(IfaceType.NAN);
+            ccc.limits.add(cccl);
+
+            cm.availableCombinations.add(ccc);
+
             availableModes_1_6.add(cm);
 
             chipModeIdValidForRtt = CHIP_MODE_ID;

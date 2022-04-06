@@ -264,12 +264,18 @@ public class WifiPermissionsUtil {
             Log.w(TAG, "Could not find package for disavowal check: " + packageName);
         }
         // App did not disavow location. Check for location permission and location mode.
-        if (!isLocationModeEnabled()) {
-            if (mVerboseLoggingEnabled) {
-                Log.v(TAG, "enforceCanAccessScanResults(pkg=" + packageName + ", uid=" + uid + "): "
-                        + "location is disabled");
+        long ident = Binder.clearCallingIdentity();
+        try {
+            if (!isLocationModeEnabled()) {
+                if (mVerboseLoggingEnabled) {
+                    Log.v(TAG, "enforceNearbyDevicesPermission(pkg=" + packageName + ", uid=" + uid
+                            + "): "
+                            + "location is disabled");
+                }
+                throw new SecurityException("Location mode is disabled for the device");
             }
-            throw new SecurityException("Location mode is disabled for the device");
+        } finally {
+            Binder.restoreCallingIdentity(ident);
         }
         if (mPermissionManager.checkPermissionForDataDelivery(
                 ACCESS_FINE_LOCATION, attributionSource, message)
@@ -730,11 +736,11 @@ public class WifiPermissionsUtil {
     }
 
     /**
-     * Returns true if the |uid| holds MANAGE_WIFI_AUTO_JOIN permission.
+     * Returns true if the |uid| holds MANAGE_WIFI_NETWORK_SELECTION permission.
      */
-    public boolean checkManageWifiAutoJoinPermission(int uid) {
+    public boolean checkManageWifiNetworkSelectionPermission(int uid) {
         return mWifiPermissionsWrapper.getUidPermission(
-                android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN, uid)
+                android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION, uid)
                 == PackageManager.PERMISSION_GRANTED;
     }
 

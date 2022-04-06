@@ -174,6 +174,12 @@ public class WifiP2pManager {
     public static final String EXTRA_PARAM_KEY_SERVICE_INFO =
             "android.net.wifi.p2p.EXTRA_PARAM_KEY_SERVICE_INFO";
     /**
+     * Extra for transporting a peer discovery frequency.
+     * @hide
+     */
+    public static final String EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ =
+            "android.net.wifi.p2p.EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ";
+    /**
      * Extra for transporting a peer MAC address.
      * @hide
      */
@@ -415,6 +421,9 @@ public class WifiP2pManager {
      *
      * The connecting request is initiated by
      * {@link #connect(Channel, WifiP2pConfig, ActionListener)}.
+     * <p>The {@link #EXTRA_REQUEST_RESPONSE} extra indicates whether or not current
+     * request is accepted or rejected.
+     * <p>The {@link #EXTRA_REQUEST_CONFIG} extra indicates the responsed configuration.
      */
     public static final String ACTION_WIFI_P2P_REQUEST_RESPONSE_CHANGED =
             "android.net.wifi.p2p.action.WIFI_P2P_REQUEST_RESPONSE_CHANGED";
@@ -424,6 +433,12 @@ public class WifiP2pManager {
      */
     public static final String EXTRA_REQUEST_RESPONSE =
             "android.net.wifi.p2p.extra.REQUEST_RESPONSE";
+
+    /**
+     * The lookup key for the {@link WifiP2pConfig} object of a request.
+     */
+    public static final String EXTRA_REQUEST_CONFIG =
+            "android.net.wifi.p2p.extra.REQUEST_CONFIG";
 
     /**
      * The lookup key for a handover message returned by the WifiP2pService.
@@ -463,15 +478,29 @@ public class WifiP2pManager {
      * Run P2P scan only on social channels.
      * @hide
      */
-    public static final int WIFI_P2P_SCAN_SOCIAL = -1;
+    public static final int WIFI_P2P_SCAN_SOCIAL = 1;
+
+    /**
+     * Run P2P scan only on a specific channel.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_SINGLE_FREQ = 2;
 
     /** @hide */
     @IntDef(prefix = {"WIFI_P2P_SCAN_"}, value = {
             WIFI_P2P_SCAN_FULL,
-            WIFI_P2P_SCAN_SOCIAL})
+            WIFI_P2P_SCAN_SOCIAL,
+            WIFI_P2P_SCAN_SINGLE_FREQ})
     @Retention(RetentionPolicy.SOURCE)
     public @interface WifiP2pScanType {
     }
+
+    /**
+     * No channel specified for discover Peers APIs. Let lower layer decide the frequencies to scan
+     * based on the WifiP2pScanType.
+     * @hide
+     */
+    public static final int WIFI_P2P_SCAN_FREQ_UNSPECIFIED = 0;
 
     /**
      * Maximum length in bytes of all vendor specific information elements (IEs) allowed to
@@ -1596,7 +1625,6 @@ public class WifiP2pManager {
     public void discoverPeers(Channel channel, ActionListener listener) {
         checkChannel(channel);
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
         channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_FULL,
                 channel.putListener(listener), extras);
     }
@@ -1642,7 +1670,6 @@ public class WifiP2pManager {
         }
         checkChannel(channel);
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
         channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_SOCIAL,
                 channel.putListener(listener), extras);
     }
@@ -1692,9 +1719,9 @@ public class WifiP2pManager {
             throw new IllegalArgumentException("This frequency must be a positive value.");
         }
         Bundle extras = prepareExtrasBundle(channel);
-        // TODO(b/216723991): Revise to scan type + freq form to avoid overlaying the same field.
-        channel.mAsyncChannel.sendMessage(
-                DISCOVER_PEERS, frequencyMhz, channel.putListener(listener), extras);
+        extras.putInt(EXTRA_PARAM_KEY_PEER_DISCOVERY_FREQ, frequencyMhz);
+        channel.mAsyncChannel.sendMessage(DISCOVER_PEERS, WIFI_P2P_SCAN_SINGLE_FREQ,
+                channel.putListener(listener), extras);
     }
 
     /**
@@ -1906,7 +1933,8 @@ public class WifiP2pManager {
             }, conditional = true)
     public void startListening(@NonNull Channel channel, @Nullable ActionListener listener) {
         checkChannel(channel);
-        channel.mAsyncChannel.sendMessage(START_LISTEN, 0, channel.putListener(listener));
+        Bundle extras = prepareExtrasBundle(channel);
+        channel.mAsyncChannel.sendMessage(START_LISTEN, 0, channel.putListener(listener), extras);
     }
 
     /**
@@ -2798,7 +2826,7 @@ public class WifiP2pManager {
      * @param deviceAddress the peer which is bound to the external approver.
      * @param listener for callback when the framework needs to notify the external approver.
      */
-    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION)
     public void addExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @NonNull ExternalApproverRequestListener listener) {
         checkChannel(c);
@@ -2819,7 +2847,7 @@ public class WifiP2pManager {
      * @param deviceAddress the peer which is bound to the external approver.
      * @param listener for callback on success or failure.
      */
-    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION)
     public void removeExternalApprover(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @Nullable ActionListener listener) {
         checkChannel(c);
@@ -2840,7 +2868,7 @@ public class WifiP2pManager {
      * @param result the response for the incoming request.
      * @param listener for callback on success or failure.
      */
-    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION)
     public void setConnectionRequestResult(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @ConnectionRequestResponse int result, @Nullable ActionListener listener) {
         checkChannel(c);
@@ -2863,7 +2891,7 @@ public class WifiP2pManager {
      * @param pin the PIN for the incoming request.
      * @param listener for callback on success or failure.
      */
-    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_AUTO_JOIN)
+    @RequiresPermission(android.Manifest.permission.MANAGE_WIFI_NETWORK_SELECTION)
     public void setConnectionRequestResult(@NonNull Channel c, @NonNull MacAddress deviceAddress,
             @ConnectionRequestResponse int result, @Nullable String pin,
             @Nullable ActionListener listener) {

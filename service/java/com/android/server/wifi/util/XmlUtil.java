@@ -45,7 +45,6 @@ import android.util.Pair;
 import android.util.SparseIntArray;
 
 import com.android.modules.utils.build.SdkLevel;
-import com.android.server.wifi.WifiConfigurationUtil;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -383,6 +382,7 @@ public class XmlUtil {
         private static final String XML_TAG_IS_RESTRICTED = "IsRestricted";
         private static final String XML_TAG_SUBSCRIPTION_GROUP = "SubscriptionGroup";
         public static final String XML_TAG_BSSID_ALLOW_LIST = "bssidAllowList";
+        private static final String XML_TAG_IS_REPEATER_ENABLED = "RepeaterEnabled";
 
         /**
          * Write WepKeys to the XML stream.
@@ -513,6 +513,8 @@ public class XmlUtil {
             XmlUtil.writeNextValue(
                     out, XML_TAG_NUM_REBOOTS_SINCE_LAST_USE,
                     configuration.numRebootsSinceLastUse);
+            XmlUtil.writeNextValue(out, XML_TAG_IS_REPEATER_ENABLED,
+                    configuration.isRepeaterEnabled());
             writeSecurityParamsListToXml(out, configuration);
         }
 
@@ -894,6 +896,9 @@ public class XmlUtil {
                             configuration.setBssidAllowlist(
                                     covertStringListToMacAddressList((List<String>) value));
                             break;
+                        case XML_TAG_IS_REPEATER_ENABLED:
+                            configuration.setRepeaterEnabled((boolean) value);
+                            break;
                         default:
                             Log.w(TAG, "Ignoring unknown value name found: " + valueName[0]);
                             break;
@@ -935,7 +940,6 @@ public class XmlUtil {
                 configuration.macRandomizationSetting = WifiConfiguration.RANDOMIZATION_AUTO;
             }
             configuration.convertLegacyFieldsToSecurityParamsIfNeeded();
-            WifiConfigurationUtil.addUpgradableSecurityTypeIfNecessary(configuration);
             return Pair.create(configKeyInData, configuration);
         }
     }
@@ -1988,7 +1992,7 @@ public class XmlUtil {
                                 } else if (value instanceof Long) {
                                     shutDownMillis = (long) value;
                                 }
-                                if (SdkLevel.isAtLeastT() && shutDownMillis == 0
+                                if (shutDownMillis == 0
                                         && Compatibility.isChangeEnabled(
                                         SoftApConfiguration.REMOVE_ZERO_FOR_TIMEOUT_SETTING)) {
                                     shutDownMillis = SoftApConfiguration.DEFAULT_TIMEOUT;

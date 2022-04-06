@@ -254,6 +254,7 @@ public class XmlUtilTest extends WifiBaseTest {
         configuration.oemPrivate = true;
         configuration.carrierMerged = true;
         configuration.restricted = true;
+        configuration.setRepeaterEnabled(true);
         configuration.lastUpdateUid = configuration.lastConnectUid = configuration.creatorUid;
         configuration.creatorName = configuration.lastUpdateName = TEST_PACKAGE_NAME;
         configuration.setRandomizedMacAddress(MacAddressUtils.createRandomUnicastAddress());
@@ -654,26 +655,6 @@ public class XmlUtilTest extends WifiBaseTest {
     }
 
     /**
-     * This helper method tests the auto-upgrade type is added for Open,
-     * PSK, and Enterprise networks.
-     */
-    private static void verifyAutoUpgradeType(WifiConfiguration expected,
-            WifiConfiguration actual) {
-        if (expected.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN)) {
-            assertTrue(actual.isSecurityType(WifiConfiguration.SECURITY_TYPE_OPEN));
-            assertTrue(actual.isSecurityType(WifiConfiguration.SECURITY_TYPE_OWE));
-        } else if (expected.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK)) {
-            assertTrue(actual.isSecurityType(WifiConfiguration.SECURITY_TYPE_PSK));
-            assertTrue(actual.isSecurityType(WifiConfiguration.SECURITY_TYPE_SAE));
-        } else if (expected.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP)
-                && expected.isEnterprise()) {
-            assertTrue(actual.isSecurityType(WifiConfiguration.SECURITY_TYPE_EAP));
-            assertTrue(actual.isSecurityType(
-                    WifiConfiguration.SECURITY_TYPE_EAP_WPA3_ENTERPRISE));
-        }
-    }
-
-    /**
      * This helper method tests the serialization for backup/restore.
      */
     private void serializeDeserializeWifiConfigurationForBackupRestore(
@@ -687,7 +668,6 @@ public class XmlUtilTest extends WifiBaseTest {
         assertEquals(retrieved.first, retrieved.second.getKey());
         WifiConfigurationTestUtil.assertConfigurationEqualForBackup(
                 configuration, retrieved.second);
-        verifyAutoUpgradeType(configuration, retrieved.second);
     }
 
     /**
@@ -712,7 +692,6 @@ public class XmlUtilTest extends WifiBaseTest {
             assertNotEquals(0, status.getDisableReasonCounter(
                     status.getNetworkSelectionDisableReason()));
         }
-        verifyAutoUpgradeType(configuration, retrieved.second);
     }
 
     /**
