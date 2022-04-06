@@ -763,7 +763,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         }
                     };
                     WifiConfiguration config = buildWifiConfiguration(pw);
-                    mWifiService.connect(config, -1, actionListener);
+                    mWifiService.connect(config, -1, actionListener, SHELL_PACKAGE_NAME);
                     // wait for status.
                     countDownLatch.await(500, TimeUnit.MILLISECONDS);
                     setAutoJoin(pw, config.SSID, config.allowAutojoin);
@@ -785,7 +785,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
                         }
                     };
                     WifiConfiguration config = buildWifiConfiguration(pw);
-                    mWifiService.save(config, actionListener);
+                    mWifiService.save(config, actionListener, SHELL_PACKAGE_NAME);
                     // wait for status.
                     countDownLatch.await(500, TimeUnit.MILLISECONDS);
                     setAutoJoin(pw, config.SSID, config.allowAutojoin);
@@ -1948,7 +1948,7 @@ public class WifiShellCommand extends BasicShellCommandHandler {
         };
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        mContext.registerReceiver(broadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        mContext.registerReceiver(broadcastReceiver, filter);
         mWifiService.setWifiEnabled(SHELL_PACKAGE_NAME, enabled);
         countDownLatch.await(5000, TimeUnit.MILLISECONDS);
         mContext.unregisterReceiver(broadcastReceiver);
