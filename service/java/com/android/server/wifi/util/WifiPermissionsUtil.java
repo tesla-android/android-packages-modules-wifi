@@ -16,6 +16,8 @@
 
 package com.android.server.wifi.util;
 
+import static android.Manifest.permission.ENTER_CAR_MODE_PRIORITIZED;
+
 import android.Manifest;
 import android.annotation.Nullable;
 import android.app.AppOpsManager;
@@ -468,6 +470,14 @@ public class WifiPermissionsUtil {
                     mContext, Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF)
                     == Settings.Secure.LOCATION_MODE_ON;
         }
+    }
+
+    /**
+     * Returns true if the |uid| holds ENTER_CAR_MODE_PRIORITIZED permission.
+     */
+    public boolean checkEnterCarModePrioritized(int uid) {
+        return mWifiPermissionsWrapper.getUidPermission(ENTER_CAR_MODE_PRIORITIZED, uid)
+                == PackageManager.PERMISSION_GRANTED;
     }
 
     /**
