@@ -3129,6 +3129,29 @@ public class SoftApManagerTest extends WifiBaseTest {
     }
 
     @Test
+    public void testBridgedModeDowngradeIfaceInstanceForRemoval() throws Exception {
+        assumeTrue(SdkLevel.isAtLeastS());
+        SoftApModeConfiguration apConfig = new SoftApModeConfiguration(
+                WifiManager.IFACE_IP_MODE_TETHERED, generateBridgedModeSoftApConfig(null),
+                mTestSoftApCapability);
+        startSoftApAndVerifyEnabled(apConfig);
+
+        // SoftApInfo updated
+        mockSoftApInfoUpdateAndVerifyAfterSapStarted(true /* bridged mode*/, true);
+
+        // Instance for removal should always be 5GHz (i.e. the second instance).
+        assertThat(mSoftApManager.getBridgedApDowngradeIfaceInstanceForRemoval())
+                .isEqualTo(mTestSoftApInfoOnSecondInstance.getApInstanceIdentifier());
+
+        // Trigger onInstanceFailure to simulate instance removal
+        mSoftApHalCallbackCaptor.getValue().onInstanceFailure(TEST_SECOND_INSTANCE_NAME);
+        mLooper.dispatchAll();
+
+        // Bridged AP with a single instance should not be downgraded, so return null.
+        assertThat(mSoftApManager.getBridgedApDowngradeIfaceInstanceForRemoval()).isNull();
+    }
+
+    @Test
     public void testUpdateCountryCodeWhenConfigDisabled() throws Exception {
         when(mResources.getBoolean(R.bool.config_wifiSoftApDynamicCountryCodeUpdateSupported))
                 .thenReturn(false);
