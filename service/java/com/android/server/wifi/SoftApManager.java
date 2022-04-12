@@ -1027,7 +1027,8 @@ public class SoftApManager implements ActiveModeManager {
 
                         mApInterfaceName = mWifiNative.setupInterfaceForSoftApMode(
                                 mWifiNativeInterfaceCallback, mRequestorWs,
-                                mCurrentSoftApConfiguration.getBand(), isBridgeRequired());
+                                mCurrentSoftApConfiguration.getBand(), isBridgeRequired(),
+                                SoftApManager.this);
                         if (TextUtils.isEmpty(mApInterfaceName)) {
                             Log.e(getTag(), "setup failure when creating ap interface.");
                             updateApState(WifiManager.WIFI_AP_STATE_FAILED,
