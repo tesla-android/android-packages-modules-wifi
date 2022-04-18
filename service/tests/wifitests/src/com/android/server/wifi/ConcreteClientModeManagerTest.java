@@ -103,6 +103,8 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
     @Mock ActiveModeManager.Listener<ConcreteClientModeManager> mListener;
     @Mock WakeupController mWakeupController;
     @Mock WifiInjector mWifiInjector;
+    @Mock DeviceConfigFacade mDeviceConfigFacade;
+    @Mock WifiDiagnostics mWifiDiagnostics;
     @Mock ClientModeImpl mClientModeImpl;
     @Mock CarrierConfigManager mCarrierConfigManager;
     @Mock PersistableBundle mCarrierConfigBundle;
@@ -242,7 +244,9 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 broadcast.send();
             }
         }).when(mBroadcastQueue).queueOrSendBroadcast(any(), any());
-
+        when(mDeviceConfigFacade.isInterfaceFailureBugreportEnabled()).thenReturn(true);
+        when(mWifiInjector.getDeviceConfigFacade()).thenReturn(mDeviceConfigFacade);
+        when(mWifiInjector.getWifiDiagnostics()).thenReturn(mWifiDiagnostics);
         mLooper = new TestLooper();
     }
 
@@ -491,6 +495,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
                 WIFI_STATE_UNKNOWN);
         assertEquals(WIFI_STATE_DISABLED, mClientModeManager.syncGetWifiState());
         verify(mListener).onStartFailure(mClientModeManager);
+        verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
     }
 
     /** Tests failure when setting up iface for scan only mode. */
@@ -505,6 +510,7 @@ public class ConcreteClientModeManagerTest extends WifiBaseTest {
 
         assertEquals(WIFI_STATE_DISABLED, mClientModeManager.syncGetWifiState());
         verify(mListener).onStartFailure(mClientModeManager);
+        verify(mWifiDiagnostics).takeBugReport(anyString(), anyString());
 
         mClientModeManager.getFactoryMacAddress();
         // wifi is off, should get value from DefaultClientModeManager
