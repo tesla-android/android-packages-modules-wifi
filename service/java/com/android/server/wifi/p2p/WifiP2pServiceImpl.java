@@ -4526,6 +4526,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
         private void notifyInvitationSent(String pin, String peerAddress) {
             ApproverEntry entry = mExternalApproverManager.get(MacAddress.fromString(peerAddress));
+            if (null == entry) {
+                logd("No approver found for " + peerAddress
+                        + " check the wildcard address approver.");
+                entry = mExternalApproverManager.get(MacAddress.BROADCAST_ADDRESS);
+            }
             if (null != entry) {
                 logd("Received invitation - Send WPS PIN event to the approver " + entry);
                 Bundle extras = new Bundle();
@@ -4600,6 +4605,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
         private void notifyP2pProvDiscShowPinRequest(String pin, String peerAddress) {
             ExternalApproverManager.ApproverEntry entry = mExternalApproverManager.get(
                     MacAddress.fromString(peerAddress));
+            if (null == entry) {
+                logd("No approver found for " + peerAddress
+                        + " check the wildcard address approver.");
+                entry = mExternalApproverManager.get(MacAddress.BROADCAST_ADDRESS);
+            }
             if (null != entry) {
                 logd("Received provision discovery request - Send request from "
                         + mSavedPeerConfig.deviceAddress + " to the approver " + entry);
@@ -4752,6 +4762,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
                 @WifiP2pManager.ExternalApproverRequestListener.RequestType int requestType) {
             ApproverEntry entry = mExternalApproverManager.get(
                     MacAddress.fromString(mSavedPeerConfig.deviceAddress));
+            if (null == entry) {
+                logd("No approver found for " + mSavedPeerConfig.deviceAddress
+                        + " check the wildcard address approver.");
+                entry = mExternalApproverManager.get(MacAddress.BROADCAST_ADDRESS);
+            }
             if (null != entry) {
                 logd("Received Invitation request - Send request " + requestType + " from "
                         + mSavedPeerConfig.deviceAddress + " to the approver " + entry);
@@ -6065,6 +6080,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
 
             ApproverEntry entry = mExternalApproverManager.remove(
                     MacAddress.fromString(mSavedPeerConfig.deviceAddress));
+            if (null == entry) {
+                logd("No approver found for " + mSavedPeerConfig.deviceAddress
+                        + " check the wildcard address approver.");
+                entry = mExternalApproverManager.remove(MacAddress.BROADCAST_ADDRESS);
+            }
             if (null == entry) return;
 
             logd("Detach the approver " + entry);
@@ -6086,6 +6106,11 @@ public class WifiP2pServiceImpl extends IWifiP2pManager.Stub {
             }
 
             ApproverEntry entry = mExternalApproverManager.get(binder, devAddr);
+            if (null == entry) {
+                logd("No approver found for " + devAddr
+                        + " check the wildcard address approver.");
+                entry = mExternalApproverManager.get(binder, MacAddress.BROADCAST_ADDRESS);
+            }
             if (null == entry) return false;
             if (!entry.getKey().equals(binder)) {
                 loge("Ignore connection result from a client"
