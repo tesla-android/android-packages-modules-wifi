@@ -2200,7 +2200,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -2231,7 +2232,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any(), any()))
                 .thenReturn(Pair.create(TEST_UID, OP_PACKAGE_NAME));
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -2259,7 +2261,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiNetworkFactory.getSpecificNetworkRequestUidAndPackageName(any(), any()))
                 .thenReturn(Pair.create(Process.INVALID_UID, ""));
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -2326,7 +2329,8 @@ public class ClientModeImplTest extends WifiBaseTest {
                         SupplicantState.FOUR_WAY_HANDSHAKE));
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -2371,8 +2375,9 @@ public class ClientModeImplTest extends WifiBaseTest {
                 .thenReturn(WifiHealthMonitor.REASON_AUTH_FAILURE);
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
-                WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
+                        WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED));
         mLooper.dispatchAll();
 
         verify(mEapFailureNotifier).onEapFailure(
@@ -2401,11 +2406,28 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(config);
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
-                WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
+                        WifiNative.EAP_SIM_VENDOR_SPECIFIC_CERT_EXPIRED));
         mLooper.dispatchAll();
 
         verify(mWifiCarrierInfoManager, never()).resetCarrierKeysForImsiEncryption(any());
+    }
+
+    @Test
+    public void testAuthFailureOnDifferentSsidIsIgnored() throws Exception {
+        initializeAndAddNetworkAndVerifySuccess();
+
+        startConnectSuccess();
+        mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
+                new AuthenticationFailureEventInfo("WRONG_SSID",
+                        MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
+                        WifiNative.EAP_SIM_NOT_SUBSCRIBED));
+        mLooper.dispatchAll();
+        verify(mWifiConfigManager, never()).updateNetworkSelectionStatus(anyInt(),
+                eq(WifiConfiguration.NetworkSelectionStatus
+                        .DISABLED_AUTHENTICATION_NO_SUBSCRIPTION));
     }
 
     /**
@@ -2418,11 +2440,10 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         startConnectSuccess();
 
-        when(mWifiConfigManager.getConfiguredNetwork(anyInt())).thenReturn(null);
-
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
-                WifiNative.EAP_SIM_NOT_SUBSCRIBED);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
+                        WifiNative.EAP_SIM_NOT_SUBSCRIBED));
         mLooper.dispatchAll();
 
         verify(mWifiConfigManager).updateNetworkSelectionStatus(anyInt(),
@@ -3015,7 +3036,9 @@ public class ClientModeImplTest extends WifiBaseTest {
         // targetNetworkId state)
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         mLooper.dispatchAll();
-        mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT, 0, 0, null);
+        mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_TIMEOUT, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -3570,7 +3593,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, FRAMEWORK_NETWORK_ID, 0, TEST_BSSID_STR);
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_TIMEOUT);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_TIMEOUT, -1));
         mLooper.dispatchAll();
 
         WifiConfiguration config = mCmi.getConnectedWifiConfiguration();
@@ -3589,7 +3613,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, FRAMEWORK_NETWORK_ID, 0, TEST_BSSID_STR);
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         mLooper.dispatchAll();
 
         verify(mConnectionFailureNotifier, never())
@@ -3717,7 +3742,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         initializeAndAddNetworkAndVerifySuccess();
         mCmi.sendMessage(ClientModeImpl.CMD_START_CONNECT, 0, 0, TEST_BSSID_STR);
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         mLooper.dispatchAll();
         verify(mWifiDiagnostics).reportConnectionEvent(
                 eq(WifiDiagnostics.CONNECTION_EVENT_FAILED), any());
@@ -3887,7 +3913,8 @@ public class ClientModeImplTest extends WifiBaseTest {
 
         // trigger the wrong password failure
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         DisconnectEventInfo disconnectEventInfo =
                 new DisconnectEventInfo(TEST_SSID, TEST_BSSID_STR, 0, false);
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
@@ -3905,7 +3932,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         startConnectSuccess();
         // trigger the wrong password failure
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         mCmi.sendMessage(WifiMonitor.NETWORK_DISCONNECTION_EVENT, disconnectEventInfo);
         mLooper.dispatchAll();
 
@@ -4095,7 +4123,8 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
                         SupplicantState.COMPLETED));
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_WRONG_PSWD, -1));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
                 anyString(), anyString(), anyInt(), anyBoolean());
@@ -4117,7 +4146,8 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
                         SupplicantState.COMPLETED));
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE, -1));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog, never()).noteConnectionFailureAndTriggerIfNeeded(
                 anyString(), anyString(), anyInt(), anyBoolean());
@@ -4138,7 +4168,8 @@ public class ClientModeImplTest extends WifiBaseTest {
                 new StateChangeResult(0, TEST_WIFI_SSID, TEST_BSSID_STR,
                         SupplicantState.COMPLETED));
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_TIMEOUT);
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_TIMEOUT, -1));
         mLooper.dispatchAll();
         verify(mWifiLastResortWatchdog).noteConnectionFailureAndTriggerIfNeeded(
                 anyString(), anyString(), anyInt(), anyBoolean());
@@ -6638,8 +6669,8 @@ public class ClientModeImplTest extends WifiBaseTest {
         when(mEapFailureNotifier.onEapFailure(anyInt(), eq(config), anyBoolean())).thenReturn(true);
 
         mCmi.sendMessage(WifiMonitor.AUTHENTICATION_FAILURE_EVENT,
-                WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE,
-                DEFINED_ERROR_CODE
+                new AuthenticationFailureEventInfo(TEST_SSID, MacAddress.fromString(TEST_BSSID_STR),
+                        WifiManager.ERROR_AUTH_FAILURE_EAP_FAILURE, DEFINED_ERROR_CODE)
         );
         mLooper.dispatchAll();
 
