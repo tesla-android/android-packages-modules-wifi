@@ -6156,7 +6156,10 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             boolean shouldSucceed, MacAddress devAddr) throws Exception {
         when(mWifiPermissionsUtil.checkManageWifiNetworkSelectionPermission(anyInt()))
                 .thenReturn(hasPermission);
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                .thenReturn(hasPermission);
 
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendAddExternalApproverMsg(mClientMessenger, devAddr, binder);
         verify(mClientHandler).sendMessage(mMessageCaptor.capture());
         Message message = mMessageCaptor.getValue();
@@ -6190,10 +6193,13 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             boolean shouldSucceed) throws Exception {
         when(mWifiPermissionsUtil.checkManageWifiNetworkSelectionPermission(anyInt()))
                 .thenReturn(hasPermission);
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                .thenReturn(hasPermission);
         MacAddress devAddr = MacAddress.fromString(
                 mTestWifiP2pDevice.deviceAddress);
         Binder binder = new Binder();
 
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         sendRemoveExternalApproverMsg(mClientMessenger, devAddr, binder);
         verify(mClientHandler).sendMessage(mMessageCaptor.capture());
         Message message = mMessageCaptor.getValue();
@@ -6231,6 +6237,7 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         Binder binder = new Binder();
 
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         mockPeersList();
 
         if (hasApprover) {
@@ -6240,6 +6247,8 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
         mockEnterUserAuthorizingNegotiationRequestState(wpsType);
 
         when(mWifiPermissionsUtil.checkManageWifiNetworkSelectionPermission(anyInt()))
+                .thenReturn(hasPermission);
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
                 .thenReturn(hasPermission);
         sendSetConnectionRequestResultMsg(mClientMessenger,
                 MacAddress.fromString(mTestWifiP2pDevice.deviceAddress),
@@ -6296,9 +6305,12 @@ public class WifiP2pServiceImplTest extends WifiBaseTest {
             throws Exception {
         when(mWifiPermissionsUtil.checkManageWifiNetworkSelectionPermission(anyInt()))
                 .thenReturn(true);
+        when(mWifiPermissionsUtil.checkNearbyDevicesPermission(any(), anyBoolean(), any()))
+                .thenReturn(true);
         Binder binder = new Binder();
 
         forceP2pEnabled(mClient1);
+        sendChannelInfoUpdateMsg("testPkg1", "testFeature", mClient1, mClientMessenger);
         mockPeersList();
 
         for (MacAddress addr: addresses) {
