@@ -3350,10 +3350,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             }
             log("DHCP failure count=" + count);
         }
-        reportConnectionAttemptEnd(
-                WifiMetrics.ConnectionEvent.FAILURE_DHCP,
-                WifiMetricsProto.ConnectionEvent.HLF_DHCP,
-                WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN);
         synchronized (mDhcpResultsParcelableLock) {
             mDhcpResultsParcelable = new DhcpResultsParcelable();
         }
@@ -5526,6 +5522,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
                             (mLastBssid == null) ? mTargetBssid : mLastBssid,
                             WifiLastResortWatchdog.FAILURE_CODE_DHCP,
                             isConnected());
+                    handleNetworkDisconnect(false,
+                            WifiStatsLog.WIFI_DISCONNECT_REPORTED__FAILURE_CODE__UNSPECIFIED);
+                    transitionTo(mDisconnectedState); // End of connection attempt.
                     break;
                 }
                 case CMD_IP_REACHABILITY_LOST: {
@@ -5857,10 +5856,6 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             switch(message.what) {
                 case WifiMonitor.NETWORK_DISCONNECTION_EVENT: {
                     DisconnectEventInfo eventInfo = (DisconnectEventInfo) message.obj;
-                    reportConnectionAttemptEnd(
-                            WifiMetrics.ConnectionEvent.FAILURE_NETWORK_DISCONNECTION,
-                            WifiMetricsProto.ConnectionEvent.HLF_NONE,
-                            WifiMetricsProto.ConnectionEvent.FAILURE_REASON_UNKNOWN);
                     mWifiLastResortWatchdog.noteConnectionFailureAndTriggerIfNeeded(
                             getConnectingSsidInternal(),
                             !isValidBssid(eventInfo.bssid)
