@@ -1310,7 +1310,7 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             logi("connectToUserSelectNetwork already connecting/connected=" + netId);
         } else {
             mWifiConnectivityManager.prepareForForcedConnection(netId);
-            if (uid == Process.SYSTEM_UID) {
+            if (UserHandle.getAppId(uid) == Process.SYSTEM_UID) {
                 mWifiMetrics.setNominatorForNetwork(netId,
                         WifiMetricsProto.ConnectionEvent.NOMINATOR_MANUAL);
             }
