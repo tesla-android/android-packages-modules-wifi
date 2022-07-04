@@ -1254,7 +1254,7 @@ public final class SoftApConfiguration implements Parcelable {
             mChannels.put(BAND_2GHZ, 0);
             mMaxNumberOfClients = 0;
             mSecurityType = SECURITY_TYPE_OPEN;
-            mAutoShutdownEnabled = disabled; // disabled by default.
+            mAutoShutdownEnabled = false; // disabled by default.
             mShutdownTimeoutMillis = DEFAULT_TIMEOUT;
             mClientControlByUser = false;
             mBlockedClientList = new ArrayList<>();
