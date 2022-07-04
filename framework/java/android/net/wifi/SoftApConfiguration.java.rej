@@ -1,0 +1,10 @@
+diff a/framework/java/android/net/wifi/SoftApConfiguration.java b/framework/java/android/net/wifi/SoftApConfiguration.java	(rejected hunks)
+@@ -883,7 +883,7 @@ public Builder() {
+             mChannels.put(BAND_2GHZ, 0);
+             mMaxNumberOfClients = 0;
+             mSecurityType = SECURITY_TYPE_OPEN;
+-            mAutoShutdownEnabled = true; // enabled by default.
++            mAutoShutdownEnabled = false; // disabled by default.
+             mShutdownTimeoutMillis = 0;
+             mClientControlByUser = false;
+             mBlockedClientList = new ArrayList<>();
