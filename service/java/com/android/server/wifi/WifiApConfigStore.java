@@ -246,7 +246,7 @@ public class WifiApConfigStore {
                 == SECURITY_TYPE_WPA3_SAE
                 || config.getSecurityType()
                 == SECURITY_TYPE_WPA3_SAE_TRANSITION)) {
-            configBuilder.setPassphrase(generatePassword(),
+            configBuilder.setPassphrase(getDefaultPassword(),
                     SECURITY_TYPE_WPA2_PSK);
             Log.i(TAG, "Device doesn't support WPA3-SAE, reset config to WPA2");
         }
@@ -372,10 +372,10 @@ public class WifiApConfigStore {
         configBuilder.setSsid(mContext.getResources().getString(
                 R.string.wifi_tether_configure_ssid_default) + "_" + getRandomIntForDefaultSsid());
         if (ApConfigUtil.isWpa3SaeSupported(mContext)) {
-            configBuilder.setPassphrase(generatePassword(),
+            configBuilder.setPassphrase(getDefaultPassword(),
                     SECURITY_TYPE_WPA3_SAE_TRANSITION);
         } else {
-            configBuilder.setPassphrase(generatePassword(),
+            configBuilder.setPassphrase(getDefaultPassword(),
                     SECURITY_TYPE_WPA2_PSK);
         }
 
@@ -437,10 +437,10 @@ public class WifiApConfigStore {
             // Default to disable the auto shutdown
             configBuilder.setAutoShutdownEnabled(false);
             if (ApConfigUtil.isWpa3SaeSupported(context)) {
-                configBuilder.setPassphrase(generatePassword(),
+                configBuilder.setPassphrase(getDefaultPassword(),
                         SECURITY_TYPE_WPA3_SAE_TRANSITION);
             } else {
-                configBuilder.setPassphrase(generatePassword(),
+                configBuilder.setPassphrase(getDefaultPassword(),
                         SECURITY_TYPE_WPA2_PSK);
             }
             // Update default MAC randomization setting to NONE when feature doesn't support it or
@@ -636,18 +636,8 @@ public class WifiApConfigStore {
         return true;
     }
 
-    private static String generatePassword() {
-        // Characters that will be used for password generation. Some characters commonly known to
-        // be confusing like 0 and O excluded from this list.
-        final String allowed = "23456789abcdefghijkmnpqrstuvwxyz";
-        final int passLength = 15;
-
-        StringBuilder sb = new StringBuilder(passLength);
-        SecureRandom random = new SecureRandom();
-        for (int i = 0; i < passLength; i++) {
-            sb.append(allowed.charAt(random.nextInt(allowed.length())));
-        }
-        return sb.toString();
+    private static String getDefaultPassword() {
+        return "changeit";
     }
 
     /**
