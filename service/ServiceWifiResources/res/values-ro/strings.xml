@@ -124,7 +124,7 @@
     <string name="wifi_interface_priority_message" msgid="4253391172756140313">"Acțiunea poate cauza probleme pentru <xliff:g id="APPS">%3$s</xliff:g>."</string>
     <string name="wifi_interface_priority_message_plural" msgid="8178086373318831859">"Acțiunea poate cauza probleme pentru următoarele aplicații: <xliff:g id="APPS">%3$s</xliff:g>."</string>
     <string name="wifi_interface_priority_approve" msgid="7877379614986261096">"Permite"</string>
-    <string name="wifi_interface_priority_reject" msgid="1378461018835886777">"Nu permiteți"</string>
+    <string name="wifi_interface_priority_reject" msgid="1378461018835886777">"Nu permite"</string>
     <string name="wifi_ca_cert_dialog_title" msgid="3872340345882915806">"Această rețea este de încredere?"</string>
     <string name="wifi_ca_cert_dialog_continue_text" msgid="1674156611893471003">"Da, conectează"</string>
     <string name="wifi_ca_cert_dialog_abort_text" msgid="1303170595421648059">"Nu, nu conecta"</string>
@@ -149,5 +149,5 @@
     <string name="wifi_enable_request_dialog_title" msgid="3577459145316177148">"Permiți ca <xliff:g id="APP_NAME">%1$s</xliff:g> să activeze conexiunea Wi‑Fi?"</string>
     <string name="wifi_enable_request_dialog_message" msgid="6395169178524938278">"Puteți să dezactivați conexiunea Wi‑Fi din Setările rapide"</string>
     <string name="wifi_enable_request_dialog_positive_button" msgid="6050832555821470466">"Permite"</string>
-    <string name="wifi_enable_request_dialog_negative_button" msgid="4754219902374918882">"Nu permiteți"</string>
+    <string name="wifi_enable_request_dialog_negative_button" msgid="4754219902374918882">"Nu permite"</string>
 </resources>
